@@ -1,6 +1,8 @@
 # Bridge: Complete Vision Document
 **The first-ever community-driven dating experience**
 
+**All work in React Native for iOS (primary platform)**
+
 *Last Updated: December 2025*
 
 ---
@@ -596,9 +598,10 @@ Friend chats contain:
 
 ### Deep Questions Selection (Version 1)
 - Users can answer up to 36 deep questions across 3 tiers
-- **Onboarding Requirement:** Users must answer at least 1 question from each tier (3 total) during onboarding
+- **Profile Requirement:** Users must answer at least 1 question from each tier (3 total) to reach 100% profile completion
+- Deep questions are accessible from the profile screen after onboarding is complete
 - All answered questions are used by the matching algorithm for better match quality
-- Users can continue answering more questions after onboarding to improve match quality
+- Users can answer additional questions beyond the 3 minimum to improve match quality
 - Questions are displayed on user profiles to help potential matches understand them better
 
 ### Dealbreakers System

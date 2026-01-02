@@ -1,0 +1,435 @@
+import React, { useState } from 'react';
+import { View, TouchableOpacity, TextInput, Modal, ScrollView, Alert } from 'react-native';
+import { styled } from 'nativewind';
+import { H1, H2, H3, Body } from '../../../components/ui';
+import { OnboardingData, DeepQuestionAnswer } from '../../../types';
+import { Ionicons } from '@expo/vector-icons';
+import { OnboardingLayout } from '../../../components/OnboardingLayout';
+
+interface DeepQuestionsStepProps {
+  data: Partial<OnboardingData>;
+  updateData: (data: Partial<OnboardingData>) => void;
+  onNext: () => void;
+  onBack: () => void;
+  isFirstStep: boolean;
+  isLastStep: boolean;
+}
+
+const StyledView = styled(View);
+const StyledTouchableOpacity = styled(TouchableOpacity);
+const StyledTextInput = styled(TextInput);
+const StyledScrollView = styled(ScrollView);
+
+type Tier = 1 | 2 | 3;
+
+interface Question {
+  id: number;
+  text: string;
+  tier: Tier;
+}
+
+interface QuestionAnswer {
+  questionId: number;
+  question: string;
+  answer: string;
+  tier: Tier;
+  isFeatured: boolean;
+}
+
+const QUESTIONS: Question[] = [
+  // Tier 1 (Set I)
+  { id: 1, tier: 1, text: "Given the choice of anyone in the world, whom would you want as a dinner guest?" },
+  { id: 2, tier: 1, text: "Would you like to be famous? In what way?" },
+  { id: 3, tier: 1, text: "Before making a telephone call, do you ever rehearse what you are going to say? Why?" },
+  { id: 4, tier: 1, text: 'What would constitute a "perfect" day for you?' },
+  { id: 5, tier: 1, text: "When did you last sing to yourself? To someone else?" },
+  { id: 6, tier: 1, text: "If you were able to live to the age of 90 and retain either the mind or body of a 30-year-old for the last 60 years of your life, which would you want?" },
+  { id: 7, tier: 1, text: "Do you have a secret hunch about how you will die?" },
+  { id: 8, tier: 1, text: "What are three qualities you value most in your closest friendships?" },
+  { id: 9, tier: 1, text: "For what in your life do you feel most grateful?" },
+  { id: 10, tier: 1, text: "If you could change anything about the way you were raised, what would it be?" },
+  { id: 11, tier: 1, text: "Take four minutes and tell your life story in as much detail as possible." },
+  { id: 12, tier: 1, text: "If you could wake up tomorrow having gained any one quality or ability, what would it be?" },
+
+  // Tier 2 (Set II)
+  { id: 13, tier: 2, text: "If a crystal ball could tell you the truth about yourself, your life, the future or anything else, what would you want to know?" },
+  { id: 14, tier: 2, text: "Is there something that you've dreamed of doing for a long time? Why haven't you done it?" },
+  { id: 15, tier: 2, text: "What is the greatest accomplishment of your life?" },
+  { id: 16, tier: 2, text: "What do you value most in a friendship?" },
+  { id: 17, tier: 2, text: "What is your most treasured memory?" },
+  { id: 18, tier: 2, text: "What is your most terrible memory?" },
+  { id: 19, tier: 2, text: "If you knew that in one year you would die suddenly, would you change anything about the way you are now living? Why?" },
+  { id: 20, tier: 2, text: "What does friendship mean to you?" },
+  { id: 21, tier: 2, text: "What roles do love and affection play in your life?" },
+  { id: 22, tier: 2, text: "What are five qualities you most admire in the people closest to you?" },
+  { id: 23, tier: 2, text: "How close and warm is your family? Do you feel your childhood was happier than most other people's?" },
+  { id: 24, tier: 2, text: "How do you feel about your relationship with your mother?" },
+
+  // Tier 3 (Set III)
+  { id: 25, tier: 3, text: "What are three things you hope to have in common with your future partner?" },
+  { id: 26, tier: 3, text: 'Complete this sentence: "I wish I had someone with whom I could share..."' },
+  { id: 27, tier: 3, text: "What would be important for someone to know about you if they were going to become a close friend or partner?" },
+  { id: 28, tier: 3, text: "What qualities do you find most attractive in a potential partner, and why are they important to you?" },
+  { id: 29, tier: 3, text: "Share an embarrassing moment in your life that taught you something about yourself." },
+  { id: 30, tier: 3, text: "When did you last cry in front of another person? By yourself?" },
+  { id: 31, tier: 3, text: "What do you notice first when you're attracted to someone - what draws you in?" },
+  { id: 32, tier: 3, text: "What, if anything, is too serious to be joked about?" },
+  { id: 33, tier: 3, text: "If you were to die this evening with no opportunity to communicate with anyone, what would you most regret not having told someone? Why haven't you told them yet?" },
+  { id: 34, tier: 3, text: "Your house, containing everything you own, catches fire. After saving your loved ones and pets, you have time to safely make a final dash to save any one item. What would it be? Why?" },
+  { id: 35, tier: 3, text: "Of all the people in your family, whose death would you find most disturbing? Why?" },
+  { id: 36, tier: 3, text: "Share a personal challenge you're currently facing and how you're working through it." },
+];
+
+export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
+  data,
+  updateData,
+  onNext,
+  onBack,
+}) => {
+  // Initialize answers from existing data
+  const initializeAnswers = (): Map<number, QuestionAnswer> => {
+    const existing = data.deepQuestions || [];
+    const result = new Map<number, QuestionAnswer>();
+
+    existing.forEach(q => {
+      result.set(q.questionId, {
+        questionId: q.questionId,
+        question: q.question,
+        answer: q.answer,
+        tier: q.tier,
+        isFeatured: q.isFeatured || false,
+      });
+    });
+
+    return result;
+  };
+
+  const [answers, setAnswers] = useState<Map<number, QuestionAnswer>>(initializeAnswers());
+  const [expandedTiers, setExpandedTiers] = useState<Set<Tier>>(new Set());
+  const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
+  const [draftAnswer, setDraftAnswer] = useState('');
+  const [showAnswerModal, setShowAnswerModal] = useState(false);
+
+  // Get answer for a question
+  const getAnswer = (questionId: number): QuestionAnswer | undefined => {
+    return answers.get(questionId);
+  };
+
+  // Toggle tier expansion
+  const toggleTier = (tier: Tier) => {
+    setExpandedTiers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(tier)) {
+        newSet.delete(tier);
+      } else {
+        newSet.add(tier);
+      }
+      return newSet;
+    });
+  };
+
+  // Open answer modal for a question
+  const handleAnswerQuestion = (question: Question) => {
+    setSelectedQuestion(question);
+    const existingAnswer = getAnswer(question.id);
+    setDraftAnswer(existingAnswer?.answer || '');
+    setShowAnswerModal(true);
+  };
+
+  // Save answer
+  const handleSaveAnswer = () => {
+    if (!selectedQuestion || !draftAnswer.trim()) {
+      return;
+    }
+
+    const newAnswer: QuestionAnswer = {
+      questionId: selectedQuestion.id,
+      question: selectedQuestion.text,
+      answer: draftAnswer.trim(),
+      tier: selectedQuestion.tier,
+      isFeatured: getAnswer(selectedQuestion.id)?.isFeatured || false,
+    };
+
+    setAnswers(prev => {
+      const newMap = new Map(prev);
+      newMap.set(selectedQuestion.id, newAnswer);
+      return newMap;
+    });
+
+    // Collapse the tier after saving
+    setExpandedTiers(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(selectedQuestion.tier);
+      return newSet;
+    });
+
+    setShowAnswerModal(false);
+    setSelectedQuestion(null);
+    setDraftAnswer('');
+  };
+
+  // Delete answer
+  const handleDeleteAnswer = (questionId: number) => {
+    setAnswers(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(questionId);
+      return newMap;
+    });
+  };
+
+  // Validate and continue
+  const handleContinue = () => {
+    // Check if all 3 tiers have at least one answer
+    if (!tier1Answered || !tier2Answered || !tier3Answered) {
+      Alert.alert('Complete All Tiers', 'Please answer one question from each tier to continue.');
+      return;
+    }
+
+    const deepQuestions: DeepQuestionAnswer[] = Array.from(answers.values()).map(a => ({
+      questionId: a.questionId,
+      question: a.question,
+      answer: a.answer,
+      tier: a.tier,
+      isFeatured: false, // No longer using featured questions
+    }));
+
+    // Automatically star/display all questions answered during onboarding
+    // This ensures they appear on the profile by default
+    const displayedQuestions = Array.from(answers.values()).map(a => a.questionId);
+
+    updateData({
+      deepQuestions,
+      displayedQuestions, // Auto-star onboarding questions
+    });
+    onNext();
+  };
+
+  // Count how many tiers have at least one answer
+  const tier1Answered = Array.from(answers.values()).some(a => a.tier === 1);
+  const tier2Answered = Array.from(answers.values()).some(a => a.tier === 2);
+  const tier3Answered = Array.from(answers.values()).some(a => a.tier === 3);
+  const tiersCompleted = [tier1Answered, tier2Answered, tier3Answered].filter(Boolean).length;
+
+  const tierDescriptions: Record<Tier, string> = {
+    1: 'Light & casual questions',
+    2: 'More personal questions',
+    3: 'Deep & meaningful questions',
+  };
+
+  const tierColors: Record<Tier, { bg: string; border: string; text: string }> = {
+    1: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600' },
+    2: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-600' },
+    3: { bg: 'bg-pink-50', border: 'border-pink-200', text: 'text-pink-600' },
+  };
+
+  const tierIcons: Record<Tier, string> = {
+    1: 'chatbubble-outline',
+    2: 'heart-outline',
+    3: 'sparkles-outline',
+  };
+
+  // Render question item
+  const renderQuestionItem = (question: Question) => {
+    const answer = getAnswer(question.id);
+    const isAnswered = !!answer;
+
+    return (
+      <StyledView key={question.id} className="mb-3">
+        <StyledTouchableOpacity
+          onPress={() => handleAnswerQuestion(question)}
+          className={`p-4 rounded-xl border-2 ${
+            isAnswered
+              ? 'bg-primary-50 border-primary-300'
+              : 'bg-white border-neutral-200'
+          }`}
+          style={{
+            shadowColor: isAnswered ? '#437FFF' : '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: isAnswered ? 0.1 : 0.05,
+            shadowRadius: 4,
+            elevation: isAnswered ? 2 : 1,
+          }}
+        >
+          <StyledView className="flex-row items-start">
+            {isAnswered && (
+              <StyledView className="mr-3 mt-1">
+                <Ionicons name="checkmark-circle" size={20} color="#437FFF" />
+              </StyledView>
+            )}
+            <StyledView className="flex-1">
+              <Body className={`text-sm leading-5 ${isAnswered ? 'text-neutral-900 font-semibold' : 'text-neutral-700'}`}>
+                {question.text}
+              </Body>
+              {isAnswered && (
+                <Body className="text-neutral-600 text-sm mt-2 italic" numberOfLines={2}>
+                  "{answer.answer}"
+                </Body>
+              )}
+            </StyledView>
+          </StyledView>
+
+          {isAnswered && (
+            <StyledView className="flex-row items-center justify-between mt-3 pt-3 border-t border-primary-100">
+              <Body className="text-primary-500 text-xs font-medium">Tap to edit</Body>
+              <StyledTouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleDeleteAnswer(question.id);
+                }}
+                className="flex-row items-center"
+              >
+                <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                <Body className="ml-1 text-xs text-error">Delete</Body>
+              </StyledTouchableOpacity>
+            </StyledView>
+          )}
+        </StyledTouchableOpacity>
+      </StyledView>
+    );
+  };
+
+  // Render tier section
+  const renderTierSection = (tier: Tier) => {
+    const tierQuestions = QUESTIONS.filter(q => q.tier === tier);
+    const isExpanded = expandedTiers.has(tier);
+    const hasAnswerInTier = tierQuestions.some(q => getAnswer(q.id));
+    const completionText = hasAnswerInTier ? '✓ Completed' : 'Tap to start';
+    const completionColor = hasAnswerInTier ? 'text-success font-semibold' : 'text-neutral-400';
+    const colors = tierColors[tier];
+
+    return (
+      <StyledView key={tier} className="mb-5">
+        <StyledTouchableOpacity
+          onPress={() => toggleTier(tier)}
+          className={`flex-row items-center justify-between p-5 rounded-2xl border-2 ${
+            hasAnswerInTier
+              ? 'bg-green-50 border-green-300'
+              : `${colors.bg} ${colors.border}`
+          }`}
+          style={{
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 8,
+            elevation: 3,
+          }}
+        >
+          <StyledView className="flex-row items-center flex-1">
+            <StyledView
+              className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${
+                hasAnswerInTier ? 'bg-green-100' : colors.bg
+              }`}
+            >
+              <Ionicons
+                name={hasAnswerInTier ? 'checkmark-circle' : tierIcons[tier]}
+                size={28}
+                color={hasAnswerInTier ? '#10B981' : colors.text.replace('text-', '#')}
+                style={{
+                  color: hasAnswerInTier
+                    ? '#10B981'
+                    : tier === 1 ? '#2563EB' : tier === 2 ? '#9333EA' : '#EC4899'
+                }}
+              />
+            </StyledView>
+            <StyledView className="flex-1">
+              <H3 className="text-lg font-bold mb-1">Tier {tier}</H3>
+              <Body className="text-neutral-600 text-sm">{tierDescriptions[tier]}</Body>
+            </StyledView>
+          </StyledView>
+          <StyledView className="flex-row items-center ml-2">
+            <Body className={`text-sm mr-2 ${completionColor}`}>
+              {completionText}
+            </Body>
+            <Ionicons
+              name={isExpanded ? 'chevron-up' : 'chevron-down'}
+              size={24}
+              color="#9CA3AF"
+            />
+          </StyledView>
+        </StyledTouchableOpacity>
+
+        {isExpanded && (
+          <StyledView className="mt-4 ml-2">
+            {tierQuestions.map(renderQuestionItem)}
+          </StyledView>
+        )}
+      </StyledView>
+    );
+  };
+
+  return (
+    <>
+      <OnboardingLayout
+        onBack={onBack}
+        onContinue={handleContinue}
+        hasTextInput={false}
+      >
+        <StyledView className="mt-8">
+          <H1 className="mb-4">Getting to Know You</H1>
+          <Body className="text-neutral-600 mb-2">
+            Answer <Body className="font-bold text-neutral-900">3 questions minimum</Body> (one from each tier) to enter the matching pool.
+          </Body>
+          <Body className="text-neutral-500 text-sm mb-8">
+            You can answer up to 36 questions total if you'd like, but only 3 are required for your profile strength.
+          </Body>
+
+          {/* Tiers */}
+          {[1, 2, 3].map(tier => renderTierSection(tier as Tier))}
+        </StyledView>
+      </OnboardingLayout>
+
+      {/* Answer Modal */}
+      <Modal
+        visible={showAnswerModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <StyledView className="flex-1 bg-white">
+          {/* Header */}
+          <StyledView className="pt-14 pb-4 px-6 border-b border-neutral-200 bg-white">
+            <StyledView className="flex-row items-center justify-between mb-4">
+              <StyledTouchableOpacity onPress={() => setShowAnswerModal(false)}>
+                <Body className="text-primary-500 font-medium">Cancel</Body>
+              </StyledTouchableOpacity>
+              <H2 className="text-lg">Answer Question</H2>
+              <StyledTouchableOpacity
+                onPress={handleSaveAnswer}
+                disabled={!draftAnswer.trim()}
+              >
+                <Body className={`font-semibold ${
+                  draftAnswer.trim() ? 'text-primary-500' : 'text-neutral-300'
+                }`}>
+                  Save
+                </Body>
+              </StyledTouchableOpacity>
+            </StyledView>
+          </StyledView>
+
+          {/* Question and Input */}
+          <StyledScrollView className="flex-1 px-6 pt-6">
+            <H3 className="text-base font-semibold mb-4 leading-6">
+              {selectedQuestion?.text}
+            </H3>
+
+            <StyledTextInput
+              value={draftAnswer}
+              onChangeText={setDraftAnswer}
+              placeholder="Type your answer here..."
+              multiline
+              autoFocus
+              textAlignVertical="top"
+              className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 min-h-[200px] text-base text-neutral-900"
+              style={{ fontFamily: 'System' }}
+            />
+
+            <Body className="text-neutral-400 text-xs mt-3">
+              All answers are used by our algorithm to find better matches for you.
+            </Body>
+
+            <StyledView className="h-20" />
+          </StyledScrollView>
+        </StyledView>
+      </Modal>
+    </>
+  );
+};

@@ -1,0 +1,174 @@
+import React, { useState } from 'react';
+import { View, TouchableOpacity } from 'react-native';
+import { styled } from 'nativewind';
+import { H1, Body } from '../../../components/ui';
+import { OnboardingData } from '../../../types';
+import { OnboardingLayout } from '../../../components/OnboardingLayout';
+import Slider from '@react-native-community/slider';
+
+interface AgeStepProps {
+  data: Partial<OnboardingData>;
+  updateData: (data: Partial<OnboardingData>) => void;
+  onNext: () => void;
+  onBack: () => void;
+  isFirstStep: boolean;
+  isLastStep: boolean;
+}
+
+const StyledView = styled(View);
+const StyledTouchableOpacity = styled(TouchableOpacity);
+
+const MIN_AGE = 18;
+const MAX_AGE = 80;
+
+export const AgeStep: React.FC<AgeStepProps> = ({
+  data,
+  updateData,
+  onNext,
+  onBack,
+}) => {
+  const [selectedAge, setSelectedAge] = useState<number>(data.age || MIN_AGE);
+  const [ageMin, setAgeMin] = useState<number>(data.preferences?.ageMin || MIN_AGE);
+  const [ageMax, setAgeMax] = useState<number>(data.preferences?.ageMax || MAX_AGE);
+  const [error, setError] = useState('');
+
+  const validateAndContinue = () => {
+    if (!selectedAge || selectedAge < MIN_AGE || selectedAge > MAX_AGE) {
+      setError('Please select your age');
+      return;
+    }
+
+    if (ageMin >= ageMax) {
+      setError('Maximum age must be greater than minimum age');
+      return;
+    }
+
+    updateData({
+      age: selectedAge,
+      preferences: {
+        ...data.preferences,
+        ageMin,
+        ageMax,
+      }
+    });
+    onNext();
+  };
+
+  const handleAgeChange = (value: number) => {
+    const newAge = Math.round(value);
+    setSelectedAge(newAge);
+    setError('');
+  };
+
+  const handleMinAgeChange = (value: number) => {
+    const newMin = Math.round(value);
+    setAgeMin(newMin);
+    if (newMin >= ageMax) {
+      setAgeMax(Math.min(MAX_AGE, newMin + 1));
+    }
+    setError('');
+  };
+
+  const handleMaxAgeChange = (value: number) => {
+    const newMax = Math.round(value);
+    setAgeMax(newMax);
+    if (newMax <= ageMin) {
+      setAgeMin(Math.max(MIN_AGE, newMax - 1));
+    }
+    setError('');
+  };
+
+  return (
+    <OnboardingLayout
+      onBack={onBack}
+      onContinue={validateAndContinue}
+      hasTextInput={false}
+    >
+      <StyledView className="flex-1 justify-center px-6">
+        {/* Page Title */}
+        <H1 className="mb-10 text-center">How old are you?</H1>
+
+        {/* Your Age Section */}
+        <StyledView className="items-center mb-6">
+          <Body className="text-5xl font-bold text-primary-500 mb-5">
+            {selectedAge}
+          </Body>
+
+          <StyledView className="w-full">
+            <Slider
+              value={selectedAge}
+              onValueChange={handleAgeChange}
+              minimumValue={MIN_AGE}
+              maximumValue={MAX_AGE}
+              step={1}
+              minimumTrackTintColor="#437FFF"
+              maximumTrackTintColor="#E5E7EB"
+              thumbTintColor="#437FFF"
+            />
+            <StyledView className="flex-row justify-between mt-1">
+              <Body className="text-xs text-neutral-400">{MIN_AGE}</Body>
+              <Body className="text-xs text-neutral-400">{MAX_AGE}</Body>
+            </StyledView>
+          </StyledView>
+        </StyledView>
+
+        {/* Subtle Divider */}
+        <StyledView className="w-full h-px bg-neutral-200 my-8" />
+
+        {/* Age Range Preference Section */}
+        <StyledView>
+          <Body className="text-neutral-900 font-semibold text-base mb-5 text-center">
+            Preferred Age Range
+          </Body>
+
+          {/* Age Range Display */}
+          <StyledView className="flex-row justify-center items-center mb-5">
+            <StyledView className="bg-primary-500 rounded-xl px-6 py-3">
+              <Body className="text-white text-3xl font-bold">{ageMin}</Body>
+            </StyledView>
+            <Body className="text-xl text-neutral-400 mx-3">-</Body>
+            <StyledView className="bg-primary-500 rounded-xl px-6 py-3">
+              <Body className="text-white text-3xl font-bold">{ageMax}</Body>
+            </StyledView>
+          </StyledView>
+
+          {/* Range Slider */}
+          <StyledView>
+            {/* Min Slider */}
+            <Slider
+              value={ageMin}
+              onValueChange={handleMinAgeChange}
+              minimumValue={MIN_AGE}
+              maximumValue={MAX_AGE}
+              step={1}
+              minimumTrackTintColor="#437FFF"
+              maximumTrackTintColor="#E5E7EB"
+              thumbTintColor="#437FFF"
+            />
+
+            {/* Max Slider */}
+            <Slider
+              value={ageMax}
+              onValueChange={handleMaxAgeChange}
+              minimumValue={MIN_AGE}
+              maximumValue={MAX_AGE}
+              step={1}
+              minimumTrackTintColor="#E5E7EB"
+              maximumTrackTintColor="#437FFF"
+              thumbTintColor="#437FFF"
+            />
+
+            <StyledView className="flex-row justify-between mt-1">
+              <Body className="text-xs text-neutral-500">Min: {ageMin}</Body>
+              <Body className="text-xs text-neutral-500">Max: {ageMax}</Body>
+            </StyledView>
+          </StyledView>
+        </StyledView>
+
+        {error && (
+          <Body className="text-error text-sm mt-4 text-center">{error}</Body>
+        )}
+      </StyledView>
+    </OnboardingLayout>
+  );
+};

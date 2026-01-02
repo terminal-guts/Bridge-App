@@ -1,0 +1,179 @@
+/**
+ * ActiveMatchCard Component (Enhanced)
+ *
+ * Shows current active match with:
+ * - Partner photo, name/age, days active
+ * - Progress bar showing days in match (visual timeline)
+ * - Mini-milestones: "2 days together", "1 week together"
+ * - Message count: "15 messages exchanged"
+ * - Days until can end (if < 3 days)
+ * - Celebration UI when hitting 3 days
+ * - "End Match" button (enabled after 3 days)
+ * - "Message" button (always available)
+ */
+
+import React from 'react';
+import { View, Text, Image, TouchableOpacity } from 'react-native';
+import { styled } from 'nativewind';
+import { Ionicons } from '@expo/vector-icons';
+import { ActiveMatch } from '../../types/community';
+import { mediumHaptic, lightHaptic } from '../../utils/haptics';
+import {
+  getMatchProgress,
+  getMatchProgressColor,
+  getMatchMilestone,
+  getMatchMilestoneIcon,
+} from '../../utils/communityHelpers';
+
+const StyledView = styled(View);
+const StyledText = styled(Text);
+const StyledImage = styled(Image);
+const StyledTouchable = styled(TouchableOpacity);
+
+interface ActiveMatchCardProps {
+  match: ActiveMatch;
+  onMessage: () => void;
+  onEndMatch?: () => void;
+}
+
+export function ActiveMatchCard({ match, onMessage, onEndMatch }: ActiveMatchCardProps) {
+  const handleMessage = () => {
+    lightHaptic();
+    onMessage();
+  };
+
+  const handleEndMatch = () => {
+    if (match.canEndMatch && onEndMatch) {
+      mediumHaptic();
+      onEndMatch();
+    }
+  };
+
+  // Calculate progress and milestones
+  const progress = getMatchProgress(match);
+  const progressColor = getMatchProgressColor(match.daysActive);
+  const milestone = getMatchMilestone(match.daysActive);
+  const milestoneIcon = getMatchMilestoneIcon(match.daysActive);
+
+  return (
+    <StyledView
+      className="rounded-2xl shadow-lg border-2"
+      style={{
+        backgroundColor: '#FFF1F2', // Warm rose background
+        borderColor: '#FFE4E6',
+        shadowColor: '#F43F5E',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 8,
+        padding: 16, // Standardized padding
+      }}
+    >
+      {/* Top Section: Photo + Header + Info */}
+      <StyledView className="flex-row items-start mb-3">
+        {/* Partner Photo with Heart Badge - Top Left */}
+        <StyledView className="relative mr-3">
+          <StyledImage
+            source={{
+              uri:
+                match.partnerProfile.photos?.[0]?.url ||
+                match.partnerProfile.photos?.[0] ||
+                'https://i.pravatar.cc/100',
+            }}
+            className="w-16 h-16 rounded-full border-3 border-rose-200"
+          />
+          {/* Heart Badge */}
+          <StyledView
+            className="absolute -bottom-1 -right-1 bg-rose-500 rounded-full w-6 h-6 items-center justify-center"
+            style={{
+              shadowColor: '#F43F5E',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.3,
+              shadowRadius: 4,
+              elevation: 4,
+            }}
+          >
+            <Ionicons name="heart" size={12} color="#FFFFFF" />
+          </StyledView>
+        </StyledView>
+
+        {/* Right Side: Header + Partner Info */}
+        <StyledView className="flex-1">
+          {/* "You have a match!" - Top Right */}
+          <StyledText className="text-sm font-bold text-rose-900 mb-2">
+            You have a match!
+          </StyledText>
+
+          {/* Partner Name & Age */}
+          <StyledText className="text-lg font-bold text-rose-900 mb-1">
+            {match.partnerProfile.firstName}, {match.partnerProfile.age}
+          </StyledText>
+
+          {/* Days Together */}
+          <StyledView className="flex-row items-center">
+            <StyledText className="text-sm mr-1">{milestoneIcon}</StyledText>
+            <StyledText className="text-xs font-medium text-rose-700">
+              {match.daysActive} {match.daysActive === 1 ? 'day' : 'days'} together
+            </StyledText>
+          </StyledView>
+        </StyledView>
+      </StyledView>
+
+      {/* Milestone Celebration Banner */}
+      {milestone && (
+        <StyledView className="bg-rose-100 border border-rose-200 rounded-xl p-2 mb-3">
+          <StyledText className="text-center text-rose-800 font-bold text-sm">
+            {milestoneIcon} {milestone}
+          </StyledText>
+        </StyledView>
+      )}
+
+      {/* Buttons */}
+      <StyledView className="flex-row items-center">
+        {/* Message Button - Prominent */}
+        <StyledTouchable
+          onPress={handleMessage}
+          className="flex-1 rounded-xl py-3 items-center justify-center"
+          style={{
+            backgroundColor: '#F43F5E',
+            shadowColor: '#F43F5E',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.3,
+            shadowRadius: 6,
+            elevation: 4,
+          }}
+          activeOpacity={0.8}
+        >
+          <StyledView className="flex-row items-center">
+            <Ionicons name="chatbubble" size={16} color="#FFFFFF" />
+            <StyledText className="text-white font-bold ml-2 text-sm">
+              Message
+            </StyledText>
+          </StyledView>
+        </StyledTouchable>
+
+        {/* End Match - Subtle Text Link */}
+        {match.canEndMatch && onEndMatch && (
+          <StyledTouchable
+            onPress={handleEndMatch}
+            className="ml-3 py-3 px-2"
+            activeOpacity={0.6}
+          >
+            <StyledText className="text-xs text-rose-400 underline">
+              End
+            </StyledText>
+          </StyledTouchable>
+        )}
+      </StyledView>
+
+      {/* Subtle 3-day notice (only if not yet at 3 days) */}
+      {!match.canEndMatch && match.daysUntilCanEnd > 0 && (
+        <StyledText className="text-[10px] text-rose-300 text-center mt-2">
+          {match.daysUntilCanEnd}d until you can end this match
+        </StyledText>
+      )}
+    </StyledView>
+  );
+}
+
+export default ActiveMatchCard;

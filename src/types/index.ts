@@ -1,0 +1,441 @@
+// Core types for the Bridge dating application
+
+// ============================================================================
+// Common Type Aliases
+// ============================================================================
+
+/** ISO 8601 date string format */
+export type ISODateString = string;
+
+/** UUID string */
+export type UUID = string;
+
+/** Political leaning options */
+export type PoliticalLeaning =
+  | 'very_liberal'
+  | 'liberal'
+  | 'moderate'
+  | 'conservative'
+  | 'very_conservative'
+  | 'not_political'
+  | 'prefer_not_to_say';
+
+/** Education level options */
+export type EducationLevel =
+  | 'no_high_school'
+  | 'high_school'
+  | 'some_college'
+  | 'trade_school'
+  | 'associates'
+  | 'bachelors'
+  | 'masters'
+  | 'beyond_masters'
+  | 'phd'
+  | 'professional';
+
+/** Frequency options for lifestyle habits */
+export type FrequencyOption = 'never' | 'socially' | 'sometimes' | 'often' | 'regularly' | 'daily' | 'irrelevant';
+
+/** Question tier (1-3) */
+export type QuestionTier = 1 | 2 | 3;
+
+/** Match status */
+export type MatchStatus = 'pending' | 'accepted' | 'rejected' | 'expired';
+
+/** Notification type */
+export type NotificationType =
+  | 'survey_ready'
+  | 'match_received'
+  | 'match_accepted'
+  | 'message_received'
+  | 'match_expiring';
+
+// ============================================================================
+// User and Profile Types
+// ============================================================================
+
+export interface User {
+  id: UUID;
+  phone?: string;  // Phone number used for authentication
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+}
+
+export interface DeepQuestionAnswer {
+  questionId: number;
+  tier: QuestionTier;
+  question: string;
+  answer: string;
+  updatedAt?: ISODateString;
+}
+
+export interface UserProfile {
+  id: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  age: number;
+  gender: string[]; // Array of gender identities (can select multiple)
+  pronouns: 'he/him' | 'she/her' | 'they/them' | 'custom' | 'prefer_not_to_say';
+  customPronouns?: string; // Only if pronouns is 'custom'
+  pronounsList?: string[]; // Array of up to 4 individual pronouns (e.g., ["she", "her", "hers"])
+  customMyGender?: string; // Custom gender description when user selects "Prefer to self-describe"
+  interestedInGenders?: string[]; // Array of genders user is interested in matching with
+  customInterestedIn?: string; // Custom description for interested in genders
+  preferredEthnicities?: string[]; // Array of ethnicities user is interested in matching with
+  preferredPolitics?: string[]; // Array of political preferences user is interested in matching with
+  nonNegotiable?: string; // Single top priority preference
+  preferenceVisibility?: Record<string, boolean>; // Which preference sections are visible on profile
+  currentJob?: string; // Current job title
+  companyPosition?: string; // Company/position combined
+  company?: string; // Company name
+  education?: string; // Education degree/major (e.g., "Computer Science", "MBA")
+  educationLevel: EducationLevel | 'other' | string;
+  customEducationLevel?: string; // Custom education level when 'other' is selected
+  school: string;
+  height: string;
+  ethnicity: string;
+  religion: string;
+  politicalLeaning: PoliticalLeaning | 'other' | string;
+  customPoliticalLeaning?: string; // Custom political leaning when 'other' is selected
+  location: string;
+  hometown?: string; // Where user is from originally
+  hasChildren?: string; // Whether user currently has children
+  familyPlans?: string; // User's family planning goals
+  drinkingFrequency?: string; // Frequency of alcohol consumption
+  cannabisFrequency?: string; // Frequency of cannabis use
+  tobaccoFrequency?: string; // Frequency of tobacco/vaping use
+  otherDrugsFrequency?: string; // Frequency of other drug use
+  photos: Photo[];
+  interests: string[];
+  values: string[];
+  lifestyle: LifestylePreferences;
+  dealbreakers: Dealbreaker[];
+  preferences: MatchPreferences;
+  deepQuestions?: DeepQuestionAnswer[];
+  displayedQuestions?: number[]; // Question IDs to display on profile (max 3, one per tier)
+  sectionVisibility?: Record<string, boolean>; // Which sections are visible to others (does not affect edit view)
+  isVerified?: boolean; // Verification status
+  isPaused?: boolean; // Whether profile is paused
+  // Partner preferences (collected via double-tap in onboarding)
+  partnerLifestylePreferences?: {
+    drinking: string;
+    cannabis: string;
+    tobacco: string;
+    otherDrugs: string;
+  };
+  // Community Matching System
+  karma?: any; // KarmaScore from community.ts (optional, imported separately to avoid circular deps)
+  bio?: string; // User bio/about me
+
+  // Guide completion tracking (frontend-only for now)
+  hasCompletedTabNavigationGuide?: boolean;
+  hasCompletedDailyGridGuide?: boolean;
+  hasCompletedProposalsGuide?: boolean;
+  hasCompletedFriendsGuide?: boolean;
+  hasCompletedProfileGuide?: boolean;
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Photo {
+  id: string;
+  url: string;
+  isMain: boolean;
+  order: number;
+}
+
+export interface LifestylePreferences {
+  // DEPRECATED: Use separate *Frequency fields instead (drinkingFrequency, weedFrequency, etc.)
+  // This interface is kept for backward compatibility but should not be used for new data
+  drinking?: 'never' | 'socially' | 'often' | string;
+  smoking?: 'never' | 'sometimes' | 'regularly' | string;
+  exercise?: 'never' | 'sometimes' | 'often' | 'daily' | string;
+  children?: 'want' | 'dont_want' | 'have' | 'open' | string;
+  pets?: string[];
+}
+
+export interface Dealbreaker {
+  id: string;
+  type: string;
+  value: any;
+}
+
+export interface MatchPreferences {
+  ageMin: number;
+  ageMax: number;
+  gender: 'male' | 'female' | 'both';
+  lookingFor: 'relationship' | 'casual' | 'friendship' | 'unsure';
+  heightMin?: number; // Minimum height in inches (e.g., 60 = 5'0")
+  heightMax?: number; // Maximum height in inches (e.g., 84 = 7'0")
+}
+
+// Survey Types
+export interface DailySurvey {
+  id: string;
+  recipientProfile: UserProfile;
+  candidates: UserProfile[];
+  expiresAt: string;
+  completedAt?: string;
+  rankings?: SurveyRanking[];
+}
+
+export interface SurveyRanking {
+  candidateId: string;
+  rank: 1 | 2 | 3;
+}
+
+// ============================================================================
+// Match Types
+// ============================================================================
+
+export interface Match {
+  id: UUID;
+  user1Id: UUID;
+  user2Id: UUID;
+  user1Profile?: UserProfile;
+  user2Profile?: UserProfile;
+  status: MatchStatus;
+  communityScore: number;
+  matchedAt: ISODateString;
+  expiresAt: ISODateString;
+  acceptedAt?: ISODateString;
+  rejectedAt?: ISODateString;
+  rejectionReason?: string;
+  currentUserId?: UUID;
+
+  // Match exit data
+  unmatchedAt?: ISODateString;
+  unmatchSurveyResponse?: string;
+  exitReason?: string;
+  messagesExchanged?: number;
+  daysSinceMatch?: number;
+
+  // Development: auto-open profile modal flag
+  autoOpenProfileModal?: boolean;
+}
+
+export interface PartialMatch {
+  id: string;
+  profile: PartialProfile;
+  communityScore: number;
+  expiresAt: string;
+  timeRemaining: string;
+}
+
+export interface PartialProfile {
+  firstName: string;
+  age: number;
+  occupation: string;
+  photos: Photo[]; // Photos will be blurred
+  interests: string[]; // Only show 75% of data
+  values: string[];
+}
+
+// ============================================================================
+// Message Types
+// ============================================================================
+
+export interface Message {
+  id: UUID;
+  matchId: UUID;
+  senderId: UUID;
+  content: string;
+  sentAt: ISODateString;
+  readAt?: ISODateString;
+}
+
+export interface Conversation {
+  id: UUID;
+  match: Match;
+  messages: Message[];
+  lastMessage?: Message;
+  unreadCount: number;
+}
+
+// ============================================================================
+// Friend Types
+// ============================================================================
+
+export type FriendBadgeType = 'great_matcher' | 'algorithm_buster' | 'social_butterfly';
+
+export interface Friend {
+  id: UUID;
+  userId: UUID;
+  friendId: UUID;
+  friendProfile?: UserProfile;
+  friendCode?: string;
+  badges: FriendBadge[];
+  addedAt: ISODateString;
+}
+
+export interface FriendBadge {
+  id: UUID;
+  type: FriendBadgeType;
+  earnedAt: ISODateString;
+}
+
+// ============================================================================
+// Pricing Types
+// ============================================================================
+
+export interface PricingData {
+  malePrice: number;
+  femalePrice: number;
+  lastUpdated: ISODateString;
+  marketOpen: boolean;
+  nextUpdateIn?: string;
+}
+
+// ============================================================================
+// Strike Types
+// ============================================================================
+
+export interface Strike {
+  id: UUID;
+  userId: UUID;
+  reason: string;
+  details: string;
+  issuedAt: ISODateString;
+  issuedBy: UUID;
+}
+
+// ============================================================================
+// Notification Types
+// ============================================================================
+
+export interface Notification {
+  id: UUID;
+  userId: UUID;
+  type: NotificationType;
+  title: string;
+  body: string;
+  data?: unknown;
+  readAt?: ISODateString;
+  createdAt: ISODateString;
+}
+
+// ============================================================================
+// Navigation Types
+// ============================================================================
+export type RootStackParamList = {
+  // Auth Stack
+  Welcome: undefined;
+  Login: undefined;
+  PhoneVerification: {
+    phoneNumber: string;
+    fromOnboarding?: boolean;
+    onboardingData?: Partial<OnboardingData>;
+  };
+  Onboarding: undefined;
+
+  // Main Stack
+  MainTabs: { screen?: string; params?: any } | undefined;
+  MatchDetail: { matchId: string };
+  MatchReveal: undefined;
+  MatchProposal: { match?: Match; profile?: UserProfile; proposalId?: string };
+  Chat: {
+    matchId?: string;
+    recipientName: string;
+    recipientId?: string;
+    isFriendChat?: boolean
+  };
+  ProfileEdit: undefined;
+  ProfilePreview: { previewProfile?: UserProfile } | undefined;
+  ProfileView: { userId: string; profile?: UserProfile; showActions?: boolean; onAccept?: () => void; onPass?: () => void };
+  DeepQuestions: { userId?: string; editable?: boolean; tier?: 1 | 2 | 3 };
+  Settings: undefined;
+  FriendCode: { returnTo?: string; matchId?: string } | undefined;
+  FriendList: undefined;
+  FriendGrid: { friendId: string; friendName: string };
+  MatchPreferences: undefined;
+  ProfileVerification: undefined;
+  BlockedUsers: undefined;
+  PauseProfile: undefined;
+  TermsOfService: undefined;
+  PrivacyPolicy: undefined;
+  HelpSupport: undefined;
+  ShareCandidate: { candidateId: string };
+  ReportUser: { userId: string };
+  StrikeWarning: { strike: Strike };
+};
+
+export type MainTabParamList = {
+  Community: { initialPage?: 0 | 1 | 2 } | undefined;
+  Profile: undefined;
+};
+
+// Onboarding Types
+export interface OnboardingData {
+  phoneNumber?: string;
+  firstName: string;
+  lastName: string;
+  age: number;
+  gender: string[]; // Array of gender identities (can select multiple)
+  customMyGender?: string; // Custom gender description when "Prefer to self-describe" is selected
+  interestedInGenders: string[];
+  customInterestedIn?: string; // Custom interested in gender description
+  pronounsList?: string[]; // Array of individual pronouns (up to 4)
+  email: string;
+  password: string;
+  photos: Photo[];
+  currentJob?: string; // Current job title
+  companyPosition?: string; // Company/position combined
+  educationLevel?: 'high_school' | 'some_college' | 'associates' | 'bachelors' | 'masters' | 'phd' | 'professional' | 'trade_school';
+  school?: string;
+  height: string;
+  ethnicity: string; // Single selection only (either predefined or custom)
+  preferredEthnicities: string[];
+  ethnicityPreference?: string[]; // Alternative name used in EthnicityStep
+  hasChildren: string;
+  familyPlans: string;
+  hometown?: string; // Where you're from
+  location: string;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
+  religion: string;
+  politicalLeaning: 'very_liberal' | 'liberal' | 'moderate' | 'conservative' | 'very_conservative' | 'not_political' | 'prefer_not_to_say';
+  drinkingFrequency: string;
+  cannabisFrequency?: string; // Frequency of cannabis use (new field name)
+  weedFrequency?: string; // Legacy field name, prefer cannabisFrequency
+  tobaccoFrequency: string;
+  otherDrugsFrequency?: string; // Frequency of other drug use (new field name)
+  drugsFrequency?: string; // Legacy field name, prefer otherDrugsFrequency
+  interests: string[];
+  values: string[];
+  lifestyle: LifestylePreferences;
+  preferences: MatchPreferences;
+  deepQuestions?: DeepQuestionAnswer[];
+  dealbreakers?: Dealbreaker[];
+
+  // Partner Preferences (collected via double-tap in onboarding)
+  partnerLifestylePreferences?: {
+    drinking: string;
+    cannabis?: string; // New field name
+    weed?: string; // Legacy field name, prefer cannabis
+    tobacco: string;
+    otherDrugs?: string; // New field name
+    drugs?: string; // Legacy field name, prefer otherDrugs
+  };
+
+  // Legacy fields (kept for backward compatibility)
+  pronouns?: 'he/him' | 'she/her' | 'they/them' | 'custom';
+  customPronouns?: string;
+}
+
+// API Response Types
+export interface ApiResponse<T> {
+  ok: boolean;
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+    details?: any;
+  };
+}
+
+// Community types should be imported directly from './community' to avoid circular dependencies
+// Example: import { DailyGrid, Proposal } from '../types/community'

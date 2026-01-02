@@ -1,0 +1,1408 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity, Alert, Modal, Animated, Keyboard, TextInput, Text } from 'react-native';
+import { styled } from 'nativewind';
+import { H3, Body, Card, Button } from '../../components/ui';
+import { NavigationProp } from '@react-navigation/native';
+import { RootStackParamList, UserProfile } from '../../types';
+import { Ionicons } from '@expo/vector-icons';
+import Slider from '@react-native-community/slider';
+import NetInfo from '@react-native-community/netinfo';
+import { getCurrentUser } from '../../services/authService';
+import { getUserProfile, updateUserProfile } from '../../services/profileService';
+import { lightHaptic, mediumHaptic } from '../../utils/haptics';
+
+interface MatchPreferencesScreenProps {
+  navigation: NavigationProp<RootStackParamList>;
+}
+
+const StyledSafeAreaView = styled(SafeAreaView);
+const StyledView = styled(View);
+const StyledScrollView = styled(ScrollView);
+const StyledTouchableOpacity = styled(TouchableOpacity);
+const StyledTextInput = styled(TextInput);
+const StyledAnimatedView = styled(Animated.View);
+const StyledText = styled(Text);
+
+// Gender options - values must match database storage format (male/female, not man/woman)
+const GENDER_OPTIONS = [
+  { value: 'male', label: 'Man' },
+  { value: 'female', label: 'Woman' },
+  { value: 'non-binary', label: 'Non-binary' },
+  { value: 'genderfluid', label: 'Genderfluid' },
+  { value: 'agender', label: 'Agender' },
+  { value: 'two_spirit', label: 'Two-Spirit' },
+  { value: 'genderqueer', label: 'Genderqueer' },
+];
+
+const LIFESTYLE_FREQUENCY_OPTIONS = [
+  { value: 'no', label: 'No' },
+  { value: 'sometimes', label: 'Sometimes' },
+  { value: 'yes', label: 'Yes' },
+];
+
+const COMMON_VALUES = [
+  // Personal Values
+  'Honesty', 'Integrity', 'Loyalty', 'Trust', 'Respect', 'Authenticity',
+  'Kindness', 'Compassion', 'Empathy', 'Generosity',
+
+  // Relationship Values
+  'Communication', 'Commitment', 'Partnership', 'Independence', 'Interdependence',
+  'Romance', 'Intimacy', 'Friendship First',
+
+  // Life Values
+  'Family', 'Career', 'Ambition', 'Success', 'Work-Life Balance',
+  'Adventure', 'Stability', 'Growth Mindset', 'Learning', 'Creativity',
+
+  // Social Values
+  'Community', 'Social Justice', 'Environmentalism', 'Equality', 'Diversity',
+  'Tradition', 'Innovation', 'Service', 'Leadership',
+
+  // Personal Growth
+  'Self-Improvement', 'Mindfulness', 'Spirituality', 'Health', 'Fitness',
+  'Mental Health', 'Emotional Intelligence',
+];
+
+const COMMON_INTERESTS = [
+  // Activities
+  'Tennis', 'Golf', 'Running', 'Yoga', 'Pilates', 'CrossFit', 'Hiking', 'Skiing',
+  'Cycling', 'Swimming', 'Basketball', 'Soccer', 'Climbing',
+
+  // Culture & Entertainment
+  'Museums', 'Art Galleries', 'Theater', 'Live Music', 'Concerts', 'Comedy Shows',
+  'Film', 'Documentaries', 'Reading', 'Writing', 'Photography',
+
+  // Food & Drink
+  'Cooking', 'Baking', 'Wine Tasting', 'Craft Beer', 'Coffee', 'Cocktails',
+  'Fine Dining', 'Food Markets', 'Brunch',
+
+  // Travel & Adventure
+  'Travel', 'Weekend Trips', 'International Travel', 'Road Trips', 'Camping',
+
+  // Lifestyle
+  'Startups', 'Investing', 'Real Estate', 'Fashion', 'Interior Design',
+  'Meditation', 'Wellness', 'Volunteering', 'Podcasts',
+
+  // Social
+  'Dinner Parties', 'Game Nights', 'Dancing', 'Karaoke', 'Trivia Nights',
+];
+
+const ETHNICITY_OPTIONS = [
+  'Asian',
+  'Black / African Descent',
+  'Hispanic / Latino',
+  'Middle Eastern',
+  'Native American',
+  'Pacific Islander',
+  'South Asian',
+  'White / Caucasian',
+  'Mixed / Multiracial',
+  'Caribbean',
+  'East Asian',
+  'Southeast Asian',
+  'Central Asian',
+  'North African',
+  'Sub-Saharan African',
+  'No Preference',
+];
+
+const POLITICAL_OPTIONS = [
+  'Liberal',
+  'Conservative',
+  'Moderate',
+  'Progressive',
+  'Libertarian',
+  'Socialist',
+  'Apolitical',
+  'No Preference',
+];
+
+const DEALBREAKER_OPTIONS = [
+  { id: 'smoking', label: 'Smoking' },
+  { id: 'heavy_drinking', label: 'Heavy Drinking' },
+  { id: 'drugs', label: 'Drug Use' },
+  { id: 'no_children', label: "Doesn't Want Children" },
+  { id: 'has_children', label: 'Has Children' },
+  { id: 'different_religion', label: 'Different Religion' },
+  { id: 'different_politics', label: 'Different Politics' },
+  { id: 'outside_height_range', label: 'Outside of Height Range' },
+  { id: 'outside_age_range', label: 'Outside of Age Range' },
+];
+
+const NON_NEGOTIABLE_OPTIONS = [
+  { id: 'age_range', label: 'Age Range', description: 'Must be within my age preferences' },
+  { id: 'height', label: 'Height', description: 'Must be within my height preferences' },
+  { id: 'distance', label: 'Distance', description: 'Must be within my dating distance' },
+  { id: 'lifestyle', label: 'Lifestyle Habits', description: 'Must match my lifestyle preferences' },
+  { id: 'ethnicity', label: 'Ethnicity', description: 'Must match my ethnicity preferences' },
+  { id: 'politics', label: 'Political Views', description: 'Must match my political preferences' },
+  { id: 'values', label: 'Core Values', description: 'Must share similar values' },
+  { id: 'interests', label: 'Interests Aligned', description: 'Must share common interests' },
+];
+
+export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ navigation }) => {
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [preferences, setPreferences] = useState({
+    ageMin: 24,
+    ageMax: 32,
+    gender: 'female' as 'male' | 'female' | 'both',
+    lookingFor: 'relationship' as 'relationship' | 'casual' | 'friendship' | 'unsure',
+    heightMin: 60, // 5'0"
+    heightMax: 84, // 7'0"
+    maxDistance: 50 as number | null, // null means "don't care"
+  });
+  const [partnerPreferences, setPartnerPreferences] = useState({
+    partnerDrinking: '' as string,
+    partnerCannabis: '' as string,
+    partnerTobacco: '' as string,
+    partnerOtherDrugs: '' as string,
+  });
+  const [preferredEthnicities, setPreferredEthnicities] = useState<string[]>([]);
+  const [interestedInGenders, setInterestedInGenders] = useState<string[]>([]);
+  const [preferredPolitics, setPreferredPolitics] = useState<string[]>([]);
+  const [dealbreakers, setDealbreakers] = useState<string[]>([]);
+  const [nonNegotiable, setNonNegotiable] = useState<string>(''); // Single priority selection
+  const [saving, setSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Visibility settings for profile - all default to true (visible)
+  const [preferenceVisibility, setPreferenceVisibility] = useState({
+    ageRange: true,
+    interestedInGenders: true,
+    heightPreference: true,
+    datingDistance: true,
+    partnerLifestyle: true,
+    preferredEthnicities: true,
+    politicalPreferences: true,
+    dealbreakers: true,
+    topPriority: true,
+  });
+
+  // Track original data for change detection
+  const originalDataRef = useRef<string | null>(null);
+
+  // "Other" custom input modal state
+  const [showCustomModal, setShowCustomModal] = useState(false);
+  const [customModalType, setCustomModalType] = useState<'gender' | 'values' | 'interests' | 'ethnicity' | 'dealbreaker'>('dealbreaker');
+  const [customInputValue, setCustomInputValue] = useState('');
+  const customModalAnim = useRef(new Animated.Value(0)).current;
+
+  // Legacy dealbreaker modal state (kept for backwards compatibility)
+  const [showCustomDealbreakerModal, setShowCustomDealbreakerModal] = useState(false);
+  const [customDealbreakerValue, setCustomDealbreakerValue] = useState('');
+  const customDealbreakerModalAnim = useRef(new Animated.Value(0)).current;
+
+  // Helper function to convert inches to feet and inches
+  const formatHeight = (inches: number): string => {
+    const feet = Math.floor(inches / 12);
+    const remainingInches = inches % 12;
+    return `${feet}'${remainingInches}"`;
+  };
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  useEffect(() => {
+    Animated.spring(customDealbreakerModalAnim, {
+      toValue: showCustomDealbreakerModal ? 1 : 0,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11,
+    }).start();
+  }, [showCustomDealbreakerModal]);
+
+  // Animation for the reusable custom modal
+  useEffect(() => {
+    Animated.spring(customModalAnim, {
+      toValue: showCustomModal ? 1 : 0,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11,
+    }).start();
+  }, [showCustomModal]);
+
+  // Helper to open custom modal for different types
+  const openCustomModal = (type: 'gender' | 'values' | 'interests' | 'ethnicity') => {
+    setCustomModalType(type);
+    setCustomInputValue('');
+    setShowCustomModal(true);
+    lightHaptic();
+  };
+
+  // Helper to save custom modal value
+  const saveCustomModalValue = () => {
+    const trimmedValue = customInputValue.trim();
+    if (!trimmedValue) return;
+
+    switch (customModalType) {
+      case 'gender':
+        if (!interestedInGenders.includes(trimmedValue)) {
+          setInterestedInGenders(prev => [...prev, trimmedValue]);
+        }
+        break;
+      case 'ethnicity':
+        if (!preferredEthnicities.includes(trimmedValue)) {
+          setPreferredEthnicities(prev => [...prev, trimmedValue]);
+        }
+        break;
+    }
+
+    mediumHaptic();
+    setCustomInputValue('');
+    setShowCustomModal(false);
+    Keyboard.dismiss();
+  };
+
+  // Get modal title based on type
+  const getCustomModalTitle = () => {
+    switch (customModalType) {
+      case 'gender': return 'Add Custom Gender';
+      case 'values': return 'Add Custom Value';
+      case 'interests': return 'Add Custom Interest';
+      case 'ethnicity': return 'Add Custom Ethnicity';
+      default: return 'Add Custom';
+    }
+  };
+
+  // Get modal placeholder based on type
+  const getCustomModalPlaceholder = () => {
+    switch (customModalType) {
+      case 'gender': return 'Enter gender identity';
+      case 'values': return 'Enter a value you want in a partner';
+      case 'interests': return 'Enter an interest you want in a partner';
+      case 'ethnicity': return 'Enter ethnicity preference';
+      default: return 'Enter custom value';
+    }
+  };
+
+  const loadProfile = async () => {
+    try {
+      const userResult = await getCurrentUser();
+      if (!userResult.ok || !userResult.data) return;
+
+      const profileResult = await getUserProfile();
+      if (profileResult.ok && profileResult.data) {
+        setProfile(profileResult.data);
+        // Ensure all required fields have defaults when loading from profile
+        const loadedPrefs = profileResult.data.preferences;
+        setPreferences({
+          ageMin: loadedPrefs.ageMin,
+          ageMax: loadedPrefs.ageMax,
+          gender: loadedPrefs.gender,
+          lookingFor: 'relationship', // Bridge only supports relationships
+          heightMin: loadedPrefs.heightMin ?? 60,
+          heightMax: loadedPrefs.heightMax ?? 84,
+          maxDistance: loadedPrefs.maxDistance !== undefined ? loadedPrefs.maxDistance : 50,
+        });
+
+        // Load partner preferences
+        if (profileResult.data.partnerLifestylePreferences) {
+          setPartnerPreferences({
+            partnerDrinking: profileResult.data.partnerLifestylePreferences.drinking || '',
+            partnerCannabis: profileResult.data.partnerLifestylePreferences.cannabis || '',
+            partnerTobacco: profileResult.data.partnerLifestylePreferences.tobacco || '',
+            partnerOtherDrugs: profileResult.data.partnerLifestylePreferences.otherDrugs || '',
+          });
+        }
+
+        // Load preferred ethnicities
+        setPreferredEthnicities(profileResult.data.preferredEthnicities || []);
+
+        // Load interested in genders
+        setInterestedInGenders(profileResult.data.interestedInGenders || []);
+
+        // Load preferred politics
+        setPreferredPolitics(profileResult.data.preferredPolitics || []);
+
+        // Load preference visibility settings (default all to true if not set)
+        if (profileResult.data.preferenceVisibility) {
+          setPreferenceVisibility({
+            ageRange: profileResult.data.preferenceVisibility.ageRange ?? true,
+            interestedInGenders: profileResult.data.preferenceVisibility.interestedInGenders ?? true,
+            heightPreference: profileResult.data.preferenceVisibility.heightPreference ?? true,
+            datingDistance: profileResult.data.preferenceVisibility.datingDistance ?? true,
+            partnerLifestyle: profileResult.data.preferenceVisibility.partnerLifestyle ?? true,
+            preferredEthnicities: profileResult.data.preferenceVisibility.preferredEthnicities ?? true,
+            politicalPreferences: profileResult.data.preferenceVisibility.politicalPreferences ?? true,
+            dealbreakers: profileResult.data.preferenceVisibility.dealbreakers ?? true,
+            topPriority: profileResult.data.preferenceVisibility.topPriority ?? true,
+          });
+        }
+
+        // Extract dealbreaker IDs from dealbreakers array
+        const dealbreakerIds = (profileResult.data.dealbreakers || []).map(d => d.type);
+        setDealbreakers(dealbreakerIds);
+
+        // Load non-negotiable priority
+        setNonNegotiable(profileResult.data.nonNegotiable || '');
+
+        // Store original data for change detection
+        originalDataRef.current = JSON.stringify({
+          preferences: {
+            ageMin: loadedPrefs.ageMin,
+            ageMax: loadedPrefs.ageMax,
+            gender: loadedPrefs.gender,
+            lookingFor: 'relationship', // Include lookingFor to match current state structure
+            heightMin: loadedPrefs.heightMin ?? 60,
+            heightMax: loadedPrefs.heightMax ?? 84,
+            maxDistance: loadedPrefs.maxDistance !== undefined ? loadedPrefs.maxDistance : 50,
+          },
+          partnerPreferences: {
+            partnerDrinking: profileResult.data.partnerLifestylePreferences?.drinking || '',
+            partnerCannabis: profileResult.data.partnerLifestylePreferences?.cannabis || '',
+            partnerTobacco: profileResult.data.partnerLifestylePreferences?.tobacco || '',
+            partnerOtherDrugs: profileResult.data.partnerLifestylePreferences?.otherDrugs || '',
+          },
+          preferredEthnicities: profileResult.data.preferredEthnicities || [],
+          interestedInGenders: profileResult.data.interestedInGenders || [],
+          preferredPolitics: profileResult.data.preferredPolitics || [],
+          preferenceVisibility: profileResult.data.preferenceVisibility || {
+            ageRange: true,
+            interestedInGenders: true,
+            heightPreference: true,
+            datingDistance: true,
+            partnerLifestyle: true,
+            preferredEthnicities: true,
+            politicalPreferences: true,
+            dealbreakers: true,
+            topPriority: true,
+          },
+          dealbreakers: dealbreakerIds,
+          nonNegotiable: profileResult.data.nonNegotiable || '',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load profile:', error);
+    }
+  };
+
+  // Detect changes for unsaved changes warning
+  useEffect(() => {
+    if (originalDataRef.current) {
+      const currentData = JSON.stringify({
+        preferences,
+        partnerPreferences,
+        preferredEthnicities,
+        interestedInGenders,
+        preferredPolitics,
+        preferenceVisibility,
+        dealbreakers,
+        nonNegotiable,
+      });
+      setHasUnsavedChanges(currentData !== originalDataRef.current);
+    }
+  }, [preferences, partnerPreferences, preferredEthnicities, interestedInGenders, preferredPolitics, preferenceVisibility, dealbreakers, nonNegotiable]);
+
+  const handleClose = () => {
+    if (hasUnsavedChanges) {
+      Alert.alert(
+        'Discard Changes?',
+        'You have unsaved changes. Are you sure you want to leave?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => navigation.goBack(),
+          },
+        ]
+      );
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  const handleSave = async () => {
+    if (!profile) return;
+
+    // Check network connectivity
+    const networkState = await NetInfo.fetch();
+    if (!networkState.isConnected) {
+      Alert.alert('No Internet Connection', 'Please check your internet connection and try again');
+      return;
+    }
+
+    // Validation
+    if (preferences.ageMin < 18 || preferences.ageMin > 100) {
+      Alert.alert('Invalid Age Range', 'Minimum age must be between 18 and 100');
+      return;
+    }
+
+    if (preferences.ageMax < 18 || preferences.ageMax > 100) {
+      Alert.alert('Invalid Age Range', 'Maximum age must be between 18 and 100');
+      return;
+    }
+
+    // Allow min to equal max for specific age targeting
+    // No validation needed here
+
+    if (preferences.heightMin && preferences.heightMax && preferences.heightMin > preferences.heightMax) {
+      Alert.alert('Invalid Height Range', 'Minimum height cannot be greater than maximum height');
+      return;
+    }
+
+    if (interestedInGenders.length === 0) {
+      Alert.alert('Gender Interest Required', 'Please select at least one gender you\'re interested in');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Convert dealbreaker IDs to Dealbreaker objects
+      const dealbreakerObjects = dealbreakers.map(id => ({
+        id,
+        type: id,
+        value: true,
+      }));
+
+      // Auto-derive preferred_gender from interestedInGenders for backward compatibility
+      // Values are already in database format (male/female, not man/woman)
+      let derivedPreferredGender: 'male' | 'female' | 'both' = 'both';
+      if (interestedInGenders.length === 1) {
+        if (interestedInGenders[0] === 'male') {
+          derivedPreferredGender = 'male';
+        } else if (interestedInGenders[0] === 'female') {
+          derivedPreferredGender = 'female';
+        }
+        // For non-binary, genderfluid, etc., use 'both'
+      }
+      // Multiple genders selected = 'both'
+
+      const updatedProfile = {
+        ...profile,
+        preferences: {
+          ...preferences,
+          gender: derivedPreferredGender, // Auto-derived from interestedInGenders
+          lookingFor: 'relationship' as const, // Bridge only supports relationships
+        },
+        dealbreakers: dealbreakerObjects,
+        interestedInGenders: interestedInGenders,
+        preferredPolitics: preferredPolitics,
+        preferenceVisibility: preferenceVisibility,
+        nonNegotiable: nonNegotiable, // Single priority preference
+        // Partner preferences
+        partnerLifestylePreferences: {
+          drinking: partnerPreferences.partnerDrinking,
+          cannabis: partnerPreferences.partnerCannabis,
+          tobacco: partnerPreferences.partnerTobacco,
+          otherDrugs: partnerPreferences.partnerOtherDrugs,
+        },
+        preferredEthnicities: preferredEthnicities,
+      };
+
+      const result = await updateUserProfile(updatedProfile);
+
+      if (result.ok) {
+        // Navigate back automatically on success - no popup needed
+        navigation.goBack();
+      } else {
+        Alert.alert('Error', 'Failed to save preferences. Please try again.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleDealbreaker = (id: string) => {
+    setDealbreakers(prev => {
+      if (prev.includes(id)) {
+        // Deselecting - always allow
+        return [];
+      } else {
+        // Only allow one selection - replace any previous selection
+        return [id];
+      }
+    });
+  };
+
+  const toggleVisibility = (field: keyof typeof preferenceVisibility) => {
+    setPreferenceVisibility(prev => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
+    lightHaptic();
+  };
+
+  return (
+    <StyledSafeAreaView className="flex-1 bg-neutral-50">
+      <StatusBar barStyle="dark-content" />
+
+      {/* Header */}
+      <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center justify-between">
+        <StyledTouchableOpacity onPress={handleClose} className="mr-3">
+          <Ionicons name="close" size={24} color="#101828" />
+        </StyledTouchableOpacity>
+        <StyledView className="flex-1">
+          <H3>Match Preferences</H3>
+        </StyledView>
+        <StyledTouchableOpacity onPress={handleSave} disabled={saving}>
+          <Body className={saving ? 'text-neutral-400' : 'text-primary-500 font-medium'}>
+            {saving ? 'Saving...' : 'Save'}
+          </Body>
+        </StyledTouchableOpacity>
+      </StyledView>
+
+      <StyledScrollView className="flex-1">
+        <StyledView className="px-4 py-4">
+          {/* Looking For - Bridge is for relationships only */}
+          <Card className="mb-6">
+            <H3 className="mb-4">I'm Looking For</H3>
+            <Body className="text-neutral-600 text-sm mb-4">
+              Bridge promotes genuine connection
+            </Body>
+            <StyledView className="p-4 rounded-lg border bg-purple-50 border-purple-500">
+              <StyledView className="flex-row items-center justify-between">
+                <StyledView className="flex-1">
+                  <Body className="text-base font-semibold mb-1 text-purple-700">
+                    Relationship
+                  </Body>
+                  <Body className="text-sm text-neutral-600">
+                    Long-term relationship
+                  </Body>
+                </StyledView>
+                <Ionicons name="checkmark-circle" size={24} color="#9333ea" />
+              </StyledView>
+            </StyledView>
+          </Card>
+
+          {/* Interested In Genders */}
+          <Card className="mb-6">
+            <H3 className="mb-2">Gender <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
+            <Body className="text-neutral-600 text-sm mb-4">
+              Select all gender identities you're open to matching with
+            </Body>
+            <StyledView className="flex-row flex-wrap gap-2">
+              {GENDER_OPTIONS.map((option) => {
+                const isSelected = interestedInGenders.includes(option.value);
+                return (
+                  <StyledTouchableOpacity
+                    key={option.value}
+                    activeOpacity={1}
+                    onPress={() => {
+                      if (isSelected) {
+                        setInterestedInGenders(prev => prev.filter(g => g !== option.value));
+                      } else {
+                        setInterestedInGenders(prev => [...prev, option.value]);
+                      }
+                    }}
+                    className={`px-3 py-2 rounded-lg border ${
+                      isSelected
+                        ? 'bg-purple-500 border-purple-500'
+                        : 'bg-white border-neutral-300'
+                    }`}
+                  >
+                    <Body
+                      className={`text-sm ${
+                        isSelected ? 'text-white font-medium' : 'text-neutral-700'
+                      }`}
+                    >
+                      {option.label}
+                    </Body>
+                  </StyledTouchableOpacity>
+                );
+              })}
+              {/* Custom genders (not in predefined list) */}
+              {interestedInGenders
+                .filter(g => !GENDER_OPTIONS.some(opt => opt.value === g))
+                .map((customGender) => (
+                  <StyledTouchableOpacity
+                    key={customGender}
+                    activeOpacity={1}
+                    onPress={() => setInterestedInGenders(prev => prev.filter(g => g !== customGender))}
+                    className="px-3 py-2 rounded-lg border bg-purple-500 border-purple-500"
+                  >
+                    <Body className="text-sm text-white font-medium">{customGender}</Body>
+                  </StyledTouchableOpacity>
+                ))}
+              {/* Other button */}
+              <StyledTouchableOpacity
+                onPress={() => openCustomModal('gender')}
+                className="px-3 py-2 rounded-lg border border-dashed border-neutral-400 bg-neutral-50"
+              >
+                <Body className="text-sm text-neutral-600">+ Other</Body>
+              </StyledTouchableOpacity>
+            </StyledView>
+          </Card>
+
+          {/* Age Range */}
+          <Card className="mb-6">
+            <StyledView className="flex-row items-center justify-between mb-4">
+              <H3>Age Range <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
+              <StyledTouchableOpacity
+                onPress={() => toggleVisibility('ageRange')}
+                className="flex-row items-center"
+              >
+                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
+                <StyledView className={`w-5 h-5 rounded border ${
+                  preferenceVisibility.ageRange ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
+                } items-center justify-center`}>
+                  {preferenceVisibility.ageRange && (
+                    <Ionicons name="checkmark" size={14} color="white" />
+                  )}
+                </StyledView>
+              </StyledTouchableOpacity>
+            </StyledView>
+            <StyledView className="mb-4">
+              <StyledView className="flex-row justify-between mb-2">
+                <Body className="text-neutral-600">Minimum Age</Body>
+                <Body className="text-neutral-900 font-semibold">{preferences.ageMin}</Body>
+              </StyledView>
+              <Slider
+                key="age-min-slider"
+                value={preferences.ageMin}
+                onValueChange={(value) =>
+                  setPreferences((prev) => ({ ...prev, ageMin: Math.round(value) }))
+                }
+                minimumValue={18}
+                maximumValue={preferences.ageMax}
+                step={1}
+                minimumTrackTintColor="#437FFF"
+                maximumTrackTintColor="#D0D5DD"
+                thumbTintColor="#437FFF"
+              />
+            </StyledView>
+
+            <StyledView>
+              <StyledView className="flex-row justify-between mb-2">
+                <Body className="text-neutral-600">Maximum Age</Body>
+                <Body className="text-neutral-900 font-semibold">{preferences.ageMax}</Body>
+              </StyledView>
+              <Slider
+                key="age-max-slider"
+                value={preferences.ageMax}
+                onValueChange={(value) =>
+                  setPreferences((prev) => ({ ...prev, ageMax: Math.round(value) }))
+                }
+                minimumValue={preferences.ageMin}
+                maximumValue={80}
+                step={1}
+                minimumTrackTintColor="#437FFF"
+                maximumTrackTintColor="#D0D5DD"
+                thumbTintColor="#437FFF"
+              />
+            </StyledView>
+          </Card>
+
+          {/* Height Preference */}
+          <Card className="mb-6">
+            <StyledView className="flex-row items-center justify-between mb-3">
+              <H3>Height <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
+              <StyledTouchableOpacity
+                onPress={() => toggleVisibility('heightPreference')}
+                className="flex-row items-center"
+              >
+                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
+                <StyledView className={`w-5 h-5 rounded border ${
+                  preferenceVisibility.heightPreference ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
+                } items-center justify-center`}>
+                  {preferenceVisibility.heightPreference && (
+                    <Ionicons name="checkmark" size={14} color="white" />
+                  )}
+                </StyledView>
+              </StyledTouchableOpacity>
+            </StyledView>
+            <Body className="text-neutral-600 text-sm mb-4">
+              Set your height preferences for potential matches
+            </Body>
+
+            <StyledView className="mb-4">
+              <StyledView className="flex-row justify-between mb-2">
+                <Body className="text-neutral-600">Minimum Height</Body>
+                <Body className="text-neutral-900 font-semibold">{formatHeight(preferences.heightMin || 60)}</Body>
+              </StyledView>
+              <Slider
+                key="height-min-slider"
+                value={preferences.heightMin || 60}
+                onValueChange={(value) =>
+                  setPreferences((prev) => ({ ...prev, heightMin: Math.round(value) }))
+                }
+                minimumValue={48} // 4'0"
+                maximumValue={preferences.heightMax || 84}
+                step={1}
+                minimumTrackTintColor="#437FFF"
+                maximumTrackTintColor="#D0D5DD"
+                thumbTintColor="#437FFF"
+              />
+            </StyledView>
+
+            <StyledView>
+              <StyledView className="flex-row justify-between mb-2">
+                <Body className="text-neutral-600">Maximum Height</Body>
+                <Body className="text-neutral-900 font-semibold">{formatHeight(preferences.heightMax || 84)}</Body>
+              </StyledView>
+              <Slider
+                key="height-max-slider"
+                value={preferences.heightMax || 84}
+                onValueChange={(value) =>
+                  setPreferences((prev) => ({ ...prev, heightMax: Math.round(value) }))
+                }
+                minimumValue={preferences.heightMin || 60}
+                maximumValue={84} // 7'0"
+                step={1}
+                minimumTrackTintColor="#437FFF"
+                maximumTrackTintColor="#D0D5DD"
+                thumbTintColor="#437FFF"
+              />
+            </StyledView>
+          </Card>
+
+          {/* Dating Distance */}
+          <Card className="mb-6">
+            <StyledView className="flex-row items-center justify-between mb-3">
+              <H3>Dating Distance <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
+              <StyledTouchableOpacity
+                onPress={() => toggleVisibility('datingDistance')}
+                className="flex-row items-center"
+              >
+                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
+                <StyledView className={`w-5 h-5 rounded border ${
+                  preferenceVisibility.datingDistance ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
+                } items-center justify-center`}>
+                  {preferenceVisibility.datingDistance && (
+                    <Ionicons name="checkmark" size={14} color="white" />
+                  )}
+                </StyledView>
+              </StyledTouchableOpacity>
+            </StyledView>
+            <Body className="text-neutral-600 text-sm mb-4">
+              How far would you be willing to date?
+            </Body>
+
+            <StyledView className="mb-4">
+              <StyledView className="flex-row justify-between mb-2">
+                <Body className="text-neutral-600">Maximum Distance</Body>
+                <Body className="text-neutral-900 font-semibold">
+                  {(preferences.maxDistance === null || preferences.maxDistance === 200)
+                    ? "Distance doesn't matter"
+                    : `${preferences.maxDistance} miles`}
+                </Body>
+              </StyledView>
+              <Slider
+                key="distance-slider"
+                value={preferences.maxDistance === null ? 200 : preferences.maxDistance}
+                onValueChange={(value) => {
+                  const roundedValue = Math.round(value);
+                  setPreferences((prev) => ({
+                    ...prev,
+                    maxDistance: roundedValue === 200 ? null : roundedValue,
+                  }));
+                }}
+                minimumValue={1}
+                maximumValue={200}
+                step={1}
+                minimumTrackTintColor="#437FFF"
+                maximumTrackTintColor="#D0D5DD"
+                thumbTintColor="#437FFF"
+              />
+              <StyledView className="flex-row justify-between mt-2">
+                <Body className="text-xs text-neutral-500">1 mi</Body>
+                <Body className="text-xs text-neutral-500">No limit</Body>
+              </StyledView>
+            </StyledView>
+          </Card>
+
+          {/* Preferred Ethnicities */}
+          <Card className="mb-6">
+            <StyledView className="flex-row items-center justify-between mb-2">
+              <StyledView className="flex-1 flex-shrink mr-2">
+                <H3>Ethnicity <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
+              </StyledView>
+              <StyledTouchableOpacity
+                onPress={() => toggleVisibility('preferredEthnicities')}
+                className="flex-row items-center flex-shrink-0"
+              >
+                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
+                <StyledView className={`w-5 h-5 rounded border ${
+                  preferenceVisibility.preferredEthnicities ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
+                } items-center justify-center`}>
+                  {preferenceVisibility.preferredEthnicities && (
+                    <Ionicons name="checkmark" size={14} color="white" />
+                  )}
+                </StyledView>
+              </StyledTouchableOpacity>
+            </StyledView>
+            <Body className="text-neutral-600 text-sm mb-4">
+              Select the ethnicities you're interested in for potential matches
+            </Body>
+            <StyledView className="flex-row flex-wrap gap-2">
+              {ETHNICITY_OPTIONS.map(ethnicity => {
+                const isSelected = preferredEthnicities.includes(ethnicity);
+                return (
+                  <StyledTouchableOpacity
+                    key={ethnicity}
+                    activeOpacity={1}
+                    onPress={() => {
+                      if (isSelected) {
+                        setPreferredEthnicities(prev => prev.filter(e => e !== ethnicity));
+                      } else {
+                        setPreferredEthnicities(prev => [...prev, ethnicity]);
+                      }
+                    }}
+                    className={`px-3 py-2 rounded-full border ${
+                      isSelected
+                        ? 'bg-purple-100 border-purple-500'
+                        : 'bg-white border-neutral-300'
+                    }`}
+                  >
+                    <Body className={`text-sm ${
+                      isSelected ? 'text-purple-700 font-medium' : 'text-neutral-700'
+                    }`}>{ethnicity}</Body>
+                  </StyledTouchableOpacity>
+                );
+              })}
+              {/* Custom ethnicities (not in predefined list) */}
+              {preferredEthnicities
+                .filter(e => !ETHNICITY_OPTIONS.includes(e))
+                .map((customEthnicity) => (
+                  <StyledTouchableOpacity
+                    key={customEthnicity}
+                    activeOpacity={1}
+                    onPress={() => setPreferredEthnicities(prev => prev.filter(e => e !== customEthnicity))}
+                    className="px-3 py-2 rounded-full border bg-purple-100 border-purple-500"
+                  >
+                    <Body className="text-sm text-purple-700 font-medium">{customEthnicity}</Body>
+                  </StyledTouchableOpacity>
+                ))}
+              {/* Other button */}
+              <StyledTouchableOpacity
+                onPress={() => openCustomModal('ethnicity')}
+                className="px-3 py-2 rounded-full border border-dashed border-neutral-400 bg-neutral-50"
+              >
+                <Body className="text-sm text-neutral-600">+ Other</Body>
+              </StyledTouchableOpacity>
+            </StyledView>
+          </Card>
+
+          {/* Preferred Politics */}
+          <Card className="mb-6">
+            <StyledView className="flex-row items-center justify-between mb-2">
+              <H3>Politics <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
+              <StyledTouchableOpacity
+                onPress={() => toggleVisibility('politicalPreferences')}
+                className="flex-row items-center"
+              >
+                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
+                <StyledView className={`w-5 h-5 rounded border ${
+                  preferenceVisibility.politicalPreferences ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
+                } items-center justify-center`}>
+                  {preferenceVisibility.politicalPreferences && (
+                    <Ionicons name="checkmark" size={14} color="white" />
+                  )}
+                </StyledView>
+              </StyledTouchableOpacity>
+            </StyledView>
+            <Body className="text-neutral-600 text-sm mb-4">
+              Select the political views you're open to matching with
+            </Body>
+            <StyledView className="flex-row flex-wrap gap-2">
+              {POLITICAL_OPTIONS.map(politics => {
+                const isSelected = preferredPolitics.includes(politics);
+                return (
+                  <StyledTouchableOpacity
+                    key={politics}
+                    activeOpacity={1}
+                    onPress={() => {
+                      if (isSelected) {
+                        setPreferredPolitics(prev => prev.filter(p => p !== politics));
+                      } else {
+                        setPreferredPolitics(prev => [...prev, politics]);
+                      }
+                    }}
+                    className={`px-3 py-2 rounded-full border ${
+                      isSelected
+                        ? 'bg-purple-100 border-purple-500'
+                        : 'bg-white border-neutral-300'
+                    }`}
+                  >
+                    <Body className={`text-sm ${
+                      isSelected ? 'text-purple-700 font-medium' : 'text-neutral-700'
+                    }`}>{politics}</Body>
+                  </StyledTouchableOpacity>
+                );
+              })}
+              {/* Custom politics (not in predefined list) */}
+              {preferredPolitics
+                .filter(p => !POLITICAL_OPTIONS.includes(p))
+                .map((customPolitics) => (
+                  <StyledTouchableOpacity
+                    key={customPolitics}
+                    activeOpacity={1}
+                    onPress={() => setPreferredPolitics(prev => prev.filter(p => p !== customPolitics))}
+                    className="px-3 py-2 rounded-full border bg-purple-100 border-purple-500"
+                  >
+                    <Body className="text-sm text-purple-700 font-medium">{customPolitics}</Body>
+                  </StyledTouchableOpacity>
+                ))}
+            </StyledView>
+          </Card>
+
+          {/* Lifestyle */}
+          <Card className="mb-6">
+            <StyledView className="flex-row items-center justify-between mb-2">
+              <StyledView className="flex-1 flex-shrink mr-2">
+                <H3>Lifestyle <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
+              </StyledView>
+              <StyledTouchableOpacity
+                onPress={() => toggleVisibility('partnerLifestyle')}
+                className="flex-row items-center flex-shrink-0"
+              >
+                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
+                <StyledView className={`w-5 h-5 rounded border ${
+                  preferenceVisibility.partnerLifestyle ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
+                } items-center justify-center`}>
+                  {preferenceVisibility.partnerLifestyle && (
+                    <Ionicons name="checkmark" size={14} color="white" />
+                  )}
+                </StyledView>
+              </StyledTouchableOpacity>
+            </StyledView>
+            <Body className="text-neutral-600 text-sm mb-4">
+              What lifestyle habits do you prefer in a partner?
+            </Body>
+
+            {/* Drinking */}
+            <StyledView className="mb-4">
+              <Body className="text-neutral-700 text-sm font-medium mb-2">Drinking</Body>
+              <StyledView className="flex-row gap-2">
+                {LIFESTYLE_FREQUENCY_OPTIONS.map(option => (
+                  <StyledView key={option.value} className="flex-1">
+                    <StyledTouchableOpacity
+                      activeOpacity={1}
+                      onPress={() => setPartnerPreferences(prev => ({ ...prev, partnerDrinking: option.value }))}
+                      className={`py-3 px-3 rounded-lg border ${
+                        partnerPreferences.partnerDrinking === option.value
+                          ? 'bg-purple-500 border-purple-500'
+                          : 'bg-white border-neutral-300'
+                      }`}
+                    >
+                      <Body className={`text-center text-sm font-medium ${
+                        partnerPreferences.partnerDrinking === option.value ? 'text-white' : 'text-neutral-700'
+                      }`}>{option.label}</Body>
+                    </StyledTouchableOpacity>
+                  </StyledView>
+                ))}
+              </StyledView>
+            </StyledView>
+
+            {/* Cannabis */}
+            <StyledView className="mb-4">
+              <Body className="text-neutral-700 text-sm font-medium mb-2">Cannabis</Body>
+              <StyledView className="flex-row gap-2">
+                {LIFESTYLE_FREQUENCY_OPTIONS.map(option => (
+                  <StyledView key={option.value} className="flex-1">
+                    <StyledTouchableOpacity
+                      activeOpacity={1}
+                      onPress={() => setPartnerPreferences(prev => ({ ...prev, partnerCannabis: option.value }))}
+                      className={`py-3 px-3 rounded-lg border ${
+                        partnerPreferences.partnerCannabis === option.value
+                          ? 'bg-purple-500 border-purple-500'
+                          : 'bg-white border-neutral-300'
+                      }`}
+                    >
+                      <Body className={`text-center text-sm font-medium ${
+                        partnerPreferences.partnerCannabis === option.value ? 'text-white' : 'text-neutral-700'
+                      }`}>{option.label}</Body>
+                    </StyledTouchableOpacity>
+                  </StyledView>
+                ))}
+              </StyledView>
+            </StyledView>
+
+            {/* Tobacco */}
+            <StyledView className="mb-4">
+              <Body className="text-neutral-700 text-sm font-medium mb-2">Tobacco/Vaping</Body>
+              <StyledView className="flex-row gap-2">
+                {LIFESTYLE_FREQUENCY_OPTIONS.map(option => (
+                  <StyledView key={option.value} className="flex-1">
+                    <StyledTouchableOpacity
+                      activeOpacity={1}
+                      onPress={() => setPartnerPreferences(prev => ({ ...prev, partnerTobacco: option.value }))}
+                      className={`py-3 px-3 rounded-lg border ${
+                        partnerPreferences.partnerTobacco === option.value
+                          ? 'bg-purple-500 border-purple-500'
+                          : 'bg-white border-neutral-300'
+                      }`}
+                    >
+                      <Body className={`text-center text-sm font-medium ${
+                        partnerPreferences.partnerTobacco === option.value ? 'text-white' : 'text-neutral-700'
+                      }`}>{option.label}</Body>
+                    </StyledTouchableOpacity>
+                  </StyledView>
+                ))}
+              </StyledView>
+            </StyledView>
+
+            {/* Other Drugs */}
+            <StyledView>
+              <Body className="text-neutral-700 text-sm font-medium mb-2">Other Substances</Body>
+              <StyledView className="flex-row gap-2">
+                {LIFESTYLE_FREQUENCY_OPTIONS.map(option => (
+                  <StyledView key={option.value} className="flex-1">
+                    <StyledTouchableOpacity
+                      activeOpacity={1}
+                      onPress={() => setPartnerPreferences(prev => ({ ...prev, partnerOtherDrugs: option.value }))}
+                      className={`py-3 px-3 rounded-lg border ${
+                        partnerPreferences.partnerOtherDrugs === option.value
+                          ? 'bg-purple-500 border-purple-500'
+                          : 'bg-white border-neutral-300'
+                      }`}
+                    >
+                      <Body className={`text-center text-sm font-medium ${
+                        partnerPreferences.partnerOtherDrugs === option.value ? 'text-white' : 'text-neutral-700'
+                      }`}>{option.label}</Body>
+                    </StyledTouchableOpacity>
+                  </StyledView>
+                ))}
+              </StyledView>
+            </StyledView>
+          </Card>
+
+          {/* Dealbreakers */}
+          <Card className="mb-8">
+            <StyledView className="flex-row items-center justify-between mb-2">
+              <StyledView className="flex-row items-center">
+                <H3>Dealbreakers</H3>
+                <Body className="text-neutral-400 text-sm ml-2">(optional)</Body>
+              </StyledView>
+              <StyledTouchableOpacity
+                onPress={() => toggleVisibility('dealbreakers')}
+                className="flex-row items-center"
+              >
+                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
+                <StyledView className={`w-5 h-5 rounded border ${
+                  preferenceVisibility.dealbreakers ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
+                } items-center justify-center`}>
+                  {preferenceVisibility.dealbreakers && (
+                    <Ionicons name="checkmark" size={14} color="white" />
+                  )}
+                </StyledView>
+              </StyledTouchableOpacity>
+            </StyledView>
+            <Body className="text-neutral-600 text-sm mb-4">
+              Select 1 characteristic that is an absolute dealbreaker
+            </Body>
+            <StyledView className="space-y-3">
+              {DEALBREAKER_OPTIONS.map(option => {
+                const isSelected = dealbreakers.includes(option.id);
+                return (
+                  <StyledTouchableOpacity
+                    key={option.id}
+                    onPress={() => {
+                      toggleDealbreaker(option.id);
+                      lightHaptic();
+                    }}
+                    className={`flex-row items-center p-3 rounded-lg border ${
+                      isSelected
+                        ? 'bg-error/5 border-error'
+                        : 'bg-white border-neutral-300'
+                    }`}
+                  >
+                    <Body className={`flex-1 font-medium ${isSelected ? 'text-error' : 'text-neutral-900'}`}>
+                      {option.label}
+                    </Body>
+                    <StyledView className={`w-5 h-5 rounded border ${
+                      isSelected ? 'bg-error border-error' : 'border-neutral-300'
+                    } items-center justify-center`}>
+                      {isSelected && (
+                        <Ionicons name="checkmark" size={14} color="white" />
+                      )}
+                    </StyledView>
+                  </StyledTouchableOpacity>
+                );
+              })}
+
+              {/* Custom dealbreakers (not in predefined list) */}
+              {dealbreakers.filter(db => !DEALBREAKER_OPTIONS.some(opt => opt.id === db)).map((customDealbreaker) => (
+                <StyledTouchableOpacity
+                  key={customDealbreaker}
+                  onPress={() => {
+                    toggleDealbreaker(customDealbreaker);
+                    mediumHaptic();
+                  }}
+                  className="flex-row items-center p-3 rounded-lg border bg-error/5 border-error"
+                >
+                  <Body className="flex-1 font-medium text-error">{customDealbreaker}</Body>
+                  <StyledView className="w-5 h-5 rounded border bg-error border-error items-center justify-center">
+                    <Ionicons name="checkmark" size={14} color="white" />
+                  </StyledView>
+                </StyledTouchableOpacity>
+              ))}
+
+            </StyledView>
+          </Card>
+
+          {/* Non-Negotiables */}
+          <Card className="mb-8">
+            <StyledView className="flex-row items-center justify-between mb-2">
+              <StyledView className="flex-row items-center">
+                <H3>Top Priority</H3>
+                <Body className="text-neutral-400 text-sm ml-2">(optional)</Body>
+              </StyledView>
+              <StyledTouchableOpacity
+                onPress={() => toggleVisibility('topPriority')}
+                className="flex-row items-center"
+              >
+                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
+                <StyledView className={`w-5 h-5 rounded border ${
+                  preferenceVisibility.topPriority ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
+                } items-center justify-center`}>
+                  {preferenceVisibility.topPriority && (
+                    <Ionicons name="checkmark" size={14} color="white" />
+                  )}
+                </StyledView>
+              </StyledTouchableOpacity>
+            </StyledView>
+            <StyledView className="flex-row items-center justify-between mb-3">
+              <StyledView className="flex-1" />
+              {nonNegotiable && (
+                <StyledTouchableOpacity onPress={() => setNonNegotiable('')}>
+                  <Body className="text-primary-500 text-sm font-medium">Clear Selection</Body>
+                </StyledTouchableOpacity>
+              )}
+            </StyledView>
+            <Body className="text-neutral-600 text-sm mb-4">
+              Select the one preference that matters most to you in potential matches
+            </Body>
+            <StyledView className="space-y-3">
+              {NON_NEGOTIABLE_OPTIONS.map(option => {
+                const isSelected = nonNegotiable === option.id;
+                return (
+                  <StyledTouchableOpacity
+                    key={option.id}
+                    onPress={() => {
+                      setNonNegotiable(isSelected ? '' : option.id);
+                      lightHaptic();
+                    }}
+                    className={`flex-row items-start p-4 rounded-lg border ${
+                      isSelected
+                        ? 'bg-purple-500 border-purple-500'
+                        : 'bg-white border-neutral-300'
+                    }`}
+                  >
+                    <StyledView className="flex-1">
+                      <Body className={`font-semibold mb-1 ${isSelected ? 'text-white' : 'text-neutral-900'}`}>
+                        {option.label}
+                      </Body>
+                      <Body className={`text-sm ${isSelected ? 'text-white' : 'text-neutral-600'}`}>
+                        {option.description}
+                      </Body>
+                    </StyledView>
+                    <StyledView className={`w-5 h-5 rounded-full border ml-3 mt-0.5 ${
+                      isSelected ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
+                    } items-center justify-center`}>
+                      {isSelected && (
+                        <Ionicons name="checkmark" size={14} color="white" />
+                      )}
+                    </StyledView>
+                  </StyledTouchableOpacity>
+                );
+              })}
+            </StyledView>
+          </Card>
+        </StyledView>
+      </StyledScrollView>
+
+      {/* Custom Dealbreaker "Other" Modal */}
+      <Modal
+        visible={showCustomDealbreakerModal}
+        animationType="none"
+        transparent
+        onRequestClose={() => setShowCustomDealbreakerModal(false)}
+      >
+        <StyledAnimatedView
+          className="flex-1 bg-black/50 justify-start items-center px-6 pt-24"
+          style={{
+            opacity: customDealbreakerModalAnim,
+          }}
+        >
+          <StyledTouchableOpacity
+            activeOpacity={1}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowCustomDealbreakerModal(false);
+              setCustomDealbreakerValue('');
+            }}
+            className="absolute inset-0"
+          />
+
+          <StyledAnimatedView
+            className="bg-white rounded-2xl w-full max-w-md"
+            style={{
+              transform: [{
+                scale: customDealbreakerModalAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.9, 1],
+                }),
+              }],
+            }}
+          >
+            {/* Header */}
+            <StyledView className="px-6 pt-6 pb-4 border-b border-neutral-100">
+              <H3 className="mb-2">Add Custom Dealbreaker</H3>
+              <Body className="text-neutral-600 text-sm">
+                Enter a characteristic that's a dealbreaker for you
+              </Body>
+            </StyledView>
+
+            {/* Input Field */}
+            <StyledView className="px-6 py-5">
+              <StyledTextInput
+                value={customDealbreakerValue}
+                onChangeText={setCustomDealbreakerValue}
+                placeholder="Type your dealbreaker"
+                className="bg-neutral-50 border border-neutral-200 rounded-lg px-4 py-3 text-base text-neutral-900"
+                placeholderTextColor="#9CA3AF"
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  if (customDealbreakerValue.trim()) {
+                    setDealbreakers([...dealbreakers, customDealbreakerValue.trim()]);
+                    mediumHaptic();
+                    setCustomDealbreakerValue('');
+                    setShowCustomDealbreakerModal(false);
+                    Keyboard.dismiss();
+                  }
+                }}
+              />
+            </StyledView>
+
+            {/* Action Buttons */}
+            <StyledView className="px-6 pb-6 flex-row gap-3">
+              <StyledTouchableOpacity
+                onPress={() => {
+                  lightHaptic();
+                  setShowCustomDealbreakerModal(false);
+                  setCustomDealbreakerValue('');
+                  Keyboard.dismiss();
+                }}
+                className="flex-1 bg-neutral-100 rounded-lg py-3 items-center"
+              >
+                <Body className="text-neutral-700 font-semibold">Cancel</Body>
+              </StyledTouchableOpacity>
+
+              <StyledTouchableOpacity
+                onPress={() => {
+                  if (customDealbreakerValue.trim()) {
+                    setDealbreakers([...dealbreakers, customDealbreakerValue.trim()]);
+                    mediumHaptic();
+                    setCustomDealbreakerValue('');
+                    setShowCustomDealbreakerModal(false);
+                    Keyboard.dismiss();
+                  }
+                }}
+                className={`flex-1 rounded-lg py-3 items-center ${
+                  customDealbreakerValue.trim()
+                    ? 'bg-error'
+                    : 'bg-neutral-200'
+                }`}
+                disabled={!customDealbreakerValue.trim()}
+              >
+                <Body className={`font-semibold ${
+                  customDealbreakerValue.trim()
+                    ? 'text-white'
+                    : 'text-neutral-400'
+                }`}>
+                  Add
+                </Body>
+              </StyledTouchableOpacity>
+            </StyledView>
+          </StyledAnimatedView>
+        </StyledAnimatedView>
+      </Modal>
+
+      {/* Reusable Custom Input Modal */}
+      <Modal
+        visible={showCustomModal}
+        animationType="none"
+        transparent
+        onRequestClose={() => setShowCustomModal(false)}
+      >
+        <StyledAnimatedView
+          className="flex-1 bg-black/50 justify-start items-center px-6 pt-24"
+          style={{
+            opacity: customModalAnim,
+          }}
+        >
+          <StyledTouchableOpacity
+            activeOpacity={1}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowCustomModal(false);
+              setCustomInputValue('');
+            }}
+            className="absolute inset-0"
+          />
+
+          <StyledAnimatedView
+            className="bg-white rounded-2xl w-full max-w-md"
+            style={{
+              transform: [{
+                scale: customModalAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.9, 1],
+                }),
+              }],
+            }}
+          >
+            {/* Header */}
+            <StyledView className="px-6 pt-6 pb-4 border-b border-neutral-100">
+              <H3 className="mb-2">{getCustomModalTitle()}</H3>
+              <Body className="text-neutral-600 text-sm">
+                {getCustomModalPlaceholder()}
+              </Body>
+            </StyledView>
+
+            {/* Input Field */}
+            <StyledView className="px-6 py-5">
+              <StyledTextInput
+                value={customInputValue}
+                onChangeText={setCustomInputValue}
+                placeholder={getCustomModalPlaceholder()}
+                className="bg-neutral-50 border border-neutral-200 rounded-lg px-4 py-3 text-base text-neutral-900"
+                placeholderTextColor="#9CA3AF"
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={saveCustomModalValue}
+              />
+            </StyledView>
+
+            {/* Action Buttons */}
+            <StyledView className="px-6 pb-6 flex-row gap-3">
+              <StyledTouchableOpacity
+                onPress={() => {
+                  lightHaptic();
+                  setShowCustomModal(false);
+                  setCustomInputValue('');
+                  Keyboard.dismiss();
+                }}
+                className="flex-1 bg-neutral-100 rounded-lg py-3 items-center"
+              >
+                <Body className="text-neutral-700 font-semibold">Cancel</Body>
+              </StyledTouchableOpacity>
+
+              <StyledTouchableOpacity
+                onPress={saveCustomModalValue}
+                className={`flex-1 rounded-lg py-3 items-center ${
+                  customInputValue.trim()
+                    ? 'bg-purple-500'
+                    : 'bg-neutral-200'
+                }`}
+                disabled={!customInputValue.trim()}
+              >
+                <Body className={`font-semibold ${
+                  customInputValue.trim()
+                    ? 'text-white'
+                    : 'text-neutral-400'
+                }`}>
+                  Add
+                </Body>
+              </StyledTouchableOpacity>
+            </StyledView>
+          </StyledAnimatedView>
+        </StyledAnimatedView>
+      </Modal>
+    </StyledSafeAreaView>
+  );
+};
