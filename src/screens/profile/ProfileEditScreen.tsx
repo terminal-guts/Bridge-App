@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity, TextInput, Image, Alert, Modal, Switch, Animated, Keyboard, Linking, Platform, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { H2, H3, Body, Card, Button, Chip, Input } from '../../components/ui';
@@ -10,8 +10,13 @@ import { getCurrentUser } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { OfflineBanner } from '../../components/OfflineBanner';
+import { PhotoCompletionBanner } from '../../components/PhotoCompletionBanner';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { calculateEditProfileCompleteness } from '../../utils/profileCompleteness';
+import { InterestsSection } from './sections/InterestsSection';
+import { ValuesSection } from './sections/ValuesSection';
+import { LifestyleSection } from './sections/LifestyleSection';
 
 interface ProfileEditScreenProps {
   navigation: NavigationProp<RootStackParamList, 'ProfileEdit'>;
@@ -43,6 +48,10 @@ const PRONOUN_OPTIONS = [
 ];
 
 const MAX_PRONOUNS = 4;
+const MIN_INTERESTS = 3;
+const MAX_INTERESTS = 8;
+const MIN_VALUES = 3;
+const MAX_VALUES = 8;
 
 const GENDER_OPTIONS = [
   { value: 'male', label: 'Man' },
@@ -180,6 +189,109 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Optimized profile update function - uses functional form for better performance
+  const updateProfile = useCallback((updates: Partial<UserProfile>) => {
+    setProfile(prev => {
+      if (!prev) return prev;
+      return { ...prev, ...updates };
+    });
+  }, []);
+
+  // CRITICAL FIX: Stable callback references to prevent breaking React.memo
+  const handleUpdateDrinking = useCallback((value: string) => {
+    updateProfile({ drinkingFrequency: value });
+  }, [updateProfile]);
+
+  const handleUpdateCannabis = useCallback((value: string) => {
+    updateProfile({ cannabisFrequency: value });
+  }, [updateProfile]);
+
+  const handleUpdateTobacco = useCallback((value: string) => {
+    updateProfile({ tobaccoFrequency: value });
+  }, [updateProfile]);
+
+  const handleUpdateOtherDrugs = useCallback((value: string) => {
+    updateProfile({ otherDrugsFrequency: value });
+  }, [updateProfile]);
+
+  const handleToggleValue = useCallback((value: string) => {
+    setProfile(prev => {
+      if (!prev) return prev;
+      const currentValues = prev.values || [];
+      const isSelected = currentValues.includes(value);
+
+      if (isSelected) {
+        // Remove value
+        return { ...prev, values: currentValues.filter(v => v !== value) };
+      } else {
+        // Check if limit reached
+        if (currentValues.length >= 8) {
+          Alert.alert(
+            'Maximum Values Reached',
+            'You can only select up to 8 values. Please deselect one before adding another.',
+            [{ text: 'OK' }]
+          );
+          return prev;
+        }
+        // Add value
+        return { ...prev, values: [...currentValues, value] };
+      }
+    });
+  }, []);
+
+  const handleToggleInterest = useCallback((interest: string) => {
+    setProfile(prev => {
+      if (!prev) return prev;
+      const currentInterests = prev.interests || [];
+      const isSelected = currentInterests.includes(interest);
+
+      if (isSelected) {
+        // Remove interest
+        return { ...prev, interests: currentInterests.filter(i => i !== interest) };
+      } else {
+        // Check if limit reached
+        if (currentInterests.length >= 8) {
+          Alert.alert(
+            'Maximum Interests Reached',
+            'You can only select up to 8 interests. Please deselect one before adding another.',
+            [{ text: 'OK' }]
+          );
+          return prev;
+        }
+        // Add interest
+        return { ...prev, interests: [...currentInterests, interest] };
+      }
+    });
+  }, []);
+
+  const handleShowCustomInterestModal = useCallback(() => {
+    setShowCustomInterestModal(true);
+  }, []);
+
+  const handleShowCustomValueModal = useCallback(() => {
+    setShowCustomValueModal(true);
+  }, []);
+
+  // Step 1b: Memoize ethnicity parsing to avoid repeated split/filter operations
+  const ethnicityArray = useMemo(() => {
+    return profile?.ethnicity ?
+      profile.ethnicity.split(' / ').filter(e => e.trim() !== '') : [];
+  }, [profile?.ethnicity]);
+
+  // Step 1c: Memoize custom interests/values filtering
+  const customInterests = useMemo(() => {
+    return profile?.interests?.filter(
+      (interest) => !AVAILABLE_INTERESTS.includes(interest)
+    ) || [];
+  }, [profile?.interests]);
+
+  const customValues = useMemo(() => {
+    return profile?.values?.filter(
+      (value) => !AVAILABLE_VALUES.includes(value)
+    ) || [];
+  }, [profile?.values]);
+
   const [newInterest, setNewInterest] = useState('');
   const [newValue, setNewValue] = useState('');
   const [isHeightFocused, setIsHeightFocused] = useState(false);
@@ -241,6 +353,11 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
   const { isOffline } = useNetworkStatus();
   const visibilityModalAnim = useRef(new Animated.Value(0)).current;
 
+
+  // Calculate profile completion percentage in real-time
+  const profileCompletion = useMemo(() => {
+    return calculateEditProfileCompleteness(profile);
+  }, [profile]);
   useEffect(() => {
     loadProfile();
   }, []);
@@ -335,14 +452,53 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
     }).start();
   }, [showCustomValueModal]);
 
-  // Detect changes to profile or sectionVisibility
+  // Optimized change detection - checks specific fields instead of JSON.stringify
+  const hasProfileChanged = useCallback((current: UserProfile | null, originalJson: string): boolean => {
+    if (!current || !originalJson) return false;
+
+    try {
+      const original = JSON.parse(originalJson) as UserProfile;
+
+      // Compare editable fields only (avoid expensive full object comparison)
+      const fieldsToCheck: (keyof UserProfile)[] = [
+        'firstName', 'lastName', 'age', 'height',
+        'ethnicity', 'religion', 'politicalLeaning', 'customPoliticalLeaning',
+        'currentJob', 'companyPosition', 'educationLevel', 'customEducationLevel', 'school',
+        'location', 'hometown',
+        'hasChildren', 'familyPlans',
+        'drinkingFrequency', 'cannabisFrequency', 'tobaccoFrequency', 'otherDrugsFrequency',
+        'bio'
+      ];
+
+      // Check simple fields
+      for (const field of fieldsToCheck) {
+        if (current[field] !== original[field]) return true;
+      }
+
+      // Check array fields (gender, pronounsList, interests, values, photos)
+      const arrayFieldsToCheck: (keyof UserProfile)[] = ['gender', 'pronounsList', 'interests', 'values'];
+      for (const field of arrayFieldsToCheck) {
+        const currentArray = current[field] as any[] | undefined;
+        const originalArray = original[field] as any[] | undefined;
+        if (JSON.stringify(currentArray) !== JSON.stringify(originalArray)) return true;
+      }
+
+      // Check photos array separately (compare lengths and URLs)
+      if (current.photos?.length !== original.photos?.length) return true;
+
+      return false;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  // Detect changes to profile (now optimized)
   useEffect(() => {
     if (profile && originalProfileRef.current && !loading) {
-      const currentProfile = JSON.stringify(profile);
-      const hasProfileChanges = currentProfile !== originalProfileRef.current;
-      setHasUnsavedChanges(hasProfileChanges);
+      const hasChanges = hasProfileChanged(profile, originalProfileRef.current);
+      setHasUnsavedChanges(hasChanges);
     }
-  }, [profile, sectionVisibility, loading]);
+  }, [profile, hasProfileChanged, loading]);
 
   const loadProfile = async () => {
     try {
@@ -700,6 +856,17 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
   const handleAddInterest = (interest: string) => {
     setProfile(prevProfile => {
       if (!prevProfile || prevProfile.interests.includes(interest)) return prevProfile;
+
+      // Check if limit is reached
+      if (prevProfile.interests.length >= MAX_INTERESTS) {
+        Alert.alert(
+          'Maximum Interests Reached',
+          `You can only select up to ${MAX_INTERESTS} interests. Please deselect one before adding another.`,
+          [{ text: 'OK' }]
+        );
+        return prevProfile;
+      }
+
       return {
         ...prevProfile,
         interests: [...prevProfile.interests, interest],
@@ -731,6 +898,17 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
   const handleAddValue = (value: string) => {
     setProfile(prevProfile => {
       if (!prevProfile || prevProfile.values.includes(value)) return prevProfile;
+
+      // Check if limit is reached
+      if (prevProfile.values.length >= MAX_VALUES) {
+        Alert.alert(
+          'Maximum Values Reached',
+          `You can only select up to ${MAX_VALUES} values. Please deselect one before adding another.`,
+          [{ text: 'OK' }]
+        );
+        return prevProfile;
+      }
+
       return {
         ...prevProfile,
         values: [...prevProfile.values, value],
@@ -800,17 +978,53 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
       <OfflineBanner />
 
       {/* Header */}
-      <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center justify-between">
-        <StyledTouchableOpacity onPress={handleClose}>
-          <Ionicons name="close" size={24} color="#101828" />
-        </StyledTouchableOpacity>
-        <H3>Edit Profile</H3>
-        <StyledTouchableOpacity onPress={handleSave} disabled={saving}>
-          <Body className={saving ? "text-neutral-400" : "text-primary-500 font-semibold"}>
-            {saving ? 'Saving...' : 'Save'}
-          </Body>
-        </StyledTouchableOpacity>
+      <StyledView className="bg-white border-b border-neutral-200 px-4 py-3">
+        <StyledView className="flex-row items-center justify-between">
+          <StyledTouchableOpacity onPress={handleClose} className="mr-3">
+            <Ionicons name="close" size={24} color="#101828" />
+          </StyledTouchableOpacity>
+          <StyledView className="flex-1">
+            <H3>Edit Profile</H3>
+          </StyledView>
+          <StyledTouchableOpacity onPress={handleSave} disabled={saving}>
+            <Body className={saving ? "text-neutral-400" : "text-primary-500 font-medium"}>
+              {saving ? 'Saving...' : 'Save'}
+            </Body>
+          </StyledTouchableOpacity>
+        </StyledView>
+
+        {/* Completion Progress Bar - Only show when incomplete */}
+        {profileCompletion.completedCount < profileCompletion.totalCount && (
+          <StyledView className="mt-3">
+            <StyledView className="flex-row items-center justify-between mb-1.5">
+              <Body className="text-xs text-neutral-600">
+                {profileCompletion.completedCount} of {profileCompletion.totalCount} completed
+              </Body>
+              <Body className="text-xs font-semibold" style={{ color: '#437FFF' }}>
+                {profileCompletion.percentage}%
+              </Body>
+            </StyledView>
+            <StyledView className="bg-neutral-200 rounded-full h-1.5 overflow-hidden">
+              <StyledView
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${profileCompletion.percentage}%`,
+                  backgroundColor: '#437FFF',
+                }}
+              />
+            </StyledView>
+          </StyledView>
+        )}
       </StyledView>
+
+      <PhotoCompletionBanner
+        profile={profile}
+        aboutMePercentage={profileCompletion.percentage}
+        onPress={() => {
+          // Scroll to photos section
+          // Note: You may need to implement scrolling to the photos section if needed
+        }}
+      />
 
       <StyledScrollView
         className="flex-1"
@@ -840,7 +1054,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               <StyledView className="flex-row items-center">
                 <H3>Photos <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
               </StyledView>
-              <Body className="text-neutral-500 text-sm">{profile.photos.length}/6</Body>
+              <Body className="text-error text-sm font-semibold">{profile.photos.length}/6</Body>
             </StyledView>
             <Body className="text-neutral-600 text-sm mb-4">
               {profile.photos.length < 6
@@ -944,7 +1158,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               onChangeText={(text) => {
                 // Only allow letters, spaces, hyphens, and apostrophes
                 const lettersOnly = text.replace(/[^a-zA-Z\s'-]/g, '');
-                setProfile({ ...profile, firstName: lettersOnly });
+                updateProfile({ firstName: lettersOnly });
               }}
               placeholder="Enter your first name"
               containerClassName="mb-4"
@@ -956,7 +1170,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               onChangeText={(text) => {
                 // Only allow letters, spaces, hyphens, and apostrophes
                 const lettersOnly = text.replace(/[^a-zA-Z\s'-]/g, '');
-                setProfile({ ...profile, lastName: lettersOnly });
+                updateProfile({ lastName: lettersOnly });
               }}
               placeholder="Enter your last name"
               containerClassName="mb-4"
@@ -969,7 +1183,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                 // Allow only numeric input
                 const numericOnly = text.replace(/[^0-9]/g, '');
                 const age = numericOnly ? parseInt(numericOnly) : 0;
-                setProfile({ ...profile, age });
+                updateProfile({ age });
               }}
               keyboardType="numeric"
               placeholder="Enter your age (18+)"
@@ -982,7 +1196,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               onChangeText={(text) => {
                 // Allow only numeric input when focused
                 const numericOnly = text.replace(/[^0-9]/g, '');
-                setProfile({ ...profile, height: numericOnly });
+                updateProfile({ height: numericOnly });
                 setHeightError(''); // Clear error on change
               }}
               onFocus={() => {
@@ -1006,7 +1220,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                     setHeightError('');
                   }
 
-                  setProfile({ ...profile, height: validatedHeight.toString() });
+                  updateProfile({ height: validatedHeight.toString() });
                 }
               }}
               placeholder="e.g., 68"
@@ -1023,8 +1237,6 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
             <StyledView className="flex-row flex-wrap gap-2 mb-4">
               {/* Predefined ethnicity options */}
               {ETHNICITY_OPTIONS.map((option) => {
-                // Split ethnicity string into array for checking, filter empty strings
-                const ethnicityArray = profile.ethnicity ? profile.ethnicity.split(' / ').filter(e => e.trim() !== '') : [];
                 const isSelected = ethnicityArray.includes(option);
                 return (
                   <StyledTouchableOpacity
@@ -1033,19 +1245,18 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                     delayPressIn={0}
                     onPress={() => {
                       lightHaptic();
-                      const currentEthnicities = profile.ethnicity ? profile.ethnicity.split(' / ').filter(e => e.trim() !== '') : [];
                       let updatedEthnicities: string[];
 
                       if (isSelected) {
                         // Remove ethnicity
-                        updatedEthnicities = currentEthnicities.filter(e => e !== option);
+                        updatedEthnicities = ethnicityArray.filter(e => e !== option);
                       } else {
                         // Add ethnicity
-                        updatedEthnicities = [...currentEthnicities, option];
+                        updatedEthnicities = [...ethnicityArray, option];
                       }
 
                       // Join back into string for storage, filter empties
-                      setProfile({ ...profile, ethnicity: updatedEthnicities.filter(e => e.trim() !== '').join(' / ') });
+                      updateProfile({ ethnicity: updatedEthnicities.filter(e => e.trim() !== '').join(' / ') });
                     }}
                     className={`px-3 py-2 rounded-lg border ${
                       isSelected
@@ -1068,16 +1279,13 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
 
               {/* Custom ethnicity values as chips */}
               {(() => {
-                const ethnicityArray = profile.ethnicity ? profile.ethnicity.split(' / ').filter(e => e.trim() !== '') : [];
                 const customEthnicities = ethnicityArray.filter(e => !ETHNICITY_OPTIONS.includes(e) && e.trim() !== '');
                 return customEthnicities.map((customEthnicity) => (
                   <StyledTouchableOpacity
                     key={customEthnicity}
                     onPress={() => {
-                      const currentEthnicities = profile.ethnicity ? profile.ethnicity.split(' / ').filter(e => e.trim() !== '') : [];
-                      const updatedEthnicities = currentEthnicities.filter(e => e !== customEthnicity);
-                      setProfile({
-                        ...profile,
+                      const updatedEthnicities = ethnicityArray.filter(e => e !== customEthnicity);
+                      updateProfile({
                         ethnicity: updatedEthnicities.filter(e => e.trim() !== '').join(' / '),
                       });
                       mediumHaptic();
@@ -1134,7 +1342,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                         updatedPronouns = [...currentPronouns, pronoun];
                       }
 
-                      setProfile({ ...profile, pronounsList: updatedPronouns });
+                      updateProfile({ pronounsList: updatedPronouns });
                     }}
                     className={`px-2.5 py-1.5 rounded-lg border ${
                       isSelected
@@ -1182,7 +1390,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                         updatedGenders = [...currentGenders, option.value];
                       }
 
-                      setProfile({ ...profile, gender: updatedGenders });
+                      updateProfile({ gender: updatedGenders });
                     }}
                     className={`px-3 py-2 rounded-lg border ${
                       isSelected
@@ -1259,7 +1467,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                   onPress={() => {
                     lightHaptic();
                     // Toggle behavior: deselect if already selected
-                    setProfile({ ...profile, religion: profile.religion === option ? '' : option });
+                    updateProfile({ religion: profile.religion === option ? '' : option });
                   }}
                   className={`px-3 py-2 rounded-lg border ${
                     profile.religion === option
@@ -1317,7 +1525,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                   onPress={() => {
                     lightHaptic();
                     // Toggle behavior: deselect if already selected
-                    setProfile({ ...profile, politicalLeaning: profile.politicalLeaning === option.value ? '' : option.value });
+                    updateProfile({ politicalLeaning: profile.politicalLeaning === option.value ? '' : option.value });
                   }}
                   className={`px-3 py-2 rounded-lg border ${
                     profile.politicalLeaning === option.value
@@ -1341,7 +1549,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               {profile.politicalLeaning === 'other' && profile.customPoliticalLeaning && (
                   <StyledTouchableOpacity
                     onPress={() => {
-                      setProfile({ ...profile, politicalLeaning: '', customPoliticalLeaning: '' });
+                      updateProfile({ politicalLeaning: '', customPoliticalLeaning: '' });
                       mediumHaptic();
                     }}
                     className="px-3 py-2 rounded-lg border bg-primary-500 border-primary-500"
@@ -1388,7 +1596,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               </StyledView>
               <Input
                 value={profile.currentJob || ''}
-                onChangeText={(text) => setProfile({ ...profile, currentJob: text })}
+                onChangeText={(text) => updateProfile({ currentJob: text })}
                 placeholder="What do you do?"
               />
             </StyledView>
@@ -1413,7 +1621,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               </StyledView>
               <Input
                 value={profile.companyPosition || ''}
-                onChangeText={(text) => setProfile({ ...profile, companyPosition: text })}
+                onChangeText={(text) => updateProfile({ companyPosition: text })}
                 placeholder="Where do you work?"
               />
             </StyledView>
@@ -1445,7 +1653,13 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                   delayPressIn={0}
                   onPress={() => {
                     lightHaptic();
-                    setProfile({ ...profile, educationLevel: option.value });
+                    if (profile.educationLevel === option.value) {
+                      // Deselect if already selected
+                      updateProfile({ educationLevel: '' });
+                    } else {
+                      // Select the option
+                      updateProfile({ educationLevel: option.value });
+                    }
                   }}
                   className={`px-3 py-2 rounded-lg border ${
                     profile.educationLevel === option.value
@@ -1469,7 +1683,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               {profile.educationLevel === 'other' && profile.customEducationLevel && (
                   <StyledTouchableOpacity
                     onPress={() => {
-                      setProfile({ ...profile, educationLevel: '', customEducationLevel: '' });
+                      updateProfile({ educationLevel: '', customEducationLevel: '' });
                       mediumHaptic();
                     }}
                     className="px-3 py-2 rounded-lg border bg-primary-500 border-primary-500"
@@ -1513,7 +1727,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               </StyledView>
               <Input
                 value={profile.school || ''}
-                onChangeText={(text) => setProfile({ ...profile, school: text })}
+                onChangeText={(text) => updateProfile({ school: text })}
                 placeholder="e.g., Harvard Business School"
               />
             </StyledView>
@@ -1527,7 +1741,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               label="Current Location"
               required
               value={profile.location || ''}
-              onChangeText={(text) => setProfile({ ...profile, location: text })}
+              onChangeText={(text) => updateProfile({ location: text })}
               placeholder="Where do you live?"
               containerClassName="mb-4"
             />
@@ -1552,7 +1766,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               </StyledView>
               <Input
                 value={profile.hometown || ''}
-                onChangeText={(text) => setProfile({ ...profile, hometown: text })}
+                onChangeText={(text) => updateProfile({ hometown: text })}
                 placeholder="Where are you from?"
               />
             </StyledView>
@@ -1574,7 +1788,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                   delayPressIn={0}
                   onPress={() => {
                     lightHaptic();
-                    setProfile({ ...profile, hasChildren: option.value });
+                    updateProfile({ hasChildren: option.value });
                   }}
                   className={`px-3 py-2 rounded-lg border ${
                     profile.hasChildren === option.value
@@ -1606,7 +1820,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                   delayPressIn={0}
                   onPress={() => {
                     lightHaptic();
-                    setProfile({ ...profile, familyPlans: option.value });
+                    updateProfile({ familyPlans: option.value });
                   }}
                   className={`px-3 py-2 rounded-lg border ${
                     profile.familyPlans === option.value
@@ -1629,266 +1843,31 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
 
           </Card>
 
-          {/* Lifestyle Habits */}
-          <Card className="mb-6">
-            <H3 className="mb-4">Lifestyle Habits</H3>
+          {/* Lifestyle Habits - Extracted to separate component for performance */}
+          <LifestyleSection
+            drinkingFrequency={profile.drinkingFrequency}
+            cannabisFrequency={profile.cannabisFrequency}
+            tobaccoFrequency={profile.tobaccoFrequency}
+            otherDrugsFrequency={profile.otherDrugsFrequency}
+            onUpdateDrinking={handleUpdateDrinking}
+            onUpdateCannabis={handleUpdateCannabis}
+            onUpdateTobacco={handleUpdateTobacco}
+            onUpdateOtherDrugs={handleUpdateOtherDrugs}
+          />
 
-            {/* Drinking Frequency */}
-            <SectionHeader title="DRINKING" titleExtra={<StyledText style={{ color: '#EF4444' }}> *</StyledText>} />
-            <StyledView className="flex-row flex-wrap gap-2 mb-4">
-              {[
-                { value: 'no', label: 'No' },
-                { value: 'sometimes', label: 'Sometimes' },
-                { value: 'yes', label: 'Yes' },
-                { value: 'prefer_not_to_say', label: 'Prefer not to say' }
-              ].map((option) => (
-                <Chip
-                  key={option.value}
-                  label={option.label}
-                  selected={profile.drinkingFrequency === option.value}
-                  onPress={() => {
-                    setProfile({
-                      ...profile,
-                      drinkingFrequency: profile.drinkingFrequency === option.value ? '' : option.value
-                    });
-                  }}
-                />
-              ))}
-            </StyledView>
+          {/* Values - Extracted to separate component for performance */}
+          <ValuesSection
+            values={profile.values}
+            onToggleValue={handleToggleValue}
+            onShowCustomValueModal={handleShowCustomValueModal}
+          />
 
-            {/* Cannabis */}
-            <SectionHeader title="CANNABIS" titleExtra={<StyledText style={{ color: '#EF4444' }}> *</StyledText>} />
-            <StyledView className="flex-row flex-wrap gap-2 mb-4">
-              {[
-                { value: 'no', label: 'No' },
-                { value: 'sometimes', label: 'Sometimes' },
-                { value: 'yes', label: 'Yes' },
-                { value: 'prefer_not_to_say', label: 'Prefer not to say' }
-              ].map((option) => (
-                <Chip
-                  key={option.value}
-                  label={option.label}
-                  selected={profile.cannabisFrequency === option.value}
-                  onPress={() => {
-                    setProfile({
-                      ...profile,
-                      cannabisFrequency: profile.cannabisFrequency === option.value ? '' : option.value
-                    });
-                  }}
-                />
-              ))}
-            </StyledView>
-
-            {/* Tobacco/Vaping */}
-            <SectionHeader title="TOBACCO/VAPING" titleExtra={<StyledText style={{ color: '#EF4444' }}> *</StyledText>} />
-            <StyledView className="flex-row flex-wrap gap-2 mb-4">
-              {[
-                { value: 'no', label: 'No' },
-                { value: 'sometimes', label: 'Sometimes' },
-                { value: 'yes', label: 'Yes' },
-                { value: 'prefer_not_to_say', label: 'Prefer not to say' }
-              ].map((option) => (
-                <Chip
-                  key={option.value}
-                  label={option.label}
-                  selected={profile.tobaccoFrequency === option.value}
-                  onPress={() => {
-                    setProfile({
-                      ...profile,
-                      tobaccoFrequency: profile.tobaccoFrequency === option.value ? '' : option.value
-                    });
-                  }}
-                />
-              ))}
-            </StyledView>
-
-            {/* Other Substances */}
-            <SectionHeader title="OTHER SUBSTANCES" titleExtra={<StyledText style={{ color: '#EF4444' }}> *</StyledText>} />
-            <StyledView className="flex-row flex-wrap gap-2 mb-4">
-              {[
-                { value: 'no', label: 'No' },
-                { value: 'sometimes', label: 'Sometimes' },
-                { value: 'yes', label: 'Yes' },
-                { value: 'prefer_not_to_say', label: 'Prefer not to say' }
-              ].map((option) => (
-                <Chip
-                  key={option.value}
-                  label={option.label}
-                  selected={profile.otherDrugsFrequency === option.value}
-                  onPress={() => {
-                    setProfile({
-                      ...profile,
-                      otherDrugsFrequency: profile.otherDrugsFrequency === option.value ? '' : option.value
-                    });
-                  }}
-                />
-              ))}
-            </StyledView>
-          </Card>
-
-          {/* Values */}
-          <Card className="mb-6">
-            <H3 className="mb-4">Values <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
-            <Body className="text-neutral-600 text-sm mb-4">
-              What matters most to you? (Select up to 8)
-            </Body>
-
-            {/* Available Values Grid */}
-            <StyledView className="flex-row flex-wrap gap-2 mb-4">
-              {AVAILABLE_VALUES.map((value) => {
-                const isSelected = profile.values.includes(value);
-                return (
-                  <StyledTouchableOpacity
-                    key={value}
-                    activeOpacity={1}
-                    delayPressIn={0}
-                    onPress={() => {
-                      lightHaptic();
-                      setProfile(prevProfile => {
-                        if (!prevProfile) return prevProfile;
-                        if (isSelected) {
-                          return {
-                            ...prevProfile,
-                            values: prevProfile.values.filter(v => v !== value),
-                          };
-                        } else {
-                          if (prevProfile.values.includes(value)) return prevProfile;
-                          return {
-                            ...prevProfile,
-                            values: [...prevProfile.values, value],
-                          };
-                        }
-                      });
-                    }}
-                    className={`px-3 py-2 rounded-full border ${
-                      isSelected
-                        ? 'bg-primary-500 border-primary-500'
-                        : 'bg-white border-neutral-300'
-                    }`}
-                  >
-                    <Body className={`text-sm ${
-                      isSelected ? 'text-white font-medium' : 'text-neutral-700'
-                    }`}>{value}</Body>
-                  </StyledTouchableOpacity>
-                );
-              })}
-              {/* Custom values (not in predefined list) */}
-              {profile.values
-                .filter(v => !AVAILABLE_VALUES.includes(v))
-                .map((customValue) => (
-                  <StyledTouchableOpacity
-                    key={customValue}
-                    activeOpacity={1}
-                    delayPressIn={0}
-                    onPress={() => {
-                      lightHaptic();
-                      setProfile(prevProfile => {
-                        if (!prevProfile) return prevProfile;
-                        return {
-                          ...prevProfile,
-                          values: prevProfile.values.filter(v => v !== customValue),
-                        };
-                      });
-                    }}
-                    className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
-                  >
-                    <Body className="text-sm text-white font-medium">{customValue}</Body>
-                  </StyledTouchableOpacity>
-                ))}
-              {/* "Other" Button */}
-              <StyledTouchableOpacity
-                onPress={() => {
-                  lightHaptic();
-                  setShowCustomValueModal(true);
-                }}
-                className="px-3 py-2 rounded-full border border-dashed border-neutral-400 bg-neutral-50"
-              >
-                <Body className="text-sm text-neutral-600">+ Other</Body>
-              </StyledTouchableOpacity>
-            </StyledView>
-          </Card>
-
-          {/* Interests */}
-          <Card className="mb-8">
-            <H3 className="mb-4">Interests <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
-            <Body className="text-neutral-600 text-sm mb-4">
-              Select or add your interests (Select up to 8)
-            </Body>
-
-            {/* Available Interests Grid */}
-            <StyledView className="flex-row flex-wrap gap-2 mb-4">
-              {AVAILABLE_INTERESTS.map((interest) => {
-                const isSelected = profile.interests.includes(interest);
-                return (
-                  <StyledTouchableOpacity
-                    key={interest}
-                    activeOpacity={1}
-                    delayPressIn={0}
-                    onPress={() => {
-                      lightHaptic();
-                      setProfile(prevProfile => {
-                        if (!prevProfile) return prevProfile;
-                        if (isSelected) {
-                          return {
-                            ...prevProfile,
-                            interests: prevProfile.interests.filter(i => i !== interest),
-                          };
-                        } else {
-                          if (prevProfile.interests.includes(interest)) return prevProfile;
-                          return {
-                            ...prevProfile,
-                            interests: [...prevProfile.interests, interest],
-                          };
-                        }
-                      });
-                    }}
-                    className={`px-3 py-2 rounded-full border ${
-                      isSelected
-                        ? 'bg-primary-500 border-primary-500'
-                        : 'bg-white border-neutral-300'
-                    }`}
-                  >
-                    <Body className={`text-sm ${
-                      isSelected ? 'text-white font-medium' : 'text-neutral-700'
-                    }`}>{interest}</Body>
-                  </StyledTouchableOpacity>
-                );
-              })}
-              {/* Custom interests (not in predefined list) */}
-              {profile.interests
-                .filter(i => !AVAILABLE_INTERESTS.includes(i))
-                .map((customInterest) => (
-                  <StyledTouchableOpacity
-                    key={customInterest}
-                    activeOpacity={1}
-                    delayPressIn={0}
-                    onPress={() => {
-                      lightHaptic();
-                      setProfile(prevProfile => {
-                        if (!prevProfile) return prevProfile;
-                        return {
-                          ...prevProfile,
-                          interests: prevProfile.interests.filter(i => i !== customInterest),
-                        };
-                      });
-                    }}
-                    className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
-                  >
-                    <Body className="text-sm text-white font-medium">{customInterest}</Body>
-                  </StyledTouchableOpacity>
-                ))}
-              {/* "Other" Button */}
-              <StyledTouchableOpacity
-                onPress={() => {
-                  lightHaptic();
-                  setShowCustomInterestModal(true);
-                }}
-                className="px-3 py-2 rounded-full border border-dashed border-neutral-400 bg-neutral-50"
-              >
-                <Body className="text-sm text-neutral-600">+ Other</Body>
-              </StyledTouchableOpacity>
-            </StyledView>
-          </Card>
+          {/* Interests - Extracted to separate component for performance */}
+          <InterestsSection
+            interests={profile.interests}
+            onToggleInterest={handleToggleInterest}
+            onShowCustomInterestModal={handleShowCustomInterestModal}
+          />
         </StyledView>
       </StyledScrollView>
 
@@ -2203,10 +2182,8 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                 returnKeyType="done"
                 onSubmitEditing={() => {
                   if (customEthnicityValue.trim()) {
-                    const currentEthnicities = profile?.ethnicity ? profile.ethnicity.split(' / ').filter(e => e.trim() !== '') : [];
-                    const updatedEthnicities = [...currentEthnicities, customEthnicityValue.trim()];
-                    setProfile({
-                      ...profile!,
+                    const updatedEthnicities = [...ethnicityArray, customEthnicityValue.trim()];
+                    updateProfile({
                       ethnicity: updatedEthnicities.filter(e => e.trim() !== '').join(' / '),
                     });
                     mediumHaptic();
@@ -2235,10 +2212,8 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               <StyledTouchableOpacity
                 onPress={() => {
                   if (customEthnicityValue.trim()) {
-                    const currentEthnicities = profile?.ethnicity ? profile.ethnicity.split(' / ').filter(e => e.trim() !== '') : [];
-                    const updatedEthnicities = [...currentEthnicities, customEthnicityValue.trim()];
-                    setProfile({
-                      ...profile!,
+                    const updatedEthnicities = [...ethnicityArray, customEthnicityValue.trim()];
+                    updateProfile({
                       ethnicity: updatedEthnicities.filter(e => e.trim() !== '').join(' / '),
                     });
                     mediumHaptic();

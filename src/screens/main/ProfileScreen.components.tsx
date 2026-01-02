@@ -664,47 +664,38 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
       </StyledView>
 
       <StyledView className="space-y-2">
+        {/* Age */}
+        <StyledView className="flex-row items-center justify-between py-2 border-b border-primary-100/50">
+          <StyledView className="flex-row items-center">
+            <Ionicons name="calendar-outline" size={16} color="#437FFF" />
+            <Body className="text-neutral-700 text-sm ml-2">Age</Body>
+          </StyledView>
+          <Body className="text-neutral-900 font-semibold text-sm">
+            {profile.age || '-'}
+          </Body>
+        </StyledView>
+
+        {/* Ethnicity */}
+        <StyledView className="flex-row items-center justify-between py-2 border-b border-primary-100/50">
+          <StyledView className="flex-row items-center">
+            <Ionicons name="body-outline" size={16} color="#437FFF" />
+            <Body className="text-neutral-700 text-sm ml-2">Ethnicity</Body>
+          </StyledView>
+          <Body className="text-neutral-900 font-semibold text-sm" numberOfLines={1}>
+            {profile.ethnicity || '-'}
+          </Body>
+        </StyledView>
+
         {/* Location */}
-        {profile.location && (
-          <StyledView className="flex-row items-center justify-between py-2 border-b border-primary-100/50">
-            <StyledView className="flex-row items-center">
-              <Ionicons name="location-outline" size={16} color="#437FFF" />
-              <Body className="text-neutral-700 text-sm ml-2">Location</Body>
-            </StyledView>
-            <Body className="text-neutral-900 font-semibold text-sm">
-              {profile.location}
-            </Body>
+        <StyledView className="flex-row items-center justify-between py-2 border-b border-primary-100/50">
+          <StyledView className="flex-row items-center">
+            <Ionicons name="location-outline" size={16} color="#437FFF" />
+            <Body className="text-neutral-700 text-sm ml-2">Location</Body>
           </StyledView>
-        )}
-
-        {/* Gender */}
-        {(profile.customMyGender || profile.interestedInGenders) && (
-          <StyledView className="flex-row items-center justify-between py-2 border-b border-primary-100/50">
-            <StyledView className="flex-row items-center">
-              <Ionicons name="person-outline" size={16} color="#437FFF" />
-              <Body className="text-neutral-700 text-sm ml-2">Gender</Body>
-            </StyledView>
-            <Body className="text-neutral-900 font-semibold text-sm" numberOfLines={1}>
-              {profile.customMyGender ||
-                (profile.interestedInGenders && profile.interestedInGenders.length > 0
-                  ? profile.interestedInGenders.map(g => g.charAt(0).toUpperCase() + g.slice(1)).join(', ')
-                  : '')}
-            </Body>
-          </StyledView>
-        )}
-
-        {/* Job */}
-        {profile.currentJob && (
-          <StyledView className="flex-row items-center justify-between py-2 border-b border-primary-100/50">
-            <StyledView className="flex-row items-center">
-              <Ionicons name="briefcase-outline" size={16} color="#437FFF" />
-              <Body className="text-neutral-700 text-sm ml-2">Job</Body>
-            </StyledView>
-            <Body className="text-neutral-900 font-semibold text-sm" numberOfLines={1}>
-              {profile.currentJob}
-            </Body>
-          </StyledView>
-        )}
+          <Body className="text-neutral-900 font-semibold text-sm">
+            {profile.location || '-'}
+          </Body>
+        </StyledView>
 
         {/* Values & Interests Count - Values Left, Interests Right */}
         {((profile.values?.length || 0) > 0 || (profile.interests?.length || 0) > 0) && (
@@ -734,6 +725,7 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
  */
 interface MatchPreferencesSummaryProps {
   preferences: UserProfile['preferences'];
+  preferredPolitics?: string[];
   dealbreakersCount?: number;
   preferredEthnicitiesCount?: number;
   interestsCount?: number;
@@ -743,6 +735,7 @@ interface MatchPreferencesSummaryProps {
 
 export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = ({
   preferences,
+  preferredPolitics,
   dealbreakersCount = 0,
   preferredEthnicitiesCount = 0,
   interestsCount = 0,
@@ -782,17 +775,6 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
       </StyledView>
 
       <StyledView className="space-y-2">
-        {/* Age Range */}
-        <StyledView className="flex-row items-center justify-between py-2 border-b border-purple-100/50">
-          <StyledView className="flex-row items-center">
-            <Ionicons name="calendar-outline" size={16} color="#7C3AED" />
-            <Body className="text-neutral-700 text-sm ml-2">Age Range</Body>
-          </StyledView>
-          <Body className="text-neutral-900 font-semibold text-sm">
-            {preferences.ageMin}-{preferences.ageMax}
-          </Body>
-        </StyledView>
-
         {/* Looking For */}
         <StyledView className="flex-row items-center justify-between py-2 border-b border-purple-100/50">
           <StyledView className="flex-row items-center">
@@ -800,22 +782,33 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
             <Body className="text-neutral-700 text-sm ml-2">Looking For</Body>
           </StyledView>
           <Body className="text-neutral-900 font-semibold text-sm capitalize">
-            {preferences.lookingFor?.replace('_', ' ')}
+            {preferences.lookingFor?.replace('_', ' ') || '-'}
           </Body>
         </StyledView>
 
         {/* Height Preference */}
-        {preferences.heightMin && preferences.heightMax && (
-          <StyledView className="flex-row items-center justify-between py-2">
-            <StyledView className="flex-row items-center">
-              <Ionicons name="resize-outline" size={16} color="#7C3AED" />
-              <Body className="text-neutral-700 text-sm ml-2">Height</Body>
-            </StyledView>
-            <Body className="text-neutral-900 font-semibold text-sm">
-              {Math.floor(preferences.heightMin / 12)}'{preferences.heightMin % 12}" - {Math.floor(preferences.heightMax / 12)}'{preferences.heightMax % 12}"
-            </Body>
+        <StyledView className="flex-row items-center justify-between py-2 border-b border-purple-100/50">
+          <StyledView className="flex-row items-center">
+            <Ionicons name="resize-outline" size={16} color="#7C3AED" />
+            <Body className="text-neutral-700 text-sm ml-2">Height</Body>
           </StyledView>
-        )}
+          <Body className="text-neutral-900 font-semibold text-sm">
+            {preferences.heightMin && preferences.heightMax
+              ? `${Math.floor(preferences.heightMin / 12)}'${preferences.heightMin % 12}" - ${Math.floor(preferences.heightMax / 12)}'${preferences.heightMax % 12}"`
+              : '-'}
+          </Body>
+        </StyledView>
+
+        {/* Preferred Politics */}
+        <StyledView className="flex-row items-center justify-between py-2">
+          <StyledView className="flex-row items-center">
+            <Ionicons name="flag-outline" size={16} color="#7C3AED" />
+            <Body className="text-neutral-700 text-sm ml-2">Preferred Politics</Body>
+          </StyledView>
+          <Body className="text-neutral-900 font-semibold text-sm" numberOfLines={1}>
+            {preferredPolitics && preferredPolitics.length > 0 ? preferredPolitics.join(', ') : '-'}
+          </Body>
+        </StyledView>
       </StyledView>
     </Card>
   );

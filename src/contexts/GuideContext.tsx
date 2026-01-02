@@ -87,16 +87,17 @@ export const GuideProvider: React.FC<GuideProviderProps> = ({ children }) => {
         return;
       }
 
-      // Check if already completed
-      const completed = await isGuideCompleted(guide.id);
-      if (completed) {
-        console.log(`[GuideContext] Guide "${guide.id}" already completed, skipping`);
-        return;
-      }
-
+      // Set flag immediately to prevent race conditions
       isStartingRef.current = true;
 
       try {
+        // Check if already completed
+        const completed = await isGuideCompleted(guide.id);
+        if (completed) {
+          console.log(`[GuideContext] Guide "${guide.id}" already completed, skipping`);
+          return;
+        }
+
         setActiveGuide(guide);
         setCurrentStep(0);
         setIsPlaying(true);

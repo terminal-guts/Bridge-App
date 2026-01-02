@@ -1,7 +1,7 @@
 # Bridge: Complete Vision Document
 **The first-ever community-driven dating experience**
 
-**All work in React Native for iOS (primary platform)**
+**All work in React Native. testing on iOS (primary platform)**
 
 *Last Updated: December 2025*
 

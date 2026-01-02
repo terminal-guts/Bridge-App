@@ -76,7 +76,7 @@ export const ChildrenStep: React.FC<ChildrenStepProps> = ({
   }) => (
     <StyledTouchableOpacity
       onPress={onPress}
-      className={`px-4 py-3 rounded-lg border mb-3 ${
+      className={`px-4 py-2.5 rounded-lg border mb-2.5 ${
         selected
           ? 'bg-primary-500 border-primary-500'
           : 'bg-white border-neutral-300'
@@ -95,15 +95,13 @@ export const ChildrenStep: React.FC<ChildrenStepProps> = ({
       onSkip={onNext}
       hasTextInput={false}
     >
-      <StyledView className="mt-8">
-        <H1 className="mb-3">Family & Children</H1>
-        <Body className="text-neutral-600 mb-8">
-          Help us understand your current family status and future plans.
-        </Body>
+      <StyledView className="mt-6">
+        <H1 className="mb-2">Children & Family Plans</H1>
+        <Body className="text-neutral-600 mb-6">Share your current situation and future aspirations</Body>
 
         {/* Do you have children? */}
-        <Card className="mb-5 p-5">
-          <H3 className="mb-3">Do you have children?</H3>
+        <Card className="mb-4 p-4">
+          <H3 className="mb-2.5">Do you have children?</H3>
           <StyledView>
             {CHILDREN_STATUS_OPTIONS.map((option) => (
               <OptionButton
@@ -123,11 +121,8 @@ export const ChildrenStep: React.FC<ChildrenStepProps> = ({
         </Card>
 
         {/* Family Plans */}
-        <Card className="mb-5 p-5">
-          <H3 className="mb-3">Family Plans</H3>
-          <Body className="text-neutral-600 text-sm mb-3">
-            Are you open to having children in the future?
-          </Body>
+        <Card className="mb-4 p-4">
+          <H3 className="mb-2.5">Family Plans</H3>
           <StyledView>
             {FAMILY_PLANS_OPTIONS.map((option) => (
               <OptionButton

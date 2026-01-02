@@ -469,3 +469,210 @@ const generateSuggestions = (
 
   return suggestions;
 };
+
+/**
+ * Match Preferences Completion
+ * Calculates completion for ONLY match preferences fields (separate 100% score)
+ */
+export interface MatchPreferencesCompleteness {
+  percentage: number;
+  completedCount: number;
+  totalCount: number;
+  missingFields: string[];
+}
+
+/**
+ * Edit Profile Completion (About Me fields only)
+ * Excludes photos and match preferences which have their own screens
+ */
+export interface EditProfileCompleteness {
+  percentage: number;
+  completedCount: number;
+  totalCount: number;
+  missingFields: string[];
+}
+
+/**
+ * Calculate Edit Profile completion percentage
+ * Matches the "About Me" calculation from Profile Strength Dashboard
+ * All fields equally weighted (1 point each)
+ * Excludes: Photos, Match Preferences, Deep Questions
+ */
+export const calculateEditProfileCompleteness = (
+  profile: UserProfile | null
+): EditProfileCompleteness => {
+  if (!profile) {
+    return {
+      percentage: 0,
+      completedCount: 0,
+      totalCount: 19,
+      missingFields: [],
+    };
+  }
+
+  let completedCount = 0;
+  const totalCount = 19; // Total mandatory fields in "About Me" section
+  const missingFields: string[] = [];
+
+  // Basic Demographics (11 fields)
+  if (profile.firstName?.trim()) completedCount++; else missingFields.push('First Name');
+  if (profile.lastName?.trim()) completedCount++; else missingFields.push('Last Name');
+  if (profile.age && profile.age >= 18) completedCount++; else missingFields.push('Age');
+  if (profile.height?.trim()) completedCount++; else missingFields.push('Height');
+  if (profile.ethnicity?.trim()) completedCount++; else missingFields.push('Ethnicity');
+  if (profile.location?.trim()) completedCount++; else missingFields.push('Location');
+  if (profile.currentJob?.trim()) completedCount++; else missingFields.push('Occupation');
+
+  // Identity (3 fields)
+  if ((profile.pronounsList && profile.pronounsList.length > 0) ||
+      (profile.pronouns && profile.pronouns !== 'prefer_not_to_say')) {
+    completedCount++;
+  } else {
+    missingFields.push('Pronouns');
+  }
+  if (profile.gender && profile.gender.length > 0) completedCount++; else missingFields.push('Gender');
+  if (profile.religion?.trim()) completedCount++; else missingFields.push('Religion');
+  if (profile.politicalLeaning && profile.politicalLeaning !== 'prefer_not_to_say') {
+    completedCount++;
+  } else {
+    missingFields.push('Political Leaning');
+  }
+
+  // Family (2 fields)
+  if (profile.hasChildren !== undefined && profile.hasChildren !== null) completedCount++; else missingFields.push('Children Status');
+  if (profile.familyPlans?.trim()) completedCount++; else missingFields.push('Family Plans');
+
+  // Lifestyle/Substances (4 fields - each counts separately)
+  if (profile.drinkingFrequency?.trim()) completedCount++; else missingFields.push('Drinking');
+  if (profile.cannabisFrequency?.trim()) completedCount++; else missingFields.push('Cannabis');
+  if (profile.tobaccoFrequency?.trim()) completedCount++; else missingFields.push('Tobacco/Vaping');
+  if (profile.otherDrugsFrequency?.trim()) completedCount++; else missingFields.push('Other Drugs');
+
+  // Personal (2 fields - require 3+ each)
+  const interestCount = profile.interests?.length || 0;
+  const valueCount = profile.values?.length || 0;
+
+  if (interestCount >= 3) completedCount++; else missingFields.push(`Interests (${interestCount}/3)`);
+  if (valueCount >= 3) completedCount++; else missingFields.push(`Values (${valueCount}/3)`);
+
+  const percentage = Math.round((completedCount / totalCount) * 100);
+
+  return {
+    percentage,
+    completedCount,
+    totalCount,
+    missingFields,
+  };
+};
+
+/**
+ * Calculate Match Preferences completion percentage
+ * Only considers the 8 mandatory match preference fields
+ */
+export const calculateMatchPreferencesCompleteness = (
+  profile: UserProfile | null
+): MatchPreferencesCompleteness => {
+  if (!profile) {
+    return {
+      percentage: 0,
+      completedCount: 0,
+      totalCount: 8,
+      missingFields: [
+        "I'm Looking For",
+        'Gender',
+        'Age Range',
+        'Height',
+        'Dating Distance',
+        'Ethnicity',
+        'Politics',
+        'Lifestyle',
+      ],
+    };
+  }
+
+  let completedCount = 0;
+  const missingFields: string[] = [];
+
+  // 1. I'm Looking For (relationship type)
+  if (profile.preferences?.lookingFor && profile.preferences.lookingFor.trim()) {
+    completedCount++;
+  } else {
+    missingFields.push("I'm Looking For");
+  }
+
+  // 2. Gender (interestedInGenders)
+  if (profile.interestedInGenders && profile.interestedInGenders.length > 0) {
+    completedCount++;
+  } else {
+    missingFields.push('Gender');
+  }
+
+  // 3. Age Range
+  if (profile.preferences?.ageMin && profile.preferences?.ageMax) {
+    completedCount++;
+  } else {
+    missingFields.push('Age Range');
+  }
+
+  // 4. Height Preference
+  if (profile.preferences?.heightMin && profile.preferences?.heightMax) {
+    completedCount++;
+  } else {
+    missingFields.push('Height');
+  }
+
+  // 5. Dating Distance
+  if (profile.preferences?.maxDistance !== undefined) {
+    completedCount++;
+  } else {
+    missingFields.push('Dating Distance');
+  }
+
+  // 6. Preferred Ethnicities
+  if (profile.preferredEthnicities && profile.preferredEthnicities.length > 0) {
+    completedCount++;
+  } else {
+    missingFields.push('Ethnicity');
+  }
+
+  // 7. Preferred Politics
+  if (profile.preferredPolitics && profile.preferredPolitics.length > 0) {
+    completedCount++;
+  } else {
+    missingFields.push('Politics');
+  }
+
+  // 8. Partner Lifestyle Preferences (all 4 required - arrays must have at least one selection each)
+  const drinkingValid = Array.isArray(profile.partnerLifestylePreferences?.drinking)
+    ? profile.partnerLifestylePreferences.drinking.length > 0
+    : (profile.partnerLifestylePreferences?.drinking && profile.partnerLifestylePreferences.drinking.trim() !== '');
+
+  const cannabisValid = Array.isArray(profile.partnerLifestylePreferences?.cannabis)
+    ? profile.partnerLifestylePreferences.cannabis.length > 0
+    : (profile.partnerLifestylePreferences?.cannabis && profile.partnerLifestylePreferences.cannabis.trim() !== '');
+
+  const tobaccoValid = Array.isArray(profile.partnerLifestylePreferences?.tobacco)
+    ? profile.partnerLifestylePreferences.tobacco.length > 0
+    : (profile.partnerLifestylePreferences?.tobacco && profile.partnerLifestylePreferences.tobacco.trim() !== '');
+
+  const otherDrugsValid = Array.isArray(profile.partnerLifestylePreferences?.otherDrugs)
+    ? profile.partnerLifestylePreferences.otherDrugs.length > 0
+    : (profile.partnerLifestylePreferences?.otherDrugs && profile.partnerLifestylePreferences.otherDrugs.trim() !== '');
+
+  const hasAllLifestylePrefs = drinkingValid && cannabisValid && tobaccoValid && otherDrugsValid;
+
+  if (hasAllLifestylePrefs) {
+    completedCount++;
+  } else {
+    missingFields.push('Lifestyle');
+  }
+
+  const percentage = Math.round((completedCount / 8) * 100);
+
+  return {
+    percentage,
+    completedCount,
+    totalCount: 8,
+    missingFields,
+  };
+};

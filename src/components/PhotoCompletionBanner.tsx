@@ -1,12 +1,13 @@
 /**
- * Profile Completion Banner Component
+ * Photo Completion Banner Component
  *
- * Displays a persistent banner encouraging users to complete their profile to 100%
- * to start matching. Can be dismissed by the user and persists dismissal state.
+ * Displays a banner encouraging users to complete their photo uploads (6 photos total).
+ * Only shown when About Me section is 100% complete but photos < 6.
+ * Can be dismissed by the user and persists dismissal state.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, TouchableOpacity, Animated } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,20 +15,36 @@ import { Body } from './ui';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile } from '../types';
 import { lightHaptic } from '../utils/haptics';
-import { calculateProfileCompleteness } from '../utils/profileCompleteness';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 
-interface ProfileCompletionBannerProps {
+interface PhotoCompletionBannerProps {
   profile: UserProfile | null;
+  aboutMePercentage: number; // Pass in the About Me completion percentage
   onPress?: () => void;
 }
 
-const BANNER_DISMISSED_KEY = '@profile_completion_banner_dismissed';
+const BANNER_DISMISSED_KEY = '@photo_completion_banner_dismissed';
 
-export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = ({
+/**
+ * Calculate photo completion metrics
+ */
+const calculatePhotoCompletion = (profile: UserProfile | null): {
+  count: number;
+  percentage: number;
+} => {
+  if (!profile) return { count: 0, percentage: 0 };
+
+  const photoCount = profile.photos?.length || 0;
+  const percentage = photoCount >= 6 ? 100 : Math.round((photoCount / 6) * 100);
+
+  return { count: photoCount, percentage };
+};
+
+export const PhotoCompletionBanner: React.FC<PhotoCompletionBannerProps> = ({
   profile,
+  aboutMePercentage,
   onPress,
 }) => {
   const [isDismissed, setIsDismissed] = useState(false);
@@ -40,7 +57,7 @@ export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = (
         const dismissed = await AsyncStorage.getItem(BANNER_DISMISSED_KEY);
         setIsDismissed(dismissed === 'true');
       } catch (error) {
-        console.error('Error loading banner dismissal state:', error);
+        console.error('Error loading photo banner dismissal state:', error);
       } finally {
         setIsLoading(false);
       }
@@ -55,7 +72,7 @@ export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = (
       setIsDismissed(true);
       lightHaptic();
     } catch (error) {
-      console.error('Error saving banner dismissal state:', error);
+      console.error('Error saving photo banner dismissal state:', error);
     }
   };
 
@@ -69,19 +86,17 @@ export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = (
     return null;
   }
 
-  // Memoize profile completion calculation for performance
-  const completion = useMemo(() => {
-    return calculateProfileCompleteness(profile).percentage;
-  }, [profile]);
+  const photoCompletion = calculatePhotoCompletion(profile);
 
-  // Don't render if profile is 100% complete
-  if (completion >= 100) {
+  // DISPLAY LOGIC:
+  // Only show when About Me section is 100% complete AND photos < 6
+  if (aboutMePercentage < 100 || photoCompletion.count >= 6) {
     return null;
   }
 
   return (
     <LinearGradient
-      colors={['#3B82F6', '#2563EB']} // Blue gradient: blue-500 to blue-600
+      colors={['#10B981', '#059669']} // Green gradient: green-500 to green-600
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 0 }}
       style={{
@@ -90,7 +105,7 @@ export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = (
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        shadowColor: '#2563EB',
+        shadowColor: '#059669',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -108,14 +123,14 @@ export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = (
         <StyledView
           className="w-10 h-10 bg-white/20 rounded-full items-center justify-center mr-3"
         >
-          <Ionicons name="star" size={20} color="#FFFFFF" />
+          <Ionicons name="camera" size={20} color="#FFFFFF" />
         </StyledView>
         <StyledView className="flex-1">
           <Body className="text-white font-bold text-sm mb-0.5">
-            {completion}% Complete
+            {photoCompletion.count}/6 Photos ({photoCompletion.percentage}%)
           </Body>
           <Body className="text-white/90 text-xs">
-            Reach 100% profile strength to start matching
+            Add {6 - photoCompletion.count} more photo{6 - photoCompletion.count > 1 ? 's' : ''} for a complete profile
           </Body>
         </StyledView>
       </StyledTouchableOpacity>

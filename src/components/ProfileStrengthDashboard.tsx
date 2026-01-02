@@ -14,6 +14,7 @@ import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 import { H2, H3, Body, Card } from './ui';
 import { UserProfile } from '../types';
+import { calculateMatchPreferencesCompleteness } from '../utils/profileCompleteness';
 
 interface ProfileStrengthDashboardProps {
   profile: UserProfile;
@@ -28,6 +29,7 @@ interface SectionScore {
   maxScore: number;
   suggestions: string[];
   color: string;
+  displayPercentage?: number; // Override calculated percentage for display
 }
 
 const StyledView = styled(View);
@@ -42,63 +44,66 @@ const calculateStrength = (profile: UserProfile): {
 } => {
   const sections: SectionScore[] = [];
 
-  // 1. About Me (max 23 points) - Basic info, interests, values, lifestyle (school is optional, not counted)
+  // 1. About Me (max 19 points) - All fields equally weighted (1 point each)
   let aboutScore = 0;
   const aboutSuggestions: string[] = [];
 
-  if (profile.age) aboutScore += 2;
-  if (profile.height) aboutScore += 1;
-  if (profile.ethnicity) aboutScore += 1;
-  if (profile.location) aboutScore += 2;
-  else aboutSuggestions.push('Add your location');
-  if (profile.currentJob) aboutScore += 3;
-  else aboutSuggestions.push('Add your occupation');
-  // School is optional - not counted towards profile strength
+  // Basic Demographics (7 fields)
+  if (profile.firstName?.trim()) aboutScore += 1; else aboutSuggestions.push('Add first name');
+  if (profile.lastName?.trim()) aboutScore += 1; else aboutSuggestions.push('Add last name');
+  if (profile.age) aboutScore += 1; else aboutSuggestions.push('Add your age');
+  if (profile.height) aboutScore += 1; else aboutSuggestions.push('Add your height');
+  if (profile.ethnicity) aboutScore += 1; else aboutSuggestions.push('Add your ethnicity');
+  if (profile.location) aboutScore += 1; else aboutSuggestions.push('Add your location');
+  if (profile.currentJob) aboutScore += 1; else aboutSuggestions.push('Add your occupation');
 
+  // Identity (4 fields)
+  if ((profile.pronounsList && profile.pronounsList.length > 0) ||
+      (profile.pronouns && profile.pronouns !== 'prefer_not_to_say')) {
+    aboutScore += 1;
+  } else {
+    aboutSuggestions.push('Add your pronouns');
+  }
+  if (profile.gender && profile.gender.length > 0) aboutScore += 1; else aboutSuggestions.push('Add your gender');
+  if (profile.religion) aboutScore += 1; else aboutSuggestions.push('Add your religion');
+  if (profile.politicalLeaning && profile.politicalLeaning !== 'prefer_not_to_say') {
+    aboutScore += 1;
+  } else {
+    aboutSuggestions.push('Add political views');
+  }
+
+  // Family (2 fields)
+  if (profile.hasChildren !== undefined && profile.hasChildren !== null) aboutScore += 1; else aboutSuggestions.push('Answer children status');
+  if (profile.familyPlans) aboutScore += 1; else aboutSuggestions.push('Add family plans');
+
+  // Lifestyle/Substances (4 fields - each counts separately)
+  if (profile.drinkingFrequency) aboutScore += 1; else aboutSuggestions.push('Add drinking habits');
+  if (profile.cannabisFrequency) aboutScore += 1; else aboutSuggestions.push('Add cannabis habits');
+  if (profile.tobaccoFrequency) aboutScore += 1; else aboutSuggestions.push('Add tobacco/vaping habits');
+  if (profile.otherDrugsFrequency) aboutScore += 1; else aboutSuggestions.push('Add other drugs habits');
+
+  // Personal (2 fields - require 3+ each)
   const interestCount = profile.interests?.length || 0;
   const valueCount = profile.values?.length || 0;
-  if (interestCount >= 3) aboutScore += 4;
+  if (interestCount >= 3) aboutScore += 1;
   else aboutSuggestions.push(`Add ${Math.max(0, 3 - interestCount)} more interests`);
-  if (valueCount >= 3) aboutScore += 4;
+  if (valueCount >= 3) aboutScore += 1;
   else aboutSuggestions.push(`Add ${Math.max(0, 3 - valueCount)} more values`);
-
-  if (profile.drinkingFrequency) aboutScore += 2;
-  if (profile.hasChildren) aboutScore += 2;
-  if (profile.familyPlans) aboutScore += 2;
 
   sections.push({
     name: 'About Me',
     icon: 'person-outline',
     score: aboutScore,
-    maxScore: 23,
+    maxScore: 19,
     suggestions: aboutSuggestions.slice(0, 2),
     color: '#437FFF',
   });
 
   // 2. Match Preferences (max 25 points)
-  // Core preferences from onboarding should give 100%
-  let preferencesScore = 0;
-  const preferencesSuggestions: string[] = [];
-
-  // Age range (8 points) - use explicit null/undefined check since 0 is falsy
-  const hasAgeMin = profile.preferences?.ageMin !== undefined && profile.preferences?.ageMin !== null;
-  const hasAgeMax = profile.preferences?.ageMax !== undefined && profile.preferences?.ageMax !== null;
-  if (hasAgeMin && hasAgeMax) preferencesScore += 8;
-  else preferencesSuggestions.push('Set age range preference');
-
-  // Gender preference (8 points) - check both interestedInGenders and preferences.gender
-  if ((profile.interestedInGenders && profile.interestedInGenders.length > 0) || profile.preferences?.gender) {
-    preferencesScore += 8;
-  } else {
-    preferencesSuggestions.push('Set gender preference');
-  }
-
-  // Looking for (9 points) - auto-granted since it's forced to "Relationship" in onboarding
-  preferencesScore += 9;
-
-  // Height preference - OPTIONAL, not counted (not in onboarding)
-  // Dealbreakers - OPTIONAL, not counted (not in onboarding)
-  // Preferred ethnicities - OPTIONAL, not counted (not in onboarding)
+  // All 7 mandatory match preference fields required for 100%
+  const matchPrefsCompletion = calculateMatchPreferencesCompleteness(profile);
+  const preferencesScore = Math.round((matchPrefsCompletion.percentage / 100) * 25);
+  const preferencesSuggestions: string[] = matchPrefsCompletion.missingFields.map(field => `Set ${field.toLowerCase()}`);
 
   sections.push({
     name: 'Match Preferences',
@@ -107,6 +112,7 @@ const calculateStrength = (profile: UserProfile): {
     maxScore: 25,
     suggestions: preferencesSuggestions.slice(0, 2),
     color: '#7C3AED',
+    displayPercentage: matchPrefsCompletion.percentage, // Use exact percentage from calculator
   });
 
   // 3. Photos (max 25 points)
@@ -229,7 +235,8 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
       {/* Compact 4-Category Grid */}
       <StyledView className="flex-row flex-wrap gap-2">
         {sections.map((section, index) => {
-          const percentage = Math.round((section.score / section.maxScore) * 100);
+          // Use displayPercentage if provided, otherwise calculate from score
+          const percentage = section.displayPercentage ?? Math.round((section.score / section.maxScore) * 100);
           const sectionComplete = percentage === 100;
 
           return (

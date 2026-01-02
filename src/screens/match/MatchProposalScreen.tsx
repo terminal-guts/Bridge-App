@@ -257,16 +257,26 @@ const CommunityScore: React.FC<{ score: number; endorsement: FriendEndorsement }
   const animatedValue = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const [displayedScore, setDisplayedScore] = useState(0);
+  const listenerRef = useRef<string | null>(null);
 
   useEffect(() => {
     animatedValue.setValue(0);
-    Animated.parallel([
+    const animation = Animated.parallel([
       Animated.timing(animatedValue, { toValue: displayScore, duration: 1200, easing: ANIMATION.EASING, useNativeDriver: false }),
       Animated.spring(scaleAnim, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true }),
-    ]).start();
+    ]);
+    animation.start();
 
-    const listener = animatedValue.addListener(({ value }) => setDisplayedScore(Math.round(value)));
-    return () => animatedValue.removeListener(listener);
+    listenerRef.current = animatedValue.addListener(({ value }) => setDisplayedScore(Math.round(value)));
+
+    return () => {
+      animation.stop();
+      if (listenerRef.current) {
+        animatedValue.removeListener(listenerRef.current);
+        listenerRef.current = null;
+      }
+      animatedValue.stopAnimation();
+    };
   }, [displayScore, animatedValue, scaleAnim]);
 
   const colors = displayScore >= 80
@@ -660,17 +670,22 @@ const CelebrationOverlay: React.FC<{ visible: boolean; recipientName: string; on
 
       Animated.timing(rotateAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
 
+      const heartTimers: NodeJS.Timeout[] = [];
       heartScales.forEach((scale, index) => {
-        setTimeout(() => {
+        const heartTimer = setTimeout(() => {
           Animated.sequence([
             Animated.spring(scale, { toValue: 1, friction: 4, tension: 50, useNativeDriver: true }),
             Animated.timing(scale, { toValue: 0, duration: 400, delay: 800, useNativeDriver: true }),
           ]).start();
         }, index * 80);
+        heartTimers.push(heartTimer);
       });
 
       const timer = setTimeout(onComplete, 2000);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        heartTimers.forEach(t => clearTimeout(t));
+      };
     }
   }, [visible, scaleAnim, rotateAnim, heartScales, onComplete]);
 
@@ -777,6 +792,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   const flatListRef = useRef<FlatList>(null);
   const swipeX = useRef(new Animated.Value(0)).current;
   const swipeOpacity = useRef(new Animated.Value(1)).current;
+  const navigationTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const profile = effectiveProfile;
   const userInterests = useMemo(() => ['Travel', 'Hiking', 'Photography', 'Music', 'Cooking'], []);
@@ -876,7 +892,15 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
     }
 
     warningHaptic();
-    setTimeout(() => { setIsPassing(false); navigation.navigate('MainTabs', { screen: 'Love', params: { variant: 'post_pass' } }); }, 500);
+    // Clear any existing navigation timer
+    if (navigationTimerRef.current) {
+      clearTimeout(navigationTimerRef.current);
+    }
+    navigationTimerRef.current = setTimeout(() => {
+      setIsPassing(false);
+      navigation.navigate('MainTabs', { screen: 'Love', params: { variant: 'post_pass' } });
+      navigationTimerRef.current = null;
+    }, 500);
   }, [navigation, route.params]);
 
   const handleOptionsMenu = useCallback(() => {
@@ -892,6 +916,16 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   }, [navigation]);
 
   const handleViewDeepQuestions = useCallback(() => { if (profile) { lightHaptic(); navigation.navigate('DeepQuestions', { userId: profile.userId, editable: false }); } }, [navigation, profile]);
+
+  // Cleanup navigation timer on unmount
+  useEffect(() => {
+    return () => {
+      if (navigationTimerRef.current) {
+        clearTimeout(navigationTimerRef.current);
+        navigationTimerRef.current = null;
+      }
+    };
+  }, []);
 
   if (loading) return <StyledView className="flex-1 bg-black"><StatusBar barStyle="light-content" /><LoadingSkeleton /></StyledView>;
 

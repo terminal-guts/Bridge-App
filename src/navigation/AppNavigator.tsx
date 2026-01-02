@@ -42,6 +42,7 @@ import { MatchPreferencesScreen } from '../screens/profile/MatchPreferencesScree
 import { ProfileVerificationScreen } from '../screens/profile/ProfileVerificationScreen';
 import { BlockedUsersScreen } from '../screens/profile/BlockedUsersScreen';
 import { PauseProfileScreen } from '../screens/profile/PauseProfileScreen';
+import { ChangePhoneNumberScreen } from '../screens/profile/ChangePhoneNumberScreen';
 
 // Legal Screens
 import { TermsOfService } from '../screens/legal/TermsOfService';
@@ -224,6 +225,7 @@ export const AppNavigator = () => {
           <Stack.Screen name="ProfileVerification" component={ProfileVerificationScreen} />
           <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} />
           <Stack.Screen name="PauseProfile" component={PauseProfileScreen} />
+          <Stack.Screen name="ChangePhoneNumber" component={ChangePhoneNumberScreen} />
 
           {/* Legal & Support */}
           <Stack.Screen name="TermsOfService" component={TermsOfService} />

@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, SafeAreaView, StatusBar, ScrollView, Image, TouchableOpacity, Alert, RefreshControl, Modal, Switch, Animated, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
 import { H2, H3, Body, Card, Button, ProfileSkeleton } from '../../components/ui';
@@ -9,6 +10,7 @@ import { requirePhoneVerification } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { getUserMatches, updateMatchExitFeedback } from '../../services/matchService';
 import { getFriendCount } from '../../services/friendService';
+import { calculateProfileCompleteness } from '../../utils/profileCompleteness';
 import { Ionicons } from '@expo/vector-icons';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { OfflineBanner } from '../../components/OfflineBanner';
@@ -267,10 +269,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   // Always reload profile when returning to screen to ensure fresh data after edits
   useFocusEffect(
     useCallback(() => {
-      // Always reload profile data on focus to show latest changes after edit
-      loadProfile();
-      loadMatches();
-      loadFriendCount();
+      // Load all data in parallel for better performance
+      Promise.all([
+        loadProfile(),
+        loadMatches(),
+        loadFriendCount()
+      ]).catch(error => {
+        console.error('Failed to load profile data:', error);
+        // Individual functions handle their own errors, this is just a safety net
+      });
+
+      // Clear banner dismissal on app start (for development/testing)
+      // Remove this in production if you want dismissal to persist
+      AsyncStorage.removeItem('@profile_completion_banner_dismissed').catch(console.error);
     }, [loadProfile, loadMatches, loadFriendCount])
   );
 
@@ -637,11 +648,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       <Body className="text-neutral-900 font-bold text-base mb-1">
                         {photoCount === 0 ? 'Add Photos' : 'Complete Your Photos'}
                       </Body>
-                      <Body className="text-neutral-600 text-sm leading-5">
-                        {photoCount === 0
-                          ? 'Upload 6 photos for a complete profile'
-                          : `Add ${6 - photoCount} more photo${6 - photoCount > 1 ? 's' : ''} for a complete profile (${photoCount}/6)`}
-                      </Body>
+                      {photoCount === 0 ? (
+                        <Body className="text-neutral-600 text-sm leading-5">
+                          Upload 6 photos for a complete profile
+                        </Body>
+                      ) : (
+                        <Body className="text-neutral-600 text-sm leading-5">
+                          Add {6 - photoCount} more photo{6 - photoCount > 1 ? 's' : ''} for a complete profile{' '}
+                          <Body className="text-error font-bold text-sm">
+                            ({photoCount}/6)
+                          </Body>
+                        </Body>
+                      )}
                     </StyledView>
                     <Ionicons name="chevron-forward" size={20} color="#7C3AED" />
                   </StyledView>
@@ -660,6 +678,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           {profile?.preferences && (
             <MatchPreferencesSummary
               preferences={profile.preferences}
+              preferredPolitics={profile.preferredPolitics}
               dealbreakersCount={profile.dealbreakers?.length || 0}
               preferredEthnicitiesCount={profile.preferredEthnicities?.length || 0}
               interestsCount={profile.interests?.length || 0}
@@ -1067,65 +1086,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   };
 
   const renderMatchesTab = () => {
-    // Calculate profile completion to show appropriate empty state message
-    const calculateProfileCompletion = (): number => {
-      if (!profile) return 0;
-
-      let totalScore = 0;
-      let maxTotal = 0;
-
-      // About Me (max 23)
-      let aboutScore = 0;
-      if (profile.age) aboutScore += 2;
-      if (profile.height) aboutScore += 1;
-      if (profile.ethnicity) aboutScore += 1;
-      if (profile.location) aboutScore += 2;
-      if (profile.currentJob) aboutScore += 3;
-      if ((profile.interests?.length || 0) >= 3) aboutScore += 4;
-      if ((profile.values?.length || 0) >= 3) aboutScore += 4;
-      if (profile.drinkingFrequency) aboutScore += 2;
-      if (profile.hasChildren) aboutScore += 2;
-      if (profile.familyPlans) aboutScore += 2;
-      totalScore += aboutScore;
-      maxTotal += 23;
-
-      // Match Preferences (max 25)
-      let preferencesScore = 0;
-      const hasAgeMin = profile.preferences?.ageMin !== undefined && profile.preferences?.ageMin !== null;
-      const hasAgeMax = profile.preferences?.ageMax !== undefined && profile.preferences?.ageMax !== null;
-      if (hasAgeMin && hasAgeMax) preferencesScore += 8;
-      if ((profile.interestedInGenders && profile.interestedInGenders.length > 0) || profile.preferences?.gender) {
-        preferencesScore += 8;
-      }
-      preferencesScore += 9; // Looking for is auto-granted
-      totalScore += preferencesScore;
-      maxTotal += 25;
-
-      // Photos (max 25)
-      const photoCount = profile.photos?.length || 0;
-      const photosScore = photoCount >= 6 ? 25 : Math.round((photoCount / 6) * 25);
-      totalScore += photosScore;
-      maxTotal += 25;
-
-      // Deep Questions (max 25)
-      const displayedCount = profile.displayedQuestions?.length || 0;
-      const answeredCount = profile.deepQuestions?.length || 0;
-      let questionsScore = 0;
-      if (displayedCount >= 3) {
-        questionsScore = 25;
-      } else if (displayedCount > 0) {
-        questionsScore = Math.round((displayedCount / 3) * 25);
-      } else if (answeredCount > 0) {
-        questionsScore = Math.min(Math.round((answeredCount / 3) * 10), 10);
-      }
-      totalScore += questionsScore;
-      maxTotal += 25;
-
-      return Math.round((totalScore / maxTotal) * 100);
-    };
-
-    const profileCompletion = calculateProfileCompletion();
-    const isProfileComplete = profileCompletion === 100;
+    // Calculate profile completion to show appropriate empty state message (memoized for performance)
+    const { profileCompletion, isProfileComplete } = useMemo(() => {
+      const completionData = calculateProfileCompleteness(profile);
+      return {
+        profileCompletion: completionData.percentage,
+        isProfileComplete: completionData.percentage === 100
+      };
+    }, [profile]);
 
     return (
       <StyledView className="px-4 py-6">

@@ -64,6 +64,16 @@ const formatFrequency = (value?: string): string | null => {
   return value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 };
 
+// Format height from inches to feet and inches
+const formatHeight = (height?: string): string | null => {
+  if (!height) return null;
+  const inches = parseInt(height);
+  if (isNaN(inches)) return height; // Return as-is if not a number
+  const feet = Math.floor(inches / 12);
+  const remainingInches = inches % 12;
+  return `${feet}'${remainingInches}"`;
+};
+
 // Loading skeleton
 const LoadingSkeleton: React.FC = () => {
   const pulseAnim = useRef(new Animated.Value(0.4)).current;
@@ -269,18 +279,21 @@ const Tag: React.FC<{ label: string; variant?: 'default' | 'primary' | 'success'
 // Get frequency level for visual indicator
 const getFrequencyLevel = (value: string): number => {
   const lower = value.toLowerCase();
-  if (lower.includes('never') || lower.includes('no')) return 0;
-  if (lower.includes('rarely') || lower.includes('sometimes')) return 1;
-  if (lower.includes('socially') || lower.includes('occasional')) return 2;
-  if (lower.includes('often') || lower.includes('regular')) return 3;
-  if (lower.includes('daily') || lower.includes('yes') || lower.includes('frequently')) return 4;
-  return 2;
+  // Special case: prefer not to say = -1 (no notches)
+  if (lower.includes('prefer not to say') || lower === 'prefer_not_to_say') return -1;
+  // No = 0 (1 notch)
+  if (lower === 'no') return 0;
+  // Sometimes = 1 (2 notches)
+  if (lower === 'sometimes') return 1;
+  // Yes = 2 (3 notches)
+  if (lower === 'yes') return 2;
+  return 1; // default to sometimes
 };
 
 // Enhanced lifestyle row with visual frequency indicator
 const LifestyleRow: React.FC<{ icon: string; label: string; value: string }> = ({ icon, label, value }) => {
   const level = getFrequencyLevel(value);
-  const colors = ['#10B981', '#84CC16', '#F59E0B', '#F97316', '#EF4444'];
+  const colors = ['#10B981', '#F59E0B', '#EF4444']; // Green for No, Orange for Sometimes, Red for Yes
 
   return (
     <StyledView className="flex-row items-center justify-between py-3.5 border-b border-neutral-100/80">
@@ -291,18 +304,20 @@ const LifestyleRow: React.FC<{ icon: string; label: string; value: string }> = (
         <Body className="text-neutral-700 ml-3 font-medium">{label}</Body>
       </StyledView>
       <StyledView className="flex-row items-center">
-        {/* Visual frequency dots */}
-        <StyledView className="flex-row mr-3">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <StyledView
-              key={i}
-              className="w-2 h-2 rounded-full mx-0.5"
-              style={{
-                backgroundColor: i <= level ? colors[level] : '#E5E7EB',
-              }}
-            />
-          ))}
-        </StyledView>
+        {/* Visual frequency notches - only show if not "prefer not to say" */}
+        {level >= 0 && (
+          <StyledView className="flex-row mr-3">
+            {[0, 1, 2].map((i) => (
+              <StyledView
+                key={i}
+                className="w-2 h-2 rounded-full mx-0.5"
+                style={{
+                  backgroundColor: i <= level ? colors[level] : '#E5E7EB',
+                }}
+              />
+            ))}
+          </StyledView>
+        )}
         <Body className="text-neutral-900 font-semibold text-sm" style={{ minWidth: 80, textAlign: 'right' }}>
           {value}
         </Body>
@@ -474,7 +489,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation, route,
   if (profile.pronounsList && profile.pronounsList.length > 0) {
     basicInfoPills.push({ icon: 'chatbubble-outline', text: profile.pronounsList.join('/') });
   }
-  if (profile.height) basicInfoPills.push({ icon: 'resize-outline', text: profile.height });
+  if (profile.height) basicInfoPills.push({ icon: 'resize-outline', text: formatHeight(profile.height) || profile.height });
   if (profile.location) basicInfoPills.push({ icon: 'location-outline', text: profile.location });
   if (profile.hometown) basicInfoPills.push({ icon: 'home-outline', text: `From ${profile.hometown}` });
   if (profile.ethnicity) basicInfoPills.push({ icon: 'globe-outline', text: profile.ethnicity });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity, Alert, Modal, Animated, Keyboard, TextInput, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { H3, Body, Card, Button } from '../../components/ui';
@@ -10,6 +10,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { getCurrentUser } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
+import { calculateMatchPreferencesCompleteness } from '../../utils/profileCompleteness';
 
 interface MatchPreferencesScreenProps {
   navigation: NavigationProp<RootStackParamList>;
@@ -38,6 +39,7 @@ const LIFESTYLE_FREQUENCY_OPTIONS = [
   { value: 'no', label: 'No' },
   { value: 'sometimes', label: 'Sometimes' },
   { value: 'yes', label: 'Yes' },
+  { value: 'dont_care', label: "Don't Care" },
 ];
 
 const COMMON_VALUES = [
@@ -151,10 +153,10 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
     maxDistance: 50 as number | null, // null means "don't care"
   });
   const [partnerPreferences, setPartnerPreferences] = useState({
-    partnerDrinking: '' as string,
-    partnerCannabis: '' as string,
-    partnerTobacco: '' as string,
-    partnerOtherDrugs: '' as string,
+    partnerDrinking: [] as string[],
+    partnerCannabis: [] as string[],
+    partnerTobacco: [] as string[],
+    partnerOtherDrugs: [] as string[],
   });
   const [preferredEthnicities, setPreferredEthnicities] = useState<string[]>([]);
   const [interestedInGenders, setInterestedInGenders] = useState<string[]>([]);
@@ -295,13 +297,14 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
           maxDistance: loadedPrefs.maxDistance !== undefined ? loadedPrefs.maxDistance : 50,
         });
 
-        // Load partner preferences
+        // Load partner preferences (handle both old string format and new array format)
         if (profileResult.data.partnerLifestylePreferences) {
+          const prefs = profileResult.data.partnerLifestylePreferences;
           setPartnerPreferences({
-            partnerDrinking: profileResult.data.partnerLifestylePreferences.drinking || '',
-            partnerCannabis: profileResult.data.partnerLifestylePreferences.cannabis || '',
-            partnerTobacco: profileResult.data.partnerLifestylePreferences.tobacco || '',
-            partnerOtherDrugs: profileResult.data.partnerLifestylePreferences.otherDrugs || '',
+            partnerDrinking: Array.isArray(prefs.drinking) ? prefs.drinking : (prefs.drinking ? [prefs.drinking] : []),
+            partnerCannabis: Array.isArray(prefs.cannabis) ? prefs.cannabis : (prefs.cannabis ? [prefs.cannabis] : []),
+            partnerTobacco: Array.isArray(prefs.tobacco) ? prefs.tobacco : (prefs.tobacco ? [prefs.tobacco] : []),
+            partnerOtherDrugs: Array.isArray(prefs.otherDrugs) ? prefs.otherDrugs : (prefs.otherDrugs ? [prefs.otherDrugs] : []),
           });
         }
 
@@ -348,10 +351,10 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             maxDistance: loadedPrefs.maxDistance !== undefined ? loadedPrefs.maxDistance : 50,
           },
           partnerPreferences: {
-            partnerDrinking: profileResult.data.partnerLifestylePreferences?.drinking || '',
-            partnerCannabis: profileResult.data.partnerLifestylePreferences?.cannabis || '',
-            partnerTobacco: profileResult.data.partnerLifestylePreferences?.tobacco || '',
-            partnerOtherDrugs: profileResult.data.partnerLifestylePreferences?.otherDrugs || '',
+            partnerDrinking: Array.isArray(prefs.drinking) ? prefs.drinking : (prefs.drinking ? [prefs.drinking] : []),
+            partnerCannabis: Array.isArray(prefs.cannabis) ? prefs.cannabis : (prefs.cannabis ? [prefs.cannabis] : []),
+            partnerTobacco: Array.isArray(prefs.tobacco) ? prefs.tobacco : (prefs.tobacco ? [prefs.tobacco] : []),
+            partnerOtherDrugs: Array.isArray(prefs.otherDrugs) ? prefs.otherDrugs : (prefs.otherDrugs ? [prefs.otherDrugs] : []),
           },
           preferredEthnicities: profileResult.data.preferredEthnicities || [],
           interestedInGenders: profileResult.data.interestedInGenders || [],
@@ -525,23 +528,79 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
     lightHaptic();
   };
 
+  // Calculate match preferences completion for current editing state
+  const matchPrefsCompletion = useMemo(() => {
+    if (!profile) return { percentage: 0, completedCount: 0, totalCount: 7, missingFields: [] };
+
+    // Create a temporary profile with current state for real-time updates
+    const currentProfile = {
+      ...profile,
+      preferences: {
+        ...profile.preferences,
+        ...preferences,
+      },
+      partnerLifestylePreferences: {
+        drinking: partnerPreferences.partnerDrinking,
+        cannabis: partnerPreferences.partnerCannabis,
+        tobacco: partnerPreferences.partnerTobacco,
+        otherDrugs: partnerPreferences.partnerOtherDrugs,
+      },
+      interestedInGenders,
+      preferredEthnicities,
+      preferredPolitics,
+    };
+
+    return calculateMatchPreferencesCompleteness(currentProfile);
+  }, [profile, preferences, partnerPreferences, interestedInGenders, preferredEthnicities, preferredPolitics]);
+
+  // Calculate match preferences completion for SAVED profile (for banner visibility)
+  const savedMatchPrefsCompletion = useMemo(() => {
+    if (!profile) return { percentage: 0 };
+    return calculateMatchPreferencesCompleteness(profile);
+  }, [profile]);
+
   return (
     <StyledSafeAreaView className="flex-1 bg-neutral-50">
       <StatusBar barStyle="dark-content" />
 
       {/* Header */}
-      <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center justify-between">
-        <StyledTouchableOpacity onPress={handleClose} className="mr-3">
-          <Ionicons name="close" size={24} color="#101828" />
-        </StyledTouchableOpacity>
-        <StyledView className="flex-1">
-          <H3>Match Preferences</H3>
+      <StyledView className="bg-white border-b border-neutral-200 px-4 py-3">
+        <StyledView className="flex-row items-center justify-between">
+          <StyledTouchableOpacity onPress={handleClose} className="mr-3">
+            <Ionicons name="close" size={24} color="#101828" />
+          </StyledTouchableOpacity>
+          <StyledView className="flex-1">
+            <H3>Match Preferences</H3>
+          </StyledView>
+          <StyledTouchableOpacity onPress={handleSave} disabled={saving}>
+            <Body className={saving ? 'text-neutral-400' : 'text-primary-500 font-medium'}>
+              {saving ? 'Saving...' : 'Save'}
+            </Body>
+          </StyledTouchableOpacity>
         </StyledView>
-        <StyledTouchableOpacity onPress={handleSave} disabled={saving}>
-          <Body className={saving ? 'text-neutral-400' : 'text-primary-500 font-medium'}>
-            {saving ? 'Saving...' : 'Save'}
-          </Body>
-        </StyledTouchableOpacity>
+
+        {/* Completion Progress Bar - Hidden only when both saved AND current state are 100% */}
+        {(savedMatchPrefsCompletion.percentage < 100 || matchPrefsCompletion.percentage < 100) && (
+          <StyledView className="mt-3">
+            <StyledView className="flex-row items-center justify-between mb-1.5">
+              <Body className="text-xs text-neutral-600">
+                {matchPrefsCompletion.completedCount} of {matchPrefsCompletion.totalCount} completed
+              </Body>
+              <Body className="text-xs font-semibold text-purple-600">
+                {matchPrefsCompletion.percentage}%
+              </Body>
+            </StyledView>
+            <StyledView className="bg-neutral-200 rounded-full h-1.5 overflow-hidden">
+              <StyledView
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${matchPrefsCompletion.percentage}%`,
+                  backgroundColor: '#7C3AED',
+                }}
+              />
+            </StyledView>
+          </StyledView>
+        )}
       </StyledView>
 
       <StyledScrollView className="flex-1">
@@ -581,6 +640,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                     key={option.value}
                     activeOpacity={1}
                     onPress={() => {
+                      lightHaptic();
                       if (isSelected) {
                         setInterestedInGenders(prev => prev.filter(g => g !== option.value));
                       } else {
@@ -610,7 +670,10 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                   <StyledTouchableOpacity
                     key={customGender}
                     activeOpacity={1}
-                    onPress={() => setInterestedInGenders(prev => prev.filter(g => g !== customGender))}
+                    onPress={() => {
+                      lightHaptic();
+                      setInterestedInGenders(prev => prev.filter(g => g !== customGender));
+                    }}
                     className="px-3 py-2 rounded-lg border bg-purple-500 border-purple-500"
                   >
                     <Body className="text-sm text-white font-medium">{customGender}</Body>
@@ -834,6 +897,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                     key={ethnicity}
                     activeOpacity={1}
                     onPress={() => {
+                      lightHaptic();
                       if (isSelected) {
                         setPreferredEthnicities(prev => prev.filter(e => e !== ethnicity));
                       } else {
@@ -859,7 +923,10 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                   <StyledTouchableOpacity
                     key={customEthnicity}
                     activeOpacity={1}
-                    onPress={() => setPreferredEthnicities(prev => prev.filter(e => e !== customEthnicity))}
+                    onPress={() => {
+                      lightHaptic();
+                      setPreferredEthnicities(prev => prev.filter(e => e !== customEthnicity));
+                    }}
                     className="px-3 py-2 rounded-full border bg-purple-100 border-purple-500"
                   >
                     <Body className="text-sm text-purple-700 font-medium">{customEthnicity}</Body>
@@ -904,6 +971,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                     key={politics}
                     activeOpacity={1}
                     onPress={() => {
+                      lightHaptic();
                       if (isSelected) {
                         setPreferredPolitics(prev => prev.filter(p => p !== politics));
                       } else {
@@ -929,7 +997,10 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                   <StyledTouchableOpacity
                     key={customPolitics}
                     activeOpacity={1}
-                    onPress={() => setPreferredPolitics(prev => prev.filter(p => p !== customPolitics))}
+                    onPress={() => {
+                      lightHaptic();
+                      setPreferredPolitics(prev => prev.filter(p => p !== customPolitics));
+                    }}
                     className="px-3 py-2 rounded-full border bg-purple-100 border-purple-500"
                   >
                     <Body className="text-sm text-purple-700 font-medium">{customPolitics}</Body>
@@ -965,96 +1036,164 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             {/* Drinking */}
             <StyledView className="mb-4">
               <Body className="text-neutral-700 text-sm font-medium mb-2">Drinking</Body>
-              <StyledView className="flex-row gap-2">
-                {LIFESTYLE_FREQUENCY_OPTIONS.map(option => (
-                  <StyledView key={option.value} className="flex-1">
+              <StyledView className="flex-row flex-wrap gap-2">
+                {LIFESTYLE_FREQUENCY_OPTIONS.map(option => {
+                  const isSelected = partnerPreferences.partnerDrinking.includes(option.value);
+                  return (
                     <StyledTouchableOpacity
+                      key={option.value}
                       activeOpacity={1}
-                      onPress={() => setPartnerPreferences(prev => ({ ...prev, partnerDrinking: option.value }))}
-                      className={`py-3 px-3 rounded-lg border ${
-                        partnerPreferences.partnerDrinking === option.value
+                      onPress={() => {
+                        lightHaptic();
+                        if (isSelected) {
+                          // Deselect if already selected
+                          setPartnerPreferences(prev => ({
+                            ...prev,
+                            partnerDrinking: prev.partnerDrinking.filter(v => v !== option.value)
+                          }));
+                        } else {
+                          // Select if not selected
+                          setPartnerPreferences(prev => ({
+                            ...prev,
+                            partnerDrinking: [...prev.partnerDrinking, option.value]
+                          }));
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-lg border ${
+                        isSelected
                           ? 'bg-purple-500 border-purple-500'
                           : 'bg-white border-neutral-300'
                       }`}
                     >
                       <Body className={`text-center text-sm font-medium ${
-                        partnerPreferences.partnerDrinking === option.value ? 'text-white' : 'text-neutral-700'
+                        isSelected ? 'text-white' : 'text-neutral-700'
                       }`}>{option.label}</Body>
                     </StyledTouchableOpacity>
-                  </StyledView>
-                ))}
+                  );
+                })}
               </StyledView>
             </StyledView>
 
             {/* Cannabis */}
             <StyledView className="mb-4">
               <Body className="text-neutral-700 text-sm font-medium mb-2">Cannabis</Body>
-              <StyledView className="flex-row gap-2">
-                {LIFESTYLE_FREQUENCY_OPTIONS.map(option => (
-                  <StyledView key={option.value} className="flex-1">
+              <StyledView className="flex-row flex-wrap gap-2">
+                {LIFESTYLE_FREQUENCY_OPTIONS.map(option => {
+                  const isSelected = partnerPreferences.partnerCannabis.includes(option.value);
+                  return (
                     <StyledTouchableOpacity
+                      key={option.value}
                       activeOpacity={1}
-                      onPress={() => setPartnerPreferences(prev => ({ ...prev, partnerCannabis: option.value }))}
-                      className={`py-3 px-3 rounded-lg border ${
-                        partnerPreferences.partnerCannabis === option.value
+                      onPress={() => {
+                        lightHaptic();
+                        if (isSelected) {
+                          // Deselect if already selected
+                          setPartnerPreferences(prev => ({
+                            ...prev,
+                            partnerCannabis: prev.partnerCannabis.filter(v => v !== option.value)
+                          }));
+                        } else {
+                          // Select if not selected
+                          setPartnerPreferences(prev => ({
+                            ...prev,
+                            partnerCannabis: [...prev.partnerCannabis, option.value]
+                          }));
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-lg border ${
+                        isSelected
                           ? 'bg-purple-500 border-purple-500'
                           : 'bg-white border-neutral-300'
                       }`}
                     >
                       <Body className={`text-center text-sm font-medium ${
-                        partnerPreferences.partnerCannabis === option.value ? 'text-white' : 'text-neutral-700'
+                        isSelected ? 'text-white' : 'text-neutral-700'
                       }`}>{option.label}</Body>
                     </StyledTouchableOpacity>
-                  </StyledView>
-                ))}
+                  );
+                })}
               </StyledView>
             </StyledView>
 
             {/* Tobacco */}
             <StyledView className="mb-4">
               <Body className="text-neutral-700 text-sm font-medium mb-2">Tobacco/Vaping</Body>
-              <StyledView className="flex-row gap-2">
-                {LIFESTYLE_FREQUENCY_OPTIONS.map(option => (
-                  <StyledView key={option.value} className="flex-1">
+              <StyledView className="flex-row flex-wrap gap-2">
+                {LIFESTYLE_FREQUENCY_OPTIONS.map(option => {
+                  const isSelected = partnerPreferences.partnerTobacco.includes(option.value);
+                  return (
                     <StyledTouchableOpacity
+                      key={option.value}
                       activeOpacity={1}
-                      onPress={() => setPartnerPreferences(prev => ({ ...prev, partnerTobacco: option.value }))}
-                      className={`py-3 px-3 rounded-lg border ${
-                        partnerPreferences.partnerTobacco === option.value
+                      onPress={() => {
+                        lightHaptic();
+                        if (isSelected) {
+                          // Deselect if already selected
+                          setPartnerPreferences(prev => ({
+                            ...prev,
+                            partnerTobacco: prev.partnerTobacco.filter(v => v !== option.value)
+                          }));
+                        } else {
+                          // Select if not selected
+                          setPartnerPreferences(prev => ({
+                            ...prev,
+                            partnerTobacco: [...prev.partnerTobacco, option.value]
+                          }));
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-lg border ${
+                        isSelected
                           ? 'bg-purple-500 border-purple-500'
                           : 'bg-white border-neutral-300'
                       }`}
                     >
                       <Body className={`text-center text-sm font-medium ${
-                        partnerPreferences.partnerTobacco === option.value ? 'text-white' : 'text-neutral-700'
+                        isSelected ? 'text-white' : 'text-neutral-700'
                       }`}>{option.label}</Body>
                     </StyledTouchableOpacity>
-                  </StyledView>
-                ))}
+                  );
+                })}
               </StyledView>
             </StyledView>
 
             {/* Other Drugs */}
             <StyledView>
               <Body className="text-neutral-700 text-sm font-medium mb-2">Other Substances</Body>
-              <StyledView className="flex-row gap-2">
-                {LIFESTYLE_FREQUENCY_OPTIONS.map(option => (
-                  <StyledView key={option.value} className="flex-1">
+              <StyledView className="flex-row flex-wrap gap-2">
+                {LIFESTYLE_FREQUENCY_OPTIONS.map(option => {
+                  const isSelected = partnerPreferences.partnerOtherDrugs.includes(option.value);
+                  return (
                     <StyledTouchableOpacity
+                      key={option.value}
                       activeOpacity={1}
-                      onPress={() => setPartnerPreferences(prev => ({ ...prev, partnerOtherDrugs: option.value }))}
-                      className={`py-3 px-3 rounded-lg border ${
-                        partnerPreferences.partnerOtherDrugs === option.value
+                      onPress={() => {
+                        lightHaptic();
+                        if (isSelected) {
+                          // Deselect if already selected
+                          setPartnerPreferences(prev => ({
+                            ...prev,
+                            partnerOtherDrugs: prev.partnerOtherDrugs.filter(v => v !== option.value)
+                          }));
+                        } else {
+                          // Select if not selected
+                          setPartnerPreferences(prev => ({
+                            ...prev,
+                            partnerOtherDrugs: [...prev.partnerOtherDrugs, option.value]
+                          }));
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-lg border ${
+                        isSelected
                           ? 'bg-purple-500 border-purple-500'
                           : 'bg-white border-neutral-300'
                       }`}
                     >
                       <Body className={`text-center text-sm font-medium ${
-                        partnerPreferences.partnerOtherDrugs === option.value ? 'text-white' : 'text-neutral-700'
+                        isSelected ? 'text-white' : 'text-neutral-700'
                       }`}>{option.label}</Body>
                     </StyledTouchableOpacity>
-                  </StyledView>
-                ))}
+                  );
+                })}
               </StyledView>
             </StyledView>
           </Card>
@@ -1090,8 +1229,8 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                   <StyledTouchableOpacity
                     key={option.id}
                     onPress={() => {
-                      toggleDealbreaker(option.id);
                       lightHaptic();
+                      toggleDealbreaker(option.id);
                     }}
                     className={`flex-row items-center p-3 rounded-lg border ${
                       isSelected
@@ -1118,8 +1257,8 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                 <StyledTouchableOpacity
                   key={customDealbreaker}
                   onPress={() => {
+                    lightHaptic();
                     toggleDealbreaker(customDealbreaker);
-                    mediumHaptic();
                   }}
                   className="flex-row items-center p-3 rounded-lg border bg-error/5 border-error"
                 >
@@ -1154,14 +1293,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                 </StyledView>
               </StyledTouchableOpacity>
             </StyledView>
-            <StyledView className="flex-row items-center justify-between mb-3">
-              <StyledView className="flex-1" />
-              {nonNegotiable && (
-                <StyledTouchableOpacity onPress={() => setNonNegotiable('')}>
-                  <Body className="text-primary-500 text-sm font-medium">Clear Selection</Body>
-                </StyledTouchableOpacity>
-              )}
-            </StyledView>
             <Body className="text-neutral-600 text-sm mb-4">
               Select the one preference that matters most to you in potential matches
             </Body>
@@ -1172,8 +1303,8 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                   <StyledTouchableOpacity
                     key={option.id}
                     onPress={() => {
-                      setNonNegotiable(isSelected ? '' : option.id);
                       lightHaptic();
+                      setNonNegotiable(isSelected ? '' : option.id);
                     }}
                     className={`flex-row items-start p-4 rounded-lg border ${
                       isSelected

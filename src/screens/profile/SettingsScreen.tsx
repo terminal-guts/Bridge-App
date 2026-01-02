@@ -352,6 +352,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               subtitle="Take a break from Bridge"
               onPress={() => navigation.navigate('PauseProfile')}
             />
+            <SettingRow
+              icon="call-outline"
+              title="Change Phone Number"
+              subtitle="Update your phone number"
+              onPress={() => navigation.navigate('ChangePhoneNumber')}
+            />
           </Card>
 
           {/* Notifications */}

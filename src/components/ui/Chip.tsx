@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { TouchableOpacity, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { lightHaptic } from '../../utils/haptics';
@@ -15,7 +15,18 @@ interface ChipProps {
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledText = styled(Text);
 
-export const Chip: React.FC<ChipProps> = ({
+// Move constant style objects outside component to prevent recreation
+const SIZE_STYLES = {
+  sm: 'px-2.5 py-1',
+  md: 'px-3 py-1.5',
+} as const;
+
+const TEXT_SIZE_STYLES = {
+  sm: 'text-xs',
+  md: 'text-sm',
+} as const;
+
+const ChipComponent: React.FC<ChipProps> = ({
   label,
   selected = false,
   onPress,
@@ -23,62 +34,37 @@ export const Chip: React.FC<ChipProps> = ({
   className = '',
   variant = 'none',
 }) => {
-  const sizeStyles = {
-    sm: 'px-2.5 py-1',
-    md: 'px-3 py-1.5',
-  };
 
-  const textSizeStyles = {
-    sm: 'text-xs',
-    md: 'text-sm',
-  };
+  // Memoize style calculations
+  const baseStyles = useMemo(() => `rounded-full border ${SIZE_STYLES[size]}`, [size]);
 
-  const baseStyles = `rounded-full border ${sizeStyles[size]}`;
+  const variantStyles = useMemo(() => {
+    if (variant === 'both') return 'bg-green-500 border-green-500';
+    if (variant === 'mine') return 'bg-primary-500 border-primary-500';
+    if (variant === 'partner') return 'bg-purple-500 border-purple-500';
+    if (variant === 'interest') return 'bg-amber-100 border-amber-300';
+    if (variant === 'value') return 'bg-emerald-100 border-emerald-300';
+    if (variant === 'location') return 'bg-rose-100 border-rose-300';
+    if (variant === 'hometown') return 'bg-violet-100 border-violet-300';
+    if (selected) return 'bg-primary-500 border-primary-500';
+    return 'bg-white border-neutral-300';
+  }, [variant, selected]);
 
-  // Color variants for double-click functionality
-  const getVariantStyles = () => {
-    if (variant === 'both') {
-      return 'bg-green-500 border-green-500';
-    } else if (variant === 'mine') {
-      return 'bg-primary-500 border-primary-500';
-    } else if (variant === 'partner') {
-      return 'bg-purple-500 border-purple-500';
-    } else if (variant === 'interest') {
-      return 'bg-amber-100 border-amber-300';
-    } else if (variant === 'value') {
-      return 'bg-emerald-100 border-emerald-300';
-    } else if (variant === 'location') {
-      return 'bg-rose-100 border-rose-300';
-    } else if (variant === 'hometown') {
-      return 'bg-violet-100 border-violet-300';
-    } else if (selected) {
-      return 'bg-primary-500 border-primary-500';
-    } else {
-      return 'bg-white border-neutral-300';
-    }
-  };
-
-  const variantStyles = getVariantStyles();
-
-  const getTextStyles = () => {
-    // Light background variants need dark text
+  const textStyles = useMemo(() => {
     if (variant === 'interest') return 'text-amber-700 font-medium';
     if (variant === 'value') return 'text-emerald-700 font-medium';
     if (variant === 'location') return 'text-rose-700 font-medium';
     if (variant === 'hometown') return 'text-violet-700 font-medium';
-    // Solid color variants need white text
     if (selected || (variant !== 'none' && variant !== 'interest' && variant !== 'value' && variant !== 'location' && variant !== 'hometown')) {
       return 'text-white font-medium';
     }
     return 'text-neutral-700';
-  };
+  }, [variant, selected]);
 
-  const textStyles = getTextStyles();
-
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     lightHaptic();
     onPress?.();
-  };
+  }, [onPress]);
 
   if (!onPress) {
     return (
@@ -86,7 +72,7 @@ export const Chip: React.FC<ChipProps> = ({
         disabled
         className={`${baseStyles} ${variantStyles} ${className}`}
       >
-        <StyledText className={`${textSizeStyles[size]} ${textStyles}`}>
+        <StyledText className={`${TEXT_SIZE_STYLES[size]} ${textStyles}`}>
           {label}
         </StyledText>
       </StyledTouchableOpacity>
@@ -100,9 +86,12 @@ export const Chip: React.FC<ChipProps> = ({
       delayPressIn={0}
       className={`${baseStyles} ${variantStyles} ${className}`}
     >
-      <StyledText className={`${textSizeStyles[size]} ${textStyles}`}>
+      <StyledText className={`${TEXT_SIZE_STYLES[size]} ${textStyles}`}>
         {label}
       </StyledText>
     </StyledTouchableOpacity>
   );
 };
+
+// Wrap in React.memo to prevent unnecessary re-renders
+export const Chip = React.memo(ChipComponent);

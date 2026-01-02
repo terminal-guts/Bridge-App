@@ -353,6 +353,7 @@ export type RootStackParamList = {
   ProfileVerification: undefined;
   BlockedUsers: undefined;
   PauseProfile: undefined;
+  ChangePhoneNumber: undefined;
   TermsOfService: undefined;
   PrivacyPolicy: undefined;
   HelpSupport: undefined;

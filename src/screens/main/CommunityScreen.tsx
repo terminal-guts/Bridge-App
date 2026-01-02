@@ -36,6 +36,7 @@ import {
   UIManager,
   ActivityIndicator,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { styled } from 'nativewind';
 import { NavigationProp, useFocusEffect, RouteProp, useRoute } from '@react-navigation/native';
 
@@ -114,6 +115,19 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const dailyTasksComplete = FEATURES.DEVELOPMENT_UNLOCK_FRIENDS_AREA ? true : (taskProgress?.allTasksCompleted ?? false);
   const friendsAreaLocked = FEATURES.DEVELOPMENT_UNLOCK_FRIENDS_AREA ? false : (!dailyTasksComplete && currentPage !== 2); // Allow viewing if already on page 3
 
+  // Refs for PanResponder to access latest values without recreating
+  const currentPageRef = useRef(currentPage);
+  const dailyTasksCompleteRef = useRef(dailyTasksComplete);
+
+  // Update refs when values change
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+
+  useEffect(() => {
+    dailyTasksCompleteRef.current = dailyTasksComplete;
+  }, [dailyTasksComplete]);
+
   // ========================================
   // DATA LOADING
   // ========================================
@@ -146,6 +160,10 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   useFocusEffect(
     useCallback(() => {
       loadCommunityData();
+
+      // Clear banner dismissal on app start (for development/testing)
+      // Remove this in production if you want dismissal to persist
+      AsyncStorage.removeItem('@profile_completion_banner_dismissed').catch(console.error);
     }, [loadCommunityData])
   );
 
@@ -233,8 +251,8 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       onMoveShouldSetPanResponderCapture: () => false,
 
       onPanResponderMove: (evt, gestureState) => {
-        // Calculate new translateX based on gesture
-        const newTranslateX = -currentPage * SCREEN_WIDTH + gestureState.dx;
+        // Calculate new translateX based on gesture (use ref for current value)
+        const newTranslateX = -currentPageRef.current * SCREEN_WIDTH + gestureState.dx;
 
         // Clamp to valid range
         const minTranslateX = -2 * SCREEN_WIDTH;
@@ -246,20 +264,21 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
       onPanResponderRelease: (evt, gestureState) => {
         const { dx } = gestureState;
+        const current = currentPageRef.current;
 
         // Determine if swipe was strong enough to change page
         if (Math.abs(dx) > SWIPE_THRESHOLD) {
-          if (dx > 0 && currentPage > 0) {
+          if (dx > 0 && current > 0) {
             // Swipe right (go to previous page)
-            goToPage((currentPage - 1) as PageIndex);
-          } else if (dx < 0 && currentPage < 2) {
+            goToPage((current - 1) as PageIndex);
+          } else if (dx < 0 && current < 2) {
             // Swipe left (go to next page)
-            const nextPage = (currentPage + 1) as PageIndex;
+            const nextPage = (current + 1) as PageIndex;
             goToPage(nextPage);
           } else {
             // Snap back to current page
             Animated.spring(translateX, {
-              toValue: -currentPage * SCREEN_WIDTH,
+              toValue: -current * SCREEN_WIDTH,
               useNativeDriver: true,
               friction: 9,
               tension: 50,
@@ -268,7 +287,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
         } else {
           // Snap back to current page (swipe not strong enough)
           Animated.spring(translateX, {
-            toValue: -currentPage * SCREEN_WIDTH,
+            toValue: -current * SCREEN_WIDTH,
             useNativeDriver: true,
             friction: 9,
             tension: 50,
@@ -276,7 +295,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
         }
       },
     });
-  }, [currentPage, dailyTasksComplete, goToPage, translateX]);
+  }, [goToPage, translateX]);
 
   // ========================================
   // TASK COMPLETION HANDLERS
