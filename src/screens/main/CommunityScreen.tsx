@@ -9,7 +9,7 @@
  * 3. Friends Area - View friends' grids and pending/active matches
  *
  * Navigation Rules:
- * - Swipe left/right to navigate between pages
+ * - Use tab buttons to navigate between pages
  * - Page 3 (Friends Area) locked until daily tasks complete:
  *   - Must submit 1 proposal from daily grid (Page 1)
  *   - Must vote on 3 proposals (Page 2)
@@ -30,7 +30,6 @@ import {
   SafeAreaView,
   StatusBar,
   Animated,
-  PanResponder,
   Dimensions,
   Platform,
   UIManager,
@@ -107,26 +106,12 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   // Animation values
   const translateX = useRef(new Animated.Value(0)).current;
-  const panResponderRef = useRef<any>(null);
 
   // ========================================
   // DERIVED STATE
   // ========================================
   const dailyTasksComplete = FEATURES.DEVELOPMENT_UNLOCK_FRIENDS_AREA ? true : (taskProgress?.allTasksCompleted ?? false);
   const friendsAreaLocked = FEATURES.DEVELOPMENT_UNLOCK_FRIENDS_AREA ? false : (!dailyTasksComplete && currentPage !== 2); // Allow viewing if already on page 3
-
-  // Refs for PanResponder to access latest values without recreating
-  const currentPageRef = useRef(currentPage);
-  const dailyTasksCompleteRef = useRef(dailyTasksComplete);
-
-  // Update refs when values change
-  useEffect(() => {
-    currentPageRef.current = currentPage;
-  }, [currentPage]);
-
-  useEffect(() => {
-    dailyTasksCompleteRef.current = dailyTasksComplete;
-  }, [dailyTasksComplete]);
 
   // ========================================
   // DATA LOADING
@@ -231,73 +216,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   }, [dailyTasksComplete, translateX]);
 
   // ========================================
-  // SWIPE GESTURE HANDLING
-  // ========================================
-  useEffect(() => {
-    panResponderRef.current = PanResponder.create({
-      onStartShouldSetPanResponder: () => false, // Don't capture on initial touch (let child Pressables handle taps)
-
-      onMoveShouldSetPanResponder: (evt, gestureState) => {
-        // Only activate if horizontal swipe (not vertical scroll or tap)
-        // Require BOTH significant movement AND horizontal velocity to distinguish from taps
-        const isHorizontalSwipe = Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
-        const hasSignificantMovement = Math.abs(gestureState.dx) > 50; // Increased to 50px
-        const hasHorizontalVelocity = Math.abs(gestureState.vx) > 0.3; // Velocity check
-
-        return isHorizontalSwipe && hasSignificantMovement && hasHorizontalVelocity;
-      },
-
-      onStartShouldSetPanResponderCapture: () => false,
-      onMoveShouldSetPanResponderCapture: () => false,
-
-      onPanResponderMove: (evt, gestureState) => {
-        // Calculate new translateX based on gesture (use ref for current value)
-        const newTranslateX = -currentPageRef.current * SCREEN_WIDTH + gestureState.dx;
-
-        // Clamp to valid range
-        const minTranslateX = -2 * SCREEN_WIDTH;
-        const maxTranslateX = 0;
-        const clampedTranslateX = Math.max(minTranslateX, Math.min(maxTranslateX, newTranslateX));
-
-        translateX.setValue(clampedTranslateX);
-      },
-
-      onPanResponderRelease: (evt, gestureState) => {
-        const { dx } = gestureState;
-        const current = currentPageRef.current;
-
-        // Determine if swipe was strong enough to change page
-        if (Math.abs(dx) > SWIPE_THRESHOLD) {
-          if (dx > 0 && current > 0) {
-            // Swipe right (go to previous page)
-            goToPage((current - 1) as PageIndex);
-          } else if (dx < 0 && current < 2) {
-            // Swipe left (go to next page)
-            const nextPage = (current + 1) as PageIndex;
-            goToPage(nextPage);
-          } else {
-            // Snap back to current page
-            Animated.spring(translateX, {
-              toValue: -current * SCREEN_WIDTH,
-              useNativeDriver: true,
-              friction: 9,
-              tension: 50,
-            }).start();
-          }
-        } else {
-          // Snap back to current page (swipe not strong enough)
-          Animated.spring(translateX, {
-            toValue: -current * SCREEN_WIDTH,
-            useNativeDriver: true,
-            friction: 9,
-            tension: 50,
-          }).start();
-        }
-      },
-    });
-  }, [goToPage, translateX]);
-
-  // ========================================
   // TASK COMPLETION HANDLERS
   // ========================================
   const handleGridProposalSubmitted = useCallback(async () => {
@@ -400,7 +318,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             height: '100%',
             transform: [{ translateX }],
           }}
-          {...(panResponderRef.current?.panHandlers || {})}
         >
           {/* Page 1: Daily Grid */}
           <StyledView style={{ width: SCREEN_WIDTH, height: '100%', overflow: 'hidden' }}>

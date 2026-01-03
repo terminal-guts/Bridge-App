@@ -45,12 +45,18 @@ export const ChildrenStep: React.FC<ChildrenStepProps> = ({
   const validateAndContinue = () => {
     const newErrors: { children?: string; plans?: string } = {};
 
+    // Validate children status
     if (!childrenStatus) {
       newErrors.children = 'Please select an option';
+    } else if (!CHILDREN_STATUS_OPTIONS.some(opt => opt.value === childrenStatus)) {
+      newErrors.children = 'Invalid option selected';
     }
 
+    // Validate family plans
     if (!familyPlans) {
       newErrors.plans = 'Please select an option';
+    } else if (!FAMILY_PLANS_OPTIONS.some(opt => opt.value === familyPlans)) {
+      newErrors.plans = 'Invalid option selected';
     }
 
     if (Object.keys(newErrors).length > 0) {

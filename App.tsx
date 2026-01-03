@@ -5,15 +5,18 @@ import Toast from 'react-native-toast-message';
 import { toastConfig } from './src/components/ToastConfig';
 import { GuideProvider } from './src/contexts/GuideContext';
 import { GuideOverlay } from './src/components/guides/GuideOverlay';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <GuideProvider>
-        <AppNavigator />
-        <GuideOverlay />
-        <Toast config={toastConfig} />
-      </GuideProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <GuideProvider>
+          <AppNavigator />
+          <GuideOverlay />
+          <Toast config={toastConfig} />
+        </GuideProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }

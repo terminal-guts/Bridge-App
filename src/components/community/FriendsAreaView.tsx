@@ -125,17 +125,20 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
   // Auto-cleanup expired proposals
   useEffect(() => {
     const checkExpiration = () => {
-      const now = new Date().getTime();
-      const nonExpired = pendingProposals.filter((proposal) => {
-        const expiresAt = new Date(proposal.expiresAt).getTime();
-        return expiresAt > now;
-      });
+      setPendingProposals(prev => {
+        const now = new Date().getTime();
+        const nonExpired = prev.filter((proposal) => {
+          const expiresAt = new Date(proposal.expiresAt).getTime();
+          return expiresAt > now;
+        });
 
-      // Update state only if something changed
-      if (nonExpired.length !== pendingProposals.length) {
-        console.log(`[FriendsAreaView] Removed ${pendingProposals.length - nonExpired.length} expired proposal(s)`);
-        setPendingProposals(nonExpired);
-      }
+        // Only update if something changed
+        if (nonExpired.length !== prev.length) {
+          console.log(`[FriendsAreaView] Removed ${prev.length - nonExpired.length} expired proposal(s)`);
+          return nonExpired;
+        }
+        return prev;
+      });
     };
 
     // Check immediately
@@ -145,7 +148,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
     const interval = setInterval(checkExpiration, 60000);
 
     return () => clearInterval(interval);
-  }, [pendingProposals]);
+  }, []); // Empty deps - only run once on mount
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -153,13 +156,16 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
     setRefreshing(false);
   };
 
-  const handleViewFriendGrid = (friend: FriendWithGridStatus) => {
+  const handleViewFriendGrid = useCallback((friendId: string) => {
+    const friend = friends.find(f => f.friendId === friendId);
+    if (!friend) return;
+
     // Navigate to FriendGrid screen (same design as Daily Grid)
     navigation.navigate('FriendGrid', {
       friendId: friend.friendId,
       friendName: friend.friend.firstName,
     });
-  };
+  }, [friends, navigation]);
 
   const handleViewProposal = (proposal: MatchProposal) => {
     // Navigate to MatchProposalScreen
@@ -200,23 +206,29 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
     }
   };
 
-  const handleChatWithFriend = (friend: FriendWithGridStatus) => {
+  const handleChatWithFriend = useCallback((friendId: string) => {
+    const friend = friends.find(f => f.friendId === friendId);
+    if (!friend) return;
+
     // Navigate to Chat screen with friend
     navigation.navigate('Chat', {
       recipientId: friend.friendId,
       recipientName: friend.friend.firstName,
       isFriendChat: true, // Distinguish from match chat
     });
-  };
+  }, [friends, navigation]);
 
-  const handleViewFriendProfile = (friend: FriendWithGridStatus) => {
+  const handleViewFriendProfile = useCallback((friendId: string) => {
+    const friend = friends.find(f => f.friendId === friendId);
+    if (!friend) return;
+
     // Navigate to ProfileView screen (no actions, just viewing)
     navigation.navigate('ProfileView', {
       userId: friend.friendId,
       profile: friend.friend,
       showActions: false,
     });
-  };
+  }, [friends, navigation]);
 
   // Split friends into pending (need help) and completed (already helped today)
   // Only show friends who are anchors today
@@ -568,9 +580,9 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                       key={friend.friendshipId}
                       friend={friend}
                       isPending={true}
-                      onViewGrid={() => handleViewFriendGrid(friend)}
-                      onMessage={() => handleChatWithFriend(friend)}
-                      onViewProfile={() => handleViewFriendProfile(friend)}
+                      onViewGrid={() => handleViewFriendGrid(friend.friendId)}
+                      onMessage={() => handleChatWithFriend(friend.friendId)}
+                      onViewProfile={() => handleViewFriendProfile(friend.friendId)}
                     />
                   );
 
@@ -643,9 +655,9 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                     key={friend.friendshipId}
                     friend={friend}
                     isPending={false}
-                    onViewGrid={() => handleViewFriendGrid(friend)}
-                    onMessage={() => handleChatWithFriend(friend)}
-                    onViewProfile={() => handleViewFriendProfile(friend)}
+                    onViewGrid={() => handleViewFriendGrid(friend.friendId)}
+                    onMessage={() => handleChatWithFriend(friend.friendId)}
+                    onViewProfile={() => handleViewFriendProfile(friend.friendId)}
                   />
                 ))}
               </StyledView>

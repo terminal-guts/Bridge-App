@@ -120,6 +120,8 @@ export const AppNavigator = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     // Check for existing session on app start
     const initializeAuth = async () => {
       try {
@@ -138,6 +140,8 @@ export const AppNavigator = () => {
         // getUser() validates the session with the Supabase server
         const { data: { user }, error } = await supabase.auth.getUser();
 
+        if (!isMounted) return;
+
         if (error) {
           console.log('Auth verification failed:', error.message);
           // Clear any stale session data
@@ -150,7 +154,9 @@ export const AppNavigator = () => {
         console.error('Error getting session:', err);
         // Clear any stale session data on error
         await supabase.auth.signOut();
-        setIsAuthenticated(false);
+        if (isMounted) {
+          setIsAuthenticated(false);
+        }
       }
     };
 
@@ -158,6 +164,7 @@ export const AppNavigator = () => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
       setIsAuthenticated(!!session);
 
       // Create mock data on sign in (development only)
@@ -171,7 +178,10 @@ export const AppNavigator = () => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Show loading screen while checking auth

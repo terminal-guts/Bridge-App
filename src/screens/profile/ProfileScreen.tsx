@@ -117,7 +117,7 @@ const PILL_STYLES: Record<string, { bg: string; iconColor: string; textColor: st
 };
 
 // Enhanced info pill with category-specific colors
-const InfoPill: React.FC<{ icon: string; text: string }> = React.memo(({ icon, text }) => {
+const InfoPill: React.FC<{ icon: keyof typeof Ionicons.glyphMap; text: string }> = React.memo(({ icon, text }) => {
   const style = PILL_STYLES[icon] || PILL_STYLES.default;
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -156,7 +156,7 @@ const InfoPill: React.FC<{ icon: string; text: string }> = React.memo(({ icon, t
             elevation: 3,
           }}
         >
-          <Ionicons name={icon as any} size={15} color={style.iconColor} />
+          <Ionicons name={icon} size={15} color={style.iconColor} />
           <Body className={`${style.textColor} text-sm font-medium ml-1.5`}>{text}</Body>
         </StyledView>
       </TouchableOpacity>
@@ -167,7 +167,7 @@ const InfoPill: React.FC<{ icon: string; text: string }> = React.memo(({ icon, t
 // Animated section with icon header
 const Section: React.FC<{
   title: string;
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
   children: React.ReactNode;
   delay?: number;
 }> = React.memo(({ title, icon, children, delay = 0 }) => {
@@ -217,7 +217,7 @@ const Section: React.FC<{
             elevation: 3,
           }}
         >
-          <Ionicons name={icon as any} size={16} color="#437FFF" />
+          <Ionicons name={icon} size={16} color="#437FFF" />
         </StyledView>
         <Body className="text-neutral-900 font-bold text-base ml-2.5">{title}</Body>
       </StyledView>
@@ -227,7 +227,7 @@ const Section: React.FC<{
 });
 
 // Enhanced tag chip with warm, vibrant shadows
-const Tag: React.FC<{ label: string; variant?: 'default' | 'primary' | 'success'; icon?: string }> = ({
+const Tag: React.FC<{ label: string; variant?: 'default' | 'primary' | 'success'; icon?: keyof typeof Ionicons.glyphMap }> = ({
   label,
   variant = 'default',
   icon,
@@ -269,7 +269,7 @@ const Tag: React.FC<{ label: string; variant?: 'default' | 'primary' | 'success'
       }}
     >
       <StyledView className="flex-row items-center">
-        {icon && <Ionicons name={icon as any} size={14} color={style.iconColor} style={{ marginRight: 6 }} />}
+        {icon && <Ionicons name={icon} size={14} color={style.iconColor} style={{ marginRight: 6 }} />}
         <Body className={`text-sm font-semibold ${style.text}`}>{label}</Body>
       </StyledView>
     </StyledView>
@@ -291,7 +291,7 @@ const getFrequencyLevel = (value: string): number => {
 };
 
 // Enhanced lifestyle row with visual frequency indicator
-const LifestyleRow: React.FC<{ icon: string; label: string; value: string }> = ({ icon, label, value }) => {
+const LifestyleRow: React.FC<{ icon: keyof typeof Ionicons.glyphMap; label: string; value: string }> = ({ icon, label, value }) => {
   const level = getFrequencyLevel(value);
   const colors = ['#10B981', '#F59E0B', '#EF4444']; // Green for No, Orange for Sometimes, Red for Yes
 
@@ -299,7 +299,7 @@ const LifestyleRow: React.FC<{ icon: string; label: string; value: string }> = (
     <StyledView className="flex-row items-center justify-between py-3.5 border-b border-neutral-100/80">
       <StyledView className="flex-row items-center flex-1">
         <StyledView className="w-9 h-9 rounded-xl bg-neutral-100 items-center justify-center">
-          <Ionicons name={icon as any} size={18} color="#525252" />
+          <Ionicons name={icon} size={18} color="#525252" />
         </StyledView>
         <Body className="text-neutral-700 ml-3 font-medium">{label}</Body>
       </StyledView>
@@ -334,9 +334,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation, route,
                        ('userId' in (route.params || {})) ? 'view' : 'preview';
   const mode = explicitMode || inferredMode;
 
-  // Extract params based on mode
-  const previewParams = mode === 'preview' ? ((route.params as any) || {}) : {};
-  const viewParams = mode === 'view' ? ((route.params as any) || {}) : {};
+  // Extract params based on mode with proper typing
+  const previewParams = mode === 'preview' && route.params ? (route.params as { previewProfile?: UserProfile }) : {};
+  const viewParams = mode === 'view' && route.params ? (route.params as { userId?: string; profile?: UserProfile; showActions?: boolean; onAccept?: () => void; onPass?: () => void }) : {};
 
   const passedProfile = mode === 'preview' ? previewParams.previewProfile : viewParams.profile;
   const userId = mode === 'view' ? viewParams.userId : undefined;

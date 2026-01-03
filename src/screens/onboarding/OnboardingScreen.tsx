@@ -99,6 +99,17 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   ];
 
   const totalSteps = steps.length;
+
+  // Bounds check for currentStep to prevent crashes
+  if (currentStep < 0 || currentStep >= totalSteps) {
+    console.error(`[OnboardingScreen] Invalid currentStep: ${currentStep} (totalSteps: ${totalSteps})`);
+    // Reset to first step if invalid
+    React.useEffect(() => {
+      setCurrentStep(0);
+    }, []);
+    return null;
+  }
+
   const CurrentStepComponent = steps[currentStep].component;
 
   const updateData = (data: Partial<OnboardingData>) => {

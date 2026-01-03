@@ -45,7 +45,7 @@ const TIER_COLORS: Record<string, { bg: string; text: string }> = {
   best: { bg: '#FEF3C7', text: '#D97706' }, // Light amber
 };
 
-export function FriendCard({ friend, isPending, onViewGrid, onMessage, onViewProfile }: FriendCardProps) {
+export const FriendCard = React.memo<FriendCardProps>(({ friend, isPending, onViewGrid, onMessage, onViewProfile }) => {
   const handleAvatarPress = () => {
     lightHaptic();
     onViewProfile();
@@ -153,6 +153,6 @@ export function FriendCard({ friend, isPending, onViewGrid, onMessage, onViewPro
       )}
     </StyledView>
   );
-}
+});
 
 export default FriendCard;

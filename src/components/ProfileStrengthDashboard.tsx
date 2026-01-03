@@ -191,7 +191,7 @@ const getStrengthLevel = (score: number): { level: string; message: string; colo
   return { level: 'Weak', message: 'Complete your profile', color: '#B91C1C' };
 };
 
-export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> = ({
+export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> = React.memo(({
   profile,
   onSectionPress,
   className = '',
@@ -283,4 +283,4 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
       </StyledView>
     </Card>
   );
-};
+});

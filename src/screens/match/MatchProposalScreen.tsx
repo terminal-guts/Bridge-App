@@ -367,8 +367,8 @@ const WhyThisMatch: React.FC<{ mutualInterests: string[]; mutualValues: string[]
             <Body className="text-sm font-semibold ml-2" style={{ color: '#1D4ED8' }}>You both love</Body>
           </StyledView>
           <StyledView className="flex-row flex-wrap">
-            {mutualInterests.map((interest, i) => (
-              <StyledView key={i} className="rounded-full px-3.5 py-2 mr-2 mb-2 flex-row items-center" style={{ backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: COLORS.primaryBorder }}>
+            {mutualInterests.map((interest) => (
+              <StyledView key={interest} className="rounded-full px-3.5 py-2 mr-2 mb-2 flex-row items-center" style={{ backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: COLORS.primaryBorder }}>
                 <Ionicons name="checkmark-circle" size={12} color={COLORS.primary500} />
                 <Body className="text-sm font-medium ml-1.5" style={{ color: '#1D4ED8' }}>{interest}</Body>
               </StyledView>
@@ -384,8 +384,8 @@ const WhyThisMatch: React.FC<{ mutualInterests: string[]; mutualValues: string[]
             <Body className="text-sm font-semibold ml-2" style={{ color: '#059669' }}>Shared values</Body>
           </StyledView>
           <StyledView className="flex-row flex-wrap">
-            {mutualValues.map((value, i) => (
-              <StyledView key={i} className="rounded-full px-3.5 py-2 mr-2 mb-2 flex-row items-center" style={{ backgroundColor: COLORS.successBg, borderWidth: 1, borderColor: COLORS.successBorder }}>
+            {mutualValues.map((value) => (
+              <StyledView key={value} className="rounded-full px-3.5 py-2 mr-2 mb-2 flex-row items-center" style={{ backgroundColor: COLORS.successBg, borderWidth: 1, borderColor: COLORS.successBorder }}>
                 <Ionicons name="checkmark-circle" size={12} color={COLORS.success} />
                 <Body className="text-sm font-medium ml-1.5" style={{ color: '#059669' }}>{value}</Body>
               </StyledView>
@@ -395,7 +395,7 @@ const WhyThisMatch: React.FC<{ mutualInterests: string[]; mutualValues: string[]
       )}
 
       {compatibilityHighlights.length > 0 && compatibilityHighlights.map((highlight, i) => (
-        <StyledView key={i} className="flex-row items-center" style={{ marginBottom: i === compatibilityHighlights.length - 1 ? 0 : 8 }}>
+        <StyledView key={highlight} className="flex-row items-center" style={{ marginBottom: i === compatibilityHighlights.length - 1 ? 0 : 8 }}>
           <Ionicons name="checkmark" size={15} color={COLORS.primary500} />
           <Body className="text-sm ml-2.5" style={{ color: COLORS.neutral600, lineHeight: 18 }}>{highlight}</Body>
         </StyledView>
@@ -1029,9 +1029,9 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
         <StyledView className="bg-white px-5 pt-8 -mt-5" style={{ borderTopLeftRadius: 28, borderTopRightRadius: 28 }}>
           <CommunityScore score={communityScore} endorsement={endorsement} />
           <WhyThisMatch mutualInterests={mutualInterests} mutualValues={mutualValues} compatibilityHighlights={compatibilityHighlights} />
-          {basicInfoPills.length > 0 && <StyledView className="flex-row flex-wrap mb-6">{basicInfoPills.map((pill, i) => <InfoPill key={i} icon={pill.icon} text={pill.text} />)}</StyledView>}
-          {profile.interests?.length > 0 && <Section title="Interests" icon="heart-outline" delay={50}><StyledView className="flex-row flex-wrap">{profile.interests.map((interest, i) => <Tag key={i} label={interest} variant="primary" isMutual={mutualInterests.includes(interest)} />)}</StyledView></Section>}
-          {profile.values?.length > 0 && <Section title="Values" icon="diamond-outline" delay={100}><StyledView className="flex-row flex-wrap">{profile.values.map((value, i) => <Tag key={i} label={value} variant="success" isMutual={mutualValues.includes(value)} />)}</StyledView></Section>}
+          {basicInfoPills.length > 0 && <StyledView className="flex-row flex-wrap mb-6">{basicInfoPills.map((pill) => <InfoPill key={`${pill.icon}-${pill.text}`} icon={pill.icon} text={pill.text} />)}</StyledView>}
+          {profile.interests?.length > 0 && <Section title="Interests" icon="heart-outline" delay={50}><StyledView className="flex-row flex-wrap">{profile.interests.map((interest) => <Tag key={interest} label={interest} variant="primary" isMutual={mutualInterests.includes(interest)} />)}</StyledView></Section>}
+          {profile.values?.length > 0 && <Section title="Values" icon="diamond-outline" delay={100}><StyledView className="flex-row flex-wrap">{profile.values.map((value) => <Tag key={value} label={value} variant="success" isMutual={mutualValues.includes(value)} />)}</StyledView></Section>}
           {visibility.family && (profile.hasChildren || profile.familyPlans) && (
             <Section title="Family" icon="people-outline" delay={150}>
               <StyledView className="rounded-2xl p-4" style={{ backgroundColor: COLORS.neutral50 }}>

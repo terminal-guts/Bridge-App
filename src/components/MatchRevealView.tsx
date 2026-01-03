@@ -484,8 +484,8 @@ export const MatchRevealView: React.FC<MatchRevealViewProps> = ({ match, profile
           <StyledView className="mb-6 mx-1">
             <Body className="text-xs uppercase mb-2 px-1" style={{ color: COLORS.neutral400, fontWeight: '500', letterSpacing: 0.5 }}>What you have in common</Body>
             <StyledView className="flex-row flex-wrap">
-              {previewInterests.map((interest, i) => <Chip key={`i-${i}`} label={interest} variant="interest" />)}
-              {previewValues.map((value, i) => <Chip key={`v-${i}`} label={value} variant="value" />)}
+              {previewInterests.map((interest) => <Chip key={`interest-${interest}`} label={interest} variant="interest" />)}
+              {previewValues.map((value) => <Chip key={`value-${value}`} label={value} variant="value" />)}
             </StyledView>
           </StyledView>
         </Animated.View>

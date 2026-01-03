@@ -30,13 +30,13 @@ interface ProposalCardProps {
   showRecommendedBadge?: boolean; // Show "Highly Recommended" badge
 }
 
-export function ProposalCard({
+export const ProposalCard = React.memo<ProposalCardProps>(({
   proposal,
   yourVote,
   onVote,
   onVoteAnimationComplete,
   showRecommendedBadge = true,
-}: ProposalCardProps) {
+}) => {
   const hasVoted = yourVote !== undefined;
   const highlyRecommended = showRecommendedBadge && isHighlyRecommended(proposal);
 
@@ -279,6 +279,6 @@ export function ProposalCard({
       </StyledView>
     </Animated.View>
   );
-}
+});
 
 export default ProposalCard;

@@ -135,7 +135,7 @@ export const GuideProvider: React.FC<GuideProviderProps> = ({ children }) => {
       setCurrentStep(nextStepIndex);
       await saveCurrentGuideState(activeGuide.id, nextStepIndex);
     }
-  }, [activeGuide, currentStep]);
+  }, [activeGuide, currentStep, completeGuide]);
 
   /**
    * Go back to previous step

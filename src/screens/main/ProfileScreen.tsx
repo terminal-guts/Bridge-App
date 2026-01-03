@@ -31,7 +31,6 @@ import { ProfileStrengthDashboard } from '../../components/ProfileStrengthDashbo
 import { PhotoCarousel } from '../../components/PhotoCarousel';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { showToast } from '../../utils/toast';
-import { getQuestionTier, TIER_CONFIG, calculateTierStats, countDisplayedByTier } from '../../utils/questionTiers';
 import { DEEP_QUESTIONS, getUnansweredQuestions } from '../../utils/deepQuestions';
 import { AnswerQuestionModal } from '../../components/AnswerQuestionModal';
 import { GuideTarget } from '../../components/guides';
@@ -197,6 +196,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const lastFetchRef = useRef<number>(0);
   const CACHE_DURATION = 30000; // 30 seconds - only refetch if data is stale
 
+  // Track component mount status to prevent state updates after unmount
+  const isMountedRef = useRef(true);
+
+  // Cleanup: Mark component as unmounted to prevent state updates
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   // Performance: Wrap data loading functions in useCallback
   const loadProfile = useCallback(async () => {
     try {
@@ -204,7 +213,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       const userResult = await requirePhoneVerification();
       if (!userResult.ok || !userResult.data) {
         Alert.alert('Error', 'Failed to authenticate');
-        setLoading(false);
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
         return;
       }
 
@@ -215,11 +226,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         if (!isOffline) {
           Alert.alert('Error', 'Failed to load profile');
         }
-        setLoading(false);
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
         return;
       }
 
       const loadedProfile = profileResult.data;
+      if (!isMountedRef.current) return;
+
       setProfile(loadedProfile);
 
       // Load section visibility from profile if it exists
@@ -235,7 +250,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         Alert.alert('Error', error.message || 'An unexpected error occurred');
       }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   }, [isOffline]);
 
@@ -247,7 +264,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       const matchesResult = await getUserMatches();
       if (matchesResult.ok && matchesResult.data) {
         const pastMatches = matchesResult.data.filter(m => m.status === 'accepted');
-        setMatches(pastMatches);
+        if (isMountedRef.current) {
+          setMatches(pastMatches);
+        }
       }
     } catch (error) {
       console.error('Failed to load matches:', error);
@@ -258,7 +277,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     try {
       const result = await getFriendCount();
       if (result.ok && result.data !== undefined) {
-        setFriendCount(result.data);
+        if (isMountedRef.current) {
+          setFriendCount(result.data);
+        }
       }
     } catch (error) {
       console.error('Failed to load friend count:', error);
@@ -276,7 +297,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         loadFriendCount()
       ]).catch(error => {
         console.error('Failed to load profile data:', error);
-        // Individual functions handle their own errors, this is just a safety net
+        // Show user-visible error notification
+        showToast.error(
+          'Failed to load profile',
+          'Please pull down to refresh or try again later.'
+        );
       });
 
       // Clear banner dismissal on app start (for development/testing)
@@ -297,7 +322,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   }, [loading, profile, hasTriggeredGuide, startGuideIfNeeded]);
 
   const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
+    if (isMountedRef.current) {
+      setRefreshing(true);
+    }
     // Force refresh bypasses cache
     lastFetchRef.current = 0;
     await Promise.all([
@@ -306,7 +333,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       loadFriendCount(),
     ]);
     lastFetchRef.current = Date.now();
-    setRefreshing(false);
+    if (isMountedRef.current) {
+      setRefreshing(false);
+    }
   }, [loadProfile, loadMatches, loadFriendCount]);
 
   // IMPROVED: Handle inline answer editing using AnswerQuestionModal
@@ -347,11 +376,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       });
 
       if (result.ok) {
-        // Update local state immediately
-        setProfile({
-          ...profile,
-          deepQuestions: updatedQuestions,
-        });
+        // Update local state immediately (only if still mounted)
+        if (isMountedRef.current) {
+          setProfile({
+            ...profile,
+            deepQuestions: updatedQuestions,
+          });
+        }
         showToast.success('Answer updated!');
         return true;  // ✅ Success
       } else {
@@ -392,13 +423,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       });
 
       if (result.ok) {
-        setProfile({
-          ...profile,
-          displayedQuestions: updatedDisplayed,
-        });
-        setShowChangeQuestionModal(false);
-        setCurrentEditingQuestion(null);
-        setSelectedSlotIndex(null);
+        if (isMountedRef.current) {
+          setProfile({
+            ...profile,
+            displayedQuestions: updatedDisplayed,
+          });
+          setShowChangeQuestionModal(false);
+          setCurrentEditingQuestion(null);
+          setSelectedSlotIndex(null);
+        }
         showToast.success('Question changed!');
       } else {
         Alert.alert('Error', result.error?.message || 'Failed to change question');
@@ -450,12 +483,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       });
 
       if (result.ok) {
-        // Update local state
-        setProfile({
-          ...profile,
-          deepQuestions: updatedQuestions,
-          displayedQuestions: updatedDisplayed,
-        });
+        // Update local state (only if still mounted)
+        if (isMountedRef.current) {
+          setProfile({
+            ...profile,
+            deepQuestions: updatedQuestions,
+            displayedQuestions: updatedDisplayed,
+          });
+        }
         showToast.success('Answer saved!');
         return true;
       } else {
@@ -916,10 +951,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                         });
 
                         if (result.ok) {
-                          setProfile({
-                            ...profile,
-                            deepQuestions: updatedQuestions,
-                          });
+                          if (isMountedRef.current) {
+                            setProfile(prev => prev ? {
+                              ...prev,
+                              deepQuestions: updatedQuestions,
+                            } : prev);
+                          }
                           showToast.success('Answer saved!');
                           return true;
                         } else {
@@ -1048,21 +1085,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const handleSaveFeedback = async () => {
     if (!selectedMatch) return;
 
-    setSavingFeedback(true);
+    if (isMountedRef.current) {
+      setSavingFeedback(true);
+    }
     mediumHaptic();
 
     try {
       const result = await updateMatchExitFeedback(selectedMatch.id, editedFeedback);
 
       if (result.ok) {
-        // Update local state immutably
-        if (selectedMatch) {
+        // Update local state immutably (only if still mounted)
+        if (isMountedRef.current && selectedMatch) {
           setSelectedMatch({
             ...selectedMatch,
             unmatchSurveyResponse: editedFeedback,
           });
+          setIsEditingFeedback(false);
         }
-        setIsEditingFeedback(false);
         showToast.success('Feedback updated successfully');
       } else {
         showToast.error(result.error?.message || 'Failed to update feedback');
@@ -1070,7 +1109,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     } catch (error: any) {
       showToast.error('An unexpected error occurred');
     } finally {
-      setSavingFeedback(false);
+      if (isMountedRef.current) {
+        setSavingFeedback(false);
+      }
     }
   };
 
