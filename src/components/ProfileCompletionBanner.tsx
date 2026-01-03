@@ -33,6 +33,11 @@ export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = (
   const [isDismissed, setIsDismissed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Memoize profile completion calculation for performance - MUST be before early returns
+  const completion = useMemo(() => {
+    return calculateProfileCompleteness(profile).percentage;
+  }, [profile]);
+
   // Load dismissal state on mount
   useEffect(() => {
     const loadDismissalState = async () => {
@@ -68,11 +73,6 @@ export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = (
   if (isDismissed) {
     return null;
   }
-
-  // Memoize profile completion calculation for performance
-  const completion = useMemo(() => {
-    return calculateProfileCompleteness(profile).percentage;
-  }, [profile]);
 
   // Don't render if profile is 100% complete
   if (completion >= 100) {

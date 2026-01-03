@@ -18,6 +18,7 @@
 
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
+import { getUserProfile } from './profileService';
 
 /**
  * Generate a valid UUID v4
@@ -193,18 +194,15 @@ const createMockMatches = async (currentUserId: string): Promise<void> => {
   console.log('[DevData] Creating mock matches...');
 
   // Get current user's profile to determine gender
-  const { data: currentProfile } = await supabase
-    .from('user_profiles')
-    .select('gender')
-    .eq('user_id', currentUserId)
-    .single();
+  const profileResponse = await getUserProfile();
 
-  if (!currentProfile) {
+  if (!profileResponse.ok || !profileResponse.data) {
     console.error('[DevData] Current user profile not found');
     return;
   }
 
-  const currentGender = currentProfile.gender[0];
+  const currentProfile = profileResponse.data;
+  const currentGender = currentProfile.gender?.[0]?.toLowerCase() || 'male';
   const oppositeGender = currentGender === 'male' ? 'female' : 'male';
 
   // Create 3 mock user accounts and profiles
@@ -301,18 +299,15 @@ const createMockDailySurvey = async (currentUserId: string): Promise<void> => {
   console.log('[DevData] Creating mock daily survey...');
 
   // Get current user's profile to determine gender
-  const { data: currentProfile } = await supabase
-    .from('user_profiles')
-    .select('gender')
-    .eq('user_id', currentUserId)
-    .single();
+  const profileResponse = await getUserProfile();
 
-  if (!currentProfile) {
+  if (!profileResponse.ok || !profileResponse.data) {
     console.error('[DevData] Current user profile not found');
     return;
   }
 
-  const currentGender = currentProfile.gender[0];
+  const currentProfile = profileResponse.data;
+  const currentGender = currentProfile.gender?.[0]?.toLowerCase() || 'male';
   const oppositeGender = currentGender === 'male' ? 'female' : 'male';
   const sameGender = currentGender;
 
