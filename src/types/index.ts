@@ -422,6 +422,10 @@ export interface OnboardingData {
     drugs?: string; // Legacy field name, prefer otherDrugs
   };
 
+  // Onboarding progress
+  phoneVerified?: boolean;
+  verificationCode?: string;
+
   // Legacy fields (kept for backward compatibility)
   pronouns?: 'he/him' | 'she/her' | 'they/them' | 'custom';
   customPronouns?: string;

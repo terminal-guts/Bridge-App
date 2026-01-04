@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, TextInput } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/OnboardingLayout';
+import { sendOtpToPhone, verifyPhone } from '../../../services/authService';
 
 interface PhoneVerificationStepProps {
   data: Partial<OnboardingData>;
@@ -25,10 +26,53 @@ export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
 }) => {
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
+  const [isSending, setIsSending] = useState(false);
   const inputRefs = React.useRef<Array<TextInput | null>>([]);
 
+  // Auto-send code on mount
+  useEffect(() => {
+    if (data.phoneNumber) {
+      sendOTP();
+    }
+  }, []);
+
+  const sendOTP = async () => {
+    if (isSending) return;
+    setIsSending(true);
+    console.log('[SMS] Automaticaly sending verification code via Twilio to:', data.phoneNumber);
+    const response = await sendOtpToPhone(data.phoneNumber || '');
+    setIsSending(false);
+
+    if (response.ok) {
+      setError('');
+      // Optional: Add a toast success message here
+    } else {
+      setError(response.error?.message || 'Failed to send code');
+    }
+  };
+
   const handleCodeChange = (text: string, index: number) => {
-    // Only allow numbers
+    // Handle autofill/paste (multiple characters)
+    if (text.length > 1) {
+      const pasteData = text.slice(0, 6).split('');
+      const newCode = [...code];
+      pasteData.forEach((char, i) => {
+        if (index + i < 6) newCode[index + i] = char;
+      });
+      setCode(newCode);
+
+      // Auto-submit if we have a full code
+      if (newCode.join('').length === 6) {
+        validateAndContinue(newCode.join(''));
+      } else {
+        // Focus the next empty one
+        const nextIndex = Math.min(index + pasteData.length, 5);
+        inputRefs.current[nextIndex]?.focus();
+      }
+      return;
+    }
+
+    // Only allow single numbers for manual entry
     if (text && !/^\d$/.test(text)) {
       return;
     }
@@ -58,7 +102,7 @@ export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
     }
   };
 
-  const validateAndContinue = (verificationCode?: string) => {
+  const validateAndContinue = async (verificationCode?: string) => {
     const fullCode = verificationCode || code.join('');
 
     if (fullCode.length !== 6) {
@@ -66,21 +110,25 @@ export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
       return;
     }
 
-    // MOCK: In production, verify code with backend
-    // For now, accept any 6-digit code
-    updateData({
-      phoneVerified: true,
-      verificationCode: fullCode,
-    });
-    onNext();
+    // Verify code with real backend
+    const response = await verifyPhone(data.phoneNumber || '', fullCode);
+
+    if (response.ok) {
+      updateData({
+        phoneNumber: data.phoneNumber,
+        phoneVerified: true, // Added phoneVerified as per instruction
+        // Removed verificationCode from updateData as it's not typically stored in OnboardingData
+      });
+      onNext();
+    } else {
+      setError(response.error?.message || 'Verification failed');
+    }
   };
 
-  const resendCode = () => {
-    // MOCK: In production, call API to resend code
-    console.log('[MOCK] Resending verification code to:', data.phoneNumber);
+  const resendCode = async () => {
     setCode(['', '', '', '', '', '']);
-    setError('');
     inputRefs.current[0]?.focus();
+    await sendOTP();
   };
 
   return (
@@ -98,16 +146,21 @@ export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
 
         <StyledView className="flex-row justify-between mb-8">
           {code.map((digit, index) => (
-            <StyledTextInput
+            <TextInput
               key={index}
-              ref={(ref) => (inputRefs.current[index] = ref)}
+              ref={(ref) => {
+                inputRefs.current[index] = ref;
+              }}
+              // NativeWind className works on standard components
               className="w-12 h-14 border-2 border-neutral-300 rounded-lg text-center text-2xl font-semibold"
               value={digit}
               onChangeText={(text) => handleCodeChange(text, index)}
               onKeyPress={(e) => handleKeyPress(e, index)}
               keyboardType="number-pad"
-              maxLength={1}
+              maxLength={index === 0 ? 6 : 1} // Allow first box to receive autofill
               autoFocus={index === 0}
+              textContentType="oneTimeCode"
+              autoComplete="one-time-code"
             />
           ))}
         </StyledView>
