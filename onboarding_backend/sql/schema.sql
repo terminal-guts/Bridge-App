@@ -151,3 +151,30 @@ ON public.user_photos FOR SELECT USING (TRUE);
 
 CREATE POLICY "Manage own photos" 
 ON public.user_photos FOR ALL USING (auth.uid() = user_id);
+
+-- ============================================================================
+-- 8. Onboarding Progress
+-- ============================================================================
+
+-- Onboarding Progress (for partial saves)
+CREATE TABLE IF NOT EXISTS public.onboarding_progress (
+  user_id UUID PRIMARY KEY, -- Removed foreign key for easier development
+  current_step TEXT NOT NULL DEFAULT 'phone',
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Enable RLS for Onboarding Progress
+ALTER TABLE public.onboarding_progress ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own onboarding progress"
+  ON public.onboarding_progress
+  FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- Trigger for updated_at
+CREATE TRIGGER set_onboarding_progress_updated_at
+  BEFORE UPDATE ON public.onboarding_progress
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_updated_at();

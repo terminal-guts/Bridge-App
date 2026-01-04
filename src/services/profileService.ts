@@ -8,6 +8,10 @@ import { ApiResponse, UserProfile, DeepQuestionAnswer, OnboardingData, Photo } f
 
 // In-memory storage
 let mockUserProfile: UserProfile | null = null;
+const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
+
+// Backend API URL
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 const createErrorResponse = (code: string, message: string): ApiResponse<any> => {
   return {
@@ -25,13 +29,28 @@ export const saveOnboardingStep = async (
   data: Partial<OnboardingData>
 ): Promise<ApiResponse<void>> => {
   try {
-    console.log('[MOCK PROFILE] Saving onboarding step:', stepKey, data);
+    console.log('[BACKEND] Saving step to Supabase:', stepKey);
 
-    // Update mock profile with new data
+    // Call real Python backend
+    const response = await fetch(`${API_URL}/onboarding/save-step`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: MOCK_USER_ID,
+        step_key: stepKey,
+        data: data
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('[BACKEND] Failed to save step to server, falling back to local mock');
+    }
+
+    // Update mock profile with new data for local UI state
     if (!mockUserProfile) {
       mockUserProfile = {
-        id: '00000000-0000-0000-0000-000000000001',
-        userId: '00000000-0000-0000-0000-000000000001',
+        id: MOCK_USER_ID,
+        userId: MOCK_USER_ID,
         firstName: '',
         lastName: '',
         age: 0,

@@ -108,7 +108,30 @@ class OnboardingCompletion(BaseModel):
     location: str
     photos: List[str]
 
+class SaveStepRequest(BaseModel):
+    user_id: str
+    step_key: str
+    data: Dict
+
 # --- Endpoints ---
+
+@app.post("/onboarding/save-step")
+async def save_onboarding_step(request: SaveStepRequest):
+    """
+    Saves partial onboarding state to the database.
+    """
+    try:
+        # If running in mock mode, this will just print a log
+        response = supabase.table("onboarding_progress").upsert({
+            "user_id": request.user_id,
+            "current_step": request.step_key,
+            "data": request.data
+        }).execute()
+        return {"status": "success", "message": f"Step {request.step_key} saved"}
+    except Exception as e:
+        print(f"Error saving onboarding step: {e}")
+        # We don't want to block the user if DB is down, but we log the error
+        return {"status": "error", "message": str(e)}
 
 @app.post("/onboarding/send-otp")
 async def send_otp(request: PhoneRequest):
