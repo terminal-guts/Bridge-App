@@ -697,7 +697,7 @@ const CelebrationOverlay: React.FC<{ visible: boolean; recipientName: string; on
         {heartScales.map((scale, index) => {
           const angle = (index * 30) * (Math.PI / 180);
           return (
-            <Animated.View key={index} style={{ position: 'absolute', transform: [{ translateX: Math.cos(angle) * 100 }, { translateY: Math.sin(angle) * 100 }, { scale }] }}>
+            <Animated.View key={`heart-${index}`} style={{ position: 'absolute', transform: [{ translateX: Math.cos(angle) * 100 }, { translateY: Math.sin(angle) * 100 }, { scale }] }}>
               <Ionicons name="heart" size={24} color={COLORS.pink} />
             </Animated.View>
           );
@@ -747,7 +747,7 @@ const MOCK_PROFILE: UserProfile = {
   interests: ['Travel', 'Photography', 'Hiking', 'Music', 'Art', 'Cooking'],
   values: ['Honesty', 'Growth', 'Adventure', 'Family', 'Creativity'],
   lifestyle: { drinking: 'socially', smoking: 'never', exercise: 'often' },
-  dealbreakers: [],
+  nonNegotiables: [],
   preferences: { ageMin: 25, ageMax: 35, gender: 'male', lookingFor: 'relationship' },
   hasChildren: 'no',
   familyPlans: 'want_someday',
@@ -988,7 +988,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
         <View style={{ height: PHOTO_HEIGHT, backgroundColor: '#111' }}>
           {photos.length > 0 ? (
             <>
-              <FlatList ref={flatListRef} data={photos} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onScroll={handlePhotoScroll} scrollEventThrottle={16} keyExtractor={(item) => item.id} renderItem={({ item, index }) => <BlurredPhoto uri={item.url} style={{ width: SCREEN_WIDTH, height: PHOTO_HEIGHT }} index={index} />} />
+              <FlatList ref={flatListRef} data={photos} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onScroll={handlePhotoScroll} scrollEventThrottle={16} keyExtractor={(item, index) => item.id || `photo-${index}`} renderItem={({ item, index }) => <BlurredPhoto uri={item.url} style={{ width: SCREEN_WIDTH, height: PHOTO_HEIGHT }} index={index} />} />
               {photos.length > 1 && (
                 <>
                   <TouchableWithoutFeedback onPress={() => { if (currentPhotoIndex > 0) { goToPhoto(currentPhotoIndex - 1); mediumHaptic(); } }}><View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: TAP_ZONE_WIDTH }} /></TouchableWithoutFeedback>
@@ -997,8 +997,8 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
               )}
               {photos.length > 1 && (
                 <StyledView className="absolute left-5 right-5 flex-row" style={{ top: insets.top + 56 }}>
-                  {photos.map((_, index) => (
-                    <StyledTouchableOpacity key={index} onPress={() => goToPhoto(index)} className="flex-1 mx-1" activeOpacity={0.8}>
+                  {photos.map((photo, index) => (
+                    <StyledTouchableOpacity key={photo.id || `indicator-${index}`} onPress={() => goToPhoto(index)} className="flex-1 mx-1" activeOpacity={0.8}>
                       <StyledView className="h-1 rounded-full" style={{ backgroundColor: index === currentPhotoIndex ? COLORS.white : 'rgba(255, 255, 255, 0.4)' }} />
                     </StyledTouchableOpacity>
                   ))}

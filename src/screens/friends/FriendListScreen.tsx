@@ -106,7 +106,7 @@ export const FriendListScreen: React.FC<FriendListScreenProps> = ({ navigation }
       <StyledView className="flex-row">
         {friend.profile.photos && friend.profile.photos.length > 0 ? (
           <StyledImage
-            source={{ uri: friend.profile.photos[0].url }}
+            source={{ uri: (friend.profile.photos.find(p => p.isMain) || friend.profile.photos[0]).url }}
             className="w-16 h-16 rounded-full mr-3"
           />
         ) : (

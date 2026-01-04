@@ -84,7 +84,6 @@ export interface UserProfile {
   customInterestedIn?: string; // Custom description for interested in genders
   preferredEthnicities?: string[]; // Array of ethnicities user is interested in matching with
   preferredPolitics?: string[]; // Array of political preferences user is interested in matching with
-  nonNegotiable?: string; // Single top priority preference
   preferenceVisibility?: Record<string, boolean>; // Which preference sections are visible on profile
   currentJob?: string; // Current job title
   companyPosition?: string; // Company/position combined
@@ -110,7 +109,7 @@ export interface UserProfile {
   interests: string[];
   values: string[];
   lifestyle: LifestylePreferences;
-  dealbreakers: Dealbreaker[];
+  nonNegotiables: NonNegotiable[];
   preferences: MatchPreferences;
   deepQuestions?: DeepQuestionAnswer[];
   displayedQuestions?: number[]; // Question IDs to display on profile (max 3, one per tier)
@@ -156,7 +155,7 @@ export interface LifestylePreferences {
   pets?: string[];
 }
 
-export interface Dealbreaker {
+export interface NonNegotiable {
   id: string;
   type: string;
   value: any;
@@ -169,6 +168,7 @@ export interface MatchPreferences {
   lookingFor: 'relationship' | 'casual' | 'friendship' | 'unsure';
   heightMin?: number; // Minimum height in inches (e.g., 60 = 5'0")
   heightMax?: number; // Maximum height in inches (e.g., 84 = 7'0")
+  maxDistance?: number | null; // Maximum distance in miles, null = no limit
 }
 
 // Survey Types
@@ -410,7 +410,7 @@ export interface OnboardingData {
   lifestyle: LifestylePreferences;
   preferences: MatchPreferences;
   deepQuestions?: DeepQuestionAnswer[];
-  dealbreakers?: Dealbreaker[];
+  nonNegotiables?: NonNegotiable[];
 
   // Partner Preferences (collected via double-tap in onboarding)
   partnerLifestylePreferences?: {

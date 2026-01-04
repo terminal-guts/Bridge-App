@@ -39,7 +39,7 @@ export const HeightStep: React.FC<HeightStepProps> = ({
     if (!heightStr) return MIN_HEIGHT; // Start at minimum if no data
 
     // Try parsing as inches first (e.g., "68")
-    const inchesValue = parseInt(heightStr);
+    const inchesValue = parseInt(heightStr, 10);
     if (!isNaN(inchesValue) && inchesValue >= MIN_HEIGHT && inchesValue <= MAX_HEIGHT) {
       return inchesValue;
     }
@@ -47,8 +47,8 @@ export const HeightStep: React.FC<HeightStepProps> = ({
     // Fall back to parsing formatted string (e.g., "5'8"")
     const match = heightStr.match(/(\d+)'(\d+)"/);
     if (match) {
-      const feet = parseInt(match[1]);
-      const inches = parseInt(match[2]);
+      const feet = parseInt(match[1], 10);
+      const inches = parseInt(match[2], 10);
       return feet * 12 + inches;
     }
 

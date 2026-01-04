@@ -111,7 +111,9 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
         {/* Photo */}
         <StyledImage
           source={{ uri: user.photos?.[0] || 'https://via.placeholder.com/60' }}
-          className="w-[60px] h-[60px] rounded-full mb-2"
+          className="rounded-full mb-2"
+          style={{ width: 60, height: 60 }}
+          resizeMode="cover"
         />
 
         {/* Name & Age */}
@@ -158,8 +160,9 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
                   source={{
                     uri: endorsement.endorserProfile.photos?.[0] || 'https://via.placeholder.com/24',
                   }}
-                  className="w-6 h-6 rounded-full"
-                  style={{ marginRight: 8 }}
+                  className="rounded-full"
+                  style={{ width: 24, height: 24, marginRight: 8 }}
+                  resizeMode="cover"
                 />
               )}
               <StyledText className="text-xs text-neutral-700">

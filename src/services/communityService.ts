@@ -121,7 +121,7 @@ function generateMockUser(overrides?: Partial<UserProfile>): UserProfile {
     interests: interests.slice(0, 3),
     values: ['Authenticity', 'Growth', 'Kindness'],
     lifestyle: {},
-    dealbreakers: [],
+    nonNegotiables: [],
     preferences: {
       ageMin: 24,
       ageMax: 35,

@@ -104,7 +104,7 @@ export const getTodaysSurvey = async (): Promise<ApiResponse<DailySurvey | null>
         children: p.has_children || 'open',
         pets: [],
       },
-      dealbreakers: [],
+      nonNegotiables: [],
       preferences: {
         ageMin: 24,
         ageMax: 32,

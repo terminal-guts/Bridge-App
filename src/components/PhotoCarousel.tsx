@@ -50,7 +50,9 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({
   visible,
   onClose,
 }) => {
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  // Validate initialIndex to prevent crashes
+  const validatedIndex = Math.max(0, Math.min(initialIndex, photos.length - 1));
+  const [currentIndex, setCurrentIndex] = useState(validatedIndex);
   const flatListRef = useRef<FlatList>(null);
 
   const handleClose = () => {
@@ -136,7 +138,7 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({
           showsHorizontalScrollIndicator={false}
           onScroll={handleScroll}
           scrollEventThrottle={16}
-          initialScrollIndex={initialIndex}
+          initialScrollIndex={validatedIndex}
           getItemLayout={(data, index) => ({
             length: SCREEN_WIDTH,
             offset: SCREEN_WIDTH * index,

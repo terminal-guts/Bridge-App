@@ -50,7 +50,7 @@ const createMockProfile = (id: string, firstName: string, age: number): UserProf
   drinkingFrequency: 'socially',
   cannabisFrequency: 'never',
   tobaccoFrequency: 'never',
-  dealbreakers: [],
+  nonNegotiables: [],
   preferences: {
     ageMin: 25,
     ageMax: 35,

@@ -75,7 +75,7 @@ export const UndoSnackbar: React.FC<UndoSnackbarProps> = ({
       opacity.setValue(0);
       progressAnim.setValue(0);
     }
-  }, [visible]);
+  }, [visible, duration]);
 
   const handleDismiss = () => {
     Animated.parallel([

@@ -160,15 +160,16 @@ const FloatingHearts: React.FC<{ active: boolean }> = ({ active }) => {
     if (!active) return;
 
     const timers: NodeJS.Timeout[] = [];
+    const animations: Animated.CompositeAnimation[] = []; // Track animations to stop on cleanup
 
     hearts.forEach((heart, index) => {
       const delay = index * ANIMATION.STAGGER_DELAY;
       const duration = 2000 + Math.random() * 1000;
 
       timers.push(setTimeout(() => {
-        const currentX = (heart.x as any).__getValue?.() ?? SCREEN_WIDTH * 0.5;
+        const currentX = (heart.x as Animated.Value & { __getValue?: () => number }).__getValue?.() ?? SCREEN_WIDTH * 0.5;
 
-        Animated.parallel([
+        const animation = Animated.parallel([
           Animated.sequence([
             Animated.timing(heart.opacity, { toValue: 0.8, duration: ANIMATION.DURATION_FAST, useNativeDriver: true }),
             Animated.timing(heart.opacity, { toValue: 0, duration: duration - 200, delay: 400, useNativeDriver: true }),
@@ -178,11 +179,17 @@ const FloatingHearts: React.FC<{ active: boolean }> = ({ active }) => {
             Animated.timing(heart.x, { toValue: currentX + (Math.random() - 0.5) * 50, duration: duration / 2, useNativeDriver: true }),
             Animated.timing(heart.x, { toValue: currentX - (Math.random() - 0.5) * 30, duration: duration / 2, useNativeDriver: true }),
           ]),
-        ]).start();
+        ]);
+
+        animations.push(animation); // Store animation reference
+        animation.start();
       }, delay));
     });
 
-    return () => timers.forEach(clearTimeout);
+    return () => {
+      timers.forEach(clearTimeout);
+      animations.forEach(anim => anim.stop()); // Stop all running animations
+    };
   }, [active, hearts]);
 
   if (!active) return null;
@@ -343,7 +350,8 @@ export const MatchRevealView: React.FC<MatchRevealViewProps> = ({ match, profile
 
   // Timer styling based on urgency
   const isExpired = timeRemaining.includes('Expired');
-  const isUrgent = !isExpired && parseInt(timeRemaining) <= 6;
+  const hoursRemaining = Math.max(0, (new Date(match.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60));
+  const isUrgent = !isExpired && hoursRemaining <= 6 && hoursRemaining > 0;
   const timerBg = isExpired ? COLORS.errorBg : isUrgent ? COLORS.warningBg : COLORS.neutral50;
   const timerBorder = isExpired ? COLORS.errorBorder : isUrgent ? COLORS.warningBorder : COLORS.neutral300;
   const timerColor = isExpired ? '#DC2626' : isUrgent ? '#D97706' : COLORS.neutral600;
@@ -403,8 +411,8 @@ export const MatchRevealView: React.FC<MatchRevealViewProps> = ({ match, profile
               elevation: 8,
             }}
           >
-            {profile.photos?.[0]?.url ? (
-              <StyledImage source={{ uri: profile.photos[0].url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            {(profile.photos?.find(p => p.isMain) || profile.photos?.[0])?.url ? (
+              <StyledImage source={{ uri: (profile.photos.find(p => p.isMain) || profile.photos[0]).url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             ) : (
               <StyledView className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.neutral100 }}>
                 <Ionicons name="person" size={64} color={COLORS.neutral300} />
@@ -468,7 +476,7 @@ export const MatchRevealView: React.FC<MatchRevealViewProps> = ({ match, profile
           <StyledView className="h-px mb-4" style={{ backgroundColor: COLORS.neutral200 }} />
 
           {matchReasons.map((reason, index) => (
-            <StyledView key={index} className="flex-row items-center" style={{ marginBottom: index === matchReasons.length - 1 ? 0 : 8 }}>
+            <StyledView key={`reason-${index}`} className="flex-row items-center" style={{ marginBottom: index === matchReasons.length - 1 ? 0 : 8 }}>
               <StyledView className="w-5 h-5 rounded-full items-center justify-center mr-3" style={{ backgroundColor: COLORS.successBg }}>
                 <Ionicons name="checkmark" size={10} color={COLORS.success} />
               </StyledView>

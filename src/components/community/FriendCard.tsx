@@ -71,7 +71,9 @@ export const FriendCard = React.memo<FriendCardProps>(({ friend, isPending, onVi
       <StyledTouchable onPress={handleAvatarPress} activeOpacity={0.7}>
         <StyledImage
           source={{ uri: friend.friend.photos?.[0]?.url || friend.friend.photos?.[0] || 'https://via.placeholder.com/100' }}
-          className="w-12 h-12 rounded-full border-2 border-blue-100"
+          className="rounded-full border-2 border-blue-100"
+          style={{ width: 48, height: 48 }}
+          resizeMode="cover"
         />
       </StyledTouchable>
 

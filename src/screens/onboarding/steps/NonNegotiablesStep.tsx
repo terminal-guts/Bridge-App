@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, Body, Card } from '../../../components/ui';
-import { OnboardingData, Dealbreaker } from '../../../types';
+import { OnboardingData, NonNegotiable } from '../../../types';
 import { Ionicons } from '@expo/vector-icons';
 import { OnboardingLayout } from '../../../components/OnboardingLayout';
 
-interface DealbreakersStepProps {
+interface NonNegotiablesStepProps {
   data: Partial<OnboardingData>;
   updateData: (data: Partial<OnboardingData>) => void;
   onNext: () => void;
@@ -17,7 +17,7 @@ interface DealbreakersStepProps {
 
 const StyledView = styled(View);
 
-const DEALBREAKER_OPTIONS = [
+const NON_NEGOTIABLE_OPTIONS = [
   { id: 'smoking', label: 'Smoking', icon: '🚬' },
   { id: 'heavy_drinking', label: 'Heavy Drinking', icon: '🍺' },
   { id: 'drugs', label: 'Drug Use', icon: '💊' },
@@ -31,40 +31,40 @@ const DEALBREAKER_OPTIONS = [
   { id: 'dishonesty', label: 'Dishonesty', icon: '🤥' },
 ];
 
-export const DealbreakersStep: React.FC<DealbreakersStepProps> = ({
+export const NonNegotiablesStep: React.FC<NonNegotiablesStepProps> = ({
   data,
   updateData,
   onNext,
   onBack,
 }) => {
-  const [selectedDealbreakers, setSelectedDealbreakers] = useState<Dealbreaker[]>(
-    data.dealbreakers || []
+  const [selectedNonNegotiables, setSelectedNonNegotiables] = useState<NonNegotiable[]>(
+    data.nonNegotiables || []
   );
 
-  const toggleDealbreaker = (dealbreakerId: string) => {
-    const exists = selectedDealbreakers.find(d => d.type === dealbreakerId);
+  const toggleNonNegotiable = (nonNegotiableId: string) => {
+    const exists = selectedNonNegotiables.find(d => d.type === nonNegotiableId);
 
     if (exists) {
-      setSelectedDealbreakers(
-        selectedDealbreakers.filter(d => d.type !== dealbreakerId)
+      setSelectedNonNegotiables(
+        selectedNonNegotiables.filter(d => d.type !== nonNegotiableId)
       );
     } else {
-      const newDealbreaker: Dealbreaker = {
-        id: `db_${Date.now()}`,
-        type: dealbreakerId,
+      const newNonNegotiable: NonNegotiable = {
+        id: `nn_${Date.now()}`,
+        type: nonNegotiableId,
         value: true,
       };
-      setSelectedDealbreakers([...selectedDealbreakers, newDealbreaker]);
+      setSelectedNonNegotiables([...selectedNonNegotiables, newNonNegotiable]);
     }
   };
 
   const validateAndContinue = () => {
-    updateData({ dealbreakers: selectedDealbreakers });
+    updateData({ nonNegotiables: selectedNonNegotiables });
     onNext();
   };
 
-  const isSelected = (dealbreakerId: string) => {
-    return selectedDealbreakers.some(d => d.type === dealbreakerId);
+  const isSelected = (nonNegotiableId: string) => {
+    return selectedNonNegotiables.some(d => d.type === nonNegotiableId);
   };
 
   return (
@@ -74,17 +74,17 @@ export const DealbreakersStep: React.FC<DealbreakersStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-        <H1 className="mb-3">Dealbreakers</H1>
+        <H1 className="mb-3">Non-Negotiables</H1>
         <Body className="text-neutral-600 mb-8">
-          Select things that are absolute no-gos for you.
+          Select things that are no-gos for you.
         </Body>
 
-        {/* Dealbreakers List */}
+        {/* Non-Negotiables List */}
         <StyledView>
-          {DEALBREAKER_OPTIONS.map(option => (
+          {NON_NEGOTIABLE_OPTIONS.map(option => (
             <Card
               key={option.id}
-              onPress={() => toggleDealbreaker(option.id)}
+              onPress={() => toggleNonNegotiable(option.id)}
               className={`mb-2 ${
                 isSelected(option.id)
                   ? 'border border-error bg-error/5'
@@ -121,7 +121,7 @@ export const DealbreakersStep: React.FC<DealbreakersStepProps> = ({
         </StyledView>
 
         <Body className="text-neutral-500 text-sm mt-4">
-          {selectedDealbreakers.length} dealbreakers selected
+          {selectedNonNegotiables.length} non-negotiables selected
         </Body>
       </StyledView>
     </OnboardingLayout>

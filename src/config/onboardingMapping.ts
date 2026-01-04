@@ -3,6 +3,19 @@
  *
  * Maps each onboarding step to its database table and column(s).
  * Used by saveOnboardingStep() to persist answers incrementally.
+ *
+ * IMPORTANT NOTES:
+ * 1. Onboarding does NOT need to collect all mandatory fields
+ * 2. Users can skip many steps and enter the app with incomplete profiles
+ * 3. Users CANNOT enter matching pool until ALL mandatory fields are complete
+ * 4. Mandatory fields not collected in onboarding must be completed in-app
+ *
+ * MANDATORY FIELDS NOT IN ONBOARDING:
+ * - preferredEthnicities (Match Preferences - collected post-onboarding)
+ * - preferredPolitics (Match Preferences - collected post-onboarding)
+ * - partnerLifestylePreferences (Match Preferences - collected post-onboarding)
+ * - displayedQuestions (Deep Questions - collected post-onboarding)
+ * - Additional photos (Onboarding collects 1, need 6 total for matching pool)
  */
 
 export type StepType = 'text' | 'single_choice' | 'multi_choice' | 'complex';
@@ -114,7 +127,7 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
         if (!heightStr) return null;
         const match = heightStr.match(/(\d+)'(\d+)"/);
         if (match) {
-          return parseInt(match[1]) * 12 + parseInt(match[2]);
+          return parseInt(match[1], 10) * 12 + parseInt(match[2], 10);
         }
         return null;
       };
@@ -131,15 +144,14 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
     },
   },
 
-  // Step 6: Ethnicity (my ethnicity + preferred ethnicities)
+  // Step 7: Ethnicity (my ethnicity only - preferred ethnicities NOT collected in onboarding)
   ethnicity: {
     key: 'ethnicity',
-    type: 'complex',
+    type: 'single_choice',
     table: 'user_profiles',
-    columns: ['ethnicity', 'preferred_ethnicities'],
+    columns: ['ethnicity'],
     transform: (data: any) => ({
       ethnicity: data.ethnicity || '',
-      preferred_ethnicities: data.preferredEthnicities || data.ethnicityPreference || [],
     }),
   },
 
@@ -154,10 +166,10 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
     }),
   },
 
-  // Step 8: Children & Family
+  // Step 9: Children & Family Plans (both collected on same page)
   children: {
     key: 'children',
-    type: 'single_choice',
+    type: 'complex',
     table: 'user_profiles',
     columns: ['has_children', 'family_plans'],
     transform: (data: any) => ({
@@ -166,13 +178,7 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
     }),
   },
 
-  // Step 8: Hometown
-  hometown: {
-    key: 'hometown',
-    type: 'text',
-    table: 'user_profiles',
-    columns: ['hometown'],
-  },
+  // REMOVED FROM ONBOARDING: Hometown (still available in profile edit)
 
   // Step 9: Current Location
   location: {
@@ -193,35 +199,9 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
     }),
   },
 
-  // Step 11: Company/Position
-  company_position: {
-    key: 'company_position',
-    type: 'text',
-    table: 'user_profiles',
-    columns: ['company_position'],
-    transform: (data: any) => ({
-      company_position: data.companyPosition,
-    }),
-  },
-
-  // Step 12: Education Level
-  education_level: {
-    key: 'education_level',
-    type: 'single_choice',
-    table: 'user_profiles',
-    columns: ['education_level'],
-    transform: (data: any) => ({
-      education_level: data.educationLevel,
-    }),
-  },
-
-  // Step 13: School
-  school: {
-    key: 'school',
-    type: 'text',
-    table: 'user_profiles',
-    columns: ['school'],
-  },
+  // REMOVED FROM ONBOARDING: Company/Position (still available in profile edit)
+  // REMOVED FROM ONBOARDING: Education Level (still available in profile edit)
+  // REMOVED FROM ONBOARDING: School (still available in profile edit)
 
   // Step 14: Religion
   religion: {
@@ -242,7 +222,7 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
     }),
   },
 
-  // Step 16: Lifestyle (drinking, cannabis, tobacco, other drugs + partner preferences)
+  // Step 14: Lifestyle (user's own habits only - partner preferences NOT collected in onboarding)
   lifestyle: {
     key: 'lifestyle',
     type: 'complex',
@@ -255,12 +235,6 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
           cannabis_frequency: data.cannabisFrequency,
           tobacco_frequency: data.tobaccoFrequency,
           other_drugs_frequency: data.otherDrugsFrequency,
-        },
-        preferences: {
-          partner_drinking_preference: data.partnerLifestylePreferences?.drinking,
-          partner_cannabis_preference: data.partnerLifestylePreferences?.cannabis,
-          partner_tobacco_preference: data.partnerLifestylePreferences?.tobacco,
-          partner_other_drugs_preference: data.partnerLifestylePreferences?.otherDrugs,
         },
       };
     },
@@ -305,40 +279,8 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
     // Photos are handled separately via photoService
   },
 
-  // Step 20: Deep Questions
-  deep_questions: {
-    key: 'deep_questions',
-    type: 'complex',
-    table: 'deep_question_answers',
-    columns: ['answers', 'displayed_question_ids'],
-    transform: (data: any) => {
-      // Convert array format to JSONB object format
-      const answersObject: Record<string, any> = {};
-      (data.deepQuestions || []).forEach((q: any) => {
-        answersObject[q.questionId.toString()] = {
-          tier: q.tier,
-          question: q.question,
-          answer: q.answer,
-        };
-      });
-
-      return {
-        answers: answersObject,
-        displayed_question_ids: data.displayedQuestions || [],
-      };
-    },
-  },
-
-  // Step 21: Dealbreakers
-  dealbreakers: {
-    key: 'dealbreakers',
-    type: 'multi_choice',
-    table: 'user_preferences',
-    columns: ['dealbreakers'],
-    transform: (data: any) => ({
-      dealbreakers: (data.dealbreakers || []).map((d: any) => d.type || d),
-    }),
-  },
+  // REMOVED FROM ONBOARDING: Deep Questions (still available in profile edit)
+  // REMOVED FROM ONBOARDING: Non-Negotiables (still available in profile edit)
 
   // Step 22: Preferences (Commitment Level)
   preferences: {

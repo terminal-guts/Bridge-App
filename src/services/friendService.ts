@@ -288,7 +288,7 @@ export const getFriends = async (): Promise<ApiResponse<FriendWithProfile[]>> =>
           interests: profile.interests || [],
           values: profile.values || [],
           lifestyle: profile.lifestyle || {} as any,
-          dealbreakers: [],
+          nonNegotiables: [],
           preferences: profile.preferences || {} as any,
           isVerified: false,
           isPaused: false,
@@ -548,7 +548,7 @@ const formatDatabaseProfile = (data: any): UserProfile => {
       children: data.has_children,
       pets: [],
     },
-    dealbreakers: [],
+    nonNegotiables: [],
     preferences: {
       ageMin: 24,
       ageMax: 32,

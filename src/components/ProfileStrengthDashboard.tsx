@@ -14,7 +14,7 @@ import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 import { H2, H3, Body, Card } from './ui';
 import { UserProfile } from '../types';
-import { calculateMatchPreferencesCompleteness } from '../utils/profileCompleteness';
+import { calculateProfileStrengthBreakdown } from '../utils/profileCompleteness';
 
 interface ProfileStrengthDashboardProps {
   profile: UserProfile;
@@ -36,148 +36,128 @@ const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 
 /**
- * Calculate profile strength metrics - Simplified to 4 categories
+ * Calculate profile strength metrics using centralized calculation
+ * This ensures 100% consistency with all other components
  */
 const calculateStrength = (profile: UserProfile): {
   overall: number;
   sections: SectionScore[];
 } => {
+  // Use centralized calculation - SINGLE SOURCE OF TRUTH
+  const breakdown = calculateProfileStrengthBreakdown(profile);
+
   const sections: SectionScore[] = [];
 
-  // 1. About Me (max 19 points) - All fields equally weighted (1 point each)
-  let aboutScore = 0;
+  // 1. About Me - Map from centralized calculation
   const aboutSuggestions: string[] = [];
-
-  // Basic Demographics (7 fields)
-  if (profile.firstName?.trim()) aboutScore += 1; else aboutSuggestions.push('Add first name');
-  if (profile.lastName?.trim()) aboutScore += 1; else aboutSuggestions.push('Add last name');
-  if (profile.age) aboutScore += 1; else aboutSuggestions.push('Add your age');
-  if (profile.height) aboutScore += 1; else aboutSuggestions.push('Add your height');
-  if (profile.ethnicity) aboutScore += 1; else aboutSuggestions.push('Add your ethnicity');
-  if (profile.location) aboutScore += 1; else aboutSuggestions.push('Add your location');
-  if (profile.currentJob) aboutScore += 1; else aboutSuggestions.push('Add your occupation');
-
-  // Identity (4 fields)
-  if ((profile.pronounsList && profile.pronounsList.length > 0) ||
-      (profile.pronouns && profile.pronouns !== 'prefer_not_to_say')) {
-    aboutScore += 1;
-  } else {
+  if (!profile.firstName?.trim()) aboutSuggestions.push('Add first name');
+  if (!profile.lastName?.trim()) aboutSuggestions.push('Add last name');
+  if (!profile.age) aboutSuggestions.push('Add your age');
+  if (!profile.height) aboutSuggestions.push('Add your height');
+  if (!profile.ethnicity) aboutSuggestions.push('Add your ethnicity');
+  if (!profile.location) aboutSuggestions.push('Add your location');
+  if (!profile.currentJob) aboutSuggestions.push('Add your occupation');
+  if (!((profile.pronounsList?.length ?? 0) > 0) && !(profile.pronouns && profile.pronouns !== 'prefer_not_to_say')) {
     aboutSuggestions.push('Add your pronouns');
   }
-  if (profile.gender && profile.gender.length > 0) aboutScore += 1; else aboutSuggestions.push('Add your gender');
-  if (profile.religion) aboutScore += 1; else aboutSuggestions.push('Add your religion');
-  if (profile.politicalLeaning && profile.politicalLeaning !== 'prefer_not_to_say') {
-    aboutScore += 1;
-  } else {
+  if (!(profile.gender && profile.gender.length > 0)) aboutSuggestions.push('Add your gender');
+  if (!profile.religion) aboutSuggestions.push('Add your religion');
+  if (!(profile.politicalLeaning && profile.politicalLeaning !== 'prefer_not_to_say')) {
     aboutSuggestions.push('Add political views');
   }
+  if (profile.hasChildren === undefined || profile.hasChildren === null) aboutSuggestions.push('Answer children status');
+  if (!profile.familyPlans) aboutSuggestions.push('Add family plans');
+  if (!profile.drinkingFrequency) aboutSuggestions.push('Add drinking habits');
+  if (!profile.cannabisFrequency) aboutSuggestions.push('Add cannabis habits');
+  if (!profile.tobaccoFrequency) aboutSuggestions.push('Add tobacco/vaping habits');
+  if (!profile.otherDrugsFrequency) aboutSuggestions.push('Add other drugs habits');
 
-  // Family (2 fields)
-  if (profile.hasChildren !== undefined && profile.hasChildren !== null) aboutScore += 1; else aboutSuggestions.push('Answer children status');
-  if (profile.familyPlans) aboutScore += 1; else aboutSuggestions.push('Add family plans');
-
-  // Lifestyle/Substances (4 fields - each counts separately)
-  if (profile.drinkingFrequency) aboutScore += 1; else aboutSuggestions.push('Add drinking habits');
-  if (profile.cannabisFrequency) aboutScore += 1; else aboutSuggestions.push('Add cannabis habits');
-  if (profile.tobaccoFrequency) aboutScore += 1; else aboutSuggestions.push('Add tobacco/vaping habits');
-  if (profile.otherDrugsFrequency) aboutScore += 1; else aboutSuggestions.push('Add other drugs habits');
-
-  // Personal (2 fields - require 3+ each)
   const interestCount = profile.interests?.length || 0;
   const valueCount = profile.values?.length || 0;
-  if (interestCount >= 3) aboutScore += 1;
-  else aboutSuggestions.push(`Add ${Math.max(0, 3 - interestCount)} more interests`);
-  if (valueCount >= 3) aboutScore += 1;
-  else aboutSuggestions.push(`Add ${Math.max(0, 3 - valueCount)} more values`);
+  if (interestCount < 3) aboutSuggestions.push(`Add ${Math.max(0, 3 - interestCount)} more interests`);
+  if (valueCount < 3) aboutSuggestions.push(`Add ${Math.max(0, 3 - valueCount)} more values`);
 
   sections.push({
     name: 'About Me',
     icon: 'person-outline',
-    score: aboutScore,
-    maxScore: 19,
+    score: breakdown.sections.aboutMe.score,
+    maxScore: breakdown.sections.aboutMe.maxScore,
     suggestions: aboutSuggestions.slice(0, 2),
     color: '#437FFF',
+    displayPercentage: breakdown.sections.aboutMe.percentage,
   });
 
-  // 2. Match Preferences (max 25 points)
-  // All 7 mandatory match preference fields required for 100%
-  const matchPrefsCompletion = calculateMatchPreferencesCompleteness(profile);
-  const preferencesScore = Math.round((matchPrefsCompletion.percentage / 100) * 25);
-  const preferencesSuggestions: string[] = matchPrefsCompletion.missingFields.map(field => `Set ${field.toLowerCase()}`);
+  // 2. Match Preferences - Map from centralized calculation
+  const preferencesSuggestions: string[] = [];
+  if (!profile.preferences?.lookingFor?.trim()) preferencesSuggestions.push("Set looking for");
+  if (!(profile.interestedInGenders && profile.interestedInGenders.length > 0)) preferencesSuggestions.push('Set gender preferences');
+  if (!(profile.preferences?.ageMin && profile.preferences?.ageMax)) preferencesSuggestions.push('Set age range');
+  if (!(profile.preferences?.heightMin && profile.preferences?.heightMax)) preferencesSuggestions.push('Set height preference');
+  if (profile.preferences?.maxDistance === undefined) preferencesSuggestions.push('Set dating distance');
+  if (!(profile.preferredEthnicities && profile.preferredEthnicities.length > 0)) preferencesSuggestions.push('Set ethnicity preferences');
+  if (!(profile.preferredPolitics && profile.preferredPolitics.length > 0)) preferencesSuggestions.push('Set political preferences');
+  if (!(profile.partnerLifestylePreferences?.drinking &&
+        profile.partnerLifestylePreferences?.cannabis &&
+        profile.partnerLifestylePreferences?.tobacco &&
+        profile.partnerLifestylePreferences?.otherDrugs)) {
+    preferencesSuggestions.push('Set lifestyle preferences');
+  }
 
   sections.push({
     name: 'Match Preferences',
     icon: 'heart-outline',
-    score: preferencesScore,
-    maxScore: 25,
+    score: breakdown.sections.matchPreferences.score,
+    maxScore: breakdown.sections.matchPreferences.maxScore,
     suggestions: preferencesSuggestions.slice(0, 2),
     color: '#7C3AED',
-    displayPercentage: matchPrefsCompletion.percentage, // Use exact percentage from calculator
+    displayPercentage: breakdown.sections.matchPreferences.percentage,
   });
 
-  // 3. Photos (max 25 points)
-  // 6 photos = 100% for this section
-  let photosScore = 0;
+  // 3. Photos - Map from centralized calculation
   const photosSuggestions: string[] = [];
-  const photoCount = profile.photos?.length || 0;
-
-  if (photoCount >= 6) {
-    // 6 photos = full credit (100%)
-    photosScore = 25;
-  } else if (photoCount > 0) {
-    // Partial credit: each photo is worth 1/6 of total points
-    photosScore = Math.round((photoCount / 6) * 25);
-    photosSuggestions.push(`Add ${6 - photoCount} more photo${6 - photoCount > 1 ? 's' : ''}`);
-  } else {
+  const photoCount = breakdown.sections.photos.count;
+  if (photoCount === 0) {
     photosSuggestions.push('Add profile photos (6 recommended)');
+  } else if (photoCount < 6) {
+    photosSuggestions.push(`Add ${6 - photoCount} more photo${6 - photoCount > 1 ? 's' : ''}`);
   }
 
   sections.push({
     name: 'Photos',
     icon: 'camera-outline',
-    score: photosScore,
-    maxScore: 25,
+    score: breakdown.sections.photos.score,
+    maxScore: breakdown.sections.photos.maxScore,
     suggestions: photosSuggestions,
     color: '#10B981',
+    displayPercentage: breakdown.sections.photos.percentage,
   });
 
-  // 4. Deep Questions (max 25 points)
-  // 3 starred questions = 100% for this section (required to enter matching pool)
-  let questionsScore = 0;
+  // 4. Deep Questions - Map from centralized calculation
   const questionsSuggestions: string[] = [];
-  const answeredCount = profile.deepQuestions?.length || 0;
-  const displayedCount = profile.displayedQuestions?.length || 0;
+  const displayedCount = breakdown.sections.deepQuestions.displayedCount;
+  const answeredCount = breakdown.sections.deepQuestions.answeredCount;
 
-  if (displayedCount >= 3) {
-    // 3 starred questions = full credit (100%)
-    questionsScore = 25;
-  } else if (displayedCount > 0) {
-    // Partial credit based on starred questions (each starred = 1/3 of full points)
-    questionsScore = Math.round((displayedCount / 3) * 25);
-    questionsSuggestions.push(`Star ${3 - displayedCount} more to enter matching pool`);
-  } else if (answeredCount > 0) {
-    // Have answered but none starred - give small credit for answering
-    questionsScore = Math.min(Math.round((answeredCount / 3) * 10), 10); // Max 10 points for just answering
-    questionsSuggestions.push('Star 3 questions to enter matching pool');
-  } else {
+  if (displayedCount === 0 && answeredCount === 0) {
     questionsSuggestions.push('Answer 3 questions to enter matching pool');
+  } else if (displayedCount === 0 && answeredCount > 0) {
+    questionsSuggestions.push('Star 3 questions to enter matching pool');
+  } else if (displayedCount < 3) {
+    questionsSuggestions.push(`Star ${3 - displayedCount} more to enter matching pool`);
   }
 
   sections.push({
     name: 'Deep Questions',
     icon: 'chatbubble-ellipses-outline',
-    score: questionsScore,
-    maxScore: 25,
+    score: breakdown.sections.deepQuestions.score,
+    maxScore: breakdown.sections.deepQuestions.maxScore,
     suggestions: questionsSuggestions.slice(0, 2),
     color: '#F59E0B',
+    displayPercentage: breakdown.sections.deepQuestions.percentage,
   });
 
-  // Calculate overall score
-  const totalScore = sections.reduce((sum, s) => sum + s.score, 0);
-  const maxTotal = sections.reduce((sum, s) => sum + s.maxScore, 0);
-  const overall = Math.round((totalScore / maxTotal) * 100);
+  console.log('🎯 DASHBOARD using centralized calculation:', breakdown.overall + '%');
 
-  return { overall, sections };
+  return { overall: breakdown.overall, sections };
 };
 
 /**
@@ -241,7 +221,7 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
 
           return (
             <StyledTouchableOpacity
-              key={index}
+              key={section.name || `section-${index}`}
               onPress={() => onSectionPress?.(section.name)}
               activeOpacity={0.7}
               className="flex-1 min-w-[48%] bg-neutral-50 rounded-lg p-3"

@@ -64,7 +64,7 @@ export const saveOnboardingStep = async (
           children: 'open',
           pets: [],
         },
-        dealbreakers: [],
+        nonNegotiables: [],
         preferences: {
           ageMin: 24,
           ageMax: 32,
@@ -151,7 +151,7 @@ export const createUserProfile = async (
         children: 'open',
         pets: [],
       },
-      dealbreakers: data.dealbreakers || [],
+      nonNegotiables: data.nonNegotiables || [],
       preferences: data.preferences || {
         ageMin: 24,
         ageMax: 32,
@@ -208,7 +208,8 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
       customMyGender: undefined,
       interestedInGenders: ['female', 'non_binary'],
       customInterestedIn: undefined,
-      preferredEthnicities: [], // No longer collected in onboarding
+      preferredEthnicities: ['Asian', 'White / Caucasian', 'Hispanic / Latino', 'Mixed / Multiracial'],
+      preferredPolitics: ['Moderate', 'Liberal'],
       occupation: 'Product Designer',
       company: 'Tech Startup',
       currentJob: 'Product Designer',
@@ -227,7 +228,7 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
       location: 'Los Angeles, CA',
       hometown: 'San Francisco, CA',
       hasChildren: 'no',
-      familyPlans: undefined, // Removed from onboarding
+      familyPlans: 'want_someday',
       drinkingFrequency: 'socially',
       cannabisFrequency: 'socially',
       weedFrequency: 'socially',
@@ -241,7 +242,37 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
           isMain: true,
           order: 0,
         },
-      ], // Only 1 photo from onboarding
+        {
+          id: 'photo-2',
+          url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
+          isMain: false,
+          order: 1,
+        },
+        {
+          id: 'photo-3',
+          url: 'https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=400',
+          isMain: false,
+          order: 2,
+        },
+        {
+          id: 'photo-4',
+          url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400',
+          isMain: false,
+          order: 3,
+        },
+        {
+          id: 'photo-5',
+          url: 'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=400',
+          isMain: false,
+          order: 4,
+        },
+        {
+          id: 'photo-6',
+          url: 'https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=400',
+          isMain: false,
+          order: 5,
+        },
+      ],
       interests: ['Basketball', 'Hiking', 'Yoga', 'Climbing', 'Photography', 'Cooking'],
       values: ['Honesty', 'Integrity', 'Trust', 'Authenticity', 'Ambition', 'Loyalty'],
       lifestyle: {
@@ -251,7 +282,7 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
         children: 'no',
         pets: ['dogs', 'cats'],
       },
-      dealbreakers: [
+      nonNegotiables: [
         { id: 'smoking', type: 'smoking', value: true },
         { id: 'children', type: 'children', value: true },
         { id: 'politics', type: 'politics', value: false },
@@ -263,6 +294,7 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
         lookingFor: 'relationship',
         heightMin: 60,
         heightMax: 72,
+        maxDistance: 15,
       },
       partnerLifestylePreferences: {
         drinking: 'socially',
@@ -335,10 +367,28 @@ export const updateUserProfile = async (
         return createResult;
       }
     } else {
-      // Merge updates
-      Object.assign(mockUserProfile, profile);
-      mockUserProfile.updatedAt = new Date().toISOString();
+      // Merge updates - use deep merge for nested objects
+      mockUserProfile = {
+        ...mockUserProfile,
+        ...profile,
+        // Deep merge for nested objects
+        preferences: profile.preferences ? {
+          ...mockUserProfile.preferences,
+          ...profile.preferences
+        } : mockUserProfile.preferences,
+        partnerLifestylePreferences: profile.partnerLifestylePreferences ? {
+          ...mockUserProfile.partnerLifestylePreferences,
+          ...profile.partnerLifestylePreferences
+        } : mockUserProfile.partnerLifestylePreferences,
+        updatedAt: new Date().toISOString(),
+      };
     }
+
+    console.log('[MOCK PROFILE] Profile updated successfully. New values:', {
+      preferredPolitics: mockUserProfile.preferredPolitics,
+      preferredEthnicities: mockUserProfile.preferredEthnicities,
+      partnerLifestylePreferences: mockUserProfile.partnerLifestylePreferences,
+    });
 
     return {
       ok: true,

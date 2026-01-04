@@ -604,12 +604,12 @@ Friend chats contain:
 - Users can answer additional questions beyond the 3 minimum to improve match quality
 - Questions are displayed on user profiles to help potential matches understand them better
 
-### Dealbreakers System
-- Users can select multiple dealbreakers from predefined options
-- Dealbreaker options include: Smokers, Doesn't Want Kids, Has Kids, Drug Use, Different Religion, Different Politics, No Pets
-- **Critical Matching Rule:** Users will NEVER receive prospective candidates who match any of their dealbreakers
-- Dealbreakers are saved with match preferences
-- UI provides clear visual feedback (red highlights) when dealbreakers are selected
+### Non-Negotiables System
+- Users can select multiple non-negotiables from predefined options
+- Non-negotiable options include: Smokers, Doesn't Want Kids, Has Kids, Drug Use, Different Religion, Different Politics, No Pets
+- **Critical Matching Rule:** Users will NEVER receive prospective candidates who match any of their non-negotiables
+- Non-negotiables are saved with match preferences
+- UI provides clear visual feedback (red highlights) when non-negotiables are selected
 
 ---
 
@@ -681,7 +681,7 @@ The algorithm considers:
 - Values alignment
 - Personality fit
 - Lifestyle compatibility
-- Dealbreakers
+- Non-negotiables
 - Gender-specific preference patterns
 
 ### Anti-Superficial Design
@@ -891,6 +891,89 @@ Bridge uses a live pricing system modeled after financial markets to maintain ge
 5. Restaurant partnership integration
 6. Advanced analytics and algorithm refinement
 7. Match countdown dashboard (shows decreasing pool)
+
+---
+
+## V4 Polish & Accessibility
+
+### 1. Accessibility Implementation
+**Goal:** Make Bridge fully accessible to users with disabilities, following WCAG 2.1 AA guidelines.
+
+**Key Components:**
+- **Screen Reader Support:**
+  - Add `accessibilityLabel` to all interactive components (buttons, touchables, inputs)
+  - Add `accessibilityRole` to identify component types (button, link, image, etc.)
+  - Add `accessibilityHint` for complex interactions
+  - Ensure logical focus order for keyboard/screen reader navigation
+
+- **Touch Targets:**
+  - Ensure all interactive elements meet minimum 44x44px touch target (already defined in constants)
+  - Add spacing or hit slop areas for small icons
+
+- **Color & Contrast:**
+  - Verify all text meets WCAG contrast ratios
+  - Don't rely on color alone for critical information
+
+- **High Priority Areas:**
+  - Main navigation (tab bar, back buttons)
+  - All form inputs (onboarding, profile editing, match preferences)
+  - Critical actions (accept/decline matches, send proposals, friend codes)
+  - Match proposal cards and voting interface
+
+**Example Implementation:**
+```typescript
+<TouchableOpacity
+  accessibilityLabel="Accept match with Sarah"
+  accessibilityRole="button"
+  accessibilityHint="Double tap to accept this match and start chatting"
+  style={{ minHeight: MIN_TOUCH_TARGET }}
+>
+  <Text>Accept</Text>
+</TouchableOpacity>
+```
+
+---
+
+### 2. Skeleton Loading Screens
+**Goal:** Replace loading spinners with content-aware skeleton screens to improve perceived performance and reduce user anxiety.
+
+**Core Screens to Implement:**
+1. **ProfileScreen** - Profile photo, name, stats, questions
+2. **CommunityScreen** - Friend cards, proposal cards
+3. **MatchProposalScreen** - Match reveal card structure
+4. **ChatScreen** - Message bubbles
+5. **ProfileEditScreen** - Form fields
+
+**Skeleton Components to Build:**
+- `SkeletonAvatar` - Circular shimmer for profile photos
+- `SkeletonText` - Lines with varying widths
+- `SkeletonCard` - Card-shaped container with shimmer
+- `SkeletonButton` - Button-shaped placeholder
+
+**Animation Style:**
+- Subtle shimmer/pulse effect (use FADE_DURATION from constants)
+- Light gray base with white shimmer overlay
+- Matches existing card/component shapes
+
+**Benefits:**
+- Users see immediate visual feedback that content is loading
+- Reduces perceived wait time
+- Creates professional, polished feel
+- Maintains layout structure during loading (no layout shift)
+
+**Example:**
+```
+┌─────────────────────────┐
+│  ┌───┐  ████████████   │  <- Avatar + Name skeleton
+│  └───┘  ████████       │
+│                         │
+│  ████████████████████  │  <- Stats skeleton
+│  ████████  ████████    │
+│                         │
+│  ████████████████      │  <- Question skeleton
+│  ████████████████████  │
+└─────────────────────────┘
+```
 
 ---
 

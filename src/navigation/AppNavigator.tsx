@@ -7,6 +7,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { FEATURES } from '../config/features';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 // Auth Screens
 import {
@@ -120,7 +121,8 @@ export const AppNavigator = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
+    // Use ref object instead of closure variable to avoid staleness in async callbacks
+    const isMountedRef = { current: true };
 
     // Check for existing session on app start
     const initializeAuth = async () => {
@@ -140,12 +142,13 @@ export const AppNavigator = () => {
         // getUser() validates the session with the Supabase server
         const { data: { user }, error } = await supabase.auth.getUser();
 
-        if (!isMounted) return;
+        if (!isMountedRef.current) return;
 
         if (error) {
           console.log('Auth verification failed:', error.message);
           // Clear any stale session data
           await supabase.auth.signOut();
+          if (!isMountedRef.current) return; // Check after async operation
           setIsAuthenticated(false);
         } else {
           setIsAuthenticated(!!user);
@@ -154,7 +157,7 @@ export const AppNavigator = () => {
         console.error('Error getting session:', err);
         // Clear any stale session data on error
         await supabase.auth.signOut();
-        if (isMounted) {
+        if (isMountedRef.current) {
           setIsAuthenticated(false);
         }
       }
@@ -164,7 +167,7 @@ export const AppNavigator = () => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!isMounted) return;
+      if (!isMountedRef.current) return;
       setIsAuthenticated(!!session);
 
       // Create mock data on sign in (development only)
@@ -172,6 +175,7 @@ export const AppNavigator = () => {
         console.log('[DevData] User signed in, creating mock data...');
         try {
           await createDevelopmentData(session.user.id);
+          if (!isMountedRef.current) return; // Check after async operation
         } catch (error) {
           console.error('[DevData] Failed to create mock data:', error);
         }
@@ -179,7 +183,7 @@ export const AppNavigator = () => {
     });
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -195,7 +199,12 @@ export const AppNavigator = () => {
 
   return (
     <NavigationContainer>
-      <>
+      <ErrorBoundary
+        onError={(error, errorInfo) => {
+          console.error('[App Error Boundary]', error, errorInfo);
+          // TODO: Send to error reporting service (Sentry, Bugsnag, etc.)
+        }}
+      >
         <Stack.Navigator
           initialRouteName={isAuthenticated ? 'MainTabs' : 'Welcome'}
           screenOptions={{
@@ -256,7 +265,7 @@ export const AppNavigator = () => {
         </Stack.Navigator>
         {/* Developer Menu - Must be inside NavigationContainer to use useNavigation */}
         {FEATURES.ENABLE_DEVELOPER_MENU && <DeveloperMenu />}
-      </>
+      </ErrorBoundary>
     </NavigationContainer>
   );
 };

@@ -59,7 +59,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
     tobaccoFrequency: '',
     otherDrugsFrequency: '',
     lifestyle: {}, // Deprecated: kept for backward compatibility
-    dealbreakers: [],
+    nonNegotiables: [],
     preferences: {
       ageMin: 24,
       ageMax: 32,
@@ -92,7 +92,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
     { component: ValuesStep, title: 'Values', hasTextInput: false },
     { component: InterestsStep, title: 'Interests', hasTextInput: false },
     { component: PhotoUploadStep, title: 'Photos', hasTextInput: false }, // Changed to 1 photo
-    // REMOVED FROM ONBOARDING (still in profile edit): DeepQuestionsStep, DealbreakersStep
+    // REMOVED FROM ONBOARDING (still in profile edit): DeepQuestionsStep, NonNegotiablesStep
     { component: PreferencesStep, title: 'Commitment Level', hasTextInput: false },
     { component: AddFriendsStep, title: 'Add Friends', hasTextInput: false },
     { component: WelcomeToBridgeStep, title: 'Welcome', hasTextInput: false },

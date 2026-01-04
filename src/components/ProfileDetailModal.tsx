@@ -203,15 +203,15 @@ export const ProfileDetailModal: React.FC<ProfileDetailModalProps> = ({
               </Card>
             )}
 
-            {/* Dealbreakers */}
-            {profile.dealbreakers && profile.dealbreakers.length > 0 && (
+            {/* Non-Negotiables */}
+            {profile.nonNegotiables && profile.nonNegotiables.length > 0 && (
               <Card className="mb-4 bg-red-50 border-red-200">
-                <H3 className="mb-3 text-red-900">Dealbreakers</H3>
+                <H3 className="mb-3 text-red-900">Non-Negotiables</H3>
                 <StyledView className="space-y-2">
-                  {profile.dealbreakers.map((dealbreaker, index) => (
-                    <StyledView key={dealbreaker.id || index} className="flex-row items-start mb-2">
+                  {profile.nonNegotiables.map((nonNegotiable, index) => (
+                    <StyledView key={nonNegotiable.id || index} className="flex-row items-start mb-2">
                       <Ionicons name="close-circle" size={16} color="#DC2626" />
-                      <Body className="text-red-700 ml-2 flex-1">{dealbreaker.type}</Body>
+                      <Body className="text-red-700 ml-2 flex-1">{nonNegotiable.type}</Body>
                     </StyledView>
                   ))}
                 </StyledView>

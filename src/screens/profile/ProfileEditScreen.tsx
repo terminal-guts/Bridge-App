@@ -354,7 +354,9 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
   const visibilityModalAnim = useRef(new Animated.Value(0)).current;
 
 
-  // Calculate profile completion percentage in real-time
+  // Calculate "About Me" section completion percentage in real-time
+  // NOTE: This is intentionally different from overall profile strength
+  // This screen only edits About Me fields (19 fields), not Match Prefs/Photos/Questions
   const profileCompletion = useMemo(() => {
     return calculateEditProfileCompleteness(profile);
   }, [profile]);
@@ -452,6 +454,14 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
     }).start();
   }, [showCustomValueModal]);
 
+  // Helper: Deep equality check for arrays
+  const arraysEqual = (a?: any[], b?: any[]): boolean => {
+    if (!a && !b) return true; // both null/undefined
+    if (!a || !b) return false; // one is null/undefined
+    if (a.length !== b.length) return false;
+    return JSON.stringify(a) === JSON.stringify(b);
+  };
+
   // Optimized change detection - checks specific fields instead of JSON.stringify
   const hasProfileChanged = useCallback((current: UserProfile | null, originalJson: string): boolean => {
     if (!current || !originalJson) return false;
@@ -480,7 +490,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
       for (const field of arrayFieldsToCheck) {
         const currentArray = current[field] as any[] | undefined;
         const originalArray = original[field] as any[] | undefined;
-        if (JSON.stringify(currentArray) !== JSON.stringify(originalArray)) return true;
+        if (!arraysEqual(currentArray, originalArray)) return true;
       }
 
       // Check photos array separately (compare lengths and URLs)
@@ -800,7 +810,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
   // Helper function to format height from inches to feet'inches"
   const formatHeight = (inches: string): string => {
     if (!inches || inches === '0') return '';
-    const inchesNum = parseInt(inches);
+    const inchesNum = parseInt(inches, 10);
     if (isNaN(inchesNum)) return '';
     const feet = Math.floor(inchesNum / 12);
     const remainingInches = inchesNum % 12;
@@ -814,8 +824,8 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
     // If it's in format like "5'8\"" or "5'8", extract inches
     const match = value.match(/(\d+)'(\d+)/);
     if (match) {
-      const feet = parseInt(match[1]);
-      const inches = parseInt(match[2]);
+      const feet = parseInt(match[1], 10);
+      const inches = parseInt(match[2], 10);
       return (feet * 12 + inches).toString();
     }
     return value;
@@ -1019,7 +1029,6 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
 
       <PhotoCompletionBanner
         profile={profile}
-        aboutMePercentage={profileCompletion.percentage}
         onPress={() => {
           // Scroll to photos section
           // Note: You may need to implement scrolling to the photos section if needed
@@ -1182,7 +1191,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               onChangeText={(text) => {
                 // Allow only numeric input
                 const numericOnly = text.replace(/[^0-9]/g, '');
-                const age = numericOnly ? parseInt(numericOnly) : 0;
+                const age = numericOnly ? parseInt(numericOnly, 10) : 0;
                 updateProfile({ age });
               }}
               keyboardType="numeric"
@@ -1208,7 +1217,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                 // Validate and ensure we have valid height in inches stored
                 if (profile.height) {
                   const inches = parseHeightToInches(profile.height);
-                  let validatedHeight = parseInt(inches);
+                  let validatedHeight = parseInt(inches, 10);
 
                   if (validatedHeight < 48) {
                     validatedHeight = 48;

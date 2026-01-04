@@ -57,7 +57,18 @@ export const EnhancedTimer: React.FC<EnhancedTimerProps> = ({
       setFormattedTime(formatTimeRemaining(remaining));
 
       if (remaining === 0 && onExpired) {
-        onExpired();
+        // Wrap onExpired in try-catch to handle both sync and async errors
+        try {
+          const result = onExpired();
+          // If it's a promise, catch any errors
+          if (result && typeof result.catch === 'function') {
+            result.catch((error: Error) => {
+              console.error('[EnhancedTimer] onExpired callback error:', error);
+            });
+          }
+        } catch (error) {
+          console.error('[EnhancedTimer] onExpired callback error:', error);
+        }
       }
     };
 
@@ -72,7 +83,8 @@ export const EnhancedTimer: React.FC<EnhancedTimerProps> = ({
     const hours = timeRemaining / (1000 * 60 * 60);
 
     if (hours > 0 && hours < 3) {
-      Animated.loop(
+      // Store animation reference so we can stop it on cleanup
+      const animation = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
             toValue: 1.1,
@@ -85,11 +97,15 @@ export const EnhancedTimer: React.FC<EnhancedTimerProps> = ({
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      animation.start();
+
+      // Cleanup: stop animation on unmount or when condition changes
+      return () => animation.stop();
     } else {
       pulseAnim.setValue(1);
     }
-  }, [timeRemaining]);
+  }, [timeRemaining, pulseAnim]);
 
   // Calculate progress (0-1)
   const totalDuration = 24 * 60 * 60 * 1000; // 24 hours

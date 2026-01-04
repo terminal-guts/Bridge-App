@@ -676,3 +676,188 @@ export const calculateMatchPreferencesCompleteness = (
     missingFields,
   };
 };
+
+/**
+ * Profile strength breakdown for detailed analysis
+ * Used by ProfileStrengthDashboard to display section-by-section scores
+ */
+export interface ProfileStrengthBreakdown {
+  overall: number; // Overall percentage (0-100)
+  sections: {
+    aboutMe: {
+      score: number; // Current score
+      maxScore: number; // Maximum possible score (19)
+      percentage: number; // Percentage for this section (0-100)
+    };
+    matchPreferences: {
+      score: number; // Current score
+      maxScore: number; // Maximum possible score (25)
+      percentage: number; // Percentage for this section (0-100)
+      completedCount: number; // Number of completed fields
+      totalCount: number; // Total required fields (8)
+    };
+    photos: {
+      score: number; // Current score
+      maxScore: number; // Maximum possible score (25)
+      percentage: number; // Percentage for this section (0-100)
+      count: number; // Number of photos uploaded
+    };
+    deepQuestions: {
+      score: number; // Current score
+      maxScore: number; // Maximum possible score (25)
+      percentage: number; // Percentage for this section (0-100)
+      displayedCount: number; // Number of displayed questions
+      answeredCount: number; // Number of answered questions
+    };
+  };
+  totalScore: number; // Total score across all sections
+  maxTotalScore: number; // Maximum possible total score (94)
+}
+
+/**
+ * MASTER CALCULATION FUNCTION
+ * Calculate comprehensive profile strength breakdown
+ * This is the SINGLE SOURCE OF TRUTH for all profile strength calculations
+ * Used by: ProfileStrengthDashboard, ProfileCompletionBanner, all screens
+ */
+export const calculateProfileStrengthBreakdown = (
+  profile: UserProfile | null
+): ProfileStrengthBreakdown => {
+  if (!profile) {
+    return {
+      overall: 0,
+      sections: {
+        aboutMe: { score: 0, maxScore: 19, percentage: 0 },
+        matchPreferences: { score: 0, maxScore: 25, percentage: 0, completedCount: 0, totalCount: 8 },
+        photos: { score: 0, maxScore: 25, percentage: 0, count: 0 },
+        deepQuestions: { score: 0, maxScore: 25, percentage: 0, displayedCount: 0, answeredCount: 0 },
+      },
+      totalScore: 0,
+      maxTotalScore: 94,
+    };
+  }
+
+  // 1. ABOUT ME SECTION (max 19 points) - All fields equally weighted
+  let aboutScore = 0;
+
+  // Basic Demographics (7 fields)
+  if (profile.firstName?.trim()) aboutScore += 1;
+  if (profile.lastName?.trim()) aboutScore += 1;
+  if (profile.age) aboutScore += 1;
+  if (profile.height) aboutScore += 1;
+  if (profile.ethnicity) aboutScore += 1;
+  if (profile.location) aboutScore += 1;
+  if (profile.currentJob) aboutScore += 1;
+
+  // Identity (4 fields)
+  if ((profile.pronounsList && profile.pronounsList.length > 0) ||
+      (profile.pronouns && profile.pronouns !== 'prefer_not_to_say')) {
+    aboutScore += 1;
+  }
+  if (profile.gender && profile.gender.length > 0) aboutScore += 1;
+  if (profile.religion) aboutScore += 1;
+  if (profile.politicalLeaning && profile.politicalLeaning !== 'prefer_not_to_say') {
+    aboutScore += 1;
+  }
+
+  // Family (2 fields)
+  if (profile.hasChildren !== undefined && profile.hasChildren !== null) aboutScore += 1;
+  if (profile.familyPlans) aboutScore += 1;
+
+  // Lifestyle (4 fields)
+  if (profile.drinkingFrequency) aboutScore += 1;
+  if (profile.cannabisFrequency) aboutScore += 1;
+  if (profile.tobaccoFrequency) aboutScore += 1;
+  if (profile.otherDrugsFrequency) aboutScore += 1;
+
+  // Personal (2 fields - require 3+ each)
+  const interestCount = profile.interests?.length || 0;
+  const valueCount = profile.values?.length || 0;
+  if (interestCount >= 3) aboutScore += 1;
+  if (valueCount >= 3) aboutScore += 1;
+
+  const aboutMePercentage = Math.round((aboutScore / 19) * 100);
+
+  // 2. MATCH PREFERENCES SECTION (max 25 points)
+  const matchPrefsCompletion = calculateMatchPreferencesCompleteness(profile);
+  const preferencesScore = Math.round((matchPrefsCompletion.percentage / 100) * 25);
+
+  // 3. PHOTOS SECTION (max 25 points) - 6 photos = 100%
+  const photoCount = profile.photos?.length || 0;
+  let photosScore = 0;
+  if (photoCount >= 6) {
+    photosScore = 25;
+  } else if (photoCount > 0) {
+    photosScore = Math.round((photoCount / 6) * 25);
+  }
+  const photosPercentage = Math.round((photoCount / 6) * 100);
+
+  // 4. DEEP QUESTIONS SECTION (max 25 points) - 3 displayed questions = 100%
+  const displayedCount = profile.displayedQuestions?.length || 0;
+  const answeredCount = profile.deepQuestions?.length || 0;
+  let questionsScore = 0;
+  if (displayedCount >= 3) {
+    questionsScore = 25;
+  } else if (displayedCount > 0) {
+    questionsScore = Math.round((displayedCount / 3) * 25);
+  } else if (answeredCount > 0) {
+    // Small credit for answering without displaying
+    questionsScore = Math.min(Math.round((answeredCount / 3) * 10), 10);
+  }
+  const questionsPercentage = displayedCount >= 3 ? 100 : Math.round((displayedCount / 3) * 100);
+
+  // TOTAL CALCULATION
+  const totalScore = aboutScore + preferencesScore + photosScore + questionsScore;
+  const maxTotal = 94; // 19 + 25 + 25 + 25
+  const finalPercentage = Math.round((totalScore / maxTotal) * 100);
+
+  console.log('📊 Profile Strength Breakdown (MASTER):', {
+    aboutMe: `${aboutScore}/19 (${aboutMePercentage}%)`,
+    matchPreferences: `${preferencesScore}/25 (${matchPrefsCompletion.percentage}%)`,
+    photos: `${photosScore}/25 (${photosPercentage}%)`,
+    deepQuestions: `${questionsScore}/25 (${questionsPercentage}%)`,
+    total: `${totalScore}/94 (${finalPercentage}%)`,
+  });
+
+  return {
+    overall: finalPercentage,
+    sections: {
+      aboutMe: {
+        score: aboutScore,
+        maxScore: 19,
+        percentage: aboutMePercentage,
+      },
+      matchPreferences: {
+        score: preferencesScore,
+        maxScore: 25,
+        percentage: matchPrefsCompletion.percentage,
+        completedCount: matchPrefsCompletion.completedCount,
+        totalCount: matchPrefsCompletion.totalCount,
+      },
+      photos: {
+        score: photosScore,
+        maxScore: 25,
+        percentage: Math.min(photosPercentage, 100), // Cap at 100%
+        count: photoCount,
+      },
+      deepQuestions: {
+        score: questionsScore,
+        maxScore: 25,
+        percentage: questionsPercentage,
+        displayedCount,
+        answeredCount,
+      },
+    },
+    totalScore,
+    maxTotalScore: maxTotal,
+  };
+};
+
+/**
+ * Calculate overall profile strength (SIMPLIFIED WRAPPER)
+ * Returns just the overall percentage for backwards compatibility
+ * @deprecated Use calculateProfileStrengthBreakdown for detailed information
+ */
+export const calculateOverallProfileStrength = (profile: UserProfile | null): number => {
+  return calculateProfileStrengthBreakdown(profile).overall;
+};

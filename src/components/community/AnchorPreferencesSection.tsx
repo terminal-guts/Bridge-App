@@ -10,7 +10,7 @@ import React from 'react';
 import { View, Text, Image, ScrollView } from 'react-native';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
-import { UserProfile, Photo, Dealbreaker } from '../../types';
+import { UserProfile, Photo, NonNegotiable } from '../../types';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -191,18 +191,18 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
           </StyledView>
         )}
 
-        {/* Dealbreakers */}
-        {anchor.dealbreakers && anchor.dealbreakers.length > 0 && (
+        {/* Non-Negotiables */}
+        {anchor.nonNegotiables && anchor.nonNegotiables.length > 0 && (
           <StyledView style={{ marginBottom: 20, width: '100%' }}>
             <StyledText className="text-sm font-semibold text-neutral-700 mb-3 uppercase tracking-wide">
-              Dealbreakers
+              Non-Negotiables
             </StyledText>
             <StyledView style={{ width: '100%' }}>
-              {anchor.dealbreakers.map((dealbreaker: Dealbreaker, index: number) => (
+              {anchor.nonNegotiables.map((nonNegotiable: NonNegotiable, index: number) => (
                 <StyledView key={index} className="flex-row items-center py-2">
                   <Ionicons name="close-circle-outline" size={18} color="#DC2626" style={{ marginRight: 12 }} />
                   <StyledText className="text-neutral-900 flex-1">
-                    {typeof dealbreaker === 'string' ? dealbreaker : dealbreaker.type}
+                    {typeof nonNegotiable === 'string' ? nonNegotiable : nonNegotiable.type}
                   </StyledText>
                 </StyledView>
               ))}

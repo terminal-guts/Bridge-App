@@ -34,21 +34,29 @@ npm start
 npm run ios
 ```
 
-See `DEVELOPER_QUICKSTART.md` for more details.
+See **[GETTING_STARTED.md](./GETTING_STARTED.md)** for complete setup instructions, troubleshooting, and backend configuration.
 
 ---
 
 ## Documentation
 
-### Setup Guides
-- **[DEVELOPER_QUICKSTART.md](./DEVELOPER_QUICKSTART.md)** - Get running in 5 minutes
-- **[SETUP.md](./SETUP.md)** - Complete frontend setup guide
-- **[BACKEND_SETUP.md](./BACKEND_SETUP.md)** - Supabase backend configuration
-- **[.env.example](./.env.example)** - Environment variables template
+### Setup & Development
+- **[GETTING_STARTED.md](./GETTING_STARTED.md)** - **Complete developer guide** (start here!)
+  - All dependencies and prerequisites
+  - Frontend & backend setup
+  - Troubleshooting
+  - Development workflow
 
-### Project Info
-- **[BRIDGE_VISION.md](./BRIDGE_VISION.md)** - Product vision and strategy
-- **[requirements.txt](./requirements.txt)** - Backend requirements (Supabase)
+### Project Information
+- **[BRIDGE_VISION.md](./BRIDGE_VISION.md)** - Product vision and roadmap
+- **[ACTUAL_ONBOARDING_FLOW.md](./ACTUAL_ONBOARDING_FLOW.md)** - User onboarding flow
+- **[MANDATORY_FIELDS_FINAL.md](./MANDATORY_FIELDS_FINAL.md)** - Required profile fields
+- **[FIELD_AUDIT_REPORT.md](./FIELD_AUDIT_REPORT.md)** - Database field documentation
+
+### Technical Documentation
+- **[CONSOLE_LOG_MIGRATION.md](./CONSOLE_LOG_MIGRATION.md)** - Logging migration strategy
+- **[BANNER_FIX_TEST_REPORT.md](./BANNER_FIX_TEST_REPORT.md)** - Profile banner fix testing
+- **[BANNER_TEST_SCENARIOS.md](./BANNER_TEST_SCENARIOS.md)** - Banner test scenarios
 
 ---
 
@@ -161,7 +169,7 @@ Bridge-Version1-Mock/
    npx tsx Bridge-Version1/scripts/test-backend-connection.ts
    ```
 
-4. **See `BACKEND_SETUP.md`** for complete backend setup
+4. **See [GETTING_STARTED.md](./GETTING_STARTED.md)** for complete backend setup
 
 ---
 
@@ -206,7 +214,7 @@ Bridge-Version1-Mock/
 2. Update `.env` file
 3. Replace `src/lib/supabase.ts` mock with real client
 4. Update service files to use real Supabase queries
-5. See `BACKEND_SETUP.md` for details
+5. See [GETTING_STARTED.md](./GETTING_STARTED.md) for complete details
 
 ---
 
@@ -295,7 +303,7 @@ cd ios && pod install && cd ..
 - Verify Supabase project is accessible
 - Run `npx tsx Bridge-Version1/scripts/test-backend-connection.ts`
 
-See `SETUP.md` for more troubleshooting tips.
+See [GETTING_STARTED.md](./GETTING_STARTED.md) for comprehensive troubleshooting.
 
 ---
 

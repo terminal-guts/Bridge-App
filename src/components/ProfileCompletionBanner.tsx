@@ -14,7 +14,7 @@ import { Body } from './ui';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile } from '../types';
 import { lightHaptic } from '../utils/haptics';
-import { calculateProfileCompleteness } from '../utils/profileCompleteness';
+import { calculateOverallProfileStrength } from '../utils/profileCompleteness';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -33,9 +33,11 @@ export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = (
   const [isDismissed, setIsDismissed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Memoize profile completion calculation for performance - MUST be before early returns
+  // Use centralized calculation function - SINGLE SOURCE OF TRUTH
   const completion = useMemo(() => {
-    return calculateProfileCompleteness(profile).percentage;
+    const result = calculateOverallProfileStrength(profile);
+    console.log('✅ ProfileCompletionBanner: Overall strength =', result + '%');
+    return result;
   }, [profile]);
 
   // Load dismissal state on mount

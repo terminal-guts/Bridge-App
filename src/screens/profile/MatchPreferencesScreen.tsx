@@ -118,7 +118,7 @@ const POLITICAL_OPTIONS = [
   'No Preference',
 ];
 
-const DEALBREAKER_OPTIONS = [
+const NON_NEGOTIABLES_LIST = [
   { id: 'smoking', label: 'Smoking' },
   { id: 'heavy_drinking', label: 'Heavy Drinking' },
   { id: 'drugs', label: 'Drug Use' },
@@ -128,17 +128,6 @@ const DEALBREAKER_OPTIONS = [
   { id: 'different_politics', label: 'Different Politics' },
   { id: 'outside_height_range', label: 'Outside of Height Range' },
   { id: 'outside_age_range', label: 'Outside of Age Range' },
-];
-
-const NON_NEGOTIABLE_OPTIONS = [
-  { id: 'age_range', label: 'Age Range', description: 'Must be within my age preferences' },
-  { id: 'height', label: 'Height', description: 'Must be within my height preferences' },
-  { id: 'distance', label: 'Distance', description: 'Must be within my dating distance' },
-  { id: 'lifestyle', label: 'Lifestyle Habits', description: 'Must match my lifestyle preferences' },
-  { id: 'ethnicity', label: 'Ethnicity', description: 'Must match my ethnicity preferences' },
-  { id: 'politics', label: 'Political Views', description: 'Must match my political preferences' },
-  { id: 'values', label: 'Core Values', description: 'Must share similar values' },
-  { id: 'interests', label: 'Interests Aligned', description: 'Must share common interests' },
 ];
 
 export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ navigation }) => {
@@ -161,8 +150,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   const [preferredEthnicities, setPreferredEthnicities] = useState<string[]>([]);
   const [interestedInGenders, setInterestedInGenders] = useState<string[]>([]);
   const [preferredPolitics, setPreferredPolitics] = useState<string[]>([]);
-  const [dealbreakers, setDealbreakers] = useState<string[]>([]);
-  const [nonNegotiable, setNonNegotiable] = useState<string>(''); // Single priority selection
+  const [nonNegotiables, setNonNegotiables] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
@@ -175,8 +163,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
     partnerLifestyle: true,
     preferredEthnicities: true,
     politicalPreferences: true,
-    dealbreakers: true,
-    topPriority: true,
+    nonNegotiables: true,
   });
 
   // Track original data for change detection
@@ -184,14 +171,14 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
   // "Other" custom input modal state
   const [showCustomModal, setShowCustomModal] = useState(false);
-  const [customModalType, setCustomModalType] = useState<'gender' | 'values' | 'interests' | 'ethnicity' | 'dealbreaker'>('dealbreaker');
+  const [customModalType, setCustomModalType] = useState<'gender' | 'values' | 'interests' | 'ethnicity' | 'non_negotiable'>('non_negotiable');
   const [customInputValue, setCustomInputValue] = useState('');
   const customModalAnim = useRef(new Animated.Value(0)).current;
 
-  // Legacy dealbreaker modal state (kept for backwards compatibility)
-  const [showCustomDealbreakerModal, setShowCustomDealbreakerModal] = useState(false);
-  const [customDealbreakerValue, setCustomDealbreakerValue] = useState('');
-  const customDealbreakerModalAnim = useRef(new Animated.Value(0)).current;
+  // Legacy non-negotiable modal state (kept for backwards compatibility)
+  const [showCustomNonNegotiableModal, setShowCustomNonNegotiableModal] = useState(false);
+  const [customNonNegotiableValue, setCustomNonNegotiableValue] = useState('');
+  const customNonNegotiableModalAnim = useRef(new Animated.Value(0)).current;
 
   // Helper function to convert inches to feet and inches
   const formatHeight = (inches: number): string => {
@@ -205,13 +192,13 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   }, []);
 
   useEffect(() => {
-    Animated.spring(customDealbreakerModalAnim, {
-      toValue: showCustomDealbreakerModal ? 1 : 0,
+    Animated.spring(customNonNegotiableModalAnim, {
+      toValue: showCustomNonNegotiableModal ? 1 : 0,
       useNativeDriver: true,
       tension: 65,
       friction: 11,
     }).start();
-  }, [showCustomDealbreakerModal]);
+  }, [showCustomNonNegotiableModal]);
 
   // Animation for the reusable custom modal
   useEffect(() => {
@@ -327,19 +314,16 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             partnerLifestyle: profileResult.data.preferenceVisibility.partnerLifestyle ?? true,
             preferredEthnicities: profileResult.data.preferenceVisibility.preferredEthnicities ?? true,
             politicalPreferences: profileResult.data.preferenceVisibility.politicalPreferences ?? true,
-            dealbreakers: profileResult.data.preferenceVisibility.dealbreakers ?? true,
-            topPriority: profileResult.data.preferenceVisibility.topPriority ?? true,
+            nonNegotiables: profileResult.data.preferenceVisibility.nonNegotiables ?? true,
           });
         }
 
         // Extract dealbreaker IDs from dealbreakers array
-        const dealbreakerIds = (profileResult.data.dealbreakers || []).map(d => d.type);
-        setDealbreakers(dealbreakerIds);
-
-        // Load non-negotiable priority
-        setNonNegotiable(profileResult.data.nonNegotiable || '');
+        const nonNegotiableIds = (profileResult.data.nonNegotiables || []).map(d => d.type);
+        setNonNegotiables(nonNegotiableIds);
 
         // Store original data for change detection
+        const originalPrefs = profileResult.data.partnerLifestylePreferences || {};
         originalDataRef.current = JSON.stringify({
           preferences: {
             ageMin: loadedPrefs.ageMin,
@@ -351,10 +335,10 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             maxDistance: loadedPrefs.maxDistance !== undefined ? loadedPrefs.maxDistance : 50,
           },
           partnerPreferences: {
-            partnerDrinking: Array.isArray(prefs.drinking) ? prefs.drinking : (prefs.drinking ? [prefs.drinking] : []),
-            partnerCannabis: Array.isArray(prefs.cannabis) ? prefs.cannabis : (prefs.cannabis ? [prefs.cannabis] : []),
-            partnerTobacco: Array.isArray(prefs.tobacco) ? prefs.tobacco : (prefs.tobacco ? [prefs.tobacco] : []),
-            partnerOtherDrugs: Array.isArray(prefs.otherDrugs) ? prefs.otherDrugs : (prefs.otherDrugs ? [prefs.otherDrugs] : []),
+            partnerDrinking: Array.isArray(originalPrefs.drinking) ? originalPrefs.drinking : (originalPrefs.drinking ? [originalPrefs.drinking] : []),
+            partnerCannabis: Array.isArray(originalPrefs.cannabis) ? originalPrefs.cannabis : (originalPrefs.cannabis ? [originalPrefs.cannabis] : []),
+            partnerTobacco: Array.isArray(originalPrefs.tobacco) ? originalPrefs.tobacco : (originalPrefs.tobacco ? [originalPrefs.tobacco] : []),
+            partnerOtherDrugs: Array.isArray(originalPrefs.otherDrugs) ? originalPrefs.otherDrugs : (originalPrefs.otherDrugs ? [originalPrefs.otherDrugs] : []),
           },
           preferredEthnicities: profileResult.data.preferredEthnicities || [],
           interestedInGenders: profileResult.data.interestedInGenders || [],
@@ -367,11 +351,9 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             partnerLifestyle: true,
             preferredEthnicities: true,
             politicalPreferences: true,
-            dealbreakers: true,
-            topPriority: true,
+            nonNegotiables: true,
           },
-          dealbreakers: dealbreakerIds,
-          nonNegotiable: profileResult.data.nonNegotiable || '',
+          nonNegotiables: nonNegotiableIds,
         });
       }
     } catch (error) {
@@ -389,12 +371,11 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         interestedInGenders,
         preferredPolitics,
         preferenceVisibility,
-        dealbreakers,
-        nonNegotiable,
+        nonNegotiables,
       });
       setHasUnsavedChanges(currentData !== originalDataRef.current);
     }
-  }, [preferences, partnerPreferences, preferredEthnicities, interestedInGenders, preferredPolitics, preferenceVisibility, dealbreakers, nonNegotiable]);
+  }, [preferences, partnerPreferences, preferredEthnicities, interestedInGenders, preferredPolitics, preferenceVisibility, nonNegotiables]);
 
   const handleClose = () => {
     if (hasUnsavedChanges) {
@@ -452,7 +433,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
     setSaving(true);
     try {
       // Convert dealbreaker IDs to Dealbreaker objects
-      const dealbreakerObjects = dealbreakers.map(id => ({
+      const nonNegotiableObjects = nonNegotiables.map(id => ({
         id,
         type: id,
         value: true,
@@ -478,11 +459,10 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
           gender: derivedPreferredGender, // Auto-derived from interestedInGenders
           lookingFor: 'relationship' as const, // Bridge only supports relationships
         },
-        dealbreakers: dealbreakerObjects,
+        nonNegotiables: nonNegotiableObjects,
         interestedInGenders: interestedInGenders,
         preferredPolitics: preferredPolitics,
         preferenceVisibility: preferenceVisibility,
-        nonNegotiable: nonNegotiable, // Single priority preference
         // Partner preferences
         partnerLifestylePreferences: {
           drinking: partnerPreferences.partnerDrinking,
@@ -508,8 +488,8 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
     }
   };
 
-  const toggleDealbreaker = (id: string) => {
-    setDealbreakers(prev => {
+  const toggleNonNegotiable = (id: string) => {
+    setNonNegotiables(prev => {
       if (prev.includes(id)) {
         // Deselecting - always allow
         return [];
@@ -529,8 +509,10 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   };
 
   // Calculate match preferences completion for current editing state
+  // NOTE: Uses centralized calculation - consistent with ProfileStrengthDashboard
+  // This provides real-time updates as user edits (before saving)
   const matchPrefsCompletion = useMemo(() => {
-    if (!profile) return { percentage: 0, completedCount: 0, totalCount: 7, missingFields: [] };
+    if (!profile) return { percentage: 0, completedCount: 0, totalCount: 8, missingFields: [] };
 
     // Create a temporary profile with current state for real-time updates
     const currentProfile = {
@@ -554,6 +536,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   }, [profile, preferences, partnerPreferences, interestedInGenders, preferredEthnicities, preferredPolitics]);
 
   // Calculate match preferences completion for SAVED profile (for banner visibility)
+  // This prevents banner from disappearing until changes are actually saved
   const savedMatchPrefsCompletion = useMemo(() => {
     if (!profile) return { percentage: 0 };
     return calculateMatchPreferencesCompleteness(profile);
@@ -1198,39 +1181,39 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             </StyledView>
           </Card>
 
-          {/* Dealbreakers */}
+          {/* Non-Negotiables */}
           <Card className="mb-8">
             <StyledView className="flex-row items-center justify-between mb-2">
               <StyledView className="flex-row items-center">
-                <H3>Dealbreakers</H3>
+                <H3>Non-Negotiables</H3>
                 <Body className="text-neutral-400 text-sm ml-2">(optional)</Body>
               </StyledView>
               <StyledTouchableOpacity
-                onPress={() => toggleVisibility('dealbreakers')}
+                onPress={() => toggleVisibility('nonNegotiables')}
                 className="flex-row items-center"
               >
                 <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
                 <StyledView className={`w-5 h-5 rounded border ${
-                  preferenceVisibility.dealbreakers ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
+                  preferenceVisibility.nonNegotiables ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
                 } items-center justify-center`}>
-                  {preferenceVisibility.dealbreakers && (
+                  {preferenceVisibility.nonNegotiables && (
                     <Ionicons name="checkmark" size={14} color="white" />
                   )}
                 </StyledView>
               </StyledTouchableOpacity>
             </StyledView>
             <Body className="text-neutral-600 text-sm mb-4">
-              Select 1 characteristic that is an absolute dealbreaker
+              Select one characteristic that is a no-go for you
             </Body>
             <StyledView className="space-y-3">
-              {DEALBREAKER_OPTIONS.map(option => {
-                const isSelected = dealbreakers.includes(option.id);
+              {NON_NEGOTIABLES_LIST.map(option => {
+                const isSelected = nonNegotiables.includes(option.id);
                 return (
                   <StyledTouchableOpacity
                     key={option.id}
                     onPress={() => {
                       lightHaptic();
-                      toggleDealbreaker(option.id);
+                      toggleNonNegotiable(option.id);
                     }}
                     className={`flex-row items-center p-3 rounded-lg border ${
                       isSelected
@@ -1252,17 +1235,17 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                 );
               })}
 
-              {/* Custom dealbreakers (not in predefined list) */}
-              {dealbreakers.filter(db => !DEALBREAKER_OPTIONS.some(opt => opt.id === db)).map((customDealbreaker) => (
+              {/* Custom non-negotiables (not in predefined list) */}
+              {nonNegotiables.filter(db => !NON_NEGOTIABLES_LIST.some(opt => opt.id === db)).map((customNonNegotiable) => (
                 <StyledTouchableOpacity
-                  key={customDealbreaker}
+                  key={customNonNegotiable}
                   onPress={() => {
                     lightHaptic();
-                    toggleDealbreaker(customDealbreaker);
+                    toggleNonNegotiable(customNonNegotiable);
                   }}
                   className="flex-row items-center p-3 rounded-lg border bg-error/5 border-error"
                 >
-                  <Body className="flex-1 font-medium text-error">{customDealbreaker}</Body>
+                  <Body className="flex-1 font-medium text-error">{customNonNegotiable}</Body>
                   <StyledView className="w-5 h-5 rounded border bg-error border-error items-center justify-center">
                     <Ionicons name="checkmark" size={14} color="white" />
                   </StyledView>
@@ -1271,89 +1254,28 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
             </StyledView>
           </Card>
-
-          {/* Non-Negotiables */}
-          <Card className="mb-8">
-            <StyledView className="flex-row items-center justify-between mb-2">
-              <StyledView className="flex-row items-center">
-                <H3>Top Priority</H3>
-                <Body className="text-neutral-400 text-sm ml-2">(optional)</Body>
-              </StyledView>
-              <StyledTouchableOpacity
-                onPress={() => toggleVisibility('topPriority')}
-                className="flex-row items-center"
-              >
-                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
-                <StyledView className={`w-5 h-5 rounded border ${
-                  preferenceVisibility.topPriority ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
-                } items-center justify-center`}>
-                  {preferenceVisibility.topPriority && (
-                    <Ionicons name="checkmark" size={14} color="white" />
-                  )}
-                </StyledView>
-              </StyledTouchableOpacity>
-            </StyledView>
-            <Body className="text-neutral-600 text-sm mb-4">
-              Select the one preference that matters most to you in potential matches
-            </Body>
-            <StyledView className="space-y-3">
-              {NON_NEGOTIABLE_OPTIONS.map(option => {
-                const isSelected = nonNegotiable === option.id;
-                return (
-                  <StyledTouchableOpacity
-                    key={option.id}
-                    onPress={() => {
-                      lightHaptic();
-                      setNonNegotiable(isSelected ? '' : option.id);
-                    }}
-                    className={`flex-row items-start p-4 rounded-lg border ${
-                      isSelected
-                        ? 'bg-purple-500 border-purple-500'
-                        : 'bg-white border-neutral-300'
-                    }`}
-                  >
-                    <StyledView className="flex-1">
-                      <Body className={`font-semibold mb-1 ${isSelected ? 'text-white' : 'text-neutral-900'}`}>
-                        {option.label}
-                      </Body>
-                      <Body className={`text-sm ${isSelected ? 'text-white' : 'text-neutral-600'}`}>
-                        {option.description}
-                      </Body>
-                    </StyledView>
-                    <StyledView className={`w-5 h-5 rounded-full border ml-3 mt-0.5 ${
-                      isSelected ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
-                    } items-center justify-center`}>
-                      {isSelected && (
-                        <Ionicons name="checkmark" size={14} color="white" />
-                      )}
-                    </StyledView>
-                  </StyledTouchableOpacity>
-                );
-              })}
-            </StyledView>
-          </Card>
         </StyledView>
       </StyledScrollView>
 
-      {/* Custom Dealbreaker "Other" Modal */}
+      {/* Custom Non-Negotiable "Other" Modal */}
       <Modal
-        visible={showCustomDealbreakerModal}
+        visible={showCustomNonNegotiableModal}
         animationType="none"
         transparent
-        onRequestClose={() => setShowCustomDealbreakerModal(false)}
+        onRequestClose={() => setShowCustomNonNegotiableModal(false)}
       >
         <StyledAnimatedView
           className="flex-1 bg-black/50 justify-start items-center px-6 pt-24"
           style={{
-            opacity: customDealbreakerModalAnim,
+            opacity: customNonNegotiableModalAnim,
           }}
         >
           <StyledTouchableOpacity
             activeOpacity={1}
             onPress={() => {
               Keyboard.dismiss();
-              setShowCustomDealbreakerModal(false);
-              setCustomDealbreakerValue('');
+              setShowCustomNonNegotiableModal(false);
+              setCustomNonNegotiableValue('');
             }}
             className="absolute inset-0"
           />
@@ -1362,7 +1284,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             className="bg-white rounded-2xl w-full max-w-md"
             style={{
               transform: [{
-                scale: customDealbreakerModalAnim.interpolate({
+                scale: customNonNegotiableModalAnim.interpolate({
                   inputRange: [0, 1],
                   outputRange: [0.9, 1],
                 }),
@@ -1371,28 +1293,28 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
           >
             {/* Header */}
             <StyledView className="px-6 pt-6 pb-4 border-b border-neutral-100">
-              <H3 className="mb-2">Add Custom Dealbreaker</H3>
+              <H3 className="mb-2">Add Custom Non-Negotiable</H3>
               <Body className="text-neutral-600 text-sm">
-                Enter a characteristic that's a dealbreaker for you
+                Enter a characteristic that's a non-negotiable for you
               </Body>
             </StyledView>
 
             {/* Input Field */}
             <StyledView className="px-6 py-5">
               <StyledTextInput
-                value={customDealbreakerValue}
-                onChangeText={setCustomDealbreakerValue}
+                value={customNonNegotiableValue}
+                onChangeText={setCustomNonNegotiableValue}
                 placeholder="Type your dealbreaker"
                 className="bg-neutral-50 border border-neutral-200 rounded-lg px-4 py-3 text-base text-neutral-900"
                 placeholderTextColor="#9CA3AF"
                 autoFocus
                 returnKeyType="done"
                 onSubmitEditing={() => {
-                  if (customDealbreakerValue.trim()) {
-                    setDealbreakers([...dealbreakers, customDealbreakerValue.trim()]);
+                  if (customNonNegotiableValue.trim()) {
+                    setNonNegotiables([...nonNegotiables, customNonNegotiableValue.trim()]);
                     mediumHaptic();
-                    setCustomDealbreakerValue('');
-                    setShowCustomDealbreakerModal(false);
+                    setCustomNonNegotiableValue('');
+                    setShowCustomNonNegotiableModal(false);
                     Keyboard.dismiss();
                   }
                 }}
@@ -1404,8 +1326,8 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
               <StyledTouchableOpacity
                 onPress={() => {
                   lightHaptic();
-                  setShowCustomDealbreakerModal(false);
-                  setCustomDealbreakerValue('');
+                  setShowCustomNonNegotiableModal(false);
+                  setCustomNonNegotiableValue('');
                   Keyboard.dismiss();
                 }}
                 className="flex-1 bg-neutral-100 rounded-lg py-3 items-center"
@@ -1415,23 +1337,23 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
               <StyledTouchableOpacity
                 onPress={() => {
-                  if (customDealbreakerValue.trim()) {
-                    setDealbreakers([...dealbreakers, customDealbreakerValue.trim()]);
+                  if (customNonNegotiableValue.trim()) {
+                    setNonNegotiables([...nonNegotiables, customNonNegotiableValue.trim()]);
                     mediumHaptic();
-                    setCustomDealbreakerValue('');
-                    setShowCustomDealbreakerModal(false);
+                    setCustomNonNegotiableValue('');
+                    setShowCustomNonNegotiableModal(false);
                     Keyboard.dismiss();
                   }
                 }}
                 className={`flex-1 rounded-lg py-3 items-center ${
-                  customDealbreakerValue.trim()
+                  customNonNegotiableValue.trim()
                     ? 'bg-error'
                     : 'bg-neutral-200'
                 }`}
-                disabled={!customDealbreakerValue.trim()}
+                disabled={!customNonNegotiableValue.trim()}
               >
                 <Body className={`font-semibold ${
-                  customDealbreakerValue.trim()
+                  customNonNegotiableValue.trim()
                     ? 'text-white'
                     : 'text-neutral-400'
                 }`}>

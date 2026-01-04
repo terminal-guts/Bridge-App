@@ -328,7 +328,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     return (
       <StyledView className="items-center mb-6 pt-4">
         <StyledImage
-          source={{ uri: recipientProfile.photos[0]?.url }}
+          source={{ uri: (recipientProfile.photos?.find(p => p.isMain) || recipientProfile.photos?.[0])?.url }}
           className="w-20 h-20 rounded-full mb-3"
         />
         <H3 className="mb-1">You matched with {recipientName}!</H3>
@@ -380,9 +380,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
           <StyledTouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color="#101828" />
           </StyledTouchableOpacity>
-          {recipientProfile?.photos[0]?.url && (
+          {(recipientProfile?.photos?.find(p => p.isMain) || recipientProfile?.photos?.[0])?.url && (
             <StyledImage
-              source={{ uri: recipientProfile.photos[0].url }}
+              source={{ uri: (recipientProfile.photos.find(p => p.isMain) || recipientProfile.photos[0]).url }}
               className="w-10 h-10 rounded-full ml-3 mr-3"
             />
           )}

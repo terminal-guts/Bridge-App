@@ -46,6 +46,9 @@ export const mockProfiles: UserProfile[] = [
       { id: 'p1', url: 'https://picsum.photos/400/600?random=1', isMain: true, order: 1 },
       { id: 'p2', url: 'https://picsum.photos/400/600?random=2', isMain: false, order: 2 },
       { id: 'p3', url: 'https://picsum.photos/400/600?random=3', isMain: false, order: 3 },
+      { id: 'p1_4', url: 'https://picsum.photos/400/600?random=101', isMain: false, order: 4 },
+      { id: 'p1_5', url: 'https://picsum.photos/400/600?random=102', isMain: false, order: 5 },
+      { id: 'p1_6', url: 'https://picsum.photos/400/600?random=103', isMain: false, order: 6 },
     ],
     interests: ['Pilates', 'Wine Tasting', 'Travel', 'Fine Dining', 'Art Galleries', 'Running'],
     values: ['Ambition', 'Loyalty', 'Family', 'Growth Mindset', 'Integrity', 'Balance'],
@@ -59,7 +62,7 @@ export const mockProfiles: UserProfile[] = [
       children: 'want',
       pets: ['Dogs'],
     },
-    dealbreakers: [
+    nonNegotiables: [
       { id: 'd1', type: 'smoking', value: true },
       { id: 'd2', type: 'children', value: 'dont_want' },
     ],
@@ -73,7 +76,6 @@ export const mockProfiles: UserProfile[] = [
     },
     preferredEthnicities: ['Asian', 'White / Caucasian', 'Mixed / Multiracial'],
     preferredPolitics: ['Moderate', 'Liberal'],
-    nonNegotiable: 'Must want children',
     maxDistance: 10, // Miles
     preferenceVisibility: {
       ethnicity: true,
@@ -146,6 +148,9 @@ export const mockProfiles: UserProfile[] = [
       { id: 'p4', url: 'https://picsum.photos/400/600?random=4', isMain: true, order: 1 },
       { id: 'p5', url: 'https://picsum.photos/400/600?random=5', isMain: false, order: 2 },
       { id: 'p6', url: 'https://picsum.photos/400/600?random=6', isMain: false, order: 3 },
+      { id: 'p2_4', url: 'https://picsum.photos/400/600?random=104', isMain: false, order: 4 },
+      { id: 'p2_5', url: 'https://picsum.photos/400/600?random=105', isMain: false, order: 5 },
+      { id: 'p2_6', url: 'https://picsum.photos/400/600?random=106', isMain: false, order: 6 },
     ],
     interests: ['Running', 'Cooking', 'Golf', 'Reading', 'Cocktail Bars', 'Basketball'],
     values: ['Integrity', 'Adventure', 'Humor', 'Intelligence', 'Authenticity', 'Growth Mindset'],
@@ -159,7 +164,7 @@ export const mockProfiles: UserProfile[] = [
       children: 'open',
       pets: ['Dogs', 'Cats'],
     },
-    dealbreakers: [
+    nonNegotiables: [
       { id: 'd3', type: 'smoking', value: true },
     ],
     preferences: {
@@ -172,7 +177,6 @@ export const mockProfiles: UserProfile[] = [
     },
     preferredEthnicities: ['White / Caucasian', 'Hispanic / Latino', 'Asian', 'Mixed / Multiracial'],
     preferredPolitics: ['Liberal', 'Moderate'],
-    nonNegotiable: 'Someone who values authenticity',
     maxDistance: 15, // Miles
     preferenceVisibility: {
       ethnicity: true,
@@ -245,6 +249,9 @@ export const mockProfiles: UserProfile[] = [
       { id: 'p7', url: 'https://picsum.photos/400/600?random=7', isMain: true, order: 1 },
       { id: 'p8', url: 'https://picsum.photos/400/600?random=8', isMain: false, order: 2 },
       { id: 'p9', url: 'https://picsum.photos/400/600?random=9', isMain: false, order: 3 },
+      { id: 'p3_4', url: 'https://picsum.photos/400/600?random=107', isMain: false, order: 4 },
+      { id: 'p3_5', url: 'https://picsum.photos/400/600?random=108', isMain: false, order: 5 },
+      { id: 'p3_6', url: 'https://picsum.photos/400/600?random=109', isMain: false, order: 6 },
     ],
     interests: ['Yoga', 'Meditation', 'Wine', 'Museums', 'Hiking', 'Reading'],
     values: ['Balance', 'Mindfulness', 'Success', 'Authenticity', 'Integrity', 'Growth Mindset'],
@@ -258,7 +265,7 @@ export const mockProfiles: UserProfile[] = [
       children: 'want',
       pets: ['Cats'],
     },
-    dealbreakers: [
+    nonNegotiables: [
       { id: 'd4', type: 'smoking', value: true },
     ],
     preferences: {
@@ -271,7 +278,6 @@ export const mockProfiles: UserProfile[] = [
     },
     preferredEthnicities: ['White / Caucasian', 'Asian', 'Mixed / Multiracial'],
     preferredPolitics: ['Liberal'],
-    nonNegotiable: 'Must value mindfulness and balance',
     maxDistance: 10, // Miles
     preferenceVisibility: {
       ethnicity: true,
@@ -341,9 +347,12 @@ export const mockProfiles: UserProfile[] = [
     otherDrugsFrequency: 'No',
     bio: 'ER doctor committed to serving others. Basketball player, documentary watcher, and amateur chef. Looking for someone compassionate with a strong sense of family.',
     photos: [
-      { id: 'p10', url: 'https://picsum.photos/400/600?random=10', isMain: true, order: 1 },
-      { id: 'p11', url: 'https://picsum.photos/400/600?random=11', isMain: false, order: 2 },
-      { id: 'p12', url: 'https://picsum.photos/400/600?random=12', isMain: false, order: 3 },
+      { id: 'p10', url: 'https://picsum.photos/400/600?random=20', isMain: true, order: 1 },
+      { id: 'p11', url: 'https://picsum.photos/400/600?random=21', isMain: false, order: 2 },
+      { id: 'p12', url: 'https://picsum.photos/400/600?random=22', isMain: false, order: 3 },
+      { id: 'p4_4', url: 'https://picsum.photos/400/600?random=110', isMain: false, order: 4 },
+      { id: 'p4_5', url: 'https://picsum.photos/400/600?random=111', isMain: false, order: 5 },
+      { id: 'p4_6', url: 'https://picsum.photos/400/600?random=112', isMain: false, order: 6 },
     ],
     interests: ['Fitness', 'Coffee', 'Basketball', 'Travel', 'Documentaries', 'Cooking'],
     values: ['Compassion', 'Drive', 'Family', 'Service', 'Integrity', 'Loyalty'],
@@ -357,7 +366,7 @@ export const mockProfiles: UserProfile[] = [
       children: 'want',
       pets: ['Dogs'],
     },
-    dealbreakers: [
+    nonNegotiables: [
       { id: 'd5', type: 'smoking', value: true },
       { id: 'd6', type: 'drugs', value: true },
     ],
@@ -371,7 +380,6 @@ export const mockProfiles: UserProfile[] = [
     },
     preferredEthnicities: ['Black / African American', 'Mixed / Multiracial', 'Hispanic / Latino'],
     preferredPolitics: ['Moderate', 'Liberal'],
-    nonNegotiable: 'Must value family and service',
     maxDistance: 10, // Miles
     preferenceVisibility: {
       ethnicity: true,
@@ -461,12 +469,14 @@ export const currentUserProfile: UserProfile = {
   // Bio
   bio: 'PE investor who loves staying active and exploring NYC. Tennis player, wine enthusiast, and podcast addict. Seeking someone ambitious yet grounded.',
 
-  // Photos
+  // Photos (6 required for 100% profile strength)
   photos: [
     { id: 'cp1', url: 'https://picsum.photos/400/600?random=10', isMain: true, order: 1 },
     { id: 'cp2', url: 'https://picsum.photos/400/600?random=11', isMain: false, order: 2 },
     { id: 'cp3', url: 'https://picsum.photos/400/600?random=12', isMain: false, order: 3 },
     { id: 'cp4', url: 'https://picsum.photos/400/600?random=13', isMain: false, order: 4 },
+    { id: 'cp5', url: 'https://picsum.photos/400/600?random=14', isMain: false, order: 5 },
+    { id: 'cp6', url: 'https://picsum.photos/400/600?random=15', isMain: false, order: 6 },
   ],
 
   // Interests & Values
@@ -493,8 +503,8 @@ export const currentUserProfile: UserProfile = {
     pets: ['Dogs'],
   },
 
-  // Dealbreakers
-  dealbreakers: [
+  // Non-Negotiables
+  nonNegotiables: [
     { id: 'cd1', type: 'smoking', value: true },
     { id: 'cd2', type: 'drugs', value: true },
   ],
@@ -510,7 +520,6 @@ export const currentUserProfile: UserProfile = {
   },
   preferredEthnicities: ['Asian', 'White / Caucasian', 'Hispanic / Latino', 'Mixed / Multiracial'],
   preferredPolitics: ['Moderate', 'Liberal'],
-  nonNegotiable: 'Someone who balances ambition with authenticity',
   maxDistance: 15, // Miles
   preferenceVisibility: {
     ethnicity: true,

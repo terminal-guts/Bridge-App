@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { View, SafeAreaView, StatusBar, ScrollView, Image, TouchableOpacity, Alert, RefreshControl, Modal, Switch, Animated, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, SafeAreaView, StatusBar, ScrollView, FlatList, Image, TouchableOpacity, Alert, RefreshControl, Modal, Switch, Animated, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { PROFILE_CACHE_DURATION, NAVIGATION_DELAY, AVATAR_SIZE_XL } from '../../constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
 import { H2, H3, Body, Card, Button, ProfileSkeleton } from '../../components/ui';
@@ -44,6 +45,7 @@ interface ProfileScreenProps {
 const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
+const StyledFlatList = styled(FlatList);
 const StyledImage = styled(Image);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledAnimatedView = styled(Animated.View);
@@ -143,6 +145,46 @@ const QuestionsSkeleton: React.FC = () => {
   );
 };
 
+// Memoized question card for unanswered questions (performance optimization)
+const UnansweredQuestionCard = React.memo<{
+  question: { id: number; question: string };
+  onPress: () => void;
+}>(({ question, onPress }) => (
+  <StyledTouchableOpacity
+    onPress={onPress}
+    activeOpacity={0.7}
+    className="mb-3"
+  >
+    <Card className="bg-neutral-50 border-2 border-dashed border-neutral-300">
+      <StyledView className="flex-row items-center justify-between">
+        <StyledView className="flex-1 pr-3">
+          <Body className="text-neutral-900 font-medium text-sm">{question.question}</Body>
+        </StyledView>
+        <StyledView className="w-8 h-8 rounded-full bg-primary-100 items-center justify-center">
+          <Ionicons name="add" size={20} color="#437FFF" />
+        </StyledView>
+      </StyledView>
+    </Card>
+  </StyledTouchableOpacity>
+));
+
+// Memoized question card for answered questions (performance optimization)
+const AnsweredQuestionCard = React.memo<{
+  question: DeepQuestionAnswer;
+  onPress: () => void;
+}>(({ question, onPress }) => (
+  <StyledTouchableOpacity
+    onPress={onPress}
+    activeOpacity={0.7}
+    className="mb-3"
+  >
+    <Card className="bg-white border border-neutral-200">
+      <Body className="text-neutral-900 font-semibold text-base mb-2">{question.question}</Body>
+      <Body className="text-neutral-600 text-sm" numberOfLines={2}>{question.answer}</Body>
+    </Card>
+  </StyledTouchableOpacity>
+));
+
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -194,7 +236,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   // Performance: Cache timing ref to avoid redundant API calls
   const lastFetchRef = useRef<number>(0);
-  const CACHE_DURATION = 30000; // 30 seconds - only refetch if data is stale
 
   // Track component mount status to prevent state updates after unmount
   const isMountedRef = useRef(true);
@@ -209,6 +250,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   // Performance: Wrap data loading functions in useCallback
   const loadProfile = useCallback(async () => {
     try {
+      console.log('[ProfileScreen] loadProfile called');
+
       // Ensure user is authenticated, create anonymous session if needed
       const userResult = await requirePhoneVerification();
       if (!userResult.ok || !userResult.data) {
@@ -235,14 +278,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       const loadedProfile = profileResult.data;
       if (!isMountedRef.current) return;
 
-      setProfile(loadedProfile);
+      console.log('[ProfileScreen] Profile loaded successfully:', {
+        preferredPolitics: loadedProfile.preferredPolitics,
+        matchPrefsCompleteness: loadedProfile.preferences ? 'exists' : 'missing'
+      });
 
-      // Load section visibility from profile if it exists
-      if (loadedProfile.sectionVisibility) {
-        setSectionVisibility(prev => ({
-          ...prev,
-          ...loadedProfile.sectionVisibility,
-        }));
+      // Wrap all state updates in mount guard
+      if (isMountedRef.current) {
+        setProfile(loadedProfile);
+
+        // Load section visibility from profile if it exists
+        if (loadedProfile.sectionVisibility) {
+          setSectionVisibility(prev => ({
+            ...prev,
+            ...loadedProfile.sectionVisibility,
+          }));
+        }
       }
     } catch (error: any) {
       // Don't show error if offline - keep existing data
@@ -290,6 +341,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   // Always reload profile when returning to screen to ensure fresh data after edits
   useFocusEffect(
     useCallback(() => {
+      console.log('[ProfileScreen] useFocusEffect triggered - reloading profile data');
+
       // Load all data in parallel for better performance
       Promise.all([
         loadProfile(),
@@ -714,7 +767,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             <MatchPreferencesSummary
               preferences={profile.preferences}
               preferredPolitics={profile.preferredPolitics}
-              dealbreakersCount={profile.dealbreakers?.length || 0}
+              nonNegotiablesCount={profile.nonNegotiables?.length || 0}
               preferredEthnicitiesCount={profile.preferredEthnicities?.length || 0}
               interestsCount={profile.interests?.length || 0}
               valuesCount={profile.values?.length || 0}
@@ -972,60 +1025,60 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
                     return (
                       <>
-                        {/* Unanswered Questions */}
+                        {/* Unanswered Questions - Virtualized with FlatList */}
                         {unansweredQuestions.length > 0 && (
                           <>
                             <Body className="text-neutral-700 font-semibold text-sm mb-3">
                               Unanswered ({unansweredQuestions.length})
                             </Body>
-                            {unansweredQuestions.map((q) => (
-                              <StyledTouchableOpacity
-                                key={q.id}
-                                onPress={() => {
-                                  mediumHaptic();
-                                  handleAnswerMoreQuestion(q.id, q.question);
-                                }}
-                                activeOpacity={0.7}
-                                className="mb-3"
-                              >
-                                <Card className="bg-neutral-50 border-2 border-dashed border-neutral-300">
-                                  <StyledView className="flex-row items-center justify-between">
-                                    <StyledView className="flex-1 pr-3">
-                                      <Body className="text-neutral-900 font-medium text-sm">{q.question}</Body>
-                                    </StyledView>
-                                    <StyledView className="w-8 h-8 rounded-full bg-primary-100 items-center justify-center">
-                                      <Ionicons name="add" size={20} color="#437FFF" />
-                                    </StyledView>
-                                  </StyledView>
-                                </Card>
-                              </StyledTouchableOpacity>
-                            ))}
+                            <FlatList
+                              data={unansweredQuestions}
+                              keyExtractor={(item) => `unanswered-${item.id}`}
+                              renderItem={({ item }) => (
+                                <UnansweredQuestionCard
+                                  question={item}
+                                  onPress={() => {
+                                    mediumHaptic();
+                                    handleAnswerMoreQuestion(item.id, item.question);
+                                  }}
+                                />
+                              )}
+                              scrollEnabled={false}
+                              removeClippedSubviews={true}
+                              maxToRenderPerBatch={10}
+                              updateCellsBatchingPeriod={50}
+                              initialNumToRender={10}
+                              windowSize={5}
+                            />
                           </>
                         )}
 
-                        {/* Previously Answered (Not Displayed) */}
+                        {/* Previously Answered (Not Displayed) - Virtualized with FlatList */}
                         {nonDisplayedAnswers.length > 0 && (
                           <>
                             <Body className="text-neutral-700 font-semibold text-sm mb-3 mt-4">
                               Answered but Not Displayed ({nonDisplayedAnswers.length})
                             </Body>
-                            {nonDisplayedAnswers.map((qa) => (
-                              <StyledTouchableOpacity
-                                key={qa.questionId}
-                                onPress={() => {
-                                  lightHaptic();
-                                  setCurrentEditingQuestion(qa);
-                                  setShowEditAnswerModal(true);
-                                }}
-                                activeOpacity={0.7}
-                                className="mb-3"
-                              >
-                                <Card className="bg-white border border-neutral-200">
-                                  <Body className="text-neutral-900 font-semibold text-base mb-2">{qa.question}</Body>
-                                  <Body className="text-neutral-600 text-sm" numberOfLines={2}>{qa.answer}</Body>
-                                </Card>
-                              </StyledTouchableOpacity>
-                            ))}
+                            <FlatList
+                              data={nonDisplayedAnswers}
+                              keyExtractor={(item) => `answered-${item.questionId}`}
+                              renderItem={({ item }) => (
+                                <AnsweredQuestionCard
+                                  question={item}
+                                  onPress={() => {
+                                    lightHaptic();
+                                    setCurrentEditingQuestion(item);
+                                    setShowEditAnswerModal(true);
+                                  }}
+                                />
+                              )}
+                              scrollEnabled={false}
+                              removeClippedSubviews={true}
+                              maxToRenderPerBatch={10}
+                              updateCellsBatchingPeriod={50}
+                              initialNumToRender={10}
+                              windowSize={5}
+                            />
                           </>
                         )}
 
@@ -1126,15 +1179,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     mediumHaptic();
   };
 
+  // Calculate profile completion for matches tab empty state (memoized for performance)
+  // MUST be at top level to avoid hooks violation
+  const { profileCompletion, isProfileComplete } = useMemo(() => {
+    const completionData = calculateProfileCompleteness(profile);
+    return {
+      profileCompletion: completionData.percentage,
+      isProfileComplete: completionData.percentage === 100
+    };
+  }, [profile]);
+
   const renderMatchesTab = () => {
-    // Calculate profile completion to show appropriate empty state message (memoized for performance)
-    const { profileCompletion, isProfileComplete } = useMemo(() => {
-      const completionData = calculateProfileCompleteness(profile);
-      return {
-        profileCompletion: completionData.percentage,
-        isProfileComplete: completionData.percentage === 100
-      };
-    }, [profile]);
 
     return (
       <StyledView className="px-4 py-6">
@@ -1200,6 +1255,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       <StyledScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        nestedScrollEnabled={true}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -1251,17 +1308,20 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           {/* Circular Profile Photo Layout */}
           <StyledView className="items-center">
             {/* Profile Photo Circle */}
-            {profile.photos && profile.photos.length > 0 && profile.photos[0]?.url ? (
+            {profile.photos && profile.photos.length > 0 && (profile.photos.find(p => p.isMain) || profile.photos[0])?.url ? (
               <StyledImage
-                source={{ uri: profile.photos[0].url }}
-                className="w-24 h-24 rounded-full mb-3 bg-neutral-200 border-2 border-neutral-100"
+                source={{ uri: (profile.photos.find(p => p.isMain) || profile.photos[0]).url }}
+                className="rounded-full mb-3 bg-neutral-200 border-2 border-neutral-100"
                 style={{
+                  width: AVATAR_SIZE_XL,
+                  height: AVATAR_SIZE_XL,
                   shadowColor: '#2E1810',
                   shadowOffset: { width: 0, height: 4 },
                   shadowOpacity: 0.22,
                   shadowRadius: 10,
                   elevation: 6,
                 }}
+                resizeMode="cover"
                 onError={(e) => {
                   console.warn('Failed to load profile photo:', e.nativeEvent.error);
                 }}

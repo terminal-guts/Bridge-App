@@ -56,6 +56,20 @@ export function ProposalReviewView({
   // Rate limiter for vote submissions (max 10 votes per minute)
   const rateLimiterRef = useRef(new RateLimiter());
 
+  // Track mount status to prevent state updates after unmount
+  const isMountedRef = useRef(true);
+  const voteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      if (voteTimeoutRef.current) {
+        clearTimeout(voteTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Guide system
   const { startGuideIfNeeded } = useGuide();
 
@@ -120,7 +134,10 @@ export function ProposalReviewView({
       await communityService.submitProposalVote(currentProposal.id, vote);
 
       // Brief delay for feedback before advancing
-      setTimeout(() => {
+      voteTimeoutRef.current = setTimeout(() => {
+        // Guard against unmounted component
+        if (!isMountedRef.current) return;
+
         setVoting(false);
 
         // Auto-advance to next proposal or complete
@@ -133,6 +150,8 @@ export function ProposalReviewView({
       }, 400);
     } catch (error: any) {
       console.error('[ProposalReviewView] Error submitting vote:', error);
+      // Guard against unmounted component
+      if (!isMountedRef.current) return;
       setVoting(false);
       showToast.error('Vote failed', error.message || 'Unable to submit vote');
     }

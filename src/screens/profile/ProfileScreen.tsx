@@ -67,7 +67,7 @@ const formatFrequency = (value?: string): string | null => {
 // Format height from inches to feet and inches
 const formatHeight = (height?: string): string | null => {
   if (!height) return null;
-  const inches = parseInt(height);
+  const inches = parseInt(height, 10);
   if (isNaN(inches)) return height; // Return as-is if not a number
   const feet = Math.floor(inches / 12);
   const remainingInches = inches % 12;

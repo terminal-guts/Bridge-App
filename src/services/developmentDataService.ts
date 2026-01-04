@@ -93,7 +93,7 @@ const MOCK_QUESTIONS = [
   {
     tier: 2,
     questionId: 15,
-    question: "What's a relationship dealbreaker for you?",
+    question: "What's a relationship non-negotiable for you?",
     answer: 'Lack of ambition and dishonesty. I value people who know what they want.',
   },
   {

@@ -44,10 +44,21 @@ export function useFriendsArea(): UseFriendsAreaResult {
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
+  // Track in-flight requests to prevent concurrent fetches
+  const fetchInProgressRef = useRef(false);
+
   /**
    * Fetch all friends area data
    */
   const fetchData = useCallback(async (isRefreshing: boolean = false) => {
+    // Prevent concurrent fetches
+    if (fetchInProgressRef.current) {
+      console.log('[useFriendsArea] Fetch already in progress, skipping');
+      return;
+    }
+
+    fetchInProgressRef.current = true;
+
     try {
       if (isRefreshing) {
         setRefreshing(true);
@@ -71,6 +82,7 @@ export function useFriendsArea(): UseFriendsAreaResult {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      fetchInProgressRef.current = false; // Mark fetch as complete
     }
   }, []);
 

@@ -682,7 +682,12 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
             <Body className="text-neutral-700 text-sm ml-2">Ethnicity</Body>
           </StyledView>
           <Body className="text-neutral-900 font-semibold text-sm" numberOfLines={1}>
-            {profile.ethnicity || '-'}
+            {(() => {
+              if (!profile.ethnicity) return '-';
+              const ethnicities = profile.ethnicity.split(' / ').map(e => e.trim());
+              if (ethnicities.length === 1) return ethnicities[0];
+              return `${ethnicities[0]} +${ethnicities.length - 1}`;
+            })()}
           </Body>
         </StyledView>
 
@@ -726,7 +731,7 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
 interface MatchPreferencesSummaryProps {
   preferences: UserProfile['preferences'];
   preferredPolitics?: string[];
-  dealbreakersCount?: number;
+  nonNegotiablesCount?: number;
   preferredEthnicitiesCount?: number;
   interestsCount?: number;
   valuesCount?: number;
@@ -736,7 +741,7 @@ interface MatchPreferencesSummaryProps {
 export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = ({
   preferences,
   preferredPolitics,
-  dealbreakersCount = 0,
+  nonNegotiablesCount = 0,
   preferredEthnicitiesCount = 0,
   interestsCount = 0,
   valuesCount = 0,
@@ -806,7 +811,11 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
             <Body className="text-neutral-700 text-sm ml-2">Preferred Politics</Body>
           </StyledView>
           <Body className="text-neutral-900 font-semibold text-sm" numberOfLines={1}>
-            {preferredPolitics && preferredPolitics.length > 0 ? preferredPolitics.join(', ') : '-'}
+            {(() => {
+              if (!preferredPolitics || preferredPolitics.length === 0) return '-';
+              if (preferredPolitics.length === 1) return preferredPolitics[0];
+              return `${preferredPolitics[0]} +${preferredPolitics.length - 1}`;
+            })()}
           </Body>
         </StyledView>
       </StyledView>

@@ -128,7 +128,7 @@ export const getUserMatches = async (): Promise<ApiResponse<Match[]>> => {
           children: p.has_children || 'open',
           pets: [],
         },
-        dealbreakers: [],
+        nonNegotiables: [],
         preferences: {
           ageMin: 24,
           ageMax: 32,
