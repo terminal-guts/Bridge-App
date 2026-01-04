@@ -4,6 +4,7 @@ import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/OnboardingLayout';
+import { sendOtpToPhone, verifyPhone } from '../../../services/authService';
 
 interface PhoneVerificationStepProps {
   data: Partial<OnboardingData>;
@@ -58,7 +59,7 @@ export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
     }
   };
 
-  const validateAndContinue = (verificationCode?: string) => {
+  const validateAndContinue = async (verificationCode?: string) => {
     const fullCode = verificationCode || code.join('');
 
     if (fullCode.length !== 6) {
@@ -66,21 +67,33 @@ export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
       return;
     }
 
-    // MOCK: In production, verify code with backend
-    // For now, accept any 6-digit code
-    updateData({
-      phoneVerified: true,
-      verificationCode: fullCode,
-    });
-    onNext();
+    // Verify code with real backend
+    const response = await verifyPhone(data.phoneNumber || '', fullCode);
+
+    if (response.ok) {
+      updateData({
+        phoneNumber: data.phoneNumber,
+        phoneVerified: true, // Added phoneVerified as per instruction
+        // Removed verificationCode from updateData as it's not typically stored in OnboardingData
+      });
+      onNext();
+    } else {
+      setError(response.error?.message || 'Verification failed');
+    }
   };
 
-  const resendCode = () => {
-    // MOCK: In production, call API to resend code
-    console.log('[MOCK] Resending verification code to:', data.phoneNumber);
-    setCode(['', '', '', '', '', '']);
-    setError('');
-    inputRefs.current[0]?.focus();
+  const resendCode = async () => {
+    console.log('[SMS] Actually sending verification code via Twilio to:', data.phoneNumber);
+    const response = await sendOtpToPhone(data.phoneNumber || '');
+
+    if (response.ok) {
+      setCode(['', '', '', '', '', '']);
+      setError('');
+      inputRefs.current[0]?.focus();
+      // Optional: Add a toast success message here
+    } else {
+      setError(response.error?.message || 'Failed to resend code');
+    }
   };
 
   return (
@@ -98,9 +111,12 @@ export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
 
         <StyledView className="flex-row justify-between mb-8">
           {code.map((digit, index) => (
-            <StyledTextInput
+            <TextInput
               key={index}
-              ref={(ref) => (inputRefs.current[index] = ref)}
+              ref={(ref) => {
+                inputRefs.current[index] = ref;
+              }}
+              // NativeWind className works on standard components
               className="w-12 h-14 border-2 border-neutral-300 rounded-lg text-center text-2xl font-semibold"
               value={digit}
               onChangeText={(text) => handleCodeChange(text, index)}

@@ -15,6 +15,9 @@ interface User {
 const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
 let mockCurrentUser: User | null = null;
 
+// Backend API URL - use your local IP if testing on physical device
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
 /**
  * Error response helper
  */
@@ -31,9 +34,23 @@ const createErrorResponse = (code: string, message: string): ApiResponse<any> =>
  */
 export const sendOtpToPhone = async (phoneNumber: string): Promise<ApiResponse<void>> => {
   try {
-    console.log('[MOCK AUTH] OTP sent to:', phoneNumber);
+    console.log('[SMS] Attempting to send OTP via Twilio to:', phoneNumber);
+
+    const response = await fetch(`${API_URL}/onboarding/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone_number: phoneNumber }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to send OTP');
+    }
+
+    console.log('[SMS] OTP request successful for:', phoneNumber);
     return { ok: true };
   } catch (error: any) {
+    console.error('[SMS] Error sending OTP:', error.message);
     return {
       ok: false,
       error: {
@@ -102,9 +119,22 @@ export const getCurrentUser = async (): Promise<ApiResponse<User | null>> => {
  * Verify phone number with OTP code - MOCK VERSION
  * Always succeeds for tap-through flow
  */
-export const verifyPhone = async (phone: string, token: string): Promise<ApiResponse<User>> => {
+export const verifyPhone = async (phone: string, code: string): Promise<ApiResponse<User>> => {
   try {
-    console.log('[MOCK AUTH] Phone verified:', phone, 'with token:', token);
+    console.log('[SMS] Verifying code:', code, 'for phone:', phone);
+
+    const response = await fetch(`${API_URL}/onboarding/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone_number: phone, code: code }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Invalid verification code');
+    }
+
+    console.log('[SMS] Phone verification successful!');
 
     mockCurrentUser = {
       id: MOCK_USER_ID,
@@ -117,6 +147,7 @@ export const verifyPhone = async (phone: string, token: string): Promise<ApiResp
       data: mockCurrentUser,
     };
   } catch (error: any) {
+    console.error('[SMS] Verification error:', error.message);
     return {
       ok: false,
       error: {
