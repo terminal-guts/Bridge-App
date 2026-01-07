@@ -197,7 +197,9 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
                   onFocus={() => setFocusedIndex(index)}
                   onBlur={() => setFocusedIndex(null)}
                   keyboardType="number-pad"
-                  maxLength={1}
+                  maxLength={index === 0 ? 6 : 1}
+                  textContentType="oneTimeCode"
+                  autoComplete="one-time-code"
                   style={[
                     styles.otpInput,
                     focusedIndex === index && styles.otpInputFocused
