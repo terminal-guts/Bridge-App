@@ -3,29 +3,19 @@ import json
 
 url = "http://localhost:8000/onboarding/save-step"
 data = {
-    "user_id": "00000000-0000-0000-0000-000000000001",
-    "step_key": "terminal_import",
+    "user_id": "a715d2c8-cb4d-4b14-855d-3e7eba1e0e6c",
+    "step_key": "terminal_test_preferences",
     "data": {
-        "cannabisFrequency": "",
-        "drinkingFrequency": "",
-        "gender": [],
-        "interestedInGenders": [],
-        "interests": [],
-        "lifestyle": {},
-        "nonNegotiables": [],
-        "otherDrugsFrequency": "",
-        "phoneNumber": "(949) 232-6834",
-        "photos": [],
+        "phoneNumber": "(949) 232-1234",
         "preferences": {
-            "ageMax": 32,
-            "ageMin": 24,
-            "heightMax": 84,
-            "heightMin": 60
-        },
-        "preferredEthnicities": [],
-        "pronounsList": [],
-        "tobaccoFrequency": "",
-        "values": []
+            "ageMax": 35,
+            "ageMin": 21,
+            "heightMax": 80,
+            "heightMin": 60,
+            "preferredGender": "female",
+            "lookingFor": "relationship",
+            "distanceMiles": 25
+        }
     }
 }
 

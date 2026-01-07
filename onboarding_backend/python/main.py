@@ -121,16 +121,39 @@ async def save_onboarding_step(request: SaveStepRequest):
     Saves partial onboarding state to the database.
     """
     try:
-        # If running in mock mode, this will just print a log
+        # 1. Save to onboarding_progress
         response = supabase.table("onboarding_progress").upsert({
             "user_id": request.user_id,
             "current_step": request.step_key,
             "data": request.data
         }).execute()
-        return {"status": "success", "message": f"Step {request.step_key} saved"}
+
+        # 2. If preferences are present, sync them to user_preferences table
+        if "preferences" in request.data:
+            prefs = request.data["preferences"]
+            
+            # Map camelCase from frontend/test to snake_case for DB
+            pref_data = {
+                "user_id": request.user_id,
+                "age_min": prefs.get("ageMin"),
+                "age_max": prefs.get("ageMax"),
+                "height_min": prefs.get("heightMin"),
+                "height_max": prefs.get("heightMax"),
+                "preferred_gender": prefs.get("preferredGender"),
+                "looking_for": prefs.get("lookingFor"),
+                "distance_miles": prefs.get("distanceMiles")
+            }
+            
+            # Filter out None values to avoid overwriting existing data with nulls
+            pref_data = {k: v for k, v in pref_data.items() if v is not None}
+            
+            if len(pref_data) > 1: # More than just user_id
+                supabase.table("user_preferences").upsert(pref_data).execute()
+                print(f"Synced preferences for user {request.user_id}")
+
+        return {"status": "success", "message": f"Step {request.step_key} saved and synced"}
     except Exception as e:
         print(f"Error saving onboarding step: {e}")
-        # We don't want to block the user if DB is down, but we log the error
         return {"status": "error", "message": str(e)}
 
 @app.post("/onboarding/send-otp")

@@ -103,10 +103,12 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Apply updated_at to tables
+DROP TRIGGER IF EXISTS set_profiles_updated_at ON public.profiles;
 CREATE TRIGGER set_profiles_updated_at
     BEFORE UPDATE ON public.profiles
     FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
+DROP TRIGGER IF EXISTS set_user_preferences_updated_at ON public.user_preferences;
 CREATE TRIGGER set_user_preferences_updated_at
     BEFORE UPDATE ON public.user_preferences
     FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
@@ -122,33 +124,42 @@ ALTER TABLE public.deep_question_answers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_photos ENABLE ROW LEVEL SECURITY;
 
 -- Profiles Policies
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
 CREATE POLICY "Public profiles are viewable by everyone" 
 ON public.profiles FOR SELECT USING (TRUE);
 
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile" 
 ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile" 
 ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
 -- Preferences Policies
+DROP POLICY IF EXISTS "Users can view their own preferences" ON public.user_preferences;
 CREATE POLICY "Users can view their own preferences" 
 ON public.user_preferences FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can manage their own preferences" ON public.user_preferences;
 CREATE POLICY "Users can manage their own preferences" 
 ON public.user_preferences FOR ALL USING (auth.uid() = user_id);
 
 -- Deep Questions Policies
+DROP POLICY IF EXISTS "Viewable by all (if profile is public)" ON public.deep_question_answers;
 CREATE POLICY "Viewable by all (if profile is public)" 
 ON public.deep_question_answers FOR SELECT USING (TRUE);
 
+DROP POLICY IF EXISTS "Manage own answers" ON public.deep_question_answers;
 CREATE POLICY "Manage own answers" 
 ON public.deep_question_answers FOR ALL USING (auth.uid() = user_id);
 
 -- Photos Policies
+DROP POLICY IF EXISTS "Viewable by all" ON public.user_photos;
 CREATE POLICY "Viewable by all" 
 ON public.user_photos FOR SELECT USING (TRUE);
 
+DROP POLICY IF EXISTS "Manage own photos" ON public.user_photos;
 CREATE POLICY "Manage own photos" 
 ON public.user_photos FOR ALL USING (auth.uid() = user_id);
 
@@ -167,6 +178,7 @@ CREATE TABLE IF NOT EXISTS public.onboarding_progress (
 -- Enable RLS for Onboarding Progress
 ALTER TABLE public.onboarding_progress ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage their own onboarding progress" ON public.onboarding_progress;
 CREATE POLICY "Users can manage their own onboarding progress"
   ON public.onboarding_progress
   FOR ALL
@@ -174,6 +186,7 @@ CREATE POLICY "Users can manage their own onboarding progress"
   WITH CHECK (auth.uid() = user_id);
 
 -- Trigger for updated_at
+DROP TRIGGER IF EXISTS set_onboarding_progress_updated_at ON public.onboarding_progress;
 CREATE TRIGGER set_onboarding_progress_updated_at
   BEFORE UPDATE ON public.onboarding_progress
   FOR EACH ROW
