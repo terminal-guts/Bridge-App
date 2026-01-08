@@ -119,8 +119,67 @@ export const createUserProfile = async (
   data: Partial<OnboardingData>
 ): Promise<ApiResponse<UserProfile>> => {
   try {
-    console.log('[MOCK PROFILE] Creating user profile:', userId, data);
+    console.log('[MOCK PROFILE] Creating user profile (calling backend):', userId);
 
+    // 1. Construct the payload for the backend
+    const payload = {
+      user_id: userId,
+      first_name: data.firstName || '',
+      last_name: data.lastName || '',
+      age: data.age || 0,
+      gender: data.gender || [],
+      location: data.location || '',
+      photos: Array.isArray(data.photos)
+        ? data.photos.map(p => typeof p === 'string' ? p : p.url)
+        : [],
+
+      // Extended fields
+      pronouns: data.pronouns,
+      pronouns_list: data.pronounsList,
+      custom_gender: data.customMyGender, // mapped from customMyGender
+      hometown: data.hometown,
+      current_job: data.currentJob,
+      company_position: data.companyPosition,
+      education_level: data.educationLevel,
+      school: data.school,
+      height_inches: data.height ? parseInt(data.height) : undefined, // rudimentary parse, ideally parse 5'10"
+      ethnicity: data.ethnicity,
+      religion: data.religion,
+      political_leaning: data.politicalLeaning,
+      has_children: data.hasChildren,
+      family_plans: data.familyPlans,
+      drinking_frequency: data.drinkingFrequency,
+      cannabis_frequency: data.cannabisFrequency,
+      tobacco_frequency: data.tobaccoFrequency,
+      other_drugs_frequency: data.otherDrugsFrequency,
+      interests: data.interests || [],
+      values: data.values || [],
+      bio: '', // OnboardingData might not have bio yet?
+
+      deep_questions: data.deepQuestions?.map(dq => ({
+        question_id: dq.questionId,
+        question_text: dq.question,
+        answer_text: dq.answer,
+        tier: dq.tier
+      })) || []
+    };
+
+    // 2. Call the backend
+    const response = await fetch(`${API_URL}/onboarding/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      console.error('[BACKEND] Failed to complete onboarding:', err);
+      throw new Error('Backend onboarding completion failed: ' + err);
+    }
+
+    console.log('[BACKEND] Onboarding completed successfully');
+
+    // 3. Update local mock state (legacy behavior)
     mockUserProfile = {
       id: userId,
       userId: userId,

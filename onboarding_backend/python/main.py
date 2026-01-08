@@ -153,6 +153,37 @@ async def save_onboarding_step(request: SaveStepRequest):
     Saves partial onboarding state to the database.
     """
     try:
+        # Ignore Supabase for phone-related steps as requested
+        is_phone_step = request.step_key in ["phone_number", "phone_verification"]
+        if is_phone_step:
+            print(f"[ONBOARDING] Skipping Supabase save for phone step: {request.step_key}")
+            return {"status": "success", "message": f"Step {request.step_key} ignored (Supabase bypassed)"}
+
+        # 0. Ensure Profile Exists (to satisfy Foreign Key constraints)
+        # We try to create a minimal profile if one doesn't exist
+        try:
+            # Check if profile exists first to avoid overwriting invalid data if unwanted? 
+            # Actually upsert with just ID is safe if we don't overwrite other fields, 
+            # BUT we need required fields like first_name/last_name/age/location.
+            # We can put placeholders.
+            
+            # Note: real auth usually creates this trigger, but for manual saving from frontend mock:
+            user_exists = supabase.table("profiles").select("id").eq("id", request.user_id).execute()
+            if not user_exists.data:
+                print(f"[ONBOARDING] Auto-creating missing profile for {request.user_id}")
+                supabase.table("profiles").insert({
+                    "id": request.user_id,
+                    "first_name": "", # Placeholder
+                    "last_name": "", # Placeholder
+                    "age": 18, # Placeholder
+                    "location": "Unknown" # Placeholder
+                }).execute()
+                
+                # Also initialize preferences
+                supabase.table("user_preferences").insert({"user_id": request.user_id}).execute()
+        except Exception as e:
+            print(f"[ONBOARDING] Warning checking/creating profile: {e}")
+
         # 1. Save to onboarding_progress
         response = supabase.table("onboarding_progress").upsert({
             "user_id": request.user_id,
@@ -182,6 +213,39 @@ async def save_onboarding_step(request: SaveStepRequest):
             if len(pref_data) > 1: # More than just user_id
                 supabase.table("user_preferences").upsert(pref_data).execute()
                 print(f"Synced preferences for user {request.user_id}")
+                
+        # 3. Handle Photos if present
+        if "photos" in request.data and isinstance(request.data["photos"], list):
+            # This is partial save during onboarding (e.g. photo step)
+            photos = request.data["photos"]
+            # We first clear existing regular photos for this user to avoid dupe/mess during onboarding?
+            # Or just append? Let's just upsert based on some logic, or simpler: delete all and re-add for sync
+            # For robustness in simple onboarding save:
+            try:
+                # Delete existing
+                supabase.table("user_photos").delete().eq("user_id", request.user_id).execute()
+                for i, p in enumerate(photos):
+                     # p is likely dict from frontend {url, isMain...} or just string?
+                     # Frontend sends whole OnboardingData.
+                     # If it's the structure from frontend `photos` array:
+                     if isinstance(p, dict):
+                         url = p.get("url", "")
+                         is_main = p.get("isMain", False) or (i==0)
+                     else:
+                         url = str(p)
+                         is_main = (i==0)
+                         
+                     if url:
+                        supabase.table("user_photos").insert({
+                            "user_id": request.user_id,
+                            "storage_path": url,
+                            "url": url,
+                            "is_main": is_main,
+                            "display_order": i
+                        }).execute()
+            except Exception as e:
+                print(f"[ONBOARDING] Error syncing photos: {e}")
+
 
         return {"status": "success", "message": f"Step {request.step_key} saved and synced"}
     except Exception as e:

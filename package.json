@@ -4,7 +4,8 @@
   "description": "Bridge - Frontend Mock (No Backend)",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
-    "start": "concurrently \"npm run backend\" \"expo start\"",
+    "start": "expo start",
+    "dev": "start cmd /k \"npm run backend\" && expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
