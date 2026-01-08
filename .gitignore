@@ -11,3 +11,6 @@ onboarding_backend/python/__pycache__/deep.cpython-311.pyc
 onboarding_backend/python/__pycache__/sms_service.cpython-311.pyc
 onboarding_backend/python/services/__pycache__/__init__.cpython-311.pyc
 onboarding_backend/python/services/__pycache__/photo_analysis_service.cpython-311.pyc
+onboarding_backend/python/__pycache__/schemas.cpython-311.pyc
+onboarding_backend/python/routers/__pycache__/__init__.cpython-311.pyc
+onboarding_backend/python/routers/__pycache__/onboarding.cpython-311.pyc
