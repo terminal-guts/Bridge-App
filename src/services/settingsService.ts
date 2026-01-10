@@ -64,7 +64,7 @@ const createErrorResponse = (code: string, message: string): ApiResponse<any> =>
  * Get user settings for the authenticated user - MOCK VERSION
  * Returns default settings from memory
  */
-export const getUserSettings = async (): Promise<ApiResponse<UserSettings>> => {
+export const getUserSettings = async (userId?: string): Promise<ApiResponse<UserSettings>> => {
   try {
     console.log('[MOCK SETTINGS] Getting user settings');
 
@@ -95,36 +95,40 @@ export const getUserSettings = async (): Promise<ApiResponse<UserSettings>> => {
  * Updates settings in memory
  */
 export const updateUserSettings = async (
-  settings: Partial<UserSettings>
+  userId: string | Partial<UserSettings>,
+  settings?: Partial<UserSettings>
 ): Promise<ApiResponse<UserSettings>> => {
   try {
+    const finalSettings = typeof userId === 'string' ? settings : userId;
     console.log('[MOCK SETTINGS] Updating user settings');
 
     // Ensure settings exist
     if (!mockSettings) {
       mockSettings = {
         id: 'settings-1',
-        userId: '00000000-0000-0000-0000-000000000001',
+        userId: typeof userId === 'string' ? userId : '00000000-0000-0000-0000-000000000001',
         ...DEFAULT_SETTINGS,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
     }
 
-    // Update notifications
-    if (settings.notifications) {
-      mockSettings.notifications = {
-        ...mockSettings.notifications,
-        ...settings.notifications,
-      };
-    }
+    if (finalSettings) {
+      // Update notifications
+      if (finalSettings.notifications) {
+        mockSettings.notifications = {
+          ...mockSettings.notifications,
+          ...finalSettings.notifications,
+        } as UserSettings['notifications'];
+      }
 
-    // Update privacy
-    if (settings.privacy) {
-      mockSettings.privacy = {
-        ...mockSettings.privacy,
-        ...settings.privacy,
-      };
+      // Update privacy
+      if (finalSettings.privacy) {
+        mockSettings.privacy = {
+          ...mockSettings.privacy,
+          ...finalSettings.privacy,
+        } as UserSettings['privacy'];
+      }
     }
 
     // Update timestamp
@@ -144,18 +148,20 @@ export const updateUserSettings = async (
  * Update notification settings for the authenticated user - MOCK VERSION
  */
 export const updateNotificationSettings = async (
+  userId: string,
   notifications: Partial<UserSettings['notifications']>
 ): Promise<ApiResponse<UserSettings>> => {
-  return updateUserSettings({ notifications });
+  return updateUserSettings(userId, { notifications: notifications as UserSettings['notifications'] });
 };
 
 /**
  * Update privacy settings for the authenticated user - MOCK VERSION
  */
 export const updatePrivacySettings = async (
+  userId: string,
   privacy: Partial<UserSettings['privacy']>
 ): Promise<ApiResponse<UserSettings>> => {
-  return updateUserSettings({ privacy });
+  return updateUserSettings(userId, { privacy: privacy as UserSettings['privacy'] });
 };
 
 /**

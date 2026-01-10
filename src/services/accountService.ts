@@ -51,11 +51,11 @@ const createErrorResponse = (code: string, message: string): ApiResponse<any> =>
  *
  * IMPORTANT: This operation cannot be undone
  */
-export const deleteUserAccount = async (): Promise<ApiResponse<DeleteAccountResult>> => {
+export const deleteUserAccount = async (userId?: string): Promise<ApiResponse<DeleteAccountResult>> => {
   try {
     // Call the Edge Function to handle account deletion
     // The Edge Function will verify authentication and perform all deletion operations
-    const { data, error } = await supabase.functions.invoke('delete_account', {
+    const { data, error } = await (supabase.functions as any).invoke('delete_account', {
       body: {},
     });
 

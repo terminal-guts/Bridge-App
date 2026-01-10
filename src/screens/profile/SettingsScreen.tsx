@@ -395,6 +395,18 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               toggleValue={notifications.friendActivity}
               onToggle={() => toggleNotification('friendActivity')}
             />
+            <SettingRow
+              icon="notifications-outline"
+              title="Test Push Notification"
+              subtitle="Send a sample notification to this device"
+              onPress={async () => {
+                const { notificationService } = require('../../services/notificationService');
+                await notificationService.sendTestNotification(
+                  'Bridge Match Alert! 🌉',
+                  'Alex Chen just accepted your match proposal. Tap to chat!'
+                );
+              }}
+            />
           </Card>
 
           {/* Privacy */}
