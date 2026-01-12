@@ -5,6 +5,7 @@
  */
 
 import { ApiResponse, Message, Conversation } from '../types';
+import { contentModerationService } from './contentModerationService';
 
 // In-memory message storage
 let mockMessages: { [matchId: string]: Message[] } = {};
@@ -41,6 +42,20 @@ export const sendMessage = async (
 ): Promise<ApiResponse<Message>> => {
   try {
     console.log('[MOCK MESSAGES] Sending message:', matchId, receiverId, messageText);
+
+    // 1. Content Moderation Check
+    const moderationResult = await contentModerationService.analyzeText(messageText);
+
+    if (!moderationResult.isSafe) {
+      console.warn('[MESSAGE] Blocked by content filter:', moderationResult.reason);
+      return {
+        ok: false,
+        error: {
+          code: 'CONTENT_VIOLATION',
+          message: moderationResult.reason || 'Message contains inappropriate content.',
+        },
+      };
+    }
 
     const newMessage: Message = {
       id: `msg-${Date.now()}`,
