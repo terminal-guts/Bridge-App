@@ -218,36 +218,25 @@ export const DeveloperMenu: React.FC = () => {
           </StyledView>
 
           <StyledScrollView className="flex-1 px-6 py-6">
-            {/* Quick Navigation */}
+            {/* Community Navigation */}
             <StyledView className="mb-6">
-              <H3 className="mb-3 text-neutral-900">🚀 Quick Navigation</H3>
+              <H3 className="mb-3 text-neutral-900">🚀 Community Navigation</H3>
               <StyledView className="bg-white rounded-xl p-4 space-y-2">
-                <Button variant="secondary" size="sm" onPress={() => navigateTo('MainTabs')}>
-                  Home (Dashboard)
+                <Button variant="primary" size="sm" onPress={() => {
+                  closeMenu();
+                  setTimeout(() => {
+                    navigation.navigate('Community', { initialPage: 0 });
+                  }, 100);
+                }}>
+                  Jump to Proposals
                 </Button>
-                <Button variant="secondary" size="sm" onPress={() => navigateTo('Profile')}>
-                  Profile
-                </Button>
-                <Button variant="secondary" size="sm" onPress={() => navigateTo('Onboarding')}>
-                  Onboarding Flow
-                </Button>
-                <Button variant="secondary" size="sm" onPress={() => navigateTo('MatchDetail', { matchId: 'mock' })}>
-                  Match Detail (Mock)
-                </Button>
-                <Button variant="secondary" size="sm" onPress={() => navigateTo('Chat', { matchId: 'mock' })}>
-                  Chat (Mock)
-                </Button>
-                <Button variant="secondary" size="sm" onPress={() => navigateTo('FriendList')}>
-                  Friends List
-                </Button>
-                <Button variant="secondary" size="sm" onPress={() => navigateTo('Settings')}>
-                  Settings
-                </Button>
-                <Button variant="secondary" size="sm" onPress={() => navigateTo('DeepQuestions')}>
-                  Deep Questions
-                </Button>
-                <Button variant="secondary" size="sm" onPress={() => navigateTo('MatchPreferences')}>
-                  Match Preferences
+                <Button variant="secondary" size="sm" onPress={() => {
+                  closeMenu();
+                  setTimeout(() => {
+                    navigation.navigate('Community', { initialPage: 1 });
+                  }, 100);
+                }}>
+                  Jump to Friends (Bypass Lock)
                 </Button>
               </StyledView>
             </StyledView>

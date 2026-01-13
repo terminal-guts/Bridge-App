@@ -52,7 +52,7 @@ const VALUES = [
 
 const ETHNICITIES = [
   'Asian', 'Black', 'Hispanic/Latino', 'White', 'Middle Eastern',
-  'Pacific Islander', 'Mixed', 'Other',
+  'Pacific Islander', 'Other',
 ];
 
 const RELIGIONS = [

@@ -91,13 +91,12 @@ const COMMON_INTERESTS = [
 const ETHNICITY_OPTIONS = [
   'Asian',
   'Black / African Descent',
-  'Hispanic / Latino',
+  'Hispanic',
   'Middle Eastern',
   'Native American',
   'Pacific Islander',
   'South Asian',
-  'White / Caucasian',
-  'Mixed / Multiracial',
+  'White',
   'Caribbean',
   'East Asian',
   'Southeast Asian',
@@ -119,15 +118,15 @@ const POLITICAL_OPTIONS = [
 ];
 
 const NON_NEGOTIABLES_LIST = [
-  { id: 'smoking', label: 'Smoking' },
-  { id: 'heavy_drinking', label: 'Heavy Drinking' },
-  { id: 'drugs', label: 'Drug Use' },
-  { id: 'no_children', label: "Doesn't Want Children" },
-  { id: 'has_children', label: 'Has Children' },
-  { id: 'different_religion', label: 'Different Religion' },
-  { id: 'different_politics', label: 'Different Politics' },
-  { id: 'outside_height_range', label: 'Outside of Height Range' },
   { id: 'outside_age_range', label: 'Outside of Age Range' },
+  { id: 'outside_height_range', label: 'Outside of Height Range' },
+  { id: 'different_politics', label: 'Different Politics' },
+  { id: 'different_religion', label: 'Different Religion' },
+  { id: 'heavy_drinking', label: 'Heavy Drinking' },
+  { id: 'smoking', label: 'Tobacco/Vaping Use' },
+  { id: 'drugs', label: 'Drug Use' },
+  { id: 'has_children', label: 'Has Children' },
+  { id: 'no_children', label: "Doesn't Want Children" },
 ];
 
 export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ navigation }) => {

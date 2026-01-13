@@ -946,85 +946,89 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               {renderQuestionSlot(1, slot2Question)}
               {renderQuestionSlot(2, slot3Question)}
 
-              {/* PHASE 4: Answer More Questions Section */}
-              {displayedQuestionIds.length === 3 && (
-                <>
-                  {/* Separator */}
-                  <StyledView className="flex-row items-center my-6">
-                    <StyledView className="flex-1 h-px bg-neutral-200" />
-                    <Body className="text-neutral-400 text-xs mx-3 uppercase tracking-wide">Answer More</Body>
-                    <StyledView className="flex-1 h-px bg-neutral-200" />
-                  </StyledView>
+              {/* PHASE 4: Answer More Questions Section - Always available */}
+              {(() => {
+                const answeredIds = answeredQuestions.map(q => q.questionId);
+                const unansweredQuestions = getUnansweredQuestions(answeredIds);
+                const nonDisplayedAnswers = answeredQuestions.filter(q => !displayedQuestionIds.includes(q.questionId));
 
-                  <StyledView className="mb-4">
-                    <H3 className="mb-2">Improve Your Matches</H3>
-                    <Body className="text-neutral-600 text-xs mb-4">
-                      Answer more questions to help our algorithm find better matches. These won't display on your profile.
-                    </Body>
-                  </StyledView>
+                const handleAnswerMoreQuestion = (questionId: number, questionText: string) => {
+                  setSelectedQuestionToAnswer({ id: questionId, question: questionText });
+                  setSelectedSlotIndex(null); // Not for a specific slot
+                  setShowAnswerModal(true);
+                };
 
-                  {(() => {
-                    const answeredIds = answeredQuestions.map(q => q.questionId);
-                    const unansweredQuestions = getUnansweredQuestions(answeredIds);
-                    const nonDisplayedAnswers = answeredQuestions.filter(q => !displayedQuestionIds.includes(q.questionId));
+                const handleSaveMoreAnswer = async (answer: string): Promise<boolean> => {
+                  if (!selectedQuestionToAnswer || !profile) {
+                    Alert.alert('Error', 'Invalid state. Please try again.');
+                    return false;
+                  }
 
-                    const handleAnswerMoreQuestion = (questionId: number, questionText: string) => {
-                      setSelectedQuestionToAnswer({ id: questionId, question: questionText });
-                      setSelectedSlotIndex(null); // Not for a specific slot
-                      setShowAnswerModal(true);
+                  try {
+                    const newAnswer: DeepQuestionAnswer = {
+                      questionId: selectedQuestionToAnswer.id,
+                      tier: 1,
+                      question: selectedQuestionToAnswer.question,
+                      answer: answer.trim(),
+                      updatedAt: new Date().toISOString(),
                     };
 
-                    const handleSaveMoreAnswer = async (answer: string): Promise<boolean> => {
-                      if (!selectedQuestionToAnswer || !profile) {
-                        Alert.alert('Error', 'Invalid state. Please try again.');
-                        return false;
-                      }
+                    const existingIndex = profile.deepQuestions?.findIndex(q => q.questionId === selectedQuestionToAnswer.id) ?? -1;
+                    let updatedQuestions: DeepQuestionAnswer[];
 
-                      try {
-                        const newAnswer: DeepQuestionAnswer = {
-                          questionId: selectedQuestionToAnswer.id,
-                          tier: 1,
-                          question: selectedQuestionToAnswer.question,
-                          answer: answer.trim(),
-                          updatedAt: new Date().toISOString(),
-                        };
+                    if (existingIndex >= 0) {
+                      updatedQuestions = profile.deepQuestions!.map((q, i) => i === existingIndex ? newAnswer : q);
+                    } else {
+                      updatedQuestions = [...(profile.deepQuestions || []), newAnswer];
+                    }
 
-                        const existingIndex = profile.deepQuestions?.findIndex(q => q.questionId === selectedQuestionToAnswer.id) ?? -1;
-                        let updatedQuestions: DeepQuestionAnswer[];
+                    const result = await updateUserProfile({
+                      ...profile,
+                      deepQuestions: updatedQuestions,
+                    });
 
-                        if (existingIndex >= 0) {
-                          updatedQuestions = profile.deepQuestions!.map((q, i) => i === existingIndex ? newAnswer : q);
-                        } else {
-                          updatedQuestions = [...(profile.deepQuestions || []), newAnswer];
-                        }
-
-                        const result = await updateUserProfile({
-                          ...profile,
+                    if (result.ok) {
+                      if (isMountedRef.current) {
+                        setProfile(prev => prev ? {
+                          ...prev,
                           deepQuestions: updatedQuestions,
-                        });
-
-                        if (result.ok) {
-                          if (isMountedRef.current) {
-                            setProfile(prev => prev ? {
-                              ...prev,
-                              deepQuestions: updatedQuestions,
-                            } : prev);
-                          }
-                          showToast.success('Answer saved!');
-                          return true;
-                        } else {
-                          Alert.alert('Error', result.error?.message || 'Failed to save answer');
-                          return false;
-                        }
-                      } catch (error: any) {
-                        console.error('Error saving answer:', error);
-                        Alert.alert('Error', error.message || 'An unexpected error occurred');
-                        return false;
+                        } : prev);
                       }
-                    };
+                      showToast.success('Answer saved!');
+                      return true;
+                    } else {
+                      Alert.alert('Error', result.error?.message || 'Failed to save answer');
+                      return false;
+                    }
+                  } catch (error: any) {
+                    console.error('Error saving answer:', error);
+                    Alert.alert('Error', error.message || 'An unexpected error occurred');
+                    return false;
+                  }
+                };
 
-                    return (
+                return (
+                  <>
+                    {/* Show separator only when 3 questions are displayed */}
+                    {displayedQuestionIds.length === 3 && (
                       <>
+                        {/* Separator */}
+                        <StyledView className="flex-row items-center my-6">
+                          <StyledView className="flex-1 h-px bg-neutral-200" />
+                          <Body className="text-neutral-400 text-xs mx-3 uppercase tracking-wide">Answer More</Body>
+                          <StyledView className="flex-1 h-px bg-neutral-200" />
+                        </StyledView>
+
+                        <StyledView className="mb-4">
+                          <H3 className="mb-2">Improve Your Matches</H3>
+                          <Body className="text-neutral-600 text-xs mb-4">
+                            Answer more questions to help our algorithm find better matches. These won't display on your profile.
+                          </Body>
+                        </StyledView>
+                      </>
+                    )}
+
+                    {/* Question lists and modal - Always available */}
                         {/* Unanswered Questions - Virtualized with FlatList */}
                         {unansweredQuestions.length > 0 && (
                           <>
@@ -1115,11 +1119,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                             }}
                           />
                         )}
-                      </>
-                    );
-                  })()}
-                </>
-              )}
+                  </>
+                );
+              })()}
             </>
           );
         })()}
@@ -2026,8 +2028,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         </StyledSafeAreaView>
       </Modal>
 
-      {/* PHASE 2: Answer Modal (reusing existing AnswerQuestionModal) */}
-      {selectedQuestionToAnswer && (
+      {/* PHASE 2: Answer Modal (reusing existing AnswerQuestionModal) - Only for displayed slots (not "more questions") */}
+      {selectedQuestionToAnswer && selectedSlotIndex !== null && (
         <AnswerQuestionModal
           visible={showAnswerModal}
           question={selectedQuestionToAnswer.question}

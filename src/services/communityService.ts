@@ -73,7 +73,7 @@ const MOCK_PHOTOS = [
 let mockUserIdCounter = 1000;
 
 /**
- * Generate a realistic mock user profile
+ * Generate a realistic mock user profile with diverse characteristics
  */
 function generateMockUser(overrides?: Partial<UserProfile>): UserProfile {
   const id = `mock-user-${mockUserIdCounter++}`;
@@ -85,7 +85,52 @@ function generateMockUser(overrides?: Partial<UserProfile>): UserProfile {
   // Mock job titles
   const jobs = ['Software Engineer', 'Product Manager', 'Designer', 'Consultant', 'Teacher', 'Doctor'];
   const schools = ['NYU', 'Columbia', 'Harvard', 'Stanford', 'MIT', 'Yale'];
-  const interests = ['Coffee', 'Hiking', 'Reading', 'Yoga', 'Photography', 'Music'];
+  const allInterests = ['Coffee', 'Hiking', 'Reading', 'Yoga', 'Photography', 'Music', 'Travel', 'Cooking', 'Sports', 'Art'];
+  const allValues = ['Authenticity', 'Growth', 'Kindness', 'Ambition', 'Family', 'Adventure', 'Creativity', 'Honesty'];
+
+  // Generate varied characteristics
+  const heights = ["5'4\"", "5'6\"", "5'8\"", "5'10\"", "6'0\"", "6'2\""];
+  const ethnicities = ['Asian', 'White', 'Black / African American', 'Hispanic / Latino', 'Middle Eastern', 'South Asian'];
+  const religions = ['Christian', 'Catholic', 'Jewish', 'Muslim', 'Hindu', 'Buddhist', 'Agnostic', 'Atheist', 'Spiritual'];
+  const politicalLeanings = ['very_liberal', 'liberal', 'moderate', 'conservative', 'very_conservative', 'apolitical'];
+  const lifestyleFrequencies = ['yes', 'sometimes', 'no'];
+
+  const randomHeight = heights[Math.floor(Math.random() * heights.length)];
+  const randomEthnicity = ethnicities[Math.floor(Math.random() * ethnicities.length)];
+  const randomReligion = religions[Math.floor(Math.random() * religions.length)];
+  const randomPolitics = politicalLeanings[Math.floor(Math.random() * politicalLeanings.length)];
+  const randomDrinking = lifestyleFrequencies[Math.floor(Math.random() * lifestyleFrequencies.length)];
+  const randomCannabis = lifestyleFrequencies[Math.floor(Math.random() * lifestyleFrequencies.length)];
+  const randomTobacco = lifestyleFrequencies[Math.floor(Math.random() * lifestyleFrequencies.length)];
+
+  // Generate varied preferences
+  const ageRange = 6 + Math.floor(Math.random() * 8); // Range of 6-13 years
+  const ageMin = 22 + Math.floor(Math.random() * 8); // Start between 22-29
+  const ageMax = ageMin + ageRange;
+
+  // Height preferences in inches
+  const heightInches = parseInt(randomHeight.split("'")[0]) * 12 + parseInt(randomHeight.split("'")[1].replace('"', ''));
+  const heightMin = Math.max(60, heightInches - 6); // 6 inches shorter
+  const heightMax = Math.min(78, heightInches + 6); // 6 inches taller
+
+  // Generate partner lifestyle preferences as arrays
+  const generatePartnerPreference = () => {
+    const rand = Math.random();
+    if (rand < 0.2) return ["don't care"]; // 20% don't care
+    if (rand < 0.4) return [lifestyleFrequencies[Math.floor(Math.random() * lifestyleFrequencies.length)]]; // 20% single preference
+    // 60% multiple preferences
+    const prefs: string[] = [];
+    if (Math.random() > 0.5) prefs.push('yes');
+    if (Math.random() > 0.5) prefs.push('sometimes');
+    if (Math.random() > 0.5) prefs.push('no');
+    return prefs.length > 0 ? prefs : ['yes']; // Default to yes if none selected
+  };
+
+  // Randomize interest and value selection
+  const shuffledInterests = [...allInterests].sort(() => Math.random() - 0.5);
+  const shuffledValues = [...allValues].sort(() => Math.random() - 0.5);
+  const selectedInterests = shuffledInterests.slice(0, 3 + Math.floor(Math.random() * 4)); // 3-6 interests
+  const selectedValues = shuffledValues.slice(0, 3 + Math.floor(Math.random() * 3)); // 3-5 values
 
   return {
     id,
@@ -95,10 +140,10 @@ function generateMockUser(overrides?: Partial<UserProfile>): UserProfile {
     age,
     gender: ['male'],
     pronouns: 'he/him',
-    height: "5'10\"",
-    ethnicity: 'Mixed',
-    religion: 'Agnostic',
-    politicalLeaning: 'moderate',
+    height: randomHeight,
+    ethnicity: randomEthnicity,
+    religion: randomReligion,
+    politicalLeaning: randomPolitics,
     location: MOCK_LOCATIONS[Math.floor(Math.random() * MOCK_LOCATIONS.length)],
     currentJob: jobs[Math.floor(Math.random() * jobs.length)],
     companyPosition: `${jobs[Math.floor(Math.random() * jobs.length)]} at TechCo`,
@@ -118,25 +163,35 @@ function generateMockUser(overrides?: Partial<UserProfile>): UserProfile {
         order: 1,
       },
     ],
-    interests: interests.slice(0, 3),
-    values: ['Authenticity', 'Growth', 'Kindness'],
+    interests: selectedInterests,
+    values: selectedValues,
     lifestyle: {},
     nonNegotiables: [],
     preferences: {
-      ageMin: 24,
-      ageMax: 35,
+      ageMin,
+      ageMax,
       gender: 'both',
       lookingFor: 'relationship',
-      heightMin: 60, // 5'0"
-      heightMax: 78, // 6'6"
+      heightMin,
+      heightMax,
+      maxDistance: Math.random() > 0.3 ? 10 + Math.floor(Math.random() * 40) : null, // 70% have distance preference, 30% no limit
     },
-    preferredEthnicities: ['Asian', 'White', 'Mixed / Multiracial', 'Hispanic / Latino'],
-    drinkingFrequency: 'socially',
-    cannabisFrequency: 'never',
-    tobaccoFrequency: 'never',
-    otherDrugsFrequency: 'never',
-    hometown: 'New York, NY',
+    preferredEthnicities: Math.random() > 0.4
+      ? ethnicities.filter(() => Math.random() > 0.5) // 60% have ethnicity preferences
+      : [], // 40% open to all
+    partnerLifestylePreferences: {
+      drinking: generatePartnerPreference(),
+      cannabis: generatePartnerPreference(),
+      tobacco: generatePartnerPreference(),
+      otherDrugs: ['no'], // Most people prefer no hard drugs
+    },
+    drinkingFrequency: randomDrinking,
+    cannabisFrequency: randomCannabis,
+    tobaccoFrequency: randomTobacco,
+    otherDrugsFrequency: 'no',
+    hometown: MOCK_LOCATIONS[Math.floor(Math.random() * MOCK_LOCATIONS.length)],
     hasChildren: 'no',
+    familyPlans: ['want_children', 'open_to_children', 'dont_want_children', 'not_sure'][Math.floor(Math.random() * 4)],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,

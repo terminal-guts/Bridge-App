@@ -53,8 +53,8 @@ export const mockProfiles: UserProfile[] = [
     interests: ['Pilates', 'Wine Tasting', 'Travel', 'Fine Dining', 'Art Galleries', 'Running'],
     values: ['Ambition', 'Loyalty', 'Family', 'Growth Mindset', 'Integrity', 'Balance'],
     lifestyle: {
-      drinking: 'socially',
-      smoking: 'never',
+      drinking: 'Sometimes',
+      smoking: 'No',
       exercise: 'often',
       diet: ['Pescatarian'],
       religion: 'Jewish',
@@ -74,7 +74,7 @@ export const mockProfiles: UserProfile[] = [
       heightMin: 68, // 5'8"
       heightMax: 78, // 6'6"
     },
-    preferredEthnicities: ['Asian', 'White / Caucasian', 'Mixed / Multiracial'],
+    preferredEthnicities: ['Asian', 'White / Caucasian'],
     preferredPolitics: ['Moderate', 'Liberal'],
     maxDistance: 10, // Miles
     preferenceVisibility: {
@@ -155,8 +155,8 @@ export const mockProfiles: UserProfile[] = [
     interests: ['Running', 'Cooking', 'Golf', 'Reading', 'Cocktail Bars', 'Basketball'],
     values: ['Integrity', 'Adventure', 'Humor', 'Intelligence', 'Authenticity', 'Growth Mindset'],
     lifestyle: {
-      drinking: 'socially',
-      smoking: 'never',
+      drinking: 'Sometimes',
+      smoking: 'No',
       exercise: 'daily',
       diet: [],
       religion: 'Agnostic',
@@ -175,7 +175,7 @@ export const mockProfiles: UserProfile[] = [
       heightMin: 62, // 5'2"
       heightMax: 70, // 5'10"
     },
-    preferredEthnicities: ['White / Caucasian', 'Hispanic / Latino', 'Asian', 'Mixed / Multiracial'],
+    preferredEthnicities: ['White / Caucasian', 'Hispanic / Latino', 'Asian'],
     preferredPolitics: ['Liberal', 'Moderate'],
     maxDistance: 15, // Miles
     preferenceVisibility: {
@@ -256,8 +256,8 @@ export const mockProfiles: UserProfile[] = [
     interests: ['Yoga', 'Meditation', 'Wine', 'Museums', 'Hiking', 'Reading'],
     values: ['Balance', 'Mindfulness', 'Success', 'Authenticity', 'Integrity', 'Growth Mindset'],
     lifestyle: {
-      drinking: 'socially',
-      smoking: 'never',
+      drinking: 'Sometimes',
+      smoking: 'No',
       exercise: 'daily',
       diet: ['Vegetarian'],
       religion: 'Spiritual',
@@ -276,7 +276,7 @@ export const mockProfiles: UserProfile[] = [
       heightMin: 68, // 5'8"
       heightMax: 78, // 6'6"
     },
-    preferredEthnicities: ['White / Caucasian', 'Asian', 'Mixed / Multiracial'],
+    preferredEthnicities: ['White / Caucasian', 'Asian'],
     preferredPolitics: ['Liberal'],
     maxDistance: 10, // Miles
     preferenceVisibility: {
@@ -357,8 +357,8 @@ export const mockProfiles: UserProfile[] = [
     interests: ['Fitness', 'Coffee', 'Basketball', 'Travel', 'Documentaries', 'Cooking'],
     values: ['Compassion', 'Drive', 'Family', 'Service', 'Integrity', 'Loyalty'],
     lifestyle: {
-      drinking: 'socially',
-      smoking: 'never',
+      drinking: 'Sometimes',
+      smoking: 'No',
       exercise: 'often',
       diet: [],
       religion: 'Christian',
@@ -378,7 +378,7 @@ export const mockProfiles: UserProfile[] = [
       heightMin: 60, // 5'0"
       heightMax: 70, // 5'10"
     },
-    preferredEthnicities: ['Black / African American', 'Mixed / Multiracial', 'Hispanic / Latino'],
+    preferredEthnicities: ['Black / African American', 'Hispanic / Latino'],
     preferredPolitics: ['Moderate', 'Liberal'],
     maxDistance: 10, // Miles
     preferenceVisibility: {
@@ -493,8 +493,8 @@ export const currentUserProfile: UserProfile = {
 
   // Legacy lifestyle object (deprecated but kept for backward compatibility)
   lifestyle: {
-    drinking: 'socially',
-    smoking: 'never',
+    drinking: 'Sometimes',
+    smoking: 'No',
     exercise: 'often',
     diet: [],
     religion: 'Agnostic',
@@ -518,7 +518,7 @@ export const currentUserProfile: UserProfile = {
     heightMin: 60, // 5'0"
     heightMax: 72, // 6'0"
   },
-  preferredEthnicities: ['Asian', 'White / Caucasian', 'Hispanic / Latino', 'Mixed / Multiracial'],
+  preferredEthnicities: ['Asian', 'White / Caucasian', 'Hispanic / Latino'],
   preferredPolitics: ['Moderate', 'Liberal'],
   maxDistance: 15, // Miles
   preferenceVisibility: {
