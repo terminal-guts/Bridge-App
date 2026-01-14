@@ -239,11 +239,16 @@ export interface PartialProfile {
 // Message Types
 // ============================================================================
 
+export type MessageType = 'text' | 'audio' | 'image';
+
 export interface Message {
   id: UUID;
   matchId: UUID;
   senderId: UUID;
-  content: string;
+  type: MessageType;
+  content: string;      // Text content OR the URL to the audio/image file
+  duration?: number;    // Audio duration in milliseconds
+  waveformData?: number[]; // For rendering visual waveforms
   sentAt: ISODateString;
   readAt?: ISODateString;
 }

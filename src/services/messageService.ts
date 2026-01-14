@@ -10,6 +10,9 @@ import { contentModerationService } from './contentModerationService';
 // In-memory message storage
 let mockMessages: { [matchId: string]: Message[] } = {};
 
+// Mock subscription callbacks
+let mockCallbacks: { [matchId: string]: ((message: Message) => void)[] } = {};
+
 /**
  * Get messages for a specific match - MOCK VERSION
  */
@@ -18,7 +21,23 @@ export const getMatchMessages = async (matchId: string): Promise<ApiResponse<Mes
     console.log('[MOCK MESSAGES] Getting messages for match:', matchId);
 
     // Return messages for this match or empty array
-    const messages = mockMessages[matchId] || [];
+    let messages = mockMessages[matchId] || [];
+
+    // Add a mock audio message if there are no messages yet (for testing)
+    if (messages.length === 0 && !mockMessages[matchId]) {
+      messages = [
+        {
+          id: 'mock-audio-1',
+          matchId,
+          senderId: 'other-user',
+          type: 'audio',
+          content: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+          duration: 300000,
+          sentAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+        }
+      ];
+      mockMessages[matchId] = [...messages];
+    }
 
     return { ok: true, data: messages };
   } catch (error: any) {
@@ -38,30 +57,38 @@ export const getMatchMessages = async (matchId: string): Promise<ApiResponse<Mes
 export const sendMessage = async (
   matchId: string,
   receiverId: string,
-  messageText: string
+  messageText: string,
+  type: 'text' | 'audio' | 'image' = 'text',
+  duration?: number,
+  waveformData?: number[]
 ): Promise<ApiResponse<Message>> => {
   try {
-    console.log('[MOCK MESSAGES] Sending message:', matchId, receiverId, messageText);
+    console.log(`[MOCK MESSAGES] Sending ${type} message:`, matchId, receiverId);
 
-    // 1. Content Moderation Check
-    const moderationResult = await contentModerationService.analyzeText(messageText);
+    // 1. Content Moderation Check - ONLY for text messages
+    if (type === 'text') {
+      const moderationResult = await contentModerationService.analyzeText(messageText);
 
-    if (!moderationResult.isSafe) {
-      console.warn('[MESSAGE] Blocked by content filter:', moderationResult.reason);
-      return {
-        ok: false,
-        error: {
-          code: 'CONTENT_VIOLATION',
-          message: moderationResult.reason || 'Message contains inappropriate content.',
-        },
-      };
+      if (!moderationResult.isSafe) {
+        console.warn('[MESSAGE] Blocked by content filter:', moderationResult.reason);
+        return {
+          ok: false,
+          error: {
+            code: 'CONTENT_VIOLATION',
+            message: moderationResult.reason || 'Message contains inappropriate content.',
+          },
+        };
+      }
     }
 
     const newMessage: Message = {
       id: `msg-${Date.now()}`,
       matchId,
       senderId: '00000000-0000-0000-0000-000000000001', // Current user
+      type,
       content: messageText,
+      duration,
+      waveformData,
       sentAt: new Date().toISOString(),
     };
 
@@ -70,6 +97,11 @@ export const sendMessage = async (
       mockMessages[matchId] = [];
     }
     mockMessages[matchId].push(newMessage);
+
+    // Trigger mock subscription callbacks
+    if (mockCallbacks[matchId]) {
+      mockCallbacks[matchId].forEach(callback => callback(newMessage));
+    }
 
     return {
       ok: true,
@@ -126,10 +158,16 @@ export const subscribeToMessages = (
 ) => {
   console.log('[MOCK MESSAGES] Mock subscription to match:', matchId);
 
+  if (!mockCallbacks[matchId]) {
+    mockCallbacks[matchId] = [];
+  }
+  mockCallbacks[matchId].push(callback);
+
   // Return a mock subscription object
   return {
     unsubscribe: () => {
       console.log('[MOCK MESSAGES] Unsubscribing from match:', matchId);
+      mockCallbacks[matchId] = mockCallbacks[matchId].filter(cb => cb !== callback);
     },
   };
 };
