@@ -189,67 +189,67 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-      <H1 className="mb-3">Add Your Photo</H1>
-      <Body className="text-neutral-500 text-sm mb-8">
-        Your photo should clearly show your face.{'\n'}You can add more photos and change them later!{'\n\n'}AI generated or edited photos will be rejected.
-      </Body>
+        <H1 className="mb-3">Add Your Photo</H1>
+        <Body className="text-neutral-500 text-sm mb-8">
+          Your photo should clearly show your face.{'\n'}You can add more photos and change them later!{'\n\n'}Photos are processed for authenticity to ensure a safe community.
+        </Body>
 
-      {/* Single Photo Upload */}
-      <StyledView className="items-center mb-6">
-        <StyledView className="w-64 aspect-[3/4] relative">
-          {photo ? (
-            <>
-              <StyledImage
-                source={{ uri: photo.url }}
-                className="w-full h-full rounded-lg"
-              />
-              <StyledTouchableOpacity
-                onPress={removePhoto}
-                className="absolute top-3 right-3 bg-neutral-900/60 rounded-full w-10 h-10 items-center justify-center"
-              >
-                <Ionicons name="close" size={24} color="white" />
-              </StyledTouchableOpacity>
-              <StyledView className="absolute bottom-3 left-3 right-3 gap-2">
+        {/* Single Photo Upload */}
+        <StyledView className="items-center mb-6">
+          <StyledView className="w-64 aspect-[3/4] relative">
+            {photo ? (
+              <>
+                <StyledImage
+                  source={{ uri: photo.url }}
+                  className="w-full h-full rounded-lg"
+                />
                 <StyledTouchableOpacity
-                  onPress={takePhoto}
-                  className="bg-primary-500 py-3 rounded-lg"
+                  onPress={removePhoto}
+                  className="absolute top-3 right-3 bg-neutral-900/60 rounded-full w-10 h-10 items-center justify-center"
                 >
-                  <Body className="text-white text-center font-semibold">Take New Photo</Body>
+                  <Ionicons name="close" size={24} color="white" />
                 </StyledTouchableOpacity>
-                <StyledTouchableOpacity
-                  onPress={addPhoto}
-                  className="bg-neutral-900/60 py-3 rounded-lg"
-                >
-                  <Body className="text-white text-center font-semibold">Choose from Library</Body>
-                </StyledTouchableOpacity>
+                <StyledView className="absolute bottom-3 left-3 right-3 gap-2">
+                  <StyledTouchableOpacity
+                    onPress={takePhoto}
+                    className="bg-primary-500 py-3 rounded-lg"
+                  >
+                    <Body className="text-white text-center font-semibold">Take New Photo</Body>
+                  </StyledTouchableOpacity>
+                  <StyledTouchableOpacity
+                    onPress={addPhoto}
+                    className="bg-neutral-900/60 py-3 rounded-lg"
+                  >
+                    <Body className="text-white text-center font-semibold">Choose from Library</Body>
+                  </StyledTouchableOpacity>
+                </StyledView>
+              </>
+            ) : (
+              <StyledView className="w-full h-full bg-neutral-100 rounded-lg items-center justify-center border-2 border-dashed border-neutral-300">
+                <Ionicons name="camera-outline" size={48} color="#98A2B3" />
+                <Body className="text-neutral-500 text-sm mt-3 mb-6">Add your photo</Body>
+                <StyledView className="w-full px-6 gap-3">
+                  <StyledTouchableOpacity
+                    onPress={takePhoto}
+                    className="bg-primary-500 py-3 rounded-lg"
+                  >
+                    <Body className="text-white text-center font-semibold">Take Photo</Body>
+                  </StyledTouchableOpacity>
+                  <StyledTouchableOpacity
+                    onPress={addPhoto}
+                    className="bg-neutral-200 py-3 rounded-lg"
+                  >
+                    <Body className="text-neutral-900 text-center font-semibold">Choose from Library</Body>
+                  </StyledTouchableOpacity>
+                </StyledView>
               </StyledView>
-            </>
-          ) : (
-            <StyledView className="w-full h-full bg-neutral-100 rounded-lg items-center justify-center border-2 border-dashed border-neutral-300">
-              <Ionicons name="camera-outline" size={48} color="#98A2B3" />
-              <Body className="text-neutral-500 text-sm mt-3 mb-6">Add your photo</Body>
-              <StyledView className="w-full px-6 gap-3">
-                <StyledTouchableOpacity
-                  onPress={takePhoto}
-                  className="bg-primary-500 py-3 rounded-lg"
-                >
-                  <Body className="text-white text-center font-semibold">Take Photo</Body>
-                </StyledTouchableOpacity>
-                <StyledTouchableOpacity
-                  onPress={addPhoto}
-                  className="bg-neutral-200 py-3 rounded-lg"
-                >
-                  <Body className="text-neutral-900 text-center font-semibold">Choose from Library</Body>
-                </StyledTouchableOpacity>
-              </StyledView>
-            </StyledView>
-          )}
+            )}
+          </StyledView>
         </StyledView>
-      </StyledView>
 
-      {error && (
-        <Body className="text-error text-sm mt-4">{error}</Body>
-      )}
+        {error && (
+          <Body className="text-error text-sm mt-4">{error}</Body>
+        )}
       </StyledView>
     </OnboardingLayout>
   );

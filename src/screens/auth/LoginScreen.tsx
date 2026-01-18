@@ -6,7 +6,8 @@ import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { OnboardingLayout } from '../../components/OnboardingLayout';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../lib/supabase';
+import { sendOtpToPhone, sendOtpToEmail } from '../../services/authService';
+import { showToast } from '../../utils/toast';
 
 interface LoginScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Login'>;
@@ -16,7 +17,9 @@ const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
+  const [loginMethod, setLoginMethod] = useState<'phone' | 'email'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -35,61 +38,54 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   };
 
   const validateAndContinue = async () => {
-    // Basic phone validation - at least 10 digits
-    const digitsOnly = phoneNumber.replace(/\D/g, '');
+    setError('');
 
-    if (!phoneNumber.trim()) {
-      setError('Phone number is required');
-      return;
-    }
-
-    if (digitsOnly.length < 10) {
-      setError('Please enter a valid phone number');
-      return;
+    if (loginMethod === 'phone') {
+      const digitsOnly = phoneNumber.replace(/\D/g, '');
+      if (!phoneNumber.trim()) {
+        setError('Phone number is required');
+        return;
+      }
+      if (digitsOnly.length < 10) {
+        setError('Please enter a valid phone number');
+        return;
+      }
+    } else {
+      if (!email.trim()) {
+        setError('Email is required');
+        return;
+      }
+      if (!email.includes('@')) {
+        setError('Please enter a valid email address');
+        return;
+      }
     }
 
     setIsLoading(true);
 
     try {
-      // TODO: In production, this will verify the phone number and send OTP
-      // For now, create anonymous session for existing user login
-      const { data, error: authError } = await supabase.auth.signInAnonymously();
-
-      if (authError) {
-        console.error('Anonymous auth error:', authError);
-        Alert.alert(
-          'Authentication Error',
-          'Unable to sign in. Please try again or check your internet connection.',
-          [{ text: 'OK' }]
-        );
-        setIsLoading(false);
-        return;
+      let result;
+      if (loginMethod === 'phone') {
+        result = await sendOtpToPhone(phoneNumber);
+      } else {
+        result = await sendOtpToEmail(email);
       }
 
-      if (!data.user) {
-        console.error('No user returned from anonymous auth');
-        Alert.alert(
-          'Authentication Error',
-          'Failed to sign in. Please try again.',
-          [{ text: 'OK' }]
-        );
-        setIsLoading(false);
-        return;
+      if (result.ok) {
+        // Navigate to verification screen (assuming it exists, otherwise we'll check)
+        // RootStackParamList needs to support PhoneVerification
+        // For this task, we'll navigate to PhoneVerification as it likely handles OTP
+        navigation.navigate('PhoneVerification', {
+          phoneNumber: loginMethod === 'phone' ? phoneNumber : email,
+          isEmail: loginMethod === 'email'
+        });
+      } else {
+        setError(result.error?.message || 'Failed to send verification code');
       }
-
-      // User session created successfully
-      console.log('User signed in:', data.user.id);
-
-      // Navigate to home screen
-      navigation.navigate('MainTabs');
       setIsLoading(false);
     } catch (error: any) {
-      console.error('Unexpected error during authentication:', error);
-      Alert.alert(
-        'Error',
-        'An unexpected error occurred. Please try again.',
-        [{ text: 'OK' }]
-      );
+      console.error('Login error:', error);
+      setError('An unexpected error occurred. Please try again.');
       setIsLoading(false);
     }
   };
@@ -112,27 +108,62 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
       <StyledView>
         <H1 className="mb-3">Welcome back</H1>
-        <Body className="text-neutral-600 mb-8">
-          Enter your phone number to sign in
+        <Body className="text-neutral-600 mb-6">
+          Sign in to your account
         </Body>
 
-        <Input
-          label="Phone Number"
-          placeholder="(555) 555-5555"
-          value={phoneNumber}
-          onChangeText={(text) => {
-            const formatted = formatPhoneNumber(text);
-            setPhoneNumber(formatted);
-            if (error) setError('');
-          }}
-          keyboardType="phone-pad"
-          error={error}
-          containerClassName="mb-4"
-          autoFocus={true}
-        />
+        {/* Login Method Toggle */}
+        <StyledView className="flex-row bg-neutral-100 p-1 rounded-xl mb-8">
+          <StyledTouchableOpacity
+            onPress={() => setLoginMethod('phone')}
+            className={`flex-1 py-3 rounded-lg flex-row items-center justify-center ${loginMethod === 'phone' ? 'bg-white shadow-sm' : ''}`}
+          >
+            <Ionicons name="call-outline" size={18} color={loginMethod === 'phone' ? '#3B82F6' : '#6B7280'} />
+            <Body className={`ml-2 font-medium ${loginMethod === 'phone' ? 'text-primary-500' : 'text-neutral-500'}`}>Phone</Body>
+          </StyledTouchableOpacity>
+          <StyledTouchableOpacity
+            onPress={() => setLoginMethod('email')}
+            className={`flex-1 py-3 rounded-lg flex-row items-center justify-center ${loginMethod === 'email' ? 'bg-white shadow-sm' : ''}`}
+          >
+            <Ionicons name="mail-outline" size={18} color={loginMethod === 'email' ? '#3B82F6' : '#6B7280'} />
+            <Body className={`ml-2 font-medium ${loginMethod === 'email' ? 'text-primary-500' : 'text-neutral-500'}`}>Email</Body>
+          </StyledTouchableOpacity>
+        </StyledView>
+
+        {loginMethod === 'phone' ? (
+          <Input
+            label="Phone Number"
+            placeholder="(555) 555-5555"
+            value={phoneNumber}
+            onChangeText={(text) => {
+              const formatted = formatPhoneNumber(text);
+              setPhoneNumber(formatted);
+              if (error) setError('');
+            }}
+            keyboardType="phone-pad"
+            error={error}
+            containerClassName="mb-4"
+            autoFocus={true}
+          />
+        ) : (
+          <Input
+            label="Email Address"
+            placeholder="email@example.com"
+            value={email}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (error) setError('');
+            }}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            error={error}
+            containerClassName="mb-4"
+            autoFocus={true}
+          />
+        )}
 
         <Body className="text-neutral-500 text-sm mt-4">
-          We'll send you a code to verify your phone number.
+          We'll send you a code to verify your {loginMethod === 'phone' ? 'phone number' : 'email'}.
         </Body>
 
         <StyledView className="flex-row justify-center mt-6">

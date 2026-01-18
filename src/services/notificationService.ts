@@ -109,5 +109,41 @@ export const notificationService = {
      */
     addNotificationResponseListener: (callback: (response: Notifications.NotificationResponse) => void) => {
         return Notifications.addNotificationResponseReceivedListener(callback);
+    },
+
+    /**
+     * Notify about days of inactivity
+     */
+    notifyInactivity: async (days: number) => {
+        const title = "We Miss You! 👋";
+        const body = `It's been ${days} days since your last visit. Come back and see what's new!`;
+        return notificationService.sendTestNotification(title, body);
+    },
+
+    /**
+     * Notify about a potential ghosting situation
+     */
+    notifyGhosting: async (name: string) => {
+        const title = "Don't let it go cold! 🔥";
+        const body = `${name} is still waiting for your reply. Keep the conversation going!`;
+        return notificationService.sendTestNotification(title, body);
+    },
+
+    /**
+     * Notify about an invitation for a date
+     */
+    notifyDateInvitation: async (name: string) => {
+        const title = "A special invitation! ✨";
+        const body = `${name} just asked you out for a date! Open Bridge to respond.`;
+        return notificationService.sendTestNotification(title, body);
+    },
+
+    /**
+     * Notify about a new match
+     */
+    notifyMatchNotice: async (name: string) => {
+        const title = "It's a Match! 💖";
+        const body = `You and ${name} have matched! Start the conversation now.`;
+        return notificationService.sendTestNotification(title, body);
     }
 };

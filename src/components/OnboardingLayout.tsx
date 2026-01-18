@@ -21,6 +21,7 @@ interface OnboardingLayoutProps {
   showBackButton?: boolean;
   hasTextInput?: boolean; // New prop to differentiate typing vs non-typing questions
   keyboardPersistent?: boolean; // New prop to prevent keyboard dismissal
+  topPadding?: number; // Optional top padding override
 }
 
 const StyledSafeAreaView = styled(SafeAreaView);
@@ -38,6 +39,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   showBackButton = true,
   hasTextInput = false,
   keyboardPersistent = false,
+  topPadding,
 }) => {
   // Start with keyboard visible for persistent keyboard pages to prevent layout shift
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(keyboardPersistent);
@@ -88,7 +90,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
               className="flex-1"
               contentContainerStyle={{
                 paddingHorizontal: 24,
-                paddingTop: 32,
+                paddingTop: topPadding ?? 32,
                 paddingBottom: 16,
                 flexGrow: 1,
               }}
@@ -97,7 +99,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
               keyboardDismissMode={keyboardPersistent ? "none" : "interactive"}
             >
               {keyboardPersistent ? (
-                <TouchableWithoutFeedback onPress={() => {}} accessible={false}>
+                <TouchableWithoutFeedback onPress={() => { }} accessible={false}>
                   <StyledView className="flex-1">
                     {children}
                   </StyledView>
@@ -159,7 +161,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
           className="flex-1"
           contentContainerStyle={{
             paddingHorizontal: 24,
-            paddingTop: 64,
+            paddingTop: topPadding ?? 64,
             paddingBottom: 24,
             flexGrow: 1,
           }}

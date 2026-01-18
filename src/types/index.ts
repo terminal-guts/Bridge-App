@@ -327,6 +327,7 @@ export type RootStackParamList = {
     phoneNumber: string;
     fromOnboarding?: boolean;
     onboardingData?: Partial<OnboardingData>;
+    isEmail?: boolean;
   };
   Onboarding: undefined;
 

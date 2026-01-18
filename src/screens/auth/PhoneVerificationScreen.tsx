@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { Button, H1, H2, Body } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { verifyPhone, sendOtpToPhone, getCurrentUser } from '../../services/authService';
+import { verifyPhone, sendOtpToPhone, verifyEmail, sendOtpToEmail, getCurrentUser } from '../../services/authService';
 import { createUserProfile } from '../../services/profileService';
 
 interface PhoneVerificationScreenProps {
@@ -21,7 +21,7 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
   navigation,
   route
 }) => {
-  const { phoneNumber, fromOnboarding, onboardingData } = route.params;
+  const { phoneNumber, fromOnboarding, onboardingData, isEmail } = route.params;
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
@@ -95,8 +95,13 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
     // Join the code array into a single string
     const otpCode = code.join('');
 
-    // Verify OTP with Supabase (creates authenticated session)
-    const verifyResult = await verifyPhone(phoneNumber, otpCode);
+    // Verify OTP with Backend (which checks Supabase)
+    let verifyResult;
+    if (isEmail) {
+      verifyResult = await verifyEmail(phoneNumber, otpCode);
+    } else {
+      verifyResult = await verifyPhone(phoneNumber, otpCode);
+    }
 
     if (!verifyResult.ok) {
       setLoading(false);
@@ -143,7 +148,12 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
     if (!canResend) return;
 
     // Resend OTP code
-    const result = await sendOtpToPhone(phoneNumber);
+    let result;
+    if (isEmail) {
+      result = await sendOtpToEmail(phoneNumber);
+    } else {
+      result = await sendOtpToPhone(phoneNumber);
+    }
 
     if (!result.ok) {
       Alert.alert('Error', 'Failed to resend code. Please try again.');
@@ -177,11 +187,11 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
               </StyledView>
 
               {/* Title */}
-              <H2 className="text-center mb-2">Verify your phone</H2>
+              <H2 className="text-center mb-2">Verify your {isEmail ? 'email' : 'phone'}</H2>
 
               {/* Description */}
               <Body className="text-neutral-600 text-center mb-6 px-6">
-                Enter the 6-digit code below
+                Enter the 6-digit code sent to {phoneNumber}
               </Body>
             </StyledView>
 

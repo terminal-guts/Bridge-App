@@ -62,6 +62,38 @@ export const sendOtpToPhone = async (phoneNumber: string): Promise<ApiResponse<v
 };
 
 /**
+ * Send OTP code to email - Task 4
+ */
+export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> => {
+  try {
+    console.log('[EMAIL] Attempting to send OTP to:', email);
+
+    const response = await fetch(`${API_URL}/onboarding/send-email-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to send email OTP');
+    }
+
+    console.log('[EMAIL] OTP request successful for:', email);
+    return { ok: true };
+  } catch (error: any) {
+    console.error('[EMAIL] Error sending OTP:', error.message);
+    return {
+      ok: false,
+      error: {
+        code: 'EMAIL_OTP_ERROR',
+        message: error.message || 'An unexpected error occurred',
+      },
+    };
+  }
+};
+
+/**
  * Sign out the current user - MOCK VERSION
  */
 export const signOut = async (): Promise<ApiResponse<void>> => {
@@ -136,8 +168,10 @@ export const verifyPhone = async (phone: string, code: string): Promise<ApiRespo
 
     console.log('[SMS] Phone verification successful!');
 
+    const data = await response.json();
+
     mockCurrentUser = {
-      id: MOCK_USER_ID,
+      id: data.user_id || MOCK_USER_ID,
       phone,
       email: 'dev@bridge.app',
     };
@@ -148,6 +182,48 @@ export const verifyPhone = async (phone: string, code: string): Promise<ApiRespo
     };
   } catch (error: any) {
     console.error('[SMS] Verification error:', error.message);
+    return {
+      ok: false,
+      error: {
+        code: 'VERIFICATION_ERROR',
+        message: error.message || 'An unexpected error occurred',
+      },
+    };
+  }
+};
+
+/**
+ * Verify email with OTP code - Task 4
+ */
+export const verifyEmail = async (email: string, code: string): Promise<ApiResponse<User>> => {
+  try {
+    console.log('[EMAIL] Verifying code:', code, 'for email:', email);
+
+    const response = await fetch(`${API_URL}/onboarding/verify-email-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Invalid verification code');
+    }
+
+    const data = await response.json();
+    console.log('[EMAIL] Email verification successful!');
+
+    mockCurrentUser = {
+      id: data.user_id || MOCK_USER_ID,
+      email,
+    };
+
+    return {
+      ok: true,
+      data: mockCurrentUser,
+    };
+  } catch (error: any) {
+    console.error('[EMAIL] Verification error:', error.message);
     return {
       ok: false,
       error: {
