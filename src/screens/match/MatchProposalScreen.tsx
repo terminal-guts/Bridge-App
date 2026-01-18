@@ -734,7 +734,7 @@ const MOCK_PROFILE: UserProfile = {
   educationLevel: 'bachelors',
   school: 'NYU',
   height: "5'7\"",
-  ethnicity: 'Mixed',
+  ethnicity: 'Asian',
   religion: 'Spiritual',
   politicalLeaning: 'liberal',
   location: 'Brooklyn, NY',

@@ -23,6 +23,7 @@ import {
 } from '../screens/main';
 import { DeepQuestionsScreen } from '../screens/main/DeepQuestionsScreen';
 import { FriendGridScreen } from '../screens/community/FriendGridScreen';
+import { FriendProposalScreen } from '../screens/community/FriendProposalScreen';
 
 // Onboarding
 import { OnboardingScreen } from '../screens/onboarding/OnboardingScreen';
@@ -225,6 +226,7 @@ export const AppNavigator = () => {
 
           {/* Community Screens */}
           <Stack.Screen name="FriendGrid" component={FriendGridScreen} />
+          <Stack.Screen name="FriendProposal" component={FriendProposalScreen} />
 
           {/* Match Screens */}
           <Stack.Screen name="MatchDetail" component={MatchDetailScreen} />

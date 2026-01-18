@@ -12,16 +12,42 @@
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ScrollView, Modal, Animated, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { styled } from 'nativewind';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { Proposal, UserProfile } from '../../types';
 import { RateLimiter } from '../../utils/inputValidation';
 import { showToast } from '../../utils/toast';
+import { lightHaptic } from '../../utils/haptics';
 import { GuideTarget } from '../guides';
 import { useGuide } from '../../hooks/useGuide';
 import { proposalsGuide } from '../../config/guides';
+import ProfileScreen from '../../screens/profile/ProfileScreen';
+import { ComparisonRow } from './ComparisonRow';
+import { SectionHeader } from './SectionHeader';
+import { LinearGradient } from 'expo-linear-gradient';
+import {
+  matchAge,
+  matchHeight,
+  matchDatingDistance,
+  matchEthnicity,
+  matchPolitics,
+  matchReligion,
+  matchDrinking,
+  matchCannabis,
+  matchTobacco,
+  matchValues,
+  matchInterests,
+  calculateSectionCompatibility,
+  calculateDistance,
+  MatchResult,
+} from '../../utils/proposalMatching';
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -52,6 +78,10 @@ export function ProposalReviewView({
   const [loading, setLoading] = useState(true);
   const [voting, setVoting] = useState(false);
   const [profileView, setProfileView] = useState<ProfileView>('comparison');
+  const [showRecommendModal, setShowRecommendModal] = useState(false);
+  const [selectedPersonForRecommend, setSelectedPersonForRecommend] = useState<'userA' | 'userB' | null>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState<UserProfile | null>(null);
 
   // Rate limiter for vote submissions (max 10 votes per minute)
   const rateLimiterRef = useRef(new RateLimiter());
@@ -99,17 +129,25 @@ export function ProposalReviewView({
     }
   }, [isActive, loading, proposals.length, startGuideIfNeeded]);
 
-  // Reset profile view when moving to next proposal
+  // Reset profile view and compatibility expansion when moving to next proposal
   useEffect(() => {
     setProfileView('comparison');
   }, [currentIndex]);
 
   // Handle voting with auto-advance
   const handleVote = useCallback(async (vote: 'yes' | 'no' | 'skip') => {
-    if (voting || currentIndex >= proposals.length) return;
+    if (voting || currentIndex >= proposals.length) {
+      console.log('[ProposalReviewView] Vote blocked:', { voting, currentIndex, proposalsLength: proposals.length });
+      return;
+    }
 
     const currentProposal = proposals[currentIndex];
-    if (!currentProposal) return;
+    if (!currentProposal) {
+      console.log('[ProposalReviewView] No current proposal');
+      return;
+    }
+
+    console.log('[ProposalReviewView] Voting:', { vote, currentIndex, totalProposals: proposals.length });
 
     try {
       setVoting(true);
@@ -132,20 +170,29 @@ export function ProposalReviewView({
 
       // Submit vote
       await communityService.submitProposalVote(currentProposal.id, vote);
+      console.log('[ProposalReviewView] Vote submitted successfully');
 
       // Brief delay for feedback before advancing
       voteTimeoutRef.current = setTimeout(() => {
         // Guard against unmounted component
         if (!isMountedRef.current) return;
 
-        setVoting(false);
+        const isLastProposal = currentIndex >= proposals.length - 1;
+        console.log('[ProposalReviewView] Post-vote:', { currentIndex, proposalsLength: proposals.length, isLastProposal });
 
         // Auto-advance to next proposal or complete
-        if (currentIndex < proposals.length - 1) {
+        if (!isLastProposal) {
+          console.log('[ProposalReviewView] Advancing to next proposal:', currentIndex + 1);
           setCurrentIndex(currentIndex + 1);
+          setVoting(false);
         } else {
-          showToast.success('All done!', 'Thanks for voting');
-          onVotesComplete?.();
+          console.log('[ProposalReviewView] All proposals complete, calling onVotesComplete');
+          setVoting(false);
+          showToast.success('Daily Voting Complete! 🎉', 'Friends Area unlocked');
+          // Call onVotesComplete after a brief moment
+          setTimeout(() => {
+            onVotesComplete?.();
+          }, 500);
         }
       }, 400);
     } catch (error: any) {
@@ -156,6 +203,26 @@ export function ProposalReviewView({
       showToast.error('Vote failed', error.message || 'Unable to submit vote');
     }
   }, [voting, currentIndex, proposals, onVotesComplete]);
+
+  // Handle "Better for Friend" action
+  const handleBetterForFriend = useCallback(() => {
+    // For now, just show a toast. Full friend recommendation flow to be implemented.
+    showToast.info('Coming Soon', 'Friend recommendations will be available soon!');
+    // TODO: Implement friend selection modal
+    // setShowRecommendModal(true);
+  }, []);
+
+  // Handle opening profile modal
+  const handleOpenProfile = useCallback((profile: UserProfile) => {
+    setSelectedProfile(profile);
+    setShowProfileModal(true);
+  }, []);
+
+  // Handle closing profile modal
+  const handleCloseProfileModal = useCallback(() => {
+    setShowProfileModal(false);
+    setSelectedProfile(null);
+  }, []);
 
   // Helper functions
   const capitalize = (str: string | undefined): string => {
@@ -170,132 +237,27 @@ export function ProposalReviewView({
     return `${feet}'${remainingInches}"`;
   };
 
-  // Match analysis helpers
-  const analyzeMatch = (userA: UserProfile, userB: UserProfile) => {
-    const matches: string[] = [];
-    const mismatches: string[] = [];
+  // Calculate match score using new matching logic
+  const calculateMatchScore = (userA: UserProfile, userB: UserProfile): number => {
+    // For now, use a simple calculation based on all sections
+    // TODO: Update this with weighted scoring algorithm
+    const results: MatchResult[] = [
+      matchAge(userA, userB),
+      matchHeight(userA, userB),
+      // matchDatingDistance would need actual distance
+      matchEthnicity(userA, userB),
+      matchPolitics(userA, userB),
+      matchReligion(userA, userB),
+      matchDrinking(userA, userB),
+      matchCannabis(userA, userB),
+      matchTobacco(userA, userB),
+    ];
 
-    // Age match
-    const aAgeMin = userA.preferences?.ageMin || 18;
-    const aAgeMax = userA.preferences?.ageMax || 99;
-    const bAgeMin = userB.preferences?.ageMin || 18;
-    const bAgeMax = userB.preferences?.ageMax || 99;
+    const totalFactors = results.length;
+    const matches = results.filter(r => r.status === 'both_happy').length;
+    const matchScore = totalFactors > 0 ? Math.round((matches / totalFactors) * 100) : 50;
 
-    if (userB.age >= aAgeMin && userB.age <= aAgeMax && userA.age >= bAgeMin && userA.age <= bAgeMax) {
-      matches.push(`Both ages fit preferences (${userA.age} & ${userB.age})`);
-    } else {
-      mismatches.push(`Age mismatch - ${userA.firstName} wants ${aAgeMin}-${aAgeMax}, ${userB.firstName} is ${userB.age}`);
-    }
-
-    // Height match
-    if (userA.height && userB.height) {
-      const aHeightMin = userA.preferences?.heightMin;
-      const aHeightMax = userA.preferences?.heightMax;
-      const bHeightMin = userB.preferences?.heightMin;
-      const bHeightMax = userB.preferences?.heightMax;
-
-      const aHeightMatch = (!aHeightMin || userB.height >= aHeightMin) && (!aHeightMax || userB.height <= aHeightMax);
-      const bHeightMatch = (!bHeightMin || userA.height >= bHeightMin) && (!bHeightMax || userA.height <= bHeightMax);
-
-      if (aHeightMatch && bHeightMatch) {
-        matches.push(`Heights match preferences`);
-      } else {
-        mismatches.push(`Height mismatch`);
-      }
-    }
-
-    // Values overlap
-    const commonValues = userA.values?.filter(v => userB.values?.includes(v)) || [];
-    if (commonValues.length > 0) {
-      matches.push(`${commonValues.length} shared values: ${commonValues.slice(0, 2).join(', ')}`);
-    }
-
-    // Values differences
-    const aUniqueValues = userA.values?.filter(v => !userB.values?.includes(v)) || [];
-    const bUniqueValues = userB.values?.filter(v => !userA.values?.includes(v)) || [];
-    if (aUniqueValues.length > 0 && bUniqueValues.length > 0) {
-      mismatches.push(`Different values - ${userA.firstName} values ${aUniqueValues.slice(0, 2).join(', ')}, ${userB.firstName} values ${bUniqueValues.slice(0, 2).join(', ')}`);
-    } else if (aUniqueValues.length > 0) {
-      mismatches.push(`${userA.firstName} values ${aUniqueValues.slice(0, 2).join(', ')} (not shared)`);
-    } else if (bUniqueValues.length > 0) {
-      mismatches.push(`${userB.firstName} values ${bUniqueValues.slice(0, 2).join(', ')} (not shared)`);
-    }
-
-    // Interests overlap
-    const commonInterests = userA.interests?.filter(i => userB.interests?.includes(i)) || [];
-    if (commonInterests.length > 0) {
-      matches.push(`${commonInterests.length} shared interests: ${commonInterests.slice(0, 2).join(', ')}`);
-    }
-
-    // Interests differences
-    const aUniqueInterests = userA.interests?.filter(i => !userB.interests?.includes(i)) || [];
-    const bUniqueInterests = userB.interests?.filter(i => !userA.interests?.includes(i)) || [];
-    if (aUniqueInterests.length > 0 && bUniqueInterests.length > 0) {
-      mismatches.push(`Different interests - ${userA.firstName} enjoys ${aUniqueInterests.slice(0, 2).join(', ')}, ${userB.firstName} enjoys ${bUniqueInterests.slice(0, 2).join(', ')}`);
-    } else if (aUniqueInterests.length > 0) {
-      mismatches.push(`${userA.firstName} enjoys ${aUniqueInterests.slice(0, 2).join(', ')} (not shared)`);
-    } else if (bUniqueInterests.length > 0) {
-      mismatches.push(`${userB.firstName} enjoys ${bUniqueInterests.slice(0, 2).join(', ')} (not shared)`);
-    }
-
-    // Ethnicity preference
-    if (userA.preferredEthnicities && userA.preferredEthnicities.length > 0) {
-      if (userB.ethnicity && !userA.preferredEthnicities.includes(userB.ethnicity)) {
-        mismatches.push(`${userA.firstName} prefers ${userA.preferredEthnicities.join(', ')}, ${userB.firstName} is ${userB.ethnicity}`);
-      }
-    }
-
-    if (userB.preferredEthnicities && userB.preferredEthnicities.length > 0) {
-      if (userA.ethnicity && !userB.preferredEthnicities.includes(userA.ethnicity)) {
-        mismatches.push(`${userB.firstName} prefers ${userB.preferredEthnicities.join(', ')}, ${userA.firstName} is ${userA.ethnicity}`);
-      }
-    }
-
-    // Drinking
-    if (userA.drinkingFrequency && userB.drinkingFrequency) {
-      if (userA.drinkingFrequency === userB.drinkingFrequency) {
-        matches.push(`Same drinking habits: ${capitalize(userA.drinkingFrequency)}`);
-      } else {
-        mismatches.push(`Different drinking - ${userA.firstName}: ${capitalize(userA.drinkingFrequency)}, ${userB.firstName}: ${capitalize(userB.drinkingFrequency)}`);
-      }
-    }
-
-    // Cannabis
-    if (userA.cannabisFrequency && userB.cannabisFrequency) {
-      if (userA.cannabisFrequency !== userB.cannabisFrequency) {
-        mismatches.push(`Different cannabis use - ${userA.firstName}: ${capitalize(userA.cannabisFrequency)}, ${userB.firstName}: ${capitalize(userB.cannabisFrequency)}`);
-      }
-    }
-
-    // Tobacco
-    if (userA.tobaccoFrequency && userB.tobaccoFrequency) {
-      if (userA.tobaccoFrequency !== userB.tobaccoFrequency) {
-        mismatches.push(`Different tobacco use - ${userA.firstName}: ${capitalize(userA.tobaccoFrequency)}, ${userB.firstName}: ${capitalize(userB.tobaccoFrequency)}`);
-      }
-    }
-
-    // Religion
-    if (userA.religion && userB.religion && userA.religion !== userB.religion) {
-      mismatches.push(`Different religions - ${userA.firstName}: ${userA.religion}, ${userB.firstName}: ${userB.religion}`);
-    }
-
-    // Political leaning
-    if (userA.politicalLeaning && userB.politicalLeaning && userA.politicalLeaning !== userB.politicalLeaning) {
-      mismatches.push(`Different political views - ${userA.firstName}: ${capitalize(userA.politicalLeaning.replace(/_/g, ' '))}, ${userB.firstName}: ${capitalize(userB.politicalLeaning.replace(/_/g, ' '))}`);
-    }
-
-    // Family plans
-    if (userA.familyPlans && userB.familyPlans && userA.familyPlans !== userB.familyPlans) {
-      const aPlans = userA.familyPlans === 'want_children' ? 'wants children' :
-                     userA.familyPlans === 'dont_want_children' ? 'doesn\'t want children' :
-                     userA.familyPlans === 'open_to_children' ? 'open to children' : 'not sure';
-      const bPlans = userB.familyPlans === 'want_children' ? 'wants children' :
-                     userB.familyPlans === 'dont_want_children' ? 'doesn\'t want children' :
-                     userB.familyPlans === 'open_to_children' ? 'open to children' : 'not sure';
-      mismatches.push(`Different family plans - ${userA.firstName} ${aPlans}, ${userB.firstName} ${bPlans}`);
-    }
-
-    return { matches, mismatches };
+    return matchScore;
   };
 
   // Render full profile view (standardized format)
@@ -718,7 +680,45 @@ export function ProposalReviewView({
   const userB = currentProposal.userB;
   const photoA = userA.photos?.find((p: any) => p.isMain) || userA.photos?.[0];
   const photoB = userB.photos?.find((p: any) => p.isMain) || userB.photos?.[0];
-  const analysis = analyzeMatch(userA, userB);
+
+  // Calculate match score
+  const matchScore = calculateMatchScore(userA, userB);
+
+  // Calculate actual distance (placeholder - would need real lat/long)
+  // TODO: Get actual coordinates from user profiles
+  const actualDistance = 10; // Placeholder
+
+  // Calculate all match results
+  const ageMatch = matchAge(userA, userB);
+  const heightMatch = matchHeight(userA, userB);
+  const distanceMatch = matchDatingDistance(userA, userB, actualDistance);
+  const ethnicityMatch = matchEthnicity(userA, userB);
+  const politicsMatch = matchPolitics(userA, userB);
+  const religionMatch = matchReligion(userA, userB);
+  const drinkingMatch = matchDrinking(userA, userB);
+  const cannabisMatch = matchCannabis(userA, userB);
+  const tobaccoMatch = matchTobacco(userA, userB);
+  const valuesMatch = matchValues(userA, userB);
+  const interestsMatch = matchInterests(userA, userB);
+
+  // Calculate section compatibilities
+  const demographicsCompatibility = calculateSectionCompatibility([
+    ageMatch,
+    heightMatch,
+    distanceMatch,
+    ethnicityMatch,
+  ]);
+
+  const backgroundCompatibility = calculateSectionCompatibility([
+    politicsMatch,
+    religionMatch,
+  ]);
+
+  const lifestyleCompatibility = calculateSectionCompatibility([
+    drinkingMatch,
+    cannabisMatch,
+    tobaccoMatch,
+  ]);
 
   return (
     <StyledView style={{ flex: 1, backgroundColor: '#FBF9F6' }}>
@@ -738,81 +738,121 @@ export function ProposalReviewView({
             />
           ))}
         </StyledView>
-        <StyledText style={{ textAlign: 'center', fontSize: 12, color: '#78716C', marginTop: 8 }}>
-          Proposal {currentIndex + 1} of {proposals.length}
-        </StyledText>
       </StyledView>
 
       {profileView === 'comparison' ? (
         // Comparison View
         <StyledView style={{ flex: 1 }}>
-          {/* Photos + Names */}
+          {/* Proposed Pairing Card */}
           <GuideTarget id="proposal-card-0">
-            <StyledView style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20, paddingHorizontal: 20 }}>
-            {/* User A */}
-            <StyledView style={{ alignItems: 'center', flex: 1 }}>
-              <Image
-                source={{ uri: photoA?.url || 'https://via.placeholder.com/100' }}
-                style={{
-                  width: 100,
-                  height: 100,
-                  borderRadius: 50,
-                  backgroundColor: '#E5E7EB',
-                  marginBottom: 8,
-                }}
-                resizeMode="cover"
-              />
-              <StyledText style={{ fontSize: 16, fontWeight: '700', color: '#4A4540' }}>
-                {userA.firstName}, {userA.age}
-              </StyledText>
-              <StyledTouchableOpacity
-                onPress={() => setProfileView('userA')}
-                style={{
-                  marginTop: 8,
-                  backgroundColor: '#7C3AED',
-                  paddingHorizontal: 16,
-                  paddingVertical: 6,
-                  borderRadius: 12,
-                }}
-              >
-                <StyledText style={{ fontSize: 12, color: '#FFF', fontWeight: '600' }}>
-                  View Profile
-                </StyledText>
-              </StyledTouchableOpacity>
-            </StyledView>
+            <StyledView style={{ paddingHorizontal: 24, marginBottom: 20, marginTop: 16 }}>
+              {/* Photos + Profile Buttons */}
+              <StyledView style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', marginBottom: 20 }}>
+                {/* User A Column */}
+                <StyledView style={{ alignItems: 'center', flex: 1 }}>
+                  <StyledTouchableOpacity
+                    onPress={() => handleOpenProfile(userA)}
+                    activeOpacity={0.7}
+                  >
+                    <Image
+                      source={{ uri: photoA?.url || 'https://via.placeholder.com/100' }}
+                      style={{
+                        width: 100,
+                        height: 100,
+                        borderRadius: 50,
+                        backgroundColor: '#E5E7EB',
+                      }}
+                      resizeMode="cover"
+                    />
+                  </StyledTouchableOpacity>
 
-            {/* User B */}
-            <StyledView style={{ alignItems: 'center', flex: 1 }}>
-              <Image
-                source={{ uri: photoB?.url || 'https://via.placeholder.com/100' }}
-                style={{
-                  width: 100,
-                  height: 100,
-                  borderRadius: 50,
-                  backgroundColor: '#E5E7EB',
-                  marginBottom: 8,
-                }}
-                resizeMode="cover"
-              />
-              <StyledText style={{ fontSize: 16, fontWeight: '700', color: '#4A4540' }}>
-                {userB.firstName}, {userB.age}
-              </StyledText>
-              <StyledTouchableOpacity
-                onPress={() => setProfileView('userB')}
-                style={{
-                  marginTop: 8,
-                  backgroundColor: '#7C3AED',
-                  paddingHorizontal: 16,
-                  paddingVertical: 6,
-                  borderRadius: 12,
-                }}
-              >
-                <StyledText style={{ fontSize: 12, color: '#FFF', fontWeight: '600' }}>
-                  View Profile
-                </StyledText>
-              </StyledTouchableOpacity>
+                  <StyledTouchableOpacity
+                    onPress={() => handleOpenProfile(userA)}
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      paddingHorizontal: 20,
+                      paddingVertical: 8,
+                      borderRadius: 12,
+                      marginTop: 12,
+                      shadowColor: '#7C3AED',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 4,
+                      elevation: 3,
+                      borderWidth: 1,
+                      borderColor: '#E0E7FF',
+                    }}
+                  >
+                    <StyledText style={{ fontSize: 13, color: '#7C3AED', fontWeight: '600' }}>
+                      Profile
+                    </StyledText>
+                  </StyledTouchableOpacity>
+                </StyledView>
+
+                {/* Match Score in Center */}
+                <StyledView style={{ alignItems: 'center', justifyContent: 'center', marginHorizontal: 16, paddingTop: 25 }}>
+                  <StyledText style={{ fontSize: 36, fontWeight: '800', color: '#7C3AED', marginBottom: 6 }}>
+                    {matchScore}%
+                  </StyledText>
+                  <StyledView style={{
+                    height: 6,
+                    width: 80,
+                    backgroundColor: '#F1F5F9',
+                    borderRadius: 3,
+                    overflow: 'hidden',
+                  }}>
+                    <StyledView style={{
+                      height: '100%',
+                      width: `${matchScore}%`,
+                      backgroundColor: matchScore >= 75 ? '#10B981' : matchScore >= 50 ? '#F59E0B' : '#EF4444',
+                      borderRadius: 3,
+                    }} />
+                  </StyledView>
+                </StyledView>
+
+                {/* User B Column */}
+                <StyledView style={{ alignItems: 'center', flex: 1 }}>
+                  <StyledTouchableOpacity
+                    onPress={() => handleOpenProfile(userB)}
+                    activeOpacity={0.7}
+                  >
+                    <Image
+                      source={{ uri: photoB?.url || 'https://via.placeholder.com/100' }}
+                      style={{
+                        width: 100,
+                        height: 100,
+                        borderRadius: 50,
+                        backgroundColor: '#E5E7EB',
+                      }}
+                      resizeMode="cover"
+                    />
+                  </StyledTouchableOpacity>
+
+                  <StyledTouchableOpacity
+                    onPress={() => handleOpenProfile(userB)}
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      paddingHorizontal: 20,
+                      paddingVertical: 8,
+                      borderRadius: 12,
+                      marginTop: 12,
+                      shadowColor: '#7C3AED',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 4,
+                      elevation: 3,
+                      borderWidth: 1,
+                      borderColor: '#E0E7FF',
+                    }}
+                  >
+                    <StyledText style={{ fontSize: 13, color: '#7C3AED', fontWeight: '600' }}>
+                      Profile
+                    </StyledText>
+                  </StyledTouchableOpacity>
+                </StyledView>
+              </StyledView>
+
             </StyledView>
-          </StyledView>
           </GuideTarget>
 
           <StyledScrollView
@@ -820,49 +860,170 @@ export function ProposalReviewView({
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
             showsVerticalScrollIndicator={false}
           >
-            {/* Matches */}
-            {analysis.matches.length > 0 && (
-              <StyledView style={{
-                backgroundColor: '#ECFDF5',
-                borderRadius: 16,
-                padding: 16,
-                marginBottom: 16,
-              }}>
-                <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                  <Ionicons name="checkmark-circle" size={20} color="#10B981" style={{ marginRight: 8 }} />
-                  <StyledText style={{ fontSize: 15, fontWeight: '700', color: '#047857' }}>
-                    What Fits
-                  </StyledText>
-                </StyledView>
-                {analysis.matches.map((match, index) => (
-                  <StyledText key={index} style={{ fontSize: 13, color: '#065F46', marginBottom: 6, lineHeight: 18 }}>
-                    • {match}
-                  </StyledText>
-                ))}
-              </StyledView>
-            )}
+            {/* Side-by-Side Comparison */}
+            <StyledView>
+                {/* Demographics Section */}
+                <StyledView style={{
+                  flexDirection: 'row',
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 12,
+                  marginBottom: 12,
+                  overflow: 'hidden',
+                }}>
+                  {/* Left gradient border (Purple) */}
+                  <LinearGradient
+                    colors={['#8B5CF6', '#7C3AED']}
+                    style={{ width: 4 }}
+                  />
 
-            {/* Mismatches */}
-            {analysis.mismatches.length > 0 && (
-              <StyledView style={{
-                backgroundColor: '#FEF3C7',
-                borderRadius: 16,
-                padding: 16,
-                marginBottom: 16,
-              }}>
-                <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                  <Ionicons name="alert-circle" size={20} color="#F59E0B" style={{ marginRight: 8 }} />
-                  <StyledText style={{ fontSize: 15, fontWeight: '700', color: '#B45309' }}>
-                    What Doesn't Fit
-                  </StyledText>
+                  {/* Content */}
+                  <StyledView style={{ flex: 1, padding: 16 }}>
+                    <SectionHeader title="Demographics" compatibility={demographicsCompatibility} />
+
+                    <ComparisonRow label="Age" matchResult={ageMatch} />
+                    <ComparisonRow label="Height" matchResult={heightMatch} />
+                    <ComparisonRow label="Dating Distance" matchResult={distanceMatch} />
+                    <ComparisonRow label="Ethnicity" matchResult={ethnicityMatch} isLast />
+                  </StyledView>
+
+                  {/* Right gradient border (Teal) */}
+                  <LinearGradient
+                    colors={['#14B8A6', '#0D9488']}
+                    style={{ width: 4 }}
+                  />
                 </StyledView>
-                {analysis.mismatches.map((mismatch, index) => (
-                  <StyledText key={index} style={{ fontSize: 13, color: '#92400E', marginBottom: 6, lineHeight: 18 }}>
-                    • {mismatch}
-                  </StyledText>
-                ))}
-              </StyledView>
-            )}
+
+                {/* Background Section */}
+                <StyledView style={{
+                  flexDirection: 'row',
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 12,
+                  marginBottom: 12,
+                  overflow: 'hidden',
+                }}>
+                  {/* Left gradient border (Teal) */}
+                  <LinearGradient
+                    colors={['#14B8A6', '#0D9488']}
+                    style={{ width: 4 }}
+                  />
+
+                  {/* Content */}
+                  <StyledView style={{ flex: 1, padding: 16 }}>
+                    <SectionHeader title="Background" compatibility={backgroundCompatibility} />
+
+                    <ComparisonRow label="Politics" matchResult={politicsMatch} />
+                    <ComparisonRow label="Religion" matchResult={religionMatch} isLast />
+                  </StyledView>
+
+                  {/* Right gradient border (Orange) */}
+                  <LinearGradient
+                    colors={['#F97316', '#EA580C']}
+                    style={{ width: 4 }}
+                  />
+                </StyledView>
+
+                {/* Lifestyle Section */}
+                <StyledView style={{
+                  flexDirection: 'row',
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 12,
+                  marginBottom: 12,
+                  overflow: 'hidden',
+                }}>
+                  {/* Left gradient border (Teal) */}
+                  <LinearGradient
+                    colors={['#14B8A6', '#0D9488']}
+                    style={{ width: 4 }}
+                  />
+
+                  {/* Content */}
+                  <StyledView style={{ flex: 1, padding: 16 }}>
+                    <SectionHeader title="Lifestyle" compatibility={lifestyleCompatibility} />
+
+                    <ComparisonRow label="Drinking" matchResult={drinkingMatch} />
+                    <ComparisonRow label="Cannabis" matchResult={cannabisMatch} />
+                    <ComparisonRow label="Tobacco" matchResult={tobaccoMatch} isLast />
+                  </StyledView>
+
+                  {/* Right gradient border (Orange) */}
+                  <LinearGradient
+                    colors={['#F97316', '#EA580C']}
+                    style={{ width: 4 }}
+                  />
+                </StyledView>
+
+                {/* Values & Interests Section */}
+                <StyledView style={{
+                  flexDirection: 'row',
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 12,
+                  marginBottom: 80,
+                  overflow: 'hidden',
+                }}>
+                  {/* Left gradient border (Teal) */}
+                  <LinearGradient
+                    colors={['#14B8A6', '#0D9488']}
+                    style={{ width: 4 }}
+                  />
+
+                  {/* Content */}
+                  <StyledView style={{ flex: 1, padding: 16 }}>
+                    <SectionHeader
+                      title="Values & Interests"
+                      compatibility={{
+                        compatible: valuesMatch.status === 'high' ? 2 : valuesMatch.status === 'medium' ? 1 : 0,
+                        total: 2,
+                        percentage: (valuesMatch.overlapPercentage + interestsMatch.overlapPercentage) / 2,
+                        status: valuesMatch.status, // Use values status as primary
+                      }}
+                    />
+
+                    {/* Shared Values */}
+                    {valuesMatch.sharedValues.length > 0 && (
+                      <StyledView style={{ marginBottom: 12 }}>
+                        <StyledText style={{
+                          fontSize: 11,
+                          fontWeight: '600',
+                          color: '#94A3B8',
+                          marginBottom: 6,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5,
+                        }}>
+                          Shared Values ({valuesMatch.sharedValues.length})
+                        </StyledText>
+                        <StyledText style={{ fontSize: 14, color: '#10B981', fontWeight: '600' }}>
+                          {valuesMatch.sharedValues.join(', ')}
+                        </StyledText>
+                      </StyledView>
+                    )}
+
+                    {/* Shared Interests */}
+                    {interestsMatch.sharedInterests.length > 0 && (
+                      <StyledView>
+                        <StyledText style={{
+                          fontSize: 11,
+                          fontWeight: '600',
+                          color: '#94A3B8',
+                          marginBottom: 6,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5,
+                        }}>
+                          Shared Interests ({interestsMatch.sharedInterests.length})
+                        </StyledText>
+                        <StyledText style={{ fontSize: 14, color: '#10B981', fontWeight: '600' }}>
+                          {interestsMatch.sharedInterests.join(', ')}
+                        </StyledText>
+                      </StyledView>
+                    )}
+                  </StyledView>
+
+                  {/* Right gradient border (Orange) */}
+                  <LinearGradient
+                    colors={['#F97316', '#EA580C']}
+                    style={{ width: 4 }}
+                  />
+                </StyledView>
+            </StyledView>
           </StyledScrollView>
         </StyledView>
       ) : (
@@ -899,56 +1060,97 @@ export function ProposalReviewView({
         paddingTop: 16,
         paddingBottom: 24,
       }}>
-          <StyledView style={{ flexDirection: 'row', gap: 12 }}>
+        {/* Primary Action */}
+        <StyledTouchableOpacity
+          onPress={() => handleVote('yes')}
+          disabled={voting}
+          style={{
+            backgroundColor: '#7C3AED',
+            paddingVertical: 16,
+            borderRadius: 16,
+            alignItems: 'center',
+            marginBottom: 12,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 3,
+          }}
+        >
+          <StyledText style={{ fontSize: 16, fontWeight: '700', color: '#FFF' }}>
+            ✓ Good Match
+          </StyledText>
+        </StyledTouchableOpacity>
+
+        {/* Secondary Actions */}
+        <StyledView style={{ flexDirection: 'row', gap: 12 }}>
           <StyledTouchableOpacity
             onPress={() => handleVote('no')}
             disabled={voting}
             style={{
               flex: 1,
-              backgroundColor: '#FEE2E2',
-              paddingVertical: 14,
+              backgroundColor: '#FFFFFF',
+              borderWidth: 1.5,
+              borderColor: '#E5E7EB',
+              paddingVertical: 12,
               borderRadius: 12,
               alignItems: 'center',
             }}
           >
-            <StyledText style={{ fontSize: 14, fontWeight: '600', color: '#DC2626' }}>
-              Pass
+            <StyledText style={{ fontSize: 14, fontWeight: '600', color: '#4A4540' }}>
+              Not a Fit
             </StyledText>
           </StyledTouchableOpacity>
 
           <StyledTouchableOpacity
-            onPress={() => handleVote('skip')}
+            onPress={handleBetterForFriend}
             disabled={voting}
             style={{
               flex: 1,
-              backgroundColor: '#E0E7FF',
-              paddingVertical: 14,
+              backgroundColor: '#FFFFFF',
+              borderWidth: 1.5,
+              borderColor: '#E5E7EB',
+              paddingVertical: 12,
               borderRadius: 12,
               alignItems: 'center',
             }}
           >
-            <StyledText style={{ fontSize: 14, fontWeight: '600', color: '#4338CA' }}>
-              Not Sure
-            </StyledText>
-          </StyledTouchableOpacity>
-
-          <StyledTouchableOpacity
-            onPress={() => handleVote('yes')}
-            disabled={voting}
-            style={{
-              flex: 1,
-              backgroundColor: '#7C3AED',
-              paddingVertical: 14,
-              borderRadius: 12,
-              alignItems: 'center',
-            }}
-          >
-            <StyledText style={{ fontSize: 14, fontWeight: '600', color: '#FFF' }}>
-              Match!
+            <StyledText style={{ fontSize: 14, fontWeight: '600', color: '#4A4540' }}>
+              Better for Friend
             </StyledText>
           </StyledTouchableOpacity>
         </StyledView>
       </StyledView>
+
+      {/* Profile Modal */}
+      <Modal
+        visible={showProfileModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleCloseProfileModal}
+      >
+        {selectedProfile && (
+          <ProfileScreen
+            navigation={{
+              goBack: handleCloseProfileModal,
+              navigate: () => {},
+              canGoBack: () => true,
+              setOptions: () => {},
+              reset: () => {},
+              dispatch: () => {},
+              isFocused: () => true,
+              addListener: () => () => {},
+              removeListener: () => {},
+            } as any}
+            route={{
+              key: 'ProfileView',
+              name: 'ProfileView',
+              params: { profile: selectedProfile, hideHeader: true },
+            } as any}
+            mode="view"
+          />
+        )}
+      </Modal>
     </StyledView>
   );
 }

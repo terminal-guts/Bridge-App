@@ -122,8 +122,8 @@ export const getUserMatches = async (): Promise<ApiResponse<Match[]>> => {
         interests: Array.isArray(p.interests) ? p.interests : [],
         values: Array.isArray(p.values) ? p.values : [],
         lifestyle: {
-          drinking: p.drinking_frequency || 'socially',
-          smoking: p.tobacco_frequency || 'never',
+          drinking: p.drinking_frequency || 'Prefer not to say',
+          smoking: p.tobacco_frequency || 'Prefer not to say',
           exercise: 'often',
           children: p.has_children || 'open',
           pets: [],

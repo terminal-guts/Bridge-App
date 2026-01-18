@@ -177,52 +177,62 @@ When writing ANY copy or designing ANY feature, ask:
 
 # Part 3: The Community Matching System
 
+> **📅 PRODUCT UPDATE - January 2026**
+>
+> Bridge has shifted from **grid-based matching** to **proposal-based validation** to eliminate comparison behavior and create a more natural, consensus-driven experience.
+>
+> **Key Changes:**
+> - Users no longer select candidates from grids
+> - Users validate algorithm-generated proposals (Yes/No/Recommend to Friend)
+> - Daily obligation: Vote on 3 proposals (grid submission removed)
+> - UI is proposal-focused, not grid-focused
+>
+> **Grid logic may still exist internally for the algorithm**, but users never see grids during their primary interaction (proposal voting).
+
+---
+
 ## High-Level Goals
 
 Bridge's matching system should:
 - Make users feel meaningfully helped by their friends and the community
-- Deliver intentional, high-quality matches using a daily matching mechanic
+- Deliver intentional, high-quality matches through community validation
 - Stay emotionally safe, non-repetitive, and non-creepy
 - Reward thoughtful, prosocial behavior through karma and assists
-- Keep anchoring fair and equal for all users
+- Eliminate comparison and shopping behavior
+- Feel like real-life matchmaking coordination ("I think X and Y would work")
 
 ---
 
 ## Core Concepts
 
-### **Anchor**
-A user who the system is matching for on a given day.
-Each anchor gets at most one daily grid.
-A user in an active match is **removed** from grids entirely (cannot appear as anchor or candidate).
-
-**Important:** Everyone is an anchor every day (unless they're in an active match). There is no separate anchor selection process—all eligible users automatically have a grid generated for them daily.
-
----
-
-### **Daily Grid**
-A **triangle of 3 candidates** positioned around 1 anchor, chosen by the matching model.
-All matchers for an anchor see the *same* daily grid.
-
-**Visual Layout:**
-```
-        [ANCHOR]
-       /    |    \
-   [C1]   [C2]   [C3]
-```
-
----
-
-### **Matcher**
-Someone who proposes a candidate for the anchor.
-Two types:
-- **Random community matcher** (mandatory once per day per user)
-- **Friends** (optional, can do multiple friends per day)
-
----
-
 ### **Proposal**
-A suggested pairing: Anchor X + Candidate Y.
+A suggested pairing: Person A + Person B.
 A specific pairing can be proposed **only once ever** in the lifetime of the system.
+
+**How Proposals are Created:**
+- **Algorithm generates** most proposals based on compatibility
+- **Friends can recommend** people they see during voting to their friends
+- Algorithm strongly considers friend recommendations when creating proposals
+
+**User Interaction:**
+- Users vote on proposals: "Do you think they'd be a good match?"
+- Actions: Yes (Good Match) | No (Not a Fit) | Recommend to Friend
+- One proposal shown at a time (no side-by-side comparison)
+
+---
+
+### **Anchor (Internal Concept)**
+A user who the system is generating proposals for.
+A user in an active match is **removed** from proposal generation (cannot appear as anchor or candidate).
+
+**Important:** This is primarily an internal algorithm concept. Users don't explicitly see "anchors" during voting.
+
+---
+
+### **Daily Grid (Internal/Algorithm Use Only)**
+Grid logic may exist internally for the algorithm to generate high-quality proposals, but **grids are NOT shown to users** during proposal voting.
+
+**Archived UI Component:** The grid-based selection interface (DailyGridView) was removed from the product in January 2026. See `src/components/_archived/DailyGridView.tsx` for historical reference.
 
 ---
 
@@ -334,88 +344,82 @@ All matchers for an anchor see the same grid.
 
 ---
 
-## Roles and Daily Obligations
+## Daily User Flow (Updated January 2026)
 
-### Every User (Random Matcher Flow)
+### **Primary Daily Obligation:**
+Vote on **3 proposals** presented by the algorithm.
 
-Each user must complete:
+**What This Looks Like:**
+1. Open Community tab → See first proposal
+2. View pairing details, compatibility info
+3. Vote: Good Match | Not a Fit | Better for Friend
+4. Repeat for proposals 2 and 3
+5. After 3 votes → Friends Area unlocked
 
-1. **One mandatory random grid**
-   - They are assigned as the matcher for a random anchor
-   - They must submit exactly one proposal for that anchor
+**Time Required:** ~5 minutes per day
 
-2. **Three proposal reviews**
-   - Users vote Yes/No on three proposals
+### **Secondary Actions (Optional):**
+- **Recommend to Friend:** During voting, redirect someone to a friend
+- **Friend Chat:** Message friends, discuss matches
+- **View Proposals for You:** Check if anyone proposed you
 
-Only after completing both can they access the **Friends' Grids** screen.
-
-### Every User as Anchor
-
-- Anchoring frequency is equal for all eligible users
-- The daily grid is created only if the user is not in an active match
-- One random matcher + any number of friends may propose
-
----
-
-## Friends as Matchers
-
-### Friend Grid Access
-- Friends always have a daily grid for each friend anchor
-- They choose whether to open it
-- They may propose one candidate per friend per day
-
-### Matching for Multiple Friends
-If you have three friends who are anchors today, you may propose for all three.
-
-No daily cap—this is part of Bridge's "friends helping friends" engine.
-
-### Shared Grid
-All friends and the random matcher see the *same* daily grid for that anchor.
+### **No Grid Submission Required**
+The previous grid-based proposal submission has been removed. Users no longer select candidates from grids as part of their daily obligation.
 
 ---
 
-## Proposals
+## Friend Involvement (Updated January 2026)
 
-### Creation
-A proposal is created when:
-- The random matcher selects someone for the anchor
-- A friend selects someone from the anchor's grid
+### **How Friends Help:**
+1. **During Voting:** If a friend sees someone who'd be perfect for you, they can recommend them
+2. **Friend Superpowers:** Type preferences (coming soon)
+3. **Friend Chat:** Celebrate matches, give feedback
 
-### Merging
-If multiple matchers select the same candidate:
-- One proposal is created
-- All endorsers are attached to it
+### **No Grid Access for Friends**
+Friends don't see grids. They participate by:
+- Voting on proposals (may see people who'd be good for friends)
+- Recommending redirects during voting
+- Providing feedback through superpowers
 
-**This expedites matchmaking:** Proposals with multiple friend endorsements rank higher and reach community voting faster, accelerating the path to an active match.
+---
 
-### Endorser Weight
-Friend endorsers with higher karma contribute stronger signals.
+## Proposals (Updated January 2026)
+
+### How Proposals are Created
+**Primary Source: Algorithm**
+- Algorithm generates proposals based on compatibility scores
+- Uses user preferences, values, interests, lifestyle factors
+- May use internal grid logic but this is not exposed to users
+
+**Secondary Source: Friend Recommendations**
+- During voting, users can recommend someone to a friend
+- "This person would be better for [Friend Name]"
+- Algorithm strongly considers these recommendations
+- May generate a proposal based on friend input
+
+### Proposal Validation (Community Voting)
+Not all proposals go to community voting—only the top-ranked ones.
+
+**Voting Process:**
+1. Users see one proposal at a time
+2. "Do you think they'd be a good match?"
+3. Vote: Good Match | Not a Fit | Better for Friend
+4. Each user votes on 3 proposals daily
+
+**Ranking Inputs:**
+- Compatibility score
+- Friend recommendations
+- Karma of endorsers (if any)
+- Historical success patterns
+
+**Outcome:**
+- If proposal passes → match delivered to both users
+- If proposal fails → pairing permanently retired
 
 ### Pairing Uniqueness
 Once a pairing is proposed:
 - It is never proposed again
-- The pair never reappears together in a grid
-
----
-
-## Proposal Selection & Community Voting
-
-Not all proposals go to community voting—only the top-ranked ones.
-
-### Ranking Inputs
-- Number of friend endorsers
-- Karma of endorsers
-- Compatibility score
-- Assist history of endorsers (internal weight only)
-
-### Voting Threshold
-- Baseline threshold applies
-- More friend endorsers → lowered threshold
-- Higher karma endorsers → stronger lowering effect
-
-### Outcome
-If a proposal passes → match delivered.
-If a proposal fails → pairing is permanently retired.
+- Ensures users never see the same pairing twice
 
 ---
 

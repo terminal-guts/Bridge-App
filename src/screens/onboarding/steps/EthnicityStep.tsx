@@ -25,7 +25,6 @@ const ETHNICITY_OPTIONS = [
   'East Asian',
   'Hispanic',
   'Middle Eastern',
-  'Multiracial',
   'Native American',
   'North African',
   'Pacific Islander',

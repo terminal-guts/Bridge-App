@@ -1,20 +1,35 @@
 /**
  * FriendCard Component
  *
- * Clash Royale-inspired friend card with Bridge styling
+ * Redesigned friend card with unified height and cleaner layout.
  *
  * Layout:
- * - Left: Circular avatar (tappable → profile)
- * - Center: Name + (Streak counter + Tier pill) (tappable → message)
- * - Right: "Grid" button (pending) OR "Assists: X" chip (completed)
+ * - Left: Circular avatar (56x56, tappable → profile)
+ * - Center: Name + tucked streak/tier (tappable → message)
+ * - Right: "Vote" button (pending) OR Karma score + stars (completed)
+ *
+ * Design Changes (Jan 2026):
+ * - Removed "✓ Helped today" text
+ * - Reduced font sizes (name 18px, streak 12px, tier 10px)
+ * - Both variants are 76px height
+ * - Added karma star visualization
+ * - Added streak celebration (15+, 20+, 30+)
  */
 
 import React from 'react';
 import { View, Text, Image, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
-import { FriendWithGridStatus, KARMA_TIERS } from '../../types/community';
+import { FriendWithGridStatus } from '../../types/community';
 import { lightHaptic } from '../../utils/haptics';
+import {
+  FRIEND_CARD,
+  TYPOGRAPHY,
+  SPACING,
+  COLORS,
+  STREAK_TIERS,
+  KARMA_TIERS,
+} from '../../constants/friendsArea';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -23,8 +38,8 @@ const StyledTouchable = styled(TouchableOpacity);
 
 interface FriendCardProps {
   friend: FriendWithGridStatus;
-  isPending: boolean; // true = needs grid, false = already helped (leaderboard)
-  onViewGrid: () => void;
+  variant: 'pending' | 'completed'; // NEW: replaces isPending
+  onHelpMatch: () => void;
   onMessage: () => void;
   onViewProfile: () => void;
 }
@@ -45,7 +60,48 @@ const TIER_COLORS: Record<string, { bg: string; text: string }> = {
   best: { bg: '#FEF3C7', text: '#D97706' }, // Light amber
 };
 
-export const FriendCard = React.memo<FriendCardProps>(({ friend, isPending, onViewGrid, onMessage, onViewProfile }) => {
+/**
+ * Get streak visual treatment based on streak length
+ */
+const getStreakDisplay = (streakDays: number) => {
+  if (streakDays >= STREAK_TIERS.CROWN) {
+    return { emoji: '🔥', suffix: '👑', hasGlow: true };
+  }
+  if (streakDays >= STREAK_TIERS.DIAMOND) {
+    return { emoji: '🔥', suffix: '💎', hasGlow: true };
+  }
+  if (streakDays >= STREAK_TIERS.STAR) {
+    return { emoji: '🔥', suffix: '💫', hasGlow: true };
+  }
+  if (streakDays >= STREAK_TIERS.SPARKLE) {
+    return { emoji: '🔥', suffix: '✨', hasGlow: true };
+  }
+  return { emoji: '🔥', suffix: null, hasGlow: false };
+};
+
+/**
+ * Get karma stars based on assist count
+ */
+const getKarmaStars = (assists: number): string => {
+  if (assists >= KARMA_TIERS.THREE_STARS_SPARKLE) return '⭐⭐⭐✨';
+  if (assists >= KARMA_TIERS.THREE_STARS) return '⭐⭐⭐';
+  if (assists >= KARMA_TIERS.TWO_STARS) return '⭐⭐';
+  if (assists >= KARMA_TIERS.ONE_STAR) return '⭐';
+  return '';
+};
+
+/**
+ * Get karma color based on assist count
+ */
+const getKarmaColor = (assists: number): string => {
+  if (assists >= KARMA_TIERS.THREE_STARS_SPARKLE) return COLORS.KARMA_DIAMOND;
+  if (assists >= KARMA_TIERS.THREE_STARS) return COLORS.KARMA_GOLD;
+  if (assists >= KARMA_TIERS.TWO_STARS) return COLORS.KARMA_SILVER;
+  if (assists >= KARMA_TIERS.ONE_STAR) return COLORS.KARMA_BRONZE;
+  return COLORS.KARMA_GRAY;
+};
+
+export const FriendCard = React.memo<FriendCardProps>(({ friend, variant, onHelpMatch, onMessage, onViewProfile }) => {
   const handleAvatarPress = () => {
     lightHaptic();
     onViewProfile();
@@ -56,61 +112,160 @@ export const FriendCard = React.memo<FriendCardProps>(({ friend, isPending, onVi
     onMessage();
   };
 
-  const handleGridPress = () => {
+  const handleHelpPress = () => {
     lightHaptic();
-    onViewGrid();
+    onHelpMatch();
   };
 
-  // Safely get tier colors with fallback to 'new' tier
+  // Get tier styling
   const tierColors = TIER_COLORS[friend.friendshipTier] || TIER_COLORS.new;
   const tierLabel = TIER_LABELS[friend.friendshipTier] || TIER_LABELS.new;
 
+  // Get streak display info
+  const streakDisplay = getStreakDisplay(friend.streakDays);
+
+  // Get karma info (for completed variant)
+  const karmaAssists = friend.karmaScore?.totalAssists ?? 0;
+  const karmaStars = getKarmaStars(karmaAssists);
+  const karmaColor = getKarmaColor(karmaAssists);
+
   return (
-    <StyledView className="bg-white py-3 px-4 flex-row items-center border-b border-neutral-100">
-      {/* LEFT: Avatar */}
+    <StyledView
+      style={{
+        backgroundColor: variant === 'completed' ? COLORS.COMPLETED_BG : COLORS.PENDING_BG,
+        paddingVertical: 14,
+        paddingHorizontal: 18,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderBottomWidth: 1,
+        borderBottomColor: variant === 'completed' ? '#E5E7EB' : '#F3F4F6',
+        minHeight: 84,
+      }}
+    >
+      {/* LEFT: Avatar (60x60) - Enhanced with shadow */}
       <StyledTouchable onPress={handleAvatarPress} activeOpacity={0.7}>
-        <StyledImage
-          source={{ uri: friend.friend.photos?.[0]?.url || friend.friend.photos?.[0] || 'https://via.placeholder.com/100' }}
-          className="rounded-full border-2 border-blue-100"
-          style={{ width: 48, height: 48 }}
-          resizeMode="cover"
-        />
+        <StyledView style={{
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 4,
+          elevation: 3,
+        }}>
+          <StyledImage
+            source={{
+              uri: (() => {
+                const photos = friend.friend.photos;
+                // Handle null/undefined photos
+                if (!photos || !Array.isArray(photos) || photos.length === 0) {
+                  return 'https://via.placeholder.com/100';
+                }
+                const firstPhoto = photos[0];
+                // Handle photo as object with url property
+                if (firstPhoto && typeof firstPhoto === 'object' && 'url' in firstPhoto) {
+                  return firstPhoto.url || 'https://via.placeholder.com/100';
+                }
+                // Handle photo as direct string URL
+                if (typeof firstPhoto === 'string') {
+                  return firstPhoto;
+                }
+                // Fallback
+                return 'https://via.placeholder.com/100';
+              })()
+            }}
+            style={{
+              width: 60,
+              height: 60,
+              borderRadius: 30,
+              borderWidth: 2.5,
+              borderColor: variant === 'pending' ? '#EFF6FF' : '#F0FDF4',
+            }}
+            resizeMode="cover"
+          />
+        </StyledView>
       </StyledTouchable>
 
       {/* CENTER: Name + Streak + Tier (Tappable) */}
       <StyledTouchable
         onPress={handleCenterPress}
         activeOpacity={0.7}
-        className="flex-1 ml-3"
+        style={{ flex: 1, marginLeft: 14 }}
       >
         {/* Name with verification badge */}
-        <StyledView className="flex-row items-center mb-1">
-          <StyledText className="text-base font-semibold text-neutral-900">
+        <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <StyledText
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{
+              fontSize: 17,
+              fontWeight: '700',
+              color: '#0F172A',
+              lineHeight: 22,
+              letterSpacing: -0.3,
+            }}
+          >
             {friend.friend.firstName}
           </StyledText>
           {friend.friend.isVerified && (
-            <Ionicons name="checkmark-circle" size={16} color="#3B82F6" style={{ marginLeft: 4 }} />
+            <Ionicons name="checkmark-circle" size={17} color="#3B82F6" style={{ marginLeft: 5 }} />
           )}
         </StyledView>
 
-        {/* Streak + Tier Pill Row */}
-        <StyledView className="flex-row items-center">
-          {/* Streak Counter */}
-          <StyledView className="flex-row items-center mr-1.5">
-            <StyledText className="text-sm mr-0.5">🔥</StyledText>
-            <StyledText className="text-xs font-medium text-neutral-700">
-              {friend.streakDays}
-            </StyledText>
-          </StyledView>
+        {/* Streak + Tier Row - TUCKED UNDERNEATH */}
+        <StyledView
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginTop: 3,
+          }}
+        >
+          {/* Streak (only show if > 0) */}
+          {friend.streakDays > 0 && (
+            <>
+              <StyledText style={{ fontSize: 13 }}>
+                {streakDisplay.emoji}
+              </StyledText>
+              <StyledText
+                style={{
+                  fontSize: 13,
+                  fontWeight: '600',
+                  color: '#475569',
+                  marginLeft: 3,
+                  marginRight: 6,
+                }}
+              >
+                {friend.streakDays}
+              </StyledText>
+              {streakDisplay.suffix && (
+                <StyledText
+                  style={{
+                    fontSize: 13,
+                    marginRight: 6,
+                  }}
+                >
+                  {streakDisplay.suffix}
+                </StyledText>
+              )}
+            </>
+          )}
 
-          {/* Tier Pill */}
+          {/* Tier Pill - Enhanced */}
           <StyledView
-            style={{ backgroundColor: tierColors.bg }}
-            className="px-2 py-0.5 rounded-full"
+            style={{
+              backgroundColor: tierColors.bg,
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: tierColors.text + '20', // 20% opacity
+            }}
           >
             <StyledText
-              style={{ color: tierColors.text }}
-              className="text-[10px] font-semibold"
+              style={{
+                fontSize: 10,
+                fontWeight: '700',
+                color: tierColors.text,
+                letterSpacing: 0.3,
+              }}
             >
               {tierLabel}
             </StyledText>
@@ -118,40 +273,63 @@ export const FriendCard = React.memo<FriendCardProps>(({ friend, isPending, onVi
         </StyledView>
       </StyledTouchable>
 
-      {/* RIGHT: Grid Button or Karma Score */}
-      {isPending ? (
-        // Prominent Grid button (like CR trophy box)
+      {/* RIGHT: Vote Button or Karma Score */}
+      {variant === 'pending' ? (
+        // Enhanced Vote button with gradient feel
         <StyledTouchable
-          onPress={handleGridPress}
-          activeOpacity={0.8}
-          className="bg-blue-500 px-5 py-2.5 rounded-xl shadow-md"
+          onPress={handleHelpPress}
+          activeOpacity={0.75}
           style={{
+            backgroundColor: '#3B82F6',
+            paddingHorizontal: 22,
+            paddingVertical: 11,
+            borderRadius: 14,
             shadowColor: '#3B82F6',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.3,
-            shadowRadius: 4,
-            elevation: 4,
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.35,
+            shadowRadius: 6,
+            elevation: 5,
+            minWidth: 72,
+            justifyContent: 'center',
+            alignItems: 'center',
           }}
         >
-          <StyledText className="text-white text-sm font-bold">
-            Grid
+          <StyledText
+            style={{
+              color: '#FFFFFF',
+              fontSize: 15,
+              fontWeight: '700',
+              letterSpacing: 0.2,
+            }}
+          >
+            Vote
           </StyledText>
         </StyledTouchable>
       ) : (
-        // Karma score on leaderboard (tappable - can view grid again)
-        <StyledTouchable
-          onPress={handleGridPress}
-          activeOpacity={0.7}
-          style={{ backgroundColor: friend.karmaScore ? KARMA_TIERS[friend.karmaScore.badgeTier].bgColor : '#F1F5F9' }}
-          className="px-4 py-2 rounded-lg"
-        >
+        // Karma Score + Stars (completed variant) - Enhanced
+        <StyledView style={{ alignItems: 'flex-end' }}>
           <StyledText
-            style={{ color: friend.karmaScore ? KARMA_TIERS[friend.karmaScore.badgeTier].color : '#94A3B8' }}
-            className="text-lg font-bold"
+            style={{
+              fontSize: 22,
+              fontWeight: '800',
+              color: karmaColor,
+              letterSpacing: -0.5,
+            }}
           >
-            {friend.karmaScore ? friend.karmaScore.totalAssists : 0}
+            {karmaAssists}
           </StyledText>
-        </StyledTouchable>
+          {karmaStars && (
+            <StyledText
+              style={{
+                fontSize: 15,
+                marginTop: 1,
+                letterSpacing: -1,
+              }}
+            >
+              {karmaStars}
+            </StyledText>
+          )}
+        </StyledView>
       )}
     </StyledView>
   );

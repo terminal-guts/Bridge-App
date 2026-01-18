@@ -221,6 +221,11 @@ export interface FriendWithGridStatus {
   friendshipTier: FriendshipTier; // Derived from streakDays
 }
 
+// Extended type for UI rendering with variant (pending vs completed)
+export interface FriendWithVariant extends FriendWithGridStatus {
+  variant: 'pending' | 'completed';
+}
+
 // ==================== Match Proposal Types ====================
 
 export interface MatchProposal {

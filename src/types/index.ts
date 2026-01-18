@@ -116,12 +116,14 @@ export interface UserProfile {
   sectionVisibility?: Record<string, boolean>; // Which sections are visible to others (does not affect edit view)
   isVerified?: boolean; // Verification status
   isPaused?: boolean; // Whether profile is paused
-  // Partner preferences (collected via double-tap in onboarding)
+  // Partner preferences (collected in Match Preferences screen)
+  // Arrays to support multiple selections (e.g., ["yes", "sometimes"])
+  // Also supports legacy string format for backward compatibility
   partnerLifestylePreferences?: {
-    drinking: string;
-    cannabis: string;
-    tobacco: string;
-    otherDrugs: string;
+    drinking: string | string[];
+    cannabis: string | string[];
+    tobacco: string | string[];
+    otherDrugs: string | string[];
   };
   // Community Matching System
   karma?: any; // KarmaScore from community.ts (optional, imported separately to avoid circular deps)
@@ -237,11 +239,16 @@ export interface PartialProfile {
 // Message Types
 // ============================================================================
 
+export type MessageType = 'text' | 'audio' | 'image';
+
 export interface Message {
   id: UUID;
   matchId: UUID;
   senderId: UUID;
-  content: string;
+  type: MessageType;
+  content: string;      // Text content OR the URL to the audio/image file
+  duration?: number;    // Audio duration in milliseconds
+  waveformData?: number[]; // For rendering visual waveforms
   sentAt: ISODateString;
   readAt?: ISODateString;
 }
@@ -350,6 +357,7 @@ export type RootStackParamList = {
   FriendCode: { returnTo?: string; matchId?: string } | undefined;
   FriendList: undefined;
   FriendGrid: { friendId: string; friendName: string };
+  FriendProposal: { friendId: string; friendName: string };
   MatchPreferences: undefined;
   ProfileVerification: undefined;
   BlockedUsers: undefined;

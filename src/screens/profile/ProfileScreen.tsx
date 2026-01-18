@@ -635,7 +635,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation, route,
                 pointerEvents="none"
               />
 
-              {/* Name Overlay */}
+              {/* Name/Age Overlay */}
               <StyledView className="absolute bottom-12 left-5 right-5">
                 <StyledView className="flex-row items-center flex-wrap mb-2">
                   <Body
@@ -651,7 +651,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation, route,
                     adjustsFontSizeToFit
                     minimumFontScale={0.7}
                   >
-                    {profile.firstName}, {profile.age}
+                    {mode === 'preview' ? `${profile.firstName}, ${profile.age}` : profile.age}
                   </Body>
                   {profile.isVerified && (
                     <StyledView className="ml-2 bg-primary-500 rounded-full p-1">

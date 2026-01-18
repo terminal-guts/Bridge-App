@@ -4,7 +4,7 @@
  * Navigation dots for the Community tab's 3-page layout.
  *
  * Features:
- * - Shows 3 dots representing Daily Grid, Proposal Review, Friends Area
+ * - Shows 3 dots representing Matchmaking, Proposals, Friends Area
  * - Highlights current page
  * - Shows lock icon on Friends Area if locked
  * - Tappable to navigate directly to pages
@@ -33,7 +33,7 @@ interface PageIndicatorProps {
   friendsAreaLocked?: boolean;
 }
 
-const PAGE_LABELS = ['Daily Grid', 'Proposals', 'Friends'];
+const PAGE_LABELS = ['Matchmaking', 'Proposals', 'Friends'];
 
 export function PageIndicator({
   currentPage,

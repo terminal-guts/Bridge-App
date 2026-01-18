@@ -14,19 +14,22 @@
  * - Navigates to ProfileView when viewing proposals or friend profiles
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, Text, FlatList, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { EvaIcon } from '../icons';
 import { RootStackParamList } from '../../types';
 import {
   FriendWithGridStatus,
+  FriendWithVariant,
   MatchProposal,
   ActiveMatch,
   CommunityTask,
 } from '../../types/community';
 import { FriendCard } from './FriendCard';
+import { TimerBadge } from './TimerBadge';
+import { CelebrationBanner } from './CelebrationBanner';
 import { PendingProposalCard } from './PendingProposalCard';
 import { AwaitingResponseCard } from './AwaitingResponseCard';
 import { ActiveMatchCard } from './ActiveMatchCard';
@@ -35,10 +38,12 @@ import { communityService } from '../../services/communityServiceIndex';
 import { GuideTarget } from '../guides';
 import { useGuide } from '../../hooks/useGuide';
 import { friendsAreaGuide } from '../../config/guides';
+import { SEPARATOR } from '../../constants/friendsArea';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
 const StyledScrollView = styled(ScrollView);
+const StyledFlatList = styled(FlatList);
 const StyledTouchable = styled(TouchableOpacity);
 
 interface FriendsAreaViewProps {
@@ -73,16 +78,24 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
       const tomorrow8am = new Date();
       tomorrow8am.setHours(8, 0, 0, 0);
 
-      // If it's past 8am today, set to 8am tomorrow
-      if (now.getHours() >= 8) {
+      // If it's at or past 8:00:00 AM today, set to 8am tomorrow
+      if (now.getHours() > 8 || (now.getHours() === 8 && now.getMinutes() >= 0)) {
         tomorrow8am.setDate(tomorrow8am.getDate() + 1);
       }
 
       const diff = tomorrow8am.getTime() - now.getTime();
+
+      // Prevent negative time (clock skew edge case)
+      if (diff < 0) {
+        setTimeRemaining('0h 0m');
+        return;
+      }
+
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-      setTimeRemaining(`${hours}h ${minutes}m`);
+      // Ensure non-negative values
+      setTimeRemaining(`${Math.max(0, hours)}h ${Math.max(0, minutes)}m`);
     };
 
     updateTimer();
@@ -156,12 +169,12 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
     setRefreshing(false);
   };
 
-  const handleViewFriendGrid = useCallback((friendId: string) => {
+  const handleHelpFriend = useCallback((friendId: string) => {
     const friend = friends.find(f => f.friendId === friendId);
     if (!friend) return;
 
-    // Navigate to FriendGrid screen (same design as Daily Grid)
-    navigation.navigate('FriendGrid', {
+    // Navigate to FriendProposal screen - vote on a single proposal for this friend
+    navigation.navigate('FriendProposal', {
       friendId: friend.friendId,
       friendName: friend.friend.firstName,
     });
@@ -177,13 +190,13 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
 
     console.log('[FriendsAreaView] Navigating to Chat with:', {
       matchId: activeMatch.matchId,
-      recipientName: activeMatch.partnerProfile.firstName,
+      recipientName: activeMatch.partnerProfile?.firstName || 'Match',
     });
 
     // Navigate to Chat screen
     navigation.navigate('Chat', {
       matchId: activeMatch.matchId,
-      recipientName: activeMatch.partnerProfile.firstName,
+      recipientName: activeMatch.partnerProfile?.firstName || 'Match',
     });
   };
 
@@ -197,12 +210,14 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
     if (!activeMatch) return;
 
     try {
-      setShowEndMatchModal(false);
-      await communityService.endActiveMatch(activeMatch.matchId, reason);
+      await communityService.endActiveMatch(activeMatch.matchId || activeMatch.id, reason);
       await loadFriendsArea(); // Reload data
+      setShowEndMatchModal(false); // Close modal only after success
       console.log('[FriendsAreaView] Match ended. Reason:', reason);
     } catch (error) {
       console.error('[FriendsAreaView] Error ending match:', error);
+      // Modal stays open so user can retry or cancel
+      // TODO: Show error message to user
     }
   };
 
@@ -231,12 +246,18 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
   }, [friends, navigation]);
 
   // Split friends into pending (need help) and completed (already helped today)
-  // Only show friends who are anchors today
-  const friendsWhoAreAnchors = friends.filter((f) => f.isAnchorToday);
-  const pendingFriends = friendsWhoAreAnchors.filter((f) => !f.hasCompletedGrid);
-  const completedFriends = friendsWhoAreAnchors
+  // Only show friends who need help finding matches
+  const friendsNeedingHelp = friends.filter((f) => !f.hasCompletedGrid);
+  const friendsAlreadyHelped = friends
     .filter((f) => f.hasCompletedGrid)
     .sort((a, b) => b.streakDays - a.streakDays); // Sort by streak descending (leaderboard)
+
+  // Combine friends into single array with variant tags for FlatList
+  const combinedFriends = useMemo((): FriendWithVariant[] => {
+    const pending: FriendWithVariant[] = friendsNeedingHelp.map(f => ({ ...f, variant: 'pending' as const }));
+    const completed: FriendWithVariant[] = friendsAlreadyHelped.map(f => ({ ...f, variant: 'completed' as const }));
+    return [...pending, ...completed];
+  }, [friendsNeedingHelp, friendsAlreadyHelped]);
 
   // Separate proposals by status
   const truePendingProposals = pendingProposals.filter(
@@ -248,7 +269,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
   );
 
   // DEV: Filter data based on test state
-  // NOTE: Friends and grids ALWAYS show in every state (they are unaffected by match/proposal status)
+  // NOTE: Friends ALWAYS show in every state (they are unaffected by match/proposal status)
   const getFilteredData = () => {
     switch (devTestState) {
       case 'active-match':
@@ -256,21 +277,24 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
           activeMatch,
           pendingProposals: [],
           awaitingResponse: [],
-          friends: friendsWhoAreAnchors,
+          friendsNeedingHelp,
+          friendsAlreadyHelped,
         };
       case 'awaiting-response':
         return {
           activeMatch: null,
           pendingProposals: [],
           awaitingResponse: awaitingResponseProposals,
-          friends: friendsWhoAreAnchors,
+          friendsNeedingHelp,
+          friendsAlreadyHelped,
         };
       case 'pending-proposal':
         return {
           activeMatch: null,
           pendingProposals: truePendingProposals,
           awaitingResponse: [],
-          friends: friendsWhoAreAnchors,
+          friendsNeedingHelp,
+          friendsAlreadyHelped,
         };
       case 'empty':
       default:
@@ -278,18 +302,13 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
           activeMatch: null,
           pendingProposals: [],
           awaitingResponse: [],
-          friends: friendsWhoAreAnchors,
+          friendsNeedingHelp,
+          friendsAlreadyHelped,
         };
     }
   };
 
   const filteredData = getFilteredData();
-
-  // Recalculate friends lists based on filtered data
-  const filteredPendingFriends = filteredData.friends.filter((f) => !f.hasCompletedGrid);
-  const filteredCompletedFriends = filteredData.friends
-    .filter((f) => f.hasCompletedGrid)
-    .sort((a, b) => b.streakDays - a.streakDays);
 
   // Loading state
   if (loading) {
@@ -366,9 +385,9 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
           <GuideTarget id="match-status-section">
             <StyledView className="px-4 pt-6 pb-4">
               <ActiveMatchCard
-                match={activeMatch}
+                match={filteredData.activeMatch}
                 onMessage={handleMessageMatch}
-                onEndMatch={activeMatch.canEndMatch ? handleEndMatch : undefined}
+                onEndMatch={filteredData.activeMatch.canEndMatch ? handleEndMatch : undefined}
               />
             </StyledView>
           </GuideTarget>
@@ -551,147 +570,152 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
           </GuideTarget>
         )}
 
-        {/* SECTION 3A: Grids (Friends needing help today) */}
-        {filteredPendingFriends.length > 0 && (
-          <StyledView className="px-4 pt-4 pb-2">
-            <StyledView className="flex-row items-center justify-between mb-3">
-              <StyledText className="text-lg font-bold text-neutral-900">
-                Grids
-              </StyledText>
-
-              {/* Countdown Timer */}
-              <GuideTarget id="timer-display">
-                <StyledView className="flex-row items-center bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-200">
-                  <StyledView style={{ marginRight: 4 }}>
-                    <EvaIcon name="clock" variant="fill" color="warning" size={14} />
-                  </StyledView>
-                  <StyledText className="text-sm font-bold text-orange-600">
-                    {timeRemaining}
+        {/* SECTION 3: Combined Friends List (Pending + Completed) */}
+        {combinedFriends.length > 0 ? (
+          <StyledView style={{ paddingTop: 20 }}>
+            {/* Section Header with Timer - Enhanced Design */}
+            <StyledView style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+              <StyledView className="flex-row items-center justify-between mb-3">
+                <StyledView>
+                  <StyledText style={{
+                    fontSize: 28,
+                    fontWeight: '800',
+                    color: '#0F172A',
+                    letterSpacing: -0.5,
+                  }}>
+                    Friends
+                  </StyledText>
+                  <StyledText style={{
+                    fontSize: 13,
+                    fontWeight: '500',
+                    color: '#64748B',
+                    marginTop: 2,
+                  }}>
+                    Help your crew find matches
                   </StyledText>
                 </StyledView>
-              </GuideTarget>
+                <GuideTarget id="timer-display">
+                  <TimerBadge timeRemaining={timeRemaining} />
+                </GuideTarget>
+              </StyledView>
             </StyledView>
 
-            <GuideTarget id="grids-section-header">
-              <StyledView className="bg-white rounded-2xl overflow-hidden border border-neutral-200 shadow-sm">
-                {filteredPendingFriends.map((friend, index) => {
+            {/* Friends FlatList */}
+            <GuideTarget id="help-friends-section">
+              <StyledFlatList
+                data={combinedFriends}
+                keyExtractor={(item) => item.friendshipId}
+                renderItem={({ item, index }) => {
                   const friendCard = (
                     <FriendCard
-                      key={friend.friendshipId}
-                      friend={friend}
-                      isPending={true}
-                      onViewGrid={() => handleViewFriendGrid(friend.friendId)}
-                      onMessage={() => handleChatWithFriend(friend.friendId)}
-                      onViewProfile={() => handleViewFriendProfile(friend.friendId)}
+                      friend={item}
+                      variant={item.variant}
+                      onHelpMatch={() => handleHelpFriend(item.friendId)}
+                      onMessage={() => handleChatWithFriend(item.friendId)}
+                      onViewProfile={() => handleViewFriendProfile(item.friendId)}
                     />
                   );
 
-                  // Wrap first friend card with GuideTarget
-                  if (index === 0) {
+                  // Wrap first pending friend with GuideTarget
+                  if (index === 0 && item.variant === 'pending') {
                     return (
-                      <GuideTarget key={friend.friendshipId} id="friend-row-0">
+                      <GuideTarget key={item.friendshipId} id="friend-row-0">
                         {friendCard}
                       </GuideTarget>
                     );
                   }
 
                   return friendCard;
-                })}
-              </StyledView>
+                }}
+                ItemSeparatorComponent={({ leadingItem }) => {
+                  // Show separator after last pending friend
+                  if (!leadingItem) return null;
+                  const currentIndex = combinedFriends.findIndex(f => f.friendshipId === leadingItem.friendshipId);
+                  const nextItem = combinedFriends[currentIndex + 1];
+                  const isLastPending = leadingItem.variant === 'pending' && nextItem?.variant === 'completed';
+
+                  if (isLastPending) {
+                    return (
+                      <StyledView
+                        style={{
+                          height: 56,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          backgroundColor: '#F9FAFB',
+                          paddingVertical: 16,
+                        }}
+                      >
+                        <StyledView style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, width: '100%' }}>
+                          <StyledView style={{
+                            flex: 1,
+                            height: 1.5,
+                            backgroundColor: '#E5E7EB',
+                            opacity: 0.6,
+                          }} />
+                          <StyledView style={{
+                            backgroundColor: '#F3F4F6',
+                            paddingHorizontal: 14,
+                            paddingVertical: 6,
+                            borderRadius: 12,
+                            marginHorizontal: 12,
+                            borderWidth: 1,
+                            borderColor: '#E5E7EB',
+                          }}>
+                            <StyledText
+                              style={{
+                                fontSize: 11,
+                                color: '#6B7280',
+                                fontWeight: '700',
+                                letterSpacing: 0.8,
+                                textTransform: 'uppercase',
+                              }}
+                            >
+                              Already Helped
+                            </StyledText>
+                          </StyledView>
+                          <StyledView style={{
+                            flex: 1,
+                            height: 1.5,
+                            backgroundColor: '#E5E7EB',
+                            opacity: 0.6,
+                          }} />
+                        </StyledView>
+                      </StyledView>
+                    );
+                  }
+                  return null;
+                }}
+                ListFooterComponent={() => {
+                  // Show celebration banner if all friends helped
+                  if (friendsNeedingHelp.length === 0 && friends.length > 0) {
+                    return <CelebrationBanner />;
+                  }
+                  return null;
+                }}
+                scrollEnabled={false}
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 0,
+                }}
+              />
             </GuideTarget>
           </StyledView>
-        )}
-
-        {/* SECTION 3A: Empty State for Grids */}
-        {filteredPendingFriends.length === 0 && (
-          <StyledView className="px-4 pt-4 pb-2">
-            <StyledView className="flex-row items-center justify-between mb-3">
-              <StyledText className="text-lg font-bold text-neutral-900">
-                Grids
+        ) : (
+          /* Empty State - No friends at all */
+          <StyledView className="px-4 pt-4 pb-4">
+            <StyledView className="bg-blue-50 rounded-2xl p-6 items-center">
+              <StyledText className="text-3xl mb-2">👋</StyledText>
+              <StyledText className="text-base font-medium text-neutral-700 text-center">
+                Add friends to help them find matches
               </StyledText>
-
-              {/* Countdown Timer */}
-              <GuideTarget id="timer-display">
-                <StyledView className="flex-row items-center bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-200">
-                  <StyledView style={{ marginRight: 4 }}>
-                    <EvaIcon name="clock" variant="fill" color="warning" size={14} />
-                  </StyledView>
-                  <StyledText className="text-sm font-bold text-orange-600">
-                    {timeRemaining}
-                  </StyledText>
-                </StyledView>
-              </GuideTarget>
             </StyledView>
-
-            <GuideTarget id="grids-section-header">
-              <StyledView className="bg-blue-50 rounded-2xl p-6 items-center">
-                <StyledText className="text-3xl mb-2">✨</StyledText>
-                <StyledText className="text-base font-medium text-neutral-700 text-center">
-                  {filteredData.friends.length > 0
-                    ? "You helped all your friends today"
-                    : "Add friends to see their grids here"}
-                </StyledText>
-              </StyledView>
-            </GuideTarget>
           </StyledView>
         )}
 
-        {/* SECTION 3B: Leaderboard (ranked by streak) */}
-        {filteredCompletedFriends.length > 0 && (
-          <GuideTarget id="leaderboard-section">
-            <StyledView className="px-4 pt-4 pb-4">
-              <StyledView className="flex-row items-center mb-3">
-                <StyledText className="text-lg font-bold text-neutral-900">
-                  Leaderboard
-                </StyledText>
-                <StyledView style={{ marginLeft: 6 }}>
-                  <EvaIcon name="award" variant="outline" color="warning" size={16} />
-                </StyledView>
-              </StyledView>
-
-              <StyledView className="bg-white rounded-2xl overflow-hidden border border-neutral-200 shadow-sm">
-                {filteredCompletedFriends.map((friend) => (
-                  <FriendCard
-                    key={friend.friendshipId}
-                    friend={friend}
-                    isPending={false}
-                    onViewGrid={() => handleViewFriendGrid(friend.friendId)}
-                    onMessage={() => handleChatWithFriend(friend.friendId)}
-                    onViewProfile={() => handleViewFriendProfile(friend.friendId)}
-                  />
-                ))}
-              </StyledView>
-            </StyledView>
-          </GuideTarget>
-        )}
-
-        {/* SECTION 3B: Empty State for Leaderboard */}
-        {filteredCompletedFriends.length === 0 && (
-          <GuideTarget id="leaderboard-section">
-            <StyledView className="px-4 pt-4 pb-4">
-              <StyledView className="flex-row items-center mb-3">
-                <StyledText className="text-lg font-bold text-neutral-900">
-                  Leaderboard
-                </StyledText>
-                <StyledView style={{ marginLeft: 6 }}>
-                  <EvaIcon name="award" variant="outline" color="warning" size={16} />
-                </StyledView>
-              </StyledView>
-              <StyledView className="bg-neutral-50 rounded-2xl p-6 items-center">
-                <StyledText className="text-base text-neutral-600 text-center">
-                  {filteredData.friends.length > 0
-                    ? "Help friends to see them on the leaderboard"
-                    : "Friend streaks will appear here"}
-                </StyledText>
-              </StyledView>
-            </StyledView>
-          </GuideTarget>
-        )}
-
-        {/* All Empty State - Only show when everything is empty */}
+        {/* All Empty State - Only show when everything is empty (no match, no proposals, no friends) */}
         {truePendingProposals.length === 0 &&
           awaitingResponseProposals.length === 0 &&
-          friendsWhoAreAnchors.length === 0 &&
+          friends.length === 0 &&
           !activeMatch && (
             <StyledView className="flex-1 items-center justify-center px-6" style={{ minHeight: 400 }}>
               <StyledText className="text-5xl mb-4">✨</StyledText>

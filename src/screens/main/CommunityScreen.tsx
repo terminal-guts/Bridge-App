@@ -1,20 +1,21 @@
 /**
  * CommunityScreen
  *
- * Main container for the Community tab with 3-page horizontal navigation.
+ * Main container for the Community tab with 2-page navigation.
  *
- * Pages (left to right):
- * 1. Daily Grid - Random matcher assignment (must propose 1 candidate)
- * 2. Proposal Review - Vote on 3 community proposals (Yes/No)
- * 3. Friends Area - View friends' grids and pending/active matches
+ * Product Model: Proposal-Based Validation
+ * - Users vote on algorithm-generated proposals (not grid-based selection)
+ * - Validation-based interaction ("Do you think they'd be a good match?")
+ * - Community consensus required for all matches
+ *
+ * Pages:
+ * 1. Proposals (Page 0) - Vote on 3 daily proposals (Yes/No/Better for Friend)
+ * 2. Friends Area (Page 1) - View friends and pending/active matches
  *
  * Navigation Rules:
- * - Use tab buttons to navigate between pages
- * - Page 3 (Friends Area) locked until daily tasks complete:
- *   - Must submit 1 proposal from daily grid (Page 1)
- *   - Must vote on 3 proposals (Page 2)
- * - Can always navigate backwards (right to left) freely
- * - Page indicator shows current page and locked state
+ * - Page 1 (Friends Area) locked until 3 proposal votes complete
+ * - Auto-navigate to Friends Area after completing 3rd vote
+ * - No page indicator (clean, minimal UI)
  *
  * State Machine:
  * - loading: Fetching community data
@@ -22,6 +23,9 @@
  * - error: Failed to load data
  *
  * Design Philosophy: "Thoughtful over Flashy" - minimal, warm, premium
+ *
+ * ARCHIVED: DailyGridView (grid-based matching) removed January 2026
+ * See src/components/_archived/DailyGridView.tsx for historical reference
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -42,13 +46,10 @@ import { NavigationProp, useFocusEffect, RouteProp, useRoute } from '@react-navi
 import { H1, Body, Button } from '../../components/ui';
 import { OfflineBanner } from '../../components/OfflineBanner';
 import { ProfileCompletionBanner } from '../../components/ProfileCompletionBanner';
-import { DailyGridView } from '../../components/community/DailyGridView';
 import { ProposalReviewView } from '../../components/community/ProposalReviewView';
 import { FriendsAreaView } from '../../components/community/FriendsAreaView';
-import { PageIndicator } from '../../components/community/PageIndicator';
 import { GuideTarget } from '../../components/guides';
 import { useGuide } from '../../hooks/useGuide';
-// import { tabNavigationGuide } from '../../config/guides'; // Tab navigation guide DISABLED - jump straight to Daily Grid
 
 import { MainTabParamList, UserProfile } from '../../types';
 import { CommunityTask } from '../../types/community';
@@ -76,7 +77,7 @@ const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3; // 30% of screen width to trigger pa
 // Types
 type CommunityScreenState = 'loading' | 'ready' | 'error';
 
-type PageIndex = 0 | 1 | 2;
+type PageIndex = 0 | 1;
 
 interface CommunityScreenProps {
   navigation: NavigationProp<MainTabParamList, 'Community'>;
@@ -110,8 +111,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   // ========================================
   // DERIVED STATE
   // ========================================
-  const dailyTasksComplete = FEATURES.DEVELOPMENT_UNLOCK_FRIENDS_AREA ? true : (taskProgress?.allTasksCompleted ?? false);
-  const friendsAreaLocked = FEATURES.DEVELOPMENT_UNLOCK_FRIENDS_AREA ? false : (!dailyTasksComplete && currentPage !== 2); // Allow viewing if already on page 3
+  // Daily task: Complete 3 proposal votes (grid requirement removed)
+  const dailyTasksComplete = FEATURES.DEVELOPMENT_UNLOCK_FRIENDS_AREA ? true : ((taskProgress?.proposalsVotedCount ?? 0) >= 3);
+  const friendsAreaLocked = FEATURES.DEVELOPMENT_UNLOCK_FRIENDS_AREA ? false : (!dailyTasksComplete && currentPage !== 1); // Allow viewing if already on page 1 (Friends)
 
   // ========================================
   // DATA LOADING
@@ -197,9 +199,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   // ========================================
   const goToPage = useCallback((pageIndex: PageIndex) => {
     // Check if Friends Area is locked
-    if (pageIndex === 2 && !dailyTasksComplete) {
+    if (pageIndex === 1 && !dailyTasksComplete) {
       mediumHaptic();
-      showToast.info('Complete Daily Tasks', 'Finish your grid proposal and 3 votes to unlock Friends Area');
+      showToast.info('Complete Daily Task', 'Vote on 3 proposals to unlock Friends Area');
       return;
     }
 
@@ -218,29 +220,16 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   // ========================================
   // TASK COMPLETION HANDLERS
   // ========================================
-  const handleGridProposalSubmitted = useCallback(async () => {
-    // Reload task progress
-    const progress = await communityService.getCommunityTaskProgress();
-    setTaskProgress(progress);
-
-    // Immediately navigate to Proposals screen (Page 1) after submission
-    if (progress.hasCompletedRandomMatch) {
-      goToPage(1);
-    }
-  }, [goToPage]);
-
   const handleProposalVotesComplete = useCallback(async () => {
+    console.log('[CommunityScreen] handleProposalVotesComplete called');
+
     // Reload task progress
     const progress = await communityService.getCommunityTaskProgress();
     setTaskProgress(progress);
 
-    // Navigate to Friends Area (Page 2)
-    goToPage(2);
-
-    // Show completion message if all tasks done
-    if (progress.allTasksCompleted) {
-      showToast.success('Daily Tasks Complete! 🎉', 'Friends Area unlocked. Great work, matchmaker!');
-    }
+    // Auto-navigate to Friends Area (Page 1) after completing 3 votes
+    console.log('[CommunityScreen] Navigating to Friends Area');
+    goToPage(1);
   }, [goToPage]);
 
   // ========================================
@@ -283,7 +272,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   }
 
   // ========================================
-  // MAIN CONTENT (3-PAGE LAYOUT)
+  // MAIN CONTENT (2-PAGE LAYOUT)
   // ========================================
   return (
     <StyledSafeAreaView className="flex-1 bg-white">
@@ -297,66 +286,44 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
         }}
       />
 
-      {/* Page Indicator */}
-      <StyledView className="pt-4 px-6">
-        <GuideTarget id="page-indicator">
-          <PageIndicator
-            currentPage={currentPage}
-            totalPages={3}
-            onPagePress={goToPage}
-            friendsAreaLocked={friendsAreaLocked}
-          />
-        </GuideTarget>
-      </StyledView>
-
-      {/* 3-Page Horizontal Container */}
+      {/* 2-Page Horizontal Container */}
       <StyledView style={{ flex: 1 }}>
         <StyledAnimatedView
           style={{
             flexDirection: 'row',
-            width: SCREEN_WIDTH * 3,
+            width: SCREEN_WIDTH * 2,
             height: '100%',
             transform: [{ translateX }],
           }}
         >
-          {/* Page 1: Daily Grid */}
-          <StyledView style={{ width: SCREEN_WIDTH, height: '100%', overflow: 'hidden' }}>
-            <DailyGridView
-              onProposalSubmitted={handleGridProposalSubmitted}
-              taskProgress={taskProgress}
-              isActive={currentPage === 0}
-            />
-          </StyledView>
-
-          {/* Page 2: Proposal Review */}
+          {/* Page 0: Proposals */}
           <StyledView style={{ width: SCREEN_WIDTH, height: '100%', overflow: 'hidden' }}>
             <ProposalReviewView
               onVotesComplete={handleProposalVotesComplete}
               taskProgress={taskProgress}
               goToPage={goToPage}
-              isActive={currentPage === 1}
+              isActive={currentPage === 0}
             />
           </StyledView>
 
-          {/* Page 3: Friends Area */}
+          {/* Page 1: Friends Area */}
           <StyledView style={{ width: SCREEN_WIDTH, height: '100%', overflow: 'hidden' }}>
             {dailyTasksComplete ? (
-              <FriendsAreaView isActive={currentPage === 2} />
+              <FriendsAreaView isActive={currentPage === 1} />
             ) : (
               <GuideTarget id="friends-area-locked">
                 <StyledView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
                   <H1 className="text-center mb-2">Friends Area Locked</H1>
                   <Body className="text-center text-neutral-600 mb-6">
-                    Complete your daily tasks to unlock:
+                    Complete your daily task to unlock:
                     {'\n\n'}
-                    {!taskProgress?.hasCompletedRandomMatch && '• Submit proposal from your grid\n'}
                     {(taskProgress?.proposalsVotedCount ?? 0) < 3 && `• Vote on ${3 - (taskProgress?.proposalsVotedCount ?? 0)} more proposal(s)`}
                   </Body>
                   <Button
                     onPress={() => goToPage(0)}
                     variant="primary"
                   >
-                    Go to Daily Grid
+                    Back to Proposals
                   </Button>
                 </StyledView>
               </GuideTarget>

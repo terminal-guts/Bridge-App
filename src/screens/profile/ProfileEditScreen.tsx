@@ -71,7 +71,6 @@ const ETHNICITY_OPTIONS = [
   'East Asian',
   'Hispanic',
   'Middle Eastern',
-  'Multiracial',
   'Native American',
   'North African',
   'Pacific Islander',
@@ -1063,7 +1062,9 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               <StyledView className="flex-row items-center">
                 <H3>Photos <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
               </StyledView>
-              <Body className="text-error text-sm font-semibold">{profile.photos.length}/6</Body>
+              <Body className={`text-sm font-semibold ${profile.photos.length === 6 ? 'text-success' : 'text-error'}`}>
+                {profile.photos.length}/6
+              </Body>
             </StyledView>
             <Body className="text-neutral-600 text-sm mb-4">
               {profile.photos.length < 6
