@@ -5,7 +5,7 @@ import { Button, H1, H2, Body } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { verifyPhone, sendOtpToPhone, verifyEmail, sendOtpToEmail, getCurrentUser } from '../../services/authService';
-import { createUserProfile } from '../../services/profileService';
+import { createUserProfile, fetchAndSetUserProfile } from '../../services/profileService';
 
 interface PhoneVerificationScreenProps {
   navigation: NavigationProp<RootStackParamList, 'PhoneVerification'>;
@@ -113,31 +113,34 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
     }
 
     // User is now authenticated!
-    // If this is from onboarding, create their profile
+    const userResult = await getCurrentUser();
+
+    if (!userResult.ok || !userResult.data) {
+      setLoading(false);
+      Alert.alert('Error', 'Failed to get user information');
+      return;
+    }
+
     if (fromOnboarding && onboardingData) {
-      const userResult = await getCurrentUser();
-
-      if (!userResult.ok || !userResult.data) {
-        setLoading(false);
-        Alert.alert('Error', 'Failed to get user information');
-        return;
-      }
-
       const profileResult = await createUserProfile(
         userResult.data.id,
         onboardingData
       );
 
-      setLoading(false);
-
       if (!profileResult.ok) {
+        setLoading(false);
         Alert.alert('Profile Creation Failed', profileResult.error?.message || 'Failed to create profile');
         return;
       }
     } else {
-      setLoading(false);
+      // Task: Invoke Supabase to load profile for existing users
+      const fetchResult = await fetchAndSetUserProfile(userResult.data.id);
+      if (!fetchResult.ok && fetchResult.error?.code !== 'PROFILE_NOT_FOUND') {
+        console.warn('[AUTH] Could not load profile from Supabase:', fetchResult.error?.message);
+      }
     }
 
+    setLoading(false);
     // Success! Navigate to main app
     navigation.navigate('MainTabs');
   };

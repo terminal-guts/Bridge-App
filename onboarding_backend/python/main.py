@@ -432,6 +432,39 @@ async def complete_onboarding(data: OnboardingCompletion, background_tasks: Back
         # Dont crash if DB partial fail
         return {"status": "success", "message": "Onboarding completed locally (with partial DB success)"}
 
+@app.get("/onboarding/profile/{user_id}")
+async def get_profile(user_id: str):
+    """
+    Fetches the full user profile from Supabase.
+    """
+    try:
+        print(f"[PROFILE] Fetching profile for user: {user_id}")
+        
+        # 1. Get Profile
+        profile_res = supabase.table("profiles").select("*").eq("id", user_id).maybe_single().execute()
+        if not profile_res.data:
+            raise HTTPException(status_code=404, detail="Profile not found")
+            
+        profile = profile_res.data
+        
+        # 2. Get Preferences
+        prefs_res = supabase.table("user_preferences").select("*").eq("user_id", user_id).maybe_single().execute()
+        profile["preferences"] = prefs_res.data if prefs_res.data else {}
+        
+        # 3. Get Photos
+        photos_res = supabase.table("user_photos").select("*").eq("user_id", user_id).order("display_order").execute()
+        profile["photos"] = photos_res.data if photos_res.data else []
+        
+        # 4. Get Deep Questions
+        dq_res = supabase.table("deep_question_answers").select("*").eq("user_id", user_id).execute()
+        profile["deep_questions"] = dq_res.data if dq_res.data else []
+        
+        return {"status": "success", "data": profile}
+        
+    except Exception as e:
+        print(f"Error fetching profile: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}

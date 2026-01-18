@@ -21,6 +21,103 @@ const createErrorResponse = (code: string, message: string): ApiResponse<any> =>
 };
 
 /**
+ * Fetch and set user profile from backend - Task: Invoke Supabase to load profile
+ */
+export const fetchAndSetUserProfile = async (userId: string): Promise<ApiResponse<UserProfile>> => {
+  try {
+    console.log('[BACKEND] Fetching profile for user from Supabase:', userId);
+
+    const response = await fetch(`${API_URL}/onboarding/profile/${userId}`);
+
+    if (!response.ok) {
+      const err = await response.text();
+      console.error('[BACKEND] Failed to fetch profile:', err);
+      // If profile doesn't exist yet, that's okay for new users
+      if (response.status === 404) {
+        return createErrorResponse('PROFILE_NOT_FOUND', 'User profile does not exist in Supabase yet.');
+      }
+      throw new Error('Backend profile fetch failed: ' + err);
+    }
+
+    const result = await response.json();
+    const data = result.data;
+
+    // Map snake_case from DB to camelCase for frontend UserProfile
+    const mappedProfile: UserProfile = {
+      id: data.id,
+      userId: data.id,
+      firstName: data.first_name || '',
+      lastName: data.last_name || '',
+      age: data.age || 0,
+      gender: data.gender || [],
+      pronouns: data.pronouns || 'prefer_not_to_say',
+      pronounsList: data.pronouns_list || [],
+      customMyGender: data.custom_gender,
+      hometown: data.hometown,
+      location: data.location || '',
+      currentJob: data.current_job,
+      companyPosition: data.company_position,
+      educationLevel: data.education_level || '',
+      school: data.school || '',
+      height: data.height_inches ? `${Math.floor(data.height_inches / 12)}'${data.height_inches % 12}"` : '',
+      ethnicity: data.ethnicity || '',
+      religion: data.religion || '',
+      politicalLeaning: data.political_leaning || 'prefer_not_to_say',
+      hasChildren: data.has_children,
+      familyPlans: data.family_plans,
+      drinkingFrequency: data.drinking_frequency,
+      cannabisFrequency: data.cannabis_frequency,
+      tobaccoFrequency: data.tobacco_frequency,
+      otherDrugsFrequency: data.other_drugs_frequency,
+      interests: data.interests || [],
+      values: data.values || [],
+      bio: data.bio || '',
+      photos: data.photos?.map((p: any) => ({
+        id: p.id,
+        url: p.url,
+        isMain: p.is_main,
+        order: p.display_order
+      })) || [],
+      preferences: data.preferences ? {
+        ageMin: data.preferences.age_min,
+        ageMax: data.preferences.age_max,
+        gender: data.preferences.preferred_gender,
+        lookingFor: data.preferences.looking_for,
+        heightMin: data.preferences.height_min,
+        heightMax: data.preferences.height_max,
+        maxDistance: data.preferences.distance_miles,
+      } as any : {
+        ageMin: 18,
+        ageMax: 99,
+        gender: 'both',
+        lookingFor: 'relationship',
+      },
+      deepQuestions: data.deep_questions?.map((dq: any) => ({
+        questionId: dq.question_id,
+        tier: dq.tier,
+        question: dq.question_text,
+        answer: dq.answer_text,
+      })) || [],
+      isVerified: data.is_verified || false,
+      isPaused: data.is_paused || false,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    } as any;
+
+    mockUserProfile = mappedProfile;
+    console.log('[BACKEND] Profile loaded and synced to local state');
+
+    return {
+      ok: true,
+      data: mappedProfile
+    };
+  } catch (error: any) {
+    console.error('[BACKEND] Error syncing profile:', error);
+    return createErrorResponse('SYNC_ERROR', error.message || 'Failed to sync profile from Supabase');
+  }
+};
+
+/**
  * Save a single onboarding step - MOCK VERSION
  * Stores data in memory
  */
@@ -103,6 +200,11 @@ export const saveOnboardingStep = async (
 
     // Merge the onboarding data into mock profile
     Object.assign(mockUserProfile, data);
+
+    if (!mockUserProfile) return createErrorResponse('NO_LOCAL_PROFILE', 'No local profile found');
+    mockUserProfile.pronouns = data.pronouns || mockUserProfile.pronouns;
+    mockUserProfile.customPronouns = data.customPronouns;
+    mockUserProfile.pronounsList = data.pronounsList || mockUserProfile.pronounsList;
 
     return { ok: true };
   } catch (error: any) {
@@ -215,10 +317,8 @@ export const createUserProfile = async (
       familyPlans: data.familyPlans,
       drinkingFrequency: data.drinkingFrequency,
       cannabisFrequency: data.cannabisFrequency,
-      weedFrequency: data.weedFrequency,
       tobaccoFrequency: data.tobaccoFrequency,
       otherDrugsFrequency: data.otherDrugsFrequency,
-      drugsFrequency: data.drugsFrequency,
       photos: data.photos || [],
       interests: data.interests || [],
       values: data.values || [],
@@ -280,17 +380,17 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
       lastName: 'Chen',
       age: 28,
       gender: ['male'],
-      pronouns: 'he_him',
+      pronouns: 'he/him',
       pronounsList: ['He', 'Him', 'His'],
       customPronouns: undefined,
       customMyGender: undefined,
-      interestedInGenders: ['female', 'non_binary'],
+      interestedInGenders: ['female'],
       customInterestedIn: undefined,
       preferredEthnicities: ['Asian', 'White / Caucasian', 'Hispanic / Latino'],
       preferredPolitics: ['Moderate', 'Liberal'],
       occupation: 'Product Designer',
       company: 'Tech Startup',
-      currentJob: 'Product Designer',
+      currentJob: 'Software Engineer',
       companyPosition: 'Senior Product Designer',
       educationLevel: 'bachelors',
       customEducationLevel: '',
@@ -309,10 +409,8 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
       familyPlans: 'want_someday',
       drinkingFrequency: 'Sometimes',
       cannabisFrequency: 'Sometimes',
-      weedFrequency: 'Sometimes',
       tobaccoFrequency: 'No',
       otherDrugsFrequency: 'No',
-      drugsFrequency: 'No',
       photos: [
         {
           id: 'photo-1',
@@ -377,10 +475,8 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
       partnerLifestylePreferences: {
         drinking: 'Sometimes',
         cannabis: 'Sometimes',
-        weed: 'Sometimes',
         tobacco: 'No',
         otherDrugs: 'No',
-        drugs: 'No',
       },
       // Removed partnerValues and partnerInterests - no longer collected in onboarding
       deepQuestions: [
@@ -454,17 +550,18 @@ export const updateUserProfile = async (
           ...mockUserProfile.preferences,
           ...profile.preferences
         } : mockUserProfile.preferences,
-        partnerLifestylePreferences: profile.partnerLifestylePreferences ? {
-          ...mockUserProfile.partnerLifestylePreferences,
-          ...profile.partnerLifestylePreferences
-        } : mockUserProfile.partnerLifestylePreferences,
-        updatedAt: new Date().toISOString(),
       };
+
+      if (profile.partnerLifestylePreferences && mockUserProfile.partnerLifestylePreferences) {
+        mockUserProfile.partnerLifestylePreferences.drinking = profile.partnerLifestylePreferences.drinking || mockUserProfile.partnerLifestylePreferences.drinking;
+        mockUserProfile.partnerLifestylePreferences.cannabis = profile.partnerLifestylePreferences.cannabis || mockUserProfile.partnerLifestylePreferences.cannabis;
+        mockUserProfile.partnerLifestylePreferences.tobacco = profile.partnerLifestylePreferences.tobacco || mockUserProfile.partnerLifestylePreferences.tobacco;
+        mockUserProfile.partnerLifestylePreferences.otherDrugs = profile.partnerLifestylePreferences.otherDrugs || mockUserProfile.partnerLifestylePreferences.otherDrugs;
+      }
+      mockUserProfile.updatedAt = new Date().toISOString();
     }
 
     console.log('[MOCK PROFILE] Profile updated successfully. New values:', {
-      preferredPolitics: mockUserProfile.preferredPolitics,
-      preferredEthnicities: mockUserProfile.preferredEthnicities,
       partnerLifestylePreferences: mockUserProfile.partnerLifestylePreferences,
     });
 
