@@ -332,4 +332,3 @@ For questions or issues:
 
 ---
 
-**Built with [Claude Code](https://claude.com/claude-code)**
