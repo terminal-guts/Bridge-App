@@ -1,11 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, ActivityIndicator, TextInput, Alert, Platform } from 'react-native';
 import { styled } from 'nativewind';
-import MapView, { Marker, Region } from 'react-native-maps';
+// Conditional imports for maps to prevent web crashes
+const MapView = Platform.OS !== 'web' ? require('react-native-maps').default : View;
+const Marker = Platform.OS !== 'web' ? require('react-native-maps').Marker : View;
 import * as Location from 'expo-location';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/OnboardingLayout';
+
+// local type for Region to avoid import issues on web
+interface Region {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+}
 
 interface WhereLiveNowStepProps {
   data: Partial<OnboardingData>;
@@ -44,7 +54,7 @@ export const WhereLiveNowStep: React.FC<WhereLiveNowStepProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
 
   useEffect(() => {
     requestLocationPermission();
