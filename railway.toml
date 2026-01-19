@@ -3,7 +3,7 @@ builder = "DOCKERFILE"
 dockerfilePath = "onboarding_backend/python/Dockerfile"
 
 [deploy]
-healthcheckPath = "/health"
-healthcheckTimeout = 100
+healthcheckPath = "/"
+healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
