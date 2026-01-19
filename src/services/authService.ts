@@ -15,8 +15,6 @@ interface User {
 const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
 let mockCurrentUser: User | null = null;
 
-// Backend API URL - use your local IP if testing on physical device
-// Backend API URL - use your local IP if testing on physical device
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://bridge-frontend-production.up.railway.app';
 
 /**
