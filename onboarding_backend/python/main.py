@@ -52,6 +52,14 @@ async def root():
 async def health():
     return {"status": "healthy"}
 
+@app.get("/debug/twilio")
+async def debug_twilio():
+    return {
+        "client_initialized": sms_service.client is not None,
+        "from_number": sms_service.from_number is not None,
+        "sid_prefix": sms_service.account_sid[:4] if sms_service.account_sid else None,
+    }
+
 # Temporary in-memory store for OTPs (in production, use Redis)
 verification_codes: Dict[str, str] = {}
 

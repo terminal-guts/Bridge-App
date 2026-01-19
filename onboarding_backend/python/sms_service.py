@@ -17,11 +17,15 @@ class SMSService:
         self.from_number = os.getenv('TWILIO_PHONE_NUMBER')
         
         # Check if credentials are placeholders or missing
-        if self.account_sid and self.auth_token and not self.account_sid.startswith('YOUR_'):
-            print(f"[SMS] Twilio credentials found ({self.account_sid[:4]}...). Initializing client.")
+        if self.account_sid and self.auth_token and self.from_number and not self.account_sid.startswith('YOUR_'):
+            print(f"[SMS] Twilio credentials found ({self.account_sid[:4]}...). From: {self.from_number}")
             self.client = Client(self.account_sid, self.auth_token)
         else:
-            print("[SMS] Warning: Twilio credentials missing or are placeholders. Running in SIMULATION mode.")
+            missing = []
+            if not self.account_sid: missing.append("TWILIO_ACCOUNT_SID")
+            if not self.auth_token: missing.append("TWILIO_AUTH_TOKEN")
+            if not self.from_number: missing.append("TWILIO_PHONE_NUMBER")
+            print(f"[SMS] Warning: {', '.join(missing)} missing. Running in SIMULATION mode.")
             self.client = None
 
     def _clean_number(self, phone: str):
