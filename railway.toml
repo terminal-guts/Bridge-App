@@ -1,7 +1,6 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "onboarding_backend/python/Dockerfile"
-contextPath = "onboarding_backend/python"
 
 [deploy]
 healthcheckPath = "/health"
