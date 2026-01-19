@@ -24,4 +24,5 @@ EXPOSE 8000
 
 # Command to run the application
 # We use 0.0.0.0 to allow external connections (required by Railway/Render)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# We use the PORT environment variable if available, defaulting to 8000
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}

@@ -12,7 +12,7 @@ const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 // Backend API URL
 // Backend API URL
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000'; // Default to localhost
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://bridge-frontend-production.up.railway.app'; // Default to Railway hosted backend
 
 const createErrorResponse = (code: string, message: string): ApiResponse<any> => {
   return {

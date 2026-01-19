@@ -2,15 +2,10 @@ node_modules
 .DS_Store
 .expo/
 .env
-onboarding_backend/python/utils/__pycache__/supabase_client.cpython-311.pyc
-onboarding_backend/python/utils/__pycache__/__init__.cpython-311.pyc
-onboarding_backend/python/__pycache__/__init__.cpython-311.pyc
-onboarding_backend/__pycache__/__init__.cpython-311.pyc
-onboarding_backend/python/__pycache__/AIFace.cpython-311.pyc
-onboarding_backend/python/__pycache__/deep.cpython-311.pyc
-onboarding_backend/python/__pycache__/sms_service.cpython-311.pyc
-onboarding_backend/python/services/__pycache__/__init__.cpython-311.pyc
-onboarding_backend/python/services/__pycache__/photo_analysis_service.cpython-311.pyc
-onboarding_backend/python/__pycache__/schemas.cpython-311.pyc
-onboarding_backend/python/routers/__pycache__/__init__.cpython-311.pyc
-onboarding_backend/python/routers/__pycache__/onboarding.cpython-311.pyc
+
+# Python
+**/__pycache__/
+*.pyc
+venv/
+.pytest_cache/
+.env.python

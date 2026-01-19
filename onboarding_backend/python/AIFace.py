@@ -1,13 +1,20 @@
-import torch
-import torch.nn.functional as F
-from transformers import AutoImageProcessor, AutoModelForImageClassification
+try:
+    import torch
+    import torch.nn.functional as F
+    from transformers import AutoImageProcessor, AutoModelForImageClassification
+except ImportError:
+    torch = None
+    F = None
+    AutoImageProcessor = None
+    AutoModelForImageClassification = None
+
 from PIL import Image
 import os
 
 # Global variables for Lazy Loading
 _MODEL = None
 _PROCESSOR = None
-_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+_DEVICE = "cuda" if (torch and torch.cuda.is_available()) else "cpu"
 
 def get_ai_probability(image_path):
     """

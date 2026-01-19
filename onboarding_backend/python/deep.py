@@ -1,5 +1,8 @@
 import time
-from deepface import DeepFace
+try:
+    from deepface import DeepFace
+except ImportError:
+    DeepFace = None
 def deep_age(img_path):
     print("[DeepFace] Start: Analyzing age...", flush=True)
     start_time = time.perf_counter()
