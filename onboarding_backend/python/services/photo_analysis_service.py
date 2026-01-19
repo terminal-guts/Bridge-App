@@ -6,8 +6,12 @@ import sys
 # Add the parent directory to sys.path so we can import deep and AIFace
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import deep
-import AIFace
+try:
+    import deep
+    import AIFace
+except ImportError:
+    deep = None
+    AIFace = None
 
 class PhotoAnalysisService:
     def __init__(self):

@@ -11,10 +11,20 @@ sys.path.append(str(current_dir))
 from utils.supabase_client import get_supabase_client
 # Use the root sms_service which was recently added
 from sms_service import SMSService, generate_otp
+from services.email_service import EmailService
 from services.photo_analysis_service import PhotoAnalysisService
 from fastapi.middleware.cors import CORSMiddleware
-import deep
-import AIFace
+try:
+    import deep
+    import AIFace
+except ImportError as e:
+    print(f"[WARN] AI modules could not be imported: {e}")
+    deep = None
+    AIFace = None
+except Exception as e:
+    print(f"[WARN] Unexpected error importing AI modules: {e}")
+    deep = None
+    AIFace = None
 
 app = FastAPI(title="Bridge Onboarding API")
 
@@ -28,6 +38,7 @@ app.add_middleware(
 )
 
 sms_service = SMSService()
+email_service = EmailService()
 photo_service = PhotoAnalysisService()
 supabase = get_supabase_client()
 
@@ -143,6 +154,17 @@ class OnboardingCompletion(BaseModel):
     interests: List[str] = []
     values: List[str] = []
     bio: Optional[str] = None
+    
+    # Preferences (to be saved to user_preferences)
+    looking_for: Optional[str] = None
+    interested_in_genders: List[str] = []
+    age_min: Optional[int] = None
+    age_max: Optional[int] = None
+    height_min: Optional[int] = None
+    height_max: Optional[int] = None
+    max_distance: Optional[int] = None
+    preferred_ethnicities: List[str] = []
+    partner_lifestyle_preferences: Dict[str, str] = {}
     
     # Deep Questions
     deep_questions: List[DeepQuestion] = []
@@ -284,28 +306,21 @@ async def verify_otp(request: VerifyRequest):
         user_exists = False
         
         try:
-            # We search for the user in the profiles table. 
-            # Since phone is not indexed/present in profiles schema, we search in onboarding_progress data column as a fallback 
-            # or we assume for this test we check if a profile with a specific ID exists if we had it.
-            # REAL WORLD: You'd query auth.users or profiles if phone was there.
-            # For this mock, we'll try to find any profile that matches this phone in metadata.
-            
-            # Simple check: see if we have ANY profile for this "derived" ID
+            # We derive a consistent UUID from the phone number for this mock version.
+            # REAL WORLD: You'd query auth.users via Supabase Auth Admin API.
             import hashlib
             derived_user_id = str(hashlib.md5(request.phone_number.encode()).hexdigest())
             # Convert to UUID format
-            mock_uuid = f"00000000-0000-0000-0000-{derived_user_id[:12]}"
+            user_id = f"00000000-0000-0000-0000-{derived_user_id[:12]}"
             
             # Check if profile exists
-            response = supabase.table("profiles").select("id").eq("id", mock_uuid).execute()
-            if response.data:
-                user_id = mock_uuid
-                user_exists = True
-                print(f"[AUTH] Found existing user: {user_id}")
+            response = supabase.table("profiles").select("id").eq("id", user_id).execute()
+            user_exists = bool(response.data)
+            
+            if user_exists:
+                print(f"[AUTH] Found existing user profile for phone: {user_id}")
             else:
-                user_id = mock_uuid # Still return a consistent ID
-                user_exists = False
-                print(f"[AUTH] New user session: {user_id}")
+                print(f"[AUTH] No profile found, treating as NEW user for phone: {user_id}")
                 
         except Exception as e:
             print(f"[AUTH] Error checking user records: {e}")
@@ -321,11 +336,16 @@ async def verify_otp(request: VerifyRequest):
 
 @app.post("/onboarding/send-email-otp")
 async def send_email_otp(request: EmailRequest):
-    # Task 4: Email Verification
-    code = "654321" # Fixed code for mock or generate_otp()
+    """
+    Sends an OTP to the user's email.
+    """
+    code = generate_otp()
     verification_codes[request.email] = code
-    print(f"[EMAIL] Sending OTP {code} to {request.email}")
-    # In real world, use an email service
+    
+    success = email_service.send_verification_code(request.email, code)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to send email OTP")
+    
     return {"message": "Email OTP sent successfully"}
 
 @app.post("/onboarding/verify-email-otp")
@@ -335,19 +355,25 @@ async def verify_email_otp(request: VerifyEmailRequest):
         if request.email in verification_codes:
             del verification_codes[request.email]
             
+        # Derive consistent UUID from email
         import hashlib
         derived_user_id = str(hashlib.md5(request.email.encode()).hexdigest())
-        mock_uuid = f"00000000-0000-0000-0000-{derived_user_id[:12]}"
+        user_id = f"00000000-0000-0000-0000-{derived_user_id[:12]}"
         
         user_exists = False
         try:
-            response = supabase.table("profiles").select("id").eq("id", mock_uuid).execute()
+            response = supabase.table("profiles").select("id").eq("id", user_id).execute()
             user_exists = bool(response.data)
-        except: pass
+            if user_exists:
+                print(f"[AUTH] Found existing user profile for email: {user_id}")
+            else:
+                print(f"[AUTH] No profile found, treating as NEW user for email: {user_id}")
+        except Exception as e:
+            print(f"[AUTH] Error checking user records: {e}")
             
         return {
             "message": "Email verified successfully",
-            "user_id": mock_uuid,
+            "user_id": user_id,
             "is_new_user": not user_exists
         }
     else:
@@ -400,6 +426,23 @@ async def complete_onboarding(data: OnboardingCompletion, background_tasks: Back
             "id": data.user_id,
             **profile_data
         }).execute()
+        
+        # 1b. Update Preferences
+        pref_data = {
+            "user_id": data.user_id,
+            "looking_for": data.looking_for,
+            "interested_in_genders": data.interested_in_genders,
+            "age_min": data.age_min,
+            "age_max": data.age_max,
+            "height_min": data.height_min,
+            "height_max": data.height_max,
+            "max_distance": data.max_distance,
+            "preferred_ethnicities": data.preferred_ethnicities,
+            "partner_lifestyle_preferences": data.partner_lifestyle_preferences
+        }
+        # Remove None values
+        pref_data = {k: v for k, v in pref_data.items() if v is not None}
+        supabase.table("user_preferences").upsert(pref_data).execute()
         
         # 2. Save Photo metadata
         for i, url in enumerate(data.photos):
