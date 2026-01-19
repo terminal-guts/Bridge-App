@@ -11,7 +11,8 @@ let mockUserProfile: UserProfile | null = null;
 const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 // Backend API URL
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+// Backend API URL
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000'; // Default to localhost
 
 const createErrorResponse = (code: string, message: string): ApiResponse<any> => {
   return {
@@ -39,7 +40,14 @@ export const fetchAndSetUserProfile = async (userId: string): Promise<ApiRespons
       throw new Error('Backend profile fetch failed: ' + err);
     }
 
-    const result = await response.json();
+    const responseText = await response.text();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (e) {
+      console.error('[BACKEND] Parse error on profile fetch:', responseText.slice(0, 100));
+      throw new Error('Server returned invalid data format. Check your backend console.');
+    }
     const data = result.data;
 
     // Map snake_case from DB to camelCase for frontend UserProfile
@@ -140,7 +148,8 @@ export const saveOnboardingStep = async (
     });
 
     if (!response.ok) {
-      console.warn('[BACKEND] Failed to save step to server, falling back to local mock');
+      const errorText = await response.text();
+      console.warn('[BACKEND] Failed to save step to server:', errorText.slice(0, 100));
     }
 
     // Update mock profile with new data for local UI state

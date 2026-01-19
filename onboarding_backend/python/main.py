@@ -13,6 +13,7 @@ from utils.supabase_client import get_supabase_client
 from sms_service import SMSService, generate_otp
 from services.email_service import EmailService
 from services.photo_analysis_service import PhotoAnalysisService
+from services.aws_service import AwsService
 from fastapi.middleware.cors import CORSMiddleware
 try:
     import deep
@@ -39,7 +40,8 @@ app.add_middleware(
 
 sms_service = SMSService()
 email_service = EmailService()
-photo_service = PhotoAnalysisService()
+photo_analysis_service = PhotoAnalysisService()
+aws_service = AwsService()
 supabase = get_supabase_client()
 
 # Temporary in-memory store for OTPs (in production, use Redis)
@@ -386,7 +388,19 @@ async def complete_onboarding(data: OnboardingCompletion, background_tasks: Back
     """
     try:
         print(f"[ONBOARDING] Complete called for user: {data.user_id}")
-        
+        # Moderation Check (Restricted Words)
+        # Check bio
+        if data.bio:
+            mod_res = aws_service.check_restricted_words(data.bio)
+            if not mod_res["allowed"]:
+                raise HTTPException(status_code=400, detail=mod_res["message"])
+                
+        # Check deep questions
+        for dq in data.deep_questions:
+            mod_res = aws_service.check_restricted_words(dq.answer_text)
+            if not mod_res["allowed"]:
+                raise HTTPException(status_code=400, detail=f"In answer to '{dq.question_text}': {mod_res['message']}")
+
         # 1. Update Profile in Supabase
         profile_data = {
             "first_name": data.first_name,
@@ -427,7 +441,7 @@ async def complete_onboarding(data: OnboardingCompletion, background_tasks: Back
             **profile_data
         }).execute()
         
-        # 1b. Update Preferences
+        # some shit to do with preferences
         pref_data = {
             "user_id": data.user_id,
             "looking_for": data.looking_for,
@@ -440,7 +454,7 @@ async def complete_onboarding(data: OnboardingCompletion, background_tasks: Back
             "preferred_ethnicities": data.preferred_ethnicities,
             "partner_lifestyle_preferences": data.partner_lifestyle_preferences
         }
-        # Remove None values
+        # k, v cache
         pref_data = {k: v for k, v in pref_data.items() if v is not None}
         supabase.table("user_preferences").upsert(pref_data).execute()
         
@@ -475,7 +489,21 @@ async def complete_onboarding(data: OnboardingCompletion, background_tasks: Back
         # Dont crash if DB partial fail
         return {"status": "success", "message": "Onboarding completed locally (with partial DB success)"}
 
-@app.get("/onboarding/profile/{user_id}")
+@app.post("/moderate/text")
+async def moderate_text(request: Dict[str, Any]):
+    text = request.get("text", "")
+    has_voice_memo = request.get("has_voice_memo", False)
+    
+    result = aws_service.check_restricted_words(text, has_voice_memo)
+    return result
+
+@app.post("/moderate/image")
+async def moderate_image(request: Dict[str, Any]):
+    # In a real scenario, this would take image bytes or a URL
+    # For now, we'll provide a placeholder that users can call
+    return {"status": "Endpoint ready. Integration with upload flow recommended."}
+
+@app.get("/profile/{user_id}")
 async def get_profile(user_id: str):
     """
     Fetches the full user profile from Supabase.

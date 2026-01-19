@@ -10,3 +10,4 @@ deepface
 tf-keras
 torch
 transformers
+boto3

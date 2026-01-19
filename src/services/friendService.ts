@@ -50,6 +50,22 @@ export interface AddFriendResult {
 }
 
 /**
+ * Generate a mock friend code in BRIDGE-XXXX-XXXX format
+ */
+const generateMockFriendCode = (): string => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excludes I, O, 0, 1 for clarity
+  let code = 'BRIDGE-';
+  for (let i = 0; i < 4; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  code += '-';
+  for (let i = 0; i < 4; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+};
+
+/**
  * Error response helper
  */
 const createErrorResponse = <T>(code: string, message: string): ApiResponse<T> => ({
@@ -83,12 +99,13 @@ export const getUserFriendCode = async (): Promise<ApiResponse<FriendCode>> => {
 
       // FRONTEND MOCK: If database query fails, return mock code
       console.warn('Friend code fetch failed, returning mock code:', error.message);
+      const mockCode = generateMockFriendCode();
       return {
         ok: true,
         data: {
           id: 'mock-id',
           userId: userId,
-          code: '1234567890',
+          code: mockCode,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -108,12 +125,13 @@ export const getUserFriendCode = async (): Promise<ApiResponse<FriendCode>> => {
   } catch (error: any) {
     // FRONTEND MOCK: If anything fails, return mock code
     console.warn('Friend code operation failed, returning mock code:', error.message);
+    const mockCode = generateMockFriendCode();
     return {
       ok: true,
       data: {
         id: 'mock-id',
         userId: await requireAuth(),
-        code: '1234567890',
+        code: mockCode,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -126,8 +144,8 @@ export const getUserFriendCode = async (): Promise<ApiResponse<FriendCode>> => {
  */
 const createFriendCode = async (userId: string): Promise<ApiResponse<FriendCode>> => {
   try {
-    // FRONTEND MOCK: Generate a simple static 10-digit code for display purposes
-    const codeData = "1234567890";
+    // Generate a proper BRIDGE-XXXX-XXXX format code
+    const codeData = generateMockFriendCode();
 
     // Try to insert the friend code into database
     const { data, error } = await supabase

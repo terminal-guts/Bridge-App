@@ -43,8 +43,17 @@ export const sendOtpToPhone = async (phoneNumber: string): Promise<ApiResponse<v
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || 'Failed to send OTP');
+      const errorText = await response.text();
+      let errorMessage = 'Failed to send OTP';
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.detail || errorMessage;
+      } catch (e) {
+        // Not JSON - might be Localtunnel interstitial or server crash
+        console.error('[SMS] Non-JSON error response:', errorText.slice(0, 100));
+        errorMessage = `Server Error: ${response.status}. Please check your backend connection.`;
+      }
+      throw new Error(errorMessage);
     }
 
     console.log('[SMS] OTP request successful for:', phoneNumber);
@@ -162,13 +171,28 @@ export const verifyPhone = async (phone: string, code: string): Promise<ApiRespo
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || 'Invalid verification code');
+      const errorText = await response.text();
+      let errorMessage = 'Invalid verification code';
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.detail || errorMessage;
+      } catch (e) {
+        console.error('[SMS] Non-JSON verify response:', errorText.slice(0, 100));
+        errorMessage = `Server Error: ${response.status}. Check if your backend is running at ${API_URL}`;
+      }
+      throw new Error(errorMessage);
     }
 
     console.log('[SMS] Phone verification successful!');
 
-    const data = await response.json();
+    const responseText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error('[SMS] Parse error on success:', responseText.slice(0, 100));
+      throw new Error('Server returned invalid data format. Check your backend console.');
+    }
 
     mockCurrentUser = {
       id: data.user_id || MOCK_USER_ID,
