@@ -44,6 +44,14 @@ photo_analysis_service = PhotoAnalysisService()
 aws_service = AwsService()
 supabase = get_supabase_client()
 
+@app.get("/")
+async def root():
+    return {"status": "online", "message": "Bridge Backend is running", "environment": "production"}
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}
+
 # Temporary in-memory store for OTPs (in production, use Redis)
 verification_codes: Dict[str, str] = {}
 

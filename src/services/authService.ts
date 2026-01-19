@@ -16,7 +16,8 @@ const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
 let mockCurrentUser: User | null = null;
 
 // Backend API URL - use your local IP if testing on physical device
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://poor-parks-occur.loca.lt';
+// Backend API URL - use your local IP if testing on physical device
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://bridge-frontend-production.up.railway.app';
 
 /**
  * Error response helper
@@ -191,7 +192,7 @@ export const verifyPhone = async (phone: string, code: string): Promise<ApiRespo
       data = JSON.parse(responseText);
     } catch (e) {
       console.error('[SMS] Parse error on success:', responseText.slice(0, 100));
-      throw new Error('Server returned invalid data format. Check your backend console.');
+      throw new Error(`Server at ${API_URL} returned HTML instead of JSON (Status: ${response.status}). Are you hitting the right service?`);
     }
 
     mockCurrentUser = {
