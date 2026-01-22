@@ -6,8 +6,10 @@ import os
 from main import Photo_Gen
 from sms_service import SMSService, generate_otp
 from supabase_client import supabase
+from services.comprehend_service import ComprehendService
 
 app = FastAPI()
+comprehend_service = ComprehendService()
 
 # Enable CORS for React Native
 app.add_middleware(
@@ -90,6 +92,18 @@ async def verify_otp(phone: str, code: str):
         return {"status": "success", "message": "Phone verified"}
     else:
         return {"status": "error", "message": "Invalid verification code"}
+
+@app.post("/moderate-text")
+async def moderate_text(text: str):
+    """
+    Analyzes text for sentiment, PII, and banned phrases using AWS Comprehend.
+    """
+    try:
+        results = comprehend_service.moderate_content(text)
+        return results
+    except Exception as e:
+        print(f"Error in text moderation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
