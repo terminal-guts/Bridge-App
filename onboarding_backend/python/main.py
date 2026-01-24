@@ -44,6 +44,9 @@ photo_analysis_service = PhotoAnalysisService()
 aws_service = AwsService()
 supabase = get_supabase_client()
 
+from routers import voting
+app.include_router(voting.router)
+
 @app.get("/")
 async def root():
     return {"status": "online", "message": "Bridge Backend is running", "environment": "production"}
