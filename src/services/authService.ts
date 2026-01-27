@@ -5,6 +5,7 @@
  */
 
 import { ApiResponse } from '../types';
+import { cleanupSubscriptions } from './messageService';
 
 interface User {
   id: string;
@@ -107,6 +108,10 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
 export const signOut = async (): Promise<ApiResponse<void>> => {
   try {
     console.log('[MOCK AUTH] User signed out');
+
+    // Clean up message subscriptions
+    cleanupSubscriptions();
+
     mockCurrentUser = null;
     return { ok: true };
   } catch (error: any) {

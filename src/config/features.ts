@@ -118,6 +118,16 @@ export interface FeatureFlags {
    */
   COMMUNITY_BACKEND_ENABLED: boolean;
 
+  /**
+   * Enable real messaging backend integration
+   * When true, uses real Supabase for messages with realtime subscriptions
+   * When false, uses mock in-memory messaging
+   *
+   * Switch to true when ready to test real chat functionality
+   * @default false (use mock service during development)
+   */
+  MESSAGING_BACKEND_ENABLED: boolean;
+
 
   // ========================================
   // EXPERIMENTAL FEATURES
@@ -158,6 +168,7 @@ export const FEATURES: FeatureFlags = {
 
   // Backend Integration
   COMMUNITY_BACKEND_ENABLED: false, // ❌ MOCK BACKEND - NO REAL DATABASE CALLS
+  MESSAGING_BACKEND_ENABLED: true, // ✅ REAL MESSAGING - SUPABASE + REALTIME
 
   // Experimental (disabled by default)
   ENABLE_ADVANCED_ANIMATIONS: false,
@@ -188,6 +199,7 @@ export const FEATURE_PRESETS = {
     ENABLE_DEVELOPER_MENU: true,
     DEVELOPMENT_UNLOCK_FRIENDS_AREA: true,
     COMMUNITY_BACKEND_ENABLED: false, // Use mock service during development
+    MESSAGING_BACKEND_ENABLED: true, // Real messaging enabled
     ENABLE_ADVANCED_ANIMATIONS: true,
     ENABLE_GLASSMORPHISM: true,
   },
@@ -203,6 +215,7 @@ export const FEATURE_PRESETS = {
     ENABLE_DEVELOPER_MENU: false,
     DEVELOPMENT_UNLOCK_FRIENDS_AREA: false,
     COMMUNITY_BACKEND_ENABLED: true,
+    MESSAGING_BACKEND_ENABLED: true,
     ENABLE_ADVANCED_ANIMATIONS: false,
     ENABLE_GLASSMORPHISM: false,
   },
@@ -218,6 +231,7 @@ export const FEATURE_PRESETS = {
     ENABLE_DEVELOPER_MENU: false,
     DEVELOPMENT_UNLOCK_FRIENDS_AREA: false,
     COMMUNITY_BACKEND_ENABLED: true,
+    MESSAGING_BACKEND_ENABLED: true,
     ENABLE_ADVANCED_ANIMATIONS: false,
     ENABLE_GLASSMORPHISM: false,
   },
