@@ -194,3 +194,24 @@ export const exportUserData = async (): Promise<ApiResponse<any>> => {
     );
   }
 };
+
+/**
+ * Lock user out of matchmaking
+ * This operation prevents a user from participating in matchmaking flows.
+ *
+ * @param userId - The ID of the user to lock out
+ * @param reason - The reason for the lockout
+ * 
+ * TODO: Implement backend logic for matchmaking lockout
+ */
+export const lockUserMatchmaking = async (
+  userId: string,
+  reason: string
+): Promise<ApiResponse<void>> => {
+  // Logic not implemented as per request
+  logger.info(`Matchmaking lockout requested for user ${userId}. Reason: ${reason}`);
+
+  return {
+    ok: true,
+  };
+};
