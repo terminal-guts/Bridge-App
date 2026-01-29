@@ -505,8 +505,8 @@ export function ProfileView({
                 <Ionicons name="heart-outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
                 <StyledText style={{ fontSize: 14, color: '#4A4540' }}>
                   {profile.familyPlans === 'want_children' ? 'Want children someday' :
-                   profile.familyPlans === 'open_to_children' ? 'Open to children' :
-                   profile.familyPlans === 'dont_want_children' ? 'Don\'t want children' : 'Not sure yet'}
+                    profile.familyPlans === 'open_to_children' ? 'Open to children' :
+                      profile.familyPlans === 'dont_want_children' ? 'Don\'t want children' : 'Not sure yet'}
                 </StyledText>
               </StyledView>
             )}

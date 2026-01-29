@@ -22,6 +22,26 @@ export interface DailyGrid {
   hasVoted: boolean;
   hasMatched: boolean; // Did user create a proposal for this grid?
   randomMatchAssignment?: RandomMatchAssignment;
+  scorePairings?: ScorePairing[]; // Compatibility scores between anchor and each candidate
+}
+
+export interface ScorePairing {
+  candidateId: string;
+  totalScore: number;
+  categoryScores: {
+    ageRange: number;
+    distance: number;
+    lifestyleSubstances: number;
+    values: number;
+    interests: number;
+    family: number;
+    religion: number;
+    politics: number;
+    height: number;
+    ethnicity: number;
+    education: number;
+    career: number;
+  };
 }
 
 export interface RandomMatchAssignment {

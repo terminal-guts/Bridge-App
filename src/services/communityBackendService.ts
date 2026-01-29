@@ -23,7 +23,7 @@ const createMockProfile = (id: string, firstName: string, age: number): UserProf
   lastName: 'Mock',
   age,
   gender: ['female'],
-  pronouns: 'she_her',
+  pronouns: 'she/her',
   height: '5\'6"',
   ethnicity: 'asian',
   religion: 'spiritual',
@@ -43,9 +43,7 @@ const createMockProfile = (id: string, firstName: string, age: number): UserProf
   values: ['honesty', 'kindness', 'growth'],
   bio: '',
   lifestyle: {
-    drinkingFrequency: 'Sometimes',
-    cannabisFrequency: 'No',
-    tobaccoFrequency: 'No',
+    pets: [],
   },
   drinkingFrequency: 'Sometimes',
   cannabisFrequency: 'No',
@@ -65,6 +63,32 @@ class CommunityBackendService {
   private hasCompletedGrid = false;
   private hasVoted = false;
   private pendingProposals: Proposal[] = [];
+
+  private generateMockScorePairing(candidateId: string): any {
+    // These values are randomized for the mock but follow the weighted structure
+    const categoryScores = {
+      ageRange: Math.floor(Math.random() * 18),
+      distance: Math.floor(Math.random() * 15),
+      lifestyleSubstances: Math.floor(Math.random() * 12),
+      values: Math.floor(Math.random() * 10),
+      interests: Math.floor(Math.random() * 10),
+      family: Math.floor(Math.random() * 8),
+      religion: Math.floor(Math.random() * 6),
+      politics: Math.floor(Math.random() * 6),
+      height: Math.floor(Math.random() * 5),
+      ethnicity: Math.floor(Math.random() * 5),
+      education: Math.floor(Math.random() * 3),
+      career: Math.floor(Math.random() * 2),
+    };
+
+    const totalScore = Object.values(categoryScores).reduce((sum, val) => sum + val, 0);
+
+    return {
+      candidateId,
+      totalScore,
+      categoryScores,
+    };
+  }
 
   async getTodaysGrid(): Promise<DailyGrid> {
     console.log('[MOCK BACKEND] Returning mock daily grid');
@@ -95,6 +119,7 @@ class CommunityBackendService {
         hasCompleted: this.hasCompletedGrid,
         completed: this.hasCompletedGrid,
       },
+      scorePairings: candidates.map(c => this.generateMockScorePairing(c.id)),
     };
   }
 
@@ -203,6 +228,11 @@ class CommunityBackendService {
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
           hasVoted: false,
           hasMatched: false,
+          scorePairings: [
+            this.generateMockScorePairing('candidate-f1'),
+            this.generateMockScorePairing('candidate-f2'),
+            this.generateMockScorePairing('candidate-f3'),
+          ]
         },
       },
       {
@@ -240,6 +270,11 @@ class CommunityBackendService {
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
           hasVoted: true,
           hasMatched: false,
+          scorePairings: [
+            this.generateMockScorePairing('candidate-r1'),
+            this.generateMockScorePairing('candidate-r2'),
+            this.generateMockScorePairing('candidate-r3'),
+          ]
         },
       },
     ];
