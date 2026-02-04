@@ -263,6 +263,7 @@ export const RateLimitAction = {
   PHOTO_UPLOAD: 'photo_upload',
   MESSAGE_SEND: 'message_send',
   PROFILE_UPDATE: 'profile_update',
+  PROPOSAL_VOTE: 'proposal_vote',
 } as const;
 
 export type RateLimitActionType = typeof RateLimitAction[keyof typeof RateLimitAction];
