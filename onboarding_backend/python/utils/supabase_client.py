@@ -36,3 +36,4 @@ def get_supabase_client():
     except Exception as e:
         print(f"[Supabase] Connection failed: {e}")
         return MockSupabaseClient()
+
