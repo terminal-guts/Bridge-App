@@ -413,7 +413,7 @@ export const calculateProfileCompleteness = (
     });
   }
 
-  // Preferred Politics (4 points) - non-blocking (nice-to-have)
+  // Preferred Politics (4 points)
   if (profile.preferredPolitics && profile.preferredPolitics.length > 0) {
     score += FIELD_WEIGHTS.preferredPolitics;
   } else {
@@ -421,7 +421,7 @@ export const calculateProfileCompleteness = (
       field: 'preferredPolitics',
       label: 'Select preferred political views',
       weight: FIELD_WEIGHTS.preferredPolitics,
-      category: 'nice-to-have',
+      category: 'important',
     });
   }
 
@@ -860,41 +860,4 @@ export const calculateProfileStrengthBreakdown = (
  */
 export const calculateOverallProfileStrength = (profile: UserProfile | null): number => {
   return calculateProfileStrengthBreakdown(profile).overall;
-};
-
-/**
- * Check if a user is eligible for matchmaking
- * Mirrors the DB function is_matchmaking_eligible() for instant frontend feedback
- *
- * Checks: firstName, age >= 18, gender[], location, height, at least 1 photo,
- *         interestedInGenders not empty, not paused
- */
-export const isMatchmakingEligible = (profile: UserProfile | null): boolean => {
-  if (!profile) return false;
-
-  // Must not be paused
-  if (profile.isPaused) return false;
-
-  // First name required
-  if (!profile.firstName || !profile.firstName.trim()) return false;
-
-  // Age >= 18
-  if (!profile.age || profile.age < 18) return false;
-
-  // Gender must be set
-  if (!profile.gender || profile.gender.length === 0) return false;
-
-  // Location required
-  if (!profile.location || !profile.location.trim()) return false;
-
-  // Height required
-  if (!profile.height || !profile.height.trim()) return false;
-
-  // At least 1 photo
-  if (!profile.photos || profile.photos.length < 1) return false;
-
-  // Interested in genders must be set
-  if (!profile.interestedInGenders || profile.interestedInGenders.length === 0) return false;
-
-  return true;
 };

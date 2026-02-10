@@ -1,17 +1,18 @@
 /**
- * Profile Service - Supabase Direct Integration
+ * Profile Service - MOCK VERSION
  *
- * Provides profile CRUD operations via direct Supabase client calls.
- * Replaces the previous mock/Railway backend implementation.
+ * Provides in-memory profile management for development without backend
  */
 
 import { ApiResponse, UserProfile, DeepQuestionAnswer, OnboardingData, Photo } from '../types';
-import { supabase } from '../lib/supabase';
-import { requireAuth } from '../utils/auth';
-import { heightToInches, inchesToHeight } from '../utils/proposalMatching';
 
-// In-memory cache for local state sync
-let cachedProfile: UserProfile | null = null;
+// In-memory storage
+let mockUserProfile: UserProfile | null = null;
+const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
+
+// Backend API URL
+// Backend API URL
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://bridge-frontend-production.up.railway.app'; // Default to Railway hosted backend
 
 const createErrorResponse = (code: string, message: string): ApiResponse<any> => {
   return {
@@ -21,350 +22,198 @@ const createErrorResponse = (code: string, message: string): ApiResponse<any> =>
 };
 
 /**
- * Map snake_case DB row to camelCase UserProfile
- */
-function mapDbToProfile(data: any): UserProfile {
-  const prefs = data.user_preferences?.[0] || data.user_preferences || {};
-  const photos: Photo[] = (data.user_photos || []).map((p: any) => ({
-    id: p.id,
-    url: p.url,
-    isMain: p.is_main,
-    order: p.display_order,
-  }));
-  const deepQuestions: DeepQuestionAnswer[] = (data.deep_question_answers || []).map((dq: any) => ({
-    questionId: dq.question_id,
-    tier: dq.tier,
-    question: dq.question_text,
-    answer: dq.answer_text,
-  }));
-
-  const displayedQuestions = (data.deep_question_answers || [])
-    .filter((dq: any) => dq.is_displayed)
-    .map((dq: any) => dq.question_id);
-
-  return {
-    id: data.id,
-    userId: data.id,
-    firstName: data.first_name || '',
-    lastName: data.last_name || '',
-    age: data.age || 0,
-    gender: data.gender || [],
-    pronouns: data.pronouns || 'prefer_not_to_say',
-    pronounsList: data.pronouns_list || [],
-    customMyGender: data.custom_gender,
-    hometown: data.hometown,
-    location: data.location || '',
-    currentJob: data.current_job,
-    companyPosition: data.company_position,
-    educationLevel: data.education_level || '',
-    school: data.school || '',
-    height: data.height_inches ? inchesToHeight(data.height_inches) : '',
-    ethnicity: data.ethnicity || '',
-    religion: data.religion || '',
-    politicalLeaning: data.political_leaning || 'prefer_not_to_say',
-    hasChildren: data.has_children,
-    familyPlans: data.family_plans,
-    drinkingFrequency: data.drinking_frequency,
-    cannabisFrequency: data.cannabis_frequency,
-    tobaccoFrequency: data.tobacco_frequency,
-    otherDrugsFrequency: data.other_drugs_frequency,
-    interests: data.interests || [],
-    values: data.values || [],
-    bio: data.bio || '',
-    photos: photos.sort((a: Photo, b: Photo) => a.order - b.order),
-    preferences: {
-      ageMin: prefs.age_min ?? 18,
-      ageMax: prefs.age_max ?? 99,
-      gender: prefs.preferred_gender || 'both',
-      lookingFor: prefs.looking_for || 'relationship',
-      heightMin: prefs.height_min,
-      heightMax: prefs.height_max,
-      maxDistance: prefs.distance_miles,
-    },
-    interestedInGenders: prefs.interested_in_genders || [],
-    preferredEthnicities: prefs.preferred_ethnicities || [],
-    preferredPolitics: prefs.preferred_politics || [],
-    preferenceVisibility: prefs.preference_visibility || {},
-    nonNegotiables: prefs.non_negotiables || [],
-    partnerLifestylePreferences: {
-      drinking: prefs.partner_drinking || [],
-      cannabis: prefs.partner_cannabis || [],
-      tobacco: prefs.partner_tobacco || [],
-      otherDrugs: prefs.partner_other_drugs || [],
-    },
-    sectionVisibility: data.section_visibility || {},
-    deepQuestions,
-    displayedQuestions,
-    lifestyle: {
-      drinking: data.drinking_frequency,
-      smoking: data.tobacco_frequency,
-      exercise: '',
-      children: data.has_children,
-      pets: [],
-    },
-    isVerified: data.is_verified || false,
-    isPaused: data.is_paused || false,
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
-  } as UserProfile;
-}
-
-/**
- * Get user profile from Supabase
- */
-export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
-  try {
-    const userId = await requireAuth();
-    console.log('[PROFILE] Fetching profile from Supabase for:', userId);
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*, user_preferences(*), deep_question_answers(*), user_photos(*)')
-      .eq('id', userId)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return createErrorResponse('PROFILE_NOT_FOUND', 'User profile does not exist yet.');
-      }
-      throw new Error(error.message);
-    }
-
-    const profile = mapDbToProfile(data);
-    cachedProfile = profile;
-
-    return { ok: true, data: profile };
-  } catch (error: any) {
-    console.error('[PROFILE] Error fetching profile:', error);
-    return createErrorResponse('PROFILE_FETCH_ERROR', error.message || 'Failed to fetch profile');
-  }
-};
-
-/**
- * Fetch and set user profile from Supabase, syncing to local state
+ * Fetch and set user profile from backend - Task: Invoke Supabase to load profile
  */
 export const fetchAndSetUserProfile = async (userId: string): Promise<ApiResponse<UserProfile>> => {
   try {
-    console.log('[PROFILE] Fetching and syncing profile for:', userId);
+    console.log('[BACKEND] Fetching profile for user from Supabase:', userId);
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*, user_preferences(*), deep_question_answers(*), user_photos(*)')
-      .eq('id', userId)
-      .single();
+    const response = await fetch(`${API_URL}/onboarding/profile/${userId}`);
 
-    if (error) {
-      if (error.code === 'PGRST116') {
+    if (!response.ok) {
+      const err = await response.text();
+      console.error('[BACKEND] Failed to fetch profile:', err);
+      // If profile doesn't exist yet, that's okay for new users
+      if (response.status === 404) {
         return createErrorResponse('PROFILE_NOT_FOUND', 'User profile does not exist in Supabase yet.');
       }
-      throw new Error(error.message);
+      throw new Error('Backend profile fetch failed: ' + err);
     }
 
-    const profile = mapDbToProfile(data);
-    cachedProfile = profile;
-    console.log('[PROFILE] Profile loaded and synced to local state');
+    const responseText = await response.text();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (e) {
+      console.error('[BACKEND] Parse error on profile fetch:', responseText.slice(0, 100));
+      throw new Error('Server returned invalid data format. Check your backend console.');
+    }
+    const data = result.data;
 
-    return { ok: true, data: profile };
+    // Map snake_case from DB to camelCase for frontend UserProfile
+    const mappedProfile: UserProfile = {
+      id: data.id,
+      userId: data.id,
+      firstName: data.first_name || '',
+      lastName: data.last_name || '',
+      age: data.age || 0,
+      gender: data.gender || [],
+      pronouns: data.pronouns || 'prefer_not_to_say',
+      pronounsList: data.pronouns_list || [],
+      customMyGender: data.custom_gender,
+      hometown: data.hometown,
+      location: data.location || '',
+      currentJob: data.current_job,
+      companyPosition: data.company_position,
+      educationLevel: data.education_level || '',
+      school: data.school || '',
+      height: data.height_inches ? `${Math.floor(data.height_inches / 12)}'${data.height_inches % 12}"` : '',
+      ethnicity: data.ethnicity || '',
+      religion: data.religion || '',
+      politicalLeaning: data.political_leaning || 'prefer_not_to_say',
+      hasChildren: data.has_children,
+      familyPlans: data.family_plans,
+      drinkingFrequency: data.drinking_frequency,
+      cannabisFrequency: data.cannabis_frequency,
+      tobaccoFrequency: data.tobacco_frequency,
+      otherDrugsFrequency: data.other_drugs_frequency,
+      interests: data.interests || [],
+      values: data.values || [],
+      bio: data.bio || '',
+      photos: data.photos?.map((p: any) => ({
+        id: p.id,
+        url: p.url,
+        isMain: p.is_main,
+        order: p.display_order
+      })) || [],
+      preferences: data.preferences ? {
+        ageMin: data.preferences.age_min,
+        ageMax: data.preferences.age_max,
+        gender: data.preferences.preferred_gender,
+        lookingFor: data.preferences.looking_for,
+        heightMin: data.preferences.height_min,
+        heightMax: data.preferences.height_max,
+        maxDistance: data.preferences.distance_miles,
+      } as any : {
+        ageMin: 18,
+        ageMax: 99,
+        gender: 'both',
+        lookingFor: 'relationship',
+      },
+      deepQuestions: data.deep_questions?.map((dq: any) => ({
+        questionId: dq.question_id,
+        tier: dq.tier,
+        question: dq.question_text,
+        answer: dq.answer_text,
+      })) || [],
+      isVerified: data.is_verified || false,
+      isPaused: data.is_paused || false,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    } as any;
+
+    mockUserProfile = mappedProfile;
+    console.log('[BACKEND] Profile loaded and synced to local state');
+
+    return {
+      ok: true,
+      data: mappedProfile
+    };
   } catch (error: any) {
-    console.error('[PROFILE] Error syncing profile:', error);
+    console.error('[BACKEND] Error syncing profile:', error);
     return createErrorResponse('SYNC_ERROR', error.message || 'Failed to sync profile from Supabase');
   }
 };
 
 /**
- * Update user profile in Supabase
- * Splits into parallel upserts for profiles, user_preferences, and deep_question_answers
- */
-export const updateUserProfile = async (
-  profile: Partial<UserProfile>
-): Promise<ApiResponse<UserProfile>> => {
-  try {
-    const userId = await requireAuth();
-    console.log('[PROFILE] Updating profile in Supabase for:', userId);
-
-    // Build profile update payload
-    const profileUpdate: Record<string, any> = {};
-    if (profile.firstName !== undefined) profileUpdate.first_name = profile.firstName;
-    if (profile.lastName !== undefined) profileUpdate.last_name = profile.lastName;
-    if (profile.age !== undefined) profileUpdate.age = profile.age;
-    if (profile.gender !== undefined) profileUpdate.gender = profile.gender;
-    if (profile.pronouns !== undefined) profileUpdate.pronouns = profile.pronouns;
-    if (profile.pronounsList !== undefined) profileUpdate.pronouns_list = profile.pronounsList;
-    if (profile.customMyGender !== undefined) profileUpdate.custom_gender = profile.customMyGender;
-    if (profile.hometown !== undefined) profileUpdate.hometown = profile.hometown;
-    if (profile.location !== undefined) profileUpdate.location = profile.location;
-    if (profile.currentJob !== undefined) profileUpdate.current_job = profile.currentJob;
-    if (profile.companyPosition !== undefined) profileUpdate.company_position = profile.companyPosition;
-    if (profile.educationLevel !== undefined) profileUpdate.education_level = profile.educationLevel;
-    if (profile.school !== undefined) profileUpdate.school = profile.school;
-    if (profile.height !== undefined) {
-      const inches = heightToInches(profile.height);
-      if (inches !== null) profileUpdate.height_inches = inches;
-    }
-    if (profile.ethnicity !== undefined) profileUpdate.ethnicity = profile.ethnicity;
-    if (profile.religion !== undefined) profileUpdate.religion = profile.religion;
-    if (profile.politicalLeaning !== undefined) profileUpdate.political_leaning = profile.politicalLeaning;
-    if (profile.hasChildren !== undefined) profileUpdate.has_children = profile.hasChildren;
-    if (profile.familyPlans !== undefined) profileUpdate.family_plans = profile.familyPlans;
-    if (profile.drinkingFrequency !== undefined) profileUpdate.drinking_frequency = profile.drinkingFrequency;
-    if (profile.cannabisFrequency !== undefined) profileUpdate.cannabis_frequency = profile.cannabisFrequency;
-    if (profile.tobaccoFrequency !== undefined) profileUpdate.tobacco_frequency = profile.tobaccoFrequency;
-    if (profile.otherDrugsFrequency !== undefined) profileUpdate.other_drugs_frequency = profile.otherDrugsFrequency;
-    if (profile.interests !== undefined) profileUpdate.interests = profile.interests;
-    if (profile.values !== undefined) profileUpdate.values = profile.values;
-    if (profile.bio !== undefined) profileUpdate.bio = profile.bio;
-    if (profile.isPaused !== undefined) profileUpdate.is_paused = profile.isPaused;
-    if (profile.sectionVisibility !== undefined) profileUpdate.section_visibility = profile.sectionVisibility;
-
-    // Build preferences update payload
-    const prefsUpdate: Record<string, any> = { user_id: userId };
-    let hasPrefsUpdate = false;
-
-    if (profile.preferences) {
-      if (profile.preferences.ageMin !== undefined) { prefsUpdate.age_min = profile.preferences.ageMin; hasPrefsUpdate = true; }
-      if (profile.preferences.ageMax !== undefined) { prefsUpdate.age_max = profile.preferences.ageMax; hasPrefsUpdate = true; }
-      if (profile.preferences.gender !== undefined) { prefsUpdate.preferred_gender = profile.preferences.gender; hasPrefsUpdate = true; }
-      if (profile.preferences.lookingFor !== undefined) { prefsUpdate.looking_for = profile.preferences.lookingFor; hasPrefsUpdate = true; }
-      if (profile.preferences.heightMin !== undefined) { prefsUpdate.height_min = profile.preferences.heightMin; hasPrefsUpdate = true; }
-      if (profile.preferences.heightMax !== undefined) { prefsUpdate.height_max = profile.preferences.heightMax; hasPrefsUpdate = true; }
-      if (profile.preferences.maxDistance !== undefined) { prefsUpdate.distance_miles = profile.preferences.maxDistance; hasPrefsUpdate = true; }
-    }
-    if (profile.interestedInGenders !== undefined) { prefsUpdate.interested_in_genders = profile.interestedInGenders; hasPrefsUpdate = true; }
-    if (profile.preferredEthnicities !== undefined) { prefsUpdate.preferred_ethnicities = profile.preferredEthnicities; hasPrefsUpdate = true; }
-    if (profile.preferredPolitics !== undefined) { prefsUpdate.preferred_politics = profile.preferredPolitics; hasPrefsUpdate = true; }
-    if (profile.preferenceVisibility !== undefined) { prefsUpdate.preference_visibility = profile.preferenceVisibility; hasPrefsUpdate = true; }
-    if (profile.nonNegotiables !== undefined) { prefsUpdate.non_negotiables = profile.nonNegotiables; hasPrefsUpdate = true; }
-    if (profile.partnerLifestylePreferences) {
-      const plp = profile.partnerLifestylePreferences;
-      if (plp.drinking !== undefined) {
-        prefsUpdate.partner_drinking = Array.isArray(plp.drinking) ? plp.drinking : [plp.drinking];
-        hasPrefsUpdate = true;
-      }
-      if (plp.cannabis !== undefined) {
-        prefsUpdate.partner_cannabis = Array.isArray(plp.cannabis) ? plp.cannabis : [plp.cannabis];
-        hasPrefsUpdate = true;
-      }
-      if (plp.tobacco !== undefined) {
-        prefsUpdate.partner_tobacco = Array.isArray(plp.tobacco) ? plp.tobacco : [plp.tobacco];
-        hasPrefsUpdate = true;
-      }
-      if (plp.otherDrugs !== undefined) {
-        prefsUpdate.partner_other_drugs = Array.isArray(plp.otherDrugs) ? plp.otherDrugs : [plp.otherDrugs];
-        hasPrefsUpdate = true;
-      }
-    }
-
-    // Run updates in parallel
-    const promises: Promise<any>[] = [];
-
-    // 1. Profile update
-    if (Object.keys(profileUpdate).length > 0) {
-      promises.push(
-        supabase.from('profiles').update(profileUpdate).eq('id', userId)
-      );
-    }
-
-    // 2. Preferences upsert
-    if (hasPrefsUpdate) {
-      promises.push(
-        supabase.from('user_preferences').upsert(prefsUpdate, { onConflict: 'user_id' })
-      );
-    }
-
-    // 3. Deep questions upsert
-    if (profile.deepQuestions && profile.deepQuestions.length > 0) {
-      const dqRows = profile.deepQuestions.map((dq) => ({
-        user_id: userId,
-        question_id: dq.questionId,
-        tier: dq.tier,
-        question_text: dq.question,
-        answer_text: dq.answer,
-        is_displayed: profile.displayedQuestions
-          ? profile.displayedQuestions.includes(dq.questionId)
-          : true,
-      }));
-      promises.push(
-        supabase
-          .from('deep_question_answers')
-          .upsert(dqRows, { onConflict: 'user_id,question_id' })
-      );
-    }
-
-    const results = await Promise.all(promises);
-
-    // Check for errors
-    for (const result of results) {
-      if (result.error) {
-        console.error('[PROFILE] Update error:', result.error);
-        throw new Error(result.error.message);
-      }
-    }
-
-    // Update matchmaking eligibility
-    const { data: eligible } = await supabase.rpc('is_matchmaking_eligible', {
-      user_uuid: userId,
-    });
-    if (eligible !== null) {
-      await supabase
-        .from('profiles')
-        .update({ matchmaking_eligible: eligible })
-        .eq('id', userId);
-    }
-
-    // Reload full profile to return current state
-    const reloadResult = await getUserProfile();
-    if (reloadResult.ok && reloadResult.data) {
-      cachedProfile = reloadResult.data;
-      return reloadResult;
-    }
-
-    // Fallback: merge updates into cached profile
-    if (cachedProfile) {
-      cachedProfile = {
-        ...cachedProfile,
-        ...profile,
-        preferences: profile.preferences
-          ? { ...cachedProfile.preferences, ...profile.preferences }
-          : cachedProfile.preferences,
-        updatedAt: new Date().toISOString(),
-      };
-      return { ok: true, data: cachedProfile };
-    }
-
-    return createErrorResponse('PROFILE_UPDATE_ERROR', 'Profile updated but could not reload');
-  } catch (error: any) {
-    console.error('[PROFILE] Error updating profile:', error);
-    return createErrorResponse('PROFILE_UPDATE_ERROR', error.message || 'Failed to update profile');
-  }
-};
-
-/**
- * Save a single onboarding step to Supabase
+ * Save a single onboarding step - MOCK VERSION
+ * Stores data in memory
  */
 export const saveOnboardingStep = async (
   stepKey: string,
   data: Partial<OnboardingData>
 ): Promise<ApiResponse<void>> => {
   try {
-    const userId = await requireAuth();
-    console.log('[PROFILE] Saving onboarding step:', stepKey);
+    console.log('[BACKEND] Saving step to Supabase:', stepKey);
 
-    // Save to onboarding_progress table
-    await supabase
-      .from('onboarding_progress')
-      .upsert({
-        user_id: userId,
-        current_step: stepKey,
-        data: data,
-      }, { onConflict: 'user_id' });
+    // Call real Python backend
+    const response = await fetch(`${API_URL}/onboarding/save-step`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: MOCK_USER_ID,
+        step_key: stepKey,
+        data: data
+      }),
+    });
 
-    // Also merge into local cache
-    if (cachedProfile) {
-      Object.assign(cachedProfile, data);
-      if (data.pronouns) cachedProfile.pronouns = data.pronouns;
-      if (data.customPronouns) cachedProfile.customPronouns = data.customPronouns;
-      if (data.pronounsList) cachedProfile.pronounsList = data.pronounsList;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.warn('[BACKEND] Failed to save step to server:', errorText.slice(0, 100));
     }
+
+    // Update mock profile with new data for local UI state
+    if (!mockUserProfile) {
+      mockUserProfile = {
+        id: MOCK_USER_ID,
+        userId: MOCK_USER_ID,
+        firstName: '',
+        lastName: '',
+        age: 0,
+        gender: [],
+        pronouns: 'prefer_not_to_say',
+        pronounsList: [],
+        interestedInGenders: [],
+        preferredEthnicities: [],
+        occupation: '',
+        company: '',
+        educationLevel: '',
+        school: '',
+        height: '',
+        ethnicity: '',
+        religion: '',
+        politicalLeaning: 'prefer_not_to_say',
+        customPoliticalLeaning: '',
+        customEducationLevel: '',
+        marriageStatus: 'never_married',
+        marriageGoal: 'unsure',
+        desiredActivities: [],
+        location: '',
+        photos: [],
+        interests: [],
+        values: [],
+        lifestyle: {
+          drinking: 'Sometimes',
+          smoking: 'No',
+          exercise: 'often',
+          children: 'open',
+          pets: [],
+        },
+        nonNegotiables: [],
+        preferences: {
+          ageMin: 24,
+          ageMax: 32,
+          gender: 'both',
+          lookingFor: 'relationship',
+          heightMin: 60,
+          heightMax: 84,
+        },
+        deepQuestions: [],
+        displayedQuestions: [],
+        isVerified: false,
+        isPaused: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as UserProfile;
+    }
+
+    // Merge the onboarding data into mock profile
+    Object.assign(mockUserProfile, data);
+
+    if (!mockUserProfile) return createErrorResponse('NO_LOCAL_PROFILE', 'No local profile found');
+    mockUserProfile.pronouns = data.pronouns || mockUserProfile.pronouns;
+    mockUserProfile.customPronouns = data.customPronouns;
+    mockUserProfile.pronounsList = data.pronounsList || mockUserProfile.pronounsList;
 
     return { ok: true };
   } catch (error: any) {
@@ -373,32 +222,38 @@ export const saveOnboardingStep = async (
 };
 
 /**
- * Create user profile in Supabase
+ * Create user profile - MOCK VERSION
+ * Stores complete profile in memory
  */
 export const createUserProfile = async (
   userId: string,
   data: Partial<OnboardingData>
 ): Promise<ApiResponse<UserProfile>> => {
   try {
-    console.log('[PROFILE] Creating user profile in Supabase:', userId);
+    console.log('[MOCK PROFILE] Creating user profile (calling backend):', userId);
 
-    // 1. Insert profile
-    const profilePayload: Record<string, any> = {
-      id: userId,
+    // 1. Construct the payload for the backend
+    const payload = {
+      user_id: userId,
       first_name: data.firstName || '',
       last_name: data.lastName || '',
       age: data.age || 0,
       gender: data.gender || [],
       location: data.location || '',
+      photos: Array.isArray(data.photos)
+        ? data.photos.map(p => typeof p === 'string' ? p : p.url)
+        : [],
+
+      // Extended fields
       pronouns: data.pronouns,
       pronouns_list: data.pronounsList,
-      custom_gender: data.customMyGender,
+      custom_gender: data.customMyGender, // mapped from customMyGender
       hometown: data.hometown,
       current_job: data.currentJob,
       company_position: data.companyPosition,
       education_level: data.educationLevel,
       school: data.school,
-      height_inches: data.height ? heightToInches(data.height) : null,
+      height_inches: data.height ? parseInt(data.height) : undefined, // rudimentary parse, ideally parse 5'10"
       ethnicity: data.ethnicity,
       religion: data.religion,
       political_leaning: data.politicalLeaning,
@@ -410,175 +265,364 @@ export const createUserProfile = async (
       other_drugs_frequency: data.otherDrugsFrequency,
       interests: data.interests || [],
       values: data.values || [],
-      bio: '',
-      profile_completed: true,
-    };
+      bio: '', // OnboardingData might not have bio yet?
 
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert(profilePayload, { onConflict: 'id' });
-
-    if (profileError) throw new Error(profileError.message);
-
-    // 2. Insert preferences
-    const prefsPayload: Record<string, any> = {
-      user_id: userId,
-      age_min: data.preferences?.ageMin ?? 18,
-      age_max: data.preferences?.ageMax ?? 99,
-      preferred_gender: data.preferences?.gender || 'both',
-      looking_for: data.preferences?.lookingFor || 'relationship',
-      height_min: data.preferences?.heightMin || 0,
-      height_max: data.preferences?.heightMax || 120,
-      distance_miles: data.preferences?.maxDistance || 50,
-      interested_in_genders: data.interestedInGenders || [],
-      preferred_ethnicities: data.preferredEthnicities || [],
-      preferred_politics: data.preferredPolitics || [],
-      non_negotiables: data.nonNegotiables || [],
-    };
-
-    if (data.partnerLifestylePreferences) {
-      const plp = data.partnerLifestylePreferences;
-      prefsPayload.partner_drinking = Array.isArray(plp.drinking) ? plp.drinking : plp.drinking ? [plp.drinking] : [];
-      prefsPayload.partner_cannabis = Array.isArray(plp.cannabis) ? plp.cannabis : plp.cannabis ? [plp.cannabis] : [];
-      prefsPayload.partner_tobacco = Array.isArray(plp.tobacco) ? plp.tobacco : plp.tobacco ? [plp.tobacco] : [];
-      prefsPayload.partner_other_drugs = Array.isArray(plp.otherDrugs) ? plp.otherDrugs : plp.otherDrugs ? [plp.otherDrugs] : [];
-    }
-
-    const { error: prefsError } = await supabase
-      .from('user_preferences')
-      .upsert(prefsPayload, { onConflict: 'user_id' });
-
-    if (prefsError) throw new Error(prefsError.message);
-
-    // 3. Insert deep questions
-    if (data.deepQuestions && data.deepQuestions.length > 0) {
-      const dqRows = data.deepQuestions.map((dq) => ({
-        user_id: userId,
+      deep_questions: data.deepQuestions?.map(dq => ({
         question_id: dq.questionId,
-        tier: dq.tier,
         question_text: dq.question,
         answer_text: dq.answer,
-        is_displayed: true,
-      }));
+        tier: dq.tier
+      })) || []
+    };
 
-      const { error: dqError } = await supabase
-        .from('deep_question_answers')
-        .upsert(dqRows, { onConflict: 'user_id,question_id' });
-
-      if (dqError) throw new Error(dqError.message);
-    }
-
-    // 4. Insert photos
-    if (data.photos && data.photos.length > 0) {
-      const photoRows = data.photos.map((p: any, idx: number) => ({
-        user_id: userId,
-        url: typeof p === 'string' ? p : p.url,
-        storage_path: typeof p === 'string' ? p : (p.storagePath || p.url),
-        is_main: idx === 0,
-        display_order: idx,
-      }));
-
-      const { error: photoError } = await supabase
-        .from('user_photos')
-        .upsert(photoRows);
-
-      if (photoError) console.warn('[PROFILE] Photo insert warning:', photoError.message);
-    }
-
-    // 5. Update matchmaking eligibility
-    const { data: eligible } = await supabase.rpc('is_matchmaking_eligible', {
-      user_uuid: userId,
+    // 2. Call the backend
+    const response = await fetch(`${API_URL}/onboarding/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
-    if (eligible !== null) {
-      await supabase
-        .from('profiles')
-        .update({ matchmaking_eligible: eligible })
-        .eq('id', userId);
+
+    if (!response.ok) {
+      const err = await response.text();
+      console.error('[BACKEND] Failed to complete onboarding:', err);
+      throw new Error('Backend onboarding completion failed: ' + err);
     }
 
-    // 6. Reload full profile
-    const result = await fetchAndSetUserProfile(userId);
-    if (result.ok) return result;
+    console.log('[BACKEND] Onboarding completed successfully');
 
-    return createErrorResponse('PROFILE_CREATE_ERROR', 'Profile created but could not reload');
+    // 3. Update local mock state (legacy behavior)
+    mockUserProfile = {
+      id: userId,
+      userId: userId,
+      firstName: data.firstName || '',
+      lastName: data.lastName || '',
+      age: data.age || 0,
+      gender: data.gender || [],
+      pronouns: data.pronouns || 'prefer_not_to_say',
+      pronounsList: data.pronounsList || [],
+      customPronouns: data.customPronouns,
+      customMyGender: data.customMyGender,
+      interestedInGenders: data.interestedInGenders || [],
+      customInterestedIn: data.customInterestedIn,
+      preferredEthnicities: data.preferredEthnicities || [],
+      occupation: data.currentJob || '',
+      company: data.companyPosition || '',
+      currentJob: data.currentJob,
+      companyPosition: data.companyPosition,
+      educationLevel: data.educationLevel || '',
+      school: data.school || '',
+      height: data.height || '',
+      ethnicity: data.ethnicity || '',
+      religion: data.religion || '',
+      politicalLeaning: data.politicalLeaning || 'prefer_not_to_say',
+      customPoliticalLeaning: data.customPoliticalLeaning || '',
+      customEducationLevel: data.customEducationLevel || '',
+      marriageStatus: 'never_married',
+      marriageGoal: 'unsure',
+      desiredActivities: [],
+      location: data.location || 'New York',
+      hometown: data.hometown,
+      hasChildren: data.hasChildren,
+      familyPlans: data.familyPlans,
+      drinkingFrequency: data.drinkingFrequency,
+      cannabisFrequency: data.cannabisFrequency,
+      tobaccoFrequency: data.tobaccoFrequency,
+      otherDrugsFrequency: data.otherDrugsFrequency,
+      photos: data.photos || [],
+      interests: data.interests || [],
+      values: data.values || [],
+      lifestyle: data.lifestyle || {
+        drinking: 'Sometimes',
+        smoking: 'No',
+        exercise: 'often',
+        children: 'open',
+        pets: [],
+      },
+      nonNegotiables: data.nonNegotiables || [],
+      preferences: data.preferences || {
+        ageMin: 24,
+        ageMax: 32,
+        gender: 'both',
+        lookingFor: 'relationship',
+        heightMin: 60,
+        heightMax: 84,
+      },
+      partnerLifestylePreferences: data.partnerLifestylePreferences,
+      deepQuestions: data.deepQuestions || [],
+      displayedQuestions: data.displayedQuestions || [],
+      isVerified: false,
+      isPaused: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as UserProfile;
+
+    return {
+      ok: true,
+      data: mockUserProfile,
+    };
   } catch (error: any) {
-    console.error('[PROFILE] Error creating profile:', error);
     return createErrorResponse('PROFILE_CREATE_ERROR', error.message || 'An unexpected error occurred');
   }
 };
 
 /**
- * Add profile photos
+ * Get user profile - MOCK VERSION
+ * Returns stored mock profile or default mock data
+ */
+export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
+  try {
+    console.log('[MOCK PROFILE] Getting user profile');
+
+    // Return mock profile if exists
+    if (mockUserProfile) {
+      return {
+        ok: true,
+        data: mockUserProfile,
+      };
+    }
+
+    // Return default mock profile with COMPLETE data
+    const defaultProfile: UserProfile = {
+      id: '00000000-0000-0000-0000-000000000001',
+      userId: '00000000-0000-0000-0000-000000000001',
+      firstName: 'Alex',
+      lastName: 'Chen',
+      age: 28,
+      gender: ['male'],
+      pronouns: 'he/him',
+      pronounsList: ['He', 'Him', 'His'],
+      customPronouns: undefined,
+      customMyGender: undefined,
+      interestedInGenders: ['female'],
+      customInterestedIn: undefined,
+      preferredEthnicities: ['Asian', 'White / Caucasian', 'Hispanic / Latino'],
+      preferredPolitics: ['Moderate', 'Liberal'],
+      occupation: 'Product Designer',
+      company: 'Tech Startup',
+      currentJob: 'Software Engineer',
+      companyPosition: 'Senior Product Designer',
+      educationLevel: 'bachelors',
+      customEducationLevel: '',
+      school: 'UCLA',
+      height: '5\'10"',
+      ethnicity: 'Asian', // Updated to match new options
+      religion: 'Spiritual',
+      politicalLeaning: 'moderate',
+      customPoliticalLeaning: '',
+      marriageStatus: 'never_married',
+      marriageGoal: 'unsure',
+      desiredActivities: [],
+      location: 'Los Angeles, CA',
+      hometown: 'San Francisco, CA',
+      hasChildren: 'no',
+      familyPlans: 'want_someday',
+      drinkingFrequency: 'Sometimes',
+      cannabisFrequency: 'Sometimes',
+      tobaccoFrequency: 'No',
+      otherDrugsFrequency: 'No',
+      photos: [
+        {
+          id: 'photo-1',
+          url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+          isMain: true,
+          order: 0,
+        },
+        {
+          id: 'photo-2',
+          url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
+          isMain: false,
+          order: 1,
+        },
+        {
+          id: 'photo-3',
+          url: 'https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=400',
+          isMain: false,
+          order: 2,
+        },
+        {
+          id: 'photo-4',
+          url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400',
+          isMain: false,
+          order: 3,
+        },
+        {
+          id: 'photo-5',
+          url: 'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=400',
+          isMain: false,
+          order: 4,
+        },
+        {
+          id: 'photo-6',
+          url: 'https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=400',
+          isMain: false,
+          order: 5,
+        },
+      ],
+      interests: ['Basketball', 'Hiking', 'Yoga', 'Climbing', 'Photography', 'Cooking'],
+      values: ['Honesty', 'Integrity', 'Trust', 'Authenticity', 'Ambition', 'Loyalty'],
+      lifestyle: {
+        drinking: 'Sometimes',
+        smoking: 'No',
+        exercise: 'often',
+        children: 'no',
+        pets: ['dogs', 'cats'],
+      },
+      nonNegotiables: [
+        { id: 'smoking', type: 'smoking', value: true },
+        { id: 'children', type: 'children', value: true },
+        { id: 'politics', type: 'politics', value: false },
+      ],
+      preferences: {
+        ageMin: 24,
+        ageMax: 34,
+        gender: 'female',
+        lookingFor: 'relationship',
+        heightMin: 60,
+        heightMax: 72,
+        maxDistance: 15,
+      },
+      partnerLifestylePreferences: {
+        drinking: 'Sometimes',
+        cannabis: 'Sometimes',
+        tobacco: 'No',
+        otherDrugs: 'No',
+      },
+      // Removed partnerValues and partnerInterests - no longer collected in onboarding
+      deepQuestions: [
+        {
+          questionId: 1,
+          tier: 1,
+          question: 'What does a perfect weekend look like for you?',
+          answer: 'A perfect weekend for me starts with a morning hike to catch the sunrise, followed by brunch with close friends. I love spending afternoons exploring new neighborhoods or visiting museums, and ending the day with a home-cooked dinner and a good movie.',
+        },
+        {
+          questionId: 2,
+          tier: 1,
+          question: 'What are you most passionate about?',
+          answer: 'I\'m deeply passionate about creating meaningful experiences through design. Whether it\'s a digital product or a physical space, I believe good design can genuinely improve people\'s lives. I also love mentoring junior designers and helping them find their creative voice.',
+        },
+        {
+          questionId: 3,
+          tier: 2,
+          question: 'What\'s a challenge you\'ve overcome that shaped who you are today?',
+          answer: 'Moving across the country after college was terrifying but transformative. I had to build a new support network from scratch, which taught me resilience and the importance of being vulnerable with new people. It made me much more confident and independent.',
+        },
+      ],
+      displayedQuestions: [1, 2, 3],
+      sectionVisibility: {
+        basics: true,
+        lifestyle: true,
+        values: true,
+        interests: true,
+        deepQuestions: true,
+      },
+      sectionOrder: ['basics', 'lifestyle', 'values', 'interests', 'deepQuestions'],
+      isVerified: false,
+      isPaused: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    mockUserProfile = defaultProfile;
+
+    return {
+      ok: true,
+      data: defaultProfile,
+    };
+  } catch (error: any) {
+    return createErrorResponse('PROFILE_FETCH_ERROR', error.message || 'An unexpected error occurred');
+  }
+};
+
+/**
+ * Update user profile - MOCK VERSION
+ */
+export const updateUserProfile = async (
+  profile: Partial<UserProfile>
+): Promise<ApiResponse<UserProfile>> => {
+  try {
+    console.log('[MOCK PROFILE] Updating user profile:', profile);
+
+    if (!mockUserProfile) {
+      // Auto-create if doesn't exist
+      const createResult = await createUserProfile('00000000-0000-0000-0000-000000000001', profile);
+      if (!createResult.ok) {
+        return createResult;
+      }
+    } else {
+      // Merge updates - use deep merge for nested objects
+      mockUserProfile = {
+        ...mockUserProfile,
+        ...profile,
+        // Deep merge for nested objects
+        preferences: profile.preferences ? {
+          ...mockUserProfile.preferences,
+          ...profile.preferences
+        } : mockUserProfile.preferences,
+      };
+
+      if (profile.partnerLifestylePreferences && mockUserProfile.partnerLifestylePreferences) {
+        mockUserProfile.partnerLifestylePreferences.drinking = profile.partnerLifestylePreferences.drinking || mockUserProfile.partnerLifestylePreferences.drinking;
+        mockUserProfile.partnerLifestylePreferences.cannabis = profile.partnerLifestylePreferences.cannabis || mockUserProfile.partnerLifestylePreferences.cannabis;
+        mockUserProfile.partnerLifestylePreferences.tobacco = profile.partnerLifestylePreferences.tobacco || mockUserProfile.partnerLifestylePreferences.tobacco;
+        mockUserProfile.partnerLifestylePreferences.otherDrugs = profile.partnerLifestylePreferences.otherDrugs || mockUserProfile.partnerLifestylePreferences.otherDrugs;
+      }
+      mockUserProfile.updatedAt = new Date().toISOString();
+    }
+
+    console.log('[MOCK PROFILE] Profile updated successfully. New values:', {
+      partnerLifestylePreferences: mockUserProfile.partnerLifestylePreferences,
+    });
+
+    return {
+      ok: true,
+      data: mockUserProfile!,
+    };
+  } catch (error: any) {
+    return createErrorResponse('PROFILE_UPDATE_ERROR', error.message || 'An unexpected error occurred');
+  }
+};
+
+/**
+ * Add profile photos - MOCK VERSION
  */
 export const addProfilePhotos = async (
   imageUris: string[]
 ): Promise<ApiResponse<Photo[]>> => {
   try {
-    const userId = await requireAuth();
-    console.log('[PROFILE] Adding photos:', imageUris.length);
+    console.log('[MOCK PROFILE] Adding photos:', imageUris);
 
-    // Get current max display_order
-    const { data: existing } = await supabase
-      .from('user_photos')
-      .select('display_order')
-      .eq('user_id', userId)
-      .order('display_order', { ascending: false })
-      .limit(1);
-
-    const startOrder = (existing?.[0]?.display_order ?? -1) + 1;
-
-    const newPhotos: any[] = imageUris.map((uri, index) => ({
-      user_id: userId,
+    const newPhotos: Photo[] = imageUris.map((uri, index) => ({
+      id: `photo-${Date.now()}-${index}`,
       url: uri,
-      storage_path: uri,
-      is_main: startOrder + index === 0,
-      display_order: startOrder + index,
+      isMain: false,
+      order: (mockUserProfile?.photos.length || 0) + index,
     }));
 
-    const { data, error } = await supabase
-      .from('user_photos')
-      .insert(newPhotos)
-      .select();
-
-    if (error) throw new Error(error.message);
-
-    const photos: Photo[] = (data || []).map((p: any) => ({
-      id: p.id,
-      url: p.url,
-      isMain: p.is_main,
-      order: p.display_order,
-    }));
-
-    if (cachedProfile) {
-      cachedProfile.photos = [...cachedProfile.photos, ...photos];
+    if (mockUserProfile) {
+      mockUserProfile.photos = [...mockUserProfile.photos, ...newPhotos];
     }
 
-    return { ok: true, data: photos };
+    return {
+      ok: true,
+      data: newPhotos,
+    };
   } catch (error: any) {
     return createErrorResponse('ADD_PHOTOS_ERROR', error.message || 'Failed to add photos');
   }
 };
 
 /**
- * Remove profile photo
+ * Remove profile photo - MOCK VERSION
  */
 export const removeProfilePhoto = async (
   photoId: string
 ): Promise<ApiResponse<void>> => {
   try {
-    const userId = await requireAuth();
-    console.log('[PROFILE] Removing photo:', photoId);
+    console.log('[MOCK PROFILE] Removing photo:', photoId);
 
-    const { error } = await supabase
-      .from('user_photos')
-      .delete()
-      .eq('id', photoId)
-      .eq('user_id', userId);
-
-    if (error) throw new Error(error.message);
-
-    if (cachedProfile) {
-      cachedProfile.photos = cachedProfile.photos.filter(p => p.id !== photoId);
+    if (mockUserProfile) {
+      mockUserProfile.photos = mockUserProfile.photos.filter(p => p.id !== photoId);
     }
 
     return { ok: true };
@@ -588,31 +632,16 @@ export const removeProfilePhoto = async (
 };
 
 /**
- * Reorder profile photos
+ * Reorder profile photos - MOCK VERSION
  */
 export const reorderProfilePhotos = async (
   reorderedPhotos: Photo[]
 ): Promise<ApiResponse<void>> => {
   try {
-    const userId = await requireAuth();
-    console.log('[PROFILE] Reordering photos');
+    console.log('[MOCK PROFILE] Reordering photos');
 
-    const updates = reorderedPhotos.map((photo, index) =>
-      supabase
-        .from('user_photos')
-        .update({ display_order: index, is_main: index === 0 })
-        .eq('id', photo.id)
-        .eq('user_id', userId)
-    );
-
-    await Promise.all(updates);
-
-    if (cachedProfile) {
-      cachedProfile.photos = reorderedPhotos.map((p, i) => ({
-        ...p,
-        order: i,
-        isMain: i === 0,
-      }));
+    if (mockUserProfile) {
+      mockUserProfile.photos = reorderedPhotos;
     }
 
     return { ok: true };
@@ -622,32 +651,16 @@ export const reorderProfilePhotos = async (
 };
 
 /**
- * Set main profile photo
+ * Set main profile photo - MOCK VERSION
  */
 export const setMainProfilePhoto = async (
   photoId: string
 ): Promise<ApiResponse<void>> => {
   try {
-    const userId = await requireAuth();
-    console.log('[PROFILE] Setting main photo:', photoId);
+    console.log('[MOCK PROFILE] Setting main photo:', photoId);
 
-    // Unset all as main first
-    await supabase
-      .from('user_photos')
-      .update({ is_main: false })
-      .eq('user_id', userId);
-
-    // Set selected as main
-    const { error } = await supabase
-      .from('user_photos')
-      .update({ is_main: true })
-      .eq('id', photoId)
-      .eq('user_id', userId);
-
-    if (error) throw new Error(error.message);
-
-    if (cachedProfile) {
-      cachedProfile.photos = cachedProfile.photos.map(p => ({
+    if (mockUserProfile) {
+      mockUserProfile.photos = mockUserProfile.photos.map(p => ({
         ...p,
         isMain: p.id === photoId,
       }));
@@ -660,35 +673,16 @@ export const setMainProfilePhoto = async (
 };
 
 /**
- * Update profile pause status
+ * Update profile pause status - MOCK VERSION
  */
 export const updateProfilePauseStatus = async (
   isPaused: boolean
 ): Promise<ApiResponse<void>> => {
   try {
-    const userId = await requireAuth();
-    console.log('[PROFILE] Updating pause status:', isPaused);
+    console.log('[MOCK PROFILE] Updating pause status:', isPaused);
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({ is_paused: isPaused })
-      .eq('id', userId);
-
-    if (error) throw new Error(error.message);
-
-    if (cachedProfile) {
-      cachedProfile.isPaused = isPaused;
-    }
-
-    // Re-evaluate matchmaking eligibility
-    const { data: eligible } = await supabase.rpc('is_matchmaking_eligible', {
-      user_uuid: userId,
-    });
-    if (eligible !== null) {
-      await supabase
-        .from('profiles')
-        .update({ matchmaking_eligible: eligible })
-        .eq('id', userId);
+    if (mockUserProfile) {
+      mockUserProfile.isPaused = isPaused;
     }
 
     return { ok: true };
@@ -698,15 +692,16 @@ export const updateProfilePauseStatus = async (
 };
 
 /**
- * Mark a guide as completed
+ * Mark a guide as completed - MOCK VERSION (frontend-only)
  */
 export const markGuideCompleted = async (
   guideId: 'tab_navigation_overview' | 'daily_grid_explained' | 'proposals_explained' | 'friends_area_explained' | 'profile_completion'
 ): Promise<ApiResponse<void>> => {
   try {
-    console.log('[PROFILE] Marking guide as completed:', guideId);
+    console.log('[MOCK PROFILE] Marking guide as completed:', guideId);
 
-    if (cachedProfile) {
+    if (mockUserProfile) {
+      // Map guide IDs to profile fields
       const fieldMap: Record<string, keyof UserProfile> = {
         'tab_navigation_overview': 'hasCompletedTabNavigationGuide',
         'daily_grid_explained': 'hasCompletedDailyGridGuide',
@@ -717,7 +712,7 @@ export const markGuideCompleted = async (
 
       const field = fieldMap[guideId];
       if (field) {
-        (cachedProfile as any)[field] = true;
+        (mockUserProfile as any)[field] = true;
       }
     }
 
@@ -728,13 +723,15 @@ export const markGuideCompleted = async (
 };
 
 /**
- * Check if a guide has been completed
+ * Check if a guide has been completed - MOCK VERSION
  */
 export const getGuideCompletionStatus = async (
   guideId: 'tab_navigation_overview' | 'daily_grid_explained' | 'proposals_explained' | 'friends_area_explained' | 'profile_completion'
 ): Promise<boolean> => {
   try {
-    if (!cachedProfile) return false;
+    if (!mockUserProfile) {
+      return false;
+    }
 
     const fieldMap: Record<string, keyof UserProfile> = {
       'tab_navigation_overview': 'hasCompletedTabNavigationGuide',
@@ -746,12 +743,12 @@ export const getGuideCompletionStatus = async (
 
     const field = fieldMap[guideId];
     if (field) {
-      return (cachedProfile as any)[field] === true;
+      return (mockUserProfile as any)[field] === true;
     }
 
     return false;
   } catch (error: any) {
-    console.error('[PROFILE] Error checking guide completion:', error);
+    console.error('[MOCK PROFILE] Error checking guide completion:', error);
     return false;
   }
 };
