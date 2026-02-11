@@ -45,6 +45,18 @@ const StyledTouchableOpacity = styled(TouchableOpacity);
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+
+  // Fetch the authenticated user ID once on mount
+  useEffect(() => {
+    const loadUserId = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.id) {
+        setAuthUserId(user.id);
+      }
+    };
+    loadUserId();
+  }, []);
   const [onboardingData, setOnboardingData] = useState<Partial<OnboardingData>>({
     interests: [],
     values: [],
@@ -120,7 +132,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
     // Save current step data before advancing
     const mapping = getStepMappingByIndex(currentStep);
     if (mapping && mapping.columns.length > 0) {
-      const saveResult = await saveOnboardingStep(mapping.key, onboardingData);
+      const saveResult = await saveOnboardingStep(mapping.key, onboardingData, authUserId || undefined);
 
       if (!saveResult.ok) {
         // Check if this is a NOT NULL constraint error (expected on early steps)

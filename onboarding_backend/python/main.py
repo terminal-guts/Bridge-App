@@ -555,6 +555,104 @@ async def get_profile(user_id: str):
         print(f"Error fetching profile: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+class ProfileUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[List[str]] = None
+    location: Optional[str] = None
+    pronouns: Optional[str] = None
+    pronouns_list: Optional[List[str]] = None
+    custom_gender: Optional[str] = None
+    hometown: Optional[str] = None
+    current_job: Optional[str] = None
+    company_position: Optional[str] = None
+    education_level: Optional[str] = None
+    school: Optional[str] = None
+    height_inches: Optional[int] = None
+    ethnicity: Optional[str] = None
+    religion: Optional[str] = None
+    political_leaning: Optional[str] = None
+    has_children: Optional[str] = None
+    family_plans: Optional[str] = None
+    drinking_frequency: Optional[str] = None
+    cannabis_frequency: Optional[str] = None
+    tobacco_frequency: Optional[str] = None
+    other_drugs_frequency: Optional[str] = None
+    interests: Optional[List[str]] = None
+    values: Optional[List[str]] = None
+    bio: Optional[str] = None
+    is_paused: Optional[bool] = None
+    photos: Optional[List[Dict[str, Any]]] = None
+    preferences: Optional[Dict[str, Any]] = None
+    deep_questions: Optional[List[Dict[str, Any]]] = None
+
+
+@app.put("/profile/{user_id}")
+async def update_profile(user_id: str, data: ProfileUpdate):
+    """
+    Updates a user's profile with partial data.
+    Only provided (non-None) fields are updated.
+    """
+    try:
+        print(f"[PROFILE] Updating profile for user: {user_id}")
+
+        # 1. Build profile update dict from non-None fields
+        profile_fields = {}
+        for field in [
+            "first_name", "last_name", "age", "gender", "location",
+            "pronouns", "pronouns_list", "custom_gender", "hometown",
+            "current_job", "company_position", "education_level", "school",
+            "height_inches", "ethnicity", "religion", "political_leaning",
+            "has_children", "family_plans", "drinking_frequency",
+            "cannabis_frequency", "tobacco_frequency", "other_drugs_frequency",
+            "interests", "values", "bio", "is_paused",
+        ]:
+            value = getattr(data, field)
+            if value is not None:
+                profile_fields[field] = value
+
+        if profile_fields:
+            supabase.table("profiles").update(profile_fields).eq("id", user_id).execute()
+
+        # 2. Update preferences if provided
+        if data.preferences is not None:
+            pref_data = {"user_id": user_id, **data.preferences}
+            supabase.table("user_preferences").upsert(
+                pref_data, on_conflict="user_id"
+            ).execute()
+
+        # 3. Update photos if provided (replace all)
+        if data.photos is not None:
+            supabase.table("user_photos").delete().eq("user_id", user_id).execute()
+            for i, photo in enumerate(data.photos):
+                url = photo.get("url", "")
+                supabase.table("user_photos").insert({
+                    "user_id": user_id,
+                    "url": url,
+                    "storage_path": url.split("/")[-1] if url else "",
+                    "display_order": photo.get("order", i),
+                    "is_main": photo.get("isMain", i == 0),
+                }).execute()
+
+        # 4. Update deep questions if provided
+        if data.deep_questions is not None:
+            for dq in data.deep_questions:
+                supabase.table("deep_question_answers").upsert({
+                    "user_id": user_id,
+                    "question_id": dq.get("question_id") or dq.get("questionId"),
+                    "question_text": dq.get("question_text") or dq.get("question"),
+                    "answer_text": dq.get("answer_text") or dq.get("answer"),
+                    "tier": dq.get("tier", 1),
+                }, on_conflict="user_id, question_id").execute()
+
+        return {"status": "success", "message": "Profile updated"}
+
+    except Exception as e:
+        print(f"Error updating profile: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -6,6 +6,7 @@
 
 import { ApiResponse } from '../types';
 import { cleanupSubscriptions } from './messageService';
+import { supabase } from '../lib/supabase';
 
 interface User {
   id: string;
@@ -107,10 +108,13 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
  */
 export const signOut = async (): Promise<ApiResponse<void>> => {
   try {
-    console.log('[MOCK AUTH] User signed out');
+    console.log('[AUTH] Signing out user');
 
     // Clean up message subscriptions
     cleanupSubscriptions();
+
+    // Clear Supabase session so the user is fully logged out
+    await supabase.auth.signOut();
 
     mockCurrentUser = null;
     return { ok: true };

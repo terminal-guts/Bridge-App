@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import { FEATURES } from '../config/features';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { fetchAndSetUserProfile } from '../services/profileService';
 
 // Auth Screens
 import {
@@ -152,6 +153,15 @@ export const AppNavigator = () => {
           if (!isMountedRef.current) return; // Check after async operation
           setIsAuthenticated(false);
         } else {
+          if (user) {
+            // Load user profile from Supabase on app startup
+            console.log('[AppNavigator] Loading profile for authenticated user:', user.id);
+            const profileResult = await fetchAndSetUserProfile(user.id);
+            if (!profileResult.ok && profileResult.error?.code !== 'PROFILE_NOT_FOUND') {
+              console.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
+            }
+          }
+          if (!isMountedRef.current) return;
           setIsAuthenticated(!!user);
         }
       } catch (err) {

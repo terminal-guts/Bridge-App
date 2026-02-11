@@ -28,7 +28,7 @@ export const fetchAndSetUserProfile = async (userId: string): Promise<ApiRespons
   try {
     console.log('[BACKEND] Fetching profile for user from Supabase:', userId);
 
-    const response = await fetch(`${API_URL}/onboarding/profile/${userId}`);
+    const response = await fetch(`${API_URL}/profile/${userId}`);
 
     if (!response.ok) {
       const err = await response.text();
@@ -131,17 +131,19 @@ export const fetchAndSetUserProfile = async (userId: string): Promise<ApiRespons
  */
 export const saveOnboardingStep = async (
   stepKey: string,
-  data: Partial<OnboardingData>
+  data: Partial<OnboardingData>,
+  userId?: string
 ): Promise<ApiResponse<void>> => {
   try {
-    console.log('[BACKEND] Saving step to Supabase:', stepKey);
+    const effectiveUserId = userId || MOCK_USER_ID;
+    console.log('[BACKEND] Saving step to Supabase:', stepKey, 'for user:', effectiveUserId);
 
     // Call real Python backend
     const response = await fetch(`${API_URL}/onboarding/save-step`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        user_id: MOCK_USER_ID,
+        user_id: effectiveUserId,
         step_key: stepKey,
         data: data
       }),
@@ -535,13 +537,98 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
 };
 
 /**
- * Update user profile - MOCK VERSION
+ * Sync profile changes to the backend.
+ * Converts camelCase frontend fields to snake_case for the API.
+ */
+const syncProfileToBackend = async (userId: string, profile: Partial<UserProfile>): Promise<void> => {
+  const payload: Record<string, any> = {};
+
+  // Map camelCase to snake_case for profile fields
+  if (profile.firstName !== undefined) payload.first_name = profile.firstName;
+  if (profile.lastName !== undefined) payload.last_name = profile.lastName;
+  if (profile.age !== undefined) payload.age = profile.age;
+  if (profile.gender !== undefined) payload.gender = profile.gender;
+  if (profile.location !== undefined) payload.location = profile.location;
+  if (profile.pronouns !== undefined) payload.pronouns = profile.pronouns;
+  if (profile.pronounsList !== undefined) payload.pronouns_list = profile.pronounsList;
+  if (profile.customMyGender !== undefined) payload.custom_gender = profile.customMyGender;
+  if (profile.hometown !== undefined) payload.hometown = profile.hometown;
+  if (profile.currentJob !== undefined) payload.current_job = profile.currentJob;
+  if (profile.companyPosition !== undefined) payload.company_position = profile.companyPosition;
+  if (profile.educationLevel !== undefined) payload.education_level = profile.educationLevel;
+  if (profile.school !== undefined) payload.school = profile.school;
+  if (profile.ethnicity !== undefined) payload.ethnicity = profile.ethnicity;
+  if (profile.religion !== undefined) payload.religion = profile.religion;
+  if (profile.politicalLeaning !== undefined) payload.political_leaning = profile.politicalLeaning;
+  if (profile.hasChildren !== undefined) payload.has_children = profile.hasChildren;
+  if (profile.familyPlans !== undefined) payload.family_plans = profile.familyPlans;
+  if (profile.drinkingFrequency !== undefined) payload.drinking_frequency = profile.drinkingFrequency;
+  if (profile.cannabisFrequency !== undefined) payload.cannabis_frequency = profile.cannabisFrequency;
+  if (profile.tobaccoFrequency !== undefined) payload.tobacco_frequency = profile.tobaccoFrequency;
+  if (profile.otherDrugsFrequency !== undefined) payload.other_drugs_frequency = profile.otherDrugsFrequency;
+  if (profile.interests !== undefined) payload.interests = profile.interests;
+  if (profile.values !== undefined) payload.values = profile.values;
+  if (profile.bio !== undefined) payload.bio = profile.bio;
+  if (profile.isPaused !== undefined) payload.is_paused = profile.isPaused;
+  if (profile.height !== undefined) {
+    // Parse height string like 5'10" to inches
+    const match = profile.height.match(/(\d+)'(\d+)/);
+    if (match) {
+      payload.height_inches = parseInt(match[1]) * 12 + parseInt(match[2]);
+    }
+  }
+
+  if (profile.photos !== undefined) {
+    payload.photos = profile.photos.map((p: any) => ({
+      url: p.url,
+      order: p.order,
+      isMain: p.isMain,
+    }));
+  }
+
+  if (profile.preferences !== undefined) {
+    payload.preferences = {
+      age_min: profile.preferences.ageMin,
+      age_max: profile.preferences.ageMax,
+      preferred_gender: profile.preferences.gender,
+      looking_for: profile.preferences.lookingFor,
+      height_min: profile.preferences.heightMin,
+      height_max: profile.preferences.heightMax,
+      distance_miles: profile.preferences.maxDistance,
+    };
+  }
+
+  if (profile.deepQuestions !== undefined) {
+    payload.deep_questions = profile.deepQuestions.map((dq: any) => ({
+      question_id: dq.questionId,
+      question_text: dq.question,
+      answer_text: dq.answer,
+      tier: dq.tier,
+    }));
+  }
+
+  const response = await fetch(`${API_URL}/profile/${userId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    console.warn('[BACKEND] Profile sync failed:', err);
+  } else {
+    console.log('[BACKEND] Profile synced to backend successfully');
+  }
+};
+
+/**
+ * Update user profile - updates local state and syncs to backend
  */
 export const updateUserProfile = async (
   profile: Partial<UserProfile>
 ): Promise<ApiResponse<UserProfile>> => {
   try {
-    console.log('[MOCK PROFILE] Updating user profile:', profile);
+    console.log('[PROFILE] Updating user profile:', Object.keys(profile));
 
     if (!mockUserProfile) {
       // Auto-create if doesn't exist
@@ -570,9 +657,13 @@ export const updateUserProfile = async (
       mockUserProfile.updatedAt = new Date().toISOString();
     }
 
-    console.log('[MOCK PROFILE] Profile updated successfully. New values:', {
-      partnerLifestylePreferences: mockUserProfile.partnerLifestylePreferences,
-    });
+    // Sync to backend
+    const userId = mockUserProfile?.userId || mockUserProfile?.id;
+    if (userId) {
+      syncProfileToBackend(userId, profile).catch(err => {
+        console.warn('[PROFILE] Background sync failed:', err);
+      });
+    }
 
     return {
       ok: true,
@@ -584,13 +675,13 @@ export const updateUserProfile = async (
 };
 
 /**
- * Add profile photos - MOCK VERSION
+ * Add profile photos - updates local state and syncs to backend
  */
 export const addProfilePhotos = async (
   imageUris: string[]
 ): Promise<ApiResponse<Photo[]>> => {
   try {
-    console.log('[MOCK PROFILE] Adding photos:', imageUris);
+    console.log('[PROFILE] Adding photos:', imageUris);
 
     const newPhotos: Photo[] = imageUris.map((uri, index) => ({
       id: `photo-${Date.now()}-${index}`,
@@ -601,6 +692,14 @@ export const addProfilePhotos = async (
 
     if (mockUserProfile) {
       mockUserProfile.photos = [...mockUserProfile.photos, ...newPhotos];
+
+      // Sync all photos to backend
+      const userId = mockUserProfile.userId || mockUserProfile.id;
+      if (userId) {
+        syncProfileToBackend(userId, { photos: mockUserProfile.photos }).catch(err => {
+          console.warn('[PROFILE] Photo sync failed:', err);
+        });
+      }
     }
 
     return {
@@ -613,16 +712,24 @@ export const addProfilePhotos = async (
 };
 
 /**
- * Remove profile photo - MOCK VERSION
+ * Remove profile photo - updates local state and syncs to backend
  */
 export const removeProfilePhoto = async (
   photoId: string
 ): Promise<ApiResponse<void>> => {
   try {
-    console.log('[MOCK PROFILE] Removing photo:', photoId);
+    console.log('[PROFILE] Removing photo:', photoId);
 
     if (mockUserProfile) {
       mockUserProfile.photos = mockUserProfile.photos.filter(p => p.id !== photoId);
+
+      // Sync remaining photos to backend
+      const userId = mockUserProfile.userId || mockUserProfile.id;
+      if (userId) {
+        syncProfileToBackend(userId, { photos: mockUserProfile.photos }).catch(err => {
+          console.warn('[PROFILE] Photo sync failed:', err);
+        });
+      }
     }
 
     return { ok: true };
@@ -632,16 +739,23 @@ export const removeProfilePhoto = async (
 };
 
 /**
- * Reorder profile photos - MOCK VERSION
+ * Reorder profile photos - updates local state and syncs to backend
  */
 export const reorderProfilePhotos = async (
   reorderedPhotos: Photo[]
 ): Promise<ApiResponse<void>> => {
   try {
-    console.log('[MOCK PROFILE] Reordering photos');
+    console.log('[PROFILE] Reordering photos');
 
     if (mockUserProfile) {
       mockUserProfile.photos = reorderedPhotos;
+
+      const userId = mockUserProfile.userId || mockUserProfile.id;
+      if (userId) {
+        syncProfileToBackend(userId, { photos: reorderedPhotos }).catch(err => {
+          console.warn('[PROFILE] Photo reorder sync failed:', err);
+        });
+      }
     }
 
     return { ok: true };
@@ -651,19 +765,26 @@ export const reorderProfilePhotos = async (
 };
 
 /**
- * Set main profile photo - MOCK VERSION
+ * Set main profile photo - updates local state and syncs to backend
  */
 export const setMainProfilePhoto = async (
   photoId: string
 ): Promise<ApiResponse<void>> => {
   try {
-    console.log('[MOCK PROFILE] Setting main photo:', photoId);
+    console.log('[PROFILE] Setting main photo:', photoId);
 
     if (mockUserProfile) {
       mockUserProfile.photos = mockUserProfile.photos.map(p => ({
         ...p,
         isMain: p.id === photoId,
       }));
+
+      const userId = mockUserProfile.userId || mockUserProfile.id;
+      if (userId) {
+        syncProfileToBackend(userId, { photos: mockUserProfile.photos }).catch(err => {
+          console.warn('[PROFILE] Main photo sync failed:', err);
+        });
+      }
     }
 
     return { ok: true };
@@ -673,16 +794,23 @@ export const setMainProfilePhoto = async (
 };
 
 /**
- * Update profile pause status - MOCK VERSION
+ * Update profile pause status - updates local state and syncs to backend
  */
 export const updateProfilePauseStatus = async (
   isPaused: boolean
 ): Promise<ApiResponse<void>> => {
   try {
-    console.log('[MOCK PROFILE] Updating pause status:', isPaused);
+    console.log('[PROFILE] Updating pause status:', isPaused);
 
     if (mockUserProfile) {
       mockUserProfile.isPaused = isPaused;
+
+      const userId = mockUserProfile.userId || mockUserProfile.id;
+      if (userId) {
+        syncProfileToBackend(userId, { isPaused } as any).catch(err => {
+          console.warn('[PROFILE] Pause status sync failed:', err);
+        });
+      }
     }
 
     return { ok: true };
