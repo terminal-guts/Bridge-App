@@ -55,6 +55,50 @@ async def cast_vote(vote: VoteRequest):
         # Use upsert to handle potential re-votes (changing mind)
         response = supabase.table("votes").upsert(data, on_conflict="voter_id, candidate_id").execute()
         
+        # --- Match Decision Logic ---
+        # Define match pair IDs (sorted for uniqueness)
+        u1, u2 = sorted([vote.voter_id, vote.candidate_id])
+
+        # If this vote is positive, check if the other person also voted positively
+        if vote.vote_type in [VoteType.YES, VoteType.RECOMMEND]:
+            # Check if candidate has already voted for voter
+            other_vote_res = supabase.table("votes").select("vote_type")\
+                .eq("voter_id", vote.candidate_id)\
+                .eq("candidate_id", vote.voter_id)\
+                .execute()
+                
+            if other_vote_res.data:
+                other_vote_type = other_vote_res.data[0]["vote_type"]
+                # Determine if it's a mutual match
+                # Both must be YES or RECOMMEND
+                if other_vote_type in ["YES", "RECOMMEND"]:
+                    print(f"[MATCH] Mutual match found between {vote.voter_id} and {vote.candidate_id}")
+                    
+                    match_data = {
+                        "user1_id": u1,
+                        "user2_id": u2,
+                        "status": "candidate", # Pre-chat state
+                        "created_at": datetime.datetime.now().isoformat(),
+                        "updated_at": datetime.datetime.now().isoformat()
+                    }
+                    
+                    # Store match cleanly
+                    # upsert prevents duplicates if they re-match or verify
+                    match_res = supabase.table("matches").upsert(
+                        match_data, 
+                        on_conflict="user1_id, user2_id"
+                    ).execute()
+                    
+                    if match_res.data:
+                        print(f"[MATCH] Candidate match stored: {match_res.data[0].get('id')}")
+        else:
+            # If vote changed to NO/UNSURE, ensure no match exists (cleanup)
+            try:
+                supabase.table("matches").delete().eq("user1_id", u1).eq("user2_id", u2).execute()
+                print(f"[MATCH] Enforced no match for {u1} and {u2}")
+            except Exception as match_del_err:
+                 print(f"[MATCH] Error cleaning up match or no match existed: {match_del_err}")
+
         return {"status": "success", "message": f"Vote {vote.vote_type} cast successfully"}
     except Exception as e:
         print(f"[VOTING] Error casting vote: {e}")
