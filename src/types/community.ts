@@ -60,7 +60,7 @@ export interface RandomMatchAssignment {
 
 // ==================== Proposal Types ====================
 
-export type ProposalStatus = 'voting' | 'confirmed' | 'rejected' | 'expired_sent' | 'accepted' | 'declined';
+export type ProposalStatus = 'pending' | 'deciding' | 'rejected' | 'expired' | 'passed_to_match' | 'declined';
 
 export interface Proposal {
   id: string;
@@ -93,20 +93,22 @@ export interface Proposal {
   proposalDate: string;
 
   // Lifecycle timestamps
-  votingExpiresAt: string;    // 7 days from creation
-  proposalExpiresAt: string;  // 48 hours after confirmed/expired for decisions
   votingStartedAt?: string;
-  confirmedAt?: string;
-  rejectedAt?: string;
-  expiredAt?: string;
-  sentToUsersAt?: string;
-  decisionDeadlineAt?: string;
+  votingExpiresAt: string;    // When community voting ends
+  communityDecidedAt?: string; // When community vote reached resolution
 
-  // User decisions
+  passedToUsersAt?: string;   // When it moved to Deciding state
+  decisionDeadlineAt?: string; // When users must decide by
+
   userADecision?: 'pending' | 'accepted' | 'declined';
   userBDecision?: 'pending' | 'accepted' | 'declined';
   userADecidedAt?: string;
   userBDecidedAt?: string;
+
+  confirmedAt?: string;       // When both users have accepted (passed to match)
+  rejectedAt?: string;        // When community rejects
+  declinedAt?: string;        // When at least one user declines
+  expiredAt?: string;         // When time runs out at any stage
 
   createdAt: string;
   updatedAt: string;

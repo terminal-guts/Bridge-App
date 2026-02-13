@@ -10,11 +10,11 @@
  * ──────────────────────────────────────────────────────────────────────
  * Lifecycle:
  *
- *   Created → [Voting Window] → Approved / Rejected / Expired
- *                                    ↓
- *                              [Acceptance Window]
- *                                    ↓
- *                              Accepted / Declined / Expired
+ *   Created (Pending) → [Community Voting] → Rejected / Expired
+ *                                 ↓
+ *                          Approved (Deciding) → [User Decision]
+ *                                 ↓
+ *                       Accepted (Passed to Match) / Declined / Expired
  * ──────────────────────────────────────────────────────────────────────
  *
  * All functions are pure — they take a proposal (and optionally votes)
@@ -28,10 +28,10 @@ import { Proposal, ProposalVote, ProposalStatus } from '../types/community';
 // ============================================================================
 
 /** How long the community has to vote on a proposal (hours). */
-export const VOTING_WINDOW_HOURS = 24;
+export const COMMUNITY_VOTING_WINDOW_HOURS = 24;
 
 /** Once approved, how long both users have to accept (hours). */
-export const ACCEPTANCE_WINDOW_HOURS = 48;
+export const USER_DECISION_WINDOW_HOURS = 48;
 
 /**
  * Minimum number of votes a proposal must receive before any
@@ -70,12 +70,13 @@ export const MIN_VOTES_FOR_VALID_OUTCOME = 3;
 // ============================================================================
 
 export type ThresholdAction =
-    | 'continue_showing'   // Keep showing to voters
-    | 'approve'            // Enough yes-votes → push to both users
-    | 'reject'             // Too many no-votes → kill proposal
-    | 'expire_time'        // Voting window elapsed
-    | 'expire_inconclusive' // Time ran out with too few votes
-    | 'expire_acceptance';  // Both users didn't accept in time
+    | 'continue_showing'     // Keep showing to voters
+    | 'community_approve'    // Enough yes-votes → move to Deciding
+    | 'community_reject'     // Too many no-votes → kill proposal
+    | 'community_expire'     // Voting window elapsed inconclusive
+    | 'users_pass_to_match'  // Both users accepted
+    | 'users_decline'        // At least one user declined
+    | 'users_expire';        // Users didn't decide in time
 
 export interface ThresholdEvaluation {
     /** The recommended action for this proposal. */
@@ -139,7 +140,7 @@ export function evaluateProposal(
         // Did we get enough votes for a meaningful outcome?
         if (stats.totalVotes < MIN_VOTES_FOR_VALID_OUTCOME) {
             return {
-                action: 'expire_inconclusive',
+                action: 'community_expire',
                 reason: `Voting window expired with only ${stats.totalVotes} vote(s) (minimum ${MIN_VOTES_FOR_VALID_OUTCOME}).`,
                 stats,
             };
@@ -148,14 +149,14 @@ export function evaluateProposal(
         // Enough votes — decide based on final percentages
         if (stats.yesPercentage >= APPROVAL_PERCENTAGE * 100 && stats.meetsThreshold) {
             return {
-                action: 'approve',
+                action: 'community_approve',
                 reason: `Voting window closed. ${stats.yesPercentage.toFixed(1)}% approval with ${stats.yesVotes} yes-votes meets threshold of ${stats.votingThreshold}.`,
                 stats,
             };
         }
 
         return {
-            action: 'expire_time',
+            action: 'community_expire',
             reason: `Voting window expired. ${stats.yesPercentage.toFixed(1)}% approval did not meet the ${(APPROVAL_PERCENTAGE * 100).toFixed(0)}% minimum or the vote threshold of ${stats.votingThreshold}.`,
             stats,
         };
@@ -165,13 +166,13 @@ export function evaluateProposal(
     if (stats.totalVotes >= MAX_VOTES_CAP) {
         if (stats.yesPercentage >= APPROVAL_PERCENTAGE * 100 && stats.meetsThreshold) {
             return {
-                action: 'approve',
+                action: 'community_approve',
                 reason: `Vote cap (${MAX_VOTES_CAP}) reached. ${stats.yesPercentage.toFixed(1)}% approval → approved.`,
                 stats,
             };
         }
         return {
-            action: 'reject',
+            action: 'community_reject',
             reason: `Vote cap (${MAX_VOTES_CAP}) reached. ${stats.yesPercentage.toFixed(1)}% approval → rejected.`,
             stats,
         };
@@ -183,7 +184,7 @@ export function evaluateProposal(
         stats.noPercentage >= REJECTION_PERCENTAGE * 100
     ) {
         return {
-            action: 'reject',
+            action: 'community_reject',
             reason: `Early rejection: ${stats.noPercentage.toFixed(1)}% No-votes (${stats.noVotes}/${stats.totalVotes}) exceeds ${(REJECTION_PERCENTAGE * 100).toFixed(0)}% threshold.`,
             stats,
         };
@@ -196,20 +197,37 @@ export function evaluateProposal(
         stats.yesPercentage >= APPROVAL_PERCENTAGE * 100
     ) {
         return {
-            action: 'approve',
+            action: 'community_approve',
             reason: `Approved: ${stats.yesPercentage.toFixed(1)}% Yes-votes (${stats.yesVotes}/${stats.totalVotes}) meets threshold of ${stats.votingThreshold} with ≥${MIN_VOTES_FOR_DECISION} votes.`,
             stats,
         };
     }
 
-    // ── PHASE 2: Acceptance window checks ─────────────────────────────
+    // ── PHASE 2: User Decision checks ─────────────────────────────
 
-    if (stats.isAcceptanceExpired && proposal.status === 'approved') {
+    if (stats.isAcceptanceExpired && proposal.status === 'deciding') {
         return {
-            action: 'expire_acceptance',
-            reason: `Acceptance window (${ACCEPTANCE_WINDOW_HOURS}h) expired before both users responded.`,
+            action: 'users_expire',
+            reason: `Decision deadline (${USER_DECISION_WINDOW_HOURS}h) expired before both users responded.`,
             stats,
         };
+    }
+
+    if (proposal.status === 'deciding') {
+        if (proposal.userADecision === 'accepted' && proposal.userBDecision === 'accepted') {
+            return {
+                action: 'users_pass_to_match',
+                reason: 'Both users accepted the match.',
+                stats,
+            };
+        }
+        if (proposal.userADecision === 'declined' || proposal.userBDecision === 'declined') {
+            return {
+                action: 'users_decline',
+                reason: 'One or both users declined the match.',
+                stats,
+            };
+        }
     }
 
     // ── Default: keep showing ─────────────────────────────────────────
@@ -274,7 +292,7 @@ export function getApprovableProposals(
 ): Proposal[] {
     const evaluations = evaluateAllProposals(proposals, allVotes, now);
     return proposals.filter(
-        (p) => evaluations[p.id]?.action === 'approve',
+        (p) => evaluations[p.id]?.action === 'community_approve',
     );
 }
 
@@ -288,10 +306,10 @@ export function getRemovableProposals(
 ): Proposal[] {
     const evaluations = evaluateAllProposals(proposals, allVotes, now);
     const removableActions: ThresholdAction[] = [
-        'reject',
-        'expire_time',
-        'expire_inconclusive',
-        'expire_acceptance',
+        'community_reject',
+        'community_expire',
+        'users_expire',
+        'users_decline',
     ];
     return proposals.filter(
         (p) => removableActions.includes(evaluations[p.id]?.action),
@@ -310,22 +328,24 @@ export function computeVotingStats(
     votes: ProposalVote[],
     now: Date = new Date(),
 ): VotingStats {
-    const yesVotes = votes.filter((v) => v.vote === true).length;
-    const noVotes = votes.filter((v) => v.vote === false).length;
+    const friendWeight = 1.25;
+
+    const yesVotes = votes.filter((v) => v.voteType === 'YES' || v.voteType === 'RECOMMEND').length;
+    const noVotes = votes.filter((v) => v.voteType === 'NO').length;
     const totalVotes = votes.length;
 
     const yesWeight = votes
-        .filter((v) => v.vote === true)
-        .reduce((sum, v) => sum + (v.voteWeight ?? 1), 0);
+        .filter((v) => v.voteType === 'YES' || v.voteType === 'RECOMMEND')
+        .reduce((sum, v) => sum + (v.isFriendVote ? friendWeight : 1), 0);
     const noWeight = votes
-        .filter((v) => v.vote === false)
-        .reduce((sum, v) => sum + (v.voteWeight ?? 1), 0);
+        .filter((v) => v.voteType === 'NO')
+        .reduce((sum, v) => sum + (v.isFriendVote ? friendWeight : 1), 0);
 
     const yesPercentage = totalVotes > 0 ? (yesVotes / totalVotes) * 100 : 0;
     const noPercentage = totalVotes > 0 ? (noVotes / totalVotes) * 100 : 0;
 
     const votingExpiresAtMs = new Date(proposal.votingExpiresAt).getTime();
-    const proposalExpiresAtMs = new Date(proposal.proposalExpiresAt).getTime();
+    const decisionDeadlineAtMs = proposal.decisionDeadlineAt ? new Date(proposal.decisionDeadlineAt).getTime() : 0;
     const nowMs = now.getTime();
 
     const msRemaining = votingExpiresAtMs - nowMs;
@@ -348,7 +368,7 @@ export function computeVotingStats(
         meetsThreshold,
         minutesRemaining,
         isVotingExpired: nowMs >= votingExpiresAtMs,
-        isAcceptanceExpired: nowMs >= proposalExpiresAtMs,
+        isAcceptanceExpired: decisionDeadlineAtMs > 0 && nowMs >= decisionDeadlineAtMs,
     };
 }
 
@@ -356,7 +376,7 @@ export function computeVotingStats(
  * Returns true if the proposal status is terminal (no further action needed).
  */
 function isTerminalStatus(status: ProposalStatus): boolean {
-    return ['accepted', 'declined', 'expired', 'rejected'].includes(status);
+    return ['passed_to_match', 'declined', 'expired', 'rejected'].includes(status);
 }
 
 /**
@@ -365,14 +385,17 @@ function isTerminalStatus(status: ProposalStatus): boolean {
  */
 export function actionToStatus(action: ThresholdAction): ProposalStatus | null {
     switch (action) {
-        case 'approve':
-            return 'approved';
-        case 'reject':
+        case 'community_approve':
+            return 'deciding';
+        case 'community_reject':
             return 'rejected';
-        case 'expire_time':
-        case 'expire_inconclusive':
-        case 'expire_acceptance':
+        case 'community_expire':
+        case 'users_expire':
             return 'expired';
+        case 'users_pass_to_match':
+            return 'passed_to_match';
+        case 'users_decline':
+            return 'declined';
         case 'continue_showing':
         default:
             return null; // No status change

@@ -103,11 +103,12 @@ export function instrumentProposals(
   // Threshold breakdown accumulator
   const thresholdBreakdown: Record<ThresholdAction, number> = {
     continue_showing: 0,
-    approve: 0,
-    reject: 0,
-    expire_time: 0,
-    expire_inconclusive: 0,
-    expire_acceptance: 0,
+    community_approve: 0,
+    community_reject: 0,
+    community_expire: 0,
+    users_pass_to_match: 0,
+    users_decline: 0,
+    users_expire: 0,
   };
 
   for (const proposal of proposals) {
@@ -148,7 +149,7 @@ export function instrumentProposals(
       proposalsReachedThreshold += 1;
     }
 
-    if (proposal.status === 'confirmed' || proposal.status === 'accepted') {
+    if (proposal.status === 'passed_to_match' || proposal.status === 'deciding') {
       approvedCount += 1;
     } else if (proposal.status === 'rejected' || proposal.status === 'declined') {
       rejectedCount += 1;

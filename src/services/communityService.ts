@@ -349,9 +349,10 @@ function generateMockProposals(): Proposal[] {
     id: 'proposal-001',
     userA: userA1,
     userB: userB1,
-    status: 'voting' as ProposalStatus,
+    status: 'pending' as ProposalStatus,
     yesVotes: 12,
     noVotes: 3,
+    totalVotes: 15, // Sum of yes + no
     votingThreshold: 15,
     baseThreshold: 20,
     endorsements: [
@@ -366,8 +367,15 @@ function generateMockProposals(): Proposal[] {
       },
     ],
     proposalDate: new Date().toISOString().split('T')[0],
+    votingStartedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
     votingExpiresAt: new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString(),
-    proposalExpiresAt: new Date(Date.now() + 42 * 60 * 60 * 1000).toISOString(),
+    decisionDeadlineAt: new Date(Date.now() + 66 * 60 * 60 * 1000).toISOString(),
+    poolYesVotes: 10,
+    poolNoVotes: 2,
+    friendYesVotes: 2,
+    friendNoVotes: 1,
+    poolEligible: true,
+    compatibilityScore: 85,
     createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date().toISOString(),
   });
@@ -400,9 +408,10 @@ function generateMockProposals(): Proposal[] {
     id: 'proposal-002',
     userA: userA2,
     userB: userB2,
-    status: 'voting' as ProposalStatus,
+    status: 'pending' as ProposalStatus,
     yesVotes: 8,
     noVotes: 5,
+    totalVotes: 13, // Sum of yes + no
     votingThreshold: 16,
     baseThreshold: 20,
     endorsements: [
@@ -418,8 +427,15 @@ function generateMockProposals(): Proposal[] {
       },
     ],
     proposalDate: new Date().toISOString().split('T')[0],
+    votingStartedAt: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(),
     votingExpiresAt: new Date(Date.now() + 14 * 60 * 60 * 1000).toISOString(),
-    proposalExpiresAt: new Date(Date.now() + 38 * 60 * 60 * 1000).toISOString(),
+    decisionDeadlineAt: new Date(Date.now() + 62 * 60 * 60 * 1000).toISOString(),
+    poolYesVotes: 5,
+    poolNoVotes: 3,
+    friendYesVotes: 3,
+    friendNoVotes: 2,
+    poolEligible: true,
+    compatibilityScore: 92,
     createdAt: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date().toISOString(),
   });
@@ -450,9 +466,10 @@ function generateMockProposals(): Proposal[] {
     id: 'proposal-003',
     userA: userA3,
     userB: userB3,
-    status: 'voting' as ProposalStatus,
+    status: 'pending' as ProposalStatus,
     yesVotes: 14,
     noVotes: 7,
+    totalVotes: 21, // Sum of yes + no
     votingThreshold: 20,
     baseThreshold: 20,
     endorsements: [
@@ -467,8 +484,15 @@ function generateMockProposals(): Proposal[] {
       },
     ],
     proposalDate: new Date().toISOString().split('T')[0],
+    votingStartedAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
     votingExpiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
-    proposalExpiresAt: new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString(),
+    decisionDeadlineAt: new Date(Date.now() + 60 * 60 * 60 * 1000).toISOString(),
+    poolYesVotes: 14,
+    poolNoVotes: 7,
+    friendYesVotes: 0,
+    friendNoVotes: 0,
+    poolEligible: true,
+    compatibilityScore: 78,
     createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date().toISOString(),
   });
@@ -498,7 +522,7 @@ function generateMockFriends(): FriendAnchor[] {
       anchor: generateMockUser({
         id: 'friend-maya',
         firstName: 'Maya',
-        photoUrl: MOCK_PHOTOS[0],
+        photos: [{ id: 'photo-maya', url: MOCK_PHOTOS[0], isMain: true, order: 0 }],
       }),
       candidates: [
         generateMockUser({ firstName: 'Chris' }),
@@ -528,7 +552,7 @@ function generateMockFriends(): FriendAnchor[] {
       anchor: generateMockUser({
         id: 'friend-ethan',
         firstName: 'Ethan',
-        photoUrl: MOCK_PHOTOS[1],
+        photos: [{ id: 'photo-ethan', url: MOCK_PHOTOS[1], isMain: true, order: 0 }],
       }),
       candidates: [
         generateMockUser({ firstName: 'Alex' }),
@@ -569,7 +593,7 @@ function generateMockFriends(): FriendAnchor[] {
       anchor: generateMockUser({
         id: 'friend-liam',
         firstName: 'Liam',
-        photoUrl: MOCK_PHOTOS[3],
+        photos: [{ id: 'photo-liam', url: MOCK_PHOTOS[3], isMain: true, order: 0 }],
       }),
       candidates: [
         generateMockUser({ firstName: 'Jamie' }),
@@ -599,7 +623,7 @@ function generateMockFriends(): FriendAnchor[] {
       anchor: generateMockUser({
         id: 'friend-olivia',
         firstName: 'Olivia',
-        photoUrl: MOCK_PHOTOS[4],
+        photos: [{ id: 'photo-olivia', url: MOCK_PHOTOS[4], isMain: true, order: 0 }],
       }),
       candidates: [
         generateMockUser({ firstName: 'Morgan' }),
