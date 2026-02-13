@@ -1,4 +1,8 @@
 import { Proposal, ProposalStatus, ProposalVote } from '../types/community';
+import {
+  evaluateProposal,
+  ThresholdAction,
+} from './proposalThresholds';
 
 export interface PerProposalMetrics {
   proposalId: string;
@@ -13,6 +17,9 @@ export interface PerProposalMetrics {
   reachedThreshold: boolean;
   timeToConsensusMs?: number;
   timeToConsensusHours?: number;
+  /** Threshold evaluation result from the proposal lifecycle engine. */
+  thresholdAction: ThresholdAction;
+  thresholdReason: string;
 }
 
 export interface AggregateMetrics {
@@ -30,12 +37,15 @@ export interface AggregateMetrics {
     noWeight: number;
   };
   rejectionRate: number; // rejected / (approved + rejected)
+  /** Counts of proposals by their evaluated threshold action. */
+  thresholdBreakdown: Record<ThresholdAction, number>;
 }
 
 export interface InstrumentationResult {
   perProposal: Record<string, PerProposalMetrics>;
   aggregate: AggregateMetrics;
 }
+
 
 const MS_PER_HOUR = 1000 * 60 * 60;
 
@@ -90,6 +100,16 @@ export function instrumentProposals(
   let approvedCount = 0;
   let rejectedCount = 0;
 
+  // Threshold breakdown accumulator
+  const thresholdBreakdown: Record<ThresholdAction, number> = {
+    continue_showing: 0,
+    approve: 0,
+    reject: 0,
+    expire_time: 0,
+    expire_inconclusive: 0,
+    expire_acceptance: 0,
+  };
+
   for (const proposal of proposals) {
     const proposalVotes = votesByProposal[proposal.id] ?? [];
 
@@ -137,6 +157,10 @@ export function instrumentProposals(
       consensusTimesHours.push(timeToConsensusHours);
     }
 
+    // Evaluate against threshold engine
+    const thresholdEval = evaluateProposal(proposal, proposalVotes);
+    thresholdBreakdown[thresholdEval.action] += 1;
+
     perProposal[proposal.id] = {
       proposalId: proposal.id,
       status: proposal.status,
@@ -150,6 +174,8 @@ export function instrumentProposals(
       reachedThreshold,
       timeToConsensusMs: timeToConsensusMs ?? undefined,
       timeToConsensusHours,
+      thresholdAction: thresholdEval.action,
+      thresholdReason: thresholdEval.reason,
     };
   }
 
@@ -177,6 +203,7 @@ export function instrumentProposals(
       approvedCount + rejectedCount > 0
         ? rejectedCount / (approvedCount + rejectedCount)
         : 0,
+    thresholdBreakdown,
   };
 
   return { perProposal, aggregate };
@@ -211,5 +238,7 @@ export function logProposalInstrumentation(result: InstrumentationResult): void 
   console.log('Vote distribution:', aggregate.voteDistribution);
   // eslint-disable-next-line no-console
   console.log('Rejection rate:', (aggregate.rejectionRate * 100).toFixed(1) + '%');
+  // eslint-disable-next-line no-console
+  console.log('Threshold breakdown:', aggregate.thresholdBreakdown);
 }
 
