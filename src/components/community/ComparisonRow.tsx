@@ -18,11 +18,11 @@ const StyledText = styled(Text);
 
 interface ComparisonRowProps {
   label: string;
-  matchResult: MatchResult;
+  result: MatchResult;
   isLast?: boolean;
 }
 
-export function ComparisonRow({ label, matchResult, isLast = false }: ComparisonRowProps) {
+export function ComparisonRow({ label, result, isLast = false }: ComparisonRowProps) {
   return (
     <StyledView style={{ marginBottom: isLast ? 0 : 12 }}>
       {/* Label */}
@@ -58,12 +58,12 @@ export function ComparisonRow({ label, matchResult, isLast = false }: Comparison
             fontWeight: '500',
             textAlign: 'center',
           }}>
-            {matchResult.leftValue}
+            {result.leftValue}
           </StyledText>
         </StyledView>
 
         {/* Status Icon */}
-        <MatchStatusIcon status={matchResult.status} size={20} />
+        <MatchStatusIcon status={result.status} size={20} />
 
         {/* Right Value (Person B - Teal tint) */}
         <StyledView style={{
@@ -80,13 +80,13 @@ export function ComparisonRow({ label, matchResult, isLast = false }: Comparison
             fontWeight: '500',
             textAlign: 'center',
           }}>
-            {matchResult.rightValue}
+            {result.rightValue}
           </StyledText>
         </StyledView>
       </StyledView>
 
       {/* Optional Details */}
-      {matchResult.details && (
+      {result.details && (
         <StyledText style={{
           fontSize: 11,
           color: '#64748B',
@@ -94,7 +94,7 @@ export function ComparisonRow({ label, matchResult, isLast = false }: Comparison
           textAlign: 'center',
           fontStyle: 'italic',
         }}>
-          {matchResult.details}
+          {result.details}
         </StyledText>
       )}
     </StyledView>

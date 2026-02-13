@@ -27,7 +27,7 @@ import {
   ActiveMatch,
   CommunityTask,
 } from '../../types/community';
-import { FriendCard } from './FriendCard';
+import { FriendCard } from '../ui/FriendCard';
 import { TimerBadge } from './TimerBadge';
 import { CelebrationBanner } from './CelebrationBanner';
 import { PendingProposalCard } from './PendingProposalCard';
@@ -604,22 +604,23 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
             <GuideTarget id="help-friends-section">
               <StyledFlatList
                 data={combinedFriends}
-                keyExtractor={(item) => item.friendshipId}
-                renderItem={({ item, index }) => {
+                keyExtractor={(item: any) => item.friendshipId}
+                renderItem={({ item, index }: { item: any; index: number }) => {
+                  const friendItem = item as FriendWithVariant;
                   const friendCard = (
                     <FriendCard
-                      friend={item}
-                      variant={item.variant}
-                      onHelpMatch={() => handleHelpFriend(item.friendId)}
-                      onMessage={() => handleChatWithFriend(item.friendId)}
-                      onViewProfile={() => handleViewFriendProfile(item.friendId)}
+                      friend={friendItem}
+                      variant={friendItem.variant}
+                      onHelpMatch={() => handleHelpFriend(friendItem.friendId)}
+                      onMessage={() => handleChatWithFriend(friendItem.friendId)}
+                      onViewProfile={() => handleViewFriendProfile(friendItem.friendId)}
                     />
                   );
 
                   // Wrap first pending friend with GuideTarget
-                  if (index === 0 && item.variant === 'pending') {
+                  if (index === 0 && friendItem.variant === 'pending') {
                     return (
-                      <GuideTarget key={item.friendshipId} id="friend-row-0">
+                      <GuideTarget key={friendItem.friendshipId} id="friend-row-0">
                         {friendCard}
                       </GuideTarget>
                     );
@@ -627,7 +628,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
 
                   return friendCard;
                 }}
-                ItemSeparatorComponent={({ leadingItem }) => {
+                ItemSeparatorComponent={({ leadingItem }: { leadingItem: any }) => {
                   // Show separator after last pending friend
                   if (!leadingItem) return null;
                   const currentIndex = combinedFriends.findIndex(f => f.friendshipId === leadingItem.friendshipId);

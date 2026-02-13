@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Sharing from 'expo-sharing';
 import { H2, Body } from './ui/Typography';
-import { FriendCard, FriendData } from './FriendCard';
+import { FriendCard } from './ui/FriendCard';
 import { AddFriendModal } from './AddFriendModal';
 import { EmptyState } from './ui/EmptyState';
 import { lightHaptic, successHaptic } from '../utils/haptics';
@@ -12,7 +12,7 @@ import { shadows, gradients } from '../utils/shadows';
 import { Ionicons } from '@expo/vector-icons';
 
 interface FriendsSectionProps {
-  friends: FriendData[];
+  friends: any[]; // Use any for now to support normalized friend objects
   onFriendPress: (friendId: string) => void;
   onAddFriend: (friendCode: string) => Promise<{ success: boolean; message: string }>;
   className?: string;
