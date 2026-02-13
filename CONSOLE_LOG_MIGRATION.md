@@ -181,7 +181,7 @@ logger.error('Authentication failed:', error); // Automatically redacts sensitiv
 console.log('Match created:', match);
 console.error('Failed to create match:', error.message);
 ```
-
+ 
 **After:**
 ```typescript
 import { createLogger, logError } from '@/utils/secureLogger';

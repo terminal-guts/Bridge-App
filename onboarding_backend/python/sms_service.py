@@ -38,7 +38,7 @@ class SMSService:
         return digits
 
     def send_verification_code(self, to_number: str, code: str):
-        # Convert to E.164 format for Twilio
+        
         to_number = self._clean_number(to_number)
         
         # Always print code for debugging purposes
