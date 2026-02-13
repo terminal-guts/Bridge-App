@@ -113,14 +113,15 @@ export function instrumentProposals(
   for (const proposal of proposals) {
     const proposalVotes = votesByProposal[proposal.id] ?? [];
 
-    const yesVotes = proposalVotes.filter(v => v.vote).length;
-    const noVotes = proposalVotes.filter(v => !v.vote).length;
+    const yesVotes = proposalVotes.filter(v => v.voteType === 'YES' || v.voteType === 'RECOMMEND').length;
+    const noVotes = proposalVotes.filter(v => v.voteType === 'NO').length;
+    const friendWeight = 1.25;
     const yesWeight = proposalVotes
-      .filter(v => v.vote)
-      .reduce((sum, v) => sum + (v.voteWeight ?? 1), 0);
+      .filter(v => v.voteType === 'YES' || v.voteType === 'RECOMMEND')
+      .reduce((sum, v) => sum + (v.isFriendVote ? friendWeight : 1), 0);
     const noWeight = proposalVotes
-      .filter(v => !v.vote)
-      .reduce((sum, v) => sum + (v.voteWeight ?? 1), 0);
+      .filter(v => v.voteType === 'NO')
+      .reduce((sum, v) => sum + (v.isFriendVote ? friendWeight : 1), 0);
 
     const totalVotes = proposalVotes.length;
     const netYesWeight = yesWeight - noWeight;
@@ -128,8 +129,8 @@ export function instrumentProposals(
     const reachedThreshold = yesVotes >= proposal.votingThreshold || yesWeight >= proposal.votingThreshold;
 
     const timeToConsensusMs = safeDateDiffMs(
-      proposal.proposalDate,
-      proposal.approvedAt ?? proposal.rejectedAt,
+      proposal.votingStartedAt ?? proposal.createdAt,
+      proposal.confirmedAt ?? proposal.rejectedAt ?? proposal.expiredAt,
     );
     const timeToConsensusHours =
       timeToConsensusMs !== undefined ? timeToConsensusMs / MS_PER_HOUR : undefined;
@@ -147,9 +148,9 @@ export function instrumentProposals(
       proposalsReachedThreshold += 1;
     }
 
-    if (proposal.status === 'approved' || proposal.status === 'accepted') {
+    if (proposal.status === 'confirmed' || proposal.status === 'accepted') {
       approvedCount += 1;
-    } else if (proposal.status === 'rejected') {
+    } else if (proposal.status === 'rejected' || proposal.status === 'declined') {
       rejectedCount += 1;
     }
 

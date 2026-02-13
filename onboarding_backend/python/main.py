@@ -45,7 +45,9 @@ aws_service = AwsService()
 supabase = get_supabase_client()
 
 from routers import voting
+from routers import proposals
 app.include_router(voting.router)
+app.include_router(proposals.router)
 
 @app.get("/")
 async def root():

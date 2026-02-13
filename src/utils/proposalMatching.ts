@@ -437,8 +437,9 @@ export function matchValues(userA: UserProfile, userB: UserProfile): {
   const uniqueToA = aValues.filter(v => !bValues.includes(v));
   const uniqueToB = bValues.filter(v => !aValues.includes(v));
 
-  const maxLength = Math.max(aValues.length, bValues.length);
-  const overlapPercentage = maxLength > 0 ? (sharedValues.length / maxLength) * 100 : 0;
+  // Jaccard similarity: shared / union (per algorithm spec)
+  const unionSet = new Set([...aValues, ...bValues]);
+  const overlapPercentage = unionSet.size > 0 ? (sharedValues.length / unionSet.size) * 100 : 0;
 
   let status: 'high' | 'medium' | 'low';
   if (overlapPercentage >= 66) {
@@ -476,8 +477,9 @@ export function matchInterests(userA: UserProfile, userB: UserProfile): {
   const uniqueToA = aInterests.filter(i => !bInterests.includes(i));
   const uniqueToB = bInterests.filter(i => !aInterests.includes(i));
 
-  const maxLength = Math.max(aInterests.length, bInterests.length);
-  const overlapPercentage = maxLength > 0 ? (sharedInterests.length / maxLength) * 100 : 0;
+  // Jaccard similarity: shared / union (per algorithm spec)
+  const unionSet = new Set([...aInterests, ...bInterests]);
+  const overlapPercentage = unionSet.size > 0 ? (sharedInterests.length / unionSet.size) * 100 : 0;
 
   let status: 'high' | 'medium' | 'low';
   if (overlapPercentage >= 66) {

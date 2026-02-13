@@ -60,25 +60,62 @@ export interface RandomMatchAssignment {
 
 // ==================== Proposal Types ====================
 
-export type ProposalStatus = 'voting' | 'approved' | 'rejected' | 'accepted' | 'declined' | 'expired';
+export type ProposalStatus = 'voting' | 'confirmed' | 'rejected' | 'expired_sent' | 'accepted' | 'declined';
 
 export interface Proposal {
   id: string;
   userA: UserProfile;
   userB: UserProfile;
   status: ProposalStatus;
-  yesVotes: number;
-  noVotes: number;
+
+  // Vote tallies (pool + friend separated)
+  poolYesVotes: number;
+  poolNoVotes: number;
+  friendYesVotes: number;
+  friendNoVotes: number;
+
+  // Derived totals (for convenience)
+  yesVotes: number;       // poolYes + friendYes
+  noVotes: number;        // poolNo + friendNo
+  totalVotes: number;     // all counted votes
+
+  // Pool eligibility
+  poolEligible: boolean;
+
+  // Compatibility
+  compatibilityScore: number;  // 0-100
+  categoryScores?: Record<string, number>;
+
+  // Legacy fields (kept for backward compat)
   votingThreshold: number;
-  baseThreshold: number; // Starting threshold before friend adjustments
+  baseThreshold: number;
   endorsements: Endorsement[];
   proposalDate: string;
-  votingExpiresAt: string; // 24 hours from creation
-  proposalExpiresAt: string; // 48 hours for both to accept
-  approvedAt?: string;
+
+  // Lifecycle timestamps
+  votingExpiresAt: string;    // 7 days from creation
+  proposalExpiresAt: string;  // 48 hours after confirmed/expired for decisions
+  votingStartedAt?: string;
+  confirmedAt?: string;
   rejectedAt?: string;
+  expiredAt?: string;
+  sentToUsersAt?: string;
+  decisionDeadlineAt?: string;
+
+  // User decisions
+  userADecision?: 'pending' | 'accepted' | 'declined';
+  userBDecision?: 'pending' | 'accepted' | 'declined';
+  userADecidedAt?: string;
+  userBDecidedAt?: string;
+
   createdAt: string;
   updatedAt: string;
+
+  // Enriched fields from API
+  voteContext?: 'pool' | 'friend';
+  isFriendVote?: boolean;
+  userAProfile?: Partial<UserProfile>;
+  userBProfile?: Partial<UserProfile>;
 }
 
 export type EndorsementType = 'random_matcher' | 'friend_of_a' | 'friend_of_b' | 'friend_of_both';
@@ -96,22 +133,28 @@ export interface Endorsement {
 
 // ==================== Voting Types ====================
 
+export type ProposalVoteType = 'YES' | 'NO' | 'UNSURE' | 'RECOMMEND';
+
 export interface ProposalVote {
   id: string;
   proposalId: string;
   voterUserId: string;
-  vote: boolean; // true = yes, false = no
-  voteWeight: number; // Default 1.0, can be adjusted by karma
+  voteType: ProposalVoteType;
+  isFriendVote: boolean;
+  friendOf?: 'user_a' | 'user_b' | 'both' | null;
+  recommendToId?: string;
   createdAt: string;
 }
 
 export interface VoteResult {
   proposalId: string;
-  yourVote: boolean;
-  currentYesVotes: number;
-  currentNoVotes: number;
-  votingThreshold: number;
-  status: ProposalStatus;
+  yourVote: ProposalVoteType;
+  isFriendVote: boolean;
+  proposalStatus: ProposalStatus;
+  poolYesVotes: number;
+  poolNoVotes: number;
+  friendYesVotes: number;
+  friendNoVotes: number;
 }
 
 // ==================== Karma & Assists Types ====================
@@ -372,7 +415,21 @@ export const KARMA_TIERS: Record<KarmaTier, KarmaBadge> = {
 };
 
 export const VOTES_NEEDED_PER_DAY = 3;
-export const PROPOSAL_EXPIRATION_HOURS = 48;
-export const VOTING_EXPIRATION_HOURS = 24;
+export const PROPOSAL_VOTING_DAYS = 7;         // Max days a proposal is in voting
+export const DECISION_DEADLINE_HOURS = 48;      // Hours to accept/decline after confirmed
+export const POOL_VOTERS_PER_DAY = 6;           // ~6 pool votes per proposal per day
+export const MAX_POOL_VOTES = 42;               // Max pool votes over 7 days
+export const FRIEND_VOTE_WEIGHT = 1.25;         // Friend votes weighted 1.25x in percentage
+export const CONFIRMATION_MIN_POOL_VOTES = 6;   // Min pool votes to confirm
+export const CONFIRMATION_MIN_TOTAL_VOTES = 12; // Min total votes to confirm
+export const CONFIRMATION_MIN_YES_VOTES = 8;    // Min YES votes to confirm
 export const ACTIVE_MATCH_MINIMUM_DAYS = 3;
 export const CANDIDATE_COOLDOWN_DAYS = 7;
+
+// Threshold relaxation schedule
+export const THRESHOLD_SCHEDULE: Record<number, number | null> = {
+  1: 0.65, 2: 0.65,
+  3: 0.60, 4: 0.60,
+  5: 0.55, 6: 0.55,
+  7: null, // bypass — auto-send
+};
