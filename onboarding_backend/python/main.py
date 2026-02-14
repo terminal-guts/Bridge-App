@@ -4,12 +4,10 @@ from typing import List, Optional, Dict, Any
 import sys
 from pathlib import Path
 
-# Add the current directory and its parent to sys.path to allow running from anywhere
 current_dir = Path(__file__).parent
 sys.path.append(str(current_dir))
 
 from utils.supabase_client import get_supabase_client
-# Use the root sms_service which was recently added
 from sms_service import SMSService, generate_otp
 from services.email_service import EmailService
 from services.photo_analysis_service import PhotoAnalysisService
@@ -29,7 +27,6 @@ except Exception as e:
 
 app = FastAPI(title="Bridge Onboarding API")
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows all origins for development
@@ -65,16 +62,15 @@ async def debug_twilio():
         "sid_prefix": sms_service.account_sid[:4] if sms_service.account_sid else None,
     }
 
-# Temporary in-memory store for OTPs (in production, use Redis)
 verification_codes: Dict[str, str] = {}
 
-# --- Models & Classes ---
 
+#change generations later on perhaps but this is what we have as a baseline for now.
 class Photo_Gen():
     def __init__(self, source):
         self.age = None
         self.gen = None
-        self.source = source # Can be path or numpy array/PIL image
+        self.source = source 
         self.ai = None
     def set_gen(self, age):
         if age < 12:
@@ -270,16 +266,13 @@ async def save_onboarding_step(request: SaveStepRequest):
         if "photos" in request.data and isinstance(request.data["photos"], list):
             # This is partial save during onboarding (e.g. photo step)
             photos = request.data["photos"]
-            # We first clear existing regular photos for this user to avoid dupe/mess during onboarding?
-            # Or just append? Let's just upsert based on some logic, or simpler: delete all and re-add for sync
-            # For robustness in simple onboarding save:
+            
             try:
-                # Delete existing
+           
+                
                 supabase.table("user_photos").delete().eq("user_id", request.user_id).execute()
                 for i, p in enumerate(photos):
-                     # p is likely dict from frontend {url, isMain...} or just string?
-                     # Frontend sends whole OnboardingData.
-                     # If it's the structure from frontend `photos` array:
+                   
                      if isinstance(p, dict):
                          url = p.get("url", "")
                          is_main = p.get("isMain", False) or (i==0)
@@ -318,7 +311,6 @@ async def send_otp(request: PhoneRequest):
 async def verify_otp(request: VerifyRequest):
     stored_code = verification_codes.get(request.phone_number)
     
-    # Check for master code or stored code
     if (stored_code and stored_code == request.code) or request.code == "123456":
         # Code matches
         if request.phone_number in verification_codes:
@@ -637,7 +629,6 @@ async def update_profile(user_id: str, data: ProfileUpdate):
                     "is_main": photo.get("isMain", i == 0),
                 }).execute()
 
-        # 4. Update deep questions if provided
         if data.deep_questions is not None:
             for dq in data.deep_questions:
                 supabase.table("deep_question_answers").upsert({

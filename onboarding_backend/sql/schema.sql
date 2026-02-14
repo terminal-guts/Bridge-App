@@ -1,20 +1,13 @@
--- Bridge Application - Onboarding Database Schema
--- For use with Supabase (PostgreSQL)
 
--- ============================================================================
--- 1. Enable Required Extensions
--- ============================================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- ============================================================================
--- 2. User Profiles Table
--- ============================================================================
+
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     age INTEGER NOT NULL CHECK (age >= 18),
-    gender TEXT[] DEFAULT '{}', -- Array of gender identities
+    gender TEXT[] DEFAULT '{}', 
     pronouns TEXT,
     pronouns_list TEXT[] DEFAULT '{}',
     custom_gender TEXT,
@@ -44,9 +37,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ============================================================================
--- 3. User Preferences Table
--- ============================================================================
+
 CREATE TABLE IF NOT EXISTS public.user_preferences (
     user_id UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
     age_min INTEGER DEFAULT 18,
@@ -145,7 +136,7 @@ DROP POLICY IF EXISTS "Users can manage their own preferences" ON public.user_pr
 CREATE POLICY "Users can manage their own preferences" 
 ON public.user_preferences FOR ALL USING (auth.uid() = user_id);
 
--- Deep Questions Policies
+
 DROP POLICY IF EXISTS "Viewable by all (if profile is public)" ON public.deep_question_answers;
 CREATE POLICY "Viewable by all (if profile is public)" 
 ON public.deep_question_answers FOR SELECT USING (TRUE);
@@ -154,7 +145,7 @@ DROP POLICY IF EXISTS "Manage own answers" ON public.deep_question_answers;
 CREATE POLICY "Manage own answers" 
 ON public.deep_question_answers FOR ALL USING (auth.uid() = user_id);
 
--- Photos Policies
+
 DROP POLICY IF EXISTS "Viewable by all" ON public.user_photos;
 CREATE POLICY "Viewable by all" 
 ON public.user_photos FOR SELECT USING (TRUE);
@@ -163,19 +154,13 @@ DROP POLICY IF EXISTS "Manage own photos" ON public.user_photos;
 CREATE POLICY "Manage own photos" 
 ON public.user_photos FOR ALL USING (auth.uid() = user_id);
 
--- ============================================================================
--- 8. Onboarding Progress
--- ============================================================================
-
--- Onboarding Progress (for partial saves)
 CREATE TABLE IF NOT EXISTS public.onboarding_progress (
-  user_id UUID PRIMARY KEY, -- Removed foreign key for easier development
+  user_id UUID PRIMARY KEY, 
   current_step TEXT NOT NULL DEFAULT 'phone',
   data JSONB NOT NULL DEFAULT '{}'::jsonb,
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Enable RLS for Onboarding Progress
 ALTER TABLE public.onboarding_progress ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can manage their own onboarding progress" ON public.onboarding_progress;
@@ -185,7 +170,7 @@ CREATE POLICY "Users can manage their own onboarding progress"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
--- Trigger for updated_at
+
 DROP TRIGGER IF EXISTS set_onboarding_progress_updated_at ON public.onboarding_progress;
 CREATE TRIGGER set_onboarding_progress_updated_at
   BEFORE UPDATE ON public.onboarding_progress
