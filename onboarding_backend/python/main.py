@@ -46,6 +46,30 @@ from routers import proposals
 app.include_router(voting.router)
 app.include_router(proposals.router)
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from services.daily_pairing_engine import run_daily_pairing
+
+scheduler = AsyncIOScheduler()
+
+def daily_pairing_job():
+    try:
+        print("[SCHEDULER] Running daily pairing generation...")
+        result = run_daily_pairing(supabase)
+        print(f"[SCHEDULER] Daily pairing complete: {result}")
+    except Exception as e:
+        print(f"[SCHEDULER] Error in daily pairing: {e}")
+
+scheduler.add_job(daily_pairing_job, 'cron', hour=0, minute=0, timezone='UTC')
+
+@app.on_event("startup")
+async def start_scheduler():
+    scheduler.start()
+    print("[SCHEDULER] APScheduler started - daily pairings at 00:00 UTC")
+
+@app.on_event("shutdown")
+async def shutdown_scheduler():
+    scheduler.shutdown()
+
 @app.get("/")
 async def root():
     return {"status": "online", "message": "Bridge Backend is running", "environment": "production"}

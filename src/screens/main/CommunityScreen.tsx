@@ -48,6 +48,7 @@ import { OfflineBanner } from '../../components/OfflineBanner';
 import { ProfileCompletionBanner } from '../../components/ProfileCompletionBanner';
 import { ProposalReviewView } from '../../components/community/ProposalReviewView';
 import { FriendsAreaView } from '../../components/community/FriendsAreaView';
+import { DailyPairingView } from '../../components/community/DailyPairingView';
 import { GuideTarget } from '../../components/guides';
 import { useGuide } from '../../hooks/useGuide';
 
@@ -77,7 +78,7 @@ const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3; // 30% of screen width to trigger pa
 // Types
 type CommunityScreenState = 'loading' | 'ready' | 'error';
 
-type PageIndex = 0 | 1;
+type PageIndex = 0 | 1 | 2;
 
 interface CommunityScreenProps {
   navigation: NavigationProp<MainTabParamList, 'Community'>;
@@ -286,17 +287,15 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
         }}
       />
 
-      {/* 2-Page Horizontal Container */}
       <StyledView style={{ flex: 1 }}>
         <StyledAnimatedView
           style={{
             flexDirection: 'row',
-            width: SCREEN_WIDTH * 2,
+            width: SCREEN_WIDTH * 3,
             height: '100%',
             transform: [{ translateX }],
           }}
         >
-          {/* Page 0: Proposals */}
           <StyledView style={{ width: SCREEN_WIDTH, height: '100%', overflow: 'hidden' }}>
             <ProposalReviewView
               onVotesComplete={handleProposalVotesComplete}
@@ -306,7 +305,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             />
           </StyledView>
 
-          {/* Page 1: Friends Area */}
           <StyledView style={{ width: SCREEN_WIDTH, height: '100%', overflow: 'hidden' }}>
             {dailyTasksComplete ? (
               <FriendsAreaView isActive={currentPage === 1} />
@@ -329,6 +327,15 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
               </GuideTarget>
             )}
           </StyledView>
+
+          {FEATURES.DAILY_PAIRING_ENABLED && (
+            <StyledView style={{ width: SCREEN_WIDTH, height: '100%', overflow: 'hidden' }}>
+              <DailyPairingView
+                userId={userProfile?.id || ''}
+                isActive={currentPage === 2}
+              />
+            </StyledView>
+          )}
         </StyledAnimatedView>
       </StyledView>
     </StyledSafeAreaView>

@@ -2,7 +2,7 @@
  * Bridge Matching Algorithm
  *
  * Mutual percentage-based matching with gradient scoring.
- * All 12 categories sum to 100%.
+ * All 13 categories sum to 100%.
  *
  * Based on MATCHING_ALGORITHM.md specification.
  */
@@ -36,16 +36,17 @@ export interface CategoryScore {
 const WEIGHTS = {
   age: 0.18,
   distance: 0.15,
-  lifestyle: 0.12,      // 4 substances × 3% each
-  values: 0.10,
-  interests: 0.10,
-  family: 0.08,         // hasChildren 3.2% + familyPlans 4.8%
+  lifestyle: 0.12,
+  values: 0.08,
+  interests: 0.08,
+  family: 0.08,
   religion: 0.06,
   politics: 0.06,
   height: 0.05,
   ethnicity: 0.05,
+  deepQuestions: 0.05,
   education: 0.03,
-  career: 0.02,
+  career: 0.01,
 } as const;
 
 // ============================================================================
@@ -79,6 +80,7 @@ export function calculateMatchScore(
   breakdown.push(scorePolitics(userA, userB));
   breakdown.push(scoreHeight(userA, userB));
   breakdown.push(scoreEthnicity(userA, userB));
+  breakdown.push(scoreDeepQuestions(userA, userB));
   breakdown.push(scoreEducation(userA, userB));
   breakdown.push(scoreCareer(userA, userB));
 
@@ -700,6 +702,85 @@ function matchesEthnicity(ethnicity: string, preferences: string[]): boolean {
     components.includes(pref.toLowerCase()) ||
     pref.toLowerCase() === ethnicity.toLowerCase()
   );
+}
+
+const DEEP_STOP_WORDS = new Set([
+  'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your',
+  'yours', 'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', 'her',
+  'hers', 'herself', 'it', 'its', 'itself', 'they', 'them', 'their', 'theirs',
+  'themselves', 'what', 'which', 'who', 'whom', 'this', 'that', 'these', 'those',
+  'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had',
+  'having', 'do', 'does', 'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if',
+  'or', 'because', 'as', 'until', 'while', 'of', 'at', 'by', 'for', 'with',
+  'about', 'against', 'between', 'through', 'during', 'before', 'after', 'above',
+  'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under',
+  'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why',
+  'how', 'all', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such',
+  'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 's',
+  't', 'can', 'will', 'just', 'don', 'should', 'now', 'd', 'll', 'm', 'o', 're',
+  've', 'y', 'ain', 'aren', 'couldn', 'didn', 'doesn', 'hadn', 'hasn', 'haven',
+  'isn', 'ma', 'mightn', 'mustn', 'needn', 'shan', 'shouldn', 'wasn', 'weren',
+  'won', 'wouldn', 'also', 'would', 'could', 'might', 'much', 'really', 'think',
+  'know', 'like', 'want', 'feel', 'get', 'make', 'go', 'thing', 'things',
+]);
+
+function extractMeaningfulWords(text: string): Set<string> {
+  const words = text.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/);
+  return new Set(words.filter(w => w.length > 2 && !DEEP_STOP_WORDS.has(w)));
+}
+
+function scoreDeepQuestions(userA: UserProfile, userB: UserProfile): CategoryScore {
+  const aAnswers = userA.deepQuestions || [];
+  const bAnswers = userB.deepQuestions || [];
+
+  if (aAnswers.length === 0 && bAnswers.length === 0) {
+    return {
+      category: 'deepQuestions',
+      weight: WEIGHTS.deepQuestions,
+      rawScore: 50,
+      weightedScore: 50 * WEIGHTS.deepQuestions,
+      details: 'No deep question answers',
+    };
+  }
+
+  if (aAnswers.length === 0 || bAnswers.length === 0) {
+    return {
+      category: 'deepQuestions',
+      weight: WEIGHTS.deepQuestions,
+      rawScore: 30,
+      weightedScore: 30 * WEIGHTS.deepQuestions,
+      details: 'Only one user answered deep questions',
+    };
+  }
+
+  const aIds = new Set(aAnswers.map(a => a.questionId));
+  const bIds = new Set(bAnswers.map(a => a.questionId));
+  const idUnion = new Set([...aIds, ...bIds]);
+  const idIntersection = [...aIds].filter(id => bIds.has(id)).length;
+  const questionOverlap = idUnion.size === 0 ? 0 : (idIntersection / idUnion.size) * 100;
+
+  const aWords = new Set<string>();
+  const bWords = new Set<string>();
+  aAnswers.forEach(a => extractMeaningfulWords(a.answer).forEach(w => aWords.add(w)));
+  bAnswers.forEach(a => extractMeaningfulWords(a.answer).forEach(w => bWords.add(w)));
+  const wordUnion = new Set([...aWords, ...bWords]);
+  const wordIntersection = [...aWords].filter(w => bWords.has(w)).length;
+  const keywordOverlap = wordUnion.size === 0 ? 0 : (wordIntersection / wordUnion.size) * 100;
+
+  const aAvgLen = aAnswers.reduce((s, a) => s + a.answer.length, 0) / aAnswers.length;
+  const bAvgLen = bAnswers.reduce((s, a) => s + a.answer.length, 0) / bAnswers.length;
+  const maxLen = Math.max(aAvgLen, bAvgLen);
+  const lengthSimilarity = maxLen === 0 ? 100 : (Math.min(aAvgLen, bAvgLen) / maxLen) * 100;
+
+  const rawScore = questionOverlap * 0.4 + keywordOverlap * 0.4 + lengthSimilarity * 0.2;
+
+  return {
+    category: 'deepQuestions',
+    weight: WEIGHTS.deepQuestions,
+    rawScore,
+    weightedScore: rawScore * WEIGHTS.deepQuestions,
+    details: `overlap: ${questionOverlap.toFixed(0)}%, keywords: ${keywordOverlap.toFixed(0)}%, length: ${lengthSimilarity.toFixed(0)}%`,
+  };
 }
 
 /**

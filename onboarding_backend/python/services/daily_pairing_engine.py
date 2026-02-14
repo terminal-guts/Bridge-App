@@ -2,17 +2,7 @@
 Bridge Daily Pairing Engine
 
 Generates exactly ONE pairing per eligible user per day using the
-12-category scoring grid.
-
-Design Principles:
-  • Each user gets exactly ONE partner per day (mutual: if A→B then B→A).
-  • Previously paired or active-match pairs are deprioritized, not blocked,
-    so users always get a result.
-  • Existing conversations and matches are NEVER affected — this only
-    writes to the `daily_pairings` table.
-  • Runs at the Universal Proposal Release Hour (00:00 UTC by default).
-  • Uses a greedy maximum-weight matching heuristic to optimize total
-    compatibility across all users.
+13-category scoring grid (including deep questions).
 """
 
 from typing import List, Dict, Tuple, Optional, Any, Set
@@ -21,31 +11,12 @@ import random
 
 from services.scoring import calculate_compatibility, passes_basic_filter
 
-
-# ============================================================================
-# Configuration
-# ============================================================================
-
-# Minimum score to even attempt a pairing (soft floor — we'll still pair if
-# nothing better exists).
 SOFT_MIN_SCORE = 20.0
-
-# How many days back to look for recent pairings to avoid repeats
 RECENT_PAIRING_LOOKBACK_DAYS = 7
+UNIVERSAL_PROPOSAL_RELEASE_HOUR = 0
 
-# Universal release hour (UTC) — must match frontend constant
-UNIVERSAL_PROPOSAL_RELEASE_HOUR = 0  # 00:00 UTC
-
-
-# ============================================================================
-# Data Fetching
-# ============================================================================
 
 def _fetch_eligible_users(supabase) -> List[Dict]:
-    """
-    Fetch users eligible for daily pairing.
-    Criteria: profile complete, not paused, active within 14 days.
-    """
     cutoff = (datetime.datetime.now(datetime.timezone.utc) -
               datetime.timedelta(days=14)).isoformat()
     try:
@@ -69,7 +40,6 @@ def _fetch_eligible_users(supabase) -> List[Dict]:
 
 
 def _fetch_preferences(supabase, user_ids: List[str]) -> Dict[str, Dict]:
-    """Fetch preferences keyed by user_id."""
     if not user_ids:
         return {}
     try:
@@ -82,11 +52,28 @@ def _fetch_preferences(supabase, user_ids: List[str]) -> Dict[str, Dict]:
         return {}
 
 
+def _fetch_deep_questions(supabase, user_ids: List[str]) -> Dict[str, List[Dict]]:
+    if not user_ids:
+        return {}
+    try:
+        result = supabase.table("deep_question_answers").select("*") \
+            .in_("user_id", user_ids) \
+            .execute()
+
+        dq_map: Dict[str, List[Dict]] = {}
+        for row in (result.data or []):
+            uid = row["user_id"]
+            if uid not in dq_map:
+                dq_map[uid] = []
+            dq_map[uid].append(row)
+
+        return dq_map
+    except Exception as e:
+        print(f"[DAILY_PAIRING] Error fetching deep questions: {e}")
+        return {}
+
+
 def _fetch_recent_pairings(supabase, lookback_days: int = RECENT_PAIRING_LOOKBACK_DAYS) -> Set[frozenset]:
-    """
-    Get pairs that were paired in the last N days so we can deprioritize them
-    (variety is important). Returns set of frozenset({user_a, user_b}).
-    """
     cutoff_date = (datetime.date.today() - datetime.timedelta(days=lookback_days)).isoformat()
     try:
         result = supabase.table("daily_pairings") \
@@ -103,10 +90,6 @@ def _fetch_recent_pairings(supabase, lookback_days: int = RECENT_PAIRING_LOOKBAC
 
 
 def _fetch_active_match_pairs(supabase) -> Set[frozenset]:
-    """
-    Get pairs that currently have an active match.
-    These users should NOT be paired with each other (they're already matched).
-    """
     try:
         result = supabase.table("matches") \
             .select("user1_id, user2_id") \
@@ -122,10 +105,6 @@ def _fetch_active_match_pairs(supabase) -> Set[frozenset]:
 
 
 def _fetch_existing_today_pairings(supabase, today: str) -> Set[str]:
-    """
-    Check which users already have a pairing for today.
-    Prevents duplicate runs from overwriting.
-    """
     try:
         result = supabase.table("daily_pairings") \
             .select("user_id") \
@@ -137,22 +116,20 @@ def _fetch_existing_today_pairings(supabase, today: str) -> Set[str]:
         return set()
 
 
-# ============================================================================
-# Scoring & Matching
-# ============================================================================
-
 def _score_pair(
     profile_a: Dict, prefs_a: Dict,
     profile_b: Dict, prefs_b: Dict,
+    deep_questions_a: Optional[List[Dict]] = None,
+    deep_questions_b: Optional[List[Dict]] = None,
 ) -> Optional[Dict]:
-    """
-    Score a pair using the 12-category grid.
-    Returns None if they fail basic filters.
-    """
     if not passes_basic_filter(profile_a, prefs_a, profile_b, prefs_b):
         return None
 
-    result = calculate_compatibility(profile_a, prefs_a, profile_b, prefs_b)
+    result = calculate_compatibility(
+        profile_a, prefs_a, profile_b, prefs_b,
+        deep_questions_a=deep_questions_a,
+        deep_questions_b=deep_questions_b,
+    )
     return result
 
 
@@ -161,16 +138,12 @@ def _build_scored_edges(
     prefs_map: Dict[str, Dict],
     active_match_pairs: Set[frozenset],
     recent_pairs: Set[frozenset],
+    dq_map: Dict[str, List[Dict]] = None,
 ) -> List[Tuple[str, str, float, Dict]]:
-    """
-    Build a list of scored edges (user_a_id, user_b_id, adjusted_score, full_result).
-
-    Scoring adjustments:
-      • Active match pair → skip entirely (don't pair them)
-      • Recently paired → -15 penalty (encourage variety)
-    """
     edges = []
     n = len(users)
+    if dq_map is None:
+        dq_map = {}
 
     print(f"[DAILY_PAIRING] Scoring {n * (n - 1) // 2} possible pairs...")
 
@@ -180,27 +153,28 @@ def _build_scored_edges(
             b = users[j]
             pair_key = frozenset({a["id"], b["id"]})
 
-            # Skip active matches (they're already together)
             if pair_key in active_match_pairs:
                 continue
 
             prefs_a = prefs_map.get(a["id"], {})
             prefs_b = prefs_map.get(b["id"], {})
 
-            result = _score_pair(a, prefs_a, b, prefs_b)
+            result = _score_pair(
+                a, prefs_a, b, prefs_b,
+                deep_questions_a=dq_map.get(a["id"], []),
+                deep_questions_b=dq_map.get(b["id"], []),
+            )
             if result is None:
                 continue
 
             score = result["total_score"]
 
-            # Deprioritize recently paired (but don't block)
             if pair_key in recent_pairs:
                 score -= 15.0
 
             if score > 0:
                 edges.append((a["id"], b["id"], score, result))
 
-    # Sort by score descending (greedy matching will pick best first)
     edges.sort(key=lambda e: e[2], reverse=True)
 
     print(f"[DAILY_PAIRING] {len(edges)} scored edges (after filters)")
@@ -211,12 +185,6 @@ def _greedy_maximum_matching(
     edges: List[Tuple[str, str, float, Dict]],
     user_ids: Set[str],
 ) -> List[Tuple[str, str, Dict]]:
-    """
-    Greedy maximum-weight matching: iterate edges from highest score downward.
-    Each user is matched at most once.
-
-    Returns list of (user_a_id, user_b_id, scoring_result).
-    """
     matched = set()
     pairings = []
 
@@ -228,19 +196,13 @@ def _greedy_maximum_matching(
         matched.add(a_id)
         matched.add(b_id)
 
-        # Stop when all users are matched
         if matched >= user_ids:
             break
 
     return pairings
 
 
-# ============================================================================
-# Database Writes
-# ============================================================================
-
 def _calculate_expires_at() -> str:
-    """Calculate the next drop time (tomorrow at UNIVERSAL_PROPOSAL_RELEASE_HOUR UTC)."""
     now = datetime.datetime.now(datetime.timezone.utc)
     tomorrow = now.date() + datetime.timedelta(days=1)
     expires = datetime.datetime(
@@ -256,13 +218,6 @@ def _insert_pairings(
     pairings: List[Tuple[str, str, Dict]],
     today: str,
 ) -> int:
-    """
-    Insert pairings into daily_pairings table.
-    Each pair creates TWO rows (one per user) so each user can query their own.
-
-    IMPORTANT: This only writes to daily_pairings. It does NOT touch
-    conversations, matches, proposals, or any other table.
-    """
     expires_at = _calculate_expires_at()
     inserted = 0
 
@@ -296,40 +251,18 @@ def _insert_pairings(
             supabase.table("daily_pairings").insert(rows).execute()
             inserted += 2
         except Exception as e:
-            # Unique constraint violation = already exists, skip
             if "unique_user_daily_pairing" in str(e).lower() or "duplicate" in str(e).lower():
-                print(f"[DAILY_PAIRING] Pair {a_id} ↔ {b_id} already exists for {today}, skipping")
+                print(f"[DAILY_PAIRING] Pair {a_id} <> {b_id} already exists for {today}, skipping")
             else:
-                print(f"[DAILY_PAIRING] Error inserting pair {a_id} ↔ {b_id}: {e}")
+                print(f"[DAILY_PAIRING] Error inserting pair {a_id} <> {b_id}: {e}")
 
     return inserted
 
 
-# ============================================================================
-# Main Entry Point
-# ============================================================================
-
 def run_daily_pairing(supabase) -> Dict[str, Any]:
-    """
-    Main entry point: generate today's pairings.
-
-    Steps:
-    1. Fetch eligible users
-    2. Check for existing pairings today (idempotent)
-    3. Fetch preferences, recent pairings, active matches
-    4. Score all viable pairs
-    5. Greedy maximum-weight matching (exactly 1 partner per user)
-    6. Insert into daily_pairings table
-
-    SAFE: Does NOT modify conversations, matches, proposals, or any
-    other user state. Only writes to daily_pairings.
-
-    Returns summary dict.
-    """
     today = datetime.date.today().isoformat()
     print(f"[DAILY_PAIRING] === Starting daily pairing for {today} ===")
 
-    # 1. Eligible users
     users = _fetch_eligible_users(supabase)
     print(f"[DAILY_PAIRING] {len(users)} eligible users")
 
@@ -341,7 +274,6 @@ def run_daily_pairing(supabase) -> Dict[str, Any]:
             "pairings_created": 0,
         }
 
-    # 2. Idempotent check: skip users who already have a pairing today
     already_paired = _fetch_existing_today_pairings(supabase, today)
     users = [u for u in users if u["id"] not in already_paired]
     print(f"[DAILY_PAIRING] {len(users)} users need pairing ({len(already_paired)} already paired)")
@@ -355,17 +287,17 @@ def run_daily_pairing(supabase) -> Dict[str, Any]:
             "pairings_created": 0,
         }
 
-    # 3. Fetch context data
     user_ids = [u["id"] for u in users]
     prefs_map = _fetch_preferences(supabase, user_ids)
+    dq_map = _fetch_deep_questions(supabase, user_ids)
     recent_pairs = _fetch_recent_pairings(supabase)
     active_match_pairs = _fetch_active_match_pairs(supabase)
     print(f"[DAILY_PAIRING] Context: {len(prefs_map)} prefs, "
+          f"{len(dq_map)} users with deep questions, "
           f"{len(recent_pairs)} recent pairs, "
           f"{len(active_match_pairs)} active matches")
 
-    # 4. Score all viable pairs
-    edges = _build_scored_edges(users, prefs_map, active_match_pairs, recent_pairs)
+    edges = _build_scored_edges(users, prefs_map, active_match_pairs, recent_pairs, dq_map)
 
     if not edges:
         return {
@@ -375,17 +307,14 @@ def run_daily_pairing(supabase) -> Dict[str, Any]:
             "pairings_created": 0,
         }
 
-    # 5. Greedy maximum-weight matching
     user_id_set = {u["id"] for u in users}
     pairings = _greedy_maximum_matching(edges, user_id_set)
     print(f"[DAILY_PAIRING] Matched {len(pairings)} pairs "
           f"({len(pairings) * 2}/{len(users)} users)")
 
-    # 6. Insert into database
     inserted = _insert_pairings(supabase, pairings, today)
     print(f"[DAILY_PAIRING] Inserted {inserted} pairing rows")
 
-    # Summary stats
     scores = [p[2]["total_score"] for p in pairings]
     unmatched = len(users) - (len(pairings) * 2)
 
@@ -404,12 +333,6 @@ def run_daily_pairing(supabase) -> Dict[str, Any]:
 
 
 def get_user_daily_pairing(supabase, user_id: str, date: Optional[str] = None) -> Optional[Dict]:
-    """
-    Fetch a user's pairing for a specific date (defaults to today).
-
-    Returns the pairing record with partner profile, or None.
-    Does NOT touch conversations or matches.
-    """
     if date is None:
         date = datetime.date.today().isoformat()
 
@@ -426,7 +349,6 @@ def get_user_daily_pairing(supabase, user_id: str, date: Optional[str] = None) -
 
         pairing = result.data
 
-        # Mark as seen if not already
         if not pairing.get("seen"):
             supabase.table("daily_pairings") \
                 .update({
@@ -437,7 +359,6 @@ def get_user_daily_pairing(supabase, user_id: str, date: Optional[str] = None) -
                 .execute()
             pairing["seen"] = True
 
-        # Fetch partner profile
         partner_result = supabase.table("profiles") \
             .select("id, first_name, age, gender, location, interests, values, "
                     "bio, height_inches, ethnicity, religion, political_leaning, "
@@ -447,7 +368,6 @@ def get_user_daily_pairing(supabase, user_id: str, date: Optional[str] = None) -
             .execute()
 
         if partner_result.data:
-            # Fetch partner photos
             photos = supabase.table("user_photos") \
                 .select("url, is_main, display_order") \
                 .eq("user_id", pairing["partner_id"]) \

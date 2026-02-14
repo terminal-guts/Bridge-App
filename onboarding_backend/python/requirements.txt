@@ -8,3 +8,4 @@ pillow==10.1.0
 python-multipart==0.0.6
 boto3
 openai
+apscheduler==3.10.4

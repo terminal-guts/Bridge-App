@@ -151,6 +151,8 @@ export interface FeatureFlags {
    * @default false
    */
   ENABLE_DEEP_QUESTIONS_PREVIEW: boolean;
+
+  DAILY_PAIRING_ENABLED: boolean;
 }
 
 /**
@@ -174,6 +176,7 @@ export const FEATURES: FeatureFlags = {
   ENABLE_ADVANCED_ANIMATIONS: false,
   ENABLE_GLASSMORPHISM: false,
   ENABLE_DEEP_QUESTIONS_PREVIEW: false,
+  DAILY_PAIRING_ENABLED: true,
 };
 
 /**
@@ -202,6 +205,7 @@ export const FEATURE_PRESETS = {
     MESSAGING_BACKEND_ENABLED: true, // Real messaging enabled
     ENABLE_ADVANCED_ANIMATIONS: true,
     ENABLE_GLASSMORPHISM: true,
+    DAILY_PAIRING_ENABLED: true,
   },
 
   /**
@@ -218,6 +222,7 @@ export const FEATURE_PRESETS = {
     MESSAGING_BACKEND_ENABLED: true,
     ENABLE_ADVANCED_ANIMATIONS: false,
     ENABLE_GLASSMORPHISM: false,
+    DAILY_PAIRING_ENABLED: true,
   },
 
   /**
@@ -234,6 +239,7 @@ export const FEATURE_PRESETS = {
     MESSAGING_BACKEND_ENABLED: true,
     ENABLE_ADVANCED_ANIMATIONS: false,
     ENABLE_GLASSMORPHISM: false,
+    DAILY_PAIRING_ENABLED: true,
   },
 };
 
