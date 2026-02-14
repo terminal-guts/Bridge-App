@@ -26,6 +26,10 @@ from services.proposal_lifecycle import (
     run_lifecycle_checks,
     FRIEND_VOTE_WEIGHT,
 )
+from services.daily_pairing_engine import (
+    run_daily_pairing,
+    get_user_daily_pairing,
+)
 
 router = APIRouter(prefix="/proposals", tags=["Proposals"])
 supabase = get_supabase_client()
@@ -550,6 +554,117 @@ async def get_user_proposal_history(user_id: str):
         proposals.sort(key=lambda p: p.get("created_at", ""), reverse=True)
 
         return {"proposals": proposals}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Daily Pairing Endpoints (Scoring-Grid Coordinates)
+# ============================================================================
+
+@router.post("/generate-daily-pairings")
+async def generate_daily_pairings():
+    """
+    Generate today's daily pairings using the 12-category scoring grid.
+
+    Each eligible user receives exactly ONE pairing per day.
+    Pairings are computed via greedy maximum-weight matching over all
+    compatible pairs.
+
+    SAFE: Only writes to the `daily_pairings` table.
+    Does NOT modify conversations, matches, proposals, or any other state.
+
+    Typically triggered by a cron job at the Universal Proposal Release Hour
+    (00:00 UTC).
+    """
+    try:
+        result = run_daily_pairing(supabase)
+        return result
+    except Exception as e:
+        print(f"[DAILY_PAIRING] Generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/daily-pairing")
+async def get_daily_pairing(user_id: str, date: Optional[str] = None):
+    """
+    Get a user's daily pairing for a specific date (defaults to today).
+
+    Returns the partner profile and the full 12-category compatibility
+    coordinates (category_scores + weighted_scores).
+
+    SAFE: Read-only query against `daily_pairings` + `profiles`.
+    Does NOT touch conversations or matches.
+    """
+    try:
+        pairing = get_user_daily_pairing(supabase, user_id, date)
+        if not pairing:
+            return {
+                "status": "no_pairing",
+                "message": "No pairing found for this date. New pairings drop daily at 00:00 UTC.",
+                "date": date or datetime.date.today().isoformat(),
+            }
+        return {
+            "status": "success",
+            "pairing": pairing,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/daily-pairing/stats")
+async def get_daily_pairing_stats(days: int = 7):
+    """
+    Get daily pairing statistics for the last N days.
+    Useful for monitoring pairing quality and engagement.
+    """
+    try:
+        cutoff_date = (datetime.date.today() - datetime.timedelta(days=days)).isoformat()
+        result = supabase.table("daily_pairings") \
+            .select("pairing_date, compatibility_score, seen, proposal_created") \
+            .gte("pairing_date", cutoff_date) \
+            .execute()
+
+        rows = result.data or []
+
+        if not rows:
+            return {"status": "no_data", "days": days, "stats": []}
+
+        # Aggregate by date
+        by_date: Dict[str, Dict] = {}
+        for row in rows:
+            d = row["pairing_date"]
+            if d not in by_date:
+                by_date[d] = {
+                    "date": d,
+                    "total_pairings": 0,
+                    "scores": [],
+                    "seen_count": 0,
+                    "proposal_count": 0,
+                }
+            by_date[d]["total_pairings"] += 1
+            by_date[d]["scores"].append(row["compatibility_score"])
+            if row.get("seen"):
+                by_date[d]["seen_count"] += 1
+            if row.get("proposal_created"):
+                by_date[d]["proposal_count"] += 1
+
+        stats = []
+        for d, data in sorted(by_date.items(), reverse=True):
+            scores = data["scores"]
+            stats.append({
+                "date": d,
+                "total_pairings": data["total_pairings"],
+                "avg_score": round(sum(scores) / len(scores), 1),
+                "min_score": round(min(scores), 1),
+                "max_score": round(max(scores), 1),
+                "seen_count": data["seen_count"],
+                "seen_rate": round(data["seen_count"] / data["total_pairings"] * 100, 1),
+                "proposal_count": data["proposal_count"],
+            })
+
+        return {"status": "success", "days": days, "stats": stats}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

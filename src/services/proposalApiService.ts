@@ -181,3 +181,90 @@ export function transformBackendProposal(raw: any): Partial<Proposal> {
     userBProfile: raw.user_b_profile,
   };
 }
+
+// ============================================================================
+// Daily Pairing API (Scoring-Grid Coordinates)
+// ============================================================================
+
+/**
+ * Trigger daily pairing generation.
+ * Each user gets exactly ONE partner per day based on the 12-category scoring grid.
+ *
+ * SAFE: Only writes to daily_pairings. Does NOT touch conversations or matches.
+ */
+export async function generateDailyPairings(): Promise<{
+  status: string;
+  date: string;
+  eligible_users: number;
+  pairings_created: number;
+  avg_score: number;
+  top_score: number;
+  min_score: number;
+  unmatched_users: number;
+}> {
+  const response = await fetch(`${API_URL}/proposals/generate-daily-pairings`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw new Error(`Generate daily pairings failed: ${response.status}`);
+  return response.json();
+}
+
+/**
+ * Fetch a user's daily pairing for a given date.
+ * Returns the partner profile + full 12-category compatibility coordinates.
+ */
+export async function getDailyPairing(userId: string, date?: string): Promise<{
+  status: string;
+  pairing?: {
+    id: string;
+    pairing_date: string;
+    user_id: string;
+    partner_id: string;
+    compatibility_score: number;
+    category_scores: Record<string, number>;
+    weighted_scores: Record<string, number>;
+    seen: boolean;
+    partner_profile: {
+      id: string;
+      first_name: string;
+      age: number;
+      gender: string[];
+      location: string;
+      interests: string[];
+      values: string[];
+      bio: string;
+      photos: Array<{ url: string; is_main: boolean }>;
+    };
+    expires_at: string;
+  };
+  message?: string;
+}> {
+  const params = new URLSearchParams({ user_id: userId });
+  if (date) params.append('date', date);
+
+  const response = await fetch(`${API_URL}/proposals/daily-pairing?${params}`);
+  if (!response.ok) throw new Error(`Get daily pairing failed: ${response.status}`);
+  return response.json();
+}
+
+/**
+ * Get daily pairing stats for the last N days.
+ */
+export async function getDailyPairingStats(days: number = 7): Promise<{
+  status: string;
+  days: number;
+  stats: Array<{
+    date: string;
+    total_pairings: number;
+    avg_score: number;
+    min_score: number;
+    max_score: number;
+    seen_count: number;
+    seen_rate: number;
+    proposal_count: number;
+  }>;
+}> {
+  const response = await fetch(`${API_URL}/proposals/daily-pairing/stats?days=${days}`);
+  if (!response.ok) throw new Error(`Get daily pairing stats failed: ${response.status}`);
+  return response.json();
+}
