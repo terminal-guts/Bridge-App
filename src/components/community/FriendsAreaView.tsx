@@ -39,6 +39,7 @@ import { GuideTarget } from '../guides';
 import { useGuide } from '../../hooks/useGuide';
 import { friendsAreaGuide } from '../../config/guides';
 import { SEPARATOR } from '../../constants/friendsArea';
+import { UNIVERSAL_PROPOSAL_RELEASE_HOUR } from '../../constants/timings';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -71,19 +72,21 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
   // Guide system
   const { startGuideIfNeeded } = useGuide();
 
-  // Calculate time remaining until 8am tomorrow
+  // Calculate time remaining until universal drop time (UTC)
   useEffect(() => {
     const updateTimer = () => {
       const now = new Date();
-      const tomorrow8am = new Date();
-      tomorrow8am.setHours(8, 0, 0, 0);
 
-      // If it's at or past 8:00:00 AM today, set to 8am tomorrow
-      if (now.getHours() > 8 || (now.getHours() === 8 && now.getMinutes() >= 0)) {
-        tomorrow8am.setDate(tomorrow8am.getDate() + 1);
+      // Calculate next Universal Drop Time (UTC)
+      const nextDrop = new Date();
+      nextDrop.setUTCHours(UNIVERSAL_PROPOSAL_RELEASE_HOUR, 0, 0, 0);
+
+      // If the drop time has already passed today (UTC), move to tomorrow
+      if (now.getTime() >= nextDrop.getTime()) {
+        nextDrop.setUTCDate(nextDrop.getUTCDate() + 1);
       }
 
-      const diff = tomorrow8am.getTime() - now.getTime();
+      const diff = nextDrop.getTime() - now.getTime();
 
       // Prevent negative time (clock skew edge case)
       if (diff < 0) {
@@ -475,7 +478,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
           </GuideTarget>
         )}
 
-        {/* SECTION 2B: Pending Proposals (HIGH PRIORITY - only show if there are proposals) */}
+        {/* SECTION 2B: Pending Proposals (HIGH PRIORITY - limit to exactly 1 per day as per spec) */}
         {!filteredData.activeMatch && filteredData.awaitingResponse.length === 0 && filteredData.pendingProposals.length > 0 && (
           <GuideTarget id="match-status-section">
             <StyledView className="px-4 py-4 bg-rose-50">
@@ -484,24 +487,17 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                   <EvaIcon name="heart" variant="outline" color="coral" size={18} />
                 </StyledView>
                 <StyledText className="text-lg font-semibold text-neutral-900">
-                  Pending Proposals
+                  Today's Proposal
                 </StyledText>
-                <StyledView className="ml-2 bg-rose-500 rounded-full px-2 py-0.5">
-                  <StyledText className="text-xs font-bold text-white">
-                    {filteredData.pendingProposals.length}
-                  </StyledText>
-                </StyledView>
+                {/* Note: In production, backend handles "exactly 1", but we ensure it here too */}
               </StyledView>
 
               <StyledView>
-                {filteredData.pendingProposals.map((proposal, index) => (
-                  <StyledView key={proposal.id} style={{ marginTop: index > 0 ? 16 : 0 }}>
-                    <PendingProposalCard
-                      proposal={proposal}
-                      onViewProfile={() => handleViewProposal(proposal)}
-                    />
-                  </StyledView>
-                ))}
+                {/* Show ONLY the first pending proposal (the daily drop) */}
+                <PendingProposalCard
+                  proposal={filteredData.pendingProposals[0]}
+                  onViewProfile={() => handleViewProposal(filteredData.pendingProposals[0])}
+                />
               </StyledView>
             </StyledView>
           </GuideTarget>
@@ -562,7 +558,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                   style={{ padding: 12 }}
                 >
                   <StyledText className="text-sm font-semibold text-rose-900 text-center">
-                    ✨ Stay tuned! New proposals drop soon.
+                    ✨ Stay tuned! Next proposal drops at {UNIVERSAL_PROPOSAL_RELEASE_HOUR}:00 UTC.
                   </StyledText>
                 </StyledView>
               </StyledView>

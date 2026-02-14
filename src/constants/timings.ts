@@ -295,3 +295,8 @@ export const getExponentialBackoff = (attempt: number): number => {
 export const getStaggeredDelay = (index: number, baseDelay: number = INITIAL_ANIMATION_DELAY): number => {
   return baseDelay + (index * STAGGER_DELAY);
 };
+/**
+ * Universal Proposal Release Hour (UTC)
+ * Hour of the day when new proposals are released globally
+ */
+export const UNIVERSAL_PROPOSAL_RELEASE_HOUR = 0; // 00:00 UTC (6 PM CST)
