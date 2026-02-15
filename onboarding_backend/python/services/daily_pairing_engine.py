@@ -382,3 +382,5 @@ def get_user_daily_pairing(supabase, user_id: str, date: Optional[str] = None) -
     except Exception as e:
         print(f"[DAILY_PAIRING] Error fetching pairing for {user_id}: {e}")
         return None
+
+
