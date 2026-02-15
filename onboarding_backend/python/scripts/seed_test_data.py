@@ -30,7 +30,7 @@ PROFILES = [
     {
         "first_name": "Alex", "last_name": "Chen", "age": 21,
         "gender": ["male"], "interested_in_genders": ["female"],
-        "location": "Houston, TX", "hometown": "Austin, TX",
+        "location": "Houston, TX", "latitude": 29.7174, "longitude": -95.4018, "hometown": "Austin, TX",
         "current_job": "Software Engineering Intern",
         "education_level": "bachelors", "school": "Rice University",
         "height_inches": 71, "ethnicity": "Asian",
@@ -45,7 +45,7 @@ PROFILES = [
     {
         "first_name": "Maya", "last_name": "Patel", "age": 20,
         "gender": ["female"], "interested_in_genders": ["male"],
-        "location": "Houston, TX", "hometown": "Dallas, TX",
+        "location": "Houston, TX", "latitude": 29.7152, "longitude": -95.3987, "hometown": "Dallas, TX",
         "current_job": "Research Assistant",
         "education_level": "bachelors", "school": "Rice University",
         "height_inches": 64, "ethnicity": "South Asian",
@@ -60,7 +60,7 @@ PROFILES = [
     {
         "first_name": "Jordan", "last_name": "Williams", "age": 22,
         "gender": ["male"], "interested_in_genders": ["female"],
-        "location": "Houston, TX", "hometown": "Chicago, IL",
+        "location": "Houston, TX", "latitude": 29.7210, "longitude": -95.3963, "hometown": "Chicago, IL",
         "current_job": "Teaching Assistant",
         "education_level": "bachelors", "school": "Rice University",
         "height_inches": 74, "ethnicity": "Black",
@@ -75,7 +75,7 @@ PROFILES = [
     {
         "first_name": "Sofia", "last_name": "Rodriguez", "age": 21,
         "gender": ["female"], "interested_in_genders": ["male"],
-        "location": "Houston, TX", "hometown": "San Antonio, TX",
+        "location": "Houston, TX", "latitude": 29.7135, "longitude": -95.4050, "hometown": "San Antonio, TX",
         "current_job": "Marketing Intern",
         "education_level": "bachelors", "school": "Rice University",
         "height_inches": 66, "ethnicity": "Hispanic",
@@ -90,7 +90,7 @@ PROFILES = [
     {
         "first_name": "Ethan", "last_name": "Kim", "age": 20,
         "gender": ["male"], "interested_in_genders": ["female"],
-        "location": "Houston, TX", "hometown": "Houston, TX",
+        "location": "Houston, TX", "latitude": 29.7190, "longitude": -95.4000, "hometown": "Houston, TX",
         "current_job": "Data Science Intern",
         "education_level": "bachelors", "school": "Rice University",
         "height_inches": 69, "ethnicity": "Asian",
@@ -105,7 +105,7 @@ PROFILES = [
     {
         "first_name": "Priya", "last_name": "Sharma", "age": 21,
         "gender": ["female"], "interested_in_genders": ["male"],
-        "location": "Houston, TX", "hometown": "New York, NY",
+        "location": "Houston, TX", "latitude": 29.7160, "longitude": -95.4030, "hometown": "New York, NY",
         "current_job": "Product Management Intern",
         "education_level": "bachelors", "school": "Rice University",
         "height_inches": 63, "ethnicity": "South Asian",
@@ -120,7 +120,7 @@ PROFILES = [
     {
         "first_name": "Marcus", "last_name": "Thompson", "age": 23,
         "gender": ["male"], "interested_in_genders": ["female"],
-        "location": "Houston, TX", "hometown": "Atlanta, GA",
+        "location": "Houston, TX", "latitude": 29.7200, "longitude": -95.3950, "hometown": "Atlanta, GA",
         "current_job": "Graduate Research Assistant",
         "education_level": "masters", "school": "Rice University",
         "height_inches": 72, "ethnicity": "Black",
@@ -135,7 +135,7 @@ PROFILES = [
     {
         "first_name": "Emma", "last_name": "Davis", "age": 20,
         "gender": ["female"], "interested_in_genders": ["male"],
-        "location": "Houston, TX", "hometown": "Portland, OR",
+        "location": "Houston, TX", "latitude": 29.7145, "longitude": -95.4065, "hometown": "Portland, OR",
         "current_job": "UX Design Intern",
         "education_level": "bachelors", "school": "Rice University",
         "height_inches": 67, "ethnicity": "White",
@@ -150,7 +150,7 @@ PROFILES = [
     {
         "first_name": "Daniel", "last_name": "Nguyen", "age": 21,
         "gender": ["male"], "interested_in_genders": ["female"],
-        "location": "Houston, TX", "hometown": "San Jose, CA",
+        "location": "Houston, TX", "latitude": 29.7180, "longitude": -95.3975, "hometown": "San Jose, CA",
         "current_job": "Software Engineering Intern",
         "education_level": "bachelors", "school": "Rice University",
         "height_inches": 68, "ethnicity": "Asian",
@@ -165,7 +165,7 @@ PROFILES = [
     {
         "first_name": "Olivia", "last_name": "Martinez", "age": 22,
         "gender": ["female"], "interested_in_genders": ["male"],
-        "location": "Houston, TX", "hometown": "Miami, FL",
+        "location": "Houston, TX", "latitude": 29.7125, "longitude": -95.4040, "hometown": "Miami, FL",
         "current_job": "Pre-Med Research",
         "education_level": "bachelors", "school": "Rice University",
         "height_inches": 65, "ethnicity": "Hispanic",
@@ -180,7 +180,7 @@ PROFILES = [
     {
         "first_name": "Ryan", "last_name": "OBrien", "age": 22,
         "gender": ["male"], "interested_in_genders": ["female"],
-        "location": "Houston, TX", "hometown": "Boston, MA",
+        "location": "Houston, TX", "latitude": 29.7165, "longitude": -95.3990, "hometown": "Boston, MA",
         "current_job": "Finance Intern",
         "education_level": "bachelors", "school": "Rice University",
         "height_inches": 73, "ethnicity": "White",
@@ -195,7 +195,7 @@ PROFILES = [
     {
         "first_name": "Aisha", "last_name": "Rahman", "age": 20,
         "gender": ["female"], "interested_in_genders": ["male"],
-        "location": "Houston, TX", "hometown": "Houston, TX",
+        "location": "Houston, TX", "latitude": 29.7155, "longitude": -95.4010, "hometown": "Houston, TX",
         "current_job": "Student",
         "education_level": "bachelors", "school": "Rice University",
         "height_inches": 62, "ethnicity": "South Asian",

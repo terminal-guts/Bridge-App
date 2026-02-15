@@ -202,8 +202,19 @@ function scoreDistance(
   userB: UserProfile,
   actualDistance?: number
 ): CategoryScore {
-  // If no distance provided, default to 50%
+  // If no distance provided, try city string matching
   if (actualDistance === undefined) {
+    const aCity = (userA.location || '').split(',')[0].trim().toLowerCase();
+    const bCity = (userB.location || '').split(',')[0].trim().toLowerCase();
+    if (aCity && bCity && aCity === bCity) {
+      return {
+        category: 'distance',
+        weight: WEIGHTS.distance,
+        rawScore: 90,
+        weightedScore: 90 * WEIGHTS.distance,
+        details: `Same city: ${aCity}`,
+      };
+    }
     return {
       category: 'distance',
       weight: WEIGHTS.distance,
@@ -291,8 +302,9 @@ function getSubstancePreference(user: UserProfile, substance: string): string[] 
 }
 
 function scoreSubstanceMatch(frequency: string, preferences: string[]): number {
-  if (!frequency) return 50; // Missing = default
-  if (preferences.length === 0 || preferences.includes("don't care") || preferences.includes("dont_care")) {
+  if (!frequency) return 50; // Missing frequency = default
+  if (preferences.length === 0) return 100; // No preference = don't care
+  if (preferences.includes("don't care") || preferences.includes("dont_care")) {
     return 100;
   }
   if (preferences.includes(frequency)) return 100;
@@ -324,7 +336,17 @@ function scoreValues(userA: UserProfile, userB: UserProfile): CategoryScore {
     };
   }
 
-  const rawScore = jaccardSimilarity(aValues, bValues) * 100;
+  if (aValues.length === 0 || bValues.length === 0) {
+    return {
+      category: 'values',
+      weight: WEIGHTS.values,
+      rawScore: 25,
+      weightedScore: 25 * WEIGHTS.values,
+      details: 'Only one user has values',
+    };
+  }
+
+  const rawScore = overlapCoefficient(aValues, bValues) * 100;
 
   const shared = aValues.filter(v => bValues.includes(v));
 
@@ -355,7 +377,17 @@ function scoreInterests(userA: UserProfile, userB: UserProfile): CategoryScore {
     };
   }
 
-  const rawScore = jaccardSimilarity(aInterests, bInterests) * 100;
+  if (aInterests.length === 0 || bInterests.length === 0) {
+    return {
+      category: 'interests',
+      weight: WEIGHTS.interests,
+      rawScore: 25,
+      weightedScore: 25 * WEIGHTS.interests,
+      details: 'Only one user has interests',
+    };
+  }
+
+  const rawScore = overlapCoefficient(aInterests, bInterests) * 100;
 
   const shared = aInterests.filter(i => bInterests.includes(i));
 
@@ -368,14 +400,16 @@ function scoreInterests(userA: UserProfile, userB: UserProfile): CategoryScore {
   };
 }
 
-function jaccardSimilarity(a: string[], b: string[]): number {
+function overlapCoefficient(a: string[], b: string[]): number {
   const setA = new Set(a.map(x => x.toLowerCase()));
   const setB = new Set(b.map(x => x.toLowerCase()));
 
-  const intersection = [...setA].filter(x => setB.has(x)).length;
-  const union = new Set([...setA, ...setB]).size;
+  if (setA.size === 0 || setB.size === 0) return 0;
 
-  return union === 0 ? 0 : intersection / union;
+  const intersection = [...setA].filter(x => setB.has(x)).length;
+  const smaller = Math.min(setA.size, setB.size);
+
+  return intersection / smaller;
 }
 
 /**
@@ -755,24 +789,24 @@ function scoreDeepQuestions(userA: UserProfile, userB: UserProfile): CategorySco
 
   const aIds = new Set(aAnswers.map(a => a.questionId));
   const bIds = new Set(bAnswers.map(a => a.questionId));
-  const idUnion = new Set([...aIds, ...bIds]);
   const idIntersection = [...aIds].filter(id => bIds.has(id)).length;
-  const questionOverlap = idUnion.size === 0 ? 0 : (idIntersection / idUnion.size) * 100;
+  const smallerIds = Math.min(aIds.size, bIds.size);
+  const questionOverlap = smallerIds === 0 ? 0 : Math.min(100, (idIntersection / smallerIds) * 120);
 
   const aWords = new Set<string>();
   const bWords = new Set<string>();
   aAnswers.forEach(a => extractMeaningfulWords(a.answer).forEach(w => aWords.add(w)));
   bAnswers.forEach(a => extractMeaningfulWords(a.answer).forEach(w => bWords.add(w)));
-  const wordUnion = new Set([...aWords, ...bWords]);
   const wordIntersection = [...aWords].filter(w => bWords.has(w)).length;
-  const keywordOverlap = wordUnion.size === 0 ? 0 : (wordIntersection / wordUnion.size) * 100;
+  const smallerWords = Math.min(aWords.size, bWords.size);
+  const keywordOverlap = smallerWords === 0 ? 0 : Math.min(100, (wordIntersection / smallerWords) * 100);
 
   const aAvgLen = aAnswers.reduce((s, a) => s + a.answer.length, 0) / aAnswers.length;
   const bAvgLen = bAnswers.reduce((s, a) => s + a.answer.length, 0) / bAnswers.length;
   const maxLen = Math.max(aAvgLen, bAvgLen);
   const lengthSimilarity = maxLen === 0 ? 100 : (Math.min(aAvgLen, bAvgLen) / maxLen) * 100;
 
-  const rawScore = questionOverlap * 0.4 + keywordOverlap * 0.4 + lengthSimilarity * 0.2;
+  const rawScore = questionOverlap * 0.35 + keywordOverlap * 0.45 + lengthSimilarity * 0.20;
 
   return {
     category: 'deepQuestions',

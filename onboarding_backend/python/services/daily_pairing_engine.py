@@ -9,7 +9,10 @@ from typing import List, Dict, Tuple, Optional, Any, Set
 import datetime
 import random
 
-from services.scoring import calculate_compatibility, passes_basic_filter
+from services.scoring import (
+    calculate_compatibility, passes_basic_filter,
+    compute_answer_embedding, compute_per_question_embeddings,
+)
 
 SOFT_MIN_SCORE = 20.0
 RECENT_PAIRING_LOOKBACK_DAYS = 7
@@ -112,11 +115,37 @@ def _fetch_existing_today_pairings(supabase, today: str) -> Set[str]:
         return set()
 
 
+def _compute_embeddings(dq_map: Dict[str, List[Dict]]) -> tuple:
+    """Pre-compute all embeddings once before scoring pairs."""
+    embedding_map: Dict[str, List[float]] = {}
+    per_question_map: Dict[str, Dict] = {}
+
+    if not dq_map:
+        return embedding_map, per_question_map
+
+    print(f"[DAILY_PAIRING] Computing embeddings for {len(dq_map)} users...")
+    for uid, answers in dq_map.items():
+        emb = compute_answer_embedding(answers)
+        if emb is not None:
+            embedding_map[uid] = emb
+        per_q = compute_per_question_embeddings(answers)
+        if per_q:
+            per_question_map[uid] = per_q
+
+    print(f"[DAILY_PAIRING] Computed {len(embedding_map)} combined + "
+          f"{len(per_question_map)} per-question embeddings")
+    return embedding_map, per_question_map
+
+
 def _score_pair(
     profile_a: Dict, prefs_a: Dict,
     profile_b: Dict, prefs_b: Dict,
     deep_questions_a: Optional[List[Dict]] = None,
     deep_questions_b: Optional[List[Dict]] = None,
+    embedding_a: Optional[List[float]] = None,
+    embedding_b: Optional[List[float]] = None,
+    per_question_a: Optional[Dict] = None,
+    per_question_b: Optional[Dict] = None,
 ) -> Optional[Dict]:
     if not passes_basic_filter(profile_a, prefs_a, profile_b, prefs_b):
         return None
@@ -125,6 +154,10 @@ def _score_pair(
         profile_a, prefs_a, profile_b, prefs_b,
         deep_questions_a=deep_questions_a,
         deep_questions_b=deep_questions_b,
+        embedding_a=embedding_a,
+        embedding_b=embedding_b,
+        per_question_a=per_question_a,
+        per_question_b=per_question_b,
     )
     return result
 
@@ -135,11 +168,17 @@ def _build_scored_edges(
     active_match_pairs: Set[frozenset],
     recent_pairs: Set[frozenset],
     dq_map: Dict[str, List[Dict]] = None,
+    embedding_map: Dict[str, List[float]] = None,
+    per_question_map: Dict[str, Dict] = None,
 ) -> List[Tuple[str, str, float, Dict]]:
     edges = []
     n = len(users)
     if dq_map is None:
         dq_map = {}
+    if embedding_map is None:
+        embedding_map = {}
+    if per_question_map is None:
+        per_question_map = {}
 
     print(f"[DAILY_PAIRING] Scoring {n * (n - 1) // 2} possible pairs...")
 
@@ -161,6 +200,10 @@ def _build_scored_edges(
                 a, prefs_a, b, prefs_b,
                 deep_questions_a=dq_map.get(a_uid, []),
                 deep_questions_b=dq_map.get(b_uid, []),
+                embedding_a=embedding_map.get(a_uid),
+                embedding_b=embedding_map.get(b_uid),
+                per_question_a=per_question_map.get(a_uid),
+                per_question_b=per_question_map.get(b_uid),
             )
             if result is None:
                 continue
@@ -295,7 +338,13 @@ def run_daily_pairing(supabase) -> Dict[str, Any]:
           f"{len(recent_pairs)} recent pairs, "
           f"{len(active_match_pairs)} active matches")
 
-    edges = _build_scored_edges(users, prefs_map, active_match_pairs, recent_pairs, dq_map)
+    # Pre-compute semantic embeddings for deep question answers
+    embedding_map, per_question_map = _compute_embeddings(dq_map)
+
+    edges = _build_scored_edges(
+        users, prefs_map, active_match_pairs, recent_pairs,
+        dq_map, embedding_map, per_question_map,
+    )
 
     if not edges:
         return {

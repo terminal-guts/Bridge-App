@@ -18,6 +18,25 @@ Category Weights:
 from typing import Dict, List, Optional, Any
 import math
 import re
+import os
+
+try:
+    from openai import OpenAI
+    _HAS_OPENAI = True
+except ImportError:
+    _HAS_OPENAI = False
+
+_openai_client = None
+EMBEDDING_MODEL = "text-embedding-3-small"
+
+
+def _get_openai_client():
+    global _openai_client
+    if _openai_client is None and _HAS_OPENAI:
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if api_key:
+            _openai_client = OpenAI(api_key=api_key)
+    return _openai_client
 
 WEIGHTS = {
     "age_range": 0.18,
@@ -159,6 +178,12 @@ def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return R * c
 
 
+def _normalize_city(location: Optional[str]) -> str:
+    if not location:
+        return ""
+    return location.strip().lower().split(",")[0].strip()
+
+
 def score_distance(
     profile_a: Dict, prefs_a: Dict,
     profile_b: Dict, prefs_b: Dict,
@@ -173,6 +198,10 @@ def score_distance(
         if lat_a and lon_a and lat_b and lon_b:
             actual_distance = _haversine(lat_a, lon_a, lat_b, lon_b)
         else:
+            city_a = _normalize_city(_get(profile_a, "location"))
+            city_b = _normalize_city(_get(profile_b, "location"))
+            if city_a and city_b and city_a == city_b:
+                return 0.90
             return 0.5
 
     a_max = _get_pref(profile_a, prefs_a, "max_distance") or _get_pref(profile_a, prefs_a, "distance_miles")
@@ -205,8 +234,8 @@ def _score_single_substance(
         if habit is None or habit == "":
             return 0.5
 
-        if partner_prefs is None:
-            return 0.5
+        if partner_prefs is None or partner_prefs == []:
+            return 1.0
         if isinstance(partner_prefs, str):
             if partner_prefs == "dont_care" or partner_prefs == "don't care":
                 return 1.0
@@ -276,27 +305,27 @@ def score_values(profile_a: Dict, profile_b: Dict) -> float:
     if not a_vals and not b_vals:
         return 0.5
 
-    union = a_vals | b_vals
-    if len(union) == 0:
-        return 0.5
+    if not a_vals or not b_vals:
+        return 0.25
 
     shared = a_vals & b_vals
-    return len(shared) / len(union)
+    smaller = min(len(a_vals), len(b_vals))
+    return len(shared) / smaller
 
 
 def score_interests(profile_a: Dict, profile_b: Dict) -> float:
-    a_ints = set(_get(profile_a, "interests") or [])
-    b_ints = set(_get(profile_b, "interests") or [])
+    a_ints = set(i.lower() for i in (_get(profile_a, "interests") or []))
+    b_ints = set(i.lower() for i in (_get(profile_b, "interests") or []))
 
     if not a_ints and not b_ints:
         return 0.5
 
-    union = a_ints | b_ints
-    if len(union) == 0:
-        return 0.5
+    if not a_ints or not b_ints:
+        return 0.25
 
     shared = a_ints & b_ints
-    return len(shared) / len(union)
+    smaller = min(len(a_ints), len(b_ints))
+    return len(shared) / smaller
 
 
 def _score_has_children(profile_a: Dict, prefs_a: Dict, profile_b: Dict, prefs_b: Dict) -> float:
@@ -621,6 +650,122 @@ def _score_question_overlap(deep_a: List[Dict], deep_b: List[Dict]) -> float:
     return min(1.0, overlap_ratio * 1.2)
 
 
+def _score_answer_length_similarity(deep_a: List[Dict], deep_b: List[Dict]) -> float:
+    def avg_length(answers):
+        lengths = [len(d.get("answer_text", "")) for d in answers]
+        return sum(lengths) / len(lengths) if lengths else 0
+
+    a_avg = avg_length(deep_a)
+    b_avg = avg_length(deep_b)
+
+    if a_avg == 0 and b_avg == 0:
+        return 0.5
+
+    if a_avg == 0 or b_avg == 0:
+        return 0.3
+
+    return min(a_avg, b_avg) / max(a_avg, b_avg)
+
+
+# --- Semantic embedding-based scoring ---
+
+def _combine_answers_text(deep: List[Dict]) -> str:
+    return " ".join(d.get("answer_text", "") for d in deep).strip()
+
+
+def compute_answer_embedding(deep_questions: List[Dict]) -> Optional[List[float]]:
+    """Compute an embedding for a user's combined deep question answers.
+    Call once per user, then pass the result into score_deep_questions."""
+    client = _get_openai_client()
+    if not client or not deep_questions:
+        return None
+
+    combined = _combine_answers_text(deep_questions)
+    if not combined:
+        return None
+
+    try:
+        response = client.embeddings.create(
+            model=EMBEDDING_MODEL,
+            input=combined,
+        )
+        return response.data[0].embedding
+    except Exception as e:
+        print(f"[SCORING] Embedding error: {e}")
+        return None
+
+
+def compute_per_question_embeddings(deep_questions: List[Dict]) -> Dict[Any, List[float]]:
+    """Compute per-question embeddings for shared-question comparison."""
+    client = _get_openai_client()
+    if not client or not deep_questions:
+        return {}
+
+    texts = []
+    ids = []
+    for d in deep_questions:
+        text = d.get("answer_text", "").strip()
+        qid = d.get("question_id")
+        if text and qid is not None:
+            texts.append(text)
+            ids.append(qid)
+
+    if not texts:
+        return {}
+
+    try:
+        response = client.embeddings.create(
+            model=EMBEDDING_MODEL,
+            input=texts,
+        )
+        return {qid: item.embedding for qid, item in zip(ids, response.data)}
+    except Exception as e:
+        print(f"[SCORING] Per-question embedding error: {e}")
+        return {}
+
+
+def _cosine_similarity(a: List[float], b: List[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = math.sqrt(sum(x * x for x in a))
+    norm_b = math.sqrt(sum(x * x for x in b))
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
+def _score_semantic_similarity(
+    embedding_a: Optional[List[float]],
+    embedding_b: Optional[List[float]],
+) -> Optional[float]:
+    if embedding_a is None or embedding_b is None:
+        return None
+
+    raw_cosine = _cosine_similarity(embedding_a, embedding_b)
+    # Cosine similarity for text-embedding-3-small typically ranges 0.3-0.9
+    # Normalize to 0-1 scale: map [0.3, 0.9] → [0.0, 1.0]
+    normalized = max(0.0, min(1.0, (raw_cosine - 0.3) / 0.6))
+    return normalized
+
+
+def _score_per_question_semantic(
+    per_q_a: Dict[Any, List[float]],
+    per_q_b: Dict[Any, List[float]],
+) -> Optional[float]:
+    shared_ids = set(per_q_a.keys()) & set(per_q_b.keys())
+    if not shared_ids:
+        return None
+
+    scores = []
+    for qid in shared_ids:
+        cos = _cosine_similarity(per_q_a[qid], per_q_b[qid])
+        normalized = max(0.0, min(1.0, (cos - 0.3) / 0.6))
+        scores.append(normalized)
+
+    return sum(scores) / len(scores)
+
+
+# --- Keyword fallback (used when OpenAI is unavailable) ---
+
 def _extract_meaningful_words(text: str) -> set:
     if not text:
         return set()
@@ -641,33 +786,21 @@ def _score_keyword_overlap(deep_a: List[Dict], deep_b: List[Dict]) -> float:
         return 0.5
 
     shared = a_words & b_words
-    union = a_words | b_words
-
-    if len(union) == 0:
+    smaller = min(len(a_words), len(b_words))
+    if smaller == 0:
         return 0.5
 
-    jaccard = len(shared) / len(union)
-    return min(1.0, jaccard / 0.25)
+    return min(1.0, len(shared) / smaller)
 
 
-def _score_answer_length_similarity(deep_a: List[Dict], deep_b: List[Dict]) -> float:
-    def avg_length(answers):
-        lengths = [len(d.get("answer_text", "")) for d in answers]
-        return sum(lengths) / len(lengths) if lengths else 0
-
-    a_avg = avg_length(deep_a)
-    b_avg = avg_length(deep_b)
-
-    if a_avg == 0 and b_avg == 0:
-        return 0.5
-
-    if a_avg == 0 or b_avg == 0:
-        return 0.3
-
-    return min(a_avg, b_avg) / max(a_avg, b_avg)
-
-
-def score_deep_questions(deep_a: List[Dict], deep_b: List[Dict]) -> float:
+def score_deep_questions(
+    deep_a: List[Dict],
+    deep_b: List[Dict],
+    embedding_a: Optional[List[float]] = None,
+    embedding_b: Optional[List[float]] = None,
+    per_question_a: Optional[Dict[Any, List[float]]] = None,
+    per_question_b: Optional[Dict[Any, List[float]]] = None,
+) -> float:
     if not deep_a and not deep_b:
         return 0.5
 
@@ -675,10 +808,35 @@ def score_deep_questions(deep_a: List[Dict], deep_b: List[Dict]) -> float:
         return 0.3
 
     question_score = _score_question_overlap(deep_a, deep_b)
-    keyword_score = _score_keyword_overlap(deep_a, deep_b)
     length_score = _score_answer_length_similarity(deep_a, deep_b)
 
-    return question_score * 0.4 + keyword_score * 0.4 + length_score * 0.2
+    # Try semantic scoring first (OpenAI embeddings)
+    semantic_overall = _score_semantic_similarity(embedding_a, embedding_b)
+    semantic_per_q = None
+    if per_question_a and per_question_b:
+        semantic_per_q = _score_per_question_semantic(per_question_a, per_question_b)
+
+    if semantic_overall is not None:
+        # Semantic mode: use embeddings
+        # Combined semantic (40%) + per-question semantic (20%) + question overlap (25%) + depth (15%)
+        if semantic_per_q is not None:
+            return (
+                semantic_overall * 0.40
+                + semantic_per_q * 0.20
+                + question_score * 0.25
+                + length_score * 0.15
+            )
+        else:
+            # No shared questions for per-q comparison, give more weight to overall
+            return (
+                semantic_overall * 0.55
+                + question_score * 0.30
+                + length_score * 0.15
+            )
+
+    # Fallback: keyword overlap (when OpenAI unavailable)
+    keyword_score = _score_keyword_overlap(deep_a, deep_b)
+    return question_score * 0.35 + keyword_score * 0.45 + length_score * 0.20
 
 
 def calculate_compatibility(
@@ -689,6 +847,10 @@ def calculate_compatibility(
     actual_distance: Optional[float] = None,
     deep_questions_a: Optional[List[Dict]] = None,
     deep_questions_b: Optional[List[Dict]] = None,
+    embedding_a: Optional[List[float]] = None,
+    embedding_b: Optional[List[float]] = None,
+    per_question_a: Optional[Dict] = None,
+    per_question_b: Optional[Dict] = None,
 ) -> Dict[str, Any]:
     raw = {
         "age_range": score_age(profile_a, prefs_a, profile_b, prefs_b),
@@ -702,7 +864,9 @@ def calculate_compatibility(
         "height": score_height(profile_a, prefs_a, profile_b, prefs_b),
         "ethnicity": score_ethnicity(profile_a, prefs_a, profile_b, prefs_b),
         "deep_questions": score_deep_questions(
-            deep_questions_a or [], deep_questions_b or []
+            deep_questions_a or [], deep_questions_b or [],
+            embedding_a=embedding_a, embedding_b=embedding_b,
+            per_question_a=per_question_a, per_question_b=per_question_b,
         ),
         "education": score_education(profile_a, profile_b),
         "career": score_career(profile_a, profile_b),
