@@ -1,14 +1,18 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
+import { supabase } from '../lib/supabase';
 import { showToast } from '../utils/toast';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('NotificationService');
 
 // Configure how notifications are handled when the app is foregrounded
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
         shouldShowAlert: true,
         shouldPlaySound: true,
-        shouldSetBadge: false,
+        shouldSetBadge: true,
         shouldShowBanner: true,
         shouldShowList: true,
     }),
@@ -16,14 +20,15 @@ Notifications.setNotificationHandler({
 
 /**
  * Notification Service
- * Handles real push notifications, tokens, and simulated mock notifications.
+ * Handles push notification registration, local scheduling, and
+ * real-time subscription-based notifications for proposals/matches/messages.
  */
 export const notificationService = {
     /**
-     * Register for push notifications and get the token
+     * Register for push notifications and save token to Supabase
      */
     registerForPushNotifications: async () => {
-        let token;
+        let token: string | undefined;
 
         if (Platform.OS === 'android') {
             await Notifications.setNotificationChannelAsync('default', {
@@ -44,56 +49,57 @@ export const notificationService = {
             }
 
             if (finalStatus !== 'granted') {
-                console.log('[NOTIFICATION] Failed to get push token for push notification!');
+                logger.info('Push notification permission not granted');
                 return null;
             }
 
-            // Learn more about projectId here: https://docs.expo.dev/push-notifications/push-notifications-setup/#configure-projectid
-            // For development, this might need to be set in app.json
             try {
                 token = (await Notifications.getExpoPushTokenAsync()).data;
-                console.log('[NOTIFICATION] Expo Push Token:', token);
-            } catch (e) {
-                console.error('[NOTIFICATION] Error getting push token:', e);
+                logger.info('Push token registered');
+
+                // Save token to user_settings in Supabase
+                const { data: userData } = await supabase.auth.getUser();
+                if (userData?.user?.id && token) {
+                    await supabase
+                        .from('user_settings')
+                        .upsert({
+                            user_id: userData.user.id,
+                            push_token: token,
+                            push_enabled: true,
+                            updated_at: new Date().toISOString(),
+                        }, { onConflict: 'user_id' });
+                }
+            } catch (e: any) {
+                logger.error('Error getting push token', e.message);
             }
         } else {
-            console.log('[NOTIFICATION] Must use physical device for Push Notifications');
+            logger.info('Must use physical device for push notifications');
         }
 
         return token;
     },
 
     /**
-     * Send a test notification.
-     * Schedules a local notification to appear in 2 seconds.
+     * Schedule a local notification
      */
-    sendTestNotification: async (title: string, body: string) => {
-        console.log(`[NOTIFICATION] Sending test: ${title} - ${body}`);
-
-        if (!Device.isDevice && Platform.OS !== 'web') {
-            // Fallback for simulators
-            showToast.info(title, body);
-            return { ok: true, method: 'toast' };
-        }
-
+    scheduleLocalNotification: async (title: string, body: string, data?: Record<string, any>, delaySeconds: number = 1) => {
         try {
             await Notifications.scheduleNotificationAsync({
                 content: {
                     title,
                     body,
-                    data: { type: 'test' },
+                    data: data || {},
                     sound: true,
                 },
                 trigger: {
                     type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-                    seconds: 2,
+                    seconds: delaySeconds,
                 } as Notifications.TimeIntervalTriggerInput,
             });
-            return { ok: true, method: 'local_notification' };
-        } catch (e) {
-            console.error('[NOTIFICATION] Error scheduling notification:', e);
+        } catch (e: any) {
+            logger.error('Error scheduling notification', e.message);
+            // Fallback to toast
             showToast.info(title, body);
-            return { ok: false, error: e };
         }
     },
 
@@ -105,45 +111,189 @@ export const notificationService = {
     },
 
     /**
-     * Listen for interaction with notifications
+     * Listen for interaction with notifications (taps)
      */
     addNotificationResponseListener: (callback: (response: Notifications.NotificationResponse) => void) => {
         return Notifications.addNotificationResponseReceivedListener(callback);
     },
 
-    /**
-     * Notify about days of inactivity
-     */
-    notifyInactivity: async (days: number) => {
-        const title = "We Miss You! 👋";
-        const body = `It's been ${days} days since your last visit. Come back and see what's new!`;
-        return notificationService.sendTestNotification(title, body);
-    },
+    // ========================================================================
+    // Contextual Notifications
+    // ========================================================================
 
     /**
-     * Notify about a potential ghosting situation
+     * Notify about a new proposal ready for voting
      */
-    notifyGhosting: async (name: string) => {
-        const title = "Don't let it go cold! 🔥";
-        const body = `${name} is still waiting for your reply. Keep the conversation going!`;
-        return notificationService.sendTestNotification(title, body);
-    },
-
-    /**
-     * Notify about an invitation for a date
-     */
-    notifyDateInvitation: async (name: string) => {
-        const title = "A special invitation! ✨";
-        const body = `${name} just asked you out for a date! Open Bridge to respond.`;
-        return notificationService.sendTestNotification(title, body);
+    notifyNewProposal: async () => {
+        await notificationService.scheduleLocalNotification(
+            'New Proposals Ready',
+            'You have new proposals to vote on. Help your community find matches!',
+            { type: 'new_proposals', screen: 'Community' },
+        );
     },
 
     /**
      * Notify about a new match
      */
     notifyMatchNotice: async (name: string) => {
-        const title = "It's a Match! 💖";
-        const body = `You and ${name} have matched! Start the conversation now.`;
-        return notificationService.sendTestNotification(title, body);
-    }
+        await notificationService.scheduleLocalNotification(
+            "It's a Match!",
+            `You and ${name} have matched! Start the conversation now.`,
+            { type: 'match', screen: 'Chat' },
+        );
+    },
+
+    /**
+     * Notify about a new message
+     */
+    notifyNewMessage: async (senderName: string, preview: string) => {
+        await notificationService.scheduleLocalNotification(
+            senderName,
+            preview.length > 100 ? preview.substring(0, 100) + '...' : preview,
+            { type: 'message', screen: 'Chat' },
+        );
+    },
+
+    /**
+     * Notify about a pending proposal decision
+     */
+    notifyPendingDecision: async () => {
+        await notificationService.scheduleLocalNotification(
+            'Community Approved a Match!',
+            'A proposal has been approved by the community. Accept or decline now!',
+            { type: 'pending_decision', screen: 'Community' },
+        );
+    },
+
+    /**
+     * Notify about days of inactivity
+     */
+    notifyInactivity: async (days: number) => {
+        await notificationService.scheduleLocalNotification(
+            "We Miss You!",
+            `It's been ${days} days since your last visit. Come back and see what's new!`,
+            { type: 'inactivity' },
+        );
+    },
+
+    /**
+     * Notify about a potential ghosting situation
+     */
+    notifyGhosting: async (name: string) => {
+        await notificationService.scheduleLocalNotification(
+            "Don't let it go cold!",
+            `${name} is still waiting for your reply. Keep the conversation going!`,
+            { type: 'ghosting', screen: 'Chat' },
+        );
+    },
+
+    // ========================================================================
+    // Real-Time Subscriptions (call on app startup)
+    // ========================================================================
+
+    /**
+     * Subscribe to real-time notifications for matches and messages.
+     * Returns cleanup function to unsubscribe.
+     */
+    subscribeToRealtimeNotifications: async () => {
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData?.user?.id;
+        if (!userId) return () => {};
+
+        // Subscribe to new matches
+        const matchChannel = supabase
+            .channel('match-notifications')
+            .on(
+                'postgres_changes' as any,
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'matches',
+                    filter: `user1_id=eq.${userId}`,
+                } as any,
+                async (payload: any) => {
+                    const partnerId = payload.new.user2_id;
+                    const { data: partner } = await supabase
+                        .from('user_profiles')
+                        .select('first_name')
+                        .eq('id', partnerId)
+                        .maybeSingle();
+                    notificationService.notifyMatchNotice(partner?.first_name || 'Someone');
+                }
+            )
+            .on(
+                'postgres_changes' as any,
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'matches',
+                    filter: `user2_id=eq.${userId}`,
+                } as any,
+                async (payload: any) => {
+                    const partnerId = payload.new.user1_id;
+                    const { data: partner } = await supabase
+                        .from('user_profiles')
+                        .select('first_name')
+                        .eq('id', partnerId)
+                        .maybeSingle();
+                    notificationService.notifyMatchNotice(partner?.first_name || 'Someone');
+                }
+            )
+            .subscribe();
+
+        // Subscribe to new messages (only when app is backgrounded/inactive)
+        const messageChannel = supabase
+            .channel('message-notifications')
+            .on(
+                'postgres_changes' as any,
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                } as any,
+                async (payload: any) => {
+                    // Only notify if the message is TO us, not FROM us
+                    if (payload.new.sender_id === userId) return;
+
+                    const { data: sender } = await supabase
+                        .from('user_profiles')
+                        .select('first_name')
+                        .eq('id', payload.new.sender_id)
+                        .maybeSingle();
+
+                    notificationService.notifyNewMessage(
+                        sender?.first_name || 'Someone',
+                        payload.new.content || 'Sent you a message'
+                    );
+                }
+            )
+            .subscribe();
+
+        // Return cleanup function
+        return () => {
+            supabase.removeChannel(matchChannel);
+            supabase.removeChannel(messageChannel);
+        };
+    },
+
+    /**
+     * Clear all scheduled notifications
+     */
+    clearAll: async () => {
+        await Notifications.cancelAllScheduledNotificationsAsync();
+    },
+
+    /**
+     * Get badge count
+     */
+    getBadgeCount: async () => {
+        return await Notifications.getBadgeCountAsync();
+    },
+
+    /**
+     * Set badge count
+     */
+    setBadgeCount: async (count: number) => {
+        await Notifications.setBadgeCountAsync(count);
+    },
 };

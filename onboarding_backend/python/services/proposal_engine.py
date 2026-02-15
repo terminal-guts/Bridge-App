@@ -106,6 +106,24 @@ def fetch_rejected_pairs(supabase) -> set:
         return set()
 
 
+def fetch_blocked_pairs(supabase) -> set:
+    """
+    Fetch all blocked user pairs.
+    Blocked users must never be matched or proposed to each other.
+    """
+    try:
+        result = supabase.table("blocked_users") \
+            .select("user_id, blocked_user_id") \
+            .execute()
+        pairs = set()
+        for row in (result.data or []):
+            pairs.add(frozenset({row["user_id"], row["blocked_user_id"]}))
+        return pairs
+    except Exception as e:
+        print(f"[PROPOSALS] Error fetching blocked pairs: {e}")
+        return set()
+
+
 def fetch_friends(supabase) -> Dict[str, set]:
     """
     Fetch all friendships. Returns dict: user_id -> set of friend_ids.
@@ -331,11 +349,12 @@ def run_proposal_generation(supabase, max_proposals: int = MAX_PROPOSALS_PER_RUN
     prefs_map = fetch_user_preferences(supabase, user_ids)
     print(f"[PROPOSALS] Loaded preferences for {len(prefs_map)} users")
 
-    # 3. Existing + rejected pairs
+    # 3. Existing + rejected + blocked pairs
     existing_pairs = fetch_existing_proposal_pairs(supabase)
     rejected_pairs = fetch_rejected_pairs(supabase)
-    excluded_pairs = existing_pairs | rejected_pairs
-    print(f"[PROPOSALS] Excluding {len(excluded_pairs)} existing/rejected pairs")
+    blocked_pairs = fetch_blocked_pairs(supabase)
+    excluded_pairs = existing_pairs | rejected_pairs | blocked_pairs
+    print(f"[PROPOSALS] Excluding {len(excluded_pairs)} existing/rejected/blocked pairs")
 
     # 4. Generate candidates
     candidates = generate_candidate_pairs(users, prefs_map, existing_pairs, rejected_pairs)

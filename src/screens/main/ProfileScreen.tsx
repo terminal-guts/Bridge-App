@@ -33,6 +33,9 @@ import { PhotoCarousel } from '../../components/PhotoCarousel';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { showToast } from '../../utils/toast';
 import { DEEP_QUESTIONS, getUnansweredQuestions } from '../../utils/deepQuestions';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('ProfileScreen');
 import { AnswerQuestionModal } from '../../components/AnswerQuestionModal';
 import { GuideTarget } from '../../components/guides';
 import { useGuide } from '../../hooks/useGuide';
@@ -250,7 +253,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   // Performance: Wrap data loading functions in useCallback
   const loadProfile = useCallback(async () => {
     try {
-      console.log('[ProfileScreen] loadProfile called');
+      logger.info('[ProfileScreen] loadProfile called');
 
       // Ensure user is authenticated, create anonymous session if needed
       const userResult = await requirePhoneVerification();
@@ -278,7 +281,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       const loadedProfile = profileResult.data;
       if (!isMountedRef.current) return;
 
-      console.log('[ProfileScreen] Profile loaded successfully:', {
+      logger.info('[ProfileScreen] Profile loaded successfully:', {
         preferredPolitics: loadedProfile.preferredPolitics,
         matchPrefsCompleteness: loadedProfile.preferences ? 'exists' : 'missing'
       });
@@ -320,7 +323,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         }
       }
     } catch (error) {
-      console.error('Failed to load matches:', error);
+      logger.error('Failed to load matches:', error);
     }
   }, []);
 
@@ -333,7 +336,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         }
       }
     } catch (error) {
-      console.error('Failed to load friend count:', error);
+      logger.error('Failed to load friend count:', error);
     }
   }, []);
 
@@ -341,7 +344,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   // Always reload profile when returning to screen to ensure fresh data after edits
   useFocusEffect(
     useCallback(() => {
-      console.log('[ProfileScreen] useFocusEffect triggered - reloading profile data');
+      logger.info('[ProfileScreen] useFocusEffect triggered - reloading profile data');
 
       // Load all data in parallel for better performance
       Promise.all([
@@ -349,7 +352,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         loadMatches(),
         loadFriendCount()
       ]).catch(error => {
-        console.error('Failed to load profile data:', error);
+        logger.error('Failed to load profile data:', error);
         // Show user-visible error notification
         showToast.error(
           'Failed to load profile',
@@ -404,7 +407,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     const questionToEdit = selectedQuestionForEdit || currentEditingQuestion;
 
     if (!questionToEdit || !newAnswer.trim()) {
-      console.error('Cannot save: no question selected or empty answer');
+      logger.error('Cannot save: no question selected or empty answer');
       return false;
     }
 
@@ -439,12 +442,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         showToast.success('Answer updated!');
         return true;  // ✅ Success
       } else {
-        console.error('Save failed:', result.error);
+        logger.error('Save failed:', result.error);
         Alert.alert('Error', result.error?.message || 'Failed to update answer');
         return false;  // ❌ Failed
       }
     } catch (error: any) {
-      console.error('Error saving edited answer:', error);
+      logger.error('Error saving edited answer:', error);
       Alert.alert('Error', error.message || 'An unexpected error occurred');
       return false;  // ❌ Failed
     }
@@ -490,7 +493,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         Alert.alert('Error', result.error?.message || 'Failed to change question');
       }
     } catch (error: any) {
-      console.error('Error changing question:', error);
+      logger.error('Error changing question:', error);
       Alert.alert('Error', error.message || 'An unexpected error occurred');
     }
   };
@@ -551,7 +554,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         return false;
       }
     } catch (error: any) {
-      console.error('Error saving new answer:', error);
+      logger.error('Error saving new answer:', error);
       Alert.alert('Error', error.message || 'An unexpected error occurred');
       return false;
     }
@@ -1001,7 +1004,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       return false;
                     }
                   } catch (error: any) {
-                    console.error('Error saving answer:', error);
+                    logger.error('Error saving answer:', error);
                     Alert.alert('Error', error.message || 'An unexpected error occurred');
                     return false;
                   }
@@ -1325,7 +1328,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                 }}
                 resizeMode="cover"
                 onError={(e) => {
-                  console.warn('Failed to load profile photo:', e.nativeEvent.error);
+                  logger.warn('Failed to load profile photo:', e.nativeEvent.error);
                 }}
               />
             ) : (

@@ -5,6 +5,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { supabase } from '../../lib/supabase';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('WelcomeScreen');
+
 interface WelcomeScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Welcome'>;
 }
@@ -77,7 +81,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
       const { data, error } = await supabase.auth.signInAnonymously();
 
       if (error) {
-        console.error('Anonymous auth error:', error);
+        logger.error('Anonymous auth error:', error);
         Alert.alert(
           'Authentication Error',
           'Unable to create user session. Please try again or check your internet connection.',
@@ -88,7 +92,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
       }
 
       if (!data.user) {
-        console.error('No user returned from anonymous auth');
+        logger.error('No user returned from anonymous auth');
         Alert.alert(
           'Authentication Error',
           'Failed to create user session. Please try again.',
@@ -99,13 +103,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
       }
 
       // User session created successfully
-      console.log('Anonymous user created:', data.user.id);
+      logger.info('Anonymous user created:', data.user.id);
 
       // Navigate to onboarding
       navigation.navigate('Onboarding');
       setIsLoading(false);
     } catch (error: any) {
-      console.error('Unexpected error during authentication:', error);
+      logger.error('Unexpected error during authentication:', error);
       Alert.alert(
         'Error',
         'An unexpected error occurred. Please try again.',

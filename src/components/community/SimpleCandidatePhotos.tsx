@@ -18,6 +18,9 @@ import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { UserProfile, Photo } from '../../types';
 import { Body } from '../ui';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('SimpleCandidatePhotos');
 
 const StyledView = styled(View);
 const StyledImage = styled(Image);
@@ -67,7 +70,7 @@ function CandidatePhoto({ candidate, onPress, disabled = false }: CandidatePhoto
   return (
     <AnimatedPressable
       onPress={() => {
-        console.log('[CandidatePhoto] Press detected!', candidate.id, 'disabled:', disabled);
+        logger.info('[CandidatePhoto] Press detected!', candidate.id, 'disabled:', disabled);
         onPress();
       }}
       onPressIn={handlePressIn}
@@ -126,7 +129,7 @@ export function SimpleCandidatePhotos({
 }: SimpleCandidatePhotosProps) {
   // Ensure we have exactly 3 candidates
   const displayCandidates = candidates.slice(0, 3);
-  console.log('[SimpleCandidatePhotos] Rendering with', displayCandidates.length, 'candidates, disabled:', disabled);
+  logger.info('[SimpleCandidatePhotos] Rendering with', displayCandidates.length, 'candidates, disabled:', disabled);
 
   return (
     <StyledView style={{

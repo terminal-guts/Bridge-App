@@ -8,6 +8,9 @@ import { getCurrentUser } from '../../services/authService';
 import { getUserMatches, acceptMatch, rejectMatch } from '../../services/matchService';
 import { getFriends } from '../../services/friendService';
 import { Ionicons } from '@expo/vector-icons';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('MatchDetailScreen');
 
 interface MatchDetailScreenProps {
   navigation: NavigationProp<RootStackParamList, 'MatchDetail'>;
@@ -236,7 +239,7 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
 
       showSelectFriendAlert(friendButtons, () => navigation.goBack());
     } catch (error) {
-      console.error('Failed to load friends:', error);
+      logger.error('Failed to load friends:', error);
       navigation.goBack();
     }
   };
@@ -245,7 +248,7 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
     if (!match || !profile) return;
 
     // TODO: Implement recommendToFriend functionality in friendService
-    console.log('Recommend to friend:', { profileId: profile.userId, friendId: friendUserId });
+    logger.info('Recommend to friend:', { profileId: profile.userId, friendId: friendUserId });
     Alert.alert('Coming Soon', 'Recommend to friend feature is not yet implemented.');
     navigation.goBack();
   };

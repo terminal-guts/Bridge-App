@@ -15,6 +15,9 @@ import { TESTING_SURVEY_CONFIG } from '../../config/features';
 import { Ionicons } from '@expo/vector-icons';
 import { successHaptic, mediumHaptic } from '../../utils/haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('TestingSurveyModal');
 
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
@@ -90,7 +93,7 @@ export const TestingSurveyModal: React.FC<TestingSurveyModalProps> = ({
     await AsyncStorage.setItem(TESTING_SURVEY_CONFIG.storageKey, 'true');
 
     // TODO: Send survey responses to backend
-    console.log('Survey responses:', answers);
+    logger.info('Survey responses:', answers);
 
     // Show thank you message
     setShowThankYou(true);

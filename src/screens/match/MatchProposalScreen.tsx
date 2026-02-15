@@ -51,6 +51,9 @@ import { TIER_CONFIG } from '../../utils/questionTiers';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getFriends } from '../../services/friendService';
 import { communityService } from '../../services/communityServiceIndex';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('MatchProposalScreen');
 
 // ============================================================================
 // Styled Components
@@ -821,9 +824,9 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
     if (route.params?.proposalId) {
       try {
         await communityService.respondToMatchProposal(route.params.proposalId, true);
-        console.log('[MatchProposalScreen] Proposal accepted:', route.params.proposalId);
+        logger.info('[MatchProposalScreen] Proposal accepted:', route.params.proposalId);
       } catch (error) {
-        console.error('[MatchProposalScreen] Error accepting proposal:', error);
+        logger.error('[MatchProposalScreen] Error accepting proposal:', error);
       }
     }
 
@@ -885,9 +888,9 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
     if (route.params?.proposalId) {
       try {
         await communityService.respondToMatchProposal(route.params.proposalId, false);
-        console.log('[MatchProposalScreen] Proposal passed:', route.params.proposalId);
+        logger.info('[MatchProposalScreen] Proposal passed:', route.params.proposalId);
       } catch (error) {
-        console.error('[MatchProposalScreen] Error passing proposal:', error);
+        logger.error('[MatchProposalScreen] Error passing proposal:', error);
       }
     }
 

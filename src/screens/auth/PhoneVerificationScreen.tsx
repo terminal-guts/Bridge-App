@@ -6,6 +6,9 @@ import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { verifyPhone, sendOtpToPhone, verifyEmail, sendOtpToEmail, getCurrentUser } from '../../services/authService';
 import { createUserProfile, fetchAndSetUserProfile } from '../../services/profileService';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('PhoneVerificationScreen');
 
 interface PhoneVerificationScreenProps {
   navigation: NavigationProp<RootStackParamList, 'PhoneVerification'>;
@@ -136,7 +139,7 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
       // Task: Invoke Supabase to load profile for existing users
       const fetchResult = await fetchAndSetUserProfile(userResult.data.id);
       if (!fetchResult.ok && fetchResult.error?.code !== 'PROFILE_NOT_FOUND') {
-        console.warn('[AUTH] Could not load profile from Supabase:', fetchResult.error?.message);
+        logger.warn('[AUTH] Could not load profile from Supabase:', fetchResult.error?.message);
       }
     }
 

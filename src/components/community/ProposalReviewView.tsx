@@ -43,6 +43,9 @@ import {
 
 import { ProposalProfileView } from './ProposalProfileView';
 import { communityService } from '../../services/communityServiceIndex';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('ProposalReviewView');
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -107,7 +110,7 @@ export function ProposalReviewView({
         setProposals(result);
         setLoading(false);
       } catch (error) {
-        console.error('[ProposalReviewView] Error loading proposals:', error);
+        logger.error('[ProposalReviewView] Error loading proposals:', error);
         setLoading(false);
       }
     };
@@ -178,7 +181,7 @@ export function ProposalReviewView({
         }
       }, 400);
     } catch (error: any) {
-      console.error('[ProposalReviewView] Error submitting vote:', error);
+      logger.error('[ProposalReviewView] Error submitting vote:', error);
       if (!isMountedRef.current) return;
       setVoting(false);
       showToast.error('Vote failed', error.message || 'Unable to submit vote');

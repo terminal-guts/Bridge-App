@@ -5,6 +5,9 @@
  */
 
 import { ApiResponse, UserProfile, DeepQuestionAnswer, OnboardingData, Photo } from '../types';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('ProfileService');
 
 // In-memory storage
 let mockUserProfile: UserProfile | null = null;
@@ -26,13 +29,13 @@ const createErrorResponse = (code: string, message: string): ApiResponse<any> =>
  */
 export const fetchAndSetUserProfile = async (userId: string): Promise<ApiResponse<UserProfile>> => {
   try {
-    console.log('[BACKEND] Fetching profile for user from Supabase:', userId);
+    logger.info('[BACKEND] Fetching profile for user from Supabase:', userId);
 
     const response = await fetch(`${API_URL}/profile/${userId}`);
 
     if (!response.ok) {
       const err = await response.text();
-      console.error('[BACKEND] Failed to fetch profile:', err);
+      logger.error('[BACKEND] Failed to fetch profile:', err);
       // If profile doesn't exist yet, that's okay for new users
       if (response.status === 404) {
         return createErrorResponse('PROFILE_NOT_FOUND', 'User profile does not exist in Supabase yet.');
@@ -45,7 +48,7 @@ export const fetchAndSetUserProfile = async (userId: string): Promise<ApiRespons
     try {
       result = JSON.parse(responseText);
     } catch (e) {
-      console.error('[BACKEND] Parse error on profile fetch:', responseText.slice(0, 100));
+      logger.error('[BACKEND] Parse error on profile fetch:', responseText.slice(0, 100));
       throw new Error('Server returned invalid data format. Check your backend console.');
     }
     const data = result.data;
@@ -113,14 +116,14 @@ export const fetchAndSetUserProfile = async (userId: string): Promise<ApiRespons
     } as any;
 
     mockUserProfile = mappedProfile;
-    console.log('[BACKEND] Profile loaded and synced to local state');
+    logger.info('[BACKEND] Profile loaded and synced to local state');
 
     return {
       ok: true,
       data: mappedProfile
     };
   } catch (error: any) {
-    console.error('[BACKEND] Error syncing profile:', error);
+    logger.error('[BACKEND] Error syncing profile:', error);
     return createErrorResponse('SYNC_ERROR', error.message || 'Failed to sync profile from Supabase');
   }
 };
@@ -136,7 +139,7 @@ export const saveOnboardingStep = async (
 ): Promise<ApiResponse<void>> => {
   try {
     const effectiveUserId = userId || MOCK_USER_ID;
-    console.log('[BACKEND] Saving step to Supabase:', stepKey, 'for user:', effectiveUserId);
+    logger.info('[BACKEND] Saving step to Supabase:', stepKey, 'for user:', effectiveUserId);
 
     // Call real Python backend
     const response = await fetch(`${API_URL}/onboarding/save-step`, {
@@ -151,7 +154,7 @@ export const saveOnboardingStep = async (
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.warn('[BACKEND] Failed to save step to server:', errorText.slice(0, 100));
+      logger.warn('[BACKEND] Failed to save step to server:', errorText.slice(0, 100));
     }
 
     // Update mock profile with new data for local UI state
@@ -232,7 +235,7 @@ export const createUserProfile = async (
   data: Partial<OnboardingData>
 ): Promise<ApiResponse<UserProfile>> => {
   try {
-    console.log('[MOCK PROFILE] Creating user profile (calling backend):', userId);
+    logger.info('[MOCK PROFILE] Creating user profile (calling backend):', userId);
 
     // 1. Construct the payload for the backend
     const payload = {
@@ -286,11 +289,11 @@ export const createUserProfile = async (
 
     if (!response.ok) {
       const err = await response.text();
-      console.error('[BACKEND] Failed to complete onboarding:', err);
+      logger.error('[BACKEND] Failed to complete onboarding:', err);
       throw new Error('Backend onboarding completion failed: ' + err);
     }
 
-    console.log('[BACKEND] Onboarding completed successfully');
+    logger.info('[BACKEND] Onboarding completed successfully');
 
     // 3. Update local mock state (legacy behavior)
     mockUserProfile = {
@@ -373,7 +376,7 @@ export const createUserProfile = async (
  */
 export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
   try {
-    console.log('[MOCK PROFILE] Getting user profile');
+    logger.info('[MOCK PROFILE] Getting user profile');
 
     // Return mock profile if exists
     if (mockUserProfile) {
@@ -615,9 +618,9 @@ const syncProfileToBackend = async (userId: string, profile: Partial<UserProfile
 
   if (!response.ok) {
     const err = await response.text();
-    console.warn('[BACKEND] Profile sync failed:', err);
+    logger.warn('[BACKEND] Profile sync failed:', err);
   } else {
-    console.log('[BACKEND] Profile synced to backend successfully');
+    logger.info('[BACKEND] Profile synced to backend successfully');
   }
 };
 
@@ -628,7 +631,7 @@ export const updateUserProfile = async (
   profile: Partial<UserProfile>
 ): Promise<ApiResponse<UserProfile>> => {
   try {
-    console.log('[PROFILE] Updating user profile:', Object.keys(profile));
+    logger.info('[PROFILE] Updating user profile:', Object.keys(profile));
 
     if (!mockUserProfile) {
       // Auto-create if doesn't exist
@@ -661,7 +664,7 @@ export const updateUserProfile = async (
     const userId = mockUserProfile?.userId || mockUserProfile?.id;
     if (userId) {
       syncProfileToBackend(userId, profile).catch(err => {
-        console.warn('[PROFILE] Background sync failed:', err);
+        logger.warn('[PROFILE] Background sync failed:', err);
       });
     }
 
@@ -681,7 +684,7 @@ export const addProfilePhotos = async (
   imageUris: string[]
 ): Promise<ApiResponse<Photo[]>> => {
   try {
-    console.log('[PROFILE] Adding photos:', imageUris);
+    logger.info('[PROFILE] Adding photos:', imageUris);
 
     const newPhotos: Photo[] = imageUris.map((uri, index) => ({
       id: `photo-${Date.now()}-${index}`,
@@ -697,7 +700,7 @@ export const addProfilePhotos = async (
       const userId = mockUserProfile.userId || mockUserProfile.id;
       if (userId) {
         syncProfileToBackend(userId, { photos: mockUserProfile.photos }).catch(err => {
-          console.warn('[PROFILE] Photo sync failed:', err);
+          logger.warn('[PROFILE] Photo sync failed:', err);
         });
       }
     }
@@ -718,7 +721,7 @@ export const removeProfilePhoto = async (
   photoId: string
 ): Promise<ApiResponse<void>> => {
   try {
-    console.log('[PROFILE] Removing photo:', photoId);
+    logger.info('[PROFILE] Removing photo:', photoId);
 
     if (mockUserProfile) {
       mockUserProfile.photos = mockUserProfile.photos.filter(p => p.id !== photoId);
@@ -727,7 +730,7 @@ export const removeProfilePhoto = async (
       const userId = mockUserProfile.userId || mockUserProfile.id;
       if (userId) {
         syncProfileToBackend(userId, { photos: mockUserProfile.photos }).catch(err => {
-          console.warn('[PROFILE] Photo sync failed:', err);
+          logger.warn('[PROFILE] Photo sync failed:', err);
         });
       }
     }
@@ -745,7 +748,7 @@ export const reorderProfilePhotos = async (
   reorderedPhotos: Photo[]
 ): Promise<ApiResponse<void>> => {
   try {
-    console.log('[PROFILE] Reordering photos');
+    logger.info('[PROFILE] Reordering photos');
 
     if (mockUserProfile) {
       mockUserProfile.photos = reorderedPhotos;
@@ -753,7 +756,7 @@ export const reorderProfilePhotos = async (
       const userId = mockUserProfile.userId || mockUserProfile.id;
       if (userId) {
         syncProfileToBackend(userId, { photos: reorderedPhotos }).catch(err => {
-          console.warn('[PROFILE] Photo reorder sync failed:', err);
+          logger.warn('[PROFILE] Photo reorder sync failed:', err);
         });
       }
     }
@@ -771,7 +774,7 @@ export const setMainProfilePhoto = async (
   photoId: string
 ): Promise<ApiResponse<void>> => {
   try {
-    console.log('[PROFILE] Setting main photo:', photoId);
+    logger.info('[PROFILE] Setting main photo:', photoId);
 
     if (mockUserProfile) {
       mockUserProfile.photos = mockUserProfile.photos.map(p => ({
@@ -782,7 +785,7 @@ export const setMainProfilePhoto = async (
       const userId = mockUserProfile.userId || mockUserProfile.id;
       if (userId) {
         syncProfileToBackend(userId, { photos: mockUserProfile.photos }).catch(err => {
-          console.warn('[PROFILE] Main photo sync failed:', err);
+          logger.warn('[PROFILE] Main photo sync failed:', err);
         });
       }
     }
@@ -800,7 +803,7 @@ export const updateProfilePauseStatus = async (
   isPaused: boolean
 ): Promise<ApiResponse<void>> => {
   try {
-    console.log('[PROFILE] Updating pause status:', isPaused);
+    logger.info('[PROFILE] Updating pause status:', isPaused);
 
     if (mockUserProfile) {
       mockUserProfile.isPaused = isPaused;
@@ -808,7 +811,7 @@ export const updateProfilePauseStatus = async (
       const userId = mockUserProfile.userId || mockUserProfile.id;
       if (userId) {
         syncProfileToBackend(userId, { isPaused } as any).catch(err => {
-          console.warn('[PROFILE] Pause status sync failed:', err);
+          logger.warn('[PROFILE] Pause status sync failed:', err);
         });
       }
     }
@@ -826,7 +829,7 @@ export const markGuideCompleted = async (
   guideId: 'tab_navigation_overview' | 'daily_grid_explained' | 'proposals_explained' | 'friends_area_explained' | 'profile_completion'
 ): Promise<ApiResponse<void>> => {
   try {
-    console.log('[MOCK PROFILE] Marking guide as completed:', guideId);
+    logger.info('[MOCK PROFILE] Marking guide as completed:', guideId);
 
     if (mockUserProfile) {
       // Map guide IDs to profile fields
@@ -876,7 +879,7 @@ export const getGuideCompletionStatus = async (
 
     return false;
   } catch (error: any) {
-    console.error('[MOCK PROFILE] Error checking guide completion:', error);
+    logger.error('[MOCK PROFILE] Error checking guide completion:', error);
     return false;
   }
 };

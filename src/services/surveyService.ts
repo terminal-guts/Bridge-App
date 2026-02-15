@@ -8,6 +8,9 @@
 import { supabase } from '../lib/supabase';
 import { ApiResponse, DailySurvey, UserProfile } from '../types';
 import { requireAuth } from '../utils/auth';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('SurveyService');
 
 /**
  * Get today's daily survey for the current user
@@ -26,7 +29,7 @@ export const getTodaysSurvey = async (): Promise<ApiResponse<DailySurvey | null>
     if (mockState?.enabled && (mockState.type === 'survey' || mockState.type === 'survey_not_completed')) {
       // Return mock survey data for development testing
       const { mockDailySurvey } = await import('./mockData');
-      console.log('🚨 DEVELOPMENT MODE: Returning mock survey data');
+      logger.info('🚨 DEVELOPMENT MODE: Returning mock survey data');
       return { ok: true, data: mockDailySurvey };
     }
 

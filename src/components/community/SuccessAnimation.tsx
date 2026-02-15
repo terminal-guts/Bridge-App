@@ -22,6 +22,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('SuccessAnimation');
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -47,7 +50,7 @@ export function SuccessAnimation({
   useEffect(() => {
     // Haptic feedback
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {
-      console.log('Haptics not available');
+      logger.info('Haptics not available');
     });
 
     // Container fade in

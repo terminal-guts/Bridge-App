@@ -14,6 +14,9 @@ import { Body } from './ui';
 import { UserProfile } from '../types';
 import { lightHaptic } from '../utils/haptics';
 import { calculateProfileStrengthBreakdown } from '../utils/profileCompleteness';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('PhotoCompletionBanner');
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -36,7 +39,7 @@ export const PhotoCompletionBanner: React.FC<PhotoCompletionBannerProps> = ({
   const photoPercentage = breakdown.sections.photos.percentage;
   const aboutMePercentage = breakdown.sections.aboutMe.percentage;
 
-  console.log('✅ PhotoCompletionBanner:', {
+  logger.info('PhotoCompletionBanner:', {
     aboutMe: aboutMePercentage + '%',
     photos: `${photoCount}/6 (${photoPercentage}%)`,
   });

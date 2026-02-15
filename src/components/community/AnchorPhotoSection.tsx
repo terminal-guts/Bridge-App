@@ -10,6 +10,9 @@ import React from 'react';
 import { View, Image } from 'react-native';
 import { styled } from 'nativewind';
 import { UserProfile, Photo } from '../../types';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('AnchorPhotoSection');
 
 const StyledView = styled(View);
 const StyledImage = styled(Image);
@@ -23,9 +26,9 @@ export function AnchorPhotoSection({ anchor }: AnchorPhotoSectionProps) {
   const mainPhoto = anchor.photos?.find((p: Photo) => p.isMain) || anchor.photos?.[0];
 
   // Debug: Log anchor photo data
-  console.log('[AnchorPhotoSection] anchor.photos:', anchor.photos);
-  console.log('[AnchorPhotoSection] mainPhoto:', mainPhoto);
-  console.log('[AnchorPhotoSection] mainPhoto?.url:', mainPhoto?.url);
+  logger.info('[AnchorPhotoSection] anchor.photos:', anchor.photos);
+  logger.info('[AnchorPhotoSection] mainPhoto:', mainPhoto);
+  logger.info('[AnchorPhotoSection] mainPhoto?.url:', mainPhoto?.url);
 
   return (
     <StyledView style={{

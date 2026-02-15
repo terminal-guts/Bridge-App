@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { View, Image, ImageStyle, ViewStyle } from 'react-native';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('Avatar');
 
 const StyledView = styled(View);
 const StyledImage = styled(Image);
@@ -49,7 +52,7 @@ export const Avatar: React.FC<AvatarProps> = ({
       blurRadius={blurRadius}
       defaultSource={undefined}
       onError={(e) => {
-        console.warn('Failed to load image:', uri);
+        logger.warn('Failed to load image:', uri);
         setHasError(true); // Show placeholder on error
       }}
     />

@@ -14,6 +14,9 @@
 
 import { ApiResponse, Message } from '../types';
 import { supabase, isRealSupabase } from '../lib/supabase';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('MessageService');
 import { FEATURES } from '../config/features';
 import { contentModerationService } from './contentModerationService';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -27,7 +30,7 @@ const USE_REAL_BACKEND = FEATURES.MESSAGING_BACKEND_ENABLED && isRealSupabase();
 const STORAGE_BUCKET = 'chat-audio';
 
 // Log mode on initialization
-console.log(`[MESSAGE SERVICE] Mode: ${USE_REAL_BACKEND ? 'REAL SUPABASE' : 'MOCK'}`);
+logger.info(`[MESSAGE SERVICE] Mode: ${USE_REAL_BACKEND ? 'REAL SUPABASE' : 'MOCK'}`);
 
 // ============================================================================
 // Mock Data Storage (for development)
@@ -103,7 +106,7 @@ const uploadAudioFile = async (
 ): Promise<{ url: string; error: string | null }> => {
   if (!USE_REAL_BACKEND) {
     // In mock mode, just return the local URI
-    console.log('[MESSAGE SERVICE] Mock mode: using local URI for audio');
+    logger.info('[MESSAGE SERVICE] Mock mode: using local URI for audio');
     return { url: localUri, error: null };
   }
 
@@ -133,7 +136,7 @@ const uploadAudioFile = async (
       });
 
     if (error) {
-      console.error('[MESSAGE SERVICE] Audio upload error:', error);
+      logger.error('[MESSAGE SERVICE] Audio upload error:', error);
       return { url: '', error: error.message };
     }
 
@@ -142,10 +145,10 @@ const uploadAudioFile = async (
       .from(STORAGE_BUCKET)
       .getPublicUrl(filename);
 
-    console.log('[MESSAGE SERVICE] Audio uploaded:', urlData.publicUrl);
+    logger.info('[MESSAGE SERVICE] Audio uploaded:', urlData.publicUrl);
     return { url: urlData.publicUrl, error: null };
   } catch (error: any) {
-    console.error('[MESSAGE SERVICE] Audio upload exception:', error);
+    logger.error('[MESSAGE SERVICE] Audio upload exception:', error);
     return { url: '', error: error.message || 'Failed to upload audio' };
   }
 };
@@ -160,12 +163,12 @@ const uploadAudioFile = async (
 export const getMatchMessages = async (matchId: string): Promise<ApiResponse<Message[]>> => {
   try {
     if (!USE_REAL_BACKEND) {
-      console.log('[MESSAGE SERVICE] Mock: Getting messages for match:', matchId);
+      logger.info('[MESSAGE SERVICE] Mock: Getting messages for match:', matchId);
       const messages = mockMessages[matchId] || [];
       return { ok: true, data: messages };
     }
 
-    console.log('[MESSAGE SERVICE] Fetching messages for match:', matchId);
+    logger.info('[MESSAGE SERVICE] Fetching messages for match:', matchId);
 
     const { data, error } = await supabase
       .from('messages')
@@ -174,7 +177,7 @@ export const getMatchMessages = async (matchId: string): Promise<ApiResponse<Mes
       .order('sent_at', { ascending: true });
 
     if (error) {
-      console.error('[MESSAGE SERVICE] Fetch error:', error);
+      logger.error('[MESSAGE SERVICE] Fetch error:', error);
       return {
         ok: false,
         error: {
@@ -185,10 +188,10 @@ export const getMatchMessages = async (matchId: string): Promise<ApiResponse<Mes
     }
 
     const messages = (data || []).map(dbToMessage);
-    console.log('[MESSAGE SERVICE] Fetched', messages.length, 'messages');
+    logger.info('[MESSAGE SERVICE] Fetched', messages.length, 'messages');
     return { ok: true, data: messages };
   } catch (error: any) {
-    console.error('[MESSAGE SERVICE] Exception:', error);
+    logger.error('[MESSAGE SERVICE] Exception:', error);
     return {
       ok: false,
       error: {
@@ -211,7 +214,7 @@ export const sendMessage = async (
   waveformData?: number[]
 ): Promise<ApiResponse<Message>> => {
   try {
-    console.log(`[MESSAGE SERVICE] Sending ${type} message to match:`, matchId);
+    logger.info(`[MESSAGE SERVICE] Sending ${type} message to match:`, matchId);
 
     // Get current user ID
     const senderId = await getCurrentUserId();
@@ -229,7 +232,7 @@ export const sendMessage = async (
     if (type === 'text') {
       const moderationResult = await contentModerationService.analyzeText(content);
       if (!moderationResult.isSafe) {
-        console.warn('[MESSAGE SERVICE] Blocked by content filter:', moderationResult.reason);
+        logger.warn('[MESSAGE SERVICE] Blocked by content filter:', moderationResult.reason);
         return {
           ok: false,
           error: {
@@ -273,7 +276,7 @@ export const sendMessage = async (
 
     if (!USE_REAL_BACKEND) {
       // Mock mode: store in memory
-      console.log('[MESSAGE SERVICE] Mock: Storing message locally');
+      logger.info('[MESSAGE SERVICE] Mock: Storing message locally');
       if (!mockMessages[matchId]) {
         mockMessages[matchId] = [];
       }
@@ -304,7 +307,7 @@ export const sendMessage = async (
       .single();
 
     if (error) {
-      console.error('[MESSAGE SERVICE] Insert error:', error);
+      logger.error('[MESSAGE SERVICE] Insert error:', error);
       return {
         ok: false,
         error: {
@@ -315,10 +318,10 @@ export const sendMessage = async (
     }
 
     const savedMessage = dbToMessage(data);
-    console.log('[MESSAGE SERVICE] Message sent successfully:', savedMessage.id);
+    logger.info('[MESSAGE SERVICE] Message sent successfully:', savedMessage.id);
     return { ok: true, data: savedMessage };
   } catch (error: any) {
-    console.error('[MESSAGE SERVICE] Send exception:', error);
+    logger.error('[MESSAGE SERVICE] Send exception:', error);
     return {
       ok: false,
       error: {
@@ -338,7 +341,7 @@ export const markMessagesAsRead = async (
 ): Promise<ApiResponse<void>> => {
   try {
     if (!USE_REAL_BACKEND) {
-      console.log('[MESSAGE SERVICE] Mock: Marking messages as read:', matchId);
+      logger.info('[MESSAGE SERVICE] Mock: Marking messages as read:', matchId);
       if (mockMessages[matchId]) {
         mockMessages[matchId] = mockMessages[matchId].map(msg => ({
           ...msg,
@@ -348,7 +351,7 @@ export const markMessagesAsRead = async (
       return { ok: true };
     }
 
-    console.log('[MESSAGE SERVICE] Marking messages as read:', matchId, userId);
+    logger.info('[MESSAGE SERVICE] Marking messages as read:', matchId, userId);
 
     // Use RPC function for atomic update
     const { data, error } = await supabase.rpc('mark_messages_as_read', {
@@ -366,7 +369,7 @@ export const markMessagesAsRead = async (
         .is('read_at', null);
 
       if (updateError) {
-        console.error('[MESSAGE SERVICE] Mark read error:', updateError);
+        logger.error('[MESSAGE SERVICE] Mark read error:', updateError);
         return {
           ok: false,
           error: {
@@ -377,10 +380,10 @@ export const markMessagesAsRead = async (
       }
     }
 
-    console.log('[MESSAGE SERVICE] Messages marked as read');
+    logger.info('[MESSAGE SERVICE] Messages marked as read');
     return { ok: true };
   } catch (error: any) {
-    console.error('[MESSAGE SERVICE] Mark read exception:', error);
+    logger.error('[MESSAGE SERVICE] Mark read exception:', error);
     return {
       ok: false,
       error: {
@@ -407,7 +410,7 @@ export const subscribeToMessages = (
   callback: (message: Message) => void
 ): { unsubscribe: () => void } => {
   if (!USE_REAL_BACKEND) {
-    console.log('[MESSAGE SERVICE] Mock: Subscribing to match:', matchId);
+    logger.info('[MESSAGE SERVICE] Mock: Subscribing to match:', matchId);
 
     // Mock subscription using callbacks
     if (!mockCallbacks[matchId]) {
@@ -417,18 +420,18 @@ export const subscribeToMessages = (
 
     return {
       unsubscribe: () => {
-        console.log('[MESSAGE SERVICE] Mock: Unsubscribing from match:', matchId);
+        logger.info('[MESSAGE SERVICE] Mock: Unsubscribing from match:', matchId);
         mockCallbacks[matchId] = mockCallbacks[matchId].filter(cb => cb !== callback);
       },
     };
   }
 
-  console.log('[MESSAGE SERVICE] Subscribing to real-time messages for match:', matchId);
+  logger.info('[MESSAGE SERVICE] Subscribing to real-time messages for match:', matchId);
 
   // Clean up any existing subscription for this match
   const existingChannel = activeChannels.get(matchId);
   if (existingChannel) {
-    console.log('[MESSAGE SERVICE] Removing existing subscription for match:', matchId);
+    logger.info('[MESSAGE SERVICE] Removing existing subscription for match:', matchId);
     supabase.removeChannel(existingChannel);
     activeChannels.delete(matchId);
   }
@@ -446,17 +449,17 @@ export const subscribeToMessages = (
         filter: `match_id=eq.${matchId}`,
       },
       (payload) => {
-        console.log('[MESSAGE SERVICE] New message received:', payload);
+        logger.info('[MESSAGE SERVICE] New message received:', payload);
         const newMessage = dbToMessage(payload.new as DbMessage);
         callback(newMessage);
       }
     )
     .subscribe((status) => {
-      console.log('[MESSAGE SERVICE] Subscription status:', status);
+      logger.info('[MESSAGE SERVICE] Subscription status:', status);
       if (status === 'SUBSCRIBED') {
-        console.log('[MESSAGE SERVICE] Successfully subscribed to match:', matchId);
+        logger.info('[MESSAGE SERVICE] Successfully subscribed to match:', matchId);
       } else if (status === 'CHANNEL_ERROR') {
-        console.error('[MESSAGE SERVICE] Subscription error for match:', matchId);
+        logger.error('[MESSAGE SERVICE] Subscription error for match:', matchId);
       }
     });
 
@@ -465,7 +468,7 @@ export const subscribeToMessages = (
 
   return {
     unsubscribe: () => {
-      console.log('[MESSAGE SERVICE] Unsubscribing from match:', matchId);
+      logger.info('[MESSAGE SERVICE] Unsubscribing from match:', matchId);
       const ch = activeChannels.get(matchId);
       if (ch) {
         supabase.removeChannel(ch);
@@ -537,7 +540,7 @@ export const getUnreadCount = async (
  * Call this when the user logs out or the app closes
  */
 export const cleanupSubscriptions = (): void => {
-  console.log('[MESSAGE SERVICE] Cleaning up all subscriptions');
+  logger.info('[MESSAGE SERVICE] Cleaning up all subscriptions');
   activeChannels.forEach((channel, matchId) => {
     supabase.removeChannel(channel);
   });
@@ -553,7 +556,7 @@ export const cleanupSubscriptions = (): void => {
  * Clear mock messages (for testing)
  */
 export const clearMockMessages = (): void => {
-  console.log('[MESSAGE SERVICE] Clearing mock messages');
+  logger.info('[MESSAGE SERVICE] Clearing mock messages');
   mockMessages = {};
 };
 

@@ -12,6 +12,9 @@
 import { communityService as mockService } from './communityService';
 import { communityBackendService as realService } from './communityBackendService';
 import { FEATURES } from '../config/features';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('CommunityServiceIndex');
 
 /**
  * Determine which service to use based on feature flags
@@ -22,8 +25,8 @@ import { FEATURES } from '../config/features';
 const useMockService = !FEATURES.COMMUNITY_BACKEND_ENABLED;
 
 // Log which service is being used
-console.log('[CommunityService] COMMUNITY_BACKEND_ENABLED:', FEATURES.COMMUNITY_BACKEND_ENABLED);
-console.log('[CommunityService] Using:', useMockService ? 'MOCK SERVICE' : 'REAL BACKEND');
+logger.info('[CommunityService] COMMUNITY_BACKEND_ENABLED:', FEATURES.COMMUNITY_BACKEND_ENABLED);
+logger.info('[CommunityService] Using:', useMockService ? 'MOCK SERVICE' : 'REAL BACKEND');
 
 /**
  * Export the appropriate service implementation

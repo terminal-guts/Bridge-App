@@ -1,3 +1,7 @@
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('FeatureFlags');
+
 /**
  * Feature Flags Configuration
  *
@@ -44,9 +48,9 @@ export const isFeatureEnabled = (flag: FeatureFlag): boolean => {
 export const enableFeature = (flag: FeatureFlag): void => {
   if (__DEV__) {
     (FEATURE_FLAGS as any)[flag] = true;
-    console.log(`[FeatureFlags] Enabled: ${flag}`);
+    logger.info(`[FeatureFlags] Enabled: ${flag}`);
   } else {
-    console.warn(`[FeatureFlags] Cannot enable features in production`);
+    logger.warn(`[FeatureFlags] Cannot enable features in production`);
   }
 };
 
@@ -57,9 +61,9 @@ export const enableFeature = (flag: FeatureFlag): void => {
 export const disableFeature = (flag: FeatureFlag): void => {
   if (__DEV__) {
     (FEATURE_FLAGS as any)[flag] = false;
-    console.log(`[FeatureFlags] Disabled: ${flag}`);
+    logger.info(`[FeatureFlags] Disabled: ${flag}`);
   } else {
-    console.warn(`[FeatureFlags] Cannot disable features in production`);
+    logger.warn(`[FeatureFlags] Cannot disable features in production`);
   }
 };
 
@@ -77,9 +81,9 @@ export const getAllFeatureFlags = (): Record<FeatureFlag, boolean> => {
  */
 export const logFeatureFlags = (): void => {
   if (__DEV__) {
-    console.log('[FeatureFlags] Current State:');
+    logger.info('[FeatureFlags] Current State:');
     Object.entries(FEATURE_FLAGS).forEach(([key, value]) => {
-      console.log(`  ${key}: ${value}`);
+      logger.info(`  ${key}: ${value}`);
     });
   }
 };

@@ -15,6 +15,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile } from '../types';
 import { lightHaptic } from '../utils/haptics';
 import { calculateOverallProfileStrength } from '../utils/profileCompleteness';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('ProfileCompletionBanner');
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -36,7 +39,7 @@ export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = (
   // Use centralized calculation function - SINGLE SOURCE OF TRUTH
   const completion = useMemo(() => {
     const result = calculateOverallProfileStrength(profile);
-    console.log('✅ ProfileCompletionBanner: Overall strength =', result + '%');
+    logger.info('ProfileCompletionBanner: Overall strength =', result + '%');
     return result;
   }, [profile]);
 
@@ -47,7 +50,7 @@ export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = (
         const dismissed = await AsyncStorage.getItem(BANNER_DISMISSED_KEY);
         setIsDismissed(dismissed === 'true');
       } catch (error) {
-        console.error('Error loading banner dismissal state:', error);
+        logger.error('Error loading banner dismissal state:', error);
       } finally {
         setIsLoading(false);
       }
@@ -62,7 +65,7 @@ export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = (
       setIsDismissed(true);
       lightHaptic();
     } catch (error) {
-      console.error('Error saving banner dismissal state:', error);
+      logger.error('Error saving banner dismissal state:', error);
     }
   };
 

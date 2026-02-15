@@ -8,6 +8,9 @@ import * as Location from 'expo-location';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/OnboardingLayout';
+import { createLogger } from '../../../utils/secureLogger';
+
+const logger = createLogger('WhereLiveNowStep');
 
 // local type for Region to avoid import issues on web
 interface Region {
@@ -78,7 +81,7 @@ export const WhereLiveNowStep: React.FC<WhereLiveNowStepProps> = ({
         });
       }
     } catch (err) {
-      console.error('Error requesting location permission:', err);
+      logger.error('Error requesting location permission:', err);
       setLoading(false);
       setHasLocationPermission(false);
     }
@@ -118,7 +121,7 @@ export const WhereLiveNowStep: React.FC<WhereLiveNowStepProps> = ({
 
       setLoading(false);
     } catch (err) {
-      console.error('Error getting current location:', err);
+      logger.error('Error getting current location:', err);
       setLoading(false);
     }
   };
@@ -136,7 +139,7 @@ export const WhereLiveNowStep: React.FC<WhereLiveNowStepProps> = ({
         setLocationName(locationStr);
       }
     } catch (err) {
-      console.error('Error reverse geocoding:', err);
+      logger.error('Error reverse geocoding:', err);
     }
   };
 
@@ -176,7 +179,7 @@ export const WhereLiveNowStep: React.FC<WhereLiveNowStepProps> = ({
 
       setLoading(false);
     } catch (err) {
-      console.error('Error searching location:', err);
+      logger.error('Error searching location:', err);
       setError('Error searching for location. Please try again.');
       setLoading(false);
     }

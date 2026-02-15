@@ -19,6 +19,9 @@
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
 import { getUserProfile } from './profileService';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('DevelopmentDataService');
 
 /**
  * Generate a valid UUID v4
@@ -157,7 +160,7 @@ const createMockUserProfile = async (
       .single();
 
     if (error) {
-      console.error('[DevData] Error creating profile:', error);
+      logger.error('[DevData] Error creating profile:', error);
       return null;
     }
 
@@ -182,7 +185,7 @@ const createMockUserProfile = async (
 
     return data.id;
   } catch (error) {
-    console.error('[DevData] Error creating mock user:', error);
+    logger.error('[DevData] Error creating mock user:', error);
     return null;
   }
 };
@@ -191,13 +194,13 @@ const createMockUserProfile = async (
  * Create mock matches for the current user
  */
 const createMockMatches = async (currentUserId: string): Promise<void> => {
-  console.log('[DevData] Creating mock matches...');
+  logger.info('[DevData] Creating mock matches...');
 
   // Get current user's profile to determine gender
   const profileResponse = await getUserProfile();
 
   if (!profileResponse.ok || !profileResponse.data) {
-    console.error('[DevData] Current user profile not found');
+    logger.error('[DevData] Current user profile not found');
     return;
   }
 
@@ -253,14 +256,14 @@ const createMockMatches = async (currentUserId: string): Promise<void> => {
       .single();
 
     if (error) {
-      console.error('[DevData] Error creating match:', error);
+      logger.error('[DevData] Error creating match:', error);
     } else if (status === 'accepted' && match) {
       // Create some mock messages for accepted match
       await createMockMessages(match.id, currentUserId, mockUserIds[i]);
     }
   }
 
-  console.log('[DevData] Created mock matches');
+  logger.info('[DevData] Created mock matches');
 };
 
 /**
@@ -296,13 +299,13 @@ const createMockMessages = async (
  * Create mock daily survey
  */
 const createMockDailySurvey = async (currentUserId: string): Promise<void> => {
-  console.log('[DevData] Creating mock daily survey...');
+  logger.info('[DevData] Creating mock daily survey...');
 
   // Get current user's profile to determine gender
   const profileResponse = await getUserProfile();
 
   if (!profileResponse.ok || !profileResponse.data) {
-    console.error('[DevData] Current user profile not found');
+    logger.error('[DevData] Current user profile not found');
     return;
   }
 
@@ -335,9 +338,9 @@ const createMockDailySurvey = async (currentUserId: string): Promise<void> => {
   });
 
   if (error) {
-    console.error('[DevData] Error creating survey:', error);
+    logger.error('[DevData] Error creating survey:', error);
   } else {
-    console.log('[DevData] Created mock daily survey');
+    logger.info('[DevData] Created mock daily survey');
   }
 };
 
@@ -345,7 +348,7 @@ const createMockDailySurvey = async (currentUserId: string): Promise<void> => {
  * Create mock friends
  */
 const createMockFriends = async (currentUserId: string): Promise<void> => {
-  console.log('[DevData] Creating mock friends...');
+  logger.info('[DevData] Creating mock friends...');
 
   // Get current user's gender
   const { data: currentProfile } = await supabase
@@ -377,7 +380,7 @@ const createMockFriends = async (currentUserId: string): Promise<void> => {
     });
   }
 
-  console.log('[DevData] Created mock friends');
+  logger.info('[DevData] Created mock friends');
 };
 
 /**
@@ -385,7 +388,7 @@ const createMockFriends = async (currentUserId: string): Promise<void> => {
  * @param recreate If true, cleans up existing data before creating new data (useful for testing)
  */
 export const createDevelopmentData = async (currentUserId: string, recreate: boolean = true): Promise<void> => {
-  console.log('[DevData] 🚀 Starting development data creation...');
+  logger.info('[DevData] 🚀 Starting development data creation...');
 
   try {
     // Check if user already has data
@@ -398,12 +401,12 @@ export const createDevelopmentData = async (currentUserId: string, recreate: boo
     const hasExistingData = existingMatches && existingMatches.length > 0;
 
     if (hasExistingData && !recreate) {
-      console.log('[DevData] ✅ User already has data, skipping creation');
+      logger.info('[DevData] ✅ User already has data, skipping creation');
       return;
     }
 
     if (hasExistingData && recreate) {
-      console.log('[DevData] 🧹 Cleaning up existing mock data...');
+      logger.info('[DevData] 🧹 Cleaning up existing mock data...');
       await cleanupDevelopmentData(currentUserId);
     }
 
@@ -414,9 +417,9 @@ export const createDevelopmentData = async (currentUserId: string, recreate: boo
       createMockFriends(currentUserId),
     ]);
 
-    console.log('[DevData] ✅ Development data created successfully');
+    logger.info('[DevData] ✅ Development data created successfully');
   } catch (error) {
-    console.error('[DevData] ❌ Error creating development data:', error);
+    logger.error('[DevData] ❌ Error creating development data:', error);
   }
 };
 
@@ -424,7 +427,7 @@ export const createDevelopmentData = async (currentUserId: string, recreate: boo
  * Clean up all mock development data
  */
 export const cleanupDevelopmentData = async (currentUserId: string): Promise<void> => {
-  console.log('[DevData] 🧹 Cleaning up development data...');
+  logger.info('[DevData] 🧹 Cleaning up development data...');
 
   try {
     // Delete matches where user is involved
@@ -448,9 +451,9 @@ export const cleanupDevelopmentData = async (currentUserId: string): Promise<voi
     // Note: We don't delete mock user profiles as they might be referenced
     // They'll be cleaned up manually or with a separate admin function
 
-    console.log('[DevData] ✅ Development data cleaned up');
+    logger.info('[DevData] ✅ Development data cleaned up');
   } catch (error) {
-    console.error('[DevData] ❌ Error cleaning up development data:', error);
+    logger.error('[DevData] ❌ Error cleaning up development data:', error);
   }
 };
 
@@ -467,7 +470,7 @@ export const hasDevelopmentData = async (currentUserId: string): Promise<boolean
 
     return (matches && matches.length > 0) || false;
   } catch (error) {
-    console.error('[DevData] Error checking for development data:', error);
+    logger.error('[DevData] Error checking for development data:', error);
     return false;
   }
 };

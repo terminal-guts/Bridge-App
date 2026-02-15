@@ -15,6 +15,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import MaskedView from '@react-native-masked-view/masked-view';
 import { SpotlightShape, SpotlightDimensions } from '../../types/guides';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('Spotlight');
 
 interface SpotlightProps {
   /** Dimensions for the spotlight cutout */
@@ -34,9 +37,9 @@ export const Spotlight: React.FC<SpotlightProps> = ({
   shape = 'rounded-rect',
   animated = true,
 }) => {
-  console.log('[Spotlight] Rendering with dimensions:', dimensions, 'shape:', shape);
-  console.log('[Spotlight] Screen dimensions:', SCREEN_WIDTH, 'x', SCREEN_HEIGHT);
-  console.log('[Spotlight] Spotlight will create cutout from:', {
+  logger.info('[Spotlight] Rendering with dimensions:', dimensions, 'shape:', shape);
+  logger.info('[Spotlight] Screen dimensions:', SCREEN_WIDTH, 'x', SCREEN_HEIGHT);
+  logger.info('[Spotlight] Spotlight will create cutout from:', {
     x: dimensions.x,
     y: dimensions.y,
     to_x: dimensions.x + dimensions.width,

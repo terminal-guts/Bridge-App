@@ -8,6 +8,9 @@ import { OnboardingLayout } from '../../components/OnboardingLayout';
 import { Ionicons } from '@expo/vector-icons';
 import { sendOtpToPhone, sendOtpToEmail } from '../../services/authService';
 import { showToast } from '../../utils/toast';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('LoginScreen');
 
 interface LoginScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Login'>;
@@ -84,7 +87,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       }
       setIsLoading(false);
     } catch (error: any) {
-      console.error('Login error:', error);
+      logger.error('Login error:', error);
       setError('An unexpected error occurred. Please try again.');
       setIsLoading(false);
     }

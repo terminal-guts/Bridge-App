@@ -16,6 +16,9 @@ import {
 } from '../types/community';
 import { communityService } from '../services/communityServiceIndex';
 import { sortFriendsByStatus } from '../utils/communityHelpers';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('useFriendsArea');
 
 interface UseFriendsAreaResult {
   // Data
@@ -53,7 +56,7 @@ export function useFriendsArea(): UseFriendsAreaResult {
   const fetchData = useCallback(async (isRefreshing: boolean = false) => {
     // Prevent concurrent fetches
     if (fetchInProgressRef.current) {
-      console.log('[useFriendsArea] Fetch already in progress, skipping');
+      logger.info('[useFriendsArea] Fetch already in progress, skipping');
       return;
     }
 
@@ -77,7 +80,7 @@ export function useFriendsArea(): UseFriendsAreaResult {
       setActiveMatch(data.activeMatch);
       setLastUpdated(new Date());
     } catch (err) {
-      console.error('[useFriendsArea] Error fetching data:', err);
+      logger.error('[useFriendsArea] Error fetching data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load friends area');
     } finally {
       setLoading(false);
@@ -111,7 +114,7 @@ export function useFriendsArea(): UseFriendsAreaResult {
         // Refresh data to get latest
         await fetchData(false);
       } catch (err) {
-        console.error('[useFriendsArea] Error proposing for friend:', err);
+        logger.error('[useFriendsArea] Error proposing for friend:', err);
         throw err;
       }
     },

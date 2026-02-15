@@ -14,6 +14,9 @@ import { styled } from 'nativewind';
 import { H2, H3, Body } from './ui';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('EnhancedTimer');
 
 const StyledView = styled(View);
 const StyledAnimatedView = styled(Animated.View);
@@ -63,11 +66,11 @@ export const EnhancedTimer: React.FC<EnhancedTimerProps> = ({
           // If it's a promise, catch any errors
           if (result && typeof result.catch === 'function') {
             result.catch((error: Error) => {
-              console.error('[EnhancedTimer] onExpired callback error:', error);
+              logger.error('[EnhancedTimer] onExpired callback error:', error);
             });
           }
         } catch (error) {
-          console.error('[EnhancedTimer] onExpired callback error:', error);
+          logger.error('[EnhancedTimer] onExpired callback error:', error);
         }
       }
     };

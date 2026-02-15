@@ -7,6 +7,9 @@ import { RootStackParamList } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import { getUserProfile, updateProfilePauseStatus } from '../../services/profileService';
 import { supabase } from '../../lib/supabase';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('PauseProfileScreen');
 
 interface PauseProfileScreenProps {
   navigation: NavigationProp<RootStackParamList>;
@@ -45,7 +48,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
         navigation.goBack();
       }
     } catch (error) {
-      console.error('Failed to get current user:', error);
+      logger.error('Failed to get current user:', error);
       Alert.alert('Error', 'Failed to load user information');
     }
   };
@@ -59,11 +62,11 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
       if (result.ok && result.data) {
         setIsPaused(result.data.isPaused || false);
       } else {
-        console.error('Failed to load profile:', result.error);
+        logger.error('Failed to load profile:', result.error);
         Alert.alert('Error', 'Failed to load pause status');
       }
     } catch (error) {
-      console.error('Failed to load pause status:', error);
+      logger.error('Failed to load pause status:', error);
     } finally {
       setLoading(false);
     }
@@ -88,7 +91,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
         }
       } catch (error: any) {
         Alert.alert('Error', 'An unexpected error occurred. Please try again.');
-        console.error('Failed to resume profile:', error);
+        logger.error('Failed to resume profile:', error);
       } finally {
         setSaving(false);
       }
@@ -115,7 +118,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
                 }
               } catch (error: any) {
                 Alert.alert('Error', 'An unexpected error occurred. Please try again.');
-                console.error('Failed to pause profile:', error);
+                logger.error('Failed to pause profile:', error);
               } finally {
                 setSaving(false);
               }

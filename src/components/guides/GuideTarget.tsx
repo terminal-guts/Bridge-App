@@ -8,6 +8,9 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import { View, LayoutChangeEvent, ViewStyle } from 'react-native';
 import { useGuideContext } from '../../contexts/GuideContext';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('GuideTarget');
 
 interface GuideTargetProps {
   /** Unique identifier for this target element */
@@ -32,18 +35,18 @@ export const GuideTarget: React.FC<GuideTargetProps> = ({ id, children, disabled
    */
   const measurePosition = useCallback(() => {
     if (disabled || !viewRef.current) {
-      console.log('[GuideTarget] Not measuring:', id, 'disabled:', disabled, 'hasRef:', !!viewRef.current);
+      logger.info('[GuideTarget] Not measuring:', id, 'disabled:', disabled, 'hasRef:', !!viewRef.current);
       return;
     }
 
     viewRef.current.measureInWindow((x, y, width, height) => {
-      console.log('[GuideTarget] Measured:', id, { x, y, width, height });
+      logger.info('[GuideTarget] Measured:', id, { x, y, width, height });
       // Only register if we got valid measurements
       if (width > 0 && height > 0) {
         registerTarget(id, { x, y, width, height });
-        console.log('[GuideTarget] Registered:', id);
+        logger.info('[GuideTarget] Registered:', id);
       } else {
-        console.log('[GuideTarget] Invalid measurements for:', id);
+        logger.info('[GuideTarget] Invalid measurements for:', id);
       }
     });
   }, [id, disabled, registerTarget]);

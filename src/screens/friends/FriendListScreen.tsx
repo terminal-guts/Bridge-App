@@ -7,6 +7,9 @@ import { RootStackParamList } from '../../types';
 import { EvaIcon } from '../../components/icons';
 import { getFriends, removeFriend, FriendWithProfile } from '../../services/friendService';
 import { supabase } from '../../lib/supabase';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('FriendListScreen');
 
 interface FriendListScreenProps {
   navigation: NavigationProp<RootStackParamList>;
@@ -44,7 +47,7 @@ export const FriendListScreen: React.FC<FriendListScreenProps> = ({ navigation }
         navigation.goBack();
       }
     } catch (error) {
-      console.error('Failed to get current user:', error);
+      logger.error('Failed to get current user:', error);
       Alert.alert('Error', 'Failed to load user information');
     }
   };
@@ -58,11 +61,11 @@ export const FriendListScreen: React.FC<FriendListScreenProps> = ({ navigation }
       if (result.ok && result.data) {
         setFriends(result.data);
       } else {
-        console.error('Failed to load friends:', result.error);
+        logger.error('Failed to load friends:', result.error);
         Alert.alert('Error', 'Failed to load friends');
       }
     } catch (error) {
-      console.error('Failed to load friends:', error);
+      logger.error('Failed to load friends:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);

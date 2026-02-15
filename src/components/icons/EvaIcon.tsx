@@ -14,6 +14,9 @@ import { View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { styled } from 'nativewind';
 import { FILL_ICONS, OUTLINE_ICONS } from './iconRegistry';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('EvaIcon');
 
 const StyledView = styled(View);
 
@@ -87,7 +90,7 @@ export function EvaIcon({
   const svgContent = getIconSvg(fileName, variant);
 
   if (!svgContent) {
-    console.warn(`[EvaIcon] Icon not found: ${name} (${variant})`);
+    logger.warn(`[EvaIcon] Icon not found: ${name} (${variant})`);
     return null;
   }
 

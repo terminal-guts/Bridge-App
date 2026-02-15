@@ -28,6 +28,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { AudioPlayer } from '../components/chat/AudioPlayer';
 import { AudioRecorder } from '../components/chat/AudioRecorder';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('ChatScreen');
 
 interface ChatScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Chat'>;
@@ -152,7 +155,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
 
       // Fallback for development/testing: If match not found, use a mock one
       if (!foundMatch && matchId) {
-        console.log(`[CHAT] Match ${matchId} not found, using fallback for development`);
+        logger.info(`[CHAT] Match ${matchId} not found, using fallback for development`);
         const { mockProfiles, currentUserProfile } = await import('../services/mockData');
         foundMatch = {
           id: matchId,

@@ -9,6 +9,9 @@ import { createUserProfile, saveOnboardingStep } from '../../services/profileSer
 import { supabase } from '../../lib/supabase';
 import { Body } from '../../components/ui';
 import { getStepMappingByIndex } from '../../config/onboardingMapping';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('OnboardingScreen');
 import { resetAllGuides } from '../../services/guideService';
 
 // Import all onboarding steps
@@ -114,7 +117,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
 
   // Bounds check for currentStep to prevent crashes
   if (currentStep < 0 || currentStep >= totalSteps) {
-    console.error(`[OnboardingScreen] Invalid currentStep: ${currentStep} (totalSteps: ${totalSteps})`);
+    logger.error(`[OnboardingScreen] Invalid currentStep: ${currentStep} (totalSteps: ${totalSteps})`);
     // Reset to first step if invalid
     React.useEffect(() => {
       setCurrentStep(0);
@@ -197,7 +200,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
 
       if (!user?.id) {
         // This should not happen if anonymous auth was successful in WelcomeScreen
-        console.error('No authenticated user found during onboarding completion');
+        logger.error('No authenticated user found during onboarding completion');
         setIsCreatingProfile(false);
         Alert.alert(
           'Authentication Required',
@@ -212,8 +215,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
         return;
       }
 
-      console.log('Creating profile for user:', user.id);
-      console.log('Photos to upload:', onboardingData.photos?.length || 0);
+      logger.info('Creating profile for user:', user.id);
+      logger.info('Photos to upload:', onboardingData.photos?.length || 0);
 
       // Create user profile with all onboarding data
       const profileResult = await createUserProfile(user.id, onboardingData);
@@ -221,7 +224,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
       setIsCreatingProfile(false);
 
       if (!profileResult.ok) {
-        console.error('Profile creation failed:', profileResult.error);
+        logger.error('Profile creation failed:', profileResult.error);
         const errorMessage = profileResult.error?.message || 'Unable to create your profile. Please try again.';
         const errorCode = profileResult.error?.code || '';
 
@@ -247,16 +250,16 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
         return;
       }
 
-      console.log('Profile created successfully');
+      logger.info('Profile created successfully');
 
       // Reset all guides for the new user so they see onboarding guides
       await resetAllGuides();
-      console.log('Guides reset for new user');
+      logger.info('Guides reset for new user');
 
       // Navigate to main app after successful profile creation
       (navigation as any).navigate('MainTabs');
     } catch (error: any) {
-      console.error('Onboarding error:', error);
+      logger.error('Onboarding error:', error);
       setIsCreatingProfile(false);
       Alert.alert(
         'Error',

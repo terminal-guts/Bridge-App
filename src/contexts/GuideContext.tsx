@@ -16,6 +16,9 @@ import {
   isGuideCompleted,
 } from '../services/guideService';
 import { lightHaptic, mediumHaptic, successHaptic } from '../utils/haptics';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('GuideContext');
 
 interface GuideContextState {
   // Active guide state
@@ -69,7 +72,7 @@ export const GuideProvider: React.FC<GuideProviderProps> = ({ children }) => {
       const progress = await loadGuideProgress();
       setCompletedGuides(new Set(progress.completedGuides));
     } catch (error) {
-      console.error('[GuideContext] Error loading completed guides:', error);
+      logger.error('[GuideContext] Error loading completed guides:', error);
     }
   }, []);
 
@@ -94,7 +97,7 @@ export const GuideProvider: React.FC<GuideProviderProps> = ({ children }) => {
         // Check if already completed
         const completed = await isGuideCompleted(guide.id);
         if (completed) {
-          console.log(`[GuideContext] Guide "${guide.id}" already completed, skipping`);
+          logger.info(`[GuideContext] Guide "${guide.id}" already completed, skipping`);
           return;
         }
 
@@ -108,7 +111,7 @@ export const GuideProvider: React.FC<GuideProviderProps> = ({ children }) => {
         // Light haptic feedback
         lightHaptic();
 
-        console.log(`[GuideContext] Started guide: ${guide.id}`);
+        logger.info(`[GuideContext] Started guide: ${guide.id}`);
       } finally {
         isStartingRef.current = false;
       }
@@ -166,7 +169,7 @@ export const GuideProvider: React.FC<GuideProviderProps> = ({ children }) => {
     setActiveGuide(null);
     setCurrentStep(0);
 
-    console.log(`[GuideContext] Skipped guide: ${activeGuide.id}`);
+    logger.info(`[GuideContext] Skipped guide: ${activeGuide.id}`);
   }, [activeGuide]);
 
   /**
@@ -188,7 +191,7 @@ export const GuideProvider: React.FC<GuideProviderProps> = ({ children }) => {
     setActiveGuide(null);
     setCurrentStep(0);
 
-    console.log(`[GuideContext] Completed guide: ${activeGuide.id}`);
+    logger.info(`[GuideContext] Completed guide: ${activeGuide.id}`);
   }, [activeGuide, reloadCompletedGuides]);
 
   /**

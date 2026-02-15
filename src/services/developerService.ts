@@ -10,6 +10,9 @@
 import { supabase } from '../lib/supabase';
 import { createDevelopmentData, cleanupDevelopmentData } from './developmentDataService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('DeveloperService');
 
 /**
  * Get current user ID
@@ -19,7 +22,7 @@ export const getCurrentUserId = async (): Promise<string | null> => {
     const { data: { user } } = await supabase.auth.getUser();
     return user?.id || null;
   } catch (error) {
-    console.error('[DevService] Error getting user ID:', error);
+    logger.error('[DevService] Error getting user ID:', error);
     return null;
   }
 };
@@ -30,7 +33,7 @@ export const getCurrentUserId = async (): Promise<string | null> => {
 export const quickAddMatch = async (status: 'pending' | 'accepted' = 'pending'): Promise<void> => {
   const userId = await getCurrentUserId();
   if (!userId) {
-    console.error('[DevService] No user logged in');
+    logger.error('[DevService] No user logged in');
     return;
   }
 
@@ -55,7 +58,7 @@ export const quickAddMatch = async (status: 'pending' | 'accepted' = 'pending'):
   }
 
   await supabase.from('matches').insert(matchData);
-  console.log('[DevService] ✅ Quick match added');
+  logger.info('[DevService] ✅ Quick match added');
 };
 
 /**
@@ -65,9 +68,9 @@ export const resetAllData = async (): Promise<void> => {
   const userId = await getCurrentUserId();
   if (!userId) return;
 
-  console.log('[DevService] 🧹 Resetting all data...');
+  logger.info('[DevService] 🧹 Resetting all data...');
   await cleanupDevelopmentData(userId);
-  console.log('[DevService] ✅ All data reset');
+  logger.info('[DevService] ✅ All data reset');
 };
 
 /**
@@ -77,9 +80,9 @@ export const generateMockData = async (): Promise<void> => {
   const userId = await getCurrentUserId();
   if (!userId) return;
 
-  console.log('[DevService] 🚀 Generating mock data...');
+  logger.info('[DevService] 🚀 Generating mock data...');
   await createDevelopmentData(userId, true);
-  console.log('[DevService] ✅ Mock data generated');
+  logger.info('[DevService] ✅ Mock data generated');
 };
 
 /**
@@ -97,7 +100,7 @@ export const completeProfile = async (): Promise<void> => {
     .single();
 
   if (!profile) {
-    console.error('[DevService] No profile found');
+    logger.error('[DevService] No profile found');
     return;
   }
 
@@ -134,7 +137,7 @@ export const completeProfile = async (): Promise<void> => {
     });
   }
 
-  console.log('[DevService] ✅ Profile completed to 100%');
+  logger.info('[DevService] ✅ Profile completed to 100%');
 };
 
 /**
@@ -158,7 +161,7 @@ export const clearProfile = async (): Promise<void> => {
     .delete()
     .eq('user_id', userId);
 
-  console.log('[DevService] ✅ Profile cleared');
+  logger.info('[DevService] ✅ Profile cleared');
 };
 
 /**
@@ -176,7 +179,7 @@ export const extendAllMatches = async (): Promise<void> => {
     .update({ expires_at: futureDate.toISOString() })
     .or(`user_id_1.eq.${userId},user_id_2.eq.${userId}`);
 
-  console.log('[DevService] ✅ All matches extended');
+  logger.info('[DevService] ✅ All matches extended');
 };
 
 /**
@@ -207,7 +210,7 @@ export const getAppState = async (): Promise<any> => {
  */
 export const clearAsyncStorage = async (): Promise<void> => {
   await AsyncStorage.clear();
-  console.log('[DevService] ✅ AsyncStorage cleared');
+  logger.info('[DevService] ✅ AsyncStorage cleared');
 };
 
 /**
@@ -215,5 +218,5 @@ export const clearAsyncStorage = async (): Promise<void> => {
  */
 export const quickSignOut = async (): Promise<void> => {
   await supabase.auth.signOut();
-  console.log('[DevService] ✅ Signed out');
+  logger.info('[DevService] ✅ Signed out');
 };

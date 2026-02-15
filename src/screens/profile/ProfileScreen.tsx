@@ -39,6 +39,9 @@ import { getCurrentUser } from '../../services/authService';
 import { getUserProfile } from '../../services/profileService';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { TIER_CONFIG } from '../../utils/questionTiers';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('ProfileScreen');
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Unified props supporting both modes
@@ -380,7 +383,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation, route,
         navigation.goBack();
       }
     } catch (error) {
-      console.error('Failed to load profile:', error);
+      logger.error('Failed to load profile:', error);
       Alert.alert('Error', 'Failed to load profile');
       navigation.goBack();
     } finally {

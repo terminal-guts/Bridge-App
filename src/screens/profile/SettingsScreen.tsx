@@ -12,6 +12,9 @@ import { supabase } from '../../lib/supabase';
 import { resetAllGuides, resetGuide } from '../../services/guideService';
 import { GuideId } from '../../types/guides';
 import { useGuideContext } from '../../contexts/GuideContext';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('SettingsScreen');
 
 interface SettingsScreenProps {
   navigation: NavigationProp<RootStackParamList>;
@@ -60,7 +63,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
         setCurrentUserId(user.id);
       }
     } catch (error) {
-      console.error('Failed to get current user:', error);
+      logger.error('Failed to get current user:', error);
     }
   };
 
@@ -74,10 +77,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
         setNotifications(result.data.notifications);
         setPrivacy(result.data.privacy);
       } else {
-        console.error('Failed to load settings:', result.error);
+        logger.error('Failed to load settings:', result.error);
       }
     } catch (error) {
-      console.error('Failed to load settings:', error);
+      logger.error('Failed to load settings:', error);
     } finally {
       setLoading(false);
     }
@@ -140,7 +143,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
         navigation.navigate('MainTabs', { screen: 'Profile' });
       }
     } catch (error) {
-      console.error('[Settings] Error replaying guide:', error);
+      logger.error('[Settings] Error replaying guide:', error);
       Alert.alert('Error', 'Failed to start guide. Please try again.');
     }
   };

@@ -31,6 +31,9 @@ import { communityService } from '../../services/communityServiceIndex';
 import { showToast } from '../../utils/toast';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { RateLimiter } from '../../utils/inputValidation';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('FriendGridScreen');
 
 // Styled components
 const StyledView = styled(View);
@@ -69,7 +72,7 @@ export function FriendGridScreen({ navigation, route }: FriendGridScreenProps) {
 
       setLoading(false);
     } catch (error: any) {
-      console.error('[FriendGridScreen] Error loading friend grid:', error);
+      logger.error('[FriendGridScreen] Error loading friend grid:', error);
       setLoading(false);
       showToast.error('Failed to load', error.message || `Unable to load ${friendName}'s grid`);
       navigation.goBack();
@@ -128,7 +131,7 @@ export function FriendGridScreen({ navigation, route }: FriendGridScreenProps) {
 
       setSubmitting(false);
     } catch (error: any) {
-      console.error('[FriendGridScreen] Error submitting proposal:', error);
+      logger.error('[FriendGridScreen] Error submitting proposal:', error);
       setSubmitting(false);
       showToast.error('Submission failed', error.message || 'Unable to submit proposal');
     }

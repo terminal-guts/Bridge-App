@@ -40,6 +40,9 @@ import { useGuide } from '../../hooks/useGuide';
 import { friendsAreaGuide } from '../../config/guides';
 import { SEPARATOR } from '../../constants/friendsArea';
 import { UNIVERSAL_PROPOSAL_RELEASE_HOUR } from '../../constants/timings';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('FriendsAreaView');
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -65,8 +68,8 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
   const [activeMatch, setActiveMatch] = useState<ActiveMatch | null>(null);
   const [showEndMatchModal, setShowEndMatchModal] = useState(false);
 
-  // DEV: Test state control
-  const [devTestState, setDevTestState] = useState<DevTestState>('empty');
+  // DEV: Test state control (disabled for real user testing)
+  const [devTestState, setDevTestState] = useState<DevTestState>('active-match');
   const [timeRemaining, setTimeRemaining] = useState('');
 
   // Guide system
@@ -119,7 +122,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
 
       setLoading(false);
     } catch (error) {
-      console.error('[FriendsAreaView] Error loading data:', error);
+      logger.error('[FriendsAreaView] Error loading data:', error);
       setLoading(false);
     }
   }, []);
@@ -150,7 +153,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
 
         // Only update if something changed
         if (nonExpired.length !== prev.length) {
-          console.log(`[FriendsAreaView] Removed ${prev.length - nonExpired.length} expired proposal(s)`);
+          logger.info(`[FriendsAreaView] Removed ${prev.length - nonExpired.length} expired proposal(s)`);
           return nonExpired;
         }
         return prev;
@@ -191,7 +194,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
   const handleMessageMatch = () => {
     if (!activeMatch) return;
 
-    console.log('[FriendsAreaView] Navigating to Chat with:', {
+    logger.info('[FriendsAreaView] Navigating to Chat with:', {
       matchId: activeMatch.matchId,
       recipientName: activeMatch.partnerProfile?.firstName || 'Match',
     });
@@ -216,9 +219,9 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
       await communityService.endActiveMatch(activeMatch.matchId || activeMatch.id, reason);
       await loadFriendsArea(); // Reload data
       setShowEndMatchModal(false); // Close modal only after success
-      console.log('[FriendsAreaView] Match ended. Reason:', reason);
+      logger.info('[FriendsAreaView] Match ended. Reason:', reason);
     } catch (error) {
-      console.error('[FriendsAreaView] Error ending match:', error);
+      logger.error('[FriendsAreaView] Error ending match:', error);
       // Modal stays open so user can retry or cancel
       // TODO: Show error message to user
     }
@@ -271,47 +274,14 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
     (p) => p.yourDecision === 'accepted' && p.partnerDecision === 'pending'
   );
 
-  // DEV: Filter data based on test state
-  // NOTE: Friends ALWAYS show in every state (they are unaffected by match/proposal status)
-  const getFilteredData = () => {
-    switch (devTestState) {
-      case 'active-match':
-        return {
-          activeMatch,
-          pendingProposals: [],
-          awaitingResponse: [],
-          friendsNeedingHelp,
-          friendsAlreadyHelped,
-        };
-      case 'awaiting-response':
-        return {
-          activeMatch: null,
-          pendingProposals: [],
-          awaitingResponse: awaitingResponseProposals,
-          friendsNeedingHelp,
-          friendsAlreadyHelped,
-        };
-      case 'pending-proposal':
-        return {
-          activeMatch: null,
-          pendingProposals: truePendingProposals,
-          awaitingResponse: [],
-          friendsNeedingHelp,
-          friendsAlreadyHelped,
-        };
-      case 'empty':
-      default:
-        return {
-          activeMatch: null,
-          pendingProposals: [],
-          awaitingResponse: [],
-          friendsNeedingHelp,
-          friendsAlreadyHelped,
-        };
-    }
+  // Show all real data - no dev filtering
+  const filteredData = {
+    activeMatch,
+    pendingProposals: truePendingProposals,
+    awaitingResponse: awaitingResponseProposals,
+    friendsNeedingHelp,
+    friendsAlreadyHelped,
   };
-
-  const filteredData = getFilteredData();
 
   // Loading state
   if (loading) {
@@ -335,54 +305,6 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
           />
         }
       >
-        {/* DEV: Test State Toolbar */}
-        <StyledView className="bg-blue-50 border-b-2 border-blue-200 px-4 py-3">
-          <StyledText className="text-xs font-bold text-blue-900 mb-2">
-            🛠️ DEV MODE - Test States (Friends always visible)
-          </StyledText>
-          <StyledView className="flex-row flex-wrap gap-2">
-            <StyledTouchable
-              onPress={() => setDevTestState('active-match')}
-              className={`px-3 py-1.5 rounded-lg ${devTestState === 'active-match' ? 'bg-blue-500' : 'bg-white'}`}
-              style={{ borderWidth: 1, borderColor: '#3B82F6' }}
-            >
-              <StyledText className={`text-xs font-semibold ${devTestState === 'active-match' ? 'text-white' : 'text-blue-700'}`}>
-                Active Match
-              </StyledText>
-            </StyledTouchable>
-
-            <StyledTouchable
-              onPress={() => setDevTestState('awaiting-response')}
-              className={`px-3 py-1.5 rounded-lg ${devTestState === 'awaiting-response' ? 'bg-blue-500' : 'bg-white'}`}
-              style={{ borderWidth: 1, borderColor: '#3B82F6' }}
-            >
-              <StyledText className={`text-xs font-semibold ${devTestState === 'awaiting-response' ? 'text-white' : 'text-blue-700'}`}>
-                Awaiting Response
-              </StyledText>
-            </StyledTouchable>
-
-            <StyledTouchable
-              onPress={() => setDevTestState('pending-proposal')}
-              className={`px-3 py-1.5 rounded-lg ${devTestState === 'pending-proposal' ? 'bg-blue-500' : 'bg-white'}`}
-              style={{ borderWidth: 1, borderColor: '#3B82F6' }}
-            >
-              <StyledText className={`text-xs font-semibold ${devTestState === 'pending-proposal' ? 'text-white' : 'text-blue-700'}`}>
-                Pending Proposal
-              </StyledText>
-            </StyledTouchable>
-
-            <StyledTouchable
-              onPress={() => setDevTestState('empty')}
-              className={`px-3 py-1.5 rounded-lg ${devTestState === 'empty' ? 'bg-blue-500' : 'bg-white'}`}
-              style={{ borderWidth: 1, borderColor: '#3B82F6' }}
-            >
-              <StyledText className={`text-xs font-semibold ${devTestState === 'empty' ? 'text-white' : 'text-blue-700'}`}>
-                Empty
-              </StyledText>
-            </StyledTouchable>
-          </StyledView>
-        </StyledView>
-
         {/* SECTION 1: Active Match (HIGHEST PRIORITY - only show if there is an active match) */}
         {filteredData.activeMatch && (
           <GuideTarget id="match-status-section">
@@ -397,7 +319,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
         )}
 
         {/* SECTION 2A: Awaiting Response (HIGHEST PRIORITY - replaces pending when user accepted) */}
-        {!filteredData.activeMatch && devTestState === 'awaiting-response' && filteredData.awaitingResponse.length === 0 && (
+        {false && !filteredData.activeMatch && filteredData.awaitingResponse.length === 0 && (
           <GuideTarget id="match-status-section">
             <StyledView className="px-4 pt-6 pb-4">
               <StyledView

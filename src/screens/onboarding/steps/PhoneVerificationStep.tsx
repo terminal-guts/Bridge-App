@@ -5,6 +5,9 @@ import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/OnboardingLayout';
 import { sendOtpToPhone, verifyPhone } from '../../../services/authService';
+import { createLogger } from '../../../utils/secureLogger';
+
+const logger = createLogger('PhoneVerificationStep');
 
 interface PhoneVerificationStepProps {
   data: Partial<OnboardingData>;
@@ -39,7 +42,7 @@ export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
   const sendOTP = async () => {
     if (isSending) return;
     setIsSending(true);
-    console.log('[SMS] Automaticaly sending verification code via Twilio to:', data.phoneNumber);
+    logger.info('[SMS] Automatically sending verification code via Twilio to:', data.phoneNumber);
     const response = await sendOtpToPhone(data.phoneNumber || '');
     setIsSending(false);
 

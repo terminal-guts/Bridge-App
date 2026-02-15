@@ -17,6 +17,9 @@ import { calculateEditProfileCompleteness } from '../../utils/profileCompletenes
 import { InterestsSection } from './sections/InterestsSection';
 import { ValuesSection } from './sections/ValuesSection';
 import { LifestyleSection } from './sections/LifestyleSection';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('ProfileEditScreen');
 
 interface ProfileEditScreenProps {
   navigation: NavigationProp<RootStackParamList, 'ProfileEdit'>;
@@ -544,7 +547,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
         Alert.alert('Error', 'Failed to load profile');
       }
     } catch (error) {
-      console.error('Failed to load profile:', error);
+      logger.error('Failed to load profile:', error);
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -571,9 +574,9 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
   };
 
   const handleSave = async () => {
-    console.log('🚀 handleSave called!');
+    logger.info('handleSave called!');
     if (!profile) {
-      console.log('❌ No profile, returning early');
+      logger.info('No profile, returning early');
       return;
     }
 
@@ -601,7 +604,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
         Alert.alert('Error', result.error?.message || 'Failed to update profile');
       }
     } catch (error: any) {
-      console.error('🔥 Save exception:', error);
+      logger.error('Save exception:', error);
       Alert.alert('Error', error?.message || 'An unexpected error occurred');
     } finally {
       setSaving(false);

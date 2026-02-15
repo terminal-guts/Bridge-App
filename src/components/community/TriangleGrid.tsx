@@ -29,6 +29,9 @@ import * as Haptics from 'expo-haptics';
 import { UserProfile, KarmaScore } from '../../types/community';
 import { AnchorCard } from './AnchorCard';
 import { CandidateCard } from './CandidateCard';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('TriangleGrid');
 
 const StyledView = styled(View);
 const AnimatedView = Animated.createAnimatedComponent(StyledView);
@@ -106,7 +109,7 @@ export function TriangleGrid({
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (error) {
       // Haptics may not be available on all devices
-      console.log('Haptics not available');
+      logger.info('Haptics not available');
     }
 
     // Toggle selection: if already selected, deselect it

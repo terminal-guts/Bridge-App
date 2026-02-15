@@ -12,6 +12,9 @@ import { Spotlight } from './Spotlight';
 import { Tooltip } from './Tooltip';
 import { ProgressIndicator } from './ProgressIndicator';
 import { SpotlightDimensions } from '../../types/guides';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('GuideOverlay');
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -39,12 +42,12 @@ export const GuideOverlay: React.FC = () => {
    */
   const targetLayout = useMemo(() => {
     if (!step?.targetElement) {
-      console.log('[GuideOverlay] No targetElement for step:', step?.id);
+      logger.info('[GuideOverlay] No targetElement for step:', step?.id);
       return null;
     }
     const layout = targetLayouts.get(step.targetElement) || null;
-    console.log('[GuideOverlay] Target layout for', step.targetElement, ':', layout);
-    console.log('[GuideOverlay] All registered targets:', Array.from(targetLayouts.keys()));
+    logger.info('[GuideOverlay] Target layout for', step.targetElement, ':', layout);
+    logger.info('[GuideOverlay] All registered targets:', Array.from(targetLayouts.keys()));
     return layout;
   }, [step, targetLayouts]);
 
@@ -53,7 +56,7 @@ export const GuideOverlay: React.FC = () => {
    */
   const spotlightDimensions = useMemo((): SpotlightDimensions | null => {
     if (step?.highlightType === 'none') {
-      console.log('[GuideOverlay] No spotlight - highlightType:', step?.highlightType);
+      logger.info('[GuideOverlay] No spotlight - highlightType:', step?.highlightType);
       return null;
     }
 
@@ -85,13 +88,13 @@ export const GuideOverlay: React.FC = () => {
         borderRadius: region.borderRadius || 12,
       };
 
-      console.log('[GuideOverlay] Custom spotlight dimensions:', dimensions);
+      logger.info('[GuideOverlay] Custom spotlight dimensions:', dimensions);
       return dimensions;
     }
 
     // Fall back to target element layout
     if (!targetLayout) {
-      console.log('[GuideOverlay] No spotlight - no targetLayout or customSpotlightRegion');
+      logger.info('[GuideOverlay] No spotlight - no targetLayout or customSpotlightRegion');
       return null;
     }
 
@@ -112,7 +115,7 @@ export const GuideOverlay: React.FC = () => {
           : 12, // Rounded rectangle
     };
 
-    console.log('[GuideOverlay] Spotlight dimensions calculated:', dimensions);
+    logger.info('[GuideOverlay] Spotlight dimensions calculated:', dimensions);
     return dimensions;
   }, [targetLayout, step]);
 

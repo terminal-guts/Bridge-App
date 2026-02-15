@@ -7,6 +7,9 @@ import { RootStackParamList } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import { getBlockedUsers, blockUser, unblockUser, BlockedUser as BlockedUserType } from '../../services/blockService';
 import { supabase } from '../../lib/supabase';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('BlockedUsersScreen');
 
 interface BlockedUsersScreenProps {
   navigation: NavigationProp<RootStackParamList>;
@@ -43,7 +46,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
         setCurrentUserId(user.id);
       }
     } catch (error) {
-      console.error('Failed to get current user:', error);
+      logger.error('Failed to get current user:', error);
       Alert.alert('Error', 'Failed to load user information');
     }
   };
@@ -57,11 +60,11 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
       if (result.ok && result.data) {
         setBlockedUsers(result.data);
       } else {
-        console.error('Failed to load blocked users:', result.error);
+        logger.error('Failed to load blocked users:', result.error);
         Alert.alert('Error', result.error?.message || 'Failed to load blocked users');
       }
     } catch (error) {
-      console.error('Failed to load blocked users:', error);
+      logger.error('Failed to load blocked users:', error);
       Alert.alert('Error', 'Failed to load blocked users');
     } finally {
       setLoading(false);
@@ -90,7 +93,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                 Alert.alert('Error', result.error?.message || 'Failed to unblock user');
               }
             } catch (error) {
-              console.error('Failed to unblock user:', error);
+              logger.error('Failed to unblock user:', error);
               Alert.alert('Error', 'Failed to unblock user');
             }
           },
@@ -164,7 +167,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
         ]
       );
     } catch (error) {
-      console.error('Failed to block by phone:', error);
+      logger.error('Failed to block by phone:', error);
       Alert.alert('Error', 'Failed to block user');
     }
   };

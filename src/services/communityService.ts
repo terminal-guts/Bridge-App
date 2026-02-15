@@ -11,6 +11,10 @@
  * - State management for testing flows
  */
 
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('CommunityService');
+
 import {
   DailyGrid,
   Proposal,
@@ -728,7 +732,7 @@ class CommunityService {
   async submitDailyGridProposal(candidateId: string): Promise<void> {
     await this.delay(300);
 
-    console.log('[Mock] Submitting proposal for candidate:', candidateId);
+    logger.info('[Mock] Submitting proposal for candidate:', candidateId);
     mockState.gridProposalSubmitted = true;
 
     // Check if daily tasks are now complete
@@ -751,7 +755,7 @@ class CommunityService {
   async submitProposalVote(proposalId: string, vote: 'yes' | 'no' | 'skip', weight?: number): Promise<void> {
     await this.delay(300);
 
-    console.log('[Mock] Voting on proposal:', proposalId, '-', vote, weight !== undefined ? `(weight: ${weight})` : '');
+    logger.info('[Mock] Voting on proposal:', proposalId, '-', vote, weight !== undefined ? `(weight: ${weight})` : '');
 
     // Only count votes with weight > 0 toward task progress
     if (vote !== 'skip' && (weight === undefined || weight > 0)) {
@@ -798,7 +802,7 @@ class CommunityService {
   async submitFriendGridProposal(friendId: string, candidateId: string): Promise<void> {
     await this.delay(300);
 
-    console.log('[Mock] Submitting proposal for friend:', friendId, 'candidate:', candidateId);
+    logger.info('[Mock] Submitting proposal for friend:', friendId, 'candidate:', candidateId);
   }
 
   /**
@@ -817,7 +821,7 @@ class CommunityService {
   async respondToMatchProposal(proposalId: string, accept: boolean): Promise<void> {
     await this.delay(300);
 
-    console.log('[Mock] Responding to proposal:', proposalId, accept ? 'ACCEPT' : 'DECLINE');
+    logger.info('[Mock] Responding to proposal:', proposalId, accept ? 'ACCEPT' : 'DECLINE');
 
     // Initialize proposal decision if it doesn't exist
     if (!mockState.proposalDecisions[proposalId]) {
@@ -837,7 +841,7 @@ class CommunityService {
     if (mockState.proposalDecisions[proposalId].partnerDecision === null) {
       const partnerAccepts = Math.random() > 0.3; // 70% chance of partner accepting
       mockState.proposalDecisions[proposalId].partnerDecision = partnerAccepts;
-      console.log('[Mock] Partner decision simulated:', partnerAccepts ? 'ACCEPT' : 'DECLINE');
+      logger.info('[Mock] Partner decision simulated:', partnerAccepts ? 'ACCEPT' : 'DECLINE');
     }
 
     const decision = mockState.proposalDecisions[proposalId];
@@ -848,7 +852,7 @@ class CommunityService {
       if (decision.userDecision && decision.partnerDecision) {
         // Both accepted - create match!
         decision.status = 'matched';
-        console.log('[Mock] 🎉 IT\'S A MATCH! Both users accepted. Creating active match...');
+        logger.info('[Mock] 🎉 IT\'S A MATCH! Both users accepted. Creating active match...');
 
         // In real implementation, this would:
         // 1. Create ActiveMatch in database
@@ -858,15 +862,15 @@ class CommunityService {
       } else {
         // At least one declined
         decision.status = 'declined';
-        console.log('[Mock] Proposal declined by', !decision.userDecision ? 'user' : 'partner');
+        logger.info('[Mock] Proposal declined by', !decision.userDecision ? 'user' : 'partner');
       }
     } else if (decision.userDecision !== null) {
       // Only user decided, waiting for partner
       decision.status = 'partial_accepted';
-      console.log('[Mock] Waiting for partner to respond...');
+      logger.info('[Mock] Waiting for partner to respond...');
     }
 
-    console.log('[Mock] Proposal status:', decision.status);
+    logger.info('[Mock] Proposal status:', decision.status);
   }
 
   /**
@@ -895,8 +899,8 @@ class CommunityService {
       throw new Error(`Cannot end match for ${match.daysUntilCanEnd} more day(s)`);
     }
 
-    console.log('[Mock] Ending active match:', matchId);
-    console.log('[Mock] Reason for ending:', reason);
+    logger.info('[Mock] Ending active match:', matchId);
+    logger.info('[Mock] Reason for ending:', reason);
     // TODO: In production, send reason to backend for analytics
   }
 
@@ -1195,7 +1199,7 @@ class CommunityService {
    * Reset all community state (for testing)
    */
   async resetCommunityState(): Promise<void> {
-    console.log('[Mock] Resetting all community state...');
+    logger.info('[Mock] Resetting all community state...');
 
     mockState = {
       dailyTasksCompleted: false,
@@ -1209,28 +1213,28 @@ class CommunityService {
       proposalDecisions: {},
     };
 
-    console.log('[Mock] State reset complete');
+    logger.info('[Mock] State reset complete');
   }
 
   /**
    * Skip daily tasks (for testing)
    */
   async skipDailyTasks(): Promise<void> {
-    console.log('[Mock] Skipping daily tasks...');
+    logger.info('[Mock] Skipping daily tasks...');
 
     mockState.gridProposalSubmitted = true;
     mockState.votesSubmitted = 3;
     mockState.dailyTasksCompleted = true;
     mockState.friendsAreaUnlocked = true;
 
-    console.log('[Mock] Daily tasks skipped');
+    logger.info('[Mock] Daily tasks skipped');
   }
 
   /**
    * Fast forward time (for testing proposal expiration)
    */
   async fastForwardTime(): Promise<void> {
-    console.log('[Mock] Fast forward mode enabled');
+    logger.info('[Mock] Fast forward mode enabled');
     mockState.fastForwardMode = true;
   }
 
@@ -1238,7 +1242,7 @@ class CommunityService {
    * Set karma assists (for testing karma tiers)
    */
   async setKarmaAssists(assists: number): Promise<void> {
-    console.log('[Mock] Setting karma assists to:', assists);
+    logger.info('[Mock] Setting karma assists to:', assists);
     mockState.currentKarmaAssists = assists;
   }
 
@@ -1246,7 +1250,7 @@ class CommunityService {
    * Toggle time restrictions
    */
   async toggleTimeRestrictions(disabled: boolean): Promise<void> {
-    console.log('[Mock] Time restrictions:', disabled ? 'DISABLED' : 'ENABLED');
+    logger.info('[Mock] Time restrictions:', disabled ? 'DISABLED' : 'ENABLED');
     mockState.timeRestrictionDisabled = disabled;
   }
 
@@ -1258,7 +1262,7 @@ class CommunityService {
     if (mockState.gridProposalSubmitted && mockState.votesSubmitted >= 3) {
       mockState.dailyTasksCompleted = true;
       mockState.friendsAreaUnlocked = true;
-      console.log('[Mock] Daily tasks complete! Friends Area unlocked.');
+      logger.info('[Mock] Daily tasks complete! Friends Area unlocked.');
     }
   }
 

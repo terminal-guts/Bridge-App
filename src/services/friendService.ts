@@ -12,6 +12,9 @@
 import { supabase } from '../lib/supabase';
 import { ApiResponse, UserProfile } from '../types';
 import { requireAuth } from '../utils/auth';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('FriendService');
 import {
   checkRateLimit,
   recordRateLimitAttempt,
@@ -98,7 +101,7 @@ export const getUserFriendCode = async (): Promise<ApiResponse<FriendCode>> => {
       }
 
       // FRONTEND MOCK: If database query fails, return mock code
-      console.warn('Friend code fetch failed, returning mock code:', error.message);
+      logger.warn('Friend code fetch failed, returning mock code:', error.message);
       const mockCode = generateMockFriendCode();
       return {
         ok: true,
@@ -124,7 +127,7 @@ export const getUserFriendCode = async (): Promise<ApiResponse<FriendCode>> => {
     };
   } catch (error: any) {
     // FRONTEND MOCK: If anything fails, return mock code
-    console.warn('Friend code operation failed, returning mock code:', error.message);
+    logger.warn('Friend code operation failed, returning mock code:', error.message);
     const mockCode = generateMockFriendCode();
     return {
       ok: true,
@@ -159,7 +162,7 @@ const createFriendCode = async (userId: string): Promise<ApiResponse<FriendCode>
 
     if (error) {
       // FRONTEND MOCK: If database insert fails, return mock code anyway
-      console.warn('Friend code insert failed, returning mock code:', error.message);
+      logger.warn('Friend code insert failed, returning mock code:', error.message);
       return {
         ok: true,
         data: {
@@ -184,7 +187,7 @@ const createFriendCode = async (userId: string): Promise<ApiResponse<FriendCode>
     };
   } catch (error: any) {
     // FRONTEND MOCK: If anything fails, return mock code
-    console.warn('Friend code creation failed, returning mock code:', error.message);
+    logger.warn('Friend code creation failed, returning mock code:', error.message);
     return {
       ok: true,
       data: {

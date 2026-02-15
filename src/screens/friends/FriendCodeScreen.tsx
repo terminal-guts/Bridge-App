@@ -10,6 +10,9 @@ import { getUserFriendCode, addFriendByCode } from '../../services/friendService
 import { supabase } from '../../lib/supabase';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { OfflineBanner } from '../../components/OfflineBanner';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('FriendCodeScreen');
 
 interface FriendCodeScreenProps {
   navigation: NavigationProp<RootStackParamList, 'FriendCode'>;
@@ -71,7 +74,7 @@ const shareFriendCode = async (friendCode: string): Promise<void> => {
       title: 'My Bridge Friend Code',
     });
   } catch (error) {
-    console.error('Error sharing:', error);
+    logger.error('Error sharing:', error);
   }
 };
 
@@ -83,7 +86,7 @@ const copyToClipboard = async (friendCode: string): Promise<void> => {
     await Clipboard.setStringAsync(friendCode);
     Alert.alert('Copied!', 'Your friend code has been copied to clipboard');
   } catch (error) {
-    console.error('Error copying to clipboard:', error);
+    logger.error('Error copying to clipboard:', error);
     Alert.alert('Error', 'Failed to copy friend code');
   }
 };
@@ -119,7 +122,7 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
         navigation.goBack();
       }
     } catch (error) {
-      console.error('Failed to get current user:', error);
+      logger.error('Failed to get current user:', error);
       Alert.alert('Error', 'Failed to load user information');
     }
   };
@@ -133,11 +136,11 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
       if (result.ok && result.data) {
         setMyFriendCode(result.data.code);
       } else {
-        console.error('Failed to load friend code:', result.error);
+        logger.error('Failed to load friend code:', result.error);
         Alert.alert('Error', 'Failed to load your friend code');
       }
     } catch (error) {
-      console.error('Failed to load friend code:', error);
+      logger.error('Failed to load friend code:', error);
     } finally {
       setLoading(false);
     }
@@ -190,7 +193,7 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
       }
     } catch (error: any) {
       setError('An unexpected error occurred. Please try again.');
-      console.error('Failed to add friend:', error);
+      logger.error('Failed to add friend:', error);
     } finally {
       setAdding(false);
     }

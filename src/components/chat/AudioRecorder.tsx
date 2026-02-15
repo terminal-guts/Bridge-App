@@ -4,6 +4,9 @@ import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { styled } from 'nativewind';
 import * as Haptics from 'expo-haptics';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('AudioRecorder');
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -24,8 +27,8 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
     React.useEffect(() => {
         return () => {
             if (recordingRef.current) {
-                console.log('[DEBUG] Unmounting, cleaning up recording...');
-                recordingRef.current.stopAndUnloadAsync().catch(e => console.error('Cleanup failed', e));
+                logger.info('[DEBUG] Unmounting, cleaning up recording...');
+                recordingRef.current.stopAndUnloadAsync().catch(e => logger.error('Cleanup failed', e));
                 recordingRef.current = null;
             }
         };
@@ -59,7 +62,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
         isButtonPressed.current = true;
 
         try {
-            console.log('[DEBUG] 1. Starting preparation...');
+            logger.info('[DEBUG] 1. Starting preparation...');
             setIsPreparing(true);
             const permission = await Audio.requestPermissionsAsync();
 
@@ -81,28 +84,28 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
                 playsInSilentModeIOS: true,
             });
 
-            console.log('[DEBUG] 2. Creating recording object...');
+            logger.info('[DEBUG] 2. Creating recording object...');
             const { recording } = await Audio.Recording.createAsync(
                 Audio.RecordingOptionsPresets.HIGH_QUALITY
             );
 
             // CRITICAL: If the user already released the button while we were creating the object
             if (!isButtonPressed.current) {
-                console.log('[DEBUG] 3a. User already released, cleaning up immediately...');
+                logger.info('[DEBUG] 3a. User already released, cleaning up immediately...');
                 await recording.stopAndUnloadAsync();
                 await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
                 setIsPreparing(false);
                 return;
             }
 
-            console.log('[DEBUG] 3b. Recording started successfully');
+            logger.info('[DEBUG] 3b. Recording started successfully');
             recordingRef.current = recording;
             setIsRecording(true);
             setIsPreparing(false);
             startPulse();
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         } catch (err) {
-            console.error('Failed to start recording', err);
+            logger.error('Failed to start recording', err);
             Alert.alert('Error', 'Could not start microphone');
             setIsPreparing(false);
             setIsRecording(false);
@@ -111,17 +114,17 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
 
     async function stopRecording() {
         const stopTime = Date.now();
-        console.log('[DEBUG] stopRecording triggered at:', stopTime);
+        logger.info('[DEBUG] stopRecording triggered at:', stopTime);
         isButtonPressed.current = false;
 
         if (isPreparing && !isRecording) {
-            console.log('[DEBUG] Released while still preparing. Button state cleared.');
+            logger.info('[DEBUG] Released while still preparing. Button state cleared.');
             setIsPreparing(false);
             return;
         }
 
         if (!recordingRef.current) {
-            console.log('[DEBUG] No active recording object found during stop.');
+            logger.info('[DEBUG] No active recording object found during stop.');
             setIsRecording(false);
             setIsPreparing(false);
             return;
@@ -134,23 +137,23 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
             setIsRecording(false);
             stopPulse();
 
-            console.log('[DEBUG] 4. Calling stopAndUnloadAsync...');
+            logger.info('[DEBUG] 4. Calling stopAndUnloadAsync...');
             const status = await recording.stopAndUnloadAsync();
             await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
 
             const uri = recording.getURI();
-            console.log('[DEBUG] 5. Recording stopped.', {
+            logger.info('[DEBUG] 5. Recording stopped.', {
                 uri,
                 duration: status.durationMillis,
                 canRecord: status.canRecord
             });
 
             if (uri && status.durationMillis && status.durationMillis > 200) {
-                console.log('[DEBUG] 6. Success! Sending to parent.');
+                logger.info('[DEBUG] 6. Success! Sending to parent.');
                 onRecordingComplete(uri, status.durationMillis);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } else {
-                console.warn('[DEBUG] 6. Recording rejected:', {
+                logger.warn('[DEBUG] 6. Recording rejected:', {
                     hasUri: !!uri,
                     duration: status.durationMillis,
                     threshold: 200
@@ -158,7 +161,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
                 Alert.alert('Hold to Talk', 'Press and hold to record. Make sure the button turns red before releasing.');
             }
         } catch (err) {
-            console.error('[DEBUG] ERROR in stopRecording:', err);
+            logger.error('[DEBUG] ERROR in stopRecording:', err);
             Alert.alert('Error', 'Something went wrong while saving the audio.');
             setIsRecording(false);
             recordingRef.current = null;

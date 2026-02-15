@@ -1,4 +1,7 @@
 import { ApiResponse } from '../types';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('ContentModerationService');
 
 /**
  * Azure Content Safety Service
@@ -34,12 +37,12 @@ export const contentModerationService = {
         const key = process.env.EXPO_PUBLIC_AZURE_CONTENT_SAFETY_KEY;
 
         if (!endpoint || !key) {
-            console.warn('[CONTENT MODERATION] Missing Azure credentials. Skipping moderation.');
+            logger.warn('[CONTENT MODERATION] Missing Azure credentials. Skipping moderation.');
             return { isSafe: true };
         }
 
         try {
-            console.log('[CONTENT MODERATION] Analyzing text...');
+            logger.info('[CONTENT MODERATION] Analyzing text...');
 
             // Azure resource endpoints usually need /contentsafety/text:analyze
             // If the user provided the full resource URL (e.g. https://name.cognitiveservices.azure.com/), we append path.
@@ -63,7 +66,7 @@ export const contentModerationService = {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('[CONTENT MODERATION] API Error:', response.status, errorText);
+                logger.error('[CONTENT MODERATION] API Error:', response.status, errorText);
                 // Fail open or closed? For a mock/demo, failing open (allowing text) is less annoying if config is bad.
                 return { isSafe: true };
             }
@@ -77,7 +80,7 @@ export const contentModerationService = {
 
             if (violations.length > 0) {
                 const categories = violations.map(v => v.category).join(', ');
-                console.warn(`[CONTENT MODERATION] Text blocked: ${categories}`);
+                logger.warn(`[CONTENT MODERATION] Text blocked: ${categories}`);
                 return {
                     isSafe: false,
                     reason: `Content flagged as inappropriate (${categories})`
@@ -87,7 +90,7 @@ export const contentModerationService = {
             return { isSafe: true };
 
         } catch (error) {
-            console.error('[CONTENT MODERATION] Unexpected error:', error);
+            logger.error('[CONTENT MODERATION] Unexpected error:', error);
             return { isSafe: true };
         }
     }

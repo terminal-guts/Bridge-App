@@ -7,6 +7,9 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GuideId, GuideProgress } from '../types/guides';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('GuideService');
 
 const GUIDE_PROGRESS_KEY = '@bridge_guide_progress';
 
@@ -29,7 +32,7 @@ export const loadGuideProgress = async (): Promise<GuideProgress> => {
       lastUpdated: new Date().toISOString(),
     };
   } catch (error) {
-    console.error('[guideService] Error loading guide progress:', error);
+    logger.error('[guideService] Error loading guide progress:', error);
     // Return empty progress on error
     return {
       completedGuides: [],
@@ -51,7 +54,7 @@ export const saveGuideProgress = async (progress: GuideProgress): Promise<void> 
 
     await AsyncStorage.setItem(GUIDE_PROGRESS_KEY, JSON.stringify(updated));
   } catch (error) {
-    console.error('[guideService] Error saving guide progress:', error);
+    logger.error('[guideService] Error saving guide progress:', error);
   }
 };
 
@@ -77,7 +80,7 @@ export const markGuideCompleted = async (guideId: GuideId): Promise<void> => {
 
     await saveGuideProgress(progress);
   } catch (error) {
-    console.error('[guideService] Error marking guide completed:', error);
+    logger.error('[guideService] Error marking guide completed:', error);
   }
 };
 
@@ -100,7 +103,7 @@ export const markGuideSkipped = async (guideId: GuideId): Promise<void> => {
 
     await saveGuideProgress(progress);
   } catch (error) {
-    console.error('[guideService] Error marking guide skipped:', error);
+    logger.error('[guideService] Error marking guide skipped:', error);
   }
 };
 
@@ -113,7 +116,7 @@ export const isGuideCompleted = async (guideId: GuideId): Promise<boolean> => {
     const progress = await loadGuideProgress();
     return progress.completedGuides.includes(guideId) || progress.skippedGuides.includes(guideId);
   } catch (error) {
-    console.error('[guideService] Error checking guide completion:', error);
+    logger.error('[guideService] Error checking guide completion:', error);
     return false;
   }
 };
@@ -126,7 +129,7 @@ export const isGuideSkipped = async (guideId: GuideId): Promise<boolean> => {
     const progress = await loadGuideProgress();
     return progress.skippedGuides.includes(guideId);
   } catch (error) {
-    console.error('[guideService] Error checking guide skip status:', error);
+    logger.error('[guideService] Error checking guide skip status:', error);
     return false;
   }
 };
@@ -148,7 +151,7 @@ export const saveCurrentGuideState = async (
 
     await saveGuideProgress(progress);
   } catch (error) {
-    console.error('[guideService] Error saving current guide state:', error);
+    logger.error('[guideService] Error saving current guide state:', error);
   }
 };
 
@@ -163,7 +166,7 @@ export const getCurrentGuideState = async (): Promise<{
     const progress = await loadGuideProgress();
     return progress.currentGuide || null;
   } catch (error) {
-    console.error('[guideService] Error getting current guide state:', error);
+    logger.error('[guideService] Error getting current guide state:', error);
     return null;
   }
 };
@@ -181,7 +184,7 @@ export const resetAllGuides = async (): Promise<void> => {
 
     await saveGuideProgress(emptyProgress);
   } catch (error) {
-    console.error('[guideService] Error resetting guides:', error);
+    logger.error('[guideService] Error resetting guides:', error);
   }
 };
 
@@ -203,6 +206,6 @@ export const resetGuide = async (guideId: GuideId): Promise<void> => {
 
     await saveGuideProgress(progress);
   } catch (error) {
-    console.error('[guideService] Error resetting guide:', error);
+    logger.error('[guideService] Error resetting guide:', error);
   }
 };

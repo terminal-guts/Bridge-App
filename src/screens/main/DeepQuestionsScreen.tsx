@@ -20,6 +20,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { getCurrentUser } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { lightHaptic, mediumHaptic, successHaptic } from '../../utils/haptics';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('DeepQuestionsScreen');
 
 interface DeepQuestionsScreenProps {
   navigation: NavigationProp<RootStackParamList, 'DeepQuestions'>;
@@ -147,7 +150,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
         setDisplayedQuestions(profileResult.data.displayedQuestions || []);
       }
     } catch (error) {
-      console.error('Failed to load profile:', error);
+      logger.error('Failed to load profile:', error);
     }
   };
 
@@ -190,7 +193,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
         setDisplayedQuestions(profile.displayedQuestions || []);
       }
     } catch (error) {
-      console.error('Failed to save displayed questions:', error);
+      logger.error('Failed to save displayed questions:', error);
       Alert.alert('Error', 'An unexpected error occurred');
       // Revert the local state if save failed
       setDisplayedQuestions(profile.displayedQuestions || []);

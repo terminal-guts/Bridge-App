@@ -9,6 +9,7 @@ import { FEATURES } from '../config/features';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { fetchAndSetUserProfile } from '../services/profileService';
+import { notificationService } from '../services/notificationService';
 
 // Auth Screens
 import {
@@ -62,6 +63,9 @@ import { FriendListScreen } from '../screens/friends/FriendListScreen';
 import { RootStackParamList, MainTabParamList } from '../types';
 import { createDevelopmentData } from '../services/developmentDataService';
 import { DeveloperMenu } from '../components/DeveloperMenu';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('AppNavigator');
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -147,7 +151,7 @@ export const AppNavigator = () => {
         if (!isMountedRef.current) return;
 
         if (error) {
-          console.log('Auth verification failed:', error.message);
+          logger.info('Auth verification failed:', error.message);
           // Clear any stale session data
           await supabase.auth.signOut();
           if (!isMountedRef.current) return; // Check after async operation
@@ -155,17 +159,17 @@ export const AppNavigator = () => {
         } else {
           if (user) {
             // Load user profile from Supabase on app startup
-            console.log('[AppNavigator] Loading profile for authenticated user:', user.id);
+            logger.info('[AppNavigator] Loading profile for authenticated user:', user.id);
             const profileResult = await fetchAndSetUserProfile(user.id);
             if (!profileResult.ok && profileResult.error?.code !== 'PROFILE_NOT_FOUND') {
-              console.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
+              logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
             }
           }
           if (!isMountedRef.current) return;
           setIsAuthenticated(!!user);
         }
       } catch (err) {
-        console.error('Error getting session:', err);
+        logger.error('Error getting session:', err);
         // Clear any stale session data on error
         await supabase.auth.signOut();
         if (isMountedRef.current) {
@@ -176,19 +180,36 @@ export const AppNavigator = () => {
 
     initializeAuth();
 
+    // Register push notifications and subscribe to real-time events
+    let cleanupNotifications: (() => void) | undefined;
+
+    const setupNotifications = async () => {
+      try {
+        await notificationService.registerForPushNotifications();
+        cleanupNotifications = await notificationService.subscribeToRealtimeNotifications();
+      } catch (err) {
+        // Non-critical - app works without notifications
+      }
+    };
+
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMountedRef.current) return;
       setIsAuthenticated(!!session);
 
+      // Set up notifications on sign in
+      if (event === 'SIGNED_IN' && session?.user) {
+        setupNotifications();
+      }
+
       // Create mock data on sign in (development only)
       if (event === 'SIGNED_IN' && session?.user && FEATURES.DEVELOPMENT_CREATE_MOCK_DATA) {
-        console.log('[DevData] User signed in, creating mock data...');
+        logger.info('[DevData] User signed in, creating mock data...');
         try {
           await createDevelopmentData(session.user.id);
           if (!isMountedRef.current) return; // Check after async operation
         } catch (error) {
-          console.error('[DevData] Failed to create mock data:', error);
+          logger.error('[DevData] Failed to create mock data:', error);
         }
       }
     });
@@ -196,6 +217,7 @@ export const AppNavigator = () => {
     return () => {
       isMountedRef.current = false;
       subscription.unsubscribe();
+      cleanupNotifications?.();
     };
   }, []);
 
@@ -212,7 +234,7 @@ export const AppNavigator = () => {
     <NavigationContainer>
       <ErrorBoundary
         onError={(error, errorInfo) => {
-          console.error('[App Error Boundary]', error, errorInfo);
+          logger.error('[App Error Boundary]', error, errorInfo);
           // TODO: Send to error reporting service (Sentry, Bugsnag, etc.)
         }}
       >

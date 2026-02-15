@@ -15,6 +15,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { H2, H3, Body, Card } from './ui';
 import { UserProfile } from '../types';
 import { calculateProfileStrengthBreakdown } from '../utils/profileCompleteness';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('ProfileStrengthDashboard');
 
 interface ProfileStrengthDashboardProps {
   profile: UserProfile;
@@ -155,7 +158,7 @@ const calculateStrength = (profile: UserProfile): {
     displayPercentage: breakdown.sections.deepQuestions.percentage,
   });
 
-  console.log('🎯 DASHBOARD using centralized calculation:', breakdown.overall + '%');
+  logger.info('DASHBOARD using centralized calculation:', breakdown.overall + '%');
 
   return { overall: breakdown.overall, sections };
 };

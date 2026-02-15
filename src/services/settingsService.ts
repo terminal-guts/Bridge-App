@@ -6,6 +6,9 @@
  */
 
 import { ApiResponse } from '../types';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('SettingsService');
 
 // Mock in-memory storage
 let mockSettings: UserSettings | null = null;
@@ -66,7 +69,7 @@ const createErrorResponse = (code: string, message: string): ApiResponse<any> =>
  */
 export const getUserSettings = async (userId?: string): Promise<ApiResponse<UserSettings>> => {
   try {
-    console.log('[MOCK SETTINGS] Getting user settings');
+    logger.info('[MOCK SETTINGS] Getting user settings');
 
     // If no settings exist, create defaults
     if (!mockSettings) {
@@ -84,7 +87,7 @@ export const getUserSettings = async (userId?: string): Promise<ApiResponse<User
       data: mockSettings,
     };
   } catch (error: any) {
-    console.error('[MOCK SETTINGS] Get settings error:', error);
+    logger.error('[MOCK SETTINGS] Get settings error:', error);
     return createErrorResponse('FETCH_ERROR', error.message || 'Failed to fetch settings');
   }
 };
@@ -100,7 +103,7 @@ export const updateUserSettings = async (
 ): Promise<ApiResponse<UserSettings>> => {
   try {
     const finalSettings = typeof userId === 'string' ? settings : userId;
-    console.log('[MOCK SETTINGS] Updating user settings');
+    logger.info('[MOCK SETTINGS] Updating user settings');
 
     // Ensure settings exist
     if (!mockSettings) {
@@ -139,7 +142,7 @@ export const updateUserSettings = async (
       data: mockSettings,
     };
   } catch (error: any) {
-    console.error('[MOCK SETTINGS] Update settings error:', error);
+    logger.error('[MOCK SETTINGS] Update settings error:', error);
     return createErrorResponse('UPDATE_ERROR', error.message || 'Failed to update settings');
   }
 };

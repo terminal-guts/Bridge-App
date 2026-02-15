@@ -15,6 +15,9 @@ import {
   DashboardSummary,
 } from '../services/dashboardService';
 import { isFeatureEnabled } from '../config/featureFlags';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('useDashboardData');
 
 interface UseDashboardDataReturn {
   data: DashboardSummary | null;
@@ -47,14 +50,14 @@ export const useDashboardData = (): UseDashboardDataReturn => {
       if (isFeatureEnabled('USE_REAL_DASHBOARD_STATS')) {
         // Use new consolidated function
         if (isFeatureEnabled('LOG_DATA_FETCHING')) {
-          console.log('[useDashboardData] Fetching real dashboard data for user:', user.id);
+          logger.info('[useDashboardData] Fetching real dashboard data for user:', user.id);
         }
 
         const result = await getDashboardSummary(user.id);
 
         if (result.ok) {
           if (isFeatureEnabled('LOG_DATA_FETCHING')) {
-            console.log('[useDashboardData] Successfully fetched dashboard data:', result.data);
+            logger.info('[useDashboardData] Successfully fetched dashboard data:', result.data);
           }
           setData(result.data);
         } else {
@@ -63,17 +66,17 @@ export const useDashboardData = (): UseDashboardDataReturn => {
       } else {
         // Use mock data (current behavior)
         if (isFeatureEnabled('LOG_DATA_FETCHING')) {
-          console.log('[useDashboardData] Using mock dashboard data');
+          logger.info('[useDashboardData] Using mock dashboard data');
         }
         setData(getMockDashboardData());
       }
     } catch (err) {
-      console.error('[useDashboardData] Error:', err);
+      logger.error('[useDashboardData] Error:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch dashboard data');
 
       // Fallback to mock data on error
       if (isFeatureEnabled('LOG_DATA_FETCHING')) {
-        console.log('[useDashboardData] Falling back to mock data due to error');
+        logger.info('[useDashboardData] Falling back to mock data due to error');
       }
       setData(getMockDashboardData());
     } finally {

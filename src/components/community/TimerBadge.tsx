@@ -14,6 +14,9 @@ import React, { useRef, useEffect } from 'react';
 import { View, Text, Animated } from 'react-native';
 import { styled } from 'nativewind';
 import { TIMER_STATES } from '../../constants/friendsArea';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('TimerBadge');
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -59,7 +62,7 @@ const parseHoursFromTimeString = (timeString: string): number => {
 
     return totalHours;
   } catch (error) {
-    console.warn('[TimerBadge] Failed to parse time string:', timeString, error);
+    logger.warn('[TimerBadge] Failed to parse time string:', timeString, error);
     return 999; // Default to "plenty" if parsing fails
   }
 };

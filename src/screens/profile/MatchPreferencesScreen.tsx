@@ -11,6 +11,9 @@ import { getCurrentUser } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { calculateMatchPreferencesCompleteness } from '../../utils/profileCompleteness';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('MatchPreferencesScreen');
 
 interface MatchPreferencesScreenProps {
   navigation: NavigationProp<RootStackParamList>;
@@ -356,7 +359,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         });
       }
     } catch (error) {
-      console.error('Failed to load profile:', error);
+      logger.error('Failed to load profile:', error);
     }
   };
 

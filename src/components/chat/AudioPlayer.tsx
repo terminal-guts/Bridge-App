@@ -4,6 +4,9 @@ import { Audio, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { styled } from 'nativewind';
 import { BodySmall } from '../ui/Typography';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('AudioPlayer');
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -64,7 +67,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ uri, duration, isOwnMe
                 }
             }
         } catch (error) {
-            console.error('Error playing audio', error);
+            logger.error('Error playing audio', error);
             setIsLoading(false);
         }
     };

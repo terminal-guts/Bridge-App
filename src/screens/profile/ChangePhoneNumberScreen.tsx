@@ -7,6 +7,9 @@ import { RootStackParamList } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import { getUserProfile } from '../../services/profileService';
 import { supabase } from '../../lib/supabase';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('ChangePhoneNumberScreen');
 
 interface ChangePhoneNumberScreenProps {
   navigation: NavigationProp<RootStackParamList>;
@@ -49,7 +52,7 @@ export const ChangePhoneNumberScreen: React.FC<ChangePhoneNumberScreenProps> = (
         navigation.goBack();
       }
     } catch (error) {
-      console.error('Failed to get current user:', error);
+      logger.error('Failed to get current user:', error);
       Alert.alert('Error', 'Failed to load user information');
     }
   };
@@ -61,7 +64,7 @@ export const ChangePhoneNumberScreen: React.FC<ChangePhoneNumberScreenProps> = (
       const { data: { user }, error } = await supabase.auth.getUser();
 
       if (error || !user) {
-        console.error('Failed to load user:', error);
+        logger.error('Failed to load user:', error);
         Alert.alert('Error', 'Failed to load phone number');
         setLoading(false);
         return;
@@ -78,7 +81,7 @@ export const ChangePhoneNumberScreen: React.FC<ChangePhoneNumberScreenProps> = (
         setCurrentPhone('No phone number on file');
       }
     } catch (error) {
-      console.error('Failed to load phone:', error);
+      logger.error('Failed to load phone:', error);
       Alert.alert('Error', 'Failed to load phone number');
     } finally {
       setLoading(false);
@@ -161,7 +164,7 @@ export const ChangePhoneNumberScreen: React.FC<ChangePhoneNumberScreenProps> = (
         });
 
         if (updateError) {
-          console.error('Failed to update phone:', updateError);
+          logger.error('Failed to update phone:', updateError);
           setVerifying(false);
           Alert.alert('Error', 'Failed to update phone number. Please try again.');
           return;

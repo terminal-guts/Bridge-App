@@ -3,6 +3,9 @@ import { View, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 import { H2, Body, Button } from './ui';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('ErrorBoundary');
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -51,7 +54,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log error to console (in production, send to error reporting service)
-    console.error('Error Boundary caught an error:', error, errorInfo);
+    logger.error('Error Boundary caught an error:', error, errorInfo);
 
     // Call optional error handler
     this.props.onError?.(error, errorInfo);
@@ -132,7 +135,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               <TouchableOpacity
                 onPress={() => {
                   // TODO: Navigate to help/support screen or open support email
-                  console.log('Contact support');
+                  logger.info('Contact support');
                 }}
                 activeOpacity={0.7}
                 className="py-2"
@@ -174,7 +177,7 @@ export class CardErrorBoundary extends Component<ErrorBoundaryProps, ErrorBounda
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Card Error Boundary caught an error:', error, errorInfo);
+    logger.error('Card Error Boundary caught an error:', error, errorInfo);
     this.props.onError?.(error, errorInfo);
   }
 

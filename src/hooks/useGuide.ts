@@ -9,6 +9,9 @@ import { useEffect, useCallback } from 'react';
 import { useGuideContext } from '../contexts/GuideContext';
 import { GuideDefinition } from '../types/guides';
 import { isGuideCompleted, resetGuide } from '../services/guideService';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('useGuide');
 
 interface UseGuideReturn {
   /**
@@ -52,7 +55,7 @@ export const useGuide = (): UseGuideReturn => {
           startGuide(guide);
         }
       } catch (error) {
-        console.error('[useGuide] Error checking guide completion:', error);
+        logger.error('[useGuide] Error checking guide completion:', error);
       }
     },
     [startGuide]
@@ -72,7 +75,7 @@ export const useGuide = (): UseGuideReturn => {
           startGuide(guide);
         }, 300);
       } catch (error) {
-        console.error('[useGuide] Error replaying guide:', error);
+        logger.error('[useGuide] Error replaying guide:', error);
       }
     },
     [startGuide]

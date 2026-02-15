@@ -58,6 +58,9 @@ import { communityService } from '../../services/communityServiceIndex';
 import { getUserProfile } from '../../services/profileService';
 import { showToast } from '../../utils/toast';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('CommunityScreen');
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { FEATURES } from '../../config/features';
 
@@ -138,7 +141,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
       setScreenState('ready');
     } catch (error: any) {
-      console.error('[CommunityScreen] Error loading data:', error);
+      logger.error('[CommunityScreen] Error loading data:', error);
       setScreenState('error');
       showToast.error('Failed to load', error.message || 'Unable to load Community data');
     }
@@ -222,14 +225,14 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   // TASK COMPLETION HANDLERS
   // ========================================
   const handleProposalVotesComplete = useCallback(async () => {
-    console.log('[CommunityScreen] handleProposalVotesComplete called');
+    logger.info('[CommunityScreen] handleProposalVotesComplete called');
 
     // Reload task progress
     const progress = await communityService.getCommunityTaskProgress();
     setTaskProgress(progress);
 
     // Auto-navigate to Friends Area (Page 1) after completing 3 votes
-    console.log('[CommunityScreen] Navigating to Friends Area');
+    logger.info('[CommunityScreen] Navigating to Friends Area');
     goToPage(1);
   }, [goToPage]);
 

@@ -32,6 +32,9 @@ import { communityService } from '../../services/communityServiceIndex';
 import { showToast } from '../../utils/toast';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { RateLimiter } from '../../utils/inputValidation';
+import { createLogger } from '../../utils/secureLogger';
+
+const logger = createLogger('DailyGridView');
 
 // Styled components
 const StyledView = styled(View);
@@ -68,7 +71,7 @@ export function DailyGridView({ onProposalSubmitted, taskProgress, isActive = fa
 
   // DEV: Log state on every render to track the blocking issue
   useEffect(() => {
-    console.log('[DailyGridView] Click state:', {
+    logger.info('[DailyGridView] Click state:', {
       isComplete,
       hasCompletedRandomMatch: taskProgress?.hasCompletedRandomMatch,
       taskProgressExists: !!taskProgress
@@ -85,18 +88,18 @@ export function DailyGridView({ onProposalSubmitted, taskProgress, isActive = fa
       const dailyGrid = await communityService.getTodaysGrid();
 
       // Debug: Log the received grid data
-      console.log('[DailyGridView] Grid loaded, anchor photos:', dailyGrid.anchor.photos);
-      console.log('[DailyGridView] Anchor firstName:', dailyGrid.anchor.firstName);
-      console.log('[DailyGridView] Candidates count:', dailyGrid.candidates.length);
+      logger.info('[DailyGridView] Grid loaded, anchor photos:', dailyGrid.anchor.photos);
+      logger.info('[DailyGridView] Anchor firstName:', dailyGrid.anchor.firstName);
+      logger.info('[DailyGridView] Candidates count:', dailyGrid.candidates.length);
       dailyGrid.candidates.forEach((c, i) => {
-        console.log(`[DailyGridView] Candidate ${i + 1} (${c.firstName}) photos:`, c.photos);
+        logger.info(`[DailyGridView] Candidate ${i + 1} (${c.firstName}) photos:`, c.photos);
       });
 
       setGrid(dailyGrid);
 
       setLoading(false);
     } catch (error: any) {
-      console.error('[DailyGridView] Error loading grid:', error);
+      logger.error('[DailyGridView] Error loading grid:', error);
       setLoading(false);
       showToast.error('Failed to load', error.message || 'Unable to load your grid');
     }
@@ -130,9 +133,9 @@ export function DailyGridView({ onProposalSubmitted, taskProgress, isActive = fa
   // MODAL HANDLING
   // ========================================
   const handleCandidatePress = useCallback((candidate: UserProfile) => {
-    console.log('[DailyGridView] Candidate pressed!', candidate.id, 'isComplete:', isComplete);
+    logger.info('[DailyGridView] Candidate pressed!', candidate.id, 'isComplete:', isComplete);
     if (isComplete) {
-      console.log('[DailyGridView] Blocked - already complete');
+      logger.info('[DailyGridView] Blocked - already complete');
       return; // Can't select if already submitted
     }
 
@@ -183,7 +186,7 @@ export function DailyGridView({ onProposalSubmitted, taskProgress, isActive = fa
 
       setSubmitting(false);
     } catch (error: any) {
-      console.error('[DailyGridView] Error submitting proposal:', error);
+      logger.error('[DailyGridView] Error submitting proposal:', error);
       setSubmitting(false);
       // Close modal on error so user can retry
       setModalVisible(false);

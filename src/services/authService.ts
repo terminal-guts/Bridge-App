@@ -7,6 +7,9 @@
 import { ApiResponse } from '../types';
 import { cleanupSubscriptions } from './messageService';
 import { supabase } from '../lib/supabase';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('AuthService');
 
 interface User {
   id: string;
@@ -35,7 +38,7 @@ const createErrorResponse = (code: string, message: string): ApiResponse<any> =>
  */
 export const sendOtpToPhone = async (phoneNumber: string): Promise<ApiResponse<void>> => {
   try {
-    console.log('[SMS] Attempting to send OTP via Twilio to:', phoneNumber);
+    logger.info('[SMS] Attempting to send OTP via Twilio to:', phoneNumber);
 
     const response = await fetch(`${API_URL}/onboarding/send-otp`, {
       method: 'POST',
@@ -51,16 +54,16 @@ export const sendOtpToPhone = async (phoneNumber: string): Promise<ApiResponse<v
         errorMessage = errorData.detail || errorMessage;
       } catch (e) {
         // Not JSON - might be Localtunnel interstitial or server crash
-        console.error('[SMS] Non-JSON error response:', errorText.slice(0, 100));
+        logger.error('[SMS] Non-JSON error response:', errorText.slice(0, 100));
         errorMessage = `Server Error: ${response.status}. Please check your backend connection.`;
       }
       throw new Error(errorMessage);
     }
 
-    console.log('[SMS] OTP request successful for:', phoneNumber);
+    logger.info('[SMS] OTP request successful for:', phoneNumber);
     return { ok: true };
   } catch (error: any) {
-    console.error('[SMS] Error sending OTP:', error.message);
+    logger.error('[SMS] Error sending OTP:', error.message);
     return {
       ok: false,
       error: {
@@ -76,7 +79,7 @@ export const sendOtpToPhone = async (phoneNumber: string): Promise<ApiResponse<v
  */
 export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> => {
   try {
-    console.log('[EMAIL] Attempting to send OTP to:', email);
+    logger.info('[EMAIL] Attempting to send OTP to:', email);
 
     const response = await fetch(`${API_URL}/onboarding/send-email-otp`, {
       method: 'POST',
@@ -89,10 +92,10 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
       throw new Error(errorData.detail || 'Failed to send email OTP');
     }
 
-    console.log('[EMAIL] OTP request successful for:', email);
+    logger.info('[EMAIL] OTP request successful for:', email);
     return { ok: true };
   } catch (error: any) {
-    console.error('[EMAIL] Error sending OTP:', error.message);
+    logger.error('[EMAIL] Error sending OTP:', error.message);
     return {
       ok: false,
       error: {
@@ -108,7 +111,7 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
  */
 export const signOut = async (): Promise<ApiResponse<void>> => {
   try {
-    console.log('[AUTH] Signing out user');
+    logger.info('[AUTH] Signing out user');
 
     // Clean up message subscriptions
     cleanupSubscriptions();
@@ -170,7 +173,7 @@ export const getCurrentUser = async (): Promise<ApiResponse<User | null>> => {
  */
 export const verifyPhone = async (phone: string, code: string): Promise<ApiResponse<User>> => {
   try {
-    console.log('[SMS] Verifying code:', code, 'for phone:', phone);
+    logger.info('[SMS] Verifying code:', code, 'for phone:', phone);
 
     const response = await fetch(`${API_URL}/onboarding/verify-otp`, {
       method: 'POST',
@@ -185,20 +188,20 @@ export const verifyPhone = async (phone: string, code: string): Promise<ApiRespo
         const errorData = JSON.parse(errorText);
         errorMessage = errorData.detail || errorMessage;
       } catch (e) {
-        console.error('[SMS] Non-JSON verify response:', errorText.slice(0, 100));
+        logger.error('[SMS] Non-JSON verify response:', errorText.slice(0, 100));
         errorMessage = `Server Error: ${response.status}. Check if your backend is running at ${API_URL}`;
       }
       throw new Error(errorMessage);
     }
 
-    console.log('[SMS] Phone verification successful!');
+    logger.info('[SMS] Phone verification successful!');
 
     const responseText = await response.text();
     let data;
     try {
       data = JSON.parse(responseText);
     } catch (e) {
-      console.error('[SMS] Parse error on success:', responseText.slice(0, 100));
+      logger.error('[SMS] Parse error on success:', responseText.slice(0, 100));
       throw new Error(`Server at ${API_URL} returned HTML instead of JSON (Status: ${response.status}). Are you hitting the right service?`);
     }
 
@@ -213,7 +216,7 @@ export const verifyPhone = async (phone: string, code: string): Promise<ApiRespo
       data: mockCurrentUser,
     };
   } catch (error: any) {
-    console.error('[SMS] Verification error:', error.message);
+    logger.error('[SMS] Verification error:', error.message);
     return {
       ok: false,
       error: {
@@ -229,7 +232,7 @@ export const verifyPhone = async (phone: string, code: string): Promise<ApiRespo
  */
 export const verifyEmail = async (email: string, code: string): Promise<ApiResponse<User>> => {
   try {
-    console.log('[EMAIL] Verifying code:', code, 'for email:', email);
+    logger.info('[EMAIL] Verifying code:', code, 'for email:', email);
 
     const response = await fetch(`${API_URL}/onboarding/verify-email-otp`, {
       method: 'POST',
@@ -243,7 +246,7 @@ export const verifyEmail = async (email: string, code: string): Promise<ApiRespo
     }
 
     const data = await response.json();
-    console.log('[EMAIL] Email verification successful!');
+    logger.info('[EMAIL] Email verification successful!');
 
     mockCurrentUser = {
       id: data.user_id || MOCK_USER_ID,
@@ -255,7 +258,7 @@ export const verifyEmail = async (email: string, code: string): Promise<ApiRespo
       data: mockCurrentUser,
     };
   } catch (error: any) {
-    console.error('[EMAIL] Verification error:', error.message);
+    logger.error('[EMAIL] Verification error:', error.message);
     return {
       ok: false,
       error: {
