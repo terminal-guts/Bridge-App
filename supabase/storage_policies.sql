@@ -28,7 +28,7 @@ CREATE POLICY "Users can delete own photos from storage"
     );
 
 CREATE POLICY "Users can update own photos in storage"
-    ON storage.objects FOR UPDATEgoog
+    ON storage.objects FOR UPDATE
     USING (
         bucket_id = 'profile-photos'
         AND (storage.foldername(name))[1] = auth.uid()::text

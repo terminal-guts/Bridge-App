@@ -335,7 +335,7 @@ async def send_otp(request: PhoneRequest):
 async def verify_otp(request: VerifyRequest):
     stored_code = verification_codes.get(request.phone_number)
     
-    if (stored_code and stored_code == request.code) or request.code == "123456":
+    if stored_code and stored_code == request.code:
         # Code matches
         if request.phone_number in verification_codes:
             del verification_codes[request.phone_number]
@@ -390,7 +390,7 @@ async def send_email_otp(request: EmailRequest):
 @app.post("/onboarding/verify-email-otp")
 async def verify_email_otp(request: VerifyEmailRequest):
     stored_code = verification_codes.get(request.email)
-    if (stored_code and stored_code == request.code) or request.code == "123456":
+    if stored_code and stored_code == request.code:
         if request.email in verification_codes:
             del verification_codes[request.email]
             
