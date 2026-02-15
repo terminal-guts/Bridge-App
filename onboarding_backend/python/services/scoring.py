@@ -12,6 +12,9 @@ Category Weights:
   Career:        1%
 """
 
+#fed data from algorithmic parameters into claude to decide these weights, can change later on lmao 
+
+
 from typing import Dict, List, Optional, Any
 import math
 import re
@@ -233,6 +236,19 @@ def _score_single_substance(
     return (a_to_b + b_to_a) / 2
 
 
+def _get_lifestyle_pref(prefs: Dict, substance: str):
+    pref_key = f"partner_{substance}"
+    val = prefs.get(pref_key)
+    if val is not None:
+        return val
+
+    old_prefs = prefs.get("partner_lifestyle_preferences", {})
+    if isinstance(old_prefs, dict):
+        return old_prefs.get(substance)
+
+    return None
+
+
 def score_lifestyle(profile_a: Dict, prefs_a: Dict, profile_b: Dict, prefs_b: Dict) -> float:
     substances = ["drinking", "cannabis", "tobacco", "other_drugs"]
     habit_keys = [
@@ -240,21 +256,13 @@ def score_lifestyle(profile_a: Dict, prefs_a: Dict, profile_b: Dict, prefs_b: Di
         "tobacco_frequency", "other_drugs_frequency"
     ]
 
-    a_lifestyle_prefs = _get_pref(profile_a, prefs_a, "partner_lifestyle_preferences", {})
-    b_lifestyle_prefs = _get_pref(profile_b, prefs_b, "partner_lifestyle_preferences", {})
-
-    if isinstance(a_lifestyle_prefs, str):
-        a_lifestyle_prefs = {}
-    if isinstance(b_lifestyle_prefs, str):
-        b_lifestyle_prefs = {}
-
     total = 0.0
     for substance, habit_key in zip(substances, habit_keys):
         a_habit = _get(profile_a, habit_key)
         b_habit = _get(profile_b, habit_key)
 
-        a_pref = a_lifestyle_prefs.get(substance) if isinstance(a_lifestyle_prefs, dict) else None
-        b_pref = b_lifestyle_prefs.get(substance) if isinstance(b_lifestyle_prefs, dict) else None
+        a_pref = _get_lifestyle_pref(prefs_a, substance)
+        b_pref = _get_lifestyle_pref(prefs_b, substance)
 
         total += _score_single_substance(a_habit, b_pref, b_habit, a_pref)
 
@@ -466,10 +474,10 @@ def score_height(profile_a: Dict, prefs_a: Dict, profile_b: Dict, prefs_b: Dict)
     if a_height is None or b_height is None:
         return 0.5
 
-    a_min = _get_pref(profile_a, prefs_a, "height_min")
-    a_max = _get_pref(profile_a, prefs_a, "height_max")
-    b_min = _get_pref(profile_b, prefs_b, "height_min")
-    b_max = _get_pref(profile_b, prefs_b, "height_max")
+    a_min = _get_pref(profile_a, prefs_a, "preferred_height_min_inches") or _get_pref(profile_a, prefs_a, "height_min")
+    a_max = _get_pref(profile_a, prefs_a, "preferred_height_max_inches") or _get_pref(profile_a, prefs_a, "height_max")
+    b_min = _get_pref(profile_b, prefs_b, "preferred_height_min_inches") or _get_pref(profile_b, prefs_b, "height_min")
+    b_max = _get_pref(profile_b, prefs_b, "preferred_height_max_inches") or _get_pref(profile_b, prefs_b, "height_max")
 
     def direction_score(person_height, pref_min, pref_max):
         if (pref_min is None or pref_min == 0) and (pref_max is None or pref_max == 0 or pref_max >= 120):
@@ -726,8 +734,8 @@ def passes_basic_filter(
 ) -> bool:
     a_gender = _get(profile_a, "gender") or []
     b_gender = _get(profile_b, "gender") or []
-    a_interested = _get_pref(profile_a, prefs_a, "interested_in_genders", []) or []
-    b_interested = _get_pref(profile_b, prefs_b, "interested_in_genders", []) or []
+    a_interested = _get(profile_a, "interested_in_genders") or _get_pref(profile_a, prefs_a, "interested_in_genders", []) or []
+    b_interested = _get(profile_b, "interested_in_genders") or _get_pref(profile_b, prefs_b, "interested_in_genders", []) or []
 
     if isinstance(a_gender, str):
         a_gender = [a_gender]

@@ -17,26 +17,16 @@ UNIVERSAL_PROPOSAL_RELEASE_HOUR = 0
 
 
 def _fetch_eligible_users(supabase) -> List[Dict]:
-    cutoff = (datetime.datetime.now(datetime.timezone.utc) -
-              datetime.timedelta(days=14)).isoformat()
     try:
-        result = supabase.table("profiles").select("*") \
-            .eq("profile_completed", True) \
+        result = supabase.table("user_profiles").select("*") \
             .eq("is_paused", False) \
-            .gte("last_active_at", cutoff) \
+            .not_.is_("age", "null") \
             .execute()
-        return result.data or []
+        users = result.data or []
+        return [u for u in users if u.get("age") and u.get("gender")]
     except Exception as e:
-        print(f"[DAILY_PAIRING] Warning with activity filter: {e}")
-        try:
-            result = supabase.table("profiles").select("*") \
-                .eq("profile_completed", True) \
-                .eq("is_paused", False) \
-                .execute()
-            return result.data or []
-        except Exception as e2:
-            print(f"[DAILY_PAIRING] Error fetching users: {e2}")
-            return []
+        print(f"[DAILY_PAIRING] Error fetching users: {e}")
+        return []
 
 
 def _fetch_preferences(supabase, user_ids: List[str]) -> Dict[str, Dict]:
@@ -63,9 +53,15 @@ def _fetch_deep_questions(supabase, user_ids: List[str]) -> Dict[str, List[Dict]
         dq_map: Dict[str, List[Dict]] = {}
         for row in (result.data or []):
             uid = row["user_id"]
-            if uid not in dq_map:
-                dq_map[uid] = []
-            dq_map[uid].append(row)
+            answers_jsonb = row.get("answers", {})
+            if isinstance(answers_jsonb, dict) and answers_jsonb:
+                converted = []
+                for q_id, answer_text in answers_jsonb.items():
+                    converted.append({
+                        "question_id": int(q_id) if str(q_id).isdigit() else q_id,
+                        "answer_text": answer_text if isinstance(answer_text, str) else str(answer_text),
+                    })
+                dq_map[uid] = converted
 
         return dq_map
     except Exception as e:
@@ -92,12 +88,12 @@ def _fetch_recent_pairings(supabase, lookback_days: int = RECENT_PAIRING_LOOKBAC
 def _fetch_active_match_pairs(supabase) -> Set[frozenset]:
     try:
         result = supabase.table("matches") \
-            .select("user1_id, user2_id") \
+            .select("user_id_1, user_id_2") \
             .eq("status", "active") \
             .execute()
         pairs = set()
         for row in (result.data or []):
-            pairs.add(frozenset({row["user1_id"], row["user2_id"]}))
+            pairs.add(frozenset({row["user_id_1"], row["user_id_2"]}))
         return pairs
     except Exception as e:
         print(f"[DAILY_PAIRING] Error fetching active matches: {e}")
@@ -151,18 +147,20 @@ def _build_scored_edges(
         for j in range(i + 1, n):
             a = users[i]
             b = users[j]
-            pair_key = frozenset({a["id"], b["id"]})
+            a_uid = a["user_id"]
+            b_uid = b["user_id"]
+            pair_key = frozenset({a_uid, b_uid})
 
             if pair_key in active_match_pairs:
                 continue
 
-            prefs_a = prefs_map.get(a["id"], {})
-            prefs_b = prefs_map.get(b["id"], {})
+            prefs_a = prefs_map.get(a_uid, {})
+            prefs_b = prefs_map.get(b_uid, {})
 
             result = _score_pair(
                 a, prefs_a, b, prefs_b,
-                deep_questions_a=dq_map.get(a["id"], []),
-                deep_questions_b=dq_map.get(b["id"], []),
+                deep_questions_a=dq_map.get(a_uid, []),
+                deep_questions_b=dq_map.get(b_uid, []),
             )
             if result is None:
                 continue
@@ -173,7 +171,7 @@ def _build_scored_edges(
                 score -= 15.0
 
             if score > 0:
-                edges.append((a["id"], b["id"], score, result))
+                edges.append((a_uid, b_uid, score, result))
 
     edges.sort(key=lambda e: e[2], reverse=True)
 
@@ -275,7 +273,7 @@ def run_daily_pairing(supabase) -> Dict[str, Any]:
         }
 
     already_paired = _fetch_existing_today_pairings(supabase, today)
-    users = [u for u in users if u["id"] not in already_paired]
+    users = [u for u in users if u["user_id"] not in already_paired]
     print(f"[DAILY_PAIRING] {len(users)} users need pairing ({len(already_paired)} already paired)")
 
     if len(users) < 2:
@@ -287,7 +285,7 @@ def run_daily_pairing(supabase) -> Dict[str, Any]:
             "pairings_created": 0,
         }
 
-    user_ids = [u["id"] for u in users]
+    user_ids = [u["user_id"] for u in users]
     prefs_map = _fetch_preferences(supabase, user_ids)
     dq_map = _fetch_deep_questions(supabase, user_ids)
     recent_pairs = _fetch_recent_pairings(supabase)
@@ -307,7 +305,7 @@ def run_daily_pairing(supabase) -> Dict[str, Any]:
             "pairings_created": 0,
         }
 
-    user_id_set = {u["id"] for u in users}
+    user_id_set = set(user_ids)
     pairings = _greedy_maximum_matching(edges, user_id_set)
     print(f"[DAILY_PAIRING] Matched {len(pairings)} pairs "
           f"({len(pairings) * 2}/{len(users)} users)")
@@ -359,23 +357,29 @@ def get_user_daily_pairing(supabase, user_id: str, date: Optional[str] = None) -
                 .execute()
             pairing["seen"] = True
 
-        partner_result = supabase.table("profiles") \
-            .select("id, first_name, age, gender, location, interests, values, "
+        partner_result = supabase.table("user_profiles") \
+            .select("user_id, first_name, age, gender, location, interests, values, "
                     "bio, height_inches, ethnicity, religion, political_leaning, "
                     "education_level, current_job") \
-            .eq("id", pairing["partner_id"]) \
+            .eq("user_id", pairing["partner_id"]) \
             .maybe_single() \
             .execute()
 
-        if partner_result.data:
+        partner = partner_result.data if partner_result.data else {}
+
+        if partner:
             photos = supabase.table("user_photos") \
-                .select("url, is_main, display_order") \
+                .select("storage_path, is_main, display_order") \
                 .eq("user_id", pairing["partner_id"]) \
                 .order("display_order") \
                 .execute()
-            partner_result.data["photos"] = photos.data or []
+            partner["photos"] = [
+                {"url": p["storage_path"], "is_main": p["is_main"], "display_order": p["display_order"]}
+                for p in (photos.data or [])
+            ]
+            partner["id"] = partner.get("user_id")
 
-        pairing["partner_profile"] = partner_result.data if partner_result.data else {}
+        pairing["partner_profile"] = partner
 
         return pairing
 

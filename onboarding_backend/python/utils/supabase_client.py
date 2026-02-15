@@ -21,13 +21,15 @@ class MockSupabaseClient:
 
 def get_supabase_client():
     url = os.environ.get("EXPO_PUBLIC_SUPABASE_URL") or os.environ.get("SUPABASE_URL")
-    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SERVICE_ROLE_KEY")
-    
+    key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+           or os.environ.get("SERVICE_ROLE_KEY")
+           or os.environ.get("SUPABASE_ANON_KEY"))
+
     if not url or not key:
         print("\n" + "!"*60)
-        print("DATABASE ERROR: Supabase Service Role Key or URL missing.")
-        print("ONBOARDING: Switching to Mock Database Mode.")
-        print("SMS & PHOTO analysis will still work, but no profiles will be saved.")
+        print("DATABASE ERROR: No Supabase key found.")
+        print("Checked: SUPABASE_SERVICE_ROLE_KEY, SERVICE_ROLE_KEY, SUPABASE_ANON_KEY")
+        print("Switching to Mock Database Mode.")
         print("!"*60 + "\n")
         return MockSupabaseClient()
         
