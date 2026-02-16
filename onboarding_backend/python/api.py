@@ -93,13 +93,18 @@ async def verify_otp(phone: str, code: str):
     else:
         return {"status": "error", "message": "Invalid verification code"}
 
+from pydantic import BaseModel
+
+class ModerationRequest(BaseModel):
+    text: str
+
 @app.post("/moderate-text")
-async def moderate_text(text: str):
+async def moderate_text(request: ModerationRequest):
     """
-    Analyzes text for sentiment, PII, and banned phrases using AWS Comprehend.
+    Analyzes text for sentiment, PII, banned phrases, and asking-out intent.
     """
     try:
-        results = comprehend_service.moderate_content(text)
+        results = comprehend_service.moderate_content(request.text)
         return results
     except Exception as e:
         print(f"Error in text moderation: {e}")

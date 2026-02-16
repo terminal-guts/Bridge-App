@@ -2,6 +2,7 @@ import boto3
 import os
 import re
 from typing import List, Dict, Any, Optional
+from services.asking_out_detector import moderate_asking_out
 
 class ComprehendService:
     """
@@ -101,20 +102,25 @@ class ComprehendService:
 
     def moderate_content(self, text: str) -> Dict[str, Any]:
         """
-        Performs a full moderation check: Sentiment, PII, and Banned Phrases.
+        Performs a full moderation check: Sentiment, PII, Banned Phrases, and Asking Out.
         """
         sentiment = self.analyze_sentiment(text)
         pii = self.detect_pii(text)
         banned = self.check_banned_phrases(text)
+        asking_out = moderate_asking_out(text)
         
-        # High level logic: flag if it has PII or contains banned phrases
-        is_safe = not pii.get("pii_detected") and not banned.get("flagged")
+        is_safe = (
+            not pii.get("pii_detected")
+            and not banned.get("flagged")
+            and not asking_out.get("is_asking_out")
+        )
         
         return {
             "is_safe": is_safe,
             "sentiment": sentiment,
             "pii": pii,
-            "banned_check": banned
+            "banned_check": banned,
+            "asking_out": asking_out,
         }
 
 if __name__ == "__main__":

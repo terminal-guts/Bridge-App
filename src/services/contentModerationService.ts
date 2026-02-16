@@ -3,90 +3,58 @@ import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('ContentModerationService');
 
-/**
- * Azure Content Safety Service
- *
- * Integrates with Microsoft Azure Content Safety API to moderate text content.
- * Requires AZURE_CONTENT_SAFETY_ENDPOINT and AZURE_CONTENT_SAFETY_KEY to be set.
- */
-
-const API_VERSION = '2023-10-01';
-
-interface AnalyzeTextRequest {
-    text: string;
-    categories?: string[];
-    blocklistNames?: string[];
-    haltOnBlocklistHit?: boolean;
-    outputType?: 'FourSeverityLevels' | 'EightSeverityLevels';
-}
-
-interface AnalyzeTextResponse {
-    blocklistsMatch: any[];
-    categoriesAnalysis: {
-        category: 'Hate' | 'SelfHarm' | 'Sexual' | 'Violence';
-        severity: number; // 0 (Safe) to 6 (High) usually, depending on outputType
-    }[];
-}
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://bridge-frontend-production.up.railway.app';
 
 export const contentModerationService = {
     /**
-     * Analyze text for harmful content using Azure Content Safety
+     * Analyze text for harmful content using our Python backend (PII, Banned Phrases, Asking Out)
      */
     analyzeText: async (text: string): Promise<{ isSafe: boolean; reason?: string }> => {
-        const endpoint = process.env.EXPO_PUBLIC_AZURE_CONTENT_SAFETY_ENDPOINT;
-        const key = process.env.EXPO_PUBLIC_AZURE_CONTENT_SAFETY_KEY;
-
-        if (!endpoint || !key) {
-            logger.warn('[CONTENT MODERATION] Missing Azure credentials. Skipping moderation.');
-            return { isSafe: true };
-        }
-
         try {
-            logger.info('[CONTENT MODERATION] Analyzing text...');
+            logger.info('[CONTENT MODERATION] Analyzing text via backend...');
 
-            // Azure resource endpoints usually need /contentsafety/text:analyze
-            // If the user provided the full resource URL (e.g. https://name.cognitiveservices.azure.com/), we append path.
-            // If they provided the full URL to the endpoint, we use it as is? 
-            // Safest is to handle the base URL.
-            const baseUrl = endpoint.endsWith('/') ? endpoint.slice(0, -1) : endpoint;
-            const url = `${baseUrl}/contentsafety/text:analyze?api-version=${API_VERSION}`;
-
-            const response = await fetch(url, {
+            // Send to Python backend which handles Comprehend + Local Asking Out detection
+            const response = await fetch(`${API_URL}/moderate-text`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Ocp-Apim-Subscription-Key': key,
                 },
-                body: JSON.stringify({
-                    text,
-                    categories: ['Hate', 'SelfHarm', 'Sexual', 'Violence'],
-                    outputType: 'FourSeverityLevels', // 0, 2, 4, 6
-                } as AnalyzeTextRequest),
+                body: JSON.stringify({ text }),
             });
 
             if (!response.ok) {
                 const errorText = await response.text();
-                logger.error('[CONTENT MODERATION] API Error:', response.status, errorText);
-                // Fail open or closed? For a mock/demo, failing open (allowing text) is less annoying if config is bad.
+                logger.error('[CONTENT MODERATION] Backend Error:', response.status, errorText);
+                // Fail open to avoid blocking legitimate messages on error
                 return { isSafe: true };
             }
 
-            const data: AnalyzeTextResponse = await response.json();
+            const data = await response.json();
 
-            // Check for violations
-            // Severity: 0 (Safe), 2 (Low), 4 (Medium), 6 (High)
-            // We can decide the threshold. Let's block Medium and High (>= 4).
-            const violations = data.categoriesAnalysis.filter(c => c.severity >= 2); // Strict: Block Low+
+            // Backend returns:
+            // {
+            //   "is_safe": boolean,
+            //   "sentiment": {...},
+            //   "pii": {...},
+            //   "banned_check": {...},
+            //   "asking_out": {...}
+            // }
 
-            if (violations.length > 0) {
-                const categories = violations.map(v => v.category).join(', ');
-                logger.warn(`[CONTENT MODERATION] Text blocked: ${categories}`);
+            if (!data.is_safe) {
+                let reason = 'Content flagged as inappropriate.';
+
+                if (data.pii?.pii_detected) reason = 'Personal information detected (PII).';
+                else if (data.banned_check?.flagged) reason = 'Contains restricted phrases.';
+                else if (data.asking_out?.is_asking_out) reason = 'Asking out behavior detected (please keep convo in app for now).';
+
+                logger.warn(`[CONTENT MODERATION] Text blocked: ${reason}`, { details: data });
                 return {
                     isSafe: false,
-                    reason: `Content flagged as inappropriate (${categories})`
+                    reason
                 };
             }
 
+            logger.info('[CONTENT MODERATION] Text is safe.');
             return { isSafe: true };
 
         } catch (error) {
