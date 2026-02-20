@@ -10,13 +10,13 @@ export type QuestionTier = 1 | 2 | 3;
 /**
  * Get the tier for a given question ID
  *
- * Tier 1 (Getting to Know You): Questions 1-12
- * Tier 2 (Going Deeper): Questions 13-24
- * Tier 3 (Building Connection): Questions 25-36
+ * Tier 1 (Getting to Know You): Questions 1-7
+ * Tier 2 (Going Deeper): Questions 8-14
+ * Tier 3 (Building Connection): Questions 15-21
  */
 export const getQuestionTier = (questionId: number): QuestionTier => {
-  if (questionId >= 1 && questionId <= 12) return 1;
-  if (questionId >= 13 && questionId <= 24) return 2;
+  if (questionId >= 1 && questionId <= 7) return 1;
+  if (questionId >= 8 && questionId <= 14) return 2;
   return 3;
 };
 
@@ -112,10 +112,14 @@ export const validateTierDistribution = (displayedIds: number[]):
 
 /**
  * Get the total number of questions per tier
+ * Tier 1: 7 questions
+ * Tier 2: 7 questions
+ * Tier 3: 7 questions
  */
-export const QUESTIONS_PER_TIER = 12;
+export const QUESTIONS_PER_TIER = 7;
 
 /**
  * Get the total number of questions across all tiers
+ * 21 total questions (7 per tier)
  */
-export const TOTAL_QUESTIONS = 36;
+export const TOTAL_QUESTIONS = 21;

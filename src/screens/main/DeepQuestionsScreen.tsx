@@ -21,6 +21,8 @@ import { getCurrentUser } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { lightHaptic, mediumHaptic, successHaptic } from '../../utils/haptics';
 import { createLogger } from '../../utils/secureLogger';
+import { DEEP_QUESTIONS, getQuestionById } from '../../utils/deepQuestions';
+import { getQuestionTier, QUESTIONS_PER_TIER } from '../../utils/questionTiers';
 
 const logger = createLogger('DeepQuestionsScreen');
 
@@ -75,51 +77,19 @@ const AnimatedCard = React.memo<{ children: React.ReactNode; delay?: number; cla
   );
 });
 
-// Sample deep questions organized by tier
-const DEEP_QUESTIONS = {
-  1: [
-    { id: 1, question: "Given the choice of anyone in the world, whom would you want as a dinner guest?" },
-    { id: 2, question: "Would you like to be famous? In what way?" },
-    { id: 3, question: "Before making a telephone call, do you ever rehearse what you are going to say? Why?" },
-    { id: 4, question: "What would constitute a 'perfect' day for you?" },
-    { id: 5, question: "When did you last sing to yourself? To someone else?" },
-    { id: 6, question: "If you were able to live to the age of 90 and retain either the mind or body of a 30-year-old for the last 60 years of your life, which would you want?" },
-    { id: 7, question: "Do you have a secret hunch about how you will die?" },
-    { id: 8, question: "What are three qualities you value most in your closest friendships?" },
-    { id: 9, question: "For what in your life do you feel most grateful?" },
-    { id: 10, question: "If you could change anything about the way you were raised, what would it be?" },
-    { id: 11, question: "Describe your life story in as much detail as possible - the key moments that made you who you are today." },
-    { id: 12, question: "If you could wake up tomorrow having gained any one quality or ability, what would it be?" },
-  ],
-  2: [
-    { id: 13, question: "If a crystal ball could tell you the truth about yourself, your life, the future or anything else, what would you want to know?" },
-    { id: 14, question: "Is there something that you've dreamed of doing for a long time? Why haven't you done it?" },
-    { id: 15, question: "What is the greatest accomplishment of your life?" },
-    { id: 16, question: "What do you value most in a friendship?" },
-    { id: 17, question: "What is your most treasured memory?" },
-    { id: 18, question: "What is your most terrible memory?" },
-    { id: 19, question: "If you knew that in one year you would die suddenly, would you change anything about the way you are now living? Why?" },
-    { id: 20, question: "What does friendship mean to you?" },
-    { id: 21, question: "What roles do love and affection play in your life?" },
-    { id: 22, question: "What are five qualities you most admire in the people closest to you?" },
-    { id: 23, question: "How close and warm is your family? Do you feel your childhood was happier than most other people's?" },
-    { id: 24, question: "How do you feel about your relationship with your mother?" },
-  ],
-  3: [
-    { id: 25, question: "What are three things you hope to have in common with your future partner?" },
-    { id: 26, question: "Complete this sentence: 'I wish I had someone with whom I could share ...'" },
-    { id: 27, question: "What would be important for someone to know about you if they were going to become a close friend or partner?" },
-    { id: 28, question: "What qualities do you find most attractive in a potential partner, and why are they important to you?" },
-    { id: 29, question: "Share an embarrassing moment in your life that taught you something about yourself." },
-    { id: 30, question: "When did you last cry in front of another person? By yourself?" },
-    { id: 31, question: "What do you notice first when you're attracted to someone - what draws you in?" },
-    { id: 32, question: "What, if anything, is too serious to be joked about?" },
-    { id: 33, question: "If you were to die this evening with no opportunity to communicate with anyone, what would you most regret not having told someone? Why haven't you told them yet?" },
-    { id: 34, question: "Your house, containing everything you own, catches fire. After saving your loved ones and pets, you have time to safely make a final dash to save any one item. What would it be? Why?" },
-    { id: 35, question: "Of all the people in your family, whose death would you find most disturbing? Why?" },
-    { id: 36, question: "Share a personal challenge you're currently facing and how you're working through it." },
-  ],
+// Helper function to group imported questions by tier
+const getQuestionsByTier = () => {
+  const grouped: { [key: number]: typeof DEEP_QUESTIONS } = { 1: [], 2: [], 3: [] };
+
+  DEEP_QUESTIONS.forEach(q => {
+    const tier = getQuestionTier(q.id);
+    grouped[tier].push(q);
+  });
+
+  return grouped as { 1: typeof DEEP_QUESTIONS; 2: typeof DEEP_QUESTIONS; 3: typeof DEEP_QUESTIONS };
 };
+
+const QUESTIONS_BY_TIER = getQuestionsByTier();
 
 export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ navigation, route }) => {
   const { userId, editable = true, tier } = route.params || {};
@@ -239,15 +209,9 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
     // Auto-star first question answered in each tier
     const isNewAnswer = existingIndex < 0; // This is a new answer, not an edit
     if (isNewAnswer) {
-      // Check if this tier has any starred questions
-      const getTier = (id: number): 1 | 2 | 3 => {
-        if (id >= 1 && id <= 12) return 1;
-        if (id >= 13 && id <= 24) return 2;
-        return 3;
-      };
-
+      // Check if this tier has any starred questions using centralized function
       const questionTier = currentQuestion.tier;
-      const hasStarredQuestionInTier = displayedQuestions.some(id => getTier(id) === questionTier);
+      const hasStarredQuestionInTier = displayedQuestions.some(id => getQuestionTier(id) === questionTier);
 
       // If this tier has no starred questions, auto-star this one
       if (!hasStarredQuestionInTier) {
@@ -271,25 +235,19 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
       return;
     }
 
-    // Determine which tier this question belongs to
-    const getTier = (id: number): 1 | 2 | 3 => {
-      if (id >= 1 && id <= 12) return 1;
-      if (id >= 13 && id <= 24) return 2;
-      return 3; // 25-36
-    };
-
-    const newQuestionTier = getTier(questionId);
+    // Determine which tier this question belongs to using centralized function
+    const newQuestionTier = getQuestionTier(questionId);
 
     // Check if we already have a question from this tier displayed
     const tierCounts = { 1: 0, 2: 0, 3: 0 };
     displayedQuestions.forEach(id => {
-      const tier = getTier(id);
+      const tier = getQuestionTier(id);
       tierCounts[tier]++;
     });
 
     if (tierCounts[newQuestionTier] >= 1) {
       // Find the currently starred question from this tier
-      const currentlyStarredId = displayedQuestions.find(id => getTier(id) === newQuestionTier);
+      const currentlyStarredId = displayedQuestions.find(id => getQuestionTier(id) === newQuestionTier);
       const currentlyStarredQuestion = answers.find(a => a.questionId === currentlyStarredId);
 
       Alert.alert(
@@ -384,16 +342,16 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
 
     // Get unanswered questions for each tier
     const unansweredByTier = {
-      1: DEEP_QUESTIONS[1].filter(q => !getAnswerForQuestion(q.id)),
-      2: DEEP_QUESTIONS[2].filter(q => !getAnswerForQuestion(q.id)),
-      3: DEEP_QUESTIONS[3].filter(q => !getAnswerForQuestion(q.id)),
+      1: QUESTIONS_BY_TIER[1].filter(q => !getAnswerForQuestion(q.id)),
+      2: QUESTIONS_BY_TIER[2].filter(q => !getAnswerForQuestion(q.id)),
+      3: QUESTIONS_BY_TIER[3].filter(q => !getAnswerForQuestion(q.id)),
     };
 
     // Calculate tier stats
     const tierStats = {
-      1: { answered: 0, total: 12 },
-      2: { answered: 0, total: 12 },
-      3: { answered: 0, total: 12 },
+      1: { answered: 0, total: QUESTIONS_PER_TIER },
+      2: { answered: 0, total: QUESTIONS_PER_TIER },
+      3: { answered: 0, total: QUESTIONS_PER_TIER },
     };
 
     answers.forEach(a => {
@@ -552,7 +510,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
   };
 
   const renderTier = (tier: 1 | 2 | 3) => {
-    const questions = DEEP_QUESTIONS[tier];
+    const questions = QUESTIONS_BY_TIER[tier];
     const answeredCount = questions.filter(q => getAnswerForQuestion(q.id)).length;
     const isExpanded = expandedTier === tier;
     const progressPercent = (answeredCount / questions.length) * 100;
