@@ -646,7 +646,6 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
                   </Body>
                   <StyledView style={{ backgroundColor: '#E0E7FF' }} className="rounded-full h-2 overflow-hidden">
                     <StyledView
-                      style={{ backgroundColor: '#437FFF' }}
                       className="h-2 rounded-full"
                       style={{ width: `${(displayedQuestions.length / 3) * 100}%`, backgroundColor: '#437FFF' }}
                     />
