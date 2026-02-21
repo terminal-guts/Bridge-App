@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import sys
@@ -14,6 +14,11 @@ from services.photo_analysis_service import PhotoAnalysisService
 from services.aws_service import AwsService
 from services.comprehend_service import ComprehendService
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi.responses import JSONResponse
 try:
     import deep
     import AIFace
@@ -35,6 +40,27 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
+
+# --- DDoS Protection: Rate Limiting & Payload Limits ---
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+class LimitUploadSize(BaseHTTPMiddleware):
+    def __init__(self, app, max_upload_size: int):
+        super().__init__(app)
+        self.max_upload_size = max_upload_size
+
+    async def dispatch(self, request: Request, call_next):
+        if request.method in ["POST", "PUT", "PATCH"]:
+            content_length = request.headers.get("content-length")
+            if content_length and int(content_length) > self.max_upload_size:
+                return JSONResponse(status_code=413, content={"detail": "Payload Too Large. Max size exceeded."})
+        return await call_next(request)
+
+# Limit to 10MB payload to prevent memory exhaustion attacks
+app.add_middleware(LimitUploadSize, max_upload_size=10_000_000)
+# --------------------------------------------------------
 
 sms_service = SMSService()
 email_service = EmailService()
@@ -324,23 +350,25 @@ async def save_onboarding_step(request: SaveStepRequest):
         return {"status": "error", "message": str(e)}
 
 @app.post("/onboarding/send-otp")
-async def send_otp(request: PhoneRequest):
+@limiter.limit("5/minute")
+async def send_otp(request: Request, payload: PhoneRequest):
     code = generate_otp()
-    verification_codes[request.phone_number] = code
+    verification_codes[payload.phone_number] = code
     
-    success = sms_service.send_verification_code(request.phone_number, code)
+    success = sms_service.send_verification_code(payload.phone_number, code)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to send OTP")
     return {"message": "OTP sent successfully"}
 
 @app.post("/onboarding/verify-otp")
-async def verify_otp(request: VerifyRequest):
-    stored_code = verification_codes.get(request.phone_number)
+@limiter.limit("10/minute")
+async def verify_otp(request: Request, payload: VerifyRequest):
+    stored_code = verification_codes.get(payload.phone_number)
     
-    if stored_code and stored_code == request.code:
+    if stored_code and stored_code == payload.code:
         # Code matches
-        if request.phone_number in verification_codes:
-            del verification_codes[request.phone_number]
+        if payload.phone_number in verification_codes:
+            del verification_codes[payload.phone_number]
             
         # Task 1: Check for existing user in Supabase
         user_id = None
@@ -350,7 +378,7 @@ async def verify_otp(request: VerifyRequest):
             # We derive a consistent UUID from the phone number for this mock version.
             # REAL WORLD: You'd query auth.users via Supabase Auth Admin API.
             import hashlib
-            derived_user_id = str(hashlib.md5(request.phone_number.encode()).hexdigest())
+            derived_user_id = str(hashlib.md5(payload.phone_number.encode()).hexdigest())
             # Convert to UUID format
             user_id = f"00000000-0000-0000-0000-{derived_user_id[:12]}"
             
@@ -376,14 +404,15 @@ async def verify_otp(request: VerifyRequest):
         raise HTTPException(status_code=400, detail="Invalid verification code")
 
 @app.post("/onboarding/send-email-otp")
-async def send_email_otp(request: EmailRequest):
+@limiter.limit("5/minute")
+async def send_email_otp(request: Request, payload: EmailRequest):
     """
     Sends an OTP to the user's email.
     """
     code = generate_otp()
-    verification_codes[request.email] = code
+    verification_codes[payload.email] = code
     
-    success = email_service.send_verification_code(request.email, code)
+    success = email_service.send_verification_code(payload.email, code)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to send email OTP")
     
@@ -393,27 +422,29 @@ class ModerationRequest(BaseModel):
     text: str
 
 @app.post("/moderate-text")
-async def moderate_text(request: ModerationRequest):
+@limiter.limit("30/minute")
+async def moderate_text(request: Request, payload: ModerationRequest):
     """
     Analyzes text for sentiment, PII, banned phrases, and asking-out intent.
     """
     try:
-        results = comprehend_service.moderate_content(request.text)
+        results = comprehend_service.moderate_content(payload.text)
         return results
     except Exception as e:
         print(f"Error in text moderation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/onboarding/verify-email-otp")
-async def verify_email_otp(request: VerifyEmailRequest):
-    stored_code = verification_codes.get(request.email)
-    if stored_code and stored_code == request.code:
-        if request.email in verification_codes:
-            del verification_codes[request.email]
+@limiter.limit("10/minute")
+async def verify_email_otp(request: Request, payload: VerifyEmailRequest):
+    stored_code = verification_codes.get(payload.email)
+    if stored_code and stored_code == payload.code:
+        if payload.email in verification_codes:
+            del verification_codes[payload.email]
             
         # Derive consistent UUID from email
         import hashlib
-        derived_user_id = str(hashlib.md5(request.email.encode()).hexdigest())
+        derived_user_id = str(hashlib.md5(payload.email.encode()).hexdigest())
         user_id = f"00000000-0000-0000-0000-{derived_user_id[:12]}"
         
         user_exists = False
