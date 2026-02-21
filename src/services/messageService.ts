@@ -21,6 +21,7 @@ import { FEATURES } from '../config/features';
 import { contentModerationService } from './contentModerationService';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import * as FileSystem from 'expo-file-system';
+import { Buffer } from 'buffer';
 
 // ============================================================================
 // Configuration
@@ -120,8 +121,11 @@ const uploadAudioFile = async (
       encoding: 'base64',
     });
 
-    // Convert base64 to ArrayBuffer
-    const binaryString = atob(base64);
+    // Convert base64 to ArrayBuffer (React Native safe for both iOS/Android)
+    const binaryString = typeof atob !== 'undefined'
+      ? atob(base64)
+      : Buffer.from(base64, 'base64').toString('binary');
+
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
