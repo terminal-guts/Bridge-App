@@ -12,6 +12,7 @@ from sms_service import SMSService, generate_otp
 from services.email_service import EmailService
 from services.photo_analysis_service import PhotoAnalysisService
 from services.aws_service import AwsService
+from services.comprehend_service import ComprehendService
 from fastapi.middleware.cors import CORSMiddleware
 try:
     import deep
@@ -39,6 +40,7 @@ sms_service = SMSService()
 email_service = EmailService()
 photo_analysis_service = PhotoAnalysisService()
 aws_service = AwsService()
+comprehend_service = ComprehendService()
 supabase = get_supabase_client()
 
 from routers import voting
@@ -386,6 +388,21 @@ async def send_email_otp(request: EmailRequest):
         raise HTTPException(status_code=500, detail="Failed to send email OTP")
     
     return {"message": "Email OTP sent successfully"}
+
+class ModerationRequest(BaseModel):
+    text: str
+
+@app.post("/moderate-text")
+async def moderate_text(request: ModerationRequest):
+    """
+    Analyzes text for sentiment, PII, banned phrases, and asking-out intent.
+    """
+    try:
+        results = comprehend_service.moderate_content(request.text)
+        return results
+    except Exception as e:
+        print(f"Error in text moderation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/onboarding/verify-email-otp")
 async def verify_email_otp(request: VerifyEmailRequest):
