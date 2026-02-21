@@ -285,10 +285,10 @@ const CommunityScore: React.FC<{ score: number; endorsement: FriendEndorsement }
   const colors = displayScore >= 80
     ? { bg: COLORS.success, light: COLORS.successBg }
     : displayScore >= 60
-    ? { bg: COLORS.primary500, light: '#EFF6FF' }
-    : displayScore >= 40
-    ? { bg: COLORS.warning, light: COLORS.warningBg }
-    : { bg: COLORS.neutral400, light: COLORS.neutral50 };
+      ? { bg: COLORS.primary500, light: '#EFF6FF' }
+      : displayScore >= 40
+        ? { bg: COLORS.warning, light: COLORS.warningBg }
+        : { bg: COLORS.neutral400, light: COLORS.neutral50 };
 
   const conf = {
     high: { bg: COLORS.successBg, text: '#059669', label: 'Very Confident' },
@@ -914,7 +914,11 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
         else if (i === 2) Alert.alert('Block User', 'Are you sure? You will not see this user again.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Block', style: 'destructive', onPress: () => navigation.goBack() }]);
       });
     } else {
-      Alert.alert('Options', '', [{ text: 'Cancel', style: 'cancel' }, { text: 'Report User' }, { text: 'Block User', style: 'destructive', onPress: () => navigation.goBack() }]);
+      Alert.alert('Options', '', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Report User', onPress: () => Alert.alert('Report User', 'Are you sure you want to report this user?', [{ text: 'Cancel', style: 'cancel' }, { text: 'Report', style: 'destructive' }]) },
+        { text: 'Block User', style: 'destructive', onPress: () => Alert.alert('Block User', 'Are you sure? You will not see this user again.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Block', style: 'destructive', onPress: () => navigation.goBack() }]) }
+      ]);
     }
   }, [navigation]);
 

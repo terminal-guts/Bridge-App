@@ -4,6 +4,7 @@ import { styled } from 'nativewind';
 // Conditional imports for maps to prevent web crashes
 const MapView = Platform.OS !== 'web' ? require('react-native-maps').default : View;
 const Marker = Platform.OS !== 'web' ? require('react-native-maps').Marker : View;
+const PROVIDER_GOOGLE = Platform.OS !== 'web' ? require('react-native-maps').PROVIDER_GOOGLE : undefined;
 import * as Location from 'expo-location';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
@@ -275,6 +276,7 @@ export const WhereLiveNowStep: React.FC<WhereLiveNowStepProps> = ({
             <MapView
               ref={mapRef}
               style={{ flex: 1 }}
+              provider={PROVIDER_GOOGLE}
               region={region}
               onPress={handleMapPress}
               showsUserLocation={hasLocationPermission}
