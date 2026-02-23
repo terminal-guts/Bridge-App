@@ -374,6 +374,7 @@ export type RootStackParamList = {
 
 export type MainTabParamList = {
   Community: { initialPage?: 0 | 1 | 2 } | undefined;
+  Matches: undefined;
   Profile: undefined;
 };
 

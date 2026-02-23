@@ -34,6 +34,7 @@ import { OnboardingScreen } from '../screens/onboarding/OnboardingScreen';
 import { MatchRevealScreen } from '../screens/match/MatchRevealScreen';
 import { MatchDetailScreen } from '../screens/match/MatchDetailScreen';
 import { MatchProposalScreen } from '../screens/match/MatchProposalScreen';
+import { MatchesScreen } from '../screens/match/MatchesScreen';
 
 // Chat
 import ChatScreen from '../screens/ChatScreen';
@@ -82,6 +83,8 @@ const MainTabs = () => {
           if (route.name === 'Community') {
             // Using people icon to represent community matching
             iconName = focused ? 'people' : 'people-outline';
+          } else if (route.name === 'Matches') {
+            iconName = focused ? 'heart' : 'heart-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           }
@@ -118,6 +121,7 @@ const MainTabs = () => {
       })}
     >
       <Tab.Screen name="Community" component={CommunityScreen} />
+      <Tab.Screen name="Matches" component={MatchesScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
