@@ -60,7 +60,7 @@ interface MatchCardProps {
     matchedByAvatars: string[];
     /** Whether the other person already voted yes — shows the voted banner */
     theyVotedYes?: boolean;
-    /** For the awaiting_them variant: shows "You votes yes" banner */
+    /** For the awaiting_them variant: shows "You voted yes" banner */
     youVotedYes?: boolean;
     /** For the awaiting_them variant: shows "Expires X hours" banner */
     expiresXHours?: string;
@@ -134,13 +134,13 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                                 {youVotedYes && (
                                     <View style={[styles.statusBanner, { backgroundColor: 'rgba(52, 199, 89, 0.2)' }]}>
                                         <CheckmarkIcon size={18} color="#FFFFFF" />
-                                        <Text style={styles.votedBannerText}>You votes yes</Text>
+                                        <Text style={styles.votedBannerText}>You voted yes</Text>
                                     </View>
                                 )}
                                 {expiresXHours && (
                                     <View style={[styles.statusBanner, { backgroundColor: 'rgba(255, 141, 40, 0.2)' }]}>
                                         <QuestionIcon size={18} color="#FFFFFF" />
-                                        <Text style={styles.votedBannerText}>You votes yes - {expiresXHours}</Text>
+                                        <Text style={styles.votedBannerText}>{expiresXHours}</Text>
                                     </View>
                                 )}
                             </View>

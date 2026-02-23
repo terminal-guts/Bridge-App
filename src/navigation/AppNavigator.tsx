@@ -48,7 +48,7 @@ import { ProfileVerificationScreen } from '../screens/profile/ProfileVerificatio
 import { BlockedUsersScreen } from '../screens/profile/BlockedUsersScreen';
 import { PauseProfileScreen } from '../screens/profile/PauseProfileScreen';
 import { ChangePhoneNumberScreen } from '../screens/profile/ChangePhoneNumberScreen';
-import { CompatibilityScreen } from '../screens/profile/CompatibilityScreen';
+import ProfileMatchScreen from '../screens/profile/ProfileMatchScreen';
 
 // Legal Screens
 import { TermsOfService } from '../screens/legal/TermsOfService';
@@ -97,7 +97,7 @@ const MainTabs = () => {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: '#E4E7EC',
-          paddingBottom: 8,
+          paddingBottom: 14,
           paddingTop: 8,
           height: 75,
           shadowColor: '#000',
@@ -269,7 +269,7 @@ export const AppNavigator = () => {
           <Stack.Screen name="MatchDetail" component={MatchDetailScreen} />
           <Stack.Screen name="MatchReveal" component={MatchRevealScreen} />
           <Stack.Screen name="MatchProposal" component={MatchProposalScreen} />
-          <Stack.Screen name="Compatibility" component={CompatibilityScreen} />
+          <Stack.Screen name="ProposalProfile" component={ProfileMatchScreen} options={{ headerShown: false }} />
 
           {/* Chat */}
           <Stack.Screen name="Chat" component={ChatScreen} />

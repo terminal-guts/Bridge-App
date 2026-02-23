@@ -54,6 +54,90 @@ export const HandshakeTabIcon: React.FC<IconProps> = ({ size = 24, color = '#8D8
 );
 
 /**
+ * Stroke checkmark — matches Figma design
+ */
+export const CheckmarkIcon: React.FC<IconProps> = ({ size = 16, color = '#FFFFFF' }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path d="M5 13l4 4L19 7" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+);
+
+/**
+ * Hourglass icon — used for awaiting states
+ */
+export const HourglassIcon: React.FC<IconProps> = ({ size = 16, color = '#FFFFFF' }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+            d="M5 2h14M5 22h14M6 2v5l5 5-5 5v5M18 2v5l-5 5 5 5v5"
+            stroke={color}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+    </Svg>
+);
+
+/**
+ * Arrow right — used as action button for awaiting states
+ */
+export const ArrowRightIcon: React.FC<IconProps> = ({ size = 24, color = '#1C1C1E' }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+            d="M5 12h14M13 6l6 6-6 6"
+            stroke={color}
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+    </Svg>
+);
+
+/**
+ * Question/info icon — used in awaiting_them expiry banner
+ */
+export const QuestionIcon: React.FC<IconProps> = ({ size = 24, color = '#FFFFFF' }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10s10-4.477 10-10S17.523 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8s8 3.59 8 8s-3.59 8-8 8z" fill={color} />
+        <Path d="M11 7h2v2h-2V7zm0 4h2v6h-2v-6z" fill={color} />
+    </Svg>
+);
+
+/**
+ * Legacy ClockIcon kept for any existing usages
+ */
+export const ClockIcon: React.FC<IconProps> = ({ size = 16, color = '#FFFFFF' }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+);
+
+/**
+ * Chat icon — used as action button for active match
+ */
+export const ChatIcon: React.FC<IconProps> = ({ size = 24, color = '#2563EB' }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+        <Path d="M8 4c-1.1 0-2 .9-2 2v1h9c1.65 0 3 1.35 3 3v6h1c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H8z" />
+        <Path d="M4 8c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h3l2 3l2-3h5c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2H4z" />
+        <Circle cx="7" cy="14" r="1.2" fill="#FFF" />
+        <Circle cx="10.5" cy="14" r="1.2" fill="#FFF" />
+        <Circle cx="14" cy="14" r="1.2" fill="#FFF" />
+    </Svg>
+);
+
+/**
+ * Two overlapping hearts — used for "Matched by" row on MatchCard
+ */
+export const HeartsIcon: React.FC<IconProps> = ({ size = 20, color = '#00C8B3' }) => {
+    const heartD = "M12 20c-4.5-4-7-6.5-7-9 0-3 2-4.5 4.5-4.5 1.5 0 3 .8 4 2 1-1.2 2.5-2 4-2 2.5 0 4.5 1.5 4.5 4.5 0 2.5-2.5 5-7 9z";
+    return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+            <Path d={heartD} transform="translate(-3, -3)" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+            <Path d={heartD} transform="translate(3, 3)" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+    );
+};
+
+/**
  * Hexagon (6 sides) with user/person silhouette inside
  * Matches vuesax/bold/user-octagon style from the Figma design image
  */

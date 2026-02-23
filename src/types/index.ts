@@ -343,6 +343,13 @@ export type RootStackParamList = {
   MatchDetail: { matchId: string };
   MatchReveal: undefined;
   MatchProposal: { match?: Match; profile?: UserProfile; proposalId?: string };
+  ProposalProfile: {
+    partnerProfile: UserProfile;
+    communityScore: number;
+    endorsers: any[];
+    screenState: 'awaiting_you' | 'awaiting_them' | 'neither_voted';
+    proposalId: string;
+  };
   Chat: {
     matchId?: string;
     recipientName: string;
@@ -357,7 +364,7 @@ export type RootStackParamList = {
   FriendCode: { returnTo?: string; matchId?: string } | undefined;
   FriendList: undefined;
   FriendGrid: { friendId: string; friendName: string };
-  FriendProposal: { friendId: string; friendName: string };
+  FriendProposal: { friendId: string; friendName: string; friendPhotoUrl?: string; friendAge?: number; friendJob?: string };
   MatchPreferences: undefined;
   ProfileVerification: undefined;
   BlockedUsers: undefined;

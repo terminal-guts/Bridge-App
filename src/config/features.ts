@@ -163,13 +163,13 @@ export const FEATURES: FeatureFlags = {
   DEVELOPMENT_AUTO_FILL_ONBOARDING: false, // ❌ DISABLED - Use real onboarding
   DEVELOPMENT_CREATE_MOCK_DATA: false, // ❌ DISABLED - Use real data
   DEVELOPMENT_FORCE_FRESH_SESSION: false, // ❌ DISABLED - Annoying for testing
-  ENABLE_DEVELOPER_MENU: true, // ✅ DEVELOPER MENU ENABLED (keep for debugging)
+  ENABLE_DEVELOPER_MENU: false, // ❌ DISABLED
   DEVELOPMENT_SKIP_AUTH: false, // ❌ KEEP AUTH FLOW FOR REALISTIC TESTING
   DEV_USER_ID: null, // Use default dev user
   DEVELOPMENT_UNLOCK_FRIENDS_AREA: false, // ❌ DISABLED - Require daily tasks
 
   // Backend Integration
-  COMMUNITY_BACKEND_ENABLED: true, // ✅ REAL BACKEND - SUPABASE + FASTAPI
+  COMMUNITY_BACKEND_ENABLED: false, // Using mock service for proposal voting demo
   MESSAGING_BACKEND_ENABLED: true, // ✅ REAL MESSAGING - SUPABASE + REALTIME
 
   // Experimental (disabled by default)

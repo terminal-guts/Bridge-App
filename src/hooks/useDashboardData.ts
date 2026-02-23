@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { getCurrentUser } from '../services/authService';
 import {
   getDashboardSummary,
   DashboardSummary,
@@ -31,8 +31,16 @@ interface UseDashboardDataReturn {
  * Respects feature flags for gradual rollout
  */
 export const useDashboardData = (): UseDashboardDataReturn => {
-  const { user } = useAuth();
+  const [user, setUser] = useState<{ id: string } | null>(null);
   const [data, setData] = useState<DashboardSummary | null>(null);
+
+  useEffect(() => {
+    getCurrentUser().then(result => {
+      if (result.ok && result.data) {
+        setUser(result.data);
+      }
+    });
+  }, []);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

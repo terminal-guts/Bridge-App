@@ -1,106 +1,128 @@
 /**
  * FriendProposalScreen
  *
- * Vote on a single proposal to help a friend find a match
- *
- * This screen shows ONE proposal for a specific friend and allows
- * the user to vote on whether the match is good for their friend.
+ * Shows a comparison screen pairing a friend with a suggested match candidate.
+ * Accessed by tapping "Match" on a friend in the Community area.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  SafeAreaView,
-  StatusBar,
-  ActivityIndicator,
-  TouchableOpacity,
-} from 'react-native';
+import React, { useMemo } from 'react';
+import { SafeAreaView, StatusBar } from 'react-native';
 import { styled } from 'nativewind';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 
-import { Body, H1 } from '../../components/ui';
 import { RootStackParamList } from '../../types';
+import { UserProfile } from '../../types';
+import { Proposal } from '../../types/community';
+import { ProposalReviewView } from '../../components/community/ProposalReviewView';
 import { communityService } from '../../services/communityServiceIndex';
-import { showToast } from '../../utils/toast';
-import { lightHaptic } from '../../utils/haptics';
 
 const StyledSafeAreaView = styled(SafeAreaView);
-const StyledView = styled(View);
-const StyledTouchableOpacity = styled(TouchableOpacity);
 
 interface FriendProposalScreenProps {
   navigation: NavigationProp<RootStackParamList, 'FriendProposal'>;
   route: RouteProp<RootStackParamList, 'FriendProposal'>;
 }
 
+// Hardcoded candidate to pair the friend with
+const MOCK_CANDIDATE: UserProfile = {
+  id: 'mock-candidate-rachel',
+  userId: 'mock-candidate-rachel',
+  firstName: 'Rachel',
+  lastName: 'Kim',
+  age: 27,
+  currentJob: 'Registered Nurse',
+  gender: ['female'],
+  pronouns: 'she/her',
+  educationLevel: 'bachelors',
+  school: 'NYU',
+  height: "5'5\"",
+  ethnicity: 'Asian',
+  religion: 'Christian',
+  politicalLeaning: 'liberal',
+  location: 'New York, NY',
+  drinkingFrequency: 'socially',
+  cannabisFrequency: 'never',
+  tobaccoFrequency: 'never',
+  interests: ['Hiking', 'Cooking', 'Travel', 'Photography'],
+  values: ['Family', 'Loyalty', 'Growth', 'Health'],
+  photos: [{ id: 'photo-rachel-1', url: 'https://randomuser.me/api/portraits/women/33.jpg', isMain: true, order: 0 }],
+  lifestyle: {},
+  nonNegotiables: [],
+  preferences: { ageMin: 25, ageMax: 35, gender: 'male', lookingFor: 'relationship' },
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 export function FriendProposalScreen({ navigation, route }: FriendProposalScreenProps) {
-  const { friendId, friendName } = route.params;
-  const [loading, setLoading] = useState(true);
+  const { friendId, friendName, friendPhotoUrl, friendAge, friendJob } = route.params;
 
-  useEffect(() => {
-    // Simulate loading friend's proposal
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 500);
+  const friendProfile: UserProfile = useMemo(() => ({
+    id: friendId,
+    userId: friendId,
+    firstName: friendName,
+    lastName: '',
+    age: friendAge ?? 28,
+    currentJob: friendJob ?? 'Professional',
+    gender: ['male'],
+    pronouns: 'he/him',
+    educationLevel: 'bachelors',
+    school: '',
+    height: "5'10\"",
+    ethnicity: 'Unknown',
+    religion: 'Christian',
+    politicalLeaning: 'moderate',
+    location: 'New York, NY',
+    drinkingFrequency: 'socially',
+    cannabisFrequency: 'never',
+    tobaccoFrequency: 'never',
+    interests: ['Music', 'Sports', 'Travel', 'Food'],
+    values: ['Loyalty', 'Family', 'Ambition', 'Fun'],
+    photos: friendPhotoUrl
+      ? [{ id: `photo-${friendId}-1`, url: friendPhotoUrl, isMain: true, order: 0 }]
+      : [],
+    lifestyle: {},
+    nonNegotiables: [],
+    preferences: { ageMin: 22, ageMax: 32, gender: 'female', lookingFor: 'relationship' },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }), [friendId, friendName, friendPhotoUrl, friendAge, friendJob]);
 
-    return () => clearTimeout(timer);
-  }, [friendId]);
+  const proposal: Proposal = useMemo(() => ({
+    id: `friend-proposal-${friendId}`,
+    userA: friendProfile,
+    userB: MOCK_CANDIDATE,
+    status: 'pending',
+    poolYesVotes: 0,
+    poolNoVotes: 0,
+    friendYesVotes: 0,
+    friendNoVotes: 0,
+    yesVotes: 0,
+    noVotes: 0,
+    totalVotes: 0,
+    poolEligible: true,
+    compatibilityScore: 72,
+    votingThreshold: 0.6,
+    baseThreshold: 0.6,
+    endorsements: [],
+    proposalDate: new Date().toISOString(),
+    votingExpiresAt: new Date(Date.now() + 7 * 24 * 3600000).toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }), [friendProfile, friendId]);
 
-  const handleGoBack = useCallback(() => {
-    lightHaptic();
+  const handleBack = () => {
+    communityService.markFriendAsHelped(friendId).catch(() => {});
     navigation.goBack();
-  }, [navigation]);
-
-  if (loading) {
-    return (
-      <StyledSafeAreaView className="flex-1 bg-white">
-        <StatusBar barStyle="dark-content" />
-        <StyledView className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#7C3AED" />
-          <Body className="mt-4 text-neutral-600">Loading proposal...</Body>
-        </StyledView>
-      </StyledSafeAreaView>
-    );
-  }
+  };
 
   return (
     <StyledSafeAreaView className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" />
-
-      {/* Header */}
-      <StyledView className="px-4 pt-4 pb-2 flex-row items-center border-b border-neutral-200">
-        <StyledTouchableOpacity
-          onPress={handleGoBack}
-          className="mr-3"
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
-        </StyledTouchableOpacity>
-        <H1 className="text-xl">Help {friendName}</H1>
-      </StyledView>
-
-      {/* Content */}
-      <StyledView className="flex-1 items-center justify-center px-6">
-        <StyledView className="bg-purple-50 rounded-full w-24 h-24 items-center justify-center mb-6">
-          <Ionicons name="people" size={48} color="#7C3AED" />
-        </StyledView>
-
-        <H1 className="text-center mb-3">Coming Soon!</H1>
-        <Body className="text-center text-neutral-600 mb-6">
-          Friend-specific proposal voting will be available soon.
-          {'\n\n'}
-          For now, you can help all your friends by completing your daily proposals in the Community tab.
-        </Body>
-
-        <TouchableOpacity
-          onPress={handleGoBack}
-          className="bg-purple-600 px-6 py-3 rounded-xl"
-          activeOpacity={0.8}
-        >
-          <Body className="text-white font-semibold">Go Back</Body>
-        </TouchableOpacity>
-      </StyledView>
+      <ProposalReviewView
+        initialProposals={[proposal]}
+        showBackButton={true}
+        onBack={handleBack}
+      />
     </StyledSafeAreaView>
   );
 }

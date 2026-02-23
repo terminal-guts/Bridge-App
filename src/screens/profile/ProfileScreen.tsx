@@ -4,15 +4,12 @@ import {
   ImageBackground, Image, ActivityIndicator, StatusBar, FlatList,
   Dimensions, TouchableWithoutFeedback
 } from 'react-native';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, Star, Heart, Sparkles } from 'lucide-react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile, DeepQuestionAnswer } from '../../types';
 import { getUserProfile } from '../../services/profileService';
 import { getCurrentUser } from '../../services/authService';
 
-const STAR_ICON = require('../../assets/star-icon.png');
-const HEART_ICON = require('../../assets/heart-icon.png');
-const WHY_MATCH_ICON = require('../../assets/why-match-icon.png');
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -112,7 +109,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation, route,
   }
 
   const photos = profile.photos || [];
-  const displayedImg = photos.length > 0 ? { uri: photos[currentPhotoIndex].url } : require('../../assets/icon.png');
+  const displayedImg = photos.length > 0 ? { uri: photos[currentPhotoIndex].url } : require('../../../assets/favicon.png');
   const questions = (profile.displayedQuestions || [])
     .map(id => profile.deepQuestions?.find(q => q.questionId === id))
     .filter((q): q is DeepQuestionAnswer => q !== undefined);
@@ -152,7 +149,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation, route,
             )}
 
             <View style={{ position: 'absolute', bottom: 40, right: 16, flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 8, paddingHorizontal: 10, backgroundColor: 'rgba(52,199,89,0.1)', borderWidth: 1, borderColor: '#34C759', borderRadius: 8 }}>
-              <Image source={STAR_ICON} style={{ width: 14, height: 14 }} resizeMode="contain" />
+              <Star size={14} color="#34C759" />
               <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 12, color: '#34C759' }}>
                 Karma Pts : {karmaPts} pts
               </Text>
@@ -166,15 +163,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation, route,
               <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 24, lineHeight: 30, color: '#010101' }}>
                 {profile.firstName}, {profile.age}
               </Text>
-              {profile.isVerified && (
-                <View style={{ width: 21, height: 21, borderRadius: 11, backgroundColor: '#2563EB', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>✓</Text>
-                </View>
-              )}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 3, paddingHorizontal: 8, backgroundColor: 'rgba(52,199,89,0.1)', borderWidth: 1, borderColor: '#34C759', borderRadius: 8 }}>
+                <Star size={11} color="#34C759" />
+                <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 12, color: '#34C759' }}>{karmaPts} pts</Text>
+              </View>
             </View>
             {mode === 'view' && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Image source={HEART_ICON} style={{ width: 22, height: 22 }} resizeMode="contain" />
+                <Heart size={22} color="#010101" />
                 <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: 'rgba(1,1,1,0.7)' }}>Matched by :</Text>
                 <View style={{ flexDirection: 'row' }}>
                   {[1, 2, 3].map((_, i) => (
@@ -190,7 +186,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation, route,
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 16, color: '#2563EB' }}>Community validation</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 8, backgroundColor: 'rgba(37,99,235,0.1)', borderWidth: 1, borderColor: '#2563EB', borderRadius: 20 }}>
-                  <Image source={WHY_MATCH_ICON} style={{ width: 15, height: 15 }} resizeMode="contain" />
+                  <Sparkles size={15} color="#2563EB" />
                   <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#2563EB' }}>Why this match</Text>
                 </View>
               </View>

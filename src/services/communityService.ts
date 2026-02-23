@@ -238,6 +238,7 @@ interface MockState {
   timeRestrictionDisabled: boolean;
   fastForwardMode: boolean;
   currentKarmaAssists: number;
+  helpedFriends: string[]; // friendIds the user has voted a match for
   proposalDecisions: {
     [proposalId: string]: {
       userDecision: boolean | null;  // true = accept, false = pass, null = pending
@@ -252,11 +253,12 @@ let mockState: MockState = {
   dailyTasksCompleted: false,
   gridProposalSubmitted: false,
   votesSubmitted: 0,
-  friendsAreaUnlocked: true, // DEV MODE: Set to true to unlock Friends Area
+  friendsAreaUnlocked: false, // Set to true to skip voting gate in DEV MODE
   mockDataEnabled: true,
   timeRestrictionDisabled: true, // For testing convenience
   fastForwardMode: false,
   currentKarmaAssists: 5, // Start at "solid" tier
+  helpedFriends: [],
   proposalDecisions: {},
 };
 
@@ -322,186 +324,168 @@ const mockDailyGrid: DailyGrid = {
 // ============================================================================
 
 function generateMockProposals(): Proposal[] {
-  const proposals: Proposal[] = [];
+  const p = (url: string, id: string) => [
+    { id: `photo-${id}-1`, url, isMain: true, order: 0 },
+  ];
+  const now = Date.now();
+  const ts = (offsetHours: number) => new Date(now + offsetHours * 3600000).toISOString();
 
-  // Proposal 1: High endorsement (friend + random)
-  const userA1 = generateMockUser({
-    firstName: 'Riley',
-    age: 27,
-    currentJob: 'Product Manager',
-    company: 'Tech Startup',
-    education: 'MBA',
-  });
-  const userB1 = generateMockUser({
-    firstName: 'Casey',
-    age: 28,
-    currentJob: 'Software Engineer',
-    company: 'Google',
-    education: 'Computer Science',
-  });
-
-  // Create endorser profiles with karma
-  const endorserMaya = generateMockUser({
-    id: 'friend-maya',
-    firstName: 'Maya',
-    age: 26,
-    currentJob: 'Designer',
-  });
-  endorserMaya.karma = generateMockKarma(8);
-
-  proposals.push({
-    id: 'proposal-001',
-    userA: userA1,
-    userB: userB1,
-    status: 'pending' as ProposalStatus,
-    yesVotes: 12,
-    noVotes: 3,
-    totalVotes: 15, // Sum of yes + no
-    votingThreshold: 15,
-    baseThreshold: 20,
-    endorsements: [
-      {
-        id: 'endorsement-001',
-        proposalId: 'proposal-001',
-        endorserUserId: 'friend-maya',
-        endorserProfile: endorserMaya,
-        endorsementType: 'friend_of_a',
-        selectedCandidateId: userB1.id,
-        createdAt: new Date().toISOString(),
-      },
-    ],
-    proposalDate: new Date().toISOString().split('T')[0],
-    votingStartedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-    votingExpiresAt: new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString(),
-    decisionDeadlineAt: new Date(Date.now() + 66 * 60 * 60 * 1000).toISOString(),
-    poolYesVotes: 10,
-    poolNoVotes: 2,
-    friendYesVotes: 2,
-    friendNoVotes: 1,
-    poolEligible: true,
-    compatibilityScore: 85,
-    createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
-
-  // Proposal 2: Friend endorsement with high karma
-  const userA2 = generateMockUser({
-    firstName: 'Taylor',
-    age: 25,
-    currentJob: 'Marketing Manager',
-    company: 'Nike',
-    education: 'Business',
-  });
-  const userB2 = generateMockUser({
-    firstName: 'Morgan',
-    age: 26,
-    currentJob: 'Data Scientist',
-    company: 'Amazon',
-    education: 'Statistics PhD',
-  });
-
-  const endorserEthan = generateMockUser({
-    id: 'friend-ethan',
-    firstName: 'Ethan',
-    age: 28,
-    currentJob: 'Consultant',
-  });
-  endorserEthan.karma = generateMockKarma(12);
-
-  proposals.push({
-    id: 'proposal-002',
-    userA: userA2,
-    userB: userB2,
-    status: 'pending' as ProposalStatus,
-    yesVotes: 8,
-    noVotes: 5,
-    totalVotes: 13, // Sum of yes + no
-    votingThreshold: 16,
-    baseThreshold: 20,
-    endorsements: [
-      {
-        id: 'endorsement-003',
-        proposalId: 'proposal-002',
-        endorserUserId: 'friend-ethan',
-        endorserProfile: endorserEthan,
-        endorsementType: 'friend_of_both',
-        selectedCandidateId: userB2.id,
-        endorsementReason: 'They both love hiking and have similar values',
-        createdAt: new Date().toISOString(),
-      },
-    ],
-    proposalDate: new Date().toISOString().split('T')[0],
-    votingStartedAt: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(),
-    votingExpiresAt: new Date(Date.now() + 14 * 60 * 60 * 1000).toISOString(),
-    decisionDeadlineAt: new Date(Date.now() + 62 * 60 * 60 * 1000).toISOString(),
-    poolYesVotes: 5,
-    poolNoVotes: 3,
-    friendYesVotes: 3,
-    friendNoVotes: 2,
-    poolEligible: true,
-    compatibilityScore: 92,
-    createdAt: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
-
-  // Proposal 3: System matcher only
-  const userA3 = generateMockUser({
-    firstName: 'Avery',
+  // ── Proposal 1: Jack & Leslie — High compatibility ──────────────────────
+  // Same religion, close politics, shared values & interests
+  const jack = generateMockUser({
+    id: 'jack-001',
+    firstName: 'Jack',
     age: 29,
-    currentJob: 'Teacher',
-    company: 'PS 123',
-    education: 'Education',
-  });
-  const userB3 = generateMockUser({
-    firstName: 'Quinn',
-    age: 30,
     currentJob: 'Architect',
-    company: 'Studio Q',
-    education: 'Architecture',
+    school: 'Columbia',
+    location: 'Brooklyn, NY',
+    height: "6'1\"",
+    ethnicity: 'White',
+    religion: 'Catholic',
+    politicalLeaning: 'moderate',
+    drinkingFrequency: 'sometimes',
+    cannabisFrequency: 'no',
+    tobaccoFrequency: 'no',
+    values: ['Creativity', 'Honesty', 'Ambition', 'Family', 'Growth'],
+    interests: ['Travel', 'Music', 'Coffee', 'Hiking', 'Art'],
+    photos: p('https://randomuser.me/api/portraits/men/75.jpg', 'jack'),
   });
 
-  const systemMatcher = generateMockUser({
-    id: 'random-matcher-2',
-    firstName: 'System',
-    age: 0,
+  const leslie = generateMockUser({
+    id: 'leslie-001',
+    firstName: 'Leslie',
+    age: 27,
+    currentJob: 'Designer',
+    school: 'NYU',
+    location: 'Brooklyn, NY',
+    height: "5'6\"",
+    ethnicity: 'White',
+    religion: 'Catholic',
+    politicalLeaning: 'liberal',
+    drinkingFrequency: 'yes',
+    cannabisFrequency: 'no',
+    tobaccoFrequency: 'no',
+    values: ['Creativity', 'Honesty', 'Kindness', 'Family', 'Adventure'],
+    interests: ['Travel', 'Music', 'Coffee', 'Photography', 'Art'],
+    photos: p('https://randomuser.me/api/portraits/women/44.jpg', 'leslie'),
   });
 
-  proposals.push({
-    id: 'proposal-003',
-    userA: userA3,
-    userB: userB3,
+  // ── Proposal 2: Marcus & Priya — Mixed compatibility ────────────────────
+  // Different religion & ethnicity, shared ambition & interests partially
+  const marcus = generateMockUser({
+    id: 'marcus-001',
+    firstName: 'Marcus',
+    age: 31,
+    currentJob: 'Software Engineer',
+    school: 'MIT',
+    location: 'Manhattan, NY',
+    height: "5'11\"",
+    ethnicity: 'Black / African American',
+    religion: 'Christian',
+    politicalLeaning: 'liberal',
+    drinkingFrequency: 'yes',
+    cannabisFrequency: 'sometimes',
+    tobaccoFrequency: 'no',
+    values: ['Ambition', 'Growth', 'Authenticity', 'Kindness'],
+    interests: ['Hiking', 'Reading', 'Sports', 'Cooking', 'Travel'],
+    photos: p('https://randomuser.me/api/portraits/men/32.jpg', 'marcus'),
+  });
+
+  const priya = generateMockUser({
+    id: 'priya-001',
+    firstName: 'Priya',
+    age: 29,
+    currentJob: 'Doctor',
+    school: 'Harvard',
+    location: 'Queens, NY',
+    height: "5'4\"",
+    ethnicity: 'South Asian',
+    religion: 'Hindu',
+    politicalLeaning: 'moderate',
+    drinkingFrequency: 'sometimes',
+    cannabisFrequency: 'no',
+    tobaccoFrequency: 'no',
+    values: ['Ambition', 'Family', 'Honesty', 'Kindness'],
+    interests: ['Yoga', 'Cooking', 'Reading', 'Photography', 'Travel'],
+    photos: p('https://randomuser.me/api/portraits/women/28.jpg', 'priya'),
+  });
+
+  // ── Proposal 3: Tyler & Sofia — Low compatibility ────────────────────────
+  // Different religion, politics, lifestyle — interesting tension
+  const tyler = generateMockUser({
+    id: 'tyler-001',
+    firstName: 'Tyler',
+    age: 26,
+    currentJob: 'Teacher',
+    school: 'Yale',
+    location: 'Bronx, NY',
+    height: "5'10\"",
+    ethnicity: 'Hispanic / Latino',
+    religion: 'Catholic',
+    politicalLeaning: 'conservative',
+    drinkingFrequency: 'sometimes',
+    cannabisFrequency: 'yes',
+    tobaccoFrequency: 'no',
+    values: ['Family', 'Adventure', 'Creativity', 'Humor'],
+    interests: ['Sports', 'Music', 'Travel', 'Cooking', 'Art'],
+    photos: p('https://randomuser.me/api/portraits/men/56.jpg', 'tyler'),
+  });
+
+  const sofia = generateMockUser({
+    id: 'sofia-001',
+    firstName: 'Sofia',
+    age: 30,
+    currentJob: 'Lawyer',
+    school: 'Stanford',
+    location: 'Manhattan, NY',
+    height: "5'7\"",
+    ethnicity: 'White',
+    religion: 'Jewish',
+    politicalLeaning: 'very_liberal',
+    drinkingFrequency: 'yes',
+    cannabisFrequency: 'no',
+    tobaccoFrequency: 'no',
+    values: ['Authenticity', 'Growth', 'Honesty', 'Ambition'],
+    interests: ['Reading', 'Coffee', 'Yoga', 'Photography', 'Art'],
+    photos: p('https://randomuser.me/api/portraits/women/63.jpg', 'sofia'),
+  });
+
+  const makeProposal = (
+    id: string,
+    userA: UserProfile,
+    userB: UserProfile,
+    yesVotes: number,
+    noVotes: number,
+  ): Proposal => ({
+    id,
+    userA,
+    userB,
     status: 'pending' as ProposalStatus,
-    yesVotes: 14,
-    noVotes: 7,
-    totalVotes: 21, // Sum of yes + no
-    votingThreshold: 20,
-    baseThreshold: 20,
-    endorsements: [
-      {
-        id: 'endorsement-004',
-        proposalId: 'proposal-003',
-        endorserUserId: 'random-matcher-2',
-        endorserProfile: systemMatcher,
-        endorsementType: 'random_matcher',
-        selectedCandidateId: userB3.id,
-        createdAt: new Date().toISOString(),
-      },
-    ],
-    proposalDate: new Date().toISOString().split('T')[0],
-    votingStartedAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-    votingExpiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
-    decisionDeadlineAt: new Date(Date.now() + 60 * 60 * 60 * 1000).toISOString(),
-    poolYesVotes: 14,
-    poolNoVotes: 7,
+    yesVotes,
+    noVotes,
+    totalVotes: yesVotes + noVotes,
+    poolYesVotes: yesVotes,
+    poolNoVotes: noVotes,
     friendYesVotes: 0,
     friendNoVotes: 0,
     poolEligible: true,
-    compatibilityScore: 78,
-    createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date().toISOString(),
+    compatibilityScore: Math.round((yesVotes / (yesVotes + noVotes)) * 100),
+    votingThreshold: 15,
+    baseThreshold: 20,
+    endorsements: [],
+    proposalDate: new Date(now).toISOString().split('T')[0],
+    votingStartedAt: ts(-6),
+    votingExpiresAt: ts(18),
+    decisionDeadlineAt: ts(66),
+    createdAt: ts(-6),
+    updatedAt: ts(0),
   });
 
-  return proposals;
+  return [
+    makeProposal('proposal-jack-leslie',   jack,   leslie, 18, 3),
+    makeProposal('proposal-marcus-priya',  marcus, priya,  11, 7),
+    makeProposal('proposal-tyler-sofia',   tyler,  sofia,   6, 10),
+  ];
 }
 
 // ============================================================================
@@ -1068,7 +1052,11 @@ class CommunityService {
         assistsCount: 30,
         friendshipTier: getFriendshipTier(20),
       },
-    ];
+    ].map(f => ({
+      ...f,
+      // If the user voted a match for this friend, mark them as helped
+      hasCompletedGrid: f.hasCompletedGrid || mockState.helpedFriends.includes(f.friendId),
+    }));
 
     // Generate mock pending proposal
     const partnerProfile = generateMockUser({
@@ -1244,6 +1232,16 @@ class CommunityService {
   async setKarmaAssists(assists: number): Promise<void> {
     logger.info('[Mock] Setting karma assists to:', assists);
     mockState.currentKarmaAssists = assists;
+  }
+
+  /**
+   * Mark a friend as helped (voted on their match proposal)
+   */
+  async markFriendAsHelped(friendId: string): Promise<void> {
+    if (!mockState.helpedFriends.includes(friendId)) {
+      mockState.helpedFriends.push(friendId);
+      logger.info('[Mock] Friend marked as helped:', friendId);
+    }
   }
 
   /**
