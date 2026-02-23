@@ -369,6 +369,7 @@ export type RootStackParamList = {
   ShareCandidate: { candidateId: string };
   ReportUser: { userId: string };
   StrikeWarning: { strike: Strike };
+  Compatibility: undefined;
 };
 
 export type MainTabParamList = {

@@ -1,14 +1,16 @@
 import React from 'react';
-import { ScrollView, View, SafeAreaView, StatusBar } from 'react-native';
-import { useCompatibility } from '../context/CompatibilityContext';
-import { ProfileHeader } from '../components/comparison/ProfileHeader';
-import { ComparisonSection } from '../components/comparison/ComparisonSection';
-import { ComparisonItem } from '../components/comparison/ComparisonItem';
-import { TagCloud } from '../components/comparison/TagCloud';
-import { ActionButtons } from '../components/comparison/ActionButtons';
+import { ScrollView, View, SafeAreaView, StatusBar, TouchableOpacity } from 'react-native';
+import { useCompatibility, CompatibilityProvider } from '../../context/CompatibilityContext';
+import { ProfileHeader } from '../../components/comparison/ProfileHeader';
+import { ComparisonSection } from '../../components/comparison/ComparisonSection';
+import { ComparisonItem } from '../../components/comparison/ComparisonItem';
+import { TagCloud } from '../../components/comparison/TagCloud';
+import { ActionButtons } from '../../components/comparison/ActionButtons';
+import { useNavigation } from '@react-navigation/native';
 
-const CompatibilityScreen: React.FC = () => {
+const CompatibilityScreenContent: React.FC = () => {
     const { data } = useCompatibility();
+    const navigation = useNavigation();
 
     return (
         <SafeAreaView className="flex-1 bg-[#FFFFFF]">
@@ -18,7 +20,7 @@ const CompatibilityScreen: React.FC = () => {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 240 }}
             >
-                <ProfileHeader />
+                <ProfileHeader onBack={() => navigation.goBack()} />
 
                 <View className="px-4 mt-6">
                     {data.sections.map((section, index) => (
@@ -60,6 +62,14 @@ const CompatibilityScreen: React.FC = () => {
                 <ActionButtons />
             </View>
         </SafeAreaView>
+    );
+};
+
+export const CompatibilityScreen = () => {
+    return (
+        <CompatibilityProvider>
+            <CompatibilityScreenContent />
+        </CompatibilityProvider>
     );
 };
 
