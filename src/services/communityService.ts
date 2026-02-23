@@ -229,6 +229,21 @@ function generateMockKarma(assists: number): KarmaScore {
 // MOCK STATE (for testing and development)
 // ============================================================================
 
+// ============================================================================
+// DEV STATE TYPES (exported for DevStateToggle)
+// ============================================================================
+
+export type MockMatchState =
+  | 'empty'          // No match, no proposals
+  | 'new_match'      // Proposal exists, neither voted
+  | 'awaiting_you'   // Partner voted yes, you haven't
+  | 'awaiting_them'  // You voted yes, partner hasn't
+  | 'active_match';  // Both said yes
+
+export type MockFriendsState =
+  | 'empty'          // No friends in community
+  | 'with_friends';  // Friends list populated
+
 interface MockState {
   dailyTasksCompleted: boolean;
   gridProposalSubmitted: boolean;
@@ -238,10 +253,12 @@ interface MockState {
   timeRestrictionDisabled: boolean;
   fastForwardMode: boolean;
   currentKarmaAssists: number;
-  helpedFriends: string[]; // friendIds the user has voted a match for
+  helpedFriends: string[];
+  matchState: MockMatchState;
+  friendsState: MockFriendsState;
   proposalDecisions: {
     [proposalId: string]: {
-      userDecision: boolean | null;  // true = accept, false = pass, null = pending
+      userDecision: boolean | null;
       partnerDecision: boolean | null;
       status: 'pending' | 'partial_accepted' | 'matched' | 'declined' | 'expired';
       decidedAt?: string;
@@ -252,13 +269,15 @@ interface MockState {
 let mockState: MockState = {
   dailyTasksCompleted: false,
   gridProposalSubmitted: false,
-  votesSubmitted: 0,
-  friendsAreaUnlocked: false, // Set to true to skip voting gate in DEV MODE
+  votesSubmitted: 3,  // Always bypass the voting gate in dev mode
+  friendsAreaUnlocked: true,
   mockDataEnabled: true,
-  timeRestrictionDisabled: true, // For testing convenience
+  timeRestrictionDisabled: true,
   fastForwardMode: false,
-  currentKarmaAssists: 5, // Start at "solid" tier
+  currentKarmaAssists: 5,
   helpedFriends: [],
+  matchState: 'empty',
+  friendsState: 'empty',
   proposalDecisions: {},
 };
 
@@ -903,11 +922,14 @@ class CommunityService {
   async getCommunityTaskProgress(): Promise<CommunityTask> {
     await this.delay(200);
 
+    // Always bypass the voting gate — dev toggle controls community state directly
+    const hasVoted = mockState.votesSubmitted >= 3;
+
     return {
       id: 'task-current',
       userId: 'current-user',
       taskDate: new Date().toISOString().split('T')[0],
-      hasVotedOnProposals: mockState.votesSubmitted >= 3,
+      hasVotedOnProposals: hasVoted,
       proposalsVotedCount: mockState.votesSubmitted,
       hasCreatedProposal: mockState.gridProposalSubmitted,
       hasCompletedRandomMatch: mockState.gridProposalSubmitted,
@@ -922,9 +944,9 @@ class CommunityService {
    * Get friends area data (for FriendsAreaView)
    */
   async getFriendsAreaData(): Promise<{
-    friends: any[]; // FriendWithGridStatus[]
-    pendingProposals: any[]; // MatchProposal[]
-    activeMatch: any | null; // ActiveMatch | null
+    friends: any[];
+    pendingProposals: any[];
+    activeMatch: any | null;
   }> {
     await this.delay(500);
 
@@ -934,6 +956,12 @@ class CommunityService {
       if (streakDays <= 10) return 'great';
       return 'best';
     };
+
+    // ── Friends list ────────────────────────────────────────────────────────
+    // Empty state: return no friends
+    if (mockState.friendsState === 'empty') {
+      return { friends: [], pendingProposals: [], activeMatch: null };
+    }
 
     // Generate mock friends with grid status
     const friends = [
@@ -1058,7 +1086,7 @@ class CommunityService {
       hasCompletedGrid: f.hasCompletedGrid || mockState.helpedFriends.includes(f.friendId),
     }));
 
-    // Generate mock pending proposal
+    // ── Shared proposal partner ──────────────────────────────────────────────
     const partnerProfile = generateMockUser({
       id: 'partner-blake',
       firstName: 'Blake',
@@ -1069,89 +1097,35 @@ class CommunityService {
     });
 
     const endorserMaya = generateMockUser({
-      id: 'friend-maya',
+      id: 'friend-maya-e',
       firstName: 'Maya',
       age: 26,
       currentJob: 'Designer',
-      photos: [{ id: 'photo-maya', url: MOCK_PHOTOS[0], isMain: true, order: 0 }],
+      photos: [{ id: 'photo-maya-e', url: MOCK_PHOTOS[0], isMain: true, order: 0 }],
     });
 
-    const endorserJordan = generateMockUser({
-      id: 'friend-jordan',
-      firstName: 'Jordan',
-      age: 28,
-      currentJob: 'Marketing Manager',
-      photos: [{ id: 'photo-jordan', url: MOCK_PHOTOS[6], isMain: true, order: 0 }],
-    });
+    const baseProposal = {
+      id: 'pending-proposal-1',
+      proposalId: 'proposal-approved-001',
+      partnerProfile,
+      status: 'pending',
+      communityScore: 82,
+      endorsers: [
+        {
+          id: 'endorsement-1',
+          proposalId: 'proposal-approved-001',
+          endorserUserId: 'friend-maya-e',
+          endorserProfile: endorserMaya,
+          endorsementType: 'friend_of_a',
+          selectedCandidateId: partnerProfile.id,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      expiresAt: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString(),
+      approvedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    };
 
-    // Generate all pending proposals
-    const allProposals = [
-      {
-        id: 'pending-proposal-1',
-        proposalId: 'proposal-approved-001',
-        partnerProfile,
-        status: 'pending',
-        communityScore: 82, // 82% yes votes
-        endorsers: [
-          {
-            id: 'endorsement-1',
-            proposalId: 'proposal-approved-001',
-            endorserUserId: 'friend-maya',
-            endorserProfile: endorserMaya,
-            endorsementType: 'friend_of_a',
-            selectedCandidateId: partnerProfile.id,
-            createdAt: new Date().toISOString(),
-          },
-          {
-            id: 'endorsement-2',
-            proposalId: 'proposal-approved-001',
-            endorserUserId: 'friend-jordan',
-            endorserProfile: endorserJordan,
-            endorsementType: 'friend_of_a',
-            selectedCandidateId: partnerProfile.id,
-            createdAt: new Date().toISOString(),
-          },
-        ],
-        expiresAt: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString(), // 23 hours
-        approvedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-        yourDecision: 'pending',
-        partnerDecision: 'pending',
-      },
-    ];
-
-    // Filter out proposals that have been decided on (matched or declined)
-    // AND update decision fields from mockState
-    const pendingProposals = allProposals
-      .map((proposal) => {
-        const decision = mockState.proposalDecisions[proposal.id];
-
-        // Update decision fields if they exist in mockState
-        if (decision) {
-          return {
-            ...proposal,
-            yourDecision: decision.userDecision === null
-              ? 'pending'
-              : decision.userDecision
-                ? 'accepted'
-                : 'declined',
-            partnerDecision: decision.partnerDecision === null
-              ? 'pending'
-              : decision.partnerDecision
-                ? 'accepted'
-                : 'declined',
-            decidedAt: decision.decidedAt,
-          };
-        }
-
-        return proposal;
-      })
-      .filter((proposal) => {
-        const decision = mockState.proposalDecisions[proposal.id];
-        // Show if no decision yet, or if in partial_accepted state
-        return !decision || decision.status === 'pending' || decision.status === 'partial_accepted';
-      });
-
-    // Generate mock active match (day 2 of 3-day minimum)
+    // ── Active match partner ─────────────────────────────────────────────────
     const activeMatchPartner = generateMockUser({
       id: 'active-match-partner',
       firstName: 'Reese',
@@ -1161,22 +1135,39 @@ class CommunityService {
       photos: [{ id: 'photo-reese', url: MOCK_PHOTOS[7], isMain: true, order: 0 }],
     });
 
-    const activeMatch = {
+    const activeMatchData = {
       matchId: 'active-match-1',
       proposalId: 'proposal-approved-002',
       partnerProfile: activeMatchPartner,
-      matchedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+      matchedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
       daysActive: 2,
       canEndMatch: false,
-      daysUntilCanEnd: 1, // 1 more day until can end
+      daysUntilCanEnd: 1,
       messagesExchanged: 15,
     };
 
-    return {
-      friends,
-      pendingProposals,
-      activeMatch,
-    };
+    // ── Build pendingProposals and activeMatch from mockState.matchState ──────
+    let pendingProposals: any[] = [];
+    let activeMatch: any = null;
+
+    switch (mockState.matchState) {
+      case 'empty':
+        break;
+      case 'new_match':
+        pendingProposals = [{ ...baseProposal, yourDecision: 'pending', partnerDecision: 'pending' }];
+        break;
+      case 'awaiting_you':
+        pendingProposals = [{ ...baseProposal, yourDecision: 'pending', partnerDecision: 'accepted' }];
+        break;
+      case 'awaiting_them':
+        pendingProposals = [{ ...baseProposal, yourDecision: 'accepted', partnerDecision: 'pending' }];
+        break;
+      case 'active_match':
+        activeMatch = activeMatchData;
+        break;
+    }
+
+    return { friends, pendingProposals, activeMatch };
   }
 
   // ==========================================================================
@@ -1250,6 +1241,43 @@ class CommunityService {
   async toggleTimeRestrictions(disabled: boolean): Promise<void> {
     logger.info('[Mock] Time restrictions:', disabled ? 'DISABLED' : 'ENABLED');
     mockState.timeRestrictionDisabled = disabled;
+  }
+
+  // ==========================================================================
+  // DEV STATE TOGGLE API
+  // ==========================================================================
+
+  private stateChangeListeners: Array<() => void> = [];
+
+  /** Subscribe to mock state changes. Returns an unsubscribe function. */
+  onStateChange(listener: () => void): () => void {
+    this.stateChangeListeners.push(listener);
+    return () => {
+      this.stateChangeListeners = this.stateChangeListeners.filter(l => l !== listener);
+    };
+  }
+
+  private notifyStateChange(): void {
+    this.stateChangeListeners.forEach(l => l());
+  }
+
+  setMatchState(state: MockMatchState): void {
+    mockState.matchState = state;
+    this.notifyStateChange();
+  }
+
+  setFriendsState(state: MockFriendsState): void {
+    mockState.friendsState = state;
+    mockState.helpedFriends = []; // reset helped friends when switching states
+    this.notifyStateChange();
+  }
+
+  getCurrentMatchState(): MockMatchState {
+    return mockState.matchState;
+  }
+
+  getCurrentFriendsState(): MockFriendsState {
+    return mockState.friendsState;
   }
 
   // ==========================================================================

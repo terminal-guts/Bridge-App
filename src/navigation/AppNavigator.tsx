@@ -44,7 +44,6 @@ import { SettingsScreen } from '../screens/profile/SettingsScreen';
 import { ProfileEditScreen } from '../screens/profile/ProfileEditScreen';
 import { ProfileScreen as ProfileViewerScreen } from '../screens/profile/ProfileScreen';
 import { MatchPreferencesScreen } from '../screens/profile/MatchPreferencesScreen';
-import { ProfileVerificationScreen } from '../screens/profile/ProfileVerificationScreen';
 import { BlockedUsersScreen } from '../screens/profile/BlockedUsersScreen';
 import { PauseProfileScreen } from '../screens/profile/PauseProfileScreen';
 import { ChangePhoneNumberScreen } from '../screens/profile/ChangePhoneNumberScreen';
@@ -65,6 +64,7 @@ import { FriendListScreen } from '../screens/friends/FriendListScreen';
 import { RootStackParamList, MainTabParamList } from '../types';
 import { createDevelopmentData } from '../services/developmentDataService';
 import { DeveloperMenu } from '../components/DeveloperMenu';
+import { DevStateToggle } from '../components/DevStateToggle';
 import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('AppNavigator');
@@ -281,7 +281,6 @@ export const AppNavigator = () => {
           <Stack.Screen name="ProfileView" component={ProfileViewerScreen} />
           <Stack.Screen name="DeepQuestions" component={DeepQuestionsScreen} />
           <Stack.Screen name="MatchPreferences" component={MatchPreferencesScreen} />
-          <Stack.Screen name="ProfileVerification" component={ProfileVerificationScreen} />
           <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} />
           <Stack.Screen name="PauseProfile" component={PauseProfileScreen} />
           <Stack.Screen name="ChangePhoneNumber" component={ChangePhoneNumberScreen} />
@@ -305,6 +304,8 @@ export const AppNavigator = () => {
         </Stack.Navigator>
         {/* Developer Menu - Must be inside NavigationContainer to use useNavigation */}
         {FEATURES.ENABLE_DEVELOPER_MENU && <DeveloperMenu />}
+        {/* Dev State Toggle - quick UI state switcher */}
+        {FEATURES.ENABLE_DEV_STATE_TOGGLE && <DevStateToggle />}
       </ErrorBoundary>
     </NavigationContainer>
   );

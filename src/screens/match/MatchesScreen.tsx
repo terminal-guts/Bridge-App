@@ -33,20 +33,25 @@ export function MatchesScreen() {
     // Tab bar height: 75, card marginBottom: 16, small buffer: 8
     const activeCardHeight = windowHeight - insets.top - 96 - 75 - 16 - 8;
 
-    useEffect(() => {
-        const loadMatches = async () => {
-            try {
-                const data = await communityService.getFriendsAreaData();
-                setActiveMatch(data.activeMatch);
-                setPendingProposals(data.pendingProposals || []);
-            } catch (error) {
-                console.error('Failed to load match data', error);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const loadMatches = async () => {
+        try {
+            const data = await communityService.getFriendsAreaData();
+            setActiveMatch(data.activeMatch);
+            setPendingProposals(data.pendingProposals || []);
+        } catch (error) {
+            console.error('Failed to load match data', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
+    useEffect(() => {
         loadMatches();
+        // Reload whenever the dev state toggle changes mock state
+        return communityService.onStateChange(() => {
+            setLoading(true);
+            loadMatches();
+        });
     }, []);
 
     if (loading) {

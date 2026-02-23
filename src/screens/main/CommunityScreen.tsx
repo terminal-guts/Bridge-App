@@ -34,29 +34,34 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     }
   }, []);
 
-  useEffect(() => {
-    const initialize = async () => {
-      try {
-        const task = await communityService.getCommunityTaskProgress();
-        const votingDone = task.hasVotedOnProposals;
-        setHasCompletedVoting(votingDone);
-        if (votingDone) {
-          await loadFriendsData();
-        }
-      } catch (error) {
-        console.error("Failed to check task progress:", error);
-        // Default to showing voting if we can't check
-        setHasCompletedVoting(false);
-      } finally {
-        setLoading(false);
+  const initialize = useCallback(async () => {
+    setLoading(true);
+    try {
+      const task = await communityService.getCommunityTaskProgress();
+      const votingDone = task.hasVotedOnProposals;
+      setHasCompletedVoting(votingDone);
+      if (votingDone) {
+        await loadFriendsData();
       }
-    };
-
-    initialize();
+    } catch (error) {
+      console.error("Failed to check task progress:", error);
+      setHasCompletedVoting(false);
+    } finally {
+      setLoading(false);
+    }
   }, [loadFriendsData]);
 
-  // Reload friends when returning from FriendProposalScreen
+  // Ref must be declared before the useEffect that references it
   const initializedRef = useRef(false);
+
+  useEffect(() => {
+    initialize();
+    // Reload whenever the dev state toggle changes mock state
+    return communityService.onStateChange(() => {
+      initializedRef.current = true; // prevent useFocusEffect double-load
+      initialize();
+    });
+  }, [initialize]);
   useFocusEffect(useCallback(() => {
     if (!initializedRef.current) {
       initializedRef.current = true;
