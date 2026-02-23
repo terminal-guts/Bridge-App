@@ -74,3 +74,103 @@ export const ProfileTabIcon: React.FC<IconProps> = ({ size = 24, color = '#8D8D8
         />
     </Svg>
 );
+
+export const CheckmarkIcon: React.FC<IconProps> = ({ size = 16, color = '#FFFFFF' }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path d="M5 13l4 4L19 7" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+);
+
+/**
+ * Hourglass icon — replaces ClockIcon for awaiting states
+ * Matches the hourglass/timer icon in the "Awaiting your response" design
+ */
+export const HourglassIcon: React.FC<IconProps> = ({ size = 16, color = '#FFFFFF' }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+            d="M5 2h14M5 22h14M6 2v5l5 5-5 5v5M18 2v5l-5 5 5 5v5"
+            stroke={color}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+    </Svg>
+);
+
+/**
+ * Legacy ClockIcon kept for backward compatibility
+ */
+export const ClockIcon: React.FC<IconProps> = ({ size = 16, color = '#FFFFFF' }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+);
+
+/**
+ * Arrow right icon — used on the action button for the awaiting_you state
+ */
+export const ArrowRightIcon: React.FC<IconProps> = ({ size = 24, color = '#1C1C1E' }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+            d="M5 12h14M13 6l6 6-6 6"
+            stroke={color}
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+    </Svg>
+);
+
+export const ChatIcon: React.FC<IconProps> = ({ size = 24, color = '#2563EB' }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+        {/* Back Bubble */}
+        <Path d="M8 4c-1.1 0-2 .9-2 2v1h9c1.65 0 3 1.35 3 3v6h1c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H8z" />
+        {/* Front Bubble */}
+        <Path d="M4 8c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h3l2 3l2-3h5c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2H4z" />
+        {/* Dots */}
+        <Circle cx="7" cy="14" r="1.2" fill="#FFF" />
+        <Circle cx="10.5" cy="14" r="1.2" fill="#FFF" />
+        <Circle cx="14" cy="14" r="1.2" fill="#FFF" />
+    </Svg>
+);
+
+export const HeartsIcon: React.FC<IconProps> = ({ size = 24, color = '#00C8B3' }) => {
+    const heartD = "M12 20c-4.5-4-7-6.5-7-9 0-3 2-4.5 4.5-4.5 1.5 0 3 .8 4 2 1-1.2 2.5-2 4-2 2.5 0 4.5 1.5 4.5 4.5 0 2.5-2.5 5-7 9z";
+    return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+            {/* Back Heart */}
+            <Path
+                d={heartD}
+                transform="translate(-3, -3)"
+                stroke={color}
+                strokeWidth={2.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            {/* Front Heart */}
+            <Path
+                d={heartD}
+                transform="translate(3, 3)"
+                stroke={color}
+                strokeWidth={2.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </Svg>
+    );
+};
+
+export const QuestionIcon: React.FC<IconProps> = ({ size = 24, color = '#FFFFFF' }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <G>
+            <Path
+                d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10s10-4.477 10-10S17.523 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8s8 3.59 8 8s-3.59 8-8 8z"
+                fill={color}
+            />
+            <Path
+                d="M11 7h2v2h-2V7zm0 4h2v6h-2v-6z"
+                fill={color}
+            />
+        </G>
+    </Svg>
+);

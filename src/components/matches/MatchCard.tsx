@@ -1,208 +1,312 @@
 import React from 'react';
 import { View, Text, ImageBackground, TouchableOpacity, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CheckmarkIcon, ClockIcon, ChatIcon, HeartsIcon } from '../Icons/Icons';
+import { CheckmarkIcon, HourglassIcon, ChatIcon, HeartsIcon, ArrowRightIcon, QuestionIcon } from '../icons/Icons';
 
-export type MatchStatus = 'active_match' | 'awaiting_you' | 'awaiting_them' | 'no_match' | 'new_match';
+// ──────────────────────────────────────────────────────────────────────────────
+// Types
+// ──────────────────────────────────────────────────────────────────────────────
+export type MatchStatus =
+    | 'active_match'
+    | 'awaiting_you'
+    | 'awaiting_them'
+    | 'no_match'
+    | 'new_match';
 
-const STATUS_CONFIG: Record<MatchStatus, { label: string; topBgColor?: string; bottomBgColor?: string; Icon: React.FC<any> }> = {
+const STATUS_CONFIG: Record<
+    MatchStatus,
+    { label: string; topBgColor?: string; bottomBgColor?: string; Icon?: React.FC<any> }
+> = {
     active_match: {
         label: 'Active match',
         topBgColor: '#34C759',
-        bottomBgColor: 'rgba(52, 199, 89, 0.2)', // From CSS
+        bottomBgColor: 'rgba(52, 199, 89, 0.2)',
         Icon: CheckmarkIcon,
     },
     awaiting_you: {
         label: 'Awaiting your response',
-        topBgColor: '#FF9F0A',
-        Icon: ClockIcon,
+        topBgColor: '#FF8D28',
+        Icon: HourglassIcon,
     },
     awaiting_them: {
         label: 'Awaiting their response',
-        topBgColor: '#1C1C1E',
-        Icon: ClockIcon,
+        // Figma CSS: #D4AA01
+        topBgColor: '#D4AA01',
+        Icon: HourglassIcon,
     },
     no_match: {
         label: 'No match',
         topBgColor: '#8E8E93',
-        Icon: ClockIcon,
+        Icon: HourglassIcon,
     },
     new_match: {
         label: 'New match',
-        topBgColor: '#2B65F9',
-        Icon: CheckmarkIcon,
-    }
+        topBgColor: 'rgba(255, 255, 255, 0.2)',
+        bottomBgColor: undefined,
+    },
 };
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Props
+// ──────────────────────────────────────────────────────────────────────────────
 interface MatchCardProps {
     status: MatchStatus;
     name: string;
     age: number;
-    matchDate: string;
+    /** For active_match shows "Matched {date}"; for awaiting_you shows "Expires in {expiresIn}" */
+    expiresIn?: string;
+    matchDate?: string;
     imageUrl: string;
     matchedByAvatars: string[];
+    /** Whether the other person already voted yes — shows the voted banner */
+    theyVotedYes?: boolean;
+    /** For the awaiting_them variant: shows "You votes yes" banner */
+    youVotedYes?: boolean;
+    /** For the awaiting_them variant: shows "Expires X hours" banner */
+    expiresXHours?: string;
+    onPress?: () => void;
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Component
+// ──────────────────────────────────────────────────────────────────────────────
 export const MatchCard: React.FC<MatchCardProps> = ({
     status,
     name,
     age,
+    expiresIn,
     matchDate,
     imageUrl,
     matchedByAvatars,
+    theyVotedYes = false,
+    youVotedYes = false,
+    expiresXHours,
+    onPress,
 }) => {
     const config = STATUS_CONFIG[status];
-    const isReadyToChat = true;
+    const isAwaitingYou = status === 'awaiting_you';
+    const isAwaitingThem = status === 'awaiting_them';
+    const isActiveMatch = status === 'active_match';
 
     return (
-        <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden', backgroundColor: 'black' }}>
+        <View style={styles.card}>
             <ImageBackground
                 source={{ uri: imageUrl }}
-                style={{ width: '100%', height: '100%' }}
-                imageStyle={{ borderRadius: 16 }}
+                style={StyleSheet.absoluteFillObject}
+                imageStyle={styles.cardImage}
+                resizeMode="cover"
             >
-                {/* CSS gradient overlay */}
                 <LinearGradient
-                    colors={['rgba(9, 18, 46, 0)', 'rgba(9, 18, 46, 0.2)', 'rgba(9, 18, 46, 0.6)']}
-                    locations={[0.5, 0.75, 1.0]}
+                    colors={[
+                        'rgba(9, 18, 46, 0)',
+                        'rgba(9, 18, 46, 0.2)',
+                        'rgba(9, 18, 46, 0.5)',
+                    ]}
+                    locations={[0.6313, 0.7505, 1.0]}
                     style={StyleSheet.absoluteFillObject}
                 />
 
-                <View style={{ flex: 1, padding: 16, justifyContent: 'space-between' }}>
-                    {/* Top Section - Status Badge */}
-                    <View style={{ flexDirection: 'row' }}>
+                <View style={styles.cardInner}>
+                    <View style={styles.topRow}>
                         {config.topBgColor && (
-                            <View
-                                style={{
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    borderRadius: 6,
-                                    backgroundColor: config.topBgColor,
-                                    paddingHorizontal: 10,
-                                    paddingVertical: 6,
-                                    gap: 6
-                                }}
-                            >
-                                <config.Icon size={16} color="#FFF" />
-                                <Text style={{ color: 'white', fontSize: 14, fontFamily: 'Outfit_600SemiBold' }}>
+                            <View style={[styles.statusBadge, { backgroundColor: config.topBgColor }]}>
+                                {config.Icon && <config.Icon size={18} color="#FFF" />}
+                                <Text style={styles.statusBadgeText}>
                                     {config.label}
                                 </Text>
                             </View>
                         )}
                     </View>
 
-                    {/* Bottom Section */}
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingBottom: 8 }}>
-                        {/* Text Details Area */}
-                        <View style={{ flex: 1, paddingRight: 16 }}>
-                            {/* Secondary badge (Match complete) */}
-                            {status === 'active_match' && config.bottomBgColor && (
-                                <View
-                                    style={{
-                                        flexDirection: 'row',
-                                        alignItems: 'center',
-                                        borderRadius: 6,
-                                        backgroundColor: config.bottomBgColor,
-                                        paddingHorizontal: 8,
-                                        paddingVertical: 5,
-                                        gap: 6,
-                                        alignSelf: 'flex-start',
-                                        marginBottom: 10
-                                    }}
-                                >
+                    <View style={styles.bottomSection}>
+                        {/* Status Banners */}
+                        {isAwaitingYou && theyVotedYes && (
+                            <View style={styles.votedBanner}>
+                                <CheckmarkIcon size={18} color="#FFFFFF" />
+                                <Text style={styles.votedBannerText}>
+                                    They voted yes – Awaiting your vote
+                                </Text>
+                            </View>
+                        )}
+
+                        {isAwaitingThem && (
+                            <View style={{ gap: 10 }}>
+                                {youVotedYes && (
+                                    <View style={[styles.statusBanner, { backgroundColor: 'rgba(52, 199, 89, 0.2)' }]}>
+                                        <CheckmarkIcon size={18} color="#FFFFFF" />
+                                        <Text style={styles.votedBannerText}>You votes yes</Text>
+                                    </View>
+                                )}
+                                {expiresXHours && (
+                                    <View style={[styles.statusBanner, { backgroundColor: 'rgba(255, 141, 40, 0.2)' }]}>
+                                        <QuestionIcon size={18} color="#FFFFFF" />
+                                        <Text style={styles.votedBannerText}>You votes yes - {expiresXHours}</Text>
+                                    </View>
+                                )}
+                            </View>
+                        )}
+
+                        <View style={styles.nameBlock}>
+                            {isActiveMatch && config.bottomBgColor && (
+                                <View style={[styles.activeMatchBadge, { backgroundColor: config.bottomBgColor }]}>
                                     <CheckmarkIcon size={14} color="#FFF" />
-                                    <Text style={{ color: 'white', fontSize: 13, fontFamily: 'Outfit_400Regular' }}>
-                                        Match complete
-                                    </Text>
+                                    <Text style={styles.activeMatchBadgeText}>Match complete</Text>
                                 </View>
                             )}
 
-                            {/* Name and Age */}
-                            <Text
-                                style={{
-                                    color: 'white',
-                                    fontSize: 28,
-                                    fontFamily: 'Outfit_600SemiBold',
-                                    marginBottom: 6,
-                                    textShadowColor: 'rgba(0,0,0,0.3)',
-                                    textShadowOffset: { width: 0, height: 1 },
-                                    textShadowRadius: 3
-                                }}
-                            >
+                            <Text style={styles.nameText}>
                                 {name}, {age}
                             </Text>
 
-                            {/* Matched By Section */}
-                            {matchedByAvatars.length > 0 && (
-                                <View
-                                    style={{
-                                        flexDirection: 'row',
-                                        alignItems: 'center',
-                                        gap: 6,
-                                        marginBottom: 6
-                                    }}
-                                >
-                                    <HeartsIcon size={20} color="#00C8B3" />
-                                    <Text style={{ color: 'white', fontSize: 13, fontFamily: 'Outfit_400Regular' }}>
-                                        Matched by :
-                                    </Text>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                        {matchedByAvatars.map((avatar, idx) => (
-                                            <View
-                                                key={idx}
-                                                style={{
-                                                    width: 24,
-                                                    height: 24,
-                                                    borderRadius: 12,
-                                                    borderWidth: 1.5,
-                                                    borderColor: 'white',
-                                                    overflow: 'hidden',
-                                                    marginLeft: idx > 0 ? -8 : 0
-                                                }}
-                                            >
-                                                <ImageBackground source={{ uri: avatar }} style={{ width: '100%', height: '100%' }} />
-                                            </View>
-                                        ))}
-                                    </View>
-                                </View>
-                            )}
-
-                            {/* Date */}
-                            <Text
-                                style={{
-                                    color: 'rgba(255,255,255,0.7)',
-                                    fontSize: 13,
-                                    fontFamily: 'Outfit_300Light',
-                                }}
-                            >
-                                Matched {matchDate}
-                            </Text>
+                            {isAwaitingYou && expiresIn ? (
+                                <Text style={styles.expiryText}>Expires in {expiresIn}</Text>
+                            ) : matchDate ? (
+                                <Text style={styles.expiryText}>{matchDate}</Text>
+                            ) : null}
                         </View>
-
-                        {/* Action Button */}
-                        {isReadyToChat && (
-                            <TouchableOpacity
-                                style={{
-                                    width: 60,
-                                    height: 60,
-                                    backgroundColor: 'white',
-                                    borderRadius: 30,
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    shadowColor: '#000',
-                                    shadowOffset: { width: 0, height: 4 },
-                                    shadowOpacity: 0.2,
-                                    shadowRadius: 10,
-                                    elevation: 6
-                                }}
-                            >
-                                <ChatIcon size={28} color="#2563EB" />
-                            </TouchableOpacity>
-                        )}
                     </View>
                 </View>
             </ImageBackground>
+
+            <TouchableOpacity onPress={onPress} style={styles.actionButton} activeOpacity={0.85}>
+                {(isAwaitingYou || isAwaitingThem || status === 'new_match') ? (
+                    <ArrowRightIcon size={24} color="#010101" />
+                ) : (
+                    <ChatIcon size={24} color="#2563EB" />
+                )}
+            </TouchableOpacity>
         </View>
     );
-}
+};
+
+const styles = StyleSheet.create({
+    card: {
+        flex: 1,
+        borderRadius: 16,
+        overflow: 'hidden',
+        backgroundColor: '#000',
+    },
+    cardImage: {
+        borderRadius: 16,
+    },
+    cardInner: {
+        flex: 1,
+        paddingHorizontal: 12,
+        paddingTop: 12,
+        justifyContent: 'space-between',
+    },
+    topRow: {
+        flexDirection: 'row',
+    },
+    statusBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        gap: 6,
+    },
+    statusBadgeText: {
+        color: '#FFFFFF',
+        fontFamily: 'Outfit_600SemiBold',
+        fontSize: 14,
+        lineHeight: 18,
+    },
+    bottomSection: {
+        gap: 12,
+        paddingBottom: 16,
+        paddingRight: 70,
+    },
+    statusBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        gap: 6,
+    },
+    votedBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(132, 132, 132, 0.2)',
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        gap: 6,
+    },
+    votedBannerText: {
+        color: '#FFFFFF',
+        fontFamily: 'Outfit_400Regular',
+        fontSize: 14,
+        lineHeight: 18,
+    },
+    nameBlock: {
+        gap: 8,
+    },
+    activeMatchBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 6,
+        paddingHorizontal: 8,
+        paddingVertical: 5,
+        gap: 6,
+        alignSelf: 'flex-start',
+    },
+    activeMatchBadgeText: {
+        color: 'white',
+        fontSize: 13,
+        fontFamily: 'Outfit_400Regular',
+    },
+    nameText: {
+        color: '#FFFFFF',
+        fontFamily: 'Outfit_600SemiBold',
+        fontSize: 24,
+        lineHeight: 30,
+    },
+    matchedByRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    matchedByText: {
+        color: '#FFFFFF',
+        fontFamily: 'Outfit_400Regular',
+        fontSize: 14,
+        lineHeight: 18,
+    },
+    avatarRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    avatarCircle: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        borderWidth: 1,
+        borderColor: '#FFFFFF',
+        overflow: 'hidden',
+    },
+    expiryText: {
+        color: 'rgba(255, 255, 255, 0.7)',
+        fontFamily: 'Outfit_400Regular',
+        fontSize: 14,
+        lineHeight: 18,
+    },
+    actionButton: {
+        position: 'absolute',
+        right: 16,
+        bottom: 16,
+        width: 54,
+        height: 54,
+        borderRadius: 27,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 12,
+        elevation: 6,
+    },
+});

@@ -56,18 +56,50 @@ export function MatchesScreen() {
                     </View>
                 )}
 
-                {pendingProposals.map((proposal) => (
-                    <View key={proposal.proposalId} style={{ marginBottom: 16 }}>
-                        <MatchCard
-                            status="awaiting_you"
-                            name={proposal.partnerProfile?.firstName || 'Unknown'}
-                            age={proposal.partnerProfile?.age || 0}
-                            matchDate={new Date(proposal.approvedAt).toLocaleDateString()}
-                            imageUrl={proposal.partnerProfile?.photos?.[0]?.url || 'https://via.placeholder.com/150'}
-                            matchedByAvatars={proposal.endorsers?.map((e: any) => e.endorserProfile?.photos?.[0]?.url).filter(Boolean) || []}
-                        />
-                    </View>
-                ))}
+                {pendingProposals.map((proposal) => {
+                    let status: MatchStatus = 'new_match';
+                    let theyVotedYes = false;
+                    let youVotedYes = false;
+
+                    const yourD = (proposal as any).yourDecision;
+                    const partnerD = (proposal as any).partnerDecision;
+
+                    if (yourD === 'accepted' && partnerD === 'pending') {
+                        status = 'awaiting_them';
+                        youVotedYes = true;
+                    } else if (yourD === 'pending' && partnerD === 'accepted') {
+                        status = 'awaiting_you';
+                        theyVotedYes = true;
+                    } else if (yourD === 'pending' && (!partnerD || partnerD === 'pending')) {
+                        status = 'new_match';
+                    }
+
+                    // Format expiry time relative
+                    const expireDate = new Date(proposal.expiresAt || Date.now());
+                    const diffMs = expireDate.getTime() - Date.now();
+                    const hours = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60)));
+                    const expiresIn = hours > 0 ? `${hours} hrs` : '< 1 hr';
+
+                    return (
+                        <View key={proposal.proposalId} style={{ marginBottom: 16 }}>
+                            <MatchCard
+                                status={status}
+                                name={proposal.partnerProfile?.firstName || 'Unknown'}
+                                age={proposal.partnerProfile?.age || 0}
+                                expiresIn={expiresIn}
+                                matchDate={new Date(proposal.approvedAt).toLocaleDateString()}
+                                imageUrl={proposal.partnerProfile?.photos?.[0]?.url || 'https://via.placeholder.com/150'}
+                                matchedByAvatars={proposal.endorsers?.map((e: any) => e.endorserProfile?.photos?.[0]?.url).filter(Boolean) || []}
+                                theyVotedYes={theyVotedYes}
+                                youVotedYes={youVotedYes}
+                                expiresXHours={status === 'awaiting_them' ? `Expires ${expiresIn}` : undefined}
+                                onPress={() => {
+                                    console.log('Navigate to MatchProposal view');
+                                }}
+                            />
+                        </View>
+                    );
+                })}
 
                 {!activeMatch && pendingProposals.length === 0 && (
                     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 40 }}>
