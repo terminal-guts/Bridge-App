@@ -22,6 +22,13 @@ const FRIENDS_OPTIONS: { label: string; value: MockFriendsState }[] = [
   { label: 'With Friends', value: 'with_friends' },
 ];
 
+const TIMER_PRESETS: { label: string; ms: number; color: string }[] = [
+  { label: '20h 🟢', ms: 20 * 3600000,    color: '#1D9E50' },
+  { label: '8h 🟠',  ms: 8  * 3600000,    color: '#C96B00' },
+  { label: '2h 🔴',  ms: 2  * 3600000,    color: '#D92D20' },
+  { label: '30s ⏱',  ms: 30 * 1000,       color: '#D92D20' },
+];
+
 export function DevStateToggle() {
   const [visible, setVisible] = useState(false);
   const [matchState, setMatchStateLocal] = useState<MockMatchState>(
@@ -107,6 +114,21 @@ export function DevStateToggle() {
                   <Text style={[styles.chipText, friendsState === opt.value && styles.chipTextActive]}>
                     {opt.label}
                   </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* ── Timer ─────────────────────────────────────── */}
+            <Text style={[styles.sectionLabel, { marginTop: 20 }]}>RESET TIMER</Text>
+            <View style={styles.chipGrid}>
+              {TIMER_PRESETS.map(preset => (
+                <TouchableOpacity
+                  key={preset.label}
+                  style={styles.chip}
+                  onPress={() => communityService.setTimeRemaining(preset.ms)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.chipText, { color: preset.color }]}>{preset.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>

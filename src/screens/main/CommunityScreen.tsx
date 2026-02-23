@@ -9,6 +9,84 @@ import { MainTabParamList } from '../../types';
 import { communityService } from '../../services/communityServiceIndex';
 import { FriendWithGridStatus } from '../../types/community';
 
+// ── Match reset countdown timer ───────────────────────────────────────────────
+function MatchResetTimer() {
+  const [remaining, setRemaining] = useState(() =>
+    Math.max(0, communityService.getNextResetAt() - Date.now()),
+  );
+
+  useEffect(() => {
+    const tick = () => {
+      const ms = communityService.getNextResetAt() - Date.now();
+      if (ms <= 0) {
+        communityService.triggerReset();
+        setRemaining(24 * 60 * 60 * 1000);
+      } else {
+        setRemaining(ms);
+      }
+    };
+
+    const interval = setInterval(tick, 1000);
+    // Re-sync when dev toggle changes the reset time
+    const unsub = communityService.onStateChange(() => {
+      setRemaining(Math.max(0, communityService.getNextResetAt() - Date.now()));
+    });
+
+    return () => {
+      clearInterval(interval);
+      unsub();
+    };
+  }, []);
+
+  const hours   = Math.floor(remaining / 3600000);
+  const minutes = Math.floor((remaining % 3600000) / 60000);
+  const seconds = Math.floor((remaining % 60000) / 1000);
+
+  let label: string;
+  if (hours > 0) {
+    label = `${hours}h ${minutes}m`;
+  } else if (minutes > 0) {
+    label = `${minutes}m ${seconds}s`;
+  } else {
+    label = `${seconds}s`;
+  }
+
+  // Color thresholds: green 12-24h, orange 4-12h, red <4h
+  let color: string;
+  let bgColor: string;
+  let borderColor: string;
+  if (remaining > 12 * 3600000) {
+    color = '#1D9E50';
+    bgColor = 'rgba(52, 199, 89, 0.08)';
+    borderColor = 'rgba(52, 199, 89, 0.25)';
+  } else if (remaining > 4 * 3600000) {
+    color = '#C96B00';
+    bgColor = 'rgba(255, 141, 40, 0.08)';
+    borderColor = 'rgba(255, 141, 40, 0.25)';
+  } else {
+    color = '#D92D20';
+    bgColor = 'rgba(255, 56, 60, 0.08)';
+    borderColor = 'rgba(255, 56, 60, 0.25)';
+  }
+
+  return (
+    <View style={{
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: bgColor,
+      borderWidth: 1,
+      borderColor,
+      borderRadius: 10,
+      paddingHorizontal: 9,
+      height: 34,
+      gap: 5,
+    }}>
+      <Ionicons name="time-outline" size={13} color={color} />
+      <Text style={{ fontSize: 13, fontWeight: '600', color }}>{label}</Text>
+    </View>
+  );
+}
+
 interface CommunityScreenProps {
   navigation: NavigationProp<MainTabParamList, 'Community'>;
 }
@@ -108,23 +186,26 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           <Text className="text-[22px] font-outfit-semibold text-[#010101] leading-tight">
             Community
           </Text>
-          <TouchableOpacity
-            onPress={() => (navigation as any).navigate('FriendCode')}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            activeOpacity={0.7}
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 17,
-              backgroundColor: '#F4F7FF',
-              borderWidth: 1,
-              borderColor: '#D1DEFF',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Ionicons name="add" size={20} color="#2B65F9" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <MatchResetTimer />
+            <TouchableOpacity
+              onPress={() => (navigation as any).navigate('FriendCode')}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={0.7}
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 17,
+                backgroundColor: '#F4F7FF',
+                borderWidth: 1,
+                borderColor: '#D1DEFF',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="add" size={20} color="#2B65F9" />
+            </TouchableOpacity>
+          </View>
         </View>
         {usersToMatch.length > 0 && (
           <Text className="text-[16px] font-outfit-regular text-[#010101] opacity-60 mt-2">

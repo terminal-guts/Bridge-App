@@ -1247,6 +1247,27 @@ class CommunityService {
   // DEV STATE TOGGLE API
   // ==========================================================================
 
+  /** Timestamp (ms) of the next 24-hour match reset */
+  private nextResetAt: number = Date.now() + 24 * 60 * 60 * 1000;
+
+  /** Returns the timestamp of the next match reset */
+  getNextResetAt(): number {
+    return this.nextResetAt;
+  }
+
+  /** Called by the timer when it reaches zero — resets and starts a fresh 24h cycle */
+  triggerReset(): void {
+    this.nextResetAt = Date.now() + 24 * 60 * 60 * 1000;
+    mockState.helpedFriends = [];
+    this.notifyStateChange();
+  }
+
+  /** Dev helper: set how many ms remain until the next reset */
+  setTimeRemaining(ms: number): void {
+    this.nextResetAt = Date.now() + Math.max(0, ms);
+    this.notifyStateChange();
+  }
+
   private stateChangeListeners: Array<() => void> = [];
 
   /** Subscribe to mock state changes. Returns an unsubscribe function. */
