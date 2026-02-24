@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { FriendWithGridStatus } from '../../types/community';
 import { FireIcon, StarIcon } from '../icons/Icons';
 
@@ -10,53 +10,124 @@ interface UserRowProps {
 }
 
 export const UserRow: React.FC<UserRowProps> = ({ item, index, onMatch }) => {
-    const isAlternate = index % 2 !== 0;
-
     const name = item.friend.firstName || 'Unknown';
     const imageUrl = item.friend.photos?.[0]?.url || 'https://via.placeholder.com/150';
     const streak = item.streakDays || 0;
     const actionType = item.hasCompletedGrid ? 'points' : 'match';
-    // Stable random fallback for bots/mocks with no assists tracked
+
     const stableRandom = (seed: string, min: number, max: number) => {
-      let h = 0;
-      for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
-      return min + (Math.abs(h) % (max - min));
+        let h = 0;
+        for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
+        return min + (Math.abs(h) % (max - min));
     };
     const points = item.assistsCount > 0
-      ? item.assistsCount * 10
-      : stableRandom(item.friendId, 40, 180);
+        ? item.assistsCount * 10
+        : stableRandom(item.friendId, 40, 180);
 
     return (
-        <View className={`flex-row items-center justify-between px-6 py-4 ${isAlternate ? 'bg-[#F9FAFB]' : 'bg-white'}`}>
-            <View className="flex-row items-center">
+        <View style={styles.row}>
+            <View style={styles.left}>
                 <Image
                     source={{ uri: imageUrl }}
-                    className="w-[52px] h-[52px] rounded-full bg-gray-200"
+                    style={styles.avatar}
                 />
-
-                <View className="justify-center ml-4">
-                    <Text className="text-[17px] font-outfit-bold text-[#111111] mb-[2px]">
-                        {name}
-                    </Text>
-                    <View className="flex-row items-center">
-                        <FireIcon size={14} color="#2B65F9" />
-                        <Text className="text-[14px] font-jakarta-medium text-[#737373] ml-1.5 mt-0.5">
-                            {streak}-day streak
-                        </Text>
+                <View style={styles.info}>
+                    <Text style={styles.name}>{name}</Text>
+                    <View style={styles.streakRow}>
+                        <FireIcon size={15} color="#2B65F9" />
+                        <Text style={styles.streakText}>{streak}-day streak</Text>
                     </View>
                 </View>
             </View>
 
             {actionType === 'match' ? (
-                <TouchableOpacity onPress={onMatch} className="px-5 py-2 rounded-lg border border-[#2B65F9] bg-[#F4F7FF]">
-                    <Text className="text-[#2B65F9] font-outfit-semibold text-[14px]">Match</Text>
+                <TouchableOpacity onPress={onMatch} style={styles.matchBtn} activeOpacity={0.75}>
+                    <Text style={styles.matchBtnText}>Match</Text>
                 </TouchableOpacity>
             ) : (
-                <TouchableOpacity className="flex-row items-center px-3 py-2 rounded-lg border border-[#3ECC62] bg-[#F2FCF5]">
-                    <StarIcon size={14} color="#3ECC62" />
-                    <Text className="text-[#3ECC62] font-outfit-semibold text-[14px] ml-1.5">{points} pts</Text>
+                <TouchableOpacity style={styles.pointsBtn} activeOpacity={0.75}>
+                    <StarIcon size={15} color="#3ECC62" />
+                    <Text style={styles.pointsBtnText}>{points} pts</Text>
                 </TouchableOpacity>
             )}
         </View>
     );
 };
+
+const styles = StyleSheet.create({
+    row: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E0EAFF',
+    },
+    left: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    avatar: {
+        width: 68,
+        height: 68,
+        borderRadius: 34,
+        backgroundColor: '#E5E7EB',
+    },
+    info: {
+        marginLeft: 16,
+        justifyContent: 'center',
+    },
+    name: {
+        fontFamily: 'Outfit_700Bold',
+        fontWeight: '700',
+        fontSize: 18,
+        lineHeight: 23,
+        color: '#111111',
+        marginBottom: 4,
+    },
+    streakRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    streakText: {
+        fontFamily: 'Outfit_400Regular',
+        fontSize: 14,
+        lineHeight: 18,
+        color: '#737373',
+    },
+    matchBtn: {
+        paddingHorizontal: 22,
+        paddingVertical: 10,
+        borderRadius: 999,
+        borderWidth: 1.5,
+        borderColor: '#2B65F9',
+        backgroundColor: '#EEF3FF',
+    },
+    matchBtnText: {
+        fontFamily: 'Outfit_700Bold',
+        fontWeight: '700',
+        fontSize: 15,
+        color: '#2B65F9',
+    },
+    pointsBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 999,
+        borderWidth: 1.5,
+        borderColor: '#3ECC62',
+        backgroundColor: '#EDFCF2',
+        gap: 6,
+    },
+    pointsBtnText: {
+        fontFamily: 'Outfit_700Bold',
+        fontWeight: '700',
+        fontSize: 15,
+        color: '#3ECC62',
+    },
+});

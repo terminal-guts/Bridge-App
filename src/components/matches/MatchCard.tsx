@@ -28,12 +28,12 @@ const BOTTOM_PILLS: Record<MatchStatus, Array<{ label: string; bg: string; Icon?
         { label: 'Both voted yes',      bg: 'rgba(52, 199, 89, 0.55)',  Icon: CheckmarkIcon },
     ],
     awaiting_you:  [
-        { label: 'Awaiting your vote',  bg: 'rgba(20, 12, 4, 0.78)',    Icon: HourglassIcon },
+        { label: "You haven't voted",   bg: 'rgba(20, 12, 4, 0.78)',    Icon: QuestionIcon },
         { label: 'They voted yes',      bg: 'rgba(52, 199, 89, 0.55)',  Icon: CheckmarkIcon },
     ],
     awaiting_them: [
         { label: 'You voted yes',       bg: 'rgba(52, 199, 89, 0.55)',  Icon: CheckmarkIcon },
-        { label: 'Awaiting their vote', bg: 'rgba(20, 12, 4, 0.78)',    Icon: HourglassIcon },
+        { label: "They haven't voted",  bg: 'rgba(20, 12, 4, 0.78)',    Icon: QuestionIcon },
     ],
     new_match:     [
         { label: 'Neither person voted', bg: 'rgba(20, 12, 4, 0.78)', Icon: QuestionIcon },
@@ -101,7 +101,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                             <Text style={styles.topBadgeText}>{topBadge.label}</Text>
                         </View>
                         {isActiveMatch && onDismiss && (
-                            <TouchableOpacity onPress={onDismiss} style={styles.dismissButton} activeOpacity={0.8}>
+                            <TouchableOpacity onPress={onDismiss} style={[styles.dismissButton, { backgroundColor: 'rgba(120,120,128,0.6)' }]} activeOpacity={0.8}>
                                 <Text style={styles.dismissX}>✕</Text>
                             </TouchableOpacity>
                         )}
@@ -198,7 +198,6 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#FF3B30',
         alignItems: 'center',
         justifyContent: 'center',
     },

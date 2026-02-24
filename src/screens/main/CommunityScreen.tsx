@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, SafeAreaView, StatusBar, ActivityIndicator, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, StatusBar, ActivityIndicator, Image, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 import { styled } from 'nativewind';
 import { UserRow } from '../../components/community/UserRow';
 import { ProposalReviewView } from '../../components/community/ProposalReviewView';
@@ -104,7 +106,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     try {
       const data = await communityService.getFriendsAreaData();
       const toMatch = data.friends.filter((f: FriendWithGridStatus) => !f.hasCompletedGrid);
-      const helped = data.friends.filter((f: FriendWithGridStatus) => f.hasCompletedGrid);
+      const helped = data.friends
+        .filter((f: FriendWithGridStatus) => f.hasCompletedGrid)
+        .sort((a: FriendWithGridStatus, b: FriendWithGridStatus) => b.assistsCount - a.assistsCount);
       setUsersToMatch(toMatch);
       setAlreadyHelped(helped);
     } catch (error) {
@@ -151,9 +155,10 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   }, [hasCompletedVoting, loadFriendsData]));
 
   const handleVotesComplete = useCallback(async () => {
-    setHasCompletedVoting(true);
     await loadFriendsData();
-  }, [loadFriendsData]);
+    setHasCompletedVoting(true);
+    navigation.navigate('Community');
+  }, [loadFriendsData, navigation]);
 
   if (loading || hasCompletedVoting === null) {
     return (
@@ -181,9 +186,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       <StatusBar barStyle="dark-content" />
 
       {/* Header section */}
-      <View className="px-6 pt-12 pb-2">
+      <View className="px-6 pt-4">
         <View className="flex-row items-center justify-between">
-          <Text className="text-[22px] font-outfit-semibold text-[#010101] leading-tight">
+          <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 32, lineHeight: 38, color: '#010101', letterSpacing: -0.5 }}>
             Community
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -207,11 +212,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             </TouchableOpacity>
           </View>
         </View>
-        {usersToMatch.length > 0 && (
-          <Text className="text-[16px] font-outfit-regular text-[#010101] opacity-60 mt-2">
-            Help your friends
-          </Text>
-        )}
       </View>
 
       {usersToMatch.length === 0 && alreadyHelped.length === 0 ? (
@@ -228,13 +228,18 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           <TouchableOpacity
             style={styles.ctaButton}
             activeOpacity={0.85}
-            onPress={() => navigation.navigate('Community')}
+            onPress={() => (navigation as any).navigate('FriendCode')}
           >
             <Text style={styles.ctaText}>Add your first friend</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView className="flex-1 mt-4" showsVerticalScrollIndicator={false}>
+        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+          {usersToMatch.length > 0 && (
+            <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 15, color: '#9CA3AF', marginTop: SCREEN_HEIGHT * 0.055, marginBottom: 4, paddingHorizontal: 24 }}>
+              Help your friends
+            </Text>
+          )}
           {/* Main list */}
           <View>
             {usersToMatch.map((user, index) => (
@@ -255,8 +260,8 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
           {/* Already Helped section */}
           {alreadyHelped.length > 0 && (
-            <View className="mt-6 mb-3 px-6">
-              <Text className="text-[17px] font-jakarta-medium text-[#737373]">
+            <View style={{ marginTop: 20, marginBottom: 4, paddingHorizontal: 24 }}>
+              <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 15, color: '#9CA3AF' }}>
                 Already helped
               </Text>
             </View>
@@ -274,10 +279,10 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  emptyContainer: { flex: 1, alignItems: 'center', paddingTop: 32, paddingHorizontal: 24 },
-  tagline: { fontFamily: 'Outfit_600SemiBold', fontSize: 17, lineHeight: 21, color: '#0B1226', textAlign: 'center', marginBottom: 32 },
+  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  tagline: { fontFamily: 'Outfit_600SemiBold', fontSize: 20, lineHeight: 26, color: '#0B1226', textAlign: 'center', marginBottom: 12 },
   illustration: { width: 300, height: 300, marginBottom: 32 },
-  subtitle: { fontFamily: 'Outfit_500Medium', fontSize: 14, lineHeight: 17, color: '#6B7280', textAlign: 'center', marginBottom: 32 },
+  subtitle: { fontFamily: 'Outfit_500Medium', fontSize: 14, lineHeight: 17, color: '#6B7280', textAlign: 'center', marginBottom: 16 },
   ctaButton: {
     backgroundColor: '#007AFF',
     width: 250,

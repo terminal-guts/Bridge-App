@@ -15,7 +15,7 @@ type ScreenState =
     | 'neither_voted'   // Proposal exists, no one has voted yet
     | 'empty';          // Nothing at all
 
-const END_MATCH_MIN_CHARS = 100;
+const END_MATCH_MIN_CHARS = 50;
 
 function timerColor(hoursLeft: number): string {
     if (hoursLeft >= 24) return '#34C759';
@@ -25,10 +25,17 @@ function timerColor(hoursLeft: number): string {
 }
 
 function timerBgColor(hoursLeft: number): string {
-    if (hoursLeft >= 24) return 'rgba(52, 199, 89, 0.10)';
-    if (hoursLeft >= 12) return 'rgba(212, 170, 1, 0.10)';
-    if (hoursLeft >= 4)  return 'rgba(255, 141, 40, 0.10)';
-    return 'rgba(255, 59, 48, 0.10)';
+    if (hoursLeft >= 24) return 'rgba(52, 199, 89, 0.08)';
+    if (hoursLeft >= 12) return 'rgba(212, 170, 1, 0.08)';
+    if (hoursLeft >= 4)  return 'rgba(255, 141, 40, 0.08)';
+    return 'rgba(255, 59, 48, 0.08)';
+}
+
+function timerBorderColor(hoursLeft: number): string {
+    if (hoursLeft >= 24) return 'rgba(52, 199, 89, 0.25)';
+    if (hoursLeft >= 12) return 'rgba(212, 170, 1, 0.25)';
+    if (hoursLeft >= 4)  return 'rgba(255, 141, 40, 0.25)';
+    return 'rgba(255, 59, 48, 0.25)';
 }
 
 function formatMatchDate(isoDate: string): string {
@@ -155,7 +162,8 @@ export function MatchesScreen() {
 
     let timerLabel: string | null = null;
     let timerClr = '#34C759';
-    let timerBg = 'rgba(52, 199, 89, 0.10)';
+    let timerBg = 'rgba(52, 199, 89, 0.08)';
+    let timerBdrClr = 'rgba(52, 199, 89, 0.25)';
     if (expiryTs) {
         const diffMs = expiryTs - now;
         if (diffMs > 0) {
@@ -165,6 +173,7 @@ export function MatchesScreen() {
             timerLabel = `${h}h ${m}m`;
             timerClr = timerColor(totalHours);
             timerBg = timerBgColor(totalHours);
+            timerBdrClr = timerBorderColor(totalHours);
         }
     }
 
@@ -219,8 +228,8 @@ export function MatchesScreen() {
             <View style={[styles.headerRow, { paddingTop: insets.top + 16 }]}>
                 <Text style={styles.headerTitle}>Match</Text>
                 {timerLabel && (
-                    <View style={[styles.timerBadge, { backgroundColor: timerBg, borderWidth: 1.5, borderColor: timerClr }]}>
-                        <ClockIcon size={12} color={timerClr} />
+                    <View style={[styles.timerBadge, { backgroundColor: timerBg, borderColor: timerBdrClr }]}>
+                        <ClockIcon size={13} color={timerClr} />
                         <Text style={[styles.timerText, { color: timerClr }]}>{timerLabel}</Text>
                     </View>
                 )}
@@ -352,14 +361,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 5,
-        borderRadius: 100,
-        paddingHorizontal: 10,
-        paddingVertical: 5,
+        borderRadius: 10,
+        borderWidth: 1,
+        paddingHorizontal: 16,
+        height: 34,
     },
     timerText: {
-        fontFamily: 'Outfit_600SemiBold',
         fontSize: 13,
-        lineHeight: 16,
+        fontWeight: '600',
     },
     emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
     tagline: { fontFamily: 'Outfit_600SemiBold', fontSize: 20, lineHeight: 26, color: '#0B1226', textAlign: 'center', marginBottom: 12 },

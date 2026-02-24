@@ -12,6 +12,10 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Modal,
+  StyleSheet,
+  Text,
+  ScrollView as RNScrollView,
 } from 'react-native';
 import { styled } from 'nativewind';
 import { H3, Body, BodySmall } from '../components/ui';
@@ -31,6 +35,22 @@ import { AudioRecorder } from '../components/chat/AudioRecorder';
 import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('ChatScreen');
+
+const END_MATCH_REASONS = [
+  'We\'re not compatible',
+  'Not interested anymore',
+  'We decided to meet in person',
+  'Inappropriate behaviour',
+  'Other',
+];
+
+const REPORT_REASONS = [
+  'Inappropriate messages',
+  'Fake profile',
+  'Harassment',
+  'Spam',
+  'Other',
+];
 
 interface ChatScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Chat'>;
@@ -54,6 +74,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
   const [match, setMatch] = useState<Match | null>(null);
   const [error, setError] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
+
+  // Dropdown + action modals
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [endMatchModalVisible, setEndMatchModalVisible] = useState(false);
+  const [endMatchReason, setEndMatchReason] = useState('');
+  const [endMatchCustomReason, setEndMatchCustomReason] = useState('');
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDetails, setReportDetails] = useState('');
+  const [proposeDateModalVisible, setProposeDateModalVisible] = useState(false);
+  const [dateProposalText, setDateProposalText] = useState('');
 
   // Determine if this is a friend chat or match chat
   // Priority: isFriendChat flag takes precedence, then check if matchId is present
@@ -270,6 +301,62 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     }
   };
 
+  // ── Menu action handlers ─────────────────────────────────────────────────
+
+  const openEndMatchModal = () => {
+    setMenuVisible(false);
+    setTimeout(() => setEndMatchModalVisible(true), 150);
+  };
+
+  const openReportModal = () => {
+    setMenuVisible(false);
+    setTimeout(() => setReportModalVisible(true), 150);
+  };
+
+  const openProposeDateModal = () => {
+    setMenuVisible(false);
+    setTimeout(() => setProposeDateModalVisible(true), 150);
+  };
+
+  const handleEndMatchConfirm = () => {
+    if (!endMatchReason) return;
+    setEndMatchModalVisible(false);
+    setEndMatchReason('');
+    setEndMatchCustomReason('');
+    Alert.alert('Match Ended', 'Your match has been ended.', [
+      { text: 'OK', onPress: () => navigation.goBack() },
+    ]);
+  };
+
+  const handleReportConfirm = () => {
+    if (!reportReason) return;
+    setReportModalVisible(false);
+    setReportReason('');
+    setReportDetails('');
+    Alert.alert('Report Submitted', 'Thank you. Our team will review this shortly.');
+  };
+
+  const handleProposeDateConfirm = async () => {
+    const text = dateProposalText.trim();
+    if (!text || !currentUserId || !match || sendingMessage) return;
+    setProposeDateModalVisible(false);
+    setDateProposalText('');
+
+    if (!matchId) return;
+    const recipId = match.currentUserId === match.user1Id ? match.user2Id : match.user1Id;
+    setSendingMessage(true);
+    try {
+      const result = await sendMessageAPI(matchId, recipId, `📅 Date Proposal: ${text}`);
+      if (!result.ok || !result.data) throw new Error(result.error?.message || 'Failed to send');
+      const sentMsg = result.data;
+      setMessages(prev => prev.some(m => m.id === sentMsg.id) ? prev : [...prev, sentMsg]);
+    } catch (e: any) {
+      Alert.alert('Failed', 'Could not send date proposal. Please try again.');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   const formatMessageDate = (date: Date): string => {
     const today = new Date();
     const messageDate = new Date(date);
@@ -462,9 +549,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
         </StyledView>
         {!isFriend && (
           <StyledTouchableOpacity
-            onPress={() => navigation.navigate('MatchDetail', { matchId })}
+            onPress={() => setMenuVisible(true)}
+            style={{ padding: 4 }}
           >
-            <Ionicons name="information-circle-outline" size={24} color="#667085" />
+            <Ionicons name="ellipsis-vertical" size={22} color="#667085" />
           </StyledTouchableOpacity>
         )}
       </StyledView>
@@ -544,8 +632,388 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
           </StyledView>
         )}
       </KeyboardAvoidingView>
+
+      {/* ── Dropdown Menu ──────────────────────────────────────────────── */}
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <TouchableOpacity
+          style={cs.menuOverlay}
+          activeOpacity={1}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View style={cs.menuCard}>
+            <TouchableOpacity style={cs.menuItem} onPress={openProposeDateModal}>
+              <Ionicons name="calendar-outline" size={18} color="#101828" />
+              <Text style={cs.menuItemText}>Propose a Date</Text>
+            </TouchableOpacity>
+
+            <View style={cs.menuDivider} />
+
+            <TouchableOpacity style={cs.menuItem} onPress={openEndMatchModal}>
+              <Ionicons name="close-circle-outline" size={18} color="#101828" />
+              <Text style={cs.menuItemText}>End Match</Text>
+            </TouchableOpacity>
+
+            <View style={cs.menuDivider} />
+
+            <TouchableOpacity style={cs.menuItem} onPress={openReportModal}>
+              <Ionicons name="flag-outline" size={18} color="#EF4444" />
+              <Text style={[cs.menuItemText, { color: '#EF4444' }]}>
+                Report {recipientName}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── End Match Modal ────────────────────────────────────────────── */}
+      <Modal
+        visible={endMatchModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEndMatchModalVisible(false)}
+      >
+        <View style={cs.modalOverlay}>
+          <View style={cs.modalCard}>
+            <Text style={cs.modalTitle}>End this match?</Text>
+            <Text style={cs.modalSubtitle}>
+              Help us improve — let us know why
+            </Text>
+
+            <View style={cs.reasonList}>
+              {END_MATCH_REASONS.map(reason => (
+                <TouchableOpacity
+                  key={reason}
+                  style={[cs.reasonPill, endMatchReason === reason && cs.reasonPillActive]}
+                  onPress={() => setEndMatchReason(reason)}
+                >
+                  <Text style={[cs.reasonText, endMatchReason === reason && cs.reasonTextActive]}>
+                    {reason}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {endMatchReason === 'Other' && (
+              <TextInput
+                style={cs.textArea}
+                placeholder="Tell us a bit more..."
+                placeholderTextColor="#98A2B3"
+                value={endMatchCustomReason}
+                onChangeText={setEndMatchCustomReason}
+                multiline
+                maxLength={300}
+              />
+            )}
+
+            <View style={cs.modalActions}>
+              <TouchableOpacity
+                style={cs.cancelBtn}
+                onPress={() => {
+                  setEndMatchModalVisible(false);
+                  setEndMatchReason('');
+                  setEndMatchCustomReason('');
+                }}
+              >
+                <Text style={cs.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[cs.destructiveBtn, !endMatchReason && cs.btnDisabled]}
+                onPress={handleEndMatchConfirm}
+                disabled={!endMatchReason}
+              >
+                <Text style={cs.destructiveBtnText}>End Match</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Report Modal ───────────────────────────────────────────────── */}
+      <Modal
+        visible={reportModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setReportModalVisible(false)}
+      >
+        <View style={cs.modalOverlay}>
+          <View style={cs.modalCard}>
+            <Text style={cs.modalTitle}>Report {recipientName}</Text>
+            <Text style={cs.modalSubtitle}>
+              Our team reviews all reports within 24 hours
+            </Text>
+
+            <View style={cs.reasonList}>
+              {REPORT_REASONS.map(reason => (
+                <TouchableOpacity
+                  key={reason}
+                  style={[cs.reasonPill, reportReason === reason && cs.reasonPillActive]}
+                  onPress={() => setReportReason(reason)}
+                >
+                  <Text style={[cs.reasonText, reportReason === reason && cs.reasonTextActive]}>
+                    {reason}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TextInput
+              style={cs.textArea}
+              placeholder="Additional details (optional)"
+              placeholderTextColor="#98A2B3"
+              value={reportDetails}
+              onChangeText={setReportDetails}
+              multiline
+              maxLength={500}
+            />
+
+            <View style={cs.modalActions}>
+              <TouchableOpacity
+                style={cs.cancelBtn}
+                onPress={() => {
+                  setReportModalVisible(false);
+                  setReportReason('');
+                  setReportDetails('');
+                }}
+              >
+                <Text style={cs.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[cs.primaryBtn, !reportReason && cs.btnDisabled]}
+                onPress={handleReportConfirm}
+                disabled={!reportReason}
+              >
+                <Text style={cs.primaryBtnText}>Submit Report</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Propose a Date Modal ───────────────────────────────────────── */}
+      <Modal
+        visible={proposeDateModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setProposeDateModalVisible(false)}
+      >
+        <View style={cs.modalOverlay}>
+          <View style={cs.modalCard}>
+            <View style={cs.dateIconWrap}>
+              <Ionicons name="calendar" size={28} color="#437FFF" />
+            </View>
+            <Text style={cs.modalTitle}>Propose a Date</Text>
+            <Text style={cs.modalSubtitle}>
+              Suggest something fun with {recipientName}
+            </Text>
+
+            <TextInput
+              style={[cs.textArea, { minHeight: 80 }]}
+              placeholder={`e.g. Coffee at Blue Bottle on Saturday at 2pm?`}
+              placeholderTextColor="#98A2B3"
+              value={dateProposalText}
+              onChangeText={setDateProposalText}
+              multiline
+              maxLength={300}
+              autoFocus
+            />
+
+            <View style={cs.modalActions}>
+              <TouchableOpacity
+                style={cs.cancelBtn}
+                onPress={() => {
+                  setProposeDateModalVisible(false);
+                  setDateProposalText('');
+                }}
+              >
+                <Text style={cs.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[cs.primaryBtn, !dateProposalText.trim() && cs.btnDisabled]}
+                onPress={handleProposeDateConfirm}
+                disabled={!dateProposalText.trim()}
+              >
+                <Text style={cs.primaryBtnText}>Send Proposal</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </StyledSafeAreaView>
   );
 };
 
 export default ChatScreen;
+
+// ── Styles for menus & modals ──────────────────────────────────────────────
+const cs = StyleSheet.create({
+  // Dropdown
+  menuOverlay: {
+    flex: 1,
+  },
+  menuCard: {
+    position: 'absolute',
+    top: 96,
+    right: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    width: 220,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 10,
+  },
+  menuItemText: {
+    fontSize: 15,
+    fontFamily: 'Outfit_500Medium',
+    color: '#101828',
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: '#F2F4F7',
+    marginHorizontal: 16,
+  },
+
+  // Modal shared
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 40,
+  },
+  modalTitle: {
+    fontFamily: 'Outfit_600SemiBold',
+    fontSize: 20,
+    color: '#101828',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontFamily: 'Outfit_400Regular',
+    fontSize: 14,
+    color: '#667085',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  dateIconWrap: {
+    alignSelf: 'center',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#EEF3FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+
+  // Reason pills
+  reasonList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  reasonPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#E4E7EC',
+    backgroundColor: '#FFFFFF',
+  },
+  reasonPillActive: {
+    borderColor: '#437FFF',
+    backgroundColor: '#EEF3FF',
+  },
+  reasonText: {
+    fontFamily: 'Outfit_400Regular',
+    fontSize: 14,
+    color: '#667085',
+  },
+  reasonTextActive: {
+    fontFamily: 'Outfit_600SemiBold',
+    color: '#437FFF',
+  },
+
+  // Text area
+  textArea: {
+    borderWidth: 1.5,
+    borderColor: '#E4E7EC',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontFamily: 'Outfit_400Regular',
+    fontSize: 14,
+    color: '#101828',
+    minHeight: 60,
+    textAlignVertical: 'top',
+    marginBottom: 20,
+  },
+
+  // Action row
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E4E7EC',
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    fontFamily: 'Outfit_600SemiBold',
+    fontSize: 15,
+    color: '#344054',
+  },
+  primaryBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#437FFF',
+    alignItems: 'center',
+  },
+  primaryBtnText: {
+    fontFamily: 'Outfit_600SemiBold',
+    fontSize: 15,
+    color: '#FFFFFF',
+  },
+  destructiveBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+  },
+  destructiveBtnText: {
+    fontFamily: 'Outfit_600SemiBold',
+    fontSize: 15,
+    color: '#FFFFFF',
+  },
+  btnDisabled: {
+    opacity: 0.4,
+  },
+});

@@ -958,13 +958,8 @@ class CommunityService {
     };
 
     // ── Friends list ────────────────────────────────────────────────────────
-    // Empty state: return no friends
-    if (mockState.friendsState === 'empty') {
-      return { friends: [], pendingProposals: [], activeMatch: null };
-    }
-
-    // Generate mock friends with grid status
-    const friends = [
+    // Empty state: return no friends (but still build match data below)
+    const friends = mockState.friendsState === 'empty' ? [] : [
       {
         friendshipId: 'friendship-1',
         userId: 'current-user',
@@ -1094,6 +1089,24 @@ class CommunityService {
       currentJob: 'Photographer',
       location: 'Brooklyn, NY',
       photos: [{ id: 'photo-blake', url: MOCK_PHOTOS[5], isMain: true, order: 0 }],
+      deepQuestions: [
+        {
+          questionId: 1,
+          question: "What's your idea of a perfect weekend?",
+          answer: "Waking up early to shoot somewhere new, grabbing coffee with a friend, and ending with a long dinner where we lose track of time.",
+        },
+        {
+          questionId: 2,
+          question: "What are you most passionate about?",
+          answer: "Capturing moments people forget to notice. Photography taught me that the best stories are hiding in plain sight.",
+        },
+        {
+          questionId: 3,
+          question: "What's a life lesson that took you a while to learn?",
+          answer: "That slowing down isn't falling behind. Some of my best work — and best relationships — came from being present instead of rushing.",
+        },
+      ] as any,
+      displayedQuestions: [1, 2, 3] as any,
     });
 
     const endorserMaya = generateMockUser({
@@ -1135,15 +1148,52 @@ class CommunityService {
       photos: [{ id: 'photo-reese', url: MOCK_PHOTOS[7], isMain: true, order: 0 }],
     });
 
+    const endorserEthan = generateMockUser({
+      id: 'friend-ethan-e',
+      firstName: 'Ethan',
+      age: 27,
+      currentJob: 'Engineer',
+      photos: [{ id: 'photo-ethan-e', url: MOCK_PHOTOS[2], isMain: true, order: 0 }],
+    });
+
+    const endorserSophia = generateMockUser({
+      id: 'friend-sophia-e',
+      firstName: 'Sophia',
+      age: 25,
+      currentJob: 'Teacher',
+      photos: [{ id: 'photo-sophia-e', url: MOCK_PHOTOS[3], isMain: true, order: 0 }],
+    });
+
     const activeMatchData = {
       matchId: 'active-match-1',
       proposalId: 'proposal-approved-002',
       partnerProfile: activeMatchPartner,
       matchedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      expiresAt: new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString(), // 25h from now → green timer
       daysActive: 2,
       canEndMatch: false,
       daysUntilCanEnd: 1,
       messagesExchanged: 15,
+      endorsers: [
+        {
+          id: 'endorsement-active-1',
+          proposalId: 'proposal-approved-002',
+          endorserUserId: 'friend-ethan-e',
+          endorserProfile: endorserEthan,
+          endorsementType: 'friend_of_a',
+          selectedCandidateId: activeMatchPartner.id,
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: 'endorsement-active-2',
+          proposalId: 'proposal-approved-002',
+          endorserUserId: 'friend-sophia-e',
+          endorserProfile: endorserSophia,
+          endorsementType: 'friend_of_b',
+          selectedCandidateId: activeMatchPartner.id,
+          createdAt: new Date().toISOString(),
+        },
+      ],
     };
 
     // ── Build pendingProposals and activeMatch from mockState.matchState ──────
@@ -1265,6 +1315,13 @@ class CommunityService {
   /** Dev helper: set how many ms remain until the next reset */
   setTimeRemaining(ms: number): void {
     this.nextResetAt = Date.now() + Math.max(0, ms);
+    this.notifyStateChange();
+  }
+
+  /** Dev helper: reset the voting gate so the user sees 3 fresh proposals on next Community enter */
+  resetToVotingGate(): void {
+    mockState.votesSubmitted = 0;
+    mockState.dailyTasksCompleted = false;
     this.notifyStateChange();
   }
 

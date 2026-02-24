@@ -112,7 +112,6 @@ export const mockProfiles: UserProfile[] = [
       family: true,
       lifestyle: true,
     },
-    isVerified: false,
     isPaused: false,
     createdAt: '2024-01-15T10:00:00Z',
     updatedAt: '2024-01-15T10:00:00Z',
@@ -213,7 +212,6 @@ export const mockProfiles: UserProfile[] = [
       family: true,
       lifestyle: true,
     },
-    isVerified: true,
     isPaused: false,
     createdAt: '2024-01-10T10:00:00Z',
     updatedAt: '2024-01-10T10:00:00Z',
@@ -314,7 +312,6 @@ export const mockProfiles: UserProfile[] = [
       family: true,
       lifestyle: true,
     },
-    isVerified: false,
     isPaused: false,
     createdAt: '2024-01-20T10:00:00Z',
     updatedAt: '2024-01-20T10:00:00Z',
@@ -416,7 +413,6 @@ export const mockProfiles: UserProfile[] = [
       family: true,
       lifestyle: true,
     },
-    isVerified: true,
     isPaused: false,
     createdAt: '2024-01-25T10:00:00Z',
     updatedAt: '2024-01-25T10:00:00Z',
@@ -556,7 +552,6 @@ export const currentUserProfile: UserProfile = {
   },
 
   // Profile Status
-  isVerified: true,
   isPaused: false,
 
   // Timestamps

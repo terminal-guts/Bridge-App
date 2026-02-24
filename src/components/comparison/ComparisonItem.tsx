@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { Check, X, AlertTriangle } from 'lucide-react-native';
-import { COLORS } from '../../theme/colors';
 
 interface ComparisonItemProps {
     label: string;

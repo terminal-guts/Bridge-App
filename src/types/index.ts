@@ -114,7 +114,6 @@ export interface UserProfile {
   deepQuestions?: DeepQuestionAnswer[];
   displayedQuestions?: number[]; // Question IDs to display on profile (max 3, one per tier)
   sectionVisibility?: Record<string, boolean>; // Which sections are visible to others (does not affect edit view)
-  isVerified?: boolean; // Verification status
   isPaused?: boolean; // Whether profile is paused
   // Partner preferences (collected in Match Preferences screen)
   // Arrays to support multiple selections (e.g., ["yes", "sometimes"])
@@ -366,7 +365,6 @@ export type RootStackParamList = {
   FriendGrid: { friendId: string; friendName: string };
   FriendProposal: { friendId: string; friendName: string; friendPhotoUrl?: string; friendAge?: number; friendJob?: string };
   MatchPreferences: undefined;
-  ProfileVerification: undefined;
   BlockedUsers: undefined;
   PauseProfile: undefined;
   ChangePhoneNumber: undefined;

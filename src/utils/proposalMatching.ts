@@ -419,6 +419,16 @@ export function matchTobacco(userA: UserProfile, userB: UserProfile): MatchResul
   );
 }
 
+export function matchOtherSubstances(userA: UserProfile, userB: UserProfile): MatchResult {
+  return matchLifestyleAttribute(
+    userA.otherDrugsFrequency,
+    userA.partnerLifestylePreferences?.otherDrugs,
+    userB.otherDrugsFrequency,
+    userB.partnerLifestylePreferences?.otherDrugs,
+    'otherDrugs'
+  );
+}
+
 // ============================================================================
 // Values Matching (Overlap-based)
 // ============================================================================

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
+import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, H3, Body, Card, Button } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import { signOut } from '../../services/authService';
+import { getUserSettings, updatePrivacySettings, UserSettings } from '../../services/settingsService';
 import { deleteUserAccount } from '../../services/accountService';
 import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';
@@ -23,11 +24,25 @@ const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledSwitch = styled(Switch);
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
+  const [privacy, setPrivacy] = useState({
+    showLastActive: true,
+    readReceipts: true,
+    shareProfile: false,
+  });
+
+  const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+  // Load current user and settings
   useEffect(() => {
     loadCurrentUser();
   }, []);
+
+  useEffect(() => {
+    if (currentUserId) {
+      loadSettings();
+    }
+  }, [currentUserId]);
 
   const loadCurrentUser = async () => {
     try {
@@ -37,6 +52,42 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
       }
     } catch (error) {
       logger.error('Failed to get current user:', error);
+    }
+  };
+
+  const loadSettings = async () => {
+    if (!currentUserId) return;
+
+    setLoading(true);
+    try {
+      const result = await getUserSettings(currentUserId);
+      if (result.ok && result.data) {
+        setPrivacy(result.data.privacy);
+      } else {
+        logger.error('Failed to load settings:', result.error);
+      }
+    } catch (error) {
+      logger.error('Failed to load settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const togglePrivacy = async (key: keyof typeof privacy) => {
+    if (!currentUserId) return;
+
+    const newValue = !privacy[key];
+    setPrivacy(prev => ({ ...prev, [key]: newValue }));
+
+    // Save to backend
+    const result = await updatePrivacySettings(currentUserId, {
+      [key]: newValue,
+    });
+
+    if (!result.ok) {
+      // Revert on error
+      setPrivacy(prev => ({ ...prev, [key]: !newValue }));
+      Alert.alert('Error', result.error?.message || 'Failed to update privacy settings');
     }
   };
 
@@ -215,6 +266,35 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               title="Change Phone Number"
               subtitle="Update your phone number"
               onPress={() => navigation.navigate('ChangePhoneNumber')}
+            />
+          </Card>
+
+          {/* Privacy */}
+          <Card className="mb-6">
+            <H3 className="mb-4">Privacy</H3>
+            <SettingRow
+              icon="eye-outline"
+              title="Show Last Active"
+              subtitle="Let matches see when you were last online"
+              toggle
+              toggleValue={privacy.showLastActive}
+              onToggle={() => togglePrivacy('showLastActive')}
+            />
+            <SettingRow
+              icon="checkmark-done-outline"
+              title="Read Receipts"
+              subtitle="Show when you've read messages"
+              toggle
+              toggleValue={privacy.readReceipts}
+              onToggle={() => togglePrivacy('readReceipts')}
+            />
+            <SettingRow
+              icon="share-outline"
+              title="Profile Sharing"
+              subtitle="Allow friends to share your profile"
+              toggle
+              toggleValue={privacy.shareProfile}
+              onToggle={() => togglePrivacy('shareProfile')}
             />
             <SettingRow
               icon="ban-outline"

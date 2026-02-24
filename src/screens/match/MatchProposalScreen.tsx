@@ -764,7 +764,6 @@ const MOCK_PROFILE: UserProfile = {
   ],
   displayedQuestions: [1, 2, 3],
   sectionVisibility: { religion: true, politics: true, family: true, lifestyle: true },
-  isVerified: true,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
@@ -1016,7 +1015,6 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
               <StyledView className="absolute bottom-10 left-5 right-5">
                 <StyledView className="flex-row items-center flex-wrap mb-2">
                   <Body className="text-white font-bold" style={{ fontSize: 34, lineHeight: 40, letterSpacing: -0.5, textShadowColor: 'rgba(0, 0, 0, 0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 }}>{getFirstInitial(profile.firstName)}, {profile.age}</Body>
-                  {profile.isVerified && <StyledView className="ml-2.5 rounded-full p-1" style={{ backgroundColor: COLORS.primary500 }}><Ionicons name="checkmark" size={14} color="white" /></StyledView>}
                 </StyledView>
                 <StyledView className="flex-row items-center">
                   <Ionicons name="shield-checkmark-outline" size={13} color="rgba(255,255,255,0.7)" />

@@ -205,9 +205,6 @@ export const FriendCard = React.memo<FriendCardProps>(({ friend, variant, onHelp
           >
             {friend.friend.firstName}
           </StyledText>
-          {friend.friend.isVerified && (
-            <Ionicons name="checkmark-circle" size={17} color="#3B82F6" style={{ marginLeft: 5 }} />
-          )}
         </StyledView>
 
         {/* Streak + Tier Row - TUCKED UNDERNEATH */}

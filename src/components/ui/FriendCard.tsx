@@ -106,7 +106,6 @@ export const FriendCard = React.memo<FriendCardProps>(({
     const streak = friend.streakDays ?? friend.streak ?? 0;
     const tier = friend.friendshipTier || 'new';
     const assists = friend.karmaScore?.totalAssists ?? friend.assistsCount ?? 0;
-    const isVerified = friend.friend?.isVerified || friend.isVerified || false;
 
     const handleAvatarPress = () => {
         lightHaptic();
@@ -161,9 +160,6 @@ export const FriendCard = React.memo<FriendCardProps>(({
                     <StyledText numberOfLines={1} style={styles.nameText}>
                         {name}
                     </StyledText>
-                    {isVerified && (
-                        <Ionicons name="checkmark-circle" size={16} color="#3B82F6" style={{ marginLeft: 4 }} />
-                    )}
                 </StyledView>
 
                 <StyledView style={styles.metaRow}>

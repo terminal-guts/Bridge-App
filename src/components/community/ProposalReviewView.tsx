@@ -18,6 +18,7 @@ import {
   Text,
   TouchableOpacity,
   Image,
+  ImageBackground,
   ScrollView,
   Platform,
   UIManager,
@@ -43,6 +44,7 @@ import {
   matchDrinking,
   matchCannabis,
   matchTobacco,
+  matchOtherSubstances,
   matchValues,
   matchInterests,
 } from '../../utils/proposalMatching';
@@ -56,7 +58,10 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const PHOTO_WIDTH = (SCREEN_WIDTH - 32) / 2; // 16px padding each side, split in half
+const DIVIDER_WIDTH = 13;
+const PHOTO_WIDTH = (SCREEN_WIDTH - 32 - DIVIDER_WIDTH) / 2;
+const PHOTO_HEIGHT = 300;
+const PHOTO_RADIUS = 16;
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const BLUE = '#2563EB';
@@ -429,6 +434,7 @@ export function ProposalReviewView({
   const drinkResult = matchDrinking(userA, userB);
   const weedResult = matchCannabis(userA, userB);
   const tobaccoResult = matchTobacco(userA, userB);
+  const otherSubstancesResult = matchOtherSubstances(userA, userB);
   const valuesResult = matchValues(userA, userB);
   const interestsResult = matchInterests(userA, userB);
 
@@ -440,10 +446,10 @@ export function ProposalReviewView({
 
   const basicResults = [heightResult, distanceResult];
   const beliefsResults = [politicsResult, religionResult];
-  const lifestyleResults = [drinkResult, weedResult, tobaccoResult];
+  const lifestyleResults = [drinkResult, weedResult, tobaccoResult, otherSubstancesResult];
 
   // Compatibility score (simple)
-  const allResults = [heightResult, ethnicityResult, politicsResult, religionResult, drinkResult, weedResult, tobaccoResult];
+  const allResults = [heightResult, ethnicityResult, politicsResult, religionResult, drinkResult, weedResult, tobaccoResult, otherSubstancesResult];
   const totalKnown = countKnown(allResults);
   const totalMatch = countMatch(allResults);
   const compatScore = totalKnown > 0 ? Math.round((totalMatch / totalKnown) * 100) : 0;
@@ -509,59 +515,70 @@ export function ProposalReviewView({
         {/* ── Profile header ─────────────────────────────────────────── */}
         <View style={{ marginBottom: 12 }}>
           <View style={{ position: 'relative' }}>
+            {/* Two independent photo cards — no outer wrapper so each card
+                clips its own corners at all 4 sides via overflow:hidden + borderRadius.
+                borderRadius is also set directly on the Image style to ensure
+                the native image layer is rounded independently. */}
             <View style={{ flexDirection: 'row' }}>
 
-              {/* Left photo */}
+              {/* Left photo card — outer corners rounded, inner edge straight */}
               <View style={{
                 width: PHOTO_WIDTH,
-                height: 240,
-                borderTopLeftRadius: 14,
-                borderBottomLeftRadius: 14,
+                height: PHOTO_HEIGHT,
+                borderTopLeftRadius: PHOTO_RADIUS,
+                borderBottomLeftRadius: PHOTO_RADIUS,
+                borderTopRightRadius: 0,
+                borderBottomRightRadius: 0,
                 overflow: 'hidden',
               }}>
                 <Image
                   source={{ uri: photoA?.url || 'https://via.placeholder.com/200' }}
-                  style={{ width: '100%', height: '100%' }}
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderTopLeftRadius: PHOTO_RADIUS, borderBottomLeftRadius: PHOTO_RADIUS }}
                   resizeMode="cover"
                 />
                 <LinearGradient
-                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.95)']}
-                  locations={[0.4, 0.75, 1]}
-                  style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 }}
+                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.92)']}
+                  locations={[0.45, 0.75, 1]}
+                  style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 130 }}
                 />
-                <View style={{ position: 'absolute', bottom: 12, left: 12 }}>
-                  <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 26, color: '#FFF', letterSpacing: -0.3 }}>
+                <View style={{ position: 'absolute', bottom: 14, left: 14 }}>
+                  <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 28, color: '#FFF', letterSpacing: -0.3 }}>
                     {userA.firstName}, {userA.age}
                   </Text>
-                  <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 13, color: '#FFF', opacity: 0.85 }}>
+                  <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#FFF', opacity: 0.85 }}>
                     {userA.currentJob || ''}
                   </Text>
                 </View>
               </View>
 
-              {/* Right photo */}
+              {/* Gap between cards */}
+              <View style={{ width: DIVIDER_WIDTH }} />
+
+              {/* Right photo card — outer corners rounded, inner edge straight */}
               <View style={{
                 width: PHOTO_WIDTH,
-                height: 240,
-                borderTopRightRadius: 14,
-                borderBottomRightRadius: 14,
+                height: PHOTO_HEIGHT,
+                borderTopLeftRadius: 0,
+                borderBottomLeftRadius: 0,
+                borderTopRightRadius: PHOTO_RADIUS,
+                borderBottomRightRadius: PHOTO_RADIUS,
                 overflow: 'hidden',
               }}>
                 <Image
                   source={{ uri: photoB?.url || 'https://via.placeholder.com/200' }}
-                  style={{ width: '100%', height: '100%' }}
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderTopRightRadius: PHOTO_RADIUS, borderBottomRightRadius: PHOTO_RADIUS }}
                   resizeMode="cover"
                 />
                 <LinearGradient
-                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.95)']}
-                  locations={[0.4, 0.75, 1]}
-                  style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 }}
+                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.92)']}
+                  locations={[0.45, 0.75, 1]}
+                  style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 130 }}
                 />
-                <View style={{ position: 'absolute', bottom: 12, left: 12 }}>
-                  <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 26, color: '#FFF', letterSpacing: -0.3 }}>
+                <View style={{ position: 'absolute', bottom: 14, left: 14 }}>
+                  <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 28, color: '#FFF', letterSpacing: -0.3 }}>
                     {userB.firstName}, {userB.age}
                   </Text>
-                  <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 13, color: '#FFF', opacity: 0.85 }}>
+                  <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#FFF', opacity: 0.85 }}>
                     {userB.currentJob || ''}
                   </Text>
                 </View>
@@ -669,10 +686,17 @@ export function ProposalReviewView({
             <ComparisonValueRow result={weedResult} label="Weed" />
           )}
           {tobaccoResult.status !== 'unknown' && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
               <ValueBox label="Tobacco" value={tobaccoResult.leftValue} />
               <MatchIcon status={tobaccoResult.status} />
               <ValueBox label="Tobacco" value={tobaccoResult.rightValue} />
+            </View>
+          )}
+          {otherSubstancesResult.status !== 'unknown' && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <ValueBox label="Other Substances" value={otherSubstancesResult.leftValue} />
+              <MatchIcon status={otherSubstancesResult.status} />
+              <ValueBox label="Other Substances" value={otherSubstancesResult.rightValue} />
             </View>
           )}
         </SectionCard>
@@ -835,7 +859,7 @@ export function ProposalReviewView({
                   For a Friend
                 </Text>
                 <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#010101', opacity: 0.6, textAlign: 'center', marginBottom: 20 }}>
-                  Who would you recommend?
+                  Who would you like to recommend?
                 </Text>
 
                 <View style={{ flexDirection: 'row', gap: 12 }}>

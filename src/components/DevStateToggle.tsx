@@ -116,6 +116,16 @@ export function DevStateToggle() {
                   </Text>
                 </TouchableOpacity>
               ))}
+              <TouchableOpacity
+                style={[styles.chip, { borderColor: '#FECACA', backgroundColor: '#FFF5F5' }]}
+                onPress={() => {
+                  communityService.resetToVotingGate();
+                  setVisible(false);
+                }}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.chipText, { color: '#D92D20' }]}>↩ Reset Voting Gate</Text>
+              </TouchableOpacity>
             </View>
 
             {/* ── Timer ─────────────────────────────────────── */}

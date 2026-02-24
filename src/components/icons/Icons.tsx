@@ -158,3 +158,4 @@ export const ProfileTabIcon: React.FC<IconProps> = ({ size = 24, color = '#8D8D8
         />
     </Svg>
 );
+

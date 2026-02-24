@@ -219,9 +219,7 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
           <EvaIcon name="arrow-back" variant="outline" color="text" size={24} />
         </StyledTouchableOpacity>
         <H3>Add Friends</H3>
-        <StyledTouchableOpacity onPress={() => navigation.replace('FriendList')}>
-          <Body className="text-primary-500">View All</Body>
-        </StyledTouchableOpacity>
+        <StyledView className="w-16" />
       </StyledView>
 
       <StyledScrollView className="flex-1">
@@ -241,19 +239,33 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
                     <EvaIcon name="person-add" variant="outline" color="white" size={28} />
                   </StyledView>
                   <H3 className="mb-1">Your Friend Code</H3>
-                  <StyledView className="bg-white px-4 py-2 rounded-lg mb-4">
-                    <H2 className="text-primary-500 font-mono">{myFriendCode || 'Loading...'}</H2>
-                  </StyledView>
-                  <Body className="text-neutral-600 text-center mb-4 px-4">
+                  <StyledTouchableOpacity
+                    onPress={handleCopy}
+                    disabled={!myFriendCode}
+                    className="flex-row items-center bg-white px-5 py-3 rounded-xl mb-1 w-full"
+                    style={{ borderWidth: 1, borderColor: '#bfcfff' }}
+                  >
+                    <StyledView className="flex-1 items-center">
+                      <H2 className="text-primary-500">{myFriendCode || '...'}</H2>
+                    </StyledView>
+                    <EvaIcon name="copy" variant="outline" color="primary" size={18} />
+                  </StyledTouchableOpacity>
+                  <Body className="text-neutral-400 text-xs text-center mb-4">Tap to copy</Body>
+                  <Body className="text-neutral-500 text-center mb-5 px-2">
                     Share this code with friends to connect on Bridge
                   </Body>
-                  <StyledView className="flex-row space-x-4">
-                    <Button onPress={handleShare} variant="primary" size="sm" disabled={!myFriendCode}>
-                      Share Code
-                    </Button>
-                    <Button onPress={handleCopy} variant="secondary" size="sm" disabled={!myFriendCode}>
-                      Copy
-                    </Button>
+                  <StyledView className="flex-row w-full">
+                    <StyledView className="flex-1">
+                      <Button onPress={handleShare} variant="primary" size="sm" fullWidth disabled={!myFriendCode}>
+                        Share Code
+                      </Button>
+                    </StyledView>
+                    <StyledView className="w-3" />
+                    <StyledView className="flex-1">
+                      <Button onPress={handleCopy} variant="secondary" size="sm" fullWidth disabled={!myFriendCode}>
+                        Copy
+                      </Button>
+                    </StyledView>
                   </StyledView>
                 </StyledView>
               </Card>
@@ -296,8 +308,8 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
           <H3 className="mb-3">Why Add Friends?</H3>
           <StyledView className="space-y-3">
             <StyledView className="flex-row">
-              <StyledView className="w-5 h-5 bg-primary-100 rounded-full items-center justify-center mr-3 mt-0.5">
-                <EvaIcon name="checkmark" variant="fill" color="primary" size={12} />
+              <StyledView className="w-10 h-10 bg-primary-100 rounded-full items-center justify-center mr-3">
+                <EvaIcon name="people" variant="outline" color="primary" size={20} />
               </StyledView>
               <StyledView className="flex-1">
                 <Body className="text-neutral-900 font-medium mb-1">Help Match Your Friends Daily</Body>
@@ -308,8 +320,8 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
             </StyledView>
 
             <StyledView className="flex-row">
-              <StyledView className="w-5 h-5 bg-primary-100 rounded-full items-center justify-center mr-3 mt-0.5">
-                <EvaIcon name="checkmark" variant="fill" color="primary" size={12} />
+              <StyledView className="w-10 h-10 bg-primary-100 rounded-full items-center justify-center mr-3">
+                <EvaIcon name="bar-chart" variant="outline" color="primary" size={20} />
               </StyledView>
               <StyledView className="flex-1">
                 <Body className="text-neutral-900 font-medium mb-1">Influence Their Match Quality</Body>
@@ -320,8 +332,8 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
             </StyledView>
 
             <StyledView className="flex-row">
-              <StyledView className="w-5 h-5 bg-primary-100 rounded-full items-center justify-center mr-3 mt-0.5">
-                <EvaIcon name="checkmark" variant="fill" color="primary" size={12} />
+              <StyledView className="w-10 h-10 bg-primary-100 rounded-full items-center justify-center mr-3">
+                <EvaIcon name="award" variant="outline" color="primary" size={20} />
               </StyledView>
               <StyledView className="flex-1">
                 <Body className="text-neutral-900 font-medium mb-1">Build Your Matchmaker Reputation</Body>
