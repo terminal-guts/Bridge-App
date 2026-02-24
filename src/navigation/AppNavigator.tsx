@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, View } from 'react-native';
+import { UsersTabIcon, HandshakeTabIcon, ProfileTabIcon } from '../components/icons/Icons';
+import { ActivityIndicator, View, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { FEATURES } from '../config/features';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -72,53 +73,82 @@ const logger = createLogger('AppNavigator');
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
+// ── Custom Tab Bar ───────────────────────────────────────────────────────────
+const TAB_ICONS = [UsersTabIcon, HandshakeTabIcon, ProfileTabIcon];
+
+const CustomTabBar = ({ state, navigation }: any) => {
+  const { height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  // Content height (above home indicator) scales with device
+  const contentHeight = Math.round(screenHeight * 0.057);
+  // Icon size and vertical offset are both proportional to content height
+  const iconSize = Math.round(contentHeight * 0.65);
+  const iconPaddingTop = Math.round(contentHeight * 0.25);
+
+  return (
+    <View style={{
+      flexDirection: 'row',
+      height: contentHeight + insets.bottom,
+      backgroundColor: '#FFFFFF',
+      borderTopWidth: 1,
+      borderTopColor: '#E4E7EC',
+      paddingBottom: insets.bottom,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 5,
+    }}>
+      {state.routes.map((route: any, index: number) => {
+        const focused = state.index === index;
+        const Icon = TAB_ICONS[index];
+
+        const onPress = () => {
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+          if (!focused && !event.defaultPrevented) {
+            navigation.navigate(route.name);
+          }
+        };
+
+        return (
+          <TouchableOpacity
+            key={route.key}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-start', paddingTop: iconPaddingTop }}
+            onPress={onPress}
+            activeOpacity={0.7}
+          >
+            {/* Indicator sits flush at the very top of the touchable area */}
+            {focused && (
+              <View style={{
+                position: 'absolute',
+                top: 0,
+                width: 40,
+                height: 3,
+                backgroundColor: '#437FFF',
+                borderBottomLeftRadius: 2,
+                borderBottomRightRadius: 2,
+              }} />
+            )}
+            <Icon size={iconSize} color={focused ? '#437FFF' : '#667085'} />
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+};
+
 // Main Tab Navigator
 const MainTabs = () => {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap = 'people';
-
-          if (route.name === 'Community') {
-            // Using people icon to represent community matching
-            iconName = focused ? 'people' : 'people-outline';
-          } else if (route.name === 'Matches') {
-            iconName = focused ? 'heart' : 'heart-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline';
-          }
-
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: '#437FFF',
-        tabBarInactiveTintColor: '#667085',
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 1,
-          borderTopColor: '#E4E7EC',
-          paddingBottom: 14,
-          paddingTop: 8,
-          height: 75,
-          shadowColor: '#000',
-          shadowOffset: {
-            width: 0,
-            height: -2,
-          },
-          shadowOpacity: 0.05,
-          shadowRadius: 3,
-          elevation: 5,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-          marginTop: 2,
-        },
-        tabBarIconStyle: {
-          marginBottom: 2,
-        },
+      tabBar={props => <CustomTabBar {...props} />}
+      screenOptions={{
         headerShown: false,
-      })}
+      }}
     >
       <Tab.Screen name="Community" component={CommunityScreen} />
       <Tab.Screen name="Matches" component={MatchesScreen} />

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ImageBackground, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, ImageBackground, TouchableOpacity, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CheckmarkIcon, HourglassIcon, ChatIcon, HeartsIcon, ArrowRightIcon, QuestionIcon } from '../icons/Icons';
 
@@ -13,37 +13,34 @@ export type MatchStatus =
     | 'no_match'
     | 'new_match';
 
-const STATUS_CONFIG: Record<
-    MatchStatus,
-    { label: string; topBgColor?: string; bottomBgColor?: string; Icon?: React.FC<any> }
-> = {
-    active_match: {
-        label: 'Active match',
-        topBgColor: '#34C759',
-        bottomBgColor: 'rgba(52, 199, 89, 0.2)',
-        Icon: CheckmarkIcon,
-    },
-    awaiting_you: {
-        label: 'Awaiting your response',
-        topBgColor: '#FF8D28',
-        Icon: HourglassIcon,
-    },
-    awaiting_them: {
-        label: 'Awaiting their response',
-        // Figma CSS: #D4AA01
-        topBgColor: '#D4AA01',
-        Icon: HourglassIcon,
-    },
-    no_match: {
-        label: 'No match',
-        topBgColor: '#8E8E93',
-        Icon: HourglassIcon,
-    },
-    new_match: {
-        label: 'New match',
-        topBgColor: 'rgba(255, 255, 255, 0.2)',
-        bottomBgColor: undefined,
-    },
+// Top-left badge (state pill in corner)
+const TOP_BADGE_CONFIG: Record<MatchStatus, { label: string; bg: string; Icon?: React.FC<any> }> = {
+    active_match:  { label: 'Active Match',            bg: '#34C759',                  Icon: CheckmarkIcon },
+    awaiting_you:  { label: 'Awaiting your response',  bg: '#FF8D28',                  Icon: HourglassIcon },
+    awaiting_them: { label: 'Awaiting their response', bg: '#D4AA01',                  Icon: HourglassIcon },
+    no_match:      { label: 'No match',                bg: '#8E8E93',                  Icon: HourglassIcon },
+    new_match:     { label: 'New match',               bg: '#2B65F9',                  Icon: undefined },
+};
+
+// Bottom pills — rendered top-to-bottom in the order listed
+const BOTTOM_PILLS: Record<MatchStatus, Array<{ label: string; bg: string; Icon?: React.FC<any> }>> = {
+    active_match:  [
+        { label: 'Both voted yes',      bg: 'rgba(52, 199, 89, 0.55)',  Icon: CheckmarkIcon },
+    ],
+    awaiting_you:  [
+        { label: 'Awaiting your vote',  bg: 'rgba(20, 12, 4, 0.78)',    Icon: HourglassIcon },
+        { label: 'They voted yes',      bg: 'rgba(52, 199, 89, 0.55)',  Icon: CheckmarkIcon },
+    ],
+    awaiting_them: [
+        { label: 'You voted yes',       bg: 'rgba(52, 199, 89, 0.55)',  Icon: CheckmarkIcon },
+        { label: 'Awaiting their vote', bg: 'rgba(20, 12, 4, 0.78)',    Icon: HourglassIcon },
+    ],
+    new_match:     [
+        { label: 'Neither person voted', bg: 'rgba(20, 12, 4, 0.78)', Icon: QuestionIcon },
+    ],
+    no_match:      [
+        { label: 'No match',            bg: 'rgba(142, 142, 147, 0.35)', Icon: HourglassIcon },
+    ],
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -53,18 +50,11 @@ interface MatchCardProps {
     status: MatchStatus;
     name: string;
     age: number;
-    /** For active_match shows "Matched {date}"; for awaiting_you shows "Expires in {expiresIn}" */
-    expiresIn?: string;
     matchDate?: string;
     imageUrl: string;
     matchedByAvatars: string[];
-    /** Whether the other person already voted yes — shows the voted banner */
-    theyVotedYes?: boolean;
-    /** For the awaiting_them variant: shows "You voted yes" banner */
-    youVotedYes?: boolean;
-    /** For the awaiting_them variant: shows "Expires X hours" banner */
-    expiresXHours?: string;
     onPress?: () => void;
+    onDismiss?: () => void;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -74,18 +64,14 @@ export const MatchCard: React.FC<MatchCardProps> = ({
     status,
     name,
     age,
-    expiresIn,
     matchDate,
     imageUrl,
     matchedByAvatars,
-    theyVotedYes = false,
-    youVotedYes = false,
-    expiresXHours,
     onPress,
+    onDismiss,
 }) => {
-    const config = STATUS_CONFIG[status];
-    const isAwaitingYou = status === 'awaiting_you';
-    const isAwaitingThem = status === 'awaiting_them';
+    const topBadge = TOP_BADGE_CONFIG[status];
+    const bottomPills = BOTTOM_PILLS[status];
     const isActiveMatch = status === 'active_match';
 
     return (
@@ -99,80 +85,74 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                 <LinearGradient
                     colors={[
                         'rgba(9, 18, 46, 0)',
-                        'rgba(9, 18, 46, 0.2)',
-                        'rgba(9, 18, 46, 0.5)',
+                        'rgba(9, 18, 46, 0.55)',
+                        'rgba(9, 18, 46, 0.88)',
                     ]}
-                    locations={[0.6313, 0.7505, 1.0]}
+                    locations={[0.4, 0.65, 1.0]}
                     style={StyleSheet.absoluteFillObject}
                 />
 
                 <View style={styles.cardInner}>
+
+                    {/* ── Top row: badge (left) + optional X dismiss button (right) ── */}
                     <View style={styles.topRow}>
-                        {config.topBgColor && (
-                            <View style={[styles.statusBadge, { backgroundColor: config.topBgColor }]}>
-                                {config.Icon && <config.Icon size={18} color="#FFF" />}
-                                <Text style={styles.statusBadgeText}>
-                                    {config.label}
-                                </Text>
-                            </View>
+                        <View style={[styles.topBadge, { backgroundColor: topBadge.bg }]}>
+                            {topBadge.Icon && <topBadge.Icon size={18} color="#FFF" />}
+                            <Text style={styles.topBadgeText}>{topBadge.label}</Text>
+                        </View>
+                        {isActiveMatch && onDismiss && (
+                            <TouchableOpacity onPress={onDismiss} style={styles.dismissButton} activeOpacity={0.8}>
+                                <Text style={styles.dismissX}>✕</Text>
+                            </TouchableOpacity>
                         )}
                     </View>
 
+                    {/* ── Bottom block ── */}
                     <View style={styles.bottomSection}>
-                        {/* Status Banners */}
-                        {isAwaitingYou && theyVotedYes && (
-                            <View style={styles.votedBanner}>
-                                <CheckmarkIcon size={18} color="#FFFFFF" />
-                                <Text style={styles.votedBannerText}>
-                                    They voted yes – Awaiting your vote
-                                </Text>
-                            </View>
-                        )}
 
-                        {isAwaitingThem && (
-                            <View style={{ gap: 10 }}>
-                                {youVotedYes && (
-                                    <View style={[styles.statusBanner, { backgroundColor: 'rgba(52, 199, 89, 0.2)' }]}>
-                                        <CheckmarkIcon size={18} color="#FFFFFF" />
-                                        <Text style={styles.votedBannerText}>You voted yes</Text>
-                                    </View>
-                                )}
-                                {expiresXHours && (
-                                    <View style={[styles.statusBanner, { backgroundColor: 'rgba(255, 141, 40, 0.2)' }]}>
-                                        <QuestionIcon size={18} color="#FFFFFF" />
-                                        <Text style={styles.votedBannerText}>{expiresXHours}</Text>
-                                    </View>
-                                )}
+                        {/* Status pills — rendered in order */}
+                        {bottomPills.map((pill, i) => (
+                            <View key={i} style={[styles.pill, { backgroundColor: pill.bg }]}>
+                                {pill.Icon && <pill.Icon size={15} color="#FFF" />}
+                                <Text style={styles.pillText}>{pill.label}</Text>
                             </View>
-                        )}
+                        ))}
 
-                        <View style={styles.nameBlock}>
-                            {isActiveMatch && config.bottomBgColor && (
-                                <View style={[styles.activeMatchBadge, { backgroundColor: config.bottomBgColor }]}>
-                                    <CheckmarkIcon size={14} color="#FFF" />
-                                    <Text style={styles.activeMatchBadgeText}>Match complete</Text>
+                        {/* Name + age */}
+                        <Text style={styles.nameText}>{name}, {age}</Text>
+
+                        {/* Matched by row */}
+                        {matchedByAvatars.length > 0 && (
+                            <View style={styles.matchedByRow}>
+                                <HeartsIcon size={18} color="#00C8B3" />
+                                <Text style={styles.matchedByText}>Matched by :</Text>
+                                <View style={styles.avatarRow}>
+                                    {matchedByAvatars.slice(0, 3).map((url, i) => (
+                                        <Image
+                                            key={i}
+                                            source={{ uri: url }}
+                                            style={[styles.avatarCircle, { marginLeft: i === 0 ? 0 : -8 }]}
+                                        />
+                                    ))}
                                 </View>
-                            )}
+                            </View>
+                        )}
 
-                            <Text style={styles.nameText}>
-                                {name}, {age}
-                            </Text>
+                        {/* Date line */}
+                        {matchDate && (
+                            <Text style={styles.dateText}>{matchDate}</Text>
+                        )}
 
-                            {isAwaitingYou && expiresIn ? (
-                                <Text style={styles.expiryText}>Expires in {expiresIn}</Text>
-                            ) : matchDate ? (
-                                <Text style={styles.expiryText}>{matchDate}</Text>
-                            ) : null}
-                        </View>
                     </View>
                 </View>
             </ImageBackground>
 
+            {/* Action button — chat for active match, arrow for everything else */}
             <TouchableOpacity onPress={onPress} style={styles.actionButton} activeOpacity={0.85}>
-                {(isAwaitingYou || isAwaitingThem || status === 'new_match') ? (
-                    <ArrowRightIcon size={24} color="#010101" />
-                ) : (
+                {isActiveMatch ? (
                     <ChatIcon size={24} color="#2563EB" />
+                ) : (
+                    <ArrowRightIcon size={22} color="#010101" />
                 )}
             </TouchableOpacity>
         </View>
@@ -197,72 +177,64 @@ const styles = StyleSheet.create({
     },
     topRow: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
     },
-    statusBadge: {
+    topBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
         borderRadius: 8,
         paddingHorizontal: 14,
         paddingVertical: 8,
         gap: 6,
     },
-    statusBadgeText: {
+    topBadgeText: {
         color: '#FFFFFF',
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: 'Outfit_700Bold',
+        fontSize: 16,
+        lineHeight: 20,
+    },
+    dismissButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#FF3B30',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    dismissX: {
+        color: '#FFFFFF',
         fontSize: 14,
+        fontWeight: '700',
         lineHeight: 18,
     },
     bottomSection: {
-        gap: 12,
+        gap: 8,
         paddingBottom: 16,
-        paddingRight: 70,
+        paddingRight: 80,
     },
-    statusBanner: {
+    pill: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
+        alignSelf: 'flex-start',
         borderRadius: 8,
-        gap: 6,
-    },
-    votedBanner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(132, 132, 132, 0.2)',
-        borderRadius: 8,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        gap: 6,
-    },
-    votedBannerText: {
-        color: '#FFFFFF',
-        fontFamily: 'Outfit_400Regular',
-        fontSize: 14,
-        lineHeight: 18,
-    },
-    nameBlock: {
+        paddingHorizontal: 12,
+        paddingVertical: 7,
         gap: 8,
     },
-    activeMatchBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderRadius: 6,
-        paddingHorizontal: 8,
-        paddingVertical: 5,
-        gap: 6,
-        alignSelf: 'flex-start',
-    },
-    activeMatchBadgeText: {
-        color: 'white',
-        fontSize: 13,
-        fontFamily: 'Outfit_400Regular',
+    pillText: {
+        color: '#FFFFFF',
+        fontFamily: 'Outfit_600SemiBold',
+        fontSize: 15,
+        lineHeight: 19,
     },
     nameText: {
         color: '#FFFFFF',
-        fontFamily: 'Outfit_600SemiBold',
-        fontSize: 24,
-        lineHeight: 30,
+        fontFamily: 'Outfit_900Bold',
+        fontWeight: '700',
+        fontSize: 32,
+        lineHeight: 38,
+        letterSpacing: -0.5,
     },
     matchedByRow: {
         flexDirection: 'row',
@@ -271,42 +243,43 @@ const styles = StyleSheet.create({
     },
     matchedByText: {
         color: '#FFFFFF',
-        fontFamily: 'Outfit_400Regular',
-        fontSize: 14,
-        lineHeight: 18,
+        fontFamily: 'Outfit_600SemiBold',
+        fontSize: 16,
+        lineHeight: 20,
     },
     avatarRow: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     avatarCircle: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        borderWidth: 1,
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        borderWidth: 1.5,
         borderColor: '#FFFFFF',
         overflow: 'hidden',
+        backgroundColor: '#ccc',
     },
-    expiryText: {
+    dateText: {
         color: 'rgba(255, 255, 255, 0.7)',
-        fontFamily: 'Outfit_400Regular',
-        fontSize: 14,
-        lineHeight: 18,
+        fontFamily: 'Outfit_500Medium',
+        fontSize: 16,
+        lineHeight: 20,
     },
     actionButton: {
         position: 'absolute',
         right: 16,
         bottom: 16,
-        width: 54,
-        height: 54,
-        borderRadius: 27,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.12,
-        shadowRadius: 12,
-        elevation: 6,
+        shadowOpacity: 0.15,
+        shadowRadius: 14,
+        elevation: 8,
     },
 });
