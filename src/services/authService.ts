@@ -88,8 +88,16 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || 'Failed to send email OTP');
+      const errorText = await response.text();
+      let errorMessage = 'Failed to send email OTP';
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.detail || errorMessage;
+      } catch (e) {
+        logger.error('[EMAIL] Non-JSON error response:', errorText.slice(0, 100));
+        errorMessage = `Server Error: ${response.status}. Please check your backend connection.`;
+      }
+      throw new Error(errorMessage);
     }
 
     logger.info('[EMAIL] OTP request successful for:', email);
@@ -241,11 +249,27 @@ export const verifyEmail = async (email: string, code: string): Promise<ApiRespo
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || 'Invalid verification code');
+      const errorText = await response.text();
+      let errorMessage = 'Invalid verification code';
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.detail || errorMessage;
+      } catch (e) {
+        logger.error('[EMAIL] Non-JSON verify response:', errorText.slice(0, 100));
+        errorMessage = `Server Error: ${response.status}. Check if your backend is running at ${API_URL}`;
+      }
+      throw new Error(errorMessage);
     }
 
-    const data = await response.json();
+    const responseText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      logger.error('[EMAIL] Parse error on success:', responseText.slice(0, 100));
+      throw new Error(`Server at ${API_URL} returned HTML instead of JSON (Status: ${response.status}). Are you hitting the right service?`);
+    }
+
     logger.info('[EMAIL] Email verification successful!');
 
     mockCurrentUser = {
