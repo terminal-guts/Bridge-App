@@ -8,6 +8,7 @@ import { ApiResponse } from '../types';
 import { cleanupSubscriptions } from './messageService';
 import { supabase } from '../lib/supabase';
 import { createLogger } from '../utils/secureLogger';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const logger = createLogger('AuthService');
 
@@ -128,6 +129,7 @@ export const signOut = async (): Promise<ApiResponse<void>> => {
     await supabase.auth.signOut();
 
     mockCurrentUser = null;
+    await AsyncStorage.removeItem('bridge_auth_user');
     return { ok: true };
   } catch (error: any) {
     return {
@@ -147,6 +149,15 @@ export const getCurrentUser = async (): Promise<ApiResponse<User | null>> => {
   try {
     // Return mock user if signed in
     if (mockCurrentUser) {
+      return {
+        ok: true,
+        data: mockCurrentUser,
+      };
+    }
+
+    const savedUserStr = await AsyncStorage.getItem('bridge_auth_user');
+    if (savedUserStr) {
+      mockCurrentUser = JSON.parse(savedUserStr);
       return {
         ok: true,
         data: mockCurrentUser,
@@ -219,6 +230,8 @@ export const verifyPhone = async (phone: string, code: string): Promise<ApiRespo
       email: 'dev@bridge.app',
     };
 
+    await AsyncStorage.setItem('bridge_auth_user', JSON.stringify(mockCurrentUser));
+
     return {
       ok: true,
       data: mockCurrentUser,
@@ -276,6 +289,8 @@ export const verifyEmail = async (email: string, code: string): Promise<ApiRespo
       id: data.user_id || MOCK_USER_ID,
       email,
     };
+
+    await AsyncStorage.setItem('bridge_auth_user', JSON.stringify(mockCurrentUser));
 
     return {
       ok: true,

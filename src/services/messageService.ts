@@ -81,13 +81,13 @@ const generateMessageId = (): string => {
   return `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
-/**
- * Get current user ID from Supabase auth
- */
 const getCurrentUserId = async (): Promise<string | null> => {
   if (!USE_REAL_BACKEND) {
     return '00000000-0000-0000-0000-000000000001';
   }
+  const { getCurrentUser } = await import('./authService');
+  const userRes = await getCurrentUser();
+  if (userRes.ok && userRes.data) return userRes.data.id;
   const { data } = await supabase.auth.getUser();
   return data?.user?.id ?? null;
 };
