@@ -501,9 +501,9 @@ function generateMockProposals(): Proposal[] {
   });
 
   return [
-    makeProposal('proposal-jack-leslie',   jack,   leslie, 18, 3),
-    makeProposal('proposal-marcus-priya',  marcus, priya,  11, 7),
-    makeProposal('proposal-tyler-sofia',   tyler,  sofia,   6, 10),
+    makeProposal('proposal-jack-leslie', jack, leslie, 18, 3),
+    makeProposal('proposal-marcus-priya', marcus, priya, 11, 7),
+    makeProposal('proposal-tyler-sofia', tyler, sofia, 6, 10),
   ];
 }
 
@@ -1043,7 +1043,7 @@ class CommunityService {
           currentJob: 'Teacher',
           photos: [{ id: 'photo-sophia', url: MOCK_PHOTOS[2], isMain: true, order: 0 }],
         }),
-        isAnchorToday: false, // Not an anchor (in active match)
+        isAnchorToday: true, // Do not remove them from the grid even if in an active match
         hasCompletedGrid: false,
         karmaScore: generateMockKarma(15),
         addedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
