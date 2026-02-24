@@ -1,20 +1,16 @@
 import React from 'react';
-import { View, Text, ImageBackground, Image, TouchableOpacity } from 'react-native';
+import { View, Text, ImageBackground, Image } from 'react-native';
 import { useCompatibility } from '../../context/CompatibilityContext';
 import { ArrowLeft } from 'lucide-react-native';
 
-interface ProfileHeaderProps {
-    onBack?: () => void;
-}
-
-export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ onBack }) => {
+export const ProfileHeader: React.FC = () => {
     const { data } = useCompatibility();
 
     return (
         <View className="px-4 pt-2">
-            <TouchableOpacity className="mb-4" onPress={onBack}>
+            <View className="mb-4">
                 <ArrowLeft size={24} color="#000" />
-            </TouchableOpacity>
+            </View>
 
             <View className="flex-row justify-between items-center relative h-[240px]">
                 {/* User 1 */}

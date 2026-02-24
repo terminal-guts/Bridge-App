@@ -1,87 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    View, Text, ScrollView, TouchableOpacity, TouchableWithoutFeedback,
-    ImageBackground, Image, ActivityIndicator, Dimensions, StyleSheet,
+    View, Text, ScrollView, TouchableOpacity,
+    ImageBackground, Image, ActivityIndicator, StyleSheet, Dimensions
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Check, Star, Heart, X, Sparkles, Users } from 'lucide-react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { communityService } from '../../services/communityServiceIndex';
-import { RootStackParamList } from '../../types';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
-
-const VALUES_EMOJI: Record<string, string> = {
-    'Kindness': '💗', 'Honesty': '💛', 'Growth': '🌱', 'Family': '🎁',
-    'Ambition': '🎯', 'Humor': '😄', 'Empathy': '🧡', 'Curiosity': '🔍',
-    'Creativity': '🎨', 'Loyalty': '🤝', 'Adventure': '🌍', 'Health': '💪',
-    'Fun': '🎉', 'Faith': '🙏', 'Justice': '⚖️', 'Wisdom': '🦉',
-    'Respect': '🌟', 'Integrity': '💎', 'Freedom': '🦋', 'Love': '❤️',
-};
-
-const INTERESTS_EMOJI: Record<string, string> = {
-    'Travel': '✈️', 'Live music': '🎵', 'Coffee chats': '☕', 'Hiking': '🥾',
-    'Book clubs': '📚', 'Food walks': '🥘', 'Weekend getaways': '✨',
-    'Art galleries': '🎨', 'Board games': '🎲', 'Cooking': '🍳',
-    'Photography': '📷', 'Sports': '⚽', 'Music': '🎸', 'Dancing': '💃',
-    'Gaming': '🎮', 'Movies': '🎬', 'Yoga': '🧘', 'Running': '🏃',
-    'Swimming': '🏊', 'Reading': '📖', 'Fitness': '💪', 'Wine tasting': '🍷',
-    'Cycling': '🚴', 'Rock climbing': '🧗',
-};
-
-function getEmoji(text: string, map: Record<string, string>): string {
-    const key = Object.keys(map).find(
-        k => k.toLowerCase() === text.toLowerCase()
-    );
-    return key ? map[key] : '•';
-}
+import { getProfileById } from '../services/profileService';
+import { Profile } from '../types/profile';
 
 export default function ProfileMatchScreen() {
-    const navigation = useNavigation<any>();
-    const route = useRoute<RouteProp<RootStackParamList, 'ProposalProfile'>>();
-    const { partnerProfile, communityScore, endorsers, screenState, proposalId } = route.params;
-    const insets = useSafeAreaInsets();
+    const [profile, setProfile] = useState<Profile | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-    const [submitting, setSubmitting] = useState(false);
+    useEffect(() => {
+        const loadProfile = async () => {
+            try {
+                // Returns elsa by default now from profileService
+                const data = await getProfileById('elsa');
+                setProfile(data);
+            } catch (error) {
+                console.error('Failed to load profile:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    const photos = partnerProfile.photos || [];
-    const photoUrl = photos[currentPhotoIndex]?.url || '';
-    const karmaPts = (partnerProfile as any).karma?.score ?? 80;
-    const canRespond = screenState === 'awaiting_you' || screenState === 'neither_voted';
+        loadProfile();
+    }, []);
 
-    const endorserAvatars: string[] = (endorsers ?? [])
-        .map((e: any) => e.endorserProfile?.photos?.[0]?.url)
-        .filter(Boolean);
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#2563EB" />
+            </View>
+        );
+    }
 
-    const deepQuestions: { question: string; answer: string }[] =
-        ((partnerProfile as any).displayedQuestions ?? [])
-            .map((id: number) =>
-                ((partnerProfile as any).deepQuestions ?? []).find(
-                    (q: any) => q.questionId === id
-                )
-            )
-            .filter(Boolean)
-            .map((q: any) => ({ question: q.question, answer: q.answer }));
-
-    const handlePass = async () => {
-        if (submitting) return;
-        setSubmitting(true);
-        try {
-            if (canRespond) await communityService.respondToMatchProposal(proposalId, false);
-        } catch { /* silent */ }
-        navigation.goBack();
-    };
-
-    const handleAccept = async () => {
-        if (submitting || !canRespond) return;
-        setSubmitting(true);
-        try {
-            await communityService.respondToMatchProposal(proposalId, true);
-        } catch { /* silent */ }
-        navigation.goBack();
-    };
+    if (!profile) {
+        return (
+            <View style={styles.loadingContainer}>
+                <Text>Profile not found</Text>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -93,7 +53,7 @@ export default function ProfileMatchScreen() {
                 {/* ── Hero Image Section ────────────────────────── */}
                 <View style={styles.heroContainer}>
                     <ImageBackground
-                        source={photoUrl ? { uri: photoUrl } : require('../../../assets/favicon.png')}
+                        source={typeof profile.image === 'string' ? { uri: profile.image } : profile.image}
                         style={styles.heroImage}
                         imageStyle={styles.heroImageStyle}
                         resizeMode="cover"
@@ -117,30 +77,33 @@ export default function ProfileMatchScreen() {
 
                         {/* Profile Info Overlay (Bottom Left of Hero) */}
                         <View style={styles.heroOverlayName}>
-                            <Text style={styles.heroName}>{partnerProfile.firstName}, {partnerProfile.age}</Text>
+                            <Text style={styles.heroName}>{profile.name}, {profile.age}</Text>
+                            {profile.isVerified && (
+                                <View style={styles.verifyBadge}>
+                                    <Check size={10} color="#FFFFFF" strokeWidth={4} />
+                                </View>
+                            )}
                         </View>
 
                         <View style={styles.heroOverlayMatched}>
                             <Sparkles size={14} color="#FFFFFF" fill="#FFFFFF" />
                             <Text style={styles.matchedByText}>Matched by</Text>
                             <View style={styles.avatarStack}>
-                                {endorserAvatars.length > 0
-                                    ? endorserAvatars.map((uri, i) => (
-                                        <View key={i} style={[styles.stackAvatarContainer, { marginLeft: i === 0 ? 0 : -8 }]}>
-                                            <Image source={{ uri }} style={styles.stackAvatar} />
-                                        </View>
-                                    ))
-                                    : [0, 1, 2].map((_, i) => (
-                                        <View key={i} style={[styles.stackAvatarContainer, { marginLeft: i === 0 ? 0 : -8, backgroundColor: '#D9D9D9' }]} />
-                                    ))
-                                }
+                                {profile.matchedBy.map((uri, i) => (
+                                    <View key={i} style={[styles.stackAvatarContainer, { marginLeft: i === 0 ? 0 : -8 }]}>
+                                        <Image
+                                            source={{ uri }}
+                                            style={styles.stackAvatar}
+                                        />
+                                    </View>
+                                ))}
                             </View>
                         </View>
 
                         {/* Karma Badge (Bottom Right of Hero) */}
                         <View style={styles.karmaBadge}>
                             <Star size={14} color="#FFFFFF" strokeWidth={2} />
-                            <Text style={styles.karmaText}>Karma points {karmaPts}</Text>
+                            <Text style={styles.karmaText}>Karma points {profile.karmaPoints}</Text>
                         </View>
                     </ImageBackground>
                 </View>
@@ -165,11 +128,11 @@ export default function ProfileMatchScreen() {
                             </TouchableOpacity>
                         </View>
 
-                        <Text style={styles.scoreValue}>{communityScore}%</Text>
+                        <Text style={styles.scoreValue}>{profile.matchPercentage}%</Text>
 
                         <View style={styles.progressContainer}>
                             <View style={[styles.progressBackground]}>
-                                <View style={[styles.progressFill, { width: `${communityScore}%` }]} />
+                                <View style={[styles.progressFill, { width: `${profile.matchPercentage}%` }]} />
                             </View>
                         </View>
                     </View>
@@ -178,9 +141,9 @@ export default function ProfileMatchScreen() {
                     <View style={styles.sectionCard}>
                         <Text style={styles.sectionHeading}>Values</Text>
                         <View style={styles.tagGrid}>
-                            {(partnerProfile.values ?? []).map((v, i) => (
+                            {profile.values.map((v, i) => (
                                 <View key={i} style={styles.tag}>
-                                    <Text style={styles.tagText}>{getEmoji(v, VALUES_EMOJI)} {v}</Text>
+                                    <Text style={styles.tagText}>{v.emoji} {v.text}</Text>
                                 </View>
                             ))}
                         </View>
@@ -190,9 +153,9 @@ export default function ProfileMatchScreen() {
                     <View style={styles.sectionCard}>
                         <Text style={styles.sectionHeading}>Interests</Text>
                         <View style={styles.tagGrid}>
-                            {(partnerProfile.interests ?? []).map((v, i) => (
+                            {profile.interests.map((v, i) => (
                                 <View key={i} style={styles.tag}>
-                                    <Text style={styles.tagText}>{getEmoji(v, INTERESTS_EMOJI)} {v}</Text>
+                                    <Text style={styles.tagText}>{v.emoji} {v.text}</Text>
                                 </View>
                             ))}
                         </View>
@@ -201,44 +164,30 @@ export default function ProfileMatchScreen() {
                     {/* Deep Questions Section */}
                     <View style={styles.section}>
                         <Text style={styles.sectionHeading}>Deep questions</Text>
-                        {deepQuestions.map((q, i) => (
+                        {profile.questions.map((q, i) => (
                             <View key={i} style={styles.questionBox}>
-                                <Text style={styles.questionTitle}>{i + 1}. {q.question}</Text>
-                                <Text style={styles.answerText}>{q.answer}</Text>
+                                <Text style={styles.questionTitle}>{i + 1}. {q.q}</Text>
+                                <Text style={styles.answerText}>{q.a}</Text>
                             </View>
                         ))}
                     </View>
+
                 </View>
-            </ScrollView >
+            </ScrollView>
 
             {/* ── Action Buttons ─────────────────────────────── */}
-            {
-                canRespond ? (
-                    <View style={[styles.floatingActions, { bottom: Math.max(insets.bottom + 20, 64) }]}>
-                        <TouchableOpacity
-                            style={[styles.btnX, submitting && { opacity: 0.5 }]}
-                            onPress={handlePass}
-                            disabled={submitting}
-                        >
-                            <X size={24} color="#FFFFFF" strokeWidth={3} />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.btnHeart, submitting && { opacity: 0.5 }]}
-                            onPress={handleAccept}
-                            disabled={submitting}
-                        >
-                            {submitting ? <ActivityIndicator size="small" color="#FFF" /> : <Heart size={28} color="#FFFFFF" fill="#FFFFFF" />}
-                        </TouchableOpacity>
-                    </View>
-                ) : (
-                    <View style={[styles.floatingActions, { bottom: Math.max(insets.bottom + 20, 64) }]}>
-                        <View style={styles.waitingBadge}>
-                            <Text style={styles.waitingText}>Waiting for their response</Text>
-                        </View>
-                    </View>
-                )
-            }
-        </View >
+            <View style={styles.floatingActions}>
+                <TouchableOpacity style={styles.btnX}>
+                    <X size={24} color="#FFFFFF" strokeWidth={3} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.btnHeart}>
+                    <Heart size={28} color="#FFFFFF" fill="#FFFFFF" />
+                </TouchableOpacity>
+            </View>
+
+            {/* Home Indicator */}
+            <View style={styles.homeIndicator} />
+        </View>
     );
 }
 
@@ -246,23 +195,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#FFFFFF',
-    },
-    waitingBadge: {
-        alignSelf: 'center',
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        backgroundColor: 'rgba(212,170,1,0.1)',
-        borderWidth: 1,
-        borderColor: 'rgba(212,170,1,0.4)',
-        borderRadius: 40,
-        marginBottom: 10,
-    },
-    waitingText: {
-        fontFamily: 'Outfit_500Medium',
-        fontSize: 14,
-        color: '#D4AA01',
     },
     loadingContainer: {
         flex: 1,
