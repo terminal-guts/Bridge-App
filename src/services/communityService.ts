@@ -62,25 +62,45 @@ const MOCK_LOCATIONS = [
 ];
 
 const MOCK_PHOTOS = [
-  'https://i.pravatar.cc/300?img=1',
-  'https://i.pravatar.cc/300?img=2',
-  'https://i.pravatar.cc/300?img=3',
-  'https://i.pravatar.cc/300?img=5',
-  'https://i.pravatar.cc/300?img=6',
-  'https://i.pravatar.cc/300?img=7',
-  'https://i.pravatar.cc/300?img=8',
-  'https://i.pravatar.cc/300?img=9',
-  'https://i.pravatar.cc/300?img=10',
-  'https://i.pravatar.cc/300?img=11',
+  // Women
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&q=85',
+  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800&q=85',
+  'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=800&q=85',
+  'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=800&q=85',
+  'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&q=85',
+  'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=800&q=85',
+  'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=800&q=85',
+  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=800&q=85',
+  'https://images.unsplash.com/photo-1502767089517-fd68ae7c5f94?w=800&q=85',
+  'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&q=85',
+  // Men
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=85',
+  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800&q=85',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800&q=85',
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&q=85',
+  'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=800&q=85',
+  'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=800&q=85',
+  'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=800&q=85',
+  'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=800&q=85',
+  'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=800&q=85',
+  'https://images.unsplash.com/photo-1463453091185-61582044d556?w=800&q=85',
 ];
 
-let mockUserIdCounter = 1000;
+/** Fisher-Yates shuffle — unbiased, unlike sort(() => Math.random() - 0.5) */
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 /**
  * Generate a realistic mock user profile with diverse characteristics
  */
 function generateMockUser(overrides?: Partial<UserProfile>): UserProfile {
-  const id = `mock-user-${mockUserIdCounter++}`;
+  const id = `mock-user-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const firstName = MOCK_FIRST_NAMES[Math.floor(Math.random() * MOCK_FIRST_NAMES.length)];
   const lastName = 'Smith'; // Mock last name
   const age = 24 + Math.floor(Math.random() * 12); // 24-35
@@ -130,9 +150,9 @@ function generateMockUser(overrides?: Partial<UserProfile>): UserProfile {
     return prefs.length > 0 ? prefs : ['yes']; // Default to yes if none selected
   };
 
-  // Randomize interest and value selection
-  const shuffledInterests = [...allInterests].sort(() => Math.random() - 0.5);
-  const shuffledValues = [...allValues].sort(() => Math.random() - 0.5);
+  // Randomize interest and value selection (Fisher-Yates — unbiased)
+  const shuffledInterests = shuffle(allInterests);
+  const shuffledValues = shuffle(allValues);
   const selectedInterests = shuffledInterests.slice(0, 3 + Math.floor(Math.random() * 4)); // 3-6 interests
   const selectedValues = shuffledValues.slice(0, 3 + Math.floor(Math.random() * 3)); // 3-5 values
 
@@ -223,6 +243,144 @@ function generateMockKarma(assists: number): KarmaScore {
     slowModeActive: false,
     lastUpdated: new Date().toISOString(),
   };
+}
+
+// ============================================================================
+// KARMA WEIGHT CONSTANTS
+// ============================================================================
+
+/**
+ * Multipliers applied to proposal vote tallies based on the proposer's karma tier.
+ * A Trusted Matchmaker's proposal counts more than a New Matchmaker's.
+ */
+const KARMA_VOTE_WEIGHTS: Record<string, number> = {
+  new: 1.0,
+  solid: 1.15,
+  trusted: 1.35,
+  elite: 1.60,
+};
+
+/**
+ * Derive the karma weight multiplier for a given number of assists.
+ */
+function getKarmaWeight(assists: number): number {
+  if (assists >= 25) return KARMA_VOTE_WEIGHTS.elite;
+  if (assists >= 10) return KARMA_VOTE_WEIGHTS.trusted;
+  if (assists >= 3) return KARMA_VOTE_WEIGHTS.solid;
+  return KARMA_VOTE_WEIGHTS.new;
+}
+
+// ============================================================================
+// PAIRING HISTORY — "Never same person twice"
+// ============================================================================
+
+/**
+ * Lifetime set of proposed pairings. Key format: `${lowerUserId}::${higherUserId}`.
+ * Persisted in-memory for the mock; a real implementation uses a DB table.
+ */
+const proposedPairings = new Set<string>();
+
+/**
+ * Build a canonical, order-independent key for a pairing.
+ */
+function pairingKey(userAId: string, userBId: string): string {
+  return [userAId, userBId].sort().join('::');
+}
+
+/**
+ * Returns true if this pairing has ever been proposed before.
+ */
+function hasPairingBeenProposed(userAId: string, userBId: string): boolean {
+  return proposedPairings.has(pairingKey(userAId, userBId));
+}
+
+/**
+ * Record that a pairing has now been proposed. Must be called when a new
+ * proposal is submitted to ensure it is never proposed again.
+ */
+function recordProposedPairing(userAId: string, userBId: string): void {
+  proposedPairings.add(pairingKey(userAId, userBId));
+  logger.info('[Mock] Pairing recorded (will never be proposed again):', pairingKey(userAId, userBId));
+}
+
+// ============================================================================
+// STREAK TRACKING
+// ============================================================================
+
+/**
+ * Per-friendship mutual participation streak.
+ *
+ * A streak day is a calendar day (UTC) on which BOTH the current user helped
+ * their friend (submitted a grid proposal for them) AND the friend helped the
+ * current user back. In the mock implementation the friend's reciprocation is
+ * implied — when you submit a proposal for friend X, the system assumes friend X
+ * also submitted one for you that day.
+ *
+ * Key:   friendId  (one entry per friendship, relative to the current user)
+ * Value: { lastParticipationDate: YYYY-MM-DD (UTC), streakDays: number }
+ *
+ * Only `submitFriendGridProposal` and `markFriendAsHelped` should call
+ * `updateFriendStreak` — those are the two actions that represent helping a
+ * specific friend. Community-level actions (votes, daily grid proposal) are
+ * NOT per-friendship and must not call this function.
+ *
+ * TODO (Production): Replace with a Supabase query against a
+ * `friend_participation` table that records (user_id, friend_id, date) for
+ * each user. A mutual streak day exists when BOTH directions have a row for
+ * the same date. The streak count is the length of the longest consecutive
+ * sequence of such mutual days ending today.
+ */
+const friendStreaks: Map<string, { lastParticipationDate: string; streakDays: number }> = new Map();
+
+/**
+ * Get today's date string in YYYY-MM-DD format (UTC, DST-safe).
+ */
+function todayDateString(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+/**
+ * Record mutual participation for a specific friendship and return the updated
+ * streak count. Call this only when the current user has helped a specific
+ * friend — the friend's reciprocation is implied in mock mode.
+ */
+function updateFriendStreak(friendId: string): number {
+  const today = todayDateString();
+  const existing = friendStreaks.get(friendId);
+
+  if (!existing) {
+    // First ever participation
+    friendStreaks.set(friendId, { lastParticipationDate: today, streakDays: 1 });
+    logger.info('[Mock] Streak started for friend:', friendId, '→ 1 day');
+    return 1;
+  }
+
+  const lastDate = new Date(existing.lastParticipationDate);
+  const todayDate = new Date(today);
+  const diffDays = Math.round((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) {
+    // Already participated today — streak unchanged
+    return existing.streakDays;
+  } else if (diffDays === 1) {
+    // Consecutive day — increment streak
+    const newStreak = existing.streakDays + 1;
+    friendStreaks.set(friendId, { lastParticipationDate: today, streakDays: newStreak });
+    logger.info('[Mock] Streak incremented for friend:', friendId, '→', newStreak, 'days');
+    return newStreak;
+  } else {
+    // Missed at least one day — streak resets to 1
+    friendStreaks.set(friendId, { lastParticipationDate: today, streakDays: 1 });
+    logger.info('[Mock] Streak RESET for friend:', friendId, '(missed', diffDays - 1, 'day(s))');
+    return 1;
+  }
+}
+
+/**
+ * Get the current streak for a friend without modifying it.
+ */
+function getFriendStreak(friendId: string): number {
+  return friendStreaks.get(friendId)?.streakDays ?? 0;
 }
 
 // ============================================================================
@@ -367,7 +525,7 @@ function generateMockProposals(): Proposal[] {
     tobaccoFrequency: 'no',
     values: ['Creativity', 'Honesty', 'Ambition', 'Family', 'Growth'],
     interests: ['Travel', 'Music', 'Coffee', 'Hiking', 'Art'],
-    photos: p('https://randomuser.me/api/portraits/men/75.jpg', 'jack'),
+    photos: p('https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&q=85', 'jack'),
   });
 
   const leslie = generateMockUser({
@@ -386,7 +544,7 @@ function generateMockProposals(): Proposal[] {
     tobaccoFrequency: 'no',
     values: ['Creativity', 'Honesty', 'Kindness', 'Family', 'Adventure'],
     interests: ['Travel', 'Music', 'Coffee', 'Photography', 'Art'],
-    photos: p('https://randomuser.me/api/portraits/women/44.jpg', 'leslie'),
+    photos: p('https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=800&q=85', 'leslie'),
   });
 
   // ── Proposal 2: Marcus & Priya — Mixed compatibility ────────────────────
@@ -407,7 +565,7 @@ function generateMockProposals(): Proposal[] {
     tobaccoFrequency: 'no',
     values: ['Ambition', 'Growth', 'Authenticity', 'Kindness'],
     interests: ['Hiking', 'Reading', 'Sports', 'Cooking', 'Travel'],
-    photos: p('https://randomuser.me/api/portraits/men/32.jpg', 'marcus'),
+    photos: p('https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=800&q=85', 'marcus'),
   });
 
   const priya = generateMockUser({
@@ -426,7 +584,7 @@ function generateMockProposals(): Proposal[] {
     tobaccoFrequency: 'no',
     values: ['Ambition', 'Family', 'Honesty', 'Kindness'],
     interests: ['Yoga', 'Cooking', 'Reading', 'Photography', 'Travel'],
-    photos: p('https://randomuser.me/api/portraits/women/28.jpg', 'priya'),
+    photos: p('https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&q=85', 'priya'),
   });
 
   // ── Proposal 3: Tyler & Sofia — Low compatibility ────────────────────────
@@ -447,7 +605,7 @@ function generateMockProposals(): Proposal[] {
     tobaccoFrequency: 'no',
     values: ['Family', 'Adventure', 'Creativity', 'Humor'],
     interests: ['Sports', 'Music', 'Travel', 'Cooking', 'Art'],
-    photos: p('https://randomuser.me/api/portraits/men/56.jpg', 'tyler'),
+    photos: p('https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800&q=85', 'tyler'),
   });
 
   const sofia = generateMockUser({
@@ -466,7 +624,7 @@ function generateMockProposals(): Proposal[] {
     tobaccoFrequency: 'no',
     values: ['Authenticity', 'Growth', 'Honesty', 'Ambition'],
     interests: ['Reading', 'Coffee', 'Yoga', 'Photography', 'Art'],
-    photos: p('https://randomuser.me/api/portraits/women/63.jpg', 'sofia'),
+    photos: p('https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=800&q=85', 'sofia'),
   });
 
   const makeProposal = (
@@ -715,9 +873,46 @@ const mockActiveMatch: ActiveMatch = {
 // SERVICE FUNCTIONS
 // ============================================================================
 
+// ── PAUSE & BLOCK ENFORCEMENT ─────────────────────────────────────────────
+//
+// INTEGRATION POINTS (TODO for Production / Backend wiring):
+//
+// 1. PAUSE ENFORCEMENT
+//    Before returning any DailyGrid, Proposal, or PendingMatchProposal, filter
+//    out users whose `isPaused` flag is true:
+//      - getTodaysGrid():        anchor.isPaused → return empty grid
+//                                candidates:     filter out isPaused ones
+//      - getProposalsToVote():   skip proposals where userA.isPaused || userB.isPaused
+//      - getPendingMatchProposals(): skip proposals where matchedUser.isPaused
+//
+//    In mock mode: call getUserProfile() from profileService, check isPaused.
+//    In production: add WHERE is_paused = false to the Supabase matching query.
+//
+// 2. BLOCK ENFORCEMENT
+//    Before returning any grid/proposal/match, call getBlockedUserIds(currentUserId)
+//    from blockService.ts to get the full exclusion set (both directions),
+//    then filter any UserProfile whose id is in that set.
+//
+//    Example (mock pseudocode):
+//      import { getBlockedUserIds } from './blockService';
+//      const excluded = await getBlockedUserIds(currentUserId);
+//      const filteredCandidates = candidates.filter(c => !excluded.includes(c.id));
+//
+//    In production: push this filtering to the Supabase RPC / edge function so
+//    blocked/paused users are never returned from the database at all.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
 class CommunityService {
   /**
    * Get today's daily grid (random matcher assignment)
+   *
+   * PAUSE ENFORCEMENT: If the current user's profile isPaused, this should
+   * return an empty grid or throw. Add that check here once getUserProfile()
+   * is integrated into this service.
+   *
+   * BLOCK ENFORCEMENT: Filter anchor and candidates through getBlockedUserIds()
+   * before returning. See the comment block above for details.
    */
   async getTodaysGrid(): Promise<DailyGrid> {
     // Simulate network delay
@@ -730,12 +925,21 @@ class CommunityService {
   }
 
   /**
-   * Submit proposal for today's grid
+   * Submit proposal for today's grid.
+   * Records the pairing (anchor + candidate) so it is NEVER proposed again.
    */
   async submitDailyGridProposal(candidateId: string): Promise<void> {
     await this.delay(300);
 
     logger.info('[Mock] Submitting proposal for candidate:', candidateId);
+
+    // Enforce "never same person twice" constraint
+    const anchorId = mockDailyGrid.anchorUserId;
+    if (hasPairingBeenProposed(anchorId, candidateId)) {
+      throw new Error(`Pairing ${anchorId} + ${candidateId} has already been proposed. Cannot propose the same pair twice.`);
+    }
+    recordProposedPairing(anchorId, candidateId);
+
     mockState.gridProposalSubmitted = true;
 
     // Check if daily tasks are now complete
@@ -743,25 +947,62 @@ class CommunityService {
   }
 
   /**
-   * Get proposals to vote on (always 3)
+   * Get proposals to vote on (always 3).
+   *
+   * Ranking: proposals are sorted by a karma-weighted score so that proposals
+   * endorsed by higher-karma users appear first. The effective score for each
+   * proposal is: (yesVotes * endorserKarmaWeight) / totalVotes.
+   * Proposals with no votes fall back to their raw compatibilityScore.
    */
   async getProposalsToVote(): Promise<Proposal[]> {
     await this.delay(500);
 
     const allProposals = generateMockProposals();
-    return allProposals.slice(0, 3);
+
+    // Filter out any proposals where the pairing has already been proposed lifetime
+    const eligibleProposals = allProposals.filter(p =>
+      !hasPairingBeenProposed(p.userA.id, p.userB.id)
+    );
+
+    // Sort by karma-weighted score descending
+    const ranked = eligibleProposals.sort((a, b) => {
+      const scoreA = a.totalVotes > 0
+        ? (a.yesVotes / a.totalVotes) * getKarmaWeight(mockState.currentKarmaAssists)
+        : a.compatibilityScore / 100;
+      const scoreB = b.totalVotes > 0
+        ? (b.yesVotes / b.totalVotes) * getKarmaWeight(mockState.currentKarmaAssists)
+        : b.compatibilityScore / 100;
+      return scoreB - scoreA;
+    });
+
+    return ranked.slice(0, 3);
   }
 
   /**
-   * Submit vote on a proposal
+   * Submit vote on a proposal.
+   *
+   * Karma weighting: each vote is multiplied by the current user's karma weight
+   * before being counted toward proposal tallies. A Trusted Matchmaker's YES
+   * carries more weight than a New Matchmaker's YES.
+   *
+   * The `weight` parameter overrides the automatic karma-derived weight when
+   * the caller already knows the appropriate multiplier (e.g. friend-rec flow).
    */
   async submitProposalVote(proposalId: string, vote: 'yes' | 'no' | 'skip', weight?: number): Promise<void> {
     await this.delay(300);
 
-    logger.info('[Mock] Voting on proposal:', proposalId, '-', vote, weight !== undefined ? `(weight: ${weight})` : '');
+    // Calculate the effective karma weight for this vote
+    const karmaWeight = weight !== undefined
+      ? weight
+      : getKarmaWeight(mockState.currentKarmaAssists);
 
-    // Only count votes with weight > 0 toward task progress
-    if (vote !== 'skip' && (weight === undefined || weight > 0)) {
+    logger.info('[Mock] Voting on proposal:', proposalId, '-', vote,
+      `(karma weight: ${karmaWeight.toFixed(2)}, assists: ${mockState.currentKarmaAssists})`);
+
+    // Count all explicit votes (yes, no, skip/not-sure) toward task progress.
+    // 'skip' corresponds to "Not Sure" — a deliberate vote choice that should count.
+    // The only case that should NOT count is a cancel (which never calls this function).
+    if (karmaWeight > 0) {
       mockState.votesSubmitted += 1;
     }
 
@@ -800,12 +1041,24 @@ class CommunityService {
   }
 
   /**
-   * Submit proposal for friend's grid
+   * Submit proposal for friend's grid.
+   * Records the pairing so it is NEVER proposed again, and updates the streak.
    */
   async submitFriendGridProposal(friendId: string, candidateId: string): Promise<void> {
     await this.delay(300);
 
     logger.info('[Mock] Submitting proposal for friend:', friendId, 'candidate:', candidateId);
+
+    // Enforce "never same person twice" constraint
+    if (hasPairingBeenProposed(friendId, candidateId)) {
+      throw new Error(`Pairing ${friendId} + ${candidateId} has already been proposed. Cannot propose the same pair twice.`);
+    }
+    recordProposedPairing(friendId, candidateId);
+
+    // Record mutual participation for this specific friendship.
+    // Streak = days where you helped friend X AND friend X helped you back.
+    // In mock mode the friend's reciprocation is implied.
+    updateFriendStreak(friendId);
   }
 
   /**
@@ -1064,6 +1317,7 @@ class CommunityService {
         }),
         isAnchorToday: true,
         hasCompletedGrid: true,
+        isMatched: true,
         karmaScore: generateMockKarma(20),
         addedAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
         candidatePreviews: [
@@ -1075,11 +1329,23 @@ class CommunityService {
         assistsCount: 30,
         friendshipTier: getFriendshipTier(20),
       },
-    ].map(f => ({
-      ...f,
-      // If the user voted a match for this friend, mark them as helped
-      hasCompletedGrid: f.hasCompletedGrid || mockState.helpedFriends.includes(f.friendId),
-    }));
+    ].map(f => {
+      // Use the live streak value from the tracker if participation has occurred,
+      // otherwise fall back to the mock seed value.
+      const liveStreak = getFriendStreak(f.friendId);
+      const effectiveStreak = liveStreak > 0 ? liveStreak : f.streakDays;
+
+      // Re-derive friendship tier from the effective streak length.
+      const effectiveTier = getFriendshipTier(effectiveStreak);
+
+      return {
+        ...f,
+        streakDays: effectiveStreak,
+        friendshipTier: effectiveTier,
+        // If the user voted a match for this friend, or the friend is matched, mark them as helped
+        hasCompletedGrid: f.hasCompletedGrid || f.isMatched || mockState.helpedFriends.includes(f.friendId),
+      };
+    });
 
     // ── Shared proposal partner ──────────────────────────────────────────────
     const partnerProfile = generateMockUser({
@@ -1239,6 +1505,9 @@ class CommunityService {
       timeRestrictionDisabled: true,
       fastForwardMode: false,
       currentKarmaAssists: 5,
+      helpedFriends: [],
+      matchState: 'empty',
+      friendsState: 'empty',
       proposalDecisions: {},
     };
 
@@ -1276,13 +1545,16 @@ class CommunityService {
   }
 
   /**
-   * Mark a friend as helped (voted on their match proposal)
+   * Mark a friend as helped (voted on their match proposal).
+   * Also records mutual participation for this friendship's streak.
    */
   async markFriendAsHelped(friendId: string): Promise<void> {
     if (!mockState.helpedFriends.includes(friendId)) {
       mockState.helpedFriends.push(friendId);
       logger.info('[Mock] Friend marked as helped:', friendId);
     }
+    // Record mutual participation for this specific friendship.
+    updateFriendStreak(friendId);
   }
 
   /**
@@ -1305,10 +1577,22 @@ class CommunityService {
     return this.nextResetAt;
   }
 
-  /** Called by the timer when it reaches zero — resets and starts a fresh 24h cycle */
+  /**
+   * Called by the timer when it reaches zero — resets and starts a fresh 24h cycle.
+   *
+   * Reset rules:
+   * - helpedFriends is cleared so friends appear as "needs help" again in the new day.
+   * - Friends who have an active match (isMatched: true) will still appear as
+   *   "already helped" because getFriendsAreaData checks isMatched independently.
+   * - The proposedPairings set is NEVER cleared — pairings are lifetime unique.
+   * - The nextResetAt is set to 24h from now.
+   */
   triggerReset(): void {
     this.nextResetAt = Date.now() + 24 * 60 * 60 * 1000;
+    // Only clear today's "helped" flags — matched friends remain shown as helped
+    // because getFriendsAreaData checks isMatched separately.
     mockState.helpedFriends = [];
+    logger.info('[Mock] 24-hour reset triggered. Helped friends cleared. Pairing history preserved.');
     this.notifyStateChange();
   }
 

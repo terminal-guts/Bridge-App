@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, SafeAreaView, StatusBar, TouchableOpacity, Share, ScrollView, Alert, ActivityIndicator, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { H2, H3, Body, Button, Input, Card } from '../../components/ui';
@@ -100,51 +100,41 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
   const [adding, setAdding] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { isOffline } = useNetworkStatus();
+  const isMountedRef = useRef(true);
 
-  // Load current user and their friend code on mount
   useEffect(() => {
-    loadCurrentUser();
+    return () => { isMountedRef.current = false; };
   }, []);
 
+  // Load current user and friend code in a single sequential effect
   useEffect(() => {
-    if (currentUserId) {
-      loadFriendCode();
-    }
-  }, [currentUserId]);
-
-  const loadCurrentUser = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+    const init = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!isMountedRef.current) return;
+        if (!user) {
+          Alert.alert('Error', 'You must be logged in to view this page');
+          navigation.goBack();
+          return;
+        }
         setCurrentUserId(user.id);
-      } else {
-        Alert.alert('Error', 'You must be logged in to view this page');
-        navigation.goBack();
+        const result = await getUserFriendCode();
+        if (!isMountedRef.current) return;
+        if (result.ok && result.data) {
+          setMyFriendCode(result.data.code);
+        } else {
+          logger.error('Failed to load friend code:', result.error);
+          Alert.alert('Error', 'Failed to load your friend code');
+        }
+      } catch (error) {
+        logger.error('Failed to initialize friend code screen:', error);
+        if (isMountedRef.current) Alert.alert('Error', 'Failed to load user information');
+      } finally {
+        if (isMountedRef.current) setLoading(false);
       }
-    } catch (error) {
-      logger.error('Failed to get current user:', error);
-      Alert.alert('Error', 'Failed to load user information');
-    }
-  };
-
-  const loadFriendCode = async () => {
-    if (!currentUserId) return;
-
-    setLoading(true);
-    try {
-      const result = await getUserFriendCode(currentUserId);
-      if (result.ok && result.data) {
-        setMyFriendCode(result.data.code);
-      } else {
-        logger.error('Failed to load friend code:', result.error);
-        Alert.alert('Error', 'Failed to load your friend code');
-      }
-    } catch (error) {
-      logger.error('Failed to load friend code:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    init();
+  }, []);
 
   const handleAddFriend = async () => {
     if (!currentUserId) {
@@ -180,7 +170,7 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
           [
             {
               text: 'View Friends',
-              onPress: () => navigation.replace('FriendList'),
+              onPress: () => navigation.navigate('FriendList'),
             },
             {
               text: 'Add Another',
@@ -251,9 +241,6 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
                     <EvaIcon name="copy" variant="outline" color="primary" size={18} />
                   </StyledTouchableOpacity>
                   <Body className="text-neutral-400 text-xs text-center mb-4">Tap to copy</Body>
-                  <Body className="text-neutral-500 text-center mb-5 px-2">
-                    Share this code with friends to connect on Bridge
-                  </Body>
                   <StyledView className="flex-row w-full">
                     <StyledView className="flex-1">
                       <Button onPress={handleShare} variant="primary" size="sm" fullWidth disabled={!myFriendCode}>
@@ -282,12 +269,6 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
               autoCapitalize="characters"
               containerClassName="mb-2"
             />
-            <StyledView className="flex-row items-center">
-              <Body className="text-neutral-500 text-xs">Format: BRIDGE-</Body>
-              <StyledText className="text-neutral-500 text-xs font-bold">XXXX</StyledText>
-              <Body className="text-neutral-500 text-xs">-</Body>
-              <StyledText className="text-neutral-500 text-xs font-bold">XXXX</StyledText>
-            </StyledView>
           </StyledView>
 
           <Button onPress={handleAddFriend} variant="primary" fullWidth loading={adding}>
@@ -312,22 +293,8 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
                 <EvaIcon name="people" variant="outline" color="primary" size={20} />
               </StyledView>
               <StyledView className="flex-1">
-                <Body className="text-neutral-900 font-medium mb-1">Help Match Your Friends Daily</Body>
-                <Body className="text-neutral-600 text-sm">
-                  Every day, you can view and propose matches from your friends' grids. Your proposals help them find genuine connections.
-                </Body>
-              </StyledView>
-            </StyledView>
-
-            <StyledView className="flex-row">
-              <StyledView className="w-10 h-10 bg-primary-100 rounded-full items-center justify-center mr-3">
-                <EvaIcon name="bar-chart" variant="outline" color="primary" size={20} />
-              </StyledView>
-              <StyledView className="flex-1">
-                <Body className="text-neutral-900 font-medium mb-1">Influence Their Match Quality</Body>
-                <Body className="text-neutral-600 text-sm">
-                  Signal good or bad match types for your friends. Your input helps the algorithm find better matches for them.
-                </Body>
+                <Body className="text-neutral-900 font-medium mb-1">Vote on Their Daily Match</Body>
+                <Body className="text-neutral-600 text-sm">Each day, your friend gets one suggestion. Your vote helps decide if it becomes a match.</Body>
               </StyledView>
             </StyledView>
 
@@ -336,10 +303,18 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
                 <EvaIcon name="award" variant="outline" color="primary" size={20} />
               </StyledView>
               <StyledView className="flex-1">
-                <Body className="text-neutral-900 font-medium mb-1">Build Your Matchmaker Reputation</Body>
-                <Body className="text-neutral-600 text-sm">
-                  Earn assists when your proposals become successful matches. High karma increases your influence in the community.
-                </Body>
+                <Body className="text-neutral-900 font-medium mb-1">Help Others, Help Yourself</Body>
+                <Body className="text-neutral-600 text-sm">Voting for friends earns karma — and high karma makes you more likely to get a great match yourself.</Body>
+              </StyledView>
+            </StyledView>
+
+            <StyledView className="flex-row">
+              <StyledView className="w-10 h-10 bg-primary-100 rounded-full items-center justify-center mr-3">
+                <EvaIcon name="heart" variant="outline" color="primary" size={20} />
+              </StyledView>
+              <StyledView className="flex-1">
+                <Body className="text-neutral-900 font-medium mb-1">It Actually Matters</Body>
+                <Body className="text-neutral-600 text-sm">When your friend ends up with someone great, that's real life impact — and you helped make it happen.</Body>
               </StyledView>
             </StyledView>
           </StyledView>

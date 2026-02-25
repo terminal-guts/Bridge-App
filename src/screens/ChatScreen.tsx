@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   SafeAreaView,
@@ -52,6 +52,32 @@ const REPORT_REASONS = [
   'Other',
 ];
 
+const formatMessageDate = (date: Date): string => {
+  const today = new Date();
+  const messageDate = new Date(date);
+  if (
+    messageDate.getDate() === today.getDate() &&
+    messageDate.getMonth() === today.getMonth() &&
+    messageDate.getFullYear() === today.getFullYear()
+  ) {
+    return 'Today';
+  }
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (
+    messageDate.getDate() === yesterday.getDate() &&
+    messageDate.getMonth() === yesterday.getMonth() &&
+    messageDate.getFullYear() === yesterday.getFullYear()
+  ) {
+    return 'Yesterday';
+  }
+  return messageDate.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
 interface ChatScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Chat'>;
   route: RouteProp<RootStackParamList, 'Chat'>;
@@ -62,6 +88,8 @@ const StyledView = styled(View);
 const StyledTextInput = styled(TextInput);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledImage = styled(Image);
+
+const FLAT_LIST_CONTENT_STYLE = { padding: 16, paddingBottom: 8, flexGrow: 1 } as const;
 
 export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => {
   const { matchId, recipientName, recipientId, isFriendChat } = route.params;
@@ -74,6 +102,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
   const [match, setMatch] = useState<Match | null>(null);
   const [error, setError] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Dropdown + action modals
   const [menuVisible, setMenuVisible] = useState(false);
@@ -98,9 +127,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     currentUserIdRef.current = currentUserId;
   }, [currentUserId]);
 
-  const recipientProfile = match?.currentUserId === match?.user1Id
-    ? match?.user2Profile
-    : match?.user1Profile;
+  const recipientProfile = useMemo(() =>
+    match?.currentUserId === match?.user1Id ? match?.user2Profile : match?.user1Profile,
+    [match]
+  );
 
   useEffect(() => {
     loadMessages();
@@ -130,25 +160,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     return () => {
       subscription.unsubscribe();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId, isFriend]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
     if (messages.length > 0) {
-      setTimeout(() => {
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
+    return () => {
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    };
   }, [messages]);
 
-  // Mark messages as read when screen is focused or new messages arrive
-  useEffect(() => {
-    if (currentUserId && messages.length > 0) {
-      markMessagesAsRead(matchId, currentUserId);
-    }
-  }, [currentUserId, matchId, messages.length]);
-
-  const loadMessages = async (isRefresh = false) => {
+  const loadMessages = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
       setRefreshing(true);
     } else {
@@ -220,8 +248,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
 
       setMessages(messagesResult.data || []);
 
-      // Mark messages as read
-      if (userResult.data && messagesResult.data && messagesResult.data.length > 0) {
+      // Mark messages as read (only when matchId is defined — it's optional in route params)
+      if (matchId && userResult.data && messagesResult.data && messagesResult.data.length > 0) {
         await markMessagesAsRead(matchId, userResult.data.id);
       }
     } catch (error: any) {
@@ -234,7 +262,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [matchId, isFriend, navigation]);
+
+  const handleRefresh = useCallback(() => loadMessages(true), [loadMessages]);
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !currentUserId || !match || sendingMessage) return;
@@ -357,39 +387,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     }
   };
 
-  const formatMessageDate = (date: Date): string => {
-    const today = new Date();
-    const messageDate = new Date(date);
+  const renderDateSeparator = useCallback((date: string) => (
+    <StyledView className="items-center my-4">
+      <StyledView className="bg-neutral-100 px-3 py-1 rounded-full">
+        <BodySmall className="text-neutral-600">{date}</BodySmall>
+      </StyledView>
+    </StyledView>
+  ), []);
 
-    // Check if same day
-    if (
-      messageDate.getDate() === today.getDate() &&
-      messageDate.getMonth() === today.getMonth() &&
-      messageDate.getFullYear() === today.getFullYear()
-    ) {
-      return 'Today';
-    }
-
-    // Check if yesterday
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    if (
-      messageDate.getDate() === yesterday.getDate() &&
-      messageDate.getMonth() === yesterday.getMonth() &&
-      messageDate.getFullYear() === yesterday.getFullYear()
-    ) {
-      return 'Yesterday';
-    }
-
-    // Format as "Mon, Jan 15"
-    return messageDate.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  const renderMessage = ({ item, index }: { item: Message; index: number }) => {
+  const renderMessage = useCallback(({ item, index }: { item: Message; index: number }) => {
     const isOwnMessage = item.senderId === currentUserId;
     const messageDate = new Date(item.sentAt);
     const timeString = messageDate.toLocaleTimeString('en-US', {
@@ -436,17 +442,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
         </StyledView>
       </>
     );
-  };
+  }, [currentUserId, messages, renderDateSeparator]);
 
-  const renderDateSeparator = (date: string) => (
-    <StyledView className="items-center my-4">
-      <StyledView className="bg-neutral-100 px-3 py-1 rounded-full">
-        <BodySmall className="text-neutral-600">{date}</BodySmall>
-      </StyledView>
-    </StyledView>
-  );
-
-  const renderEmptyState = () => {
+  const renderEmptyState = useCallback(() => {
     if (isFriend) {
       return (
         <StyledView className="flex-1 items-center justify-center px-8 py-12">
@@ -462,7 +460,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     }
 
     return (
-      <StyledView className="flex-1 items-center justify-center px-8 py-12">
+      <StyledView className="flex-1 items-center justify-center px-8">
         <StyledView className="w-20 h-20 bg-primary-50 rounded-full items-center justify-center mb-4">
           <Ionicons name="chatbubbles" size={40} color="#437FFF" />
         </StyledView>
@@ -472,28 +470,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
         </BodySmall>
       </StyledView>
     );
-  };
+  }, [isFriend]);
 
-  const renderHeader = () => {
-    if (isFriend) {
-      return null; // No header for friend chats (coming soon screen)
-    }
-
-    if (!recipientProfile) return null;
-
-    return (
-      <StyledView className="items-center mb-6 pt-4">
-        <StyledImage
-          source={{ uri: (recipientProfile.photos?.find(p => p.isMain) || recipientProfile.photos?.[0])?.url }}
-          className="w-20 h-20 rounded-full mb-3"
-        />
-        <H3 className="mb-1">You matched with {recipientName}!</H3>
-        <BodySmall className="text-neutral-600 text-center px-8">
-          The community thinks you two are perfect for each other.
-        </BodySmall>
-      </StyledView>
-    );
-  };
+  const renderHeader = useCallback(() => null, []);
 
   if (loading) {
     return (
@@ -537,10 +516,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
             <Ionicons name="arrow-back" size={24} color="#101828" />
           </StyledTouchableOpacity>
           {(recipientProfile?.photos?.find(p => p.isMain) || recipientProfile?.photos?.[0])?.url && (
-            <StyledImage
-              source={{ uri: (recipientProfile.photos.find(p => p.isMain) || recipientProfile.photos[0]).url }}
-              className="w-10 h-10 rounded-full ml-3 mr-3"
-            />
+            <StyledTouchableOpacity
+              onPress={() => navigation.navigate('ProfileView', {
+                userId: recipientId || '',
+                profile: recipientProfile,
+                showActions: false,
+              })}
+              className="ml-3 mr-3"
+            >
+              <StyledImage
+                source={{ uri: (recipientProfile.photos.find(p => p.isMain) || recipientProfile.photos[0]).url }}
+                className="w-10 h-10 rounded-full"
+              />
+            </StyledTouchableOpacity>
           )}
           <StyledView className="flex-1">
             <H3>{recipientName}</H3>
@@ -568,18 +556,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={renderMessage}
-          contentContainerStyle={{
-            padding: 16,
-            paddingBottom: 8,
-            flexGrow: 1
-          }}
+          contentContainerStyle={FLAT_LIST_CONTENT_STYLE}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={renderHeader}
           ListEmptyComponent={renderEmptyState}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => loadMessages(true)}
+              onRefresh={handleRefresh}
               tintColor="#437FFF"
             />
           }

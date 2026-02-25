@@ -177,7 +177,7 @@ export const FriendListScreen: React.FC<FriendListScreenProps> = ({ navigation }
           <EvaIcon name="arrow-back" variant="outline" color="text" size={24} />
         </StyledTouchableOpacity>
         <H3>My Friends</H3>
-        <StyledTouchableOpacity onPress={() => navigation.replace('FriendCode')}>
+        <StyledTouchableOpacity onPress={() => navigation.navigate('FriendCode')}>
           <EvaIcon name="person-add" variant="outline" color="primary" size={24} />
         </StyledTouchableOpacity>
       </StyledView>
@@ -189,7 +189,7 @@ export const FriendListScreen: React.FC<FriendListScreenProps> = ({ navigation }
           description="Add friends to share survey candidates and help each other find perfect matches!"
           action={{
             label: 'Add Friends',
-            onPress: () => navigation.replace('FriendCode'),
+            onPress: () => navigation.navigate('FriendCode'),
           }}
         />
       ) : (

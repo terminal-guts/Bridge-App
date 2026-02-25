@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity, TouchableWithoutFeedback,
     ImageBackground, Image, ActivityIndicator, Dimensions, StyleSheet,
@@ -11,6 +11,8 @@ import { communityService } from '../../services/communityServiceIndex';
 import { RootStackParamList } from '../../types';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+
+const PROFILE_CONTENT_STYLE = { paddingBottom: 150 } as const;
 
 const VALUES_EMOJI: Record<string, string> = {
     'Kindness': '💗', 'Honesty': '💛', 'Growth': '🌱', 'Family': '🎁',
@@ -51,11 +53,14 @@ export default function ProfileMatchScreen() {
     const karmaPts = (partnerProfile as any).karma?.score ?? 80;
     const canRespond = screenState === 'awaiting_you' || screenState === 'neither_voted';
 
-    const endorserAvatars: string[] = (endorsers ?? [])
-        .map((e: any) => e.endorserProfile?.photos?.[0]?.url)
-        .filter(Boolean);
+    const endorserAvatars = useMemo<string[]>(() =>
+        (endorsers ?? [])
+            .map((e: any) => e.endorserProfile?.photos?.[0]?.url)
+            .filter(Boolean),
+        [endorsers]
+    );
 
-    const deepQuestions: { question: string; answer: string }[] =
+    const deepQuestions = useMemo<{ question: string; answer: string }[]>(() =>
         ((partnerProfile as any).displayedQuestions ?? [])
             .map((id: number) =>
                 ((partnerProfile as any).deepQuestions ?? []).find(
@@ -63,31 +68,33 @@ export default function ProfileMatchScreen() {
                 )
             )
             .filter(Boolean)
-            .map((q: any) => ({ question: q.question, answer: q.answer }));
+            .map((q: any) => ({ question: q.question, answer: q.answer })),
+        [partnerProfile]
+    );
 
-    const handlePass = async () => {
+    const handlePass = useCallback(async () => {
         if (submitting) return;
         setSubmitting(true);
         try {
             if (canRespond) await communityService.respondToMatchProposal(proposalId, false);
         } catch { /* silent */ }
         navigation.goBack();
-    };
+    }, [submitting, canRespond, proposalId, navigation]);
 
-    const handleAccept = async () => {
+    const handleAccept = useCallback(async () => {
         if (submitting || !canRespond) return;
         setSubmitting(true);
         try {
             await communityService.respondToMatchProposal(proposalId, true);
         } catch { /* silent */ }
         navigation.goBack();
-    };
+    }, [submitting, canRespond, proposalId, navigation]);
 
     return (
         <View style={styles.container}>
             <ScrollView
                 style={{ flex: 1 }}
-                contentContainerStyle={{ paddingBottom: 150 }}
+                contentContainerStyle={PROFILE_CONTENT_STYLE}
                 showsVerticalScrollIndicator={false}
             >
                 {/* ── Hero Image Section ────────────────────────── */}
@@ -100,19 +107,21 @@ export default function ProfileMatchScreen() {
                     >
                         {/* Status Bar / Header */}
                         <View style={styles.header}>
-                            <TouchableOpacity style={styles.backButton}>
+                            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
                                 <ArrowLeft size={24} color="#FFFFFF" strokeWidth={2} />
                             </TouchableOpacity>
 
-                            {/* Pagination Indicators */}
-                            <View style={styles.paginationContainer}>
-                                <View style={[styles.paginationDot, styles.dotActive]} />
-                                <View style={styles.paginationDot} />
-                                <View style={styles.paginationDot} />
-                                <View style={styles.paginationDot} />
-                                <View style={styles.paginationDot} />
-                                <View style={styles.paginationDot} />
-                            </View>
+                            {/* Pagination Indicators — driven by actual photo count */}
+                            {photos.length > 1 && (
+                                <View style={styles.paginationContainer}>
+                                    {photos.map((_, i) => (
+                                        <View
+                                            key={i}
+                                            style={[styles.paginationDot, i === currentPhotoIndex && styles.dotActive]}
+                                        />
+                                    ))}
+                                </View>
+                            )}
                         </View>
 
                         {/* Profile Info Overlay (Bottom Left of Hero) */}
@@ -126,7 +135,7 @@ export default function ProfileMatchScreen() {
                             <View style={styles.avatarStack}>
                                 {endorserAvatars.length > 0
                                     ? endorserAvatars.map((uri, i) => (
-                                        <View key={i} style={[styles.stackAvatarContainer, { marginLeft: i === 0 ? 0 : -8 }]}>
+                                        <View key={uri} style={[styles.stackAvatarContainer, { marginLeft: i === 0 ? 0 : -8 }]}>
                                             <Image source={{ uri }} style={styles.stackAvatar} />
                                         </View>
                                     ))
@@ -178,8 +187,8 @@ export default function ProfileMatchScreen() {
                     <View style={styles.sectionCard}>
                         <Text style={styles.sectionHeading}>Values</Text>
                         <View style={styles.tagGrid}>
-                            {(partnerProfile.values ?? []).map((v, i) => (
-                                <View key={i} style={styles.tag}>
+                            {(partnerProfile.values ?? []).map((v) => (
+                                <View key={v} style={styles.tag}>
                                     <Text style={styles.tagText}>{getEmoji(v, VALUES_EMOJI)} {v}</Text>
                                 </View>
                             ))}
@@ -190,8 +199,8 @@ export default function ProfileMatchScreen() {
                     <View style={styles.sectionCard}>
                         <Text style={styles.sectionHeading}>Interests</Text>
                         <View style={styles.tagGrid}>
-                            {(partnerProfile.interests ?? []).map((v, i) => (
-                                <View key={i} style={styles.tag}>
+                            {(partnerProfile.interests ?? []).map((v) => (
+                                <View key={v} style={styles.tag}>
                                     <Text style={styles.tagText}>{getEmoji(v, INTERESTS_EMOJI)} {v}</Text>
                                 </View>
                             ))}
@@ -202,7 +211,7 @@ export default function ProfileMatchScreen() {
                     <View style={styles.section}>
                         <Text style={styles.sectionHeading}>Deep questions</Text>
                         {deepQuestions.map((q, i) => (
-                            <View key={i} style={styles.questionBox}>
+                            <View key={q.question} style={styles.questionBox}>
                                 <Text style={styles.questionTitle}>{i + 1}. {q.question}</Text>
                                 <Text style={styles.answerText}>{q.answer}</Text>
                             </View>
@@ -292,8 +301,12 @@ const styles = StyleSheet.create({
         paddingTop: 64,
     },
     backButton: {
-        width: 24,
-        height: 24,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     paginationContainer: {
         position: 'absolute',

@@ -9,6 +9,7 @@
 
 import { supabase } from '../lib/supabase';
 import { createDevelopmentData, cleanupDevelopmentData } from './developmentDataService';
+import { currentUserProfile } from './mockData';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createLogger } from '../utils/secureLogger';
 
@@ -190,10 +191,10 @@ export const getAppState = async (): Promise<any> => {
   if (!userId) return null;
 
   const [profile, matches, surveys, friends] = await Promise.all([
-    supabase.from('user_profiles').select('*').eq('user_id', userId).single(),
-    supabase.from('matches').select('*').or(`user_id_1.eq.${userId},user_id_2.eq.${userId}`),
-    supabase.from('daily_surveys').select('*').eq('ranker_user_id', userId),
-    supabase.from('friends').select('*').eq('user_id', userId),
+    supabase.from('user_profiles').select('id, first_name, is_paused, karma_score').eq('user_id', userId).single(),
+    supabase.from('matches').select('id').or(`user_id_1.eq.${userId},user_id_2.eq.${userId}`),
+    supabase.from('daily_surveys').select('id').eq('ranker_user_id', userId),
+    supabase.from('friends').select('id').eq('user_id', userId),
   ]);
 
   return {
@@ -219,4 +220,70 @@ export const clearAsyncStorage = async (): Promise<void> => {
 export const quickSignOut = async (): Promise<void> => {
   await supabase.auth.signOut();
   logger.info('[DevService] ✅ Signed out');
+};
+
+export interface MockLoveTabState {
+  enabled: boolean;
+  type: 'match' | 'empty' | 'survey' | 'survey_not_completed' | 'survey_completed';
+  communityScore?: number;
+  expiresAt?: string;
+  autoOpenProfileModal?: boolean;
+}
+
+/**
+ * Get mock Love Tab state for development UI testing.
+ * Returns null by default (feature disabled). Override in development as needed.
+ */
+export const getMockLoveTabState = async (): Promise<MockLoveTabState | null> => {
+  return null;
+};
+
+/**
+ * Sign in as the mock Alex profile
+ *
+ * Uses signInAnonymously() to establish a session:
+ * - Mock Supabase: always returns Alex's hardcoded user ID (00000000-0000-0000-0000-000000000001)
+ * - Real Supabase: creates an anonymous session, then fills the profile with Alex's data
+ *
+ * The AppNavigator's onAuthStateChange listener will automatically navigate to MainTabs
+ * once the session is established.
+ */
+export const signInAsAlex = async (): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { data, error } = await supabase.auth.signInAnonymously();
+    if (error) {
+      logger.error('[DevService] signInAnonymously error:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    const userId = data?.user?.id;
+    if (!userId) {
+      return { success: false, error: 'No user ID returned from sign-in' };
+    }
+
+    // Fill the profile with Alex's data
+    await supabase.from('user_profiles').upsert({
+      user_id: userId,
+      photos: currentUserProfile.photos,
+      interests: currentUserProfile.interests,
+      values: currentUserProfile.values,
+    }, { onConflict: 'user_id' });
+
+    // Fill Alex's deep question answers
+    const answers: Record<number, string> = {};
+    for (const q of currentUserProfile.deepQuestions ?? []) {
+      answers[q.questionId] = q.answer;
+    }
+    await supabase.from('deep_question_answers').upsert({
+      user_id: userId,
+      answers,
+      displayed_question_ids: currentUserProfile.displayedQuestions ?? [],
+    }, { onConflict: 'user_id' });
+
+    logger.info('[DevService] ✅ Signed in as Alex (user ID:', userId, ')');
+    return { success: true };
+  } catch (err: any) {
+    logger.error('[DevService] Error signing in as Alex:', err);
+    return { success: false, error: err.message };
+  }
 };

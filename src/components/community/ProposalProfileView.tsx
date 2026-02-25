@@ -366,19 +366,19 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
             </StyledView>
 
             {/* deep question responses */}
-            {user.deepQuestionsAnswers && (
+            {user.deepQuestions && user.deepQuestions.length > 0 && (
                 <StyledView style={{ marginBottom: 20 }}>
                     <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                         <Ionicons name="help-circle" size={18} color="#F43F5E" style={{ marginRight: 6 }} />
                         <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600' }}>Bio</StyledText>
                     </StyledView>
-                    {user.deepQuestionsAnswers.tier1 && (
-                        <StyledView style={{ marginBottom: 12 }}>
+                    {user.deepQuestions.filter(q => q.tier === 1).map((q, i) => (
+                        <StyledView key={i} style={{ marginBottom: 12 }}>
                             <StyledText style={{ fontSize: 14, color: '#4A4540', lineHeight: 20 }}>
-                                {user.deepQuestionsAnswers.tier1}
+                                {q.answer}
                             </StyledText>
                         </StyledView>
-                    )}
+                    ))}
                 </StyledView>
             )}
         </StyledScrollView>

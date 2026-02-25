@@ -13,14 +13,15 @@ import { supabase } from '../lib/supabase';
 import { ApiResponse, UserProfile } from '../types';
 import { requireAuth } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
-
-const logger = createLogger('FriendService');
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   checkRateLimit,
   recordRateLimitAttempt,
   RateLimitAction,
   formatRetryTime,
 } from '../utils/rateLimiter';
+
+const logger = createLogger('FriendService');
 
 /**
  * Friend Code data structure
@@ -69,6 +70,41 @@ const generateMockFriendCode = (): string => {
 };
 
 /**
+ * Get or create a stable mock friend code for a user.
+ * Persists the generated code to AsyncStorage so the same user always sees
+ * the same code even when the Supabase database is unavailable (mock/dev mode).
+ */
+const getOrCreateStableMockCode = async (userId: string): Promise<string> => {
+  const storageKey = `mock_friend_code_${userId}`;
+  try {
+    const cached = await AsyncStorage.getItem(storageKey);
+    if (cached) return cached;
+    const newCode = generateMockFriendCode();
+    await AsyncStorage.setItem(storageKey, newCode);
+    return newCode;
+  } catch {
+    // If AsyncStorage is unavailable, fall back to a deterministic code derived
+    // from the userId so it is at least consistent within the same session.
+    // A simple djb2-style hash of the userId drives character selection from
+    // the same charset, so the result is stable for a given userId.
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let hash = 5381;
+    for (let i = 0; i < userId.length; i++) {
+      hash = ((hash * 33) ^ userId.charCodeAt(i)) >>> 0; // keep as uint32
+    }
+    let fallback = 'BRIDGE-';
+    for (let i = 0; i < 4; i++) {
+      fallback += chars[((hash >>> (i * 4)) ^ (hash * (i + 3))) % chars.length];
+    }
+    fallback += '-';
+    for (let i = 0; i < 4; i++) {
+      fallback += chars[((hash >>> ((i + 4) * 4)) ^ (hash * (i + 7))) % chars.length];
+    }
+    return fallback;
+  }
+};
+
+/**
  * Error response helper
  */
 const createErrorResponse = <T>(code: string, message: string): ApiResponse<T> => ({
@@ -100,9 +136,9 @@ export const getUserFriendCode = async (): Promise<ApiResponse<FriendCode>> => {
         return await createFriendCode(userId);
       }
 
-      // FRONTEND MOCK: If database query fails, return mock code
+      // FRONTEND MOCK: If database query fails, return a stable mock code
       logger.warn('Friend code fetch failed, returning mock code:', error.message);
-      const mockCode = generateMockFriendCode();
+      const mockCode = await getOrCreateStableMockCode(userId);
       return {
         ok: true,
         data: {
@@ -126,19 +162,36 @@ export const getUserFriendCode = async (): Promise<ApiResponse<FriendCode>> => {
       },
     };
   } catch (error: any) {
-    // FRONTEND MOCK: If anything fails, return mock code
+    // FRONTEND MOCK: If anything fails, return a stable mock code
     logger.warn('Friend code operation failed, returning mock code:', error.message);
-    const mockCode = generateMockFriendCode();
-    return {
-      ok: true,
-      data: {
-        id: 'mock-id',
-        userId: await requireAuth(),
-        code: mockCode,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    };
+    // Attempt to get userId for stable code lookup; fall back to a generated code
+    let stableCode: string;
+    try {
+      const uid = await requireAuth();
+      stableCode = await getOrCreateStableMockCode(uid);
+      return {
+        ok: true,
+        data: {
+          id: 'mock-id',
+          userId: uid,
+          code: stableCode,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    } catch {
+      stableCode = generateMockFriendCode();
+      return {
+        ok: true,
+        data: {
+          id: 'mock-id',
+          userId: 'unknown',
+          code: stableCode,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    }
   }
 };
 
@@ -146,10 +199,9 @@ export const getUserFriendCode = async (): Promise<ApiResponse<FriendCode>> => {
  * Create a friend code for a user (called automatically on signup via trigger)
  */
 const createFriendCode = async (userId: string): Promise<ApiResponse<FriendCode>> => {
+  // Generate the code outside the try block so the catch fallback can reference it
+  const codeData = generateMockFriendCode();
   try {
-    // Generate a proper BRIDGE-XXXX-XXXX format code
-    const codeData = generateMockFriendCode();
-
     // Try to insert the friend code into database
     const { data, error } = await supabase
       .from('friend_codes')
@@ -193,7 +245,7 @@ const createFriendCode = async (userId: string): Promise<ApiResponse<FriendCode>
       data: {
         id: 'mock-id',
         userId: userId,
-        code: '1234567890',
+        code: codeData,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -222,8 +274,8 @@ export const addFriendByCode = async (
       );
     }
 
-    if (!rateLimitResult.data.allowed) {
-      const retryTime = formatRetryTime(rateLimitResult.data.retryAfterSeconds);
+    if (rateLimitResult.data?.allowed === false) {
+      const retryTime = formatRetryTime(rateLimitResult.data.retryAfterSeconds ?? 60);
       return createErrorResponse(
         'RATE_LIMIT_EXCEEDED',
         `Too many friend code attempts. Please try again in ${retryTime}.`
@@ -549,7 +601,7 @@ const formatDatabaseProfile = (data: any): UserProfile => {
     gender: data.gender || [],
     pronouns: data.pronouns,
     customPronouns: data.custom_pronouns,
-    occupation: data.current_job || '',
+    currentJob: data.current_job || '',
     company: data.company_position || '',
     educationLevel: data.education_level,
     school: data.school,

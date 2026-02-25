@@ -616,6 +616,21 @@ class CommunityBackendService {
 
     return { friends, pendingProposals, activeMatch };
   }
+
+  // ========================================================================
+  // Friend Helped Tracking (backend records proposal submission for friend)
+  // ========================================================================
+
+  /**
+   * Mark a friend as helped today (i.e., the current user submitted a proposal for them).
+   * In the real backend this is persisted via the friend_proposal_submissions table.
+   * For now it is a no-op stub — the actual persistence happens in submitFriendGridProposal.
+   */
+  async markFriendAsHelped(_friendId: string): Promise<void> {
+    // Real implementation: the daily_surveys row for this friend is already updated
+    // by submitFriendGridProposal. No separate record needed.
+    logger.info('[Backend] markFriendAsHelped called — persistence handled by submitFriendGridProposal');
+  }
 }
 
 export const communityBackendService = new CommunityBackendService();

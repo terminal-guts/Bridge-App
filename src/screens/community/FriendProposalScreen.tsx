@@ -5,7 +5,7 @@
  * Accessed by tapping "Match" on a friend in the Community area.
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { SafeAreaView, StatusBar } from 'react-native';
 import { styled } from 'nativewind';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
@@ -45,10 +45,16 @@ const MOCK_CANDIDATE: UserProfile = {
   tobaccoFrequency: 'never',
   interests: ['Hiking', 'Cooking', 'Travel', 'Photography'],
   values: ['Family', 'Loyalty', 'Growth', 'Health'],
-  photos: [{ id: 'photo-rachel-1', url: 'https://randomuser.me/api/portraits/women/33.jpg', isMain: true, order: 0 }],
+  photos: [{ id: 'photo-rachel-1', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&q=85', isMain: true, order: 0 }],
   lifestyle: {},
   nonNegotiables: [],
   preferences: { ageMin: 25, ageMax: 35, gender: 'male', lookingFor: 'relationship' },
+  partnerLifestylePreferences: {
+    drinking: ['never', 'socially'],
+    cannabis: ['never'],
+    tobacco: ['never'],
+    otherDrugs: ['no'],
+  },
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
@@ -83,6 +89,12 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
     lifestyle: {},
     nonNegotiables: [],
     preferences: { ageMin: 22, ageMax: 32, gender: 'female', lookingFor: 'relationship' },
+    partnerLifestylePreferences: {
+      drinking: ['never', 'socially', 'sometimes'],
+      cannabis: ['never'],
+      tobacco: ['never'],
+      otherDrugs: ['no'],
+    },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }), [friendId, friendName, friendPhotoUrl, friendAge, friendJob]);
@@ -110,10 +122,16 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
     updatedAt: new Date().toISOString(),
   }), [friendProfile, friendId]);
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
+    navigation.goBack();
+  }, [navigation]);
+
+  const handleVoteComplete = useCallback(() => {
+    // Record the pairing so the same candidate is never proposed to this friend again
+    communityService.submitFriendGridProposal(friendId, `friend-proposal-${friendId}`).catch(() => {});
     communityService.markFriendAsHelped(friendId).catch(() => {});
     navigation.goBack();
-  };
+  }, [friendId, navigation]);
 
   return (
     <StyledSafeAreaView className="flex-1 bg-white">
@@ -122,6 +140,7 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
         initialProposals={[proposal]}
         showBackButton={true}
         onBack={handleBack}
+        onVoteComplete={handleVoteComplete}
       />
     </StyledSafeAreaView>
   );

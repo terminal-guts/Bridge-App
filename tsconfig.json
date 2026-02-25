@@ -16,6 +16,8 @@
   ],
   "exclude": [
     "archive/**/*",
+    "Bridge-Version1/**/*",
+    "src/components/_archived/**/*",
     "supabase/functions/**/*",
     "node_modules"
   ]

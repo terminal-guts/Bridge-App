@@ -279,6 +279,7 @@ export interface FriendWithGridStatus {
   friend: UserProfile;
   isAnchorToday: boolean;
   hasCompletedGrid: boolean;
+  isMatched?: boolean; // Friend currently has an active match
   karmaScore?: KarmaScore;
   addedAt: string;
   streakDays: number; // Days in a row both users filled out grids for each other

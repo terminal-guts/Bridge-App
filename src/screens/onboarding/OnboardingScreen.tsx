@@ -115,13 +115,16 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
 
   const totalSteps = steps.length;
 
-  // Bounds check for currentStep to prevent crashes
-  if (currentStep < 0 || currentStep >= totalSteps) {
-    logger.error(`[OnboardingScreen] Invalid currentStep: ${currentStep} (totalSteps: ${totalSteps})`);
-    // Reset to first step if invalid
-    React.useEffect(() => {
+  // Bounds check — reset to step 0 if currentStep is out of range.
+  // The effect MUST be declared unconditionally (Rules of Hooks); early return is below.
+  React.useEffect(() => {
+    if (currentStep < 0 || currentStep >= totalSteps) {
+      logger.error(`[OnboardingScreen] Invalid currentStep: ${currentStep} (totalSteps: ${totalSteps})`);
       setCurrentStep(0);
-    }, []);
+    }
+  }, [currentStep, totalSteps]);
+
+  if (currentStep < 0 || currentStep >= totalSteps) {
     return null;
   }
 

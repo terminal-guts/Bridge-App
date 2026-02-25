@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { communityService, MockMatchState, MockFriendsState } from '../services/communityService';
 
 const MATCH_OPTIONS: { label: string; value: MockMatchState }[] = [
@@ -30,6 +31,7 @@ const TIMER_PRESETS: { label: string; ms: number; color: string }[] = [
 ];
 
 export function DevStateToggle() {
+  const navigation = useNavigation<any>();
   const [visible, setVisible] = useState(false);
   const [matchState, setMatchStateLocal] = useState<MockMatchState>(
     communityService.getCurrentMatchState(),
@@ -38,15 +40,15 @@ export function DevStateToggle() {
     communityService.getCurrentFriendsState(),
   );
 
-  const applyMatchState = (state: MockMatchState) => {
+  const applyMatchState = useCallback((state: MockMatchState) => {
     setMatchStateLocal(state);
     communityService.setMatchState(state);
-  };
+  }, []);
 
-  const applyFriendsState = (state: MockFriendsState) => {
+  const applyFriendsState = useCallback((state: MockFriendsState) => {
     setFriendsStateLocal(state);
     communityService.setFriendsState(state);
-  };
+  }, []);
 
   return (
     <>
@@ -141,6 +143,21 @@ export function DevStateToggle() {
                   <Text style={[styles.chipText, { color: preset.color }]}>{preset.label}</Text>
                 </TouchableOpacity>
               ))}
+            </View>
+
+            {/* ── Auth ──────────────────────────────────────── */}
+            <Text style={[styles.sectionLabel, { marginTop: 20 }]}>AUTH</Text>
+            <View style={styles.chipGrid}>
+              <TouchableOpacity
+                style={[styles.chip, { borderColor: '#437FFF', backgroundColor: 'rgba(67,127,255,0.08)' }]}
+                onPress={() => {
+                  setVisible(false);
+                  navigation.navigate('MainTabs');
+                }}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.chipText, { color: '#437FFF', fontWeight: '700' }]}>Enter as Alex</Text>
+              </TouchableOpacity>
             </View>
 
             <SafeAreaView />

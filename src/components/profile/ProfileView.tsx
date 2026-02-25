@@ -455,36 +455,20 @@ export function ProfileView({
           )}
 
           {/* Deep Questions (if shown) */}
-          {showDeepQuestions && profile.deepQuestionsAnswers && (
+          {showDeepQuestions && profile.deepQuestions && profile.deepQuestions.length > 0 && (
             <StyledView style={{ marginBottom: 20 }}>
               <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                 <Ionicons name="chatbox-ellipses" size={18} color="#7C3AED" style={{ marginRight: 6 }} />
                 <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600' }}>About Me</StyledText>
               </StyledView>
 
-              {profile.deepQuestionsAnswers.tier1 && (
-                <StyledView style={{ marginBottom: 12 }}>
+              {profile.deepQuestions.map((q, i) => (
+                <StyledView key={i} style={{ marginBottom: 12 }}>
                   <StyledText style={{ fontSize: 14, color: '#4A4540', lineHeight: 20 }}>
-                    {profile.deepQuestionsAnswers.tier1}
+                    {q.answer}
                   </StyledText>
                 </StyledView>
-              )}
-
-              {profile.deepQuestionsAnswers.tier2 && (
-                <StyledView style={{ marginBottom: 12 }}>
-                  <StyledText style={{ fontSize: 14, color: '#4A4540', lineHeight: 20 }}>
-                    {profile.deepQuestionsAnswers.tier2}
-                  </StyledText>
-                </StyledView>
-              )}
-
-              {profile.deepQuestionsAnswers.tier3 && (
-                <StyledView style={{ marginBottom: 12 }}>
-                  <StyledText style={{ fontSize: 14, color: '#4A4540', lineHeight: 20 }}>
-                    {profile.deepQuestionsAnswers.tier3}
-                  </StyledText>
-                </StyledView>
-              )}
+              ))}
             </StyledView>
           )}
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   ImageBackground, Image, ActivityIndicator, StatusBar, FlatList,
@@ -64,33 +64,62 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation, route,
   const [profile, setProfile] = useState<UserProfile | null>(passedProfile || null);
   const [loading, setLoading] = useState(!passedProfile);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const isMountedRef = useRef(true);
+  const passedProfileId = passedProfile?.id ?? null;
 
   useEffect(() => {
-    if (!passedProfile) {
-      if (mode === 'preview') {
-        loadOwnProfile();
-      } else {
-        setLoading(false);
-      }
-    }
-  }, [mode, passedProfile]);
+    return () => { isMountedRef.current = false; };
+  }, []);
 
-  const loadOwnProfile = async () => {
+  const loadOwnProfile = useCallback(async () => {
     try {
       const userResult = await getCurrentUser();
-      if (!userResult.ok || !userResult.data) { navigation.goBack(); return; }
+      if (!userResult.ok || !userResult.data) {
+        if (isMountedRef.current) navigation.goBack();
+        return;
+      }
       const profileResult = await getUserProfile();
+      if (!isMountedRef.current) return;
       if (profileResult.ok && profileResult.data) {
         setProfile(profileResult.data);
       } else {
         navigation.goBack();
       }
     } catch {
-      navigation.goBack();
+      if (isMountedRef.current) navigation.goBack();
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
-  };
+  }, [navigation]);
+
+  useEffect(() => {
+    if (!passedProfileId) {
+      if (mode === 'preview') {
+        loadOwnProfile();
+      } else {
+        setLoading(false);
+      }
+    }
+  }, [mode, passedProfileId, loadOwnProfile]);
+
+  const photos = useMemo(() => profile?.photos || [], [profile]);
+  const displayedImg = useMemo(
+    () => photos.length > 0 ? { uri: photos[currentPhotoIndex].url } : require('../../../assets/favicon.png'),
+    [photos, currentPhotoIndex]
+  );
+  const questions = useMemo(() => {
+    if (!profile) return [];
+    return (profile.displayedQuestions || [])
+      .map(id => profile.deepQuestions?.find(q => q.questionId === id))
+      .filter((q): q is DeepQuestionAnswer => q !== undefined);
+  }, [profile]);
+
+  const photoDots = useMemo(() =>
+    photos.map((_, i) => (
+      <View key={`dot-${i}`} style={{ width: 16, height: 4, backgroundColor: i === currentPhotoIndex ? '#FFFFFF' : 'rgba(217,217,217,0.4)', borderRadius: 20 }} />
+    )),
+    [photos, currentPhotoIndex],
+  );
 
   if (loading) {
     return (
@@ -108,12 +137,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation, route,
     );
   }
 
-  const photos = profile.photos || [];
-  const displayedImg = photos.length > 0 ? { uri: photos[currentPhotoIndex].url } : require('../../../assets/favicon.png');
-  const questions = (profile.displayedQuestions || [])
-    .map(id => profile.deepQuestions?.find(q => q.questionId === id))
-    .filter((q): q is DeepQuestionAnswer => q !== undefined);
-
   const matchPercentage = 85;
   const karmaPts = profile.karma?.score || 80;
 
@@ -124,17 +147,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation, route,
 
         <View style={{ width: '100%', height: 451, position: 'relative' }}>
           <ImageBackground source={displayedImg} style={{ width: '100%', height: '100%' }} imageStyle={{ borderRadius: 30, backgroundColor: '#D9D9D9' }} resizeMode="cover">
-            <View style={{ position: 'absolute', top: 64, left: 16 }}>
-              <TouchableOpacity onPress={() => navigation.goBack()}>
-                <ArrowLeft size={24} color="#FFFFFF" strokeWidth={2} />
-              </TouchableOpacity>
-            </View>
-
             {photos.length > 1 && (
               <View style={{ position: 'absolute', top: 50, left: 0, right: 0, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 }}>
-                {photos.map((_, i) => (
-                  <View key={i} style={{ width: 16, height: 4, backgroundColor: i === currentPhotoIndex ? '#FFFFFF' : 'rgba(217,217,217,0.4)', borderRadius: 20 }} />
-                ))}
+                {photoDots}
               </View>
             )}
             {photos.length > 1 && (
@@ -147,6 +162,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation, route,
                 </TouchableWithoutFeedback>
               </>
             )}
+
+            {/* Back arrow rendered after tap zones so it sits on top */}
+            <View style={{ position: 'absolute', top: 64, left: 16 }}>
+              <TouchableOpacity onPress={() => navigation.goBack()}>
+                <ArrowLeft size={24} color="#FFFFFF" strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
 
             <View style={{ position: 'absolute', bottom: 40, right: 16, flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 8, paddingHorizontal: 10, backgroundColor: 'rgba(52,199,89,0.1)', borderWidth: 1, borderColor: '#34C759', borderRadius: 8 }}>
               <Star size={14} color="#34C759" />
@@ -203,7 +225,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation, route,
             <View style={cardStyle}>
               <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 16, color: '#2563EB', marginBottom: 10 }}>Values</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                {profile.values.map((v, i) => <Tag key={i} emoji="💎" text={v} />)}
+                {profile.values.map((v) => <Tag key={v} emoji="💎" text={v} />)}
               </View>
             </View>
           )}
@@ -212,7 +234,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation, route,
             <View style={cardStyle}>
               <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 16, color: '#2563EB', marginBottom: 10 }}>Interests</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                {profile.interests.map((v, i) => <Tag key={i} emoji="🌟" text={v} />)}
+                {profile.interests.map((v) => <Tag key={v} emoji="🌟" text={v} />)}
               </View>
             </View>
           )}
@@ -221,7 +243,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation, route,
             <>
               <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 16, color: '#2563EB', marginBottom: 12 }}>Deep questions</Text>
               {questions.map((item, index) => (
-                <View key={index} style={cardStyle}>
+                <View key={item.questionId} style={cardStyle}>
                   <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 16, lineHeight: 22, color: '#010101', marginBottom: 4 }}>
                     {index + 1}. {item?.question}
                   </Text>

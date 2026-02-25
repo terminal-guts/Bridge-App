@@ -12,7 +12,7 @@
  * - Auto-advances after each vote, navigates to Friends Area after 3rd vote
  */
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -53,6 +53,12 @@ import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('ProposalReviewView');
 
+// ─── Pure helpers (no component state) ────────────────────────────────────────
+const countMatch = (results: MatchResult[]) =>
+  results.filter(r => r.status === 'both_happy').length;
+const countKnown = (results: MatchResult[]) =>
+  results.filter(r => r.status !== 'unknown').length;
+
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -74,6 +80,7 @@ const AMBER_BG = 'rgba(255, 204, 0, 0.1)';
 const BOX_BG = 'rgba(1, 1, 1, 0.02)';
 const BOX_BORDER = 'rgba(1, 1, 1, 0.04)';
 const CARD_BORDER = 'rgba(1, 1, 1, 0.1)';
+const SCROLL_CONTENT_STYLE = { paddingHorizontal: 16, paddingBottom: 160 } as const;
 const TAG_BG = 'rgba(1, 1, 1, 0.02)';
 
 // ─── Helper: icon for match status ────────────────────────────────────────────
@@ -91,7 +98,7 @@ function MatchIcon({ status }: { status: MatchStatus }) {
 }
 
 // ─── Helper: badge for section match score ─────────────────────────────────────
-function MatchBadge({ matched, total }: { matched: number; total: number }) {
+const MatchBadge = React.memo(function MatchBadge({ matched, total }: { matched: number; total: number }) {
   const allMatch = matched === total;
   const noneMatch = matched === 0;
   const bg = allMatch ? GREEN_BG : noneMatch ? RED_BG : AMBER_BG;
@@ -117,10 +124,10 @@ function MatchBadge({ matched, total }: { matched: number; total: number }) {
       </Text>
     </View>
   );
-}
+});
 
 // ─── Helper: section card wrapper ─────────────────────────────────────────────
-function SectionCard({
+const SectionCard = React.memo(function SectionCard({
   title,
   matched,
   total,
@@ -153,7 +160,7 @@ function SectionCard({
       {children}
     </View>
   );
-}
+});
 
 // ─── Helper: value box (138px, shows label + value) ───────────────────────────
 function ValueBox({ label, value }: { label: string; value: string }) {
@@ -213,11 +220,11 @@ function EthnicityComparisonRow({ result }: { result: MatchResult }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
       <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap' }}>
-        {leftTags.map((t, i) => <TagPill key={i} label={t} />)}
+        {leftTags.map((t) => <TagPill key={t} label={t} />)}
       </View>
       <MatchIcon status={result.status} />
       <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap' }}>
-        {rightTags.map((t, i) => <TagPill key={i} label={t} />)}
+        {rightTags.map((t) => <TagPill key={t} label={t} />)}
       </View>
     </View>
   );
@@ -229,11 +236,11 @@ function TagCloudSection({ leftTags, rightTags }: { leftTags: string[]; rightTag
     <View style={{ gap: 8 }}>
       <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#010101', opacity: 0.6 }}>Left</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-        {leftTags.map((t, i) => <TagPill key={i} label={t} />)}
+        {leftTags.map((t) => <TagPill key={t} label={t} />)}
       </View>
       <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#010101', opacity: 0.6 }}>Right</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-        {rightTags.map((t, i) => <TagPill key={i} label={t} />)}
+        {rightTags.map((t) => <TagPill key={t} label={t} />)}
       </View>
     </View>
   );
@@ -248,6 +255,7 @@ interface ProposalReviewViewProps {
   initialProposals?: Proposal[];
   showBackButton?: boolean;
   onBack?: () => void;
+  onVoteComplete?: () => void;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -259,6 +267,7 @@ export function ProposalReviewView({
   initialProposals,
   showBackButton = false,
   onBack,
+  onVoteComplete,
 }: ProposalReviewViewProps) {
   const [proposals, setProposals] = useState<Proposal[]>(initialProposals ?? []);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -290,15 +299,41 @@ export function ProposalReviewView({
       try {
         setLoading(true);
         const result = await communityService.getProposalsToVote();
-        setProposals(result);
+        if (isMountedRef.current) {
+          setProposals(result);
+        }
       } catch (error) {
         logger.error('[ProposalReviewView] Error loading proposals:', error);
       } finally {
-        setLoading(false);
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
       }
     };
     load();
   }, []);
+
+  // Advance to the next proposal or trigger completion callbacks.
+  // Used by both handleVote and handleForFriendConfirm.
+  const advanceProposal = useCallback(() => {
+    if (voteTimeoutRef.current) clearTimeout(voteTimeoutRef.current);
+    voteTimeoutRef.current = setTimeout(() => {
+      if (!isMountedRef.current) return;
+      setVoting(false);
+      if (currentIndex >= proposals.length - 1) {
+        // Single-proposal (friend) mode: go back; otherwise complete voting gate
+        if (onVoteComplete) {
+          onVoteComplete();
+        } else if (onBack) {
+          onBack();
+        } else {
+          setTimeout(() => onVotesComplete?.(), 500);
+        }
+      } else {
+        setCurrentIndex(prev => prev + 1);
+      }
+    }, 300);
+  }, [currentIndex, proposals.length, onVoteComplete, onBack, onVotesComplete]);
 
   const handleVote = useCallback((vote: 'yes' | 'no' | 'skip') => {
     if (voting || currentIndex >= proposals.length) return;
@@ -325,32 +360,19 @@ export function ProposalReviewView({
     });
 
     // Always advance after a short delay
-    voteTimeoutRef.current = setTimeout(() => {
-      if (!isMountedRef.current) return;
-      setVoting(false);
-      if (currentIndex >= proposals.length - 1) {
-        // Single-proposal (friend) mode: go back; otherwise complete voting gate
-        if (onBack) {
-          onBack();
-        } else {
-          setTimeout(() => onVotesComplete?.(), 500);
-        }
-      } else {
-        setCurrentIndex(prev => prev + 1);
-      }
-    }, 300);
-  }, [voting, currentIndex, proposals, onVotesComplete, onBack]);
+    advanceProposal();
+  }, [voting, currentIndex, proposals, advanceProposal]);
 
   // ── For Friend handlers ───────────────────────────────────────────────────
-  const handleForFriendPress = () => {
+  const handleForFriendPress = useCallback(() => {
     if (voting) return;
     setShowForFriendModal(true);
     setForFriendStep(1);
     setSelectedPersonSide(null);
     setSelectedFriendId(null);
-  };
+  }, [voting]);
 
-  const handlePersonSelect = async (side: 'userA' | 'userB') => {
+  const handlePersonSelect = useCallback(async (side: 'userA' | 'userB') => {
     setSelectedPersonSide(side);
     setForFriendStep(2);
     if (friendsList.length === 0) {
@@ -368,29 +390,135 @@ export function ProposalReviewView({
         }
       }
     }
-  };
+  }, [friendsList]);
 
-  const handleForFriendCancel = () => {
+  const handleForFriendCancel = useCallback(() => {
     setShowForFriendModal(false);
     setForFriendStep(1);
     setSelectedPersonSide(null);
     setSelectedFriendId(null);
-  };
+  }, []);
 
-  const handleForFriendConfirm = () => {
+  const handleForFriendConfirm = useCallback(() => {
     if (!selectedFriendId) return;
     const current = proposals[currentIndex];
     if (current) {
       const recommendedPersonId = selectedPersonSide === 'userA' ? current.userA.id : current.userB.id;
+
+      // Derive karma weight from the selected friend's assist count.
+      // Higher-karma friends have stronger rec weight in the matching algorithm.
+      // Tiers: new=1.0, solid=1.15, trusted=1.35, elite=1.60
+      const selectedFriend = friendsList.find((f: any) => f.friendId === selectedFriendId);
+      const friendAssists: number =
+        selectedFriend?.assistsCount ?? selectedFriend?.karmaScore?.totalAssists ?? 0;
+      let friendKarmaWeight = 1.0;
+      if (friendAssists >= 25) friendKarmaWeight = 1.60;
+      else if (friendAssists >= 10) friendKarmaWeight = 1.35;
+      else if (friendAssists >= 3) friendKarmaWeight = 1.15;
+
       logger.info('[ProposalReviewView] Friend recommendation submitted:', {
         proposalId: current.id,
         recommendedPersonId,
         toFriendId: selectedFriendId,
+        friendAssists,
+        friendKarmaWeight,
+      });
+
+      // Submit a 'yes' vote weighted by the recommending friend's karma tier.
+      // This ensures a Trusted Matchmaker's rec counts more than a New Matchmaker's.
+      communityService.submitProposalVote(current.id, 'yes', friendKarmaWeight).catch((err: any) => {
+        logger.error('[ProposalReviewView] Friend rec vote submission error:', err);
       });
     }
     setShowForFriendModal(false);
-    handleVote('skip');
-  };
+    setVoting(true);
+    // Haptics for recommendation confirmation
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    // Advance without double-counting — the karma-weighted 'yes' above already counts
+    // toward the voting gate (votesSubmitted++), so we advance UI-only here.
+    advanceProposal();
+  }, [selectedFriendId, friendsList, proposals, currentIndex, selectedPersonSide, advanceProposal]);
+
+  // ── Match computations (memoized) ────────────────────────────────────────
+  const matchData = useMemo(() => {
+    if (proposals.length === 0 || currentIndex >= proposals.length) return null;
+    const proposal = proposals[currentIndex];
+    const userA = proposal.userA;
+    const userB = proposal.userB;
+    const photoA = userA.photos?.find((p: any) => p.isMain) || userA.photos?.[0];
+    const photoB = userB.photos?.find((p: any) => p.isMain) || userB.photos?.[0];
+    const actualDistance = 10;
+    const heightResult = matchHeight(userA, userB);
+    const distanceResult = matchDatingDistance(userA, userB, actualDistance);
+    const ethnicityResult = matchEthnicity(userA, userB);
+    const politicsResult = matchPolitics(userA, userB);
+    const religionResult = matchReligion(userA, userB);
+    const drinkResult = matchDrinking(userA, userB);
+    const weedResult = matchCannabis(userA, userB);
+    const tobaccoResult = matchTobacco(userA, userB);
+    const otherSubstancesResult = matchOtherSubstances(userA, userB);
+    const valuesResult = matchValues(userA, userB);
+    const interestsResult = matchInterests(userA, userB);
+    const basicResults = [heightResult, distanceResult];
+    const beliefsResults = [politicsResult, religionResult];
+    const lifestyleResults = [drinkResult, weedResult, tobaccoResult, otherSubstancesResult];
+    const allResults = [heightResult, ethnicityResult, politicsResult, religionResult, drinkResult, weedResult, tobaccoResult, otherSubstancesResult];
+    const totalKnown = countKnown(allResults);
+    const totalMatch = countMatch(allResults);
+
+    // Compatibility score: use real vote data when available (yesVotes/totalVotes),
+    // fall back to preference-based score when no votes have been cast yet.
+    const hasVotes = (proposal.totalVotes ?? 0) > 0;
+    const compatScore = hasVotes
+      ? Math.round(((proposal.yesVotes ?? 0) / (proposal.totalVotes ?? 1)) * 100)
+      : totalKnown > 0
+      ? Math.round((totalMatch / totalKnown) * 100)
+      : 0;
+
+    const valuesMatchCount = (valuesResult as any).sharedValues?.length || 0;
+    const valuesTotal = Math.max((userA.values || []).length, (userB.values || []).length, 1);
+    const interestsMatchCount = (interestsResult as any).sharedInterests?.length || 0;
+    const interestsTotal = Math.max((userA.interests || []).length, (userB.interests || []).length, 1);
+
+    // x/4 tracker: 4 core compatibility dimensions — age, religion, politics, lifestyle(drinking)
+    const coreResults = [
+      matchAge(userA, userB),
+      religionResult,
+      politicsResult,
+      drinkResult,
+    ];
+    const userATrackerCount = coreResults.filter(
+      r => r.status === 'both_happy' || r.status === 'left_happy',
+    ).length;
+    const userBTrackerCount = coreResults.filter(
+      r => r.status === 'both_happy' || r.status === 'right_happy',
+    ).length;
+
+    return {
+      proposal, userA, userB, photoA, photoB,
+      heightResult, distanceResult, ethnicityResult, politicsResult, religionResult,
+      drinkResult, weedResult, tobaccoResult, otherSubstancesResult,
+      basicResults, beliefsResults, lifestyleResults,
+      compatScore, valuesMatchCount, valuesTotal, interestsMatchCount, interestsTotal,
+      userATrackerCount, userBTrackerCount,
+    };
+  }, [currentIndex, proposals]);
+
+  const progressDots = useMemo(() =>
+    proposals.map((_, i) => (
+      <View
+        key={`dot-${i}`}
+        style={{
+          height: 8,
+          width: 40,
+          borderRadius: 4,
+          marginHorizontal: 6,
+          backgroundColor: i === currentIndex ? BLUE : i < currentIndex ? '#93C5FD' : '#DBEAFE',
+        }}
+      />
+    )),
+    [proposals, currentIndex],
+  );
 
   // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) {
@@ -416,49 +544,15 @@ export function ProposalReviewView({
   }
 
   // ── Data ─────────────────────────────────────────────────────────────────
-  const proposal = proposals[currentIndex];
-  const userA = proposal.userA;
-  const userB = proposal.userB;
-
-  const photoA = userA.photos?.find((p: any) => p.isMain) || userA.photos?.[0];
-  const photoB = userB.photos?.find((p: any) => p.isMain) || userB.photos?.[0];
-
-  const actualDistance = 10; // placeholder
-
-  // Compute all match results
-  const heightResult = matchHeight(userA, userB);
-  const distanceResult = matchDatingDistance(userA, userB, actualDistance);
-  const ethnicityResult = matchEthnicity(userA, userB);
-  const politicsResult = matchPolitics(userA, userB);
-  const religionResult = matchReligion(userA, userB);
-  const drinkResult = matchDrinking(userA, userB);
-  const weedResult = matchCannabis(userA, userB);
-  const tobaccoResult = matchTobacco(userA, userB);
-  const otherSubstancesResult = matchOtherSubstances(userA, userB);
-  const valuesResult = matchValues(userA, userB);
-  const interestsResult = matchInterests(userA, userB);
-
-  // Section match counts
-  const countMatch = (results: MatchResult[]) =>
-    results.filter(r => r.status === 'both_happy').length;
-  const countKnown = (results: MatchResult[]) =>
-    results.filter(r => r.status !== 'unknown').length;
-
-  const basicResults = [heightResult, distanceResult];
-  const beliefsResults = [politicsResult, religionResult];
-  const lifestyleResults = [drinkResult, weedResult, tobaccoResult, otherSubstancesResult];
-
-  // Compatibility score (simple)
-  const allResults = [heightResult, ethnicityResult, politicsResult, religionResult, drinkResult, weedResult, tobaccoResult, otherSubstancesResult];
-  const totalKnown = countKnown(allResults);
-  const totalMatch = countMatch(allResults);
-  const compatScore = totalKnown > 0 ? Math.round((totalMatch / totalKnown) * 100) : 0;
-
-  // Values/Interests badge status
-  const valuesMatchCount = (valuesResult as any).sharedValues?.length || 0;
-  const valuesTotal = Math.max((userA.values || []).length, (userB.values || []).length, 1);
-  const interestsMatchCount = (interestsResult as any).sharedInterests?.length || 0;
-  const interestsTotal = Math.max((userA.interests || []).length, (userB.interests || []).length, 1);
+  if (!matchData) return null;
+  const {
+    proposal, userA, userB, photoA, photoB,
+    heightResult, distanceResult, ethnicityResult, politicsResult, religionResult,
+    drinkResult, weedResult, tobaccoResult, otherSubstancesResult,
+    basicResults, beliefsResults, lifestyleResults,
+    compatScore, valuesMatchCount, valuesTotal, interestsMatchCount, interestsTotal,
+    userATrackerCount, userBTrackerCount,
+  } = matchData;
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -487,18 +581,7 @@ export function ProposalReviewView({
 
         {/* Dots centered */}
         <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-          {proposals.map((_, i) => (
-            <View
-              key={i}
-              style={{
-                height: 8,
-                width: 40,
-                borderRadius: 4,
-                marginHorizontal: 6,
-                backgroundColor: i === currentIndex ? BLUE : i < currentIndex ? '#93C5FD' : '#DBEAFE',
-              }}
-            />
-          ))}
+          {progressDots}
         </View>
 
         {/* Spacer to keep dots centered */}
@@ -508,7 +591,7 @@ export function ProposalReviewView({
       {/* Scrollable content */}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 160 }}
+        contentContainerStyle={SCROLL_CONTENT_STYLE}
         showsVerticalScrollIndicator={false}
       >
 
@@ -541,6 +624,22 @@ export function ProposalReviewView({
                   locations={[0.45, 0.75, 1]}
                   style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 130 }}
                 />
+                {/* x/4 tracker badge — top-right of left card */}
+                <View style={{
+                  position: 'absolute',
+                  top: 10,
+                  right: 10,
+                  backgroundColor: userATrackerCount >= 3 ? GREEN : userATrackerCount === 2 ? AMBER : RED,
+                  borderRadius: 20,
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderWidth: 2,
+                  borderColor: '#FFFFFF',
+                }}>
+                  <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 12, color: '#FFFFFF' }}>
+                    {userATrackerCount}/4
+                  </Text>
+                </View>
                 <View style={{ position: 'absolute', bottom: 14, left: 14 }}>
                   <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 28, color: '#FFF', letterSpacing: -0.3 }}>
                     {userA.firstName}, {userA.age}
@@ -574,6 +673,22 @@ export function ProposalReviewView({
                   locations={[0.45, 0.75, 1]}
                   style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 130 }}
                 />
+                {/* x/4 tracker badge — top-right of right card */}
+                <View style={{
+                  position: 'absolute',
+                  top: 10,
+                  right: 10,
+                  backgroundColor: userBTrackerCount >= 3 ? GREEN : userBTrackerCount === 2 ? AMBER : RED,
+                  borderRadius: 20,
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderWidth: 2,
+                  borderColor: '#FFFFFF',
+                }}>
+                  <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 12, color: '#FFFFFF' }}>
+                    {userBTrackerCount}/4
+                  </Text>
+                </View>
                 <View style={{ position: 'absolute', bottom: 14, left: 14 }}>
                   <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 28, color: '#FFF', letterSpacing: -0.3 }}>
                     {userB.firstName}, {userB.age}
