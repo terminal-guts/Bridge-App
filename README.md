@@ -10,9 +10,11 @@
 
 **Bridge** is a mobile dating application that uses community-driven matching instead of traditional swiping. Friends help friends find meaningful connections.
 
-This repository contains:
-- **Frontend Mock** (current directory): UI/UX prototype with mocked data
-- **Bridge-Version1** (subdirectory): Full app with Supabase backend integration
+**This is the production codebase for Bridge** — the app being deployed to the App Store.
+
+This repository contains both the frontend and backend:
+- **Frontend** (current directory): React Native/Expo app
+- **Bridge-Version1** (subdirectory): Supabase backend integration
 
 ---
 
@@ -70,7 +72,7 @@ See **[GETTING_STARTED.md](./GETTING_STARTED.md)** for complete setup instructio
 - **Styling**: NativeWind (Tailwind CSS)
 - **State**: React Context API
 
-### Backend (Bridge-Version1)
+### Backend
 - **Platform**: Supabase (Backend-as-a-Service)
 - **Database**: PostgreSQL
 - **Authentication**: Supabase Auth (email/phone)
@@ -119,25 +121,19 @@ Bridge-Version1-Mock/
 
 ## Current Status
 
-### Bridge-Version1-Mock (This Project)
-- **Status**: Frontend-only prototype
-- **Backend**: All mocked - no real backend connection
-- **Purpose**: UI/UX testing and user feedback
-- **Data**: Hardcoded dummy data in services
-- **Authentication**: Mocked (no real login)
-
-### Bridge-Version1 (Subdirectory)
-- **Status**: Full app with backend
-- **Backend**: Supabase (hosted PostgreSQL)
-- **Database**: Fully configured with schema and test data
-- **Authentication**: Real Supabase Auth
+### This Repository (Production App)
+- **Status**: Production codebase — deploying to App Store
+- **Frontend**: React Native/Expo (this directory)
+- **Backend**: Supabase (Bridge-Version1 subdirectory)
+- **Database**: PostgreSQL via Supabase
+- **Authentication**: Supabase Auth
 - **Scripts**: TypeScript utilities for database management
 
 ---
 
 ## Getting Started
 
-### For Frontend Development (Current Project)
+### Running the App
 
 1. **Clone and install**:
    ```bash
@@ -146,30 +142,28 @@ Bridge-Version1-Mock/
    npm install
    ```
 
-2. **Run the app**:
-   ```bash
-   npm start
-   npm run ios  # or npm run android
-   ```
-
-3. **All backend calls are mocked** - no configuration needed!
-
-### For Backend Testing (Bridge-Version1)
-
-1. **Get Supabase credentials** from the project owner
-
 2. **Configure environment**:
    ```bash
    cp .env.example .env
    # Add your Supabase URL and keys to .env
    ```
 
-3. **Test backend connection**:
+3. **Run the app**:
+   ```bash
+   npm start
+   npm run ios  # or npm run android
+   ```
+
+### Backend Setup
+
+1. **Get Supabase credentials** from the project owner
+
+2. **Test backend connection**:
    ```bash
    npx tsx Bridge-Version1/scripts/test-backend-connection.ts
    ```
 
-4. **See [GETTING_STARTED.md](./GETTING_STARTED.md)** for complete backend setup
+3. **See [GETTING_STARTED.md](./GETTING_STARTED.md)** for complete setup
 
 ---
 
@@ -206,15 +200,8 @@ Bridge-Version1-Mock/
 1. Create components in `src/components/`
 2. Add screens in `src/screens/`
 3. Update navigation in `src/navigation/`
-4. Mock data in `src/services/`
+4. Update services in `src/services/`
 5. Test on iOS simulator
-
-### Connecting to Real Backend
-1. Get Supabase credentials
-2. Update `.env` file
-3. Replace `src/lib/supabase.ts` mock with real client
-4. Update service files to use real Supabase queries
-5. See [GETTING_STARTED.md](./GETTING_STARTED.md) for complete details
 
 ---
 
@@ -247,11 +234,6 @@ npx tsx Bridge-Version1/scripts/create-dev-user.ts
 Create a `.env` file based on `.env.example`:
 
 ```bash
-# Frontend Mock (current project)
-EXPO_PUBLIC_SUPABASE_URL=mock-url
-EXPO_PUBLIC_SUPABASE_ANON_KEY=mock-key
-
-# Real Backend (when ready)
 EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key  # For scripts only

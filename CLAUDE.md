@@ -1,5 +1,9 @@
 # Bridge App — Claude Code Instructions
 
+## Codebase Status
+
+This is the **production codebase** for Bridge — the app being deployed to the App Store. It contains both the frontend (React Native/Expo) and backend (Supabase, in the `Bridge-Version1/` subdirectory). Treat all code here as production-quality.
+
 ## LOCKED: Bottom Navigation Bar
 
 The bottom nav bar values in `src/navigation/AppNavigator.tsx` (`CustomTabBar`) are **finalized and must not be changed** without explicit user instruction. Do not adjust any of the following:
