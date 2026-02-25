@@ -13,9 +13,9 @@ interface InputProps extends TextInputProps {
   containerClassName?: string;
 }
 
-const StyledView = styled(View);
-const StyledText = styled(Text);
-const StyledTextInput = styled(TextInput);
+const StyledView = styled(View) as typeof View;
+const StyledText = styled(Text) as typeof Text;
+const StyledTextInput = styled(TextInput) as typeof TextInput;
 
 export const Input: React.FC<InputProps> = ({
   label,

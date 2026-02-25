@@ -7,15 +7,15 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { EvaIcon } from '../icons';
 import { KARMA_TIERS, KarmaTier } from '../../types/community';
+import { KarmaInfoModal } from './KarmaInfoModal';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-const StyledPressable = styled(Pressable);
 
 interface KarmaBadgeProps {
   tier: KarmaTier;
@@ -103,86 +103,7 @@ export function KarmaBadge({ tier, assists = 0, compact = false }: KarmaBadgePro
         )}
       </StyledTouchableOpacity>
 
-      {/* Tooltip Modal */}
-      <Modal
-        visible={showTooltip}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowTooltip(false)}
-      >
-        <StyledPressable
-          className="flex-1 justify-center items-center"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-          onPress={() => setShowTooltip(false)}
-        >
-          <StyledPressable
-            className="bg-white rounded-2xl p-6 mx-6 max-w-sm"
-            onPress={(e) => e.stopPropagation()}
-          >
-            {/* Badge Header */}
-            <StyledView className="flex-row items-center mb-4">
-              <EvaIcon
-                name={badge.icon}
-                variant={tier === 'new' ? 'outline' : 'fill'}
-                color={badge.color}
-                size={32}
-              />
-              <StyledText className="text-xl font-semibold text-neutral-900" style={{ marginLeft: 8 }}>
-                {badge.label}
-              </StyledText>
-            </StyledView>
-
-            {/* Progress Info */}
-            {progress.isMaxTier ? (
-              <StyledView className="mb-4">
-                <StyledText className="text-base text-neutral-700 mb-2">
-                  You've reached the highest tier!
-                </StyledText>
-                <StyledText className="text-sm text-neutral-600">
-                  Total assists: <StyledText className="font-semibold">{assists}</StyledText>
-                </StyledText>
-              </StyledView>
-            ) : (
-              <StyledView className="mb-4">
-                <StyledText className="text-base text-neutral-700 mb-2">
-                  Progress to <StyledText className="font-semibold">{progress.nextTier}</StyledText>
-                </StyledText>
-                <StyledText className="text-sm text-neutral-600 mb-3">
-                  {progress.current}/{progress.needed} assists
-                </StyledText>
-
-                {/* Progress bar */}
-                <StyledView className="h-2 bg-neutral-200 rounded-full overflow-hidden">
-                  <StyledView
-                    className="h-full rounded-full"
-                    style={{
-                      backgroundColor: badge.color,
-                      width: `${Math.min((progress.current / progress.needed) * 100, 100)}%`,
-                    }}
-                  />
-                </StyledView>
-              </StyledView>
-            )}
-
-            {/* Assists Definition */}
-            <StyledView className="bg-neutral-50 rounded-lg p-3 mb-4">
-              <StyledText className="text-xs text-neutral-600 leading-5">
-                <StyledText className="font-semibold">Assists</StyledText> are earned when your match proposals
-                become successful connections.
-              </StyledText>
-            </StyledView>
-
-            {/* Close Button */}
-            <StyledTouchableOpacity
-              className="bg-primary-500 rounded-lg py-3 px-4"
-              onPress={() => setShowTooltip(false)}
-              activeOpacity={0.8}
-            >
-              <StyledText className="text-white text-center font-semibold">Got it</StyledText>
-            </StyledTouchableOpacity>
-          </StyledPressable>
-        </StyledPressable>
-      </Modal>
+      <KarmaInfoModal visible={showTooltip} onClose={() => setShowTooltip(false)} />
     </>
   );
 }

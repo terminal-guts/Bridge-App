@@ -24,10 +24,10 @@ import {
   getUrgencyColor,
 } from '../../utils/communityHelpers';
 
-const StyledView = styled(View);
-const StyledText = styled(Text);
-const StyledImage = styled(Image);
-const StyledTouchable = styled(TouchableOpacity);
+const StyledView = styled(View) as typeof View;
+const StyledText = styled(Text) as typeof Text;
+const StyledImage = styled(Image) as typeof Image;
+const StyledTouchable = styled(TouchableOpacity) as typeof TouchableOpacity;
 
 interface PendingProposalCardProps {
   proposal: MatchProposal;
@@ -148,7 +148,7 @@ export function PendingProposalCard({ proposal, onViewProfile }: PendingProposal
         {/* Partner Photo - Left */}
         <StyledImage
           source={{
-            uri: proposal.partnerProfile.photos?.[0]?.url || proposal.partnerProfile.photos?.[0],
+            uri: proposal.partnerProfile.photos?.[0]?.url,
           }}
           className="w-16 h-16 rounded-full mr-3"
           style={{

@@ -321,7 +321,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
               }`}
             >
               <Ionicons
-                name={hasAnswerInTier ? 'checkmark-circle' : tierIcons[tier]}
+                name={(hasAnswerInTier ? 'checkmark-circle' : tierIcons[tier]) as any}
                 size={28}
                 color={hasAnswerInTier ? '#10B981' : colors.text.replace('text-', '#')}
                 style={{

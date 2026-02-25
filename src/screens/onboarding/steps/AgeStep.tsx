@@ -79,10 +79,12 @@ export const BirthdayStep: React.FC<BirthdayStepProps> = ({
       birthday: selectedDate.toISOString(),
       age: age,
       preferences: {
+        gender: data.preferences?.gender ?? 'both',
+        lookingFor: data.preferences?.lookingFor ?? 'relationship',
         ...data.preferences,
         ageMin,
         ageMax,
-      }
+      },
     });
     onNext();
   };

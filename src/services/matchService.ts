@@ -62,7 +62,9 @@ export const getUserMatches = async (): Promise<ApiResponse<Match[]>> => {
     const { FEATURES } = await import('../config/features');
     if (FEATURES.DEVELOPMENT_AUTO_FILL_ONBOARDING) {
       const { mockMatches } = await import('./mockData');
-      return { ok: true, data: mockMatches };
+      const { communityService } = await import('./communityService');
+      const runtimePast = communityService.getRuntimePastMatches();
+      return { ok: true, data: [...runtimePast, ...mockMatches] };
     }
 
     // Use joins to fetch matches with user profiles and match exits in a single query

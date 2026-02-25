@@ -43,7 +43,6 @@ import ChatScreen from '../screens/ChatScreen';
 // Profile Screens
 import { SettingsScreen } from '../screens/profile/SettingsScreen';
 import { ProfileEditScreen } from '../screens/profile/ProfileEditScreen';
-import { ProfileScreen as ProfileViewerScreen } from '../screens/profile/ProfileScreen';
 import { MatchPreferencesScreen } from '../screens/profile/MatchPreferencesScreen';
 import { BlockedUsersScreen } from '../screens/profile/BlockedUsersScreen';
 import { PauseProfileScreen } from '../screens/profile/PauseProfileScreen';
@@ -307,8 +306,8 @@ export const AppNavigator = () => {
           {/* Profile & Settings */}
           <Stack.Screen name="Settings" component={SettingsScreen} />
           <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
-          <Stack.Screen name="ProfilePreview" component={ProfileViewerScreen} />
-          <Stack.Screen name="ProfileView" component={ProfileViewerScreen} />
+          <Stack.Screen name="ProfilePreview" component={ProfileMatchScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ProfileView" component={ProfileMatchScreen} options={{ headerShown: false }} />
           <Stack.Screen name="DeepQuestions" component={DeepQuestionsScreen} />
           <Stack.Screen name="MatchPreferences" component={MatchPreferencesScreen} />
           <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} />

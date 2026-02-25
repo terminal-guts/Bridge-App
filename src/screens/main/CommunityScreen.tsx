@@ -14,12 +14,12 @@ import { FriendWithGridStatus } from '../../types/community';
 // ── Match reset countdown timer ───────────────────────────────────────────────
 function MatchResetTimer() {
   const [remaining, setRemaining] = useState(() =>
-    Math.max(0, communityService.getNextResetAt() - Date.now()),
+    Math.max(0, Number(communityService.getNextResetAt()) - Date.now()),
   );
 
   useEffect(() => {
     const tick = () => {
-      const ms = communityService.getNextResetAt() - Date.now();
+      const ms = Number(communityService.getNextResetAt()) - Date.now();
       if (ms <= 0) {
         communityService.triggerReset();
         setRemaining(24 * 60 * 60 * 1000);
@@ -31,7 +31,7 @@ function MatchResetTimer() {
     const interval = setInterval(tick, 1000);
     // Re-sync when dev toggle changes the reset time
     const unsub = communityService.onStateChange(() => {
-      setRemaining(Math.max(0, communityService.getNextResetAt() - Date.now()));
+      setRemaining(Math.max(0, Number(communityService.getNextResetAt()) - Date.now()));
     });
 
     return () => {

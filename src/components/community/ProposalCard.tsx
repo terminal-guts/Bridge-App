@@ -17,10 +17,10 @@ import { Proposal, UserProfile, Endorsement } from '../../types/community';
 import { KarmaBadge } from './KarmaBadge';
 import { isHighlyRecommended } from '../../utils/proposalSorting';
 
-const StyledView = styled(View);
-const StyledText = styled(Text);
-const StyledTouchableOpacity = styled(TouchableOpacity);
-const StyledImage = styled(Image);
+const StyledView = styled(View) as typeof View;
+const StyledText = styled(Text) as typeof Text;
+const StyledTouchableOpacity = styled(TouchableOpacity) as typeof TouchableOpacity;
+const StyledImage = styled(Image) as typeof Image;
 
 interface ProposalCardProps {
   proposal: Proposal;
@@ -110,7 +110,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
       <StyledView className="flex-1 items-center">
         {/* Photo */}
         <StyledImage
-          source={{ uri: user.photos?.[0] || 'https://via.placeholder.com/60' }}
+          source={{ uri: user.photos?.[0]?.url || 'https://via.placeholder.com/60' }}
           className="rounded-full mb-2"
           style={{ width: 60, height: 60 }}
           resizeMode="cover"
@@ -158,7 +158,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
               {isFriend && (
                 <StyledImage
                   source={{
-                    uri: endorsement.endorserProfile.photos?.[0] || 'https://via.placeholder.com/24',
+                    uri: endorsement.endorserProfile.photos?.[0]?.url || 'https://via.placeholder.com/24',
                   }}
                   className="rounded-full"
                   style={{ width: 24, height: 24, marginRight: 8 }}

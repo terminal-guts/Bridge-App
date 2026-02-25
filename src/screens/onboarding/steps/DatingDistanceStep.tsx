@@ -36,6 +36,10 @@ export const DatingDistanceStep: React.FC<DatingDistanceStepProps> = ({
   const validateAndContinue = () => {
     updateData({
       preferences: {
+        ageMin: data.preferences?.ageMin ?? 18,
+        ageMax: data.preferences?.ageMax ?? 99,
+        gender: data.preferences?.gender ?? 'both',
+        lookingFor: data.preferences?.lookingFor ?? 'relationship',
         ...data.preferences,
         // If distance is 200, save as null (don't care), otherwise save the value
         maxDistance: distance === MAX_DISTANCE ? null : distance,

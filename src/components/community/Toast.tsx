@@ -78,7 +78,7 @@ export function Toast({
     });
   };
 
-  if (!visible && fadeAnim._value === 0) {
+  if (!visible && (fadeAnim as any)._value === 0) {
     return null;
   }
 
@@ -118,7 +118,7 @@ export function Toast({
         }}
       >
         {/* Icon */}
-        <Ionicons name={icon || config.icon} size={24} color="#FFFFFF" />
+        <Ionicons name={(icon || config.icon) as any} size={24} color="#FFFFFF" />
 
         {/* Message */}
         <StyledText className="flex-1 text-white font-medium ml-3">

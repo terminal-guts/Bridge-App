@@ -3,7 +3,11 @@ import { View, Text, ImageBackground, Image } from 'react-native';
 import { useCompatibility } from '../../context/CompatibilityContext';
 import { ArrowLeft } from 'lucide-react-native';
 
-export const ProfileHeader: React.FC = () => {
+interface ProfileHeaderProps {
+    onBack?: () => void;
+}
+
+export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ onBack }) => {
     const { data } = useCompatibility();
 
     return (

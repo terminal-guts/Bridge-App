@@ -96,6 +96,9 @@ export const GenderStep: React.FC<GenderStepProps> = ({
       gender: myGender,
       interestedInGenders: interestedIn,
       preferences: {
+        ageMin: data.preferences?.ageMin ?? 18,
+        ageMax: data.preferences?.ageMax ?? 99,
+        lookingFor: data.preferences?.lookingFor ?? 'relationship',
         ...data.preferences,
         gender: preferredGender,
       },

@@ -1,14 +1,15 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity, TouchableWithoutFeedback,
-    ImageBackground, Image, ActivityIndicator, Dimensions, StyleSheet,
+    ImageBackground, Image, ActivityIndicator, Dimensions, StyleSheet, PanResponder,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Check, Star, Heart, X, Sparkles, Users } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { communityService } from '../../services/communityServiceIndex';
-import { RootStackParamList } from '../../types';
+import { getUserProfile } from '../../services/profileService';
+import { KarmaInfoModal } from '../../components/community/KarmaInfoModal';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -41,18 +42,38 @@ function getEmoji(text: string, map: Record<string, string>): string {
 
 export default function ProfileMatchScreen() {
     const navigation = useNavigation<any>();
-    const route = useRoute<RouteProp<RootStackParamList, 'ProposalProfile'>>();
-    const { partnerProfile, communityScore, endorsers, screenState, proposalId } = route.params;
+    const route = useRoute<any>();
+    const params = route.params || {};
     const insets = useSafeAreaInsets();
+
+    // isProposal = navigated from MatchesScreen with full proposal context (show "Matched by" + community score)
+    // isPreview  = navigated from ProfilePreview with no profile passed (load own profile)
+    // isView     = navigated from ChatScreen / FriendsAreaView with a plain profile object
+    const isProposal = !!params.partnerProfile;
+    const isPreview = !params.partnerProfile && !params.profile;
 
     const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
     const [submitting, setSubmitting] = useState(false);
+    const [profileData, setProfileData] = useState<any>(params.partnerProfile || params.profile || null);
+    const [loading, setLoading] = useState(isPreview);
+    const [showKarmaModal, setShowKarmaModal] = useState(false);
 
-    const photos = partnerProfile.photos || [];
-    const photoUrl = photos[currentPhotoIndex]?.url || '';
-    const karmaPts = (partnerProfile as any).karma?.score ?? 80;
-    const canRespond = screenState === 'awaiting_you' || screenState === 'neither_voted';
+    useEffect(() => {
+        if (isPreview) {
+            getUserProfile().then(result => {
+                if (result.ok && result.data) setProfileData(result.data);
+            }).finally(() => setLoading(false));
+        }
+    }, [isPreview]);
 
+    const partnerProfile = profileData;
+    const communityScore: number = params.communityScore ?? 0;
+    const endorsers: any[] = params.endorsers ?? [];
+    const screenState: string = params.screenState ?? '';
+    const proposalId: string = params.proposalId ?? '';
+    const canRespond = isProposal && (screenState === 'awaiting_you' || screenState === 'neither_voted');
+
+    // All hooks must be called before any early returns
     const endorserAvatars = useMemo<string[]>(() =>
         (endorsers ?? [])
             .map((e: any) => e.endorserProfile?.photos?.[0]?.url)
@@ -61,9 +82,9 @@ export default function ProfileMatchScreen() {
     );
 
     const deepQuestions = useMemo<{ question: string; answer: string }[]>(() =>
-        ((partnerProfile as any).displayedQuestions ?? [])
+        ((partnerProfile as any)?.displayedQuestions ?? [])
             .map((id: number) =>
-                ((partnerProfile as any).deepQuestions ?? []).find(
+                ((partnerProfile as any)?.deepQuestions ?? []).find(
                     (q: any) => q.questionId === id
                 )
             )
@@ -90,6 +111,32 @@ export default function ProfileMatchScreen() {
         navigation.goBack();
     }, [submitting, canRespond, proposalId, navigation]);
 
+    // Must be before early return — hooks cannot be called after a conditional return
+    const photoCount = profileData?.photos?.length ?? 0;
+    const panResponder = useMemo(() => PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 && Math.abs(g.dy) < 40,
+        onPanResponderRelease: (_, g) => {
+            if (g.dx < -40) {
+                setCurrentPhotoIndex(i => Math.min(i + 1, photoCount - 1));
+            } else if (g.dx > 40) {
+                setCurrentPhotoIndex(i => Math.max(i - 1, 0));
+            }
+        },
+    }), [photoCount]);
+
+    if (loading || !partnerProfile) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#2563EB" />
+            </View>
+        );
+    }
+
+    const photos = partnerProfile.photos || [];
+    const photoUrl = photos[currentPhotoIndex]?.url || '';
+    const karmaPts = partnerProfile.karma?.score ?? 80;
+
     return (
         <View style={styles.container}>
             <ScrollView
@@ -98,13 +145,25 @@ export default function ProfileMatchScreen() {
                 showsVerticalScrollIndicator={false}
             >
                 {/* ── Hero Image Section ────────────────────────── */}
-                <View style={styles.heroContainer}>
+                <View style={styles.heroContainer} {...panResponder.panHandlers}>
                     <ImageBackground
                         source={photoUrl ? { uri: photoUrl } : require('../../../assets/favicon.png')}
                         style={styles.heroImage}
                         imageStyle={styles.heroImageStyle}
                         resizeMode="cover"
                     >
+                        {/* Left / right tap zones for photo navigation */}
+                        {photos.length > 1 && (
+                            <>
+                                <TouchableWithoutFeedback onPress={() => currentPhotoIndex > 0 && setCurrentPhotoIndex(i => i - 1)}>
+                                    <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: SCREEN_WIDTH * 0.35 }} />
+                                </TouchableWithoutFeedback>
+                                <TouchableWithoutFeedback onPress={() => currentPhotoIndex < photos.length - 1 && setCurrentPhotoIndex(i => i + 1)}>
+                                    <View style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: SCREEN_WIDTH * 0.35 }} />
+                                </TouchableWithoutFeedback>
+                            </>
+                        )}
+
                         {/* Status Bar / Header */}
                         <View style={styles.header}>
                             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -114,7 +173,7 @@ export default function ProfileMatchScreen() {
                             {/* Pagination Indicators — driven by actual photo count */}
                             {photos.length > 1 && (
                                 <View style={styles.paginationContainer}>
-                                    {photos.map((_, i) => (
+                                    {photos.map((_: any, i: number) => (
                                         <View
                                             key={i}
                                             style={[styles.paginationDot, i === currentPhotoIndex && styles.dotActive]}
@@ -125,40 +184,42 @@ export default function ProfileMatchScreen() {
                         </View>
 
                         {/* Profile Info Overlay (Bottom Left of Hero) */}
-                        <View style={styles.heroOverlayName}>
+                        <View style={[styles.heroOverlayName, !isProposal && { top: 403 }]}>
                             <Text style={styles.heroName}>{partnerProfile.firstName}, {partnerProfile.age}</Text>
                         </View>
 
-                        <View style={styles.heroOverlayMatched}>
-                            <Sparkles size={14} color="#FFFFFF" fill="#FFFFFF" />
-                            <Text style={styles.matchedByText}>Matched by</Text>
-                            <View style={styles.avatarStack}>
-                                {endorserAvatars.length > 0
-                                    ? endorserAvatars.map((uri, i) => (
-                                        <View key={uri} style={[styles.stackAvatarContainer, { marginLeft: i === 0 ? 0 : -8 }]}>
-                                            <Image source={{ uri }} style={styles.stackAvatar} />
-                                        </View>
-                                    ))
-                                    : [0, 1, 2].map((_, i) => (
-                                        <View key={i} style={[styles.stackAvatarContainer, { marginLeft: i === 0 ? 0 : -8, backgroundColor: '#D9D9D9' }]} />
-                                    ))
-                                }
+                        {isProposal && (
+                            <View style={styles.heroOverlayMatched}>
+                                <Sparkles size={14} color="#FFFFFF" fill="#FFFFFF" />
+                                <Text style={styles.matchedByText}>Matched by</Text>
+                                <View style={styles.avatarStack}>
+                                    {endorserAvatars.length > 0
+                                        ? endorserAvatars.map((uri, i) => (
+                                            <View key={uri} style={[styles.stackAvatarContainer, { marginLeft: i === 0 ? 0 : -8 }]}>
+                                                <Image source={{ uri }} style={styles.stackAvatar} />
+                                            </View>
+                                        ))
+                                        : [0, 1, 2].map((_, i) => (
+                                            <View key={i} style={[styles.stackAvatarContainer, { marginLeft: i === 0 ? 0 : -8, backgroundColor: '#D9D9D9' }]} />
+                                        ))
+                                    }
+                                </View>
                             </View>
-                        </View>
+                        )}
 
                         {/* Karma Badge (Bottom Right of Hero) */}
-                        <View style={styles.karmaBadge}>
+                        <TouchableOpacity style={styles.karmaBadge} onPress={() => setShowKarmaModal(true)} activeOpacity={0.8}>
                             <Star size={14} color="#FFFFFF" strokeWidth={2} />
                             <Text style={styles.karmaText}>Karma points {karmaPts}</Text>
-                        </View>
+                        </TouchableOpacity>
                     </ImageBackground>
                 </View>
 
                 {/* ── Content Container ──────────────────────────── */}
                 <View style={styles.content}>
 
-                    {/* Community Validation Card */}
-                    <View style={styles.validationCard}>
+                    {/* Community Validation Card — only shown when viewing a match proposal */}
+                    {isProposal && <View style={styles.validationCard}>
                         <View style={styles.cardHeader}>
                             <View style={styles.cardHeaderLeft}>
                                 <View style={styles.iconCircle}>
@@ -181,13 +242,13 @@ export default function ProfileMatchScreen() {
                                 <View style={[styles.progressFill, { width: `${communityScore}%` }]} />
                             </View>
                         </View>
-                    </View>
+                    </View>}
 
                     {/* Values Section */}
                     <View style={styles.sectionCard}>
                         <Text style={styles.sectionHeading}>Values</Text>
                         <View style={styles.tagGrid}>
-                            {(partnerProfile.values ?? []).map((v) => (
+                            {(partnerProfile.values ?? []).map((v: string) => (
                                 <View key={v} style={styles.tag}>
                                     <Text style={styles.tagText}>{getEmoji(v, VALUES_EMOJI)} {v}</Text>
                                 </View>
@@ -199,7 +260,7 @@ export default function ProfileMatchScreen() {
                     <View style={styles.sectionCard}>
                         <Text style={styles.sectionHeading}>Interests</Text>
                         <View style={styles.tagGrid}>
-                            {(partnerProfile.interests ?? []).map((v) => (
+                            {(partnerProfile.interests ?? []).map((v: string) => (
                                 <View key={v} style={styles.tag}>
                                     <Text style={styles.tagText}>{getEmoji(v, INTERESTS_EMOJI)} {v}</Text>
                                 </View>
@@ -221,7 +282,7 @@ export default function ProfileMatchScreen() {
             </ScrollView >
 
             {/* ── Action Buttons ─────────────────────────────── */}
-            {
+            {isProposal && (
                 canRespond ? (
                     <View style={[styles.floatingActions, { bottom: Math.max(insets.bottom + 20, 64) }]}>
                         <TouchableOpacity
@@ -246,7 +307,9 @@ export default function ProfileMatchScreen() {
                         </View>
                     </View>
                 )
-            }
+            )}
+
+            <KarmaInfoModal visible={showKarmaModal} onClose={() => setShowKarmaModal(false)} />
         </View >
     );
 }

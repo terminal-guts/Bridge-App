@@ -66,6 +66,7 @@ export interface DeepQuestionAnswer {
   tier: QuestionTier;
   question: string;
   answer: string;
+  isFeatured?: boolean;
   updatedAt?: ISODateString;
 }
 
@@ -85,6 +86,7 @@ export interface UserProfile {
   preferredEthnicities?: string[]; // Array of ethnicities user is interested in matching with
   preferredPolitics?: string[]; // Array of political preferences user is interested in matching with
   preferenceVisibility?: Record<string, boolean>; // Which preference sections are visible on profile
+  maxDistance?: number | null; // Maximum distance in miles (denormalized from preferences for mock data)
   currentJob?: string; // Current job title
   companyPosition?: string; // Company/position combined
   company?: string; // Company name
@@ -154,6 +156,9 @@ export interface LifestylePreferences {
   exercise?: 'never' | 'sometimes' | 'often' | 'daily' | string;
   children?: 'want' | 'dont_want' | 'have' | 'open' | string;
   pets?: string[];
+  diet?: string[];
+  religion?: string;
+  politics?: string;
 }
 
 export interface NonNegotiable {
@@ -375,6 +380,7 @@ export type RootStackParamList = {
   ReportUser: { userId: string };
   StrikeWarning: { strike: Strike };
   Compatibility: undefined;
+  EmailVerification: { email: string };
 };
 
 export type MainTabParamList = {
@@ -439,6 +445,9 @@ export interface OnboardingData {
   };
 
   // Onboarding progress
+  birthday?: string;
+  friendsAdded?: string[];
+  displayedQuestions?: number[];
   phoneVerified?: boolean;
   verificationCode?: string;
 

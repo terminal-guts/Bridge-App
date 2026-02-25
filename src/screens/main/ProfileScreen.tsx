@@ -30,6 +30,7 @@ import {
 } from './ProfileScreen.components';
 import { ProfileStrengthDashboard } from '../../components/ProfileStrengthDashboard';
 import { PhotoCarousel } from '../../components/PhotoCarousel';
+import { KarmaInfoModal } from '../../components/community/KarmaInfoModal';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { showToast } from '../../utils/toast';
 import { DEEP_QUESTIONS, getUnansweredQuestions } from '../../utils/deepQuestions';
@@ -45,15 +46,15 @@ interface ProfileScreenProps {
   navigation: NavigationProp<MainTabParamList, 'Profile'>;
 }
 
-const StyledSafeAreaView = styled(SafeAreaView);
-const StyledView = styled(View);
-const StyledScrollView = styled(ScrollView);
-const StyledFlatList = styled(FlatList);
-const StyledImage = styled(Image);
-const StyledTouchableOpacity = styled(TouchableOpacity);
-const StyledAnimatedView = styled(Animated.View);
-const StyledTextInput = styled(TextInput);
-const StyledKeyboardAvoidingView = styled(KeyboardAvoidingView);
+const StyledSafeAreaView = styled(SafeAreaView) as typeof SafeAreaView;
+const StyledView = styled(View) as typeof View;
+const StyledScrollView = styled(ScrollView) as typeof ScrollView;
+const StyledFlatList = styled(FlatList) as typeof FlatList;
+const StyledImage = styled(Image) as typeof Image;
+const StyledTouchableOpacity = styled(TouchableOpacity) as typeof TouchableOpacity;
+const StyledAnimatedView = styled(Animated.View) as typeof Animated.View;
+const StyledTextInput = styled(TextInput) as typeof TextInput;
+const StyledKeyboardAvoidingView = styled(KeyboardAvoidingView) as typeof KeyboardAvoidingView;
 
 // Loading Skeleton for Questions Tab - with animation cleanup
 const QuestionsSkeleton: React.FC = () => {
@@ -188,7 +189,9 @@ const AnsweredQuestionCard = React.memo<{
   </StyledTouchableOpacity>
 ));
 
-export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
+export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navigation }) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const navigation = _navigation as any;
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
@@ -196,6 +199,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const [friendCount, setFriendCount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'about' | 'questions' | 'matches'>('about');
   // Preview modal removed - now using ProfilePreviewScreen for standardized view
+  const [showKarmaInfoModal, setShowKarmaInfoModal] = useState(false);
   const [showVisibilityModal, setShowVisibilityModal] = useState(false);
   const [showPhotoCarousel, setShowPhotoCarousel] = useState(false);
   const [photoCarouselIndex] = useState(0);
@@ -1261,7 +1265,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   shadowOpacity: 0.22,
                   shadowRadius: 10,
                   elevation: 6,
-                }}
+                } as any}
                 resizeMode="cover"
                 onError={(e) => {
                   logger.warn('Failed to load profile photo:', e.nativeEvent.error);
@@ -1282,8 +1286,25 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               </StyledView>
             )}
 
-            {/* Name */}
-            <H2 className="text-xl mb-4">{profile.firstName}</H2>
+            {/* Name & Karma Badge */}
+            <StyledView className="flex-row items-center mb-4" style={{ gap: 8 }}>
+              <H2 className="text-xl">{profile.firstName}</H2>
+              <StyledTouchableOpacity
+                onPress={() => setShowKarmaInfoModal(true)}
+                activeOpacity={0.75}
+                style={{
+                  flexDirection: 'row', alignItems: 'center',
+                  paddingHorizontal: 9, paddingVertical: 4,
+                  backgroundColor: 'rgba(52, 199, 89, 0.1)',
+                  borderWidth: 1, borderColor: '#34C759',
+                  borderRadius: 999, gap: 4,
+                }}>
+                <Ionicons name="star-outline" size={12} color="#34C759" />
+                <H2 className="text-xs" style={{ color: '#34C759', fontWeight: '600' }}>
+                  {profile.karma?.score ?? 0} pts
+                </H2>
+              </StyledTouchableOpacity>
+            </StyledView>
 
             {/* Friends Section */}
             <StyledView className="flex-row items-center space-x-3">
@@ -1909,6 +1930,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           onClose={() => setShowPhotoCarousel(false)}
         />
       )}
+
+      <KarmaInfoModal visible={showKarmaInfoModal} onClose={() => setShowKarmaInfoModal(false)} />
     </StyledSafeAreaView>
   );
 };

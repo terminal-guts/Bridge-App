@@ -98,6 +98,8 @@ class CommunityBackendService {
 
   // Track votes locally for session (also persisted in DB)
   private sessionVoteCount = 0;
+  // Track which proposal IDs were voted on this session to prevent double-counting re-votes
+  private sessionVotedProposals = new Set<string>();
 
   // ========================================================================
   // Proposals (via FastAPI)
@@ -147,7 +149,10 @@ class CommunityBackendService {
     const voteType = vote === 'yes' ? 'YES' : 'NO';
 
     await castProposalVote(proposalId, userId, voteType as any);
-    this.sessionVoteCount++;
+    if (!this.sessionVotedProposals.has(proposalId)) {
+      this.sessionVotedProposals.add(proposalId);
+      this.sessionVoteCount++;
+    }
   }
 
   // ========================================================================
@@ -631,6 +636,20 @@ class CommunityBackendService {
     // by submitFriendGridProposal. No separate record needed.
     logger.info('[Backend] markFriendAsHelped called — persistence handled by submitFriendGridProposal');
   }
+
+  // ========================================================================
+  // Stubs required by CommunityService interface
+  // ========================================================================
+
+  onStateChange(_callback: (state: any) => void): () => void {
+    return () => {};
+  }
+
+  getNextResetAt(): Date {
+    return new Date();
+  }
+
+  async triggerReset(): Promise<void> {}
 }
 
 export const communityBackendService = new CommunityBackendService();

@@ -19,10 +19,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { FriendWithGridStatus, KARMA_TIERS } from '../../types/community';
 import { lightHaptic } from '../../utils/haptics';
 
-const StyledView = styled(View);
-const StyledText = styled(Text);
-const StyledImage = styled(Image);
-const StyledTouchable = styled(TouchableOpacity);
+const StyledView = styled(View) as typeof View;
+const StyledText = styled(Text) as typeof Text;
+const StyledImage = styled(Image) as typeof Image;
+const StyledTouchable = styled(TouchableOpacity) as typeof TouchableOpacity;
 
 interface FriendGridRowProps {
   friend: FriendWithGridStatus & {
@@ -74,7 +74,7 @@ export function FriendGridRow({ friend, onViewGrid, onChatPress, onProfilePress 
           className="mr-3"
         >
           <StyledImage
-            source={{ uri: friend.friend.photos[0] }}
+            source={{ uri: friend.friend.photos[0]?.url }}
             className="w-12 h-12 rounded-full border-2 border-rose-100"
           />
         </StyledTouchable>

@@ -85,8 +85,8 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                 <LinearGradient
                     colors={[
                         'rgba(9, 18, 46, 0)',
+                        'rgba(9, 18, 46, 0.3)',
                         'rgba(9, 18, 46, 0.55)',
-                        'rgba(9, 18, 46, 0.88)',
                     ]}
                     locations={[0.4, 0.65, 1.0]}
                     style={StyleSheet.absoluteFillObject}

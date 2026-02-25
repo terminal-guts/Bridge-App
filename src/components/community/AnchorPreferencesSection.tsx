@@ -48,6 +48,12 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
     return str.charAt(0).toUpperCase() + str.slice(1);
   };
 
+  // Helper to normalize string | string[] to string
+  const toSingleValue = (val: string | string[] | undefined): string | undefined => {
+    if (Array.isArray(val)) return val[0];
+    return val;
+  };
+
   // Helper to format frequency
   const formatFrequency = (freq: string | undefined): string => {
     if (!freq) return 'Any';
@@ -156,7 +162,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
                 <StyledView className="flex-row items-center py-2">
                   <Ionicons name="wine-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
                   <StyledText className="text-neutral-900 flex-1">
-                    Drinking: {formatFrequency(anchor.partnerLifestylePreferences.drinking)}
+                    Drinking: {formatFrequency(toSingleValue(anchor.partnerLifestylePreferences.drinking))}
                   </StyledText>
                 </StyledView>
               )}
@@ -165,7 +171,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
                 <StyledView className="flex-row items-center py-2">
                   <Ionicons name="leaf-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
                   <StyledText className="text-neutral-900 flex-1">
-                    Cannabis: {formatFrequency(anchor.partnerLifestylePreferences.cannabis)}
+                    Cannabis: {formatFrequency(toSingleValue(anchor.partnerLifestylePreferences.cannabis))}
                   </StyledText>
                 </StyledView>
               )}
@@ -174,7 +180,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
                 <StyledView className="flex-row items-center py-2">
                   <Ionicons name="ban-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
                   <StyledText className="text-neutral-900 flex-1">
-                    Tobacco: {formatFrequency(anchor.partnerLifestylePreferences.tobacco)}
+                    Tobacco: {formatFrequency(toSingleValue(anchor.partnerLifestylePreferences.tobacco))}
                   </StyledText>
                 </StyledView>
               )}
@@ -183,7 +189,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
                 <StyledView className="flex-row items-center py-2">
                   <Ionicons name="medical-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
                   <StyledText className="text-neutral-900 flex-1">
-                    Other drugs: {formatFrequency(anchor.partnerLifestylePreferences.otherDrugs)}
+                    Other drugs: {formatFrequency(toSingleValue(anchor.partnerLifestylePreferences.otherDrugs))}
                   </StyledText>
                 </StyledView>
               )}

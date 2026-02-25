@@ -12,7 +12,7 @@
  * - Drop-in replacement for console.log/warn/error
  */
 
-import { __DEV__ } from 'react-native';
+declare const __DEV__: boolean;
 
 /**
  * Log levels for filtering

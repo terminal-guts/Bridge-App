@@ -322,7 +322,7 @@ const createMockDailySurvey = async (currentUserId: string): Promise<void> => {
   const candidateIds: string[] = [];
   for (let i = 0; i < 3; i++) {
     const candidateUserId = generateUUID();
-    await createMockUserProfile(candidateUserId, sameGender, 20 + i);
+    await createMockUserProfile(candidateUserId, sameGender as 'female' | 'male', 20 + i);
     candidateIds.push(candidateUserId);
   }
 

@@ -325,7 +325,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         setNonNegotiables(nonNegotiableIds);
 
         // Store original data for change detection
-        const originalPrefs = profileResult.data.partnerLifestylePreferences || {};
+        const originalPrefs: { drinking?: string | string[]; cannabis?: string | string[]; tobacco?: string | string[]; otherDrugs?: string | string[] } = profileResult.data.partnerLifestylePreferences ?? {};
         originalDataRef.current = JSON.stringify({
           preferences: {
             ageMin: loadedPrefs.ageMin,

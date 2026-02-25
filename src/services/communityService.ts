@@ -12,6 +12,7 @@
  */
 
 import { createLogger } from '../utils/secureLogger';
+import type { Match } from '../types';
 
 const logger = createLogger('CommunityService');
 
@@ -396,7 +397,22 @@ export type MockMatchState =
   | 'new_match'      // Proposal exists, neither voted
   | 'awaiting_you'   // Partner voted yes, you haven't
   | 'awaiting_them'  // You voted yes, partner hasn't
-  | 'active_match';  // Both said yes
+  | 'active_match'   // Both said yes
+  | 'expired'        // Proposal expired before either decided
+  | 'you_rejected'   // You passed on them
+  | 'they_rejected'  // They passed on you
+  | 'match_ended';   // Active match was ended by partner
+
+/** Passed from communityService → MatchesScreen to drive the one-time popup */
+export interface MatchEndedEvent {
+  type: 'expired' | 'you_rejected' | 'they_rejected' | 'match_ended';
+  /** Unique per-event ID used for AsyncStorage "seen once" tracking */
+  eventId: string;
+  partnerName: string;
+  partnerPhotoUrl?: string;
+  /** Only present for 'match_ended' — the reason the partner wrote */
+  endReason?: string;
+}
 
 export type MockFriendsState =
   | 'empty'          // No friends in community
@@ -406,6 +422,7 @@ interface MockState {
   dailyTasksCompleted: boolean;
   gridProposalSubmitted: boolean;
   votesSubmitted: number;
+  votedProposals: Record<string, 'yes' | 'no' | 'skip'>;
   friendsAreaUnlocked: boolean;
   mockDataEnabled: true;
   timeRestrictionDisabled: boolean;
@@ -414,6 +431,8 @@ interface MockState {
   helpedFriends: string[];
   matchState: MockMatchState;
   friendsState: MockFriendsState;
+  pendingEndedEvent: MatchEndedEvent | null;
+  runtimePastMatches: Match[];
   proposalDecisions: {
     [proposalId: string]: {
       userDecision: boolean | null;
@@ -428,6 +447,7 @@ let mockState: MockState = {
   dailyTasksCompleted: false,
   gridProposalSubmitted: false,
   votesSubmitted: 3,  // Always bypass the voting gate in dev mode
+  votedProposals: {},
   friendsAreaUnlocked: true,
   mockDataEnabled: true,
   timeRestrictionDisabled: true,
@@ -436,8 +456,21 @@ let mockState: MockState = {
   helpedFriends: [],
   matchState: 'empty',
   friendsState: 'empty',
+  pendingEndedEvent: null,
+  runtimePastMatches: [],
   proposalDecisions: {},
 };
+
+// Shared module-level reference so setMatchState() can build ended-event payloads
+// without needing to be inside getFriendsAreaData().
+const MOCK_ACTIVE_MATCH_PARTNER = generateMockUser({
+  id: 'active-match-partner',
+  firstName: 'Reese',
+  age: 26,
+  currentJob: 'Musician',
+  location: 'Queens, NY',
+  photos: [{ id: 'photo-reese', url: MOCK_PHOTOS[7], isMain: true, order: 0 }],
+});
 
 // ============================================================================
 // MOCK DATA: DAILY GRID
@@ -1002,7 +1035,10 @@ class CommunityService {
     // Count all explicit votes (yes, no, skip/not-sure) toward task progress.
     // 'skip' corresponds to "Not Sure" — a deliberate vote choice that should count.
     // The only case that should NOT count is a cancel (which never calls this function).
-    if (karmaWeight > 0) {
+    // Re-voting on the same proposal updates the preference but does NOT add to the count.
+    const isNewVote = !(proposalId in mockState.votedProposals);
+    mockState.votedProposals[proposalId] = vote;
+    if (karmaWeight > 0 && isNewVote) {
       mockState.votesSubmitted += 1;
     }
 
@@ -1405,14 +1441,7 @@ class CommunityService {
     };
 
     // ── Active match partner ─────────────────────────────────────────────────
-    const activeMatchPartner = generateMockUser({
-      id: 'active-match-partner',
-      firstName: 'Reese',
-      age: 26,
-      currentJob: 'Musician',
-      location: 'Queens, NY',
-      photos: [{ id: 'photo-reese', url: MOCK_PHOTOS[7], isMain: true, order: 0 }],
-    });
+    const activeMatchPartner = MOCK_ACTIVE_MATCH_PARTNER;
 
     const endorserEthan = generateMockUser({
       id: 'friend-ethan-e',
@@ -1481,6 +1510,12 @@ class CommunityService {
       case 'active_match':
         activeMatch = activeMatchData;
         break;
+      // Ended states — return empty so MatchesScreen lands on empty state + popup
+      case 'expired':
+      case 'you_rejected':
+      case 'they_rejected':
+      case 'match_ended':
+        break;
     }
 
     return { friends, pendingProposals, activeMatch };
@@ -1500,6 +1535,7 @@ class CommunityService {
       dailyTasksCompleted: false,
       gridProposalSubmitted: false,
       votesSubmitted: 0,
+      votedProposals: {},
       friendsAreaUnlocked: false,
       mockDataEnabled: true,
       timeRestrictionDisabled: true,
@@ -1508,6 +1544,8 @@ class CommunityService {
       helpedFriends: [],
       matchState: 'empty',
       friendsState: 'empty',
+      pendingEndedEvent: null,
+      runtimePastMatches: [],
       proposalDecisions: {},
     };
 
@@ -1625,6 +1663,20 @@ class CommunityService {
 
   setMatchState(state: MockMatchState): void {
     mockState.matchState = state;
+    // When toggling to an ended state from the dev panel, create the pending event automatically
+    if (state === 'expired' || state === 'you_rejected' || state === 'they_rejected' || state === 'match_ended') {
+      mockState.pendingEndedEvent = {
+        type: state,
+        eventId: `mock-${state}-${Date.now()}`,
+        partnerName: activeMatchPartner.firstName,
+        partnerPhotoUrl: activeMatchPartner.photos?.[0]?.url,
+        endReason: state === 'match_ended'
+          ? "I had a great time getting to know you, but I don't think we're the right fit. Wishing you the best!"
+          : undefined,
+      };
+    } else {
+      mockState.pendingEndedEvent = null;
+    }
     this.notifyStateChange();
   }
 
@@ -1640,6 +1692,51 @@ class CommunityService {
 
   getCurrentFriendsState(): MockFriendsState {
     return mockState.friendsState;
+  }
+
+  /** Returns the pending ended-match event (shown once as a popup in MatchesScreen). */
+  getEndedMatchEvent(): MatchEndedEvent | null {
+    return mockState.pendingEndedEvent;
+  }
+
+  /** Called by MatchesScreen after the user dismisses the popup. */
+  clearEndedMatchEvent(): void {
+    mockState.pendingEndedEvent = null;
+  }
+
+  /**
+   * Called when the current user ends an active match (from the End Match modal).
+   * Archives the match to runtimePastMatches and resets to empty.
+   * From the perspective of this user, no popup appears — they initiated it.
+   * The partner's session would show a 'match_ended' popup (not modelled in mock).
+   */
+  endActiveMatch(reason: string): void {
+    // Archive current active match as a past match
+    const partnerProfile = MOCK_ACTIVE_MATCH_PARTNER;
+    const pastMatch: Match = {
+      id: `ended-match-${Date.now()}`,
+      user1Id: 'current-user',
+      user2Id: partnerProfile.id,
+      user1Profile: undefined as any,
+      user2Profile: partnerProfile,
+      status: 'accepted',
+      communityScore: 82,
+      matchedAt: new Date(Date.now() - 5 * 24 * 3600000).toISOString(),
+      currentUserId: 'current-user',
+      unmatchedAt: new Date().toISOString(),
+      unmatchSurveyResponse: reason,
+      exitReason: 'user_ended',
+    };
+    mockState.runtimePastMatches = [pastMatch, ...mockState.runtimePastMatches];
+    mockState.matchState = 'empty';
+    mockState.pendingEndedEvent = null;
+    this.notifyStateChange();
+    logger.info('[Mock] Active match ended and archived to past matches.');
+  }
+
+  /** Returns matches that were ended in the current session (used by matchService). */
+  getRuntimePastMatches(): Match[] {
+    return mockState.runtimePastMatches;
   }
 
   // ==========================================================================

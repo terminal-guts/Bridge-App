@@ -172,9 +172,9 @@ const uriToArrayBuffer = async (uri: string): Promise<ArrayBuffer> => {
     logger.debug('Method 2: Trying FileSystem with EncodingType enum...');
 
     // Check if EncodingType exists
-    if (FileSystem.EncodingType?.Base64) {
+    if ((FileSystem as any).EncodingType?.Base64) {
       const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: (FileSystem as any).EncodingType.Base64,
       });
 
       logger.debug('File read successfully with Method 2, converting to ArrayBuffer...');
@@ -333,8 +333,8 @@ export const uploadPhoto = async (
       );
     }
 
-    if (!rateLimitResult.data.allowed) {
-      const retryTime = formatRetryTime(rateLimitResult.data.retryAfterSeconds);
+    if (!rateLimitResult.data || !rateLimitResult.data.allowed) {
+      const retryTime = formatRetryTime(rateLimitResult.data?.retryAfterSeconds ?? 60);
       return createErrorResponse(
         'RATE_LIMIT_EXCEEDED',
         `Too many photo uploads. Please try again in ${retryTime}.`

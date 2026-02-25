@@ -11,11 +11,15 @@ import { useNavigation } from '@react-navigation/native';
 import { communityService, MockMatchState, MockFriendsState } from '../services/communityService';
 
 const MATCH_OPTIONS: { label: string; value: MockMatchState }[] = [
-  { label: 'Empty',         value: 'empty' },
-  { label: 'New Match',     value: 'new_match' },
-  { label: 'They Voted',    value: 'awaiting_you' },
-  { label: 'You Voted',     value: 'awaiting_them' },
-  { label: 'Active Match',  value: 'active_match' },
+  { label: 'Empty',          value: 'empty' },
+  { label: 'New Match',      value: 'new_match' },
+  { label: 'They Voted',     value: 'awaiting_you' },
+  { label: 'You Voted',      value: 'awaiting_them' },
+  { label: 'Active Match',   value: 'active_match' },
+  { label: '⏰ Expired',     value: 'expired' },
+  { label: '👋 You Passed',  value: 'you_rejected' },
+  { label: '💔 They Passed', value: 'they_rejected' },
+  { label: '🔚 Match Ended', value: 'match_ended' },
 ];
 
 const FRIENDS_OPTIONS: { label: string; value: MockFriendsState }[] = [

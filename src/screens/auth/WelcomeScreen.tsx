@@ -1,13 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, SafeAreaView, StatusBar, Image, Text, TouchableOpacity, Animated, Alert, ActivityIndicator } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, SafeAreaView, StatusBar, Text, TouchableOpacity, Animated } from 'react-native';
 import { styled } from 'nativewind';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { supabase } from '../../lib/supabase';
-import { createLogger } from '../../utils/secureLogger';
 
-const logger = createLogger('WelcomeScreen');
 
 interface WelcomeScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Welcome'>;
@@ -20,8 +17,6 @@ const StyledText = styled(Text);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
-  const [isLoading, setIsLoading] = useState(false);
-
   // Animation values
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const logoTranslateY = useRef(new Animated.Value(-20)).current;
@@ -73,50 +68,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
     ]).start();
   }, []);
 
-  const handleGetStarted = async () => {
-    setIsLoading(true);
-
-    try {
-      // Create anonymous user session before starting onboarding
-      const { data, error } = await supabase.auth.signInAnonymously();
-
-      if (error) {
-        logger.error('Anonymous auth error:', error);
-        Alert.alert(
-          'Authentication Error',
-          'Unable to create user session. Please try again or check your internet connection.',
-          [{ text: 'OK' }]
-        );
-        setIsLoading(false);
-        return;
-      }
-
-      if (!data.user) {
-        logger.error('No user returned from anonymous auth');
-        Alert.alert(
-          'Authentication Error',
-          'Failed to create user session. Please try again.',
-          [{ text: 'OK' }]
-        );
-        setIsLoading(false);
-        return;
-      }
-
-      // User session created successfully
-      logger.info('Anonymous user created:', data.user.id);
-
-      // Navigate to onboarding
-      navigation.navigate('Onboarding');
-      setIsLoading(false);
-    } catch (error: any) {
-      logger.error('Unexpected error during authentication:', error);
-      Alert.alert(
-        'Error',
-        'An unexpected error occurred. Please try again.',
-        [{ text: 'OK' }]
-      );
-      setIsLoading(false);
-    }
+  const handleGetStarted = () => {
+    // Phone verification during onboarding creates the real Supabase session;
+    // no anonymous pre-session is needed here.
+    navigation.navigate('Onboarding');
   };
 
   return (
@@ -171,15 +126,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
                 onPress={handleGetStarted}
                 className="bg-white rounded-full py-4 px-8 mb-4 shadow-lg active:scale-[0.98]"
                 activeOpacity={0.9}
-                disabled={isLoading}
               >
-                {isLoading ? (
-                  <ActivityIndicator color="#1D2939" size="small" />
-                ) : (
-                  <StyledText className="text-neutral-900 text-center text-lg font-semibold">
-                    Get started
-                  </StyledText>
-                )}
+                <StyledText className="text-neutral-900 text-center text-lg font-semibold">
+                  Get started
+                </StyledText>
               </StyledTouchableOpacity>
 
               {/* Secondary Action - Text Button */}

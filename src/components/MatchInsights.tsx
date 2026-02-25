@@ -245,7 +245,7 @@ const checkLifestyleAlignment = (
     profile1.lifestyle?.exercise === profile2.lifestyle?.exercise ||
     profile1.lifestyle?.pets?.some(pet => profile2.lifestyle?.pets?.includes(pet));
 
-  return drinkingMatch || lifestyleMatch;
+  return drinkingMatch || (lifestyleMatch ?? false);
 };
 
 /**

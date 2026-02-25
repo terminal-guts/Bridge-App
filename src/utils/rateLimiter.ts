@@ -186,6 +186,10 @@ export const enforceRateLimit = async (
     throw new Error(result.error?.message || 'Failed to check rate limit');
   }
 
+  if (!result.data) {
+    return; // No data — fail safe by allowing
+  }
+
   if (!result.data.allowed) {
     const minutes = Math.ceil(result.data.retryAfterSeconds / 60);
     const message = `Too many attempts. Please try again in ${minutes} minute${minutes !== 1 ? 's' : ''}.`;

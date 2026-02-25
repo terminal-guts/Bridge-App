@@ -44,7 +44,7 @@ export const EducationLevelStep: React.FC<EducationLevelStepProps> = ({
       return;
     }
 
-    updateData({ educationLevel: selectedLevel });
+    updateData({ educationLevel: selectedLevel as OnboardingData['educationLevel'] });
     onNext();
   };
 

@@ -558,35 +558,38 @@ export function ProposalReviewView({
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
 
-      {/* Header row: back button + progress dots */}
-      <View style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingTop: 48,
-        paddingBottom: 16,
-        paddingHorizontal: 16,
-      }}>
-        {/* Back button (or spacer) */}
-        <View style={{ width: 40 }}>
-          {showBackButton && (
-            <TouchableOpacity
-              onPress={onBack}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="arrow-back" size={24} color="#010101" />
-            </TouchableOpacity>
-          )}
+      {/* Header row */}
+      {showBackButton ? (
+        // Friend proposal mode: back button only, no progress dots
+        <View style={{
+          paddingTop: 48,
+          paddingBottom: 16,
+          paddingHorizontal: 16,
+        }}>
+          <TouchableOpacity
+            onPress={onBack}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color="#010101" />
+          </TouchableOpacity>
         </View>
-
-        {/* Dots centered */}
-        <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-          {progressDots}
+      ) : (
+        // Community voting mode: centered progress dots, no back button
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingTop: 48,
+          paddingBottom: 16,
+          paddingHorizontal: 16,
+        }}>
+          <View style={{ width: 40 }} />
+          <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
+            {progressDots}
+          </View>
+          <View style={{ width: 40 }} />
         </View>
-
-        {/* Spacer to keep dots centered */}
-        <View style={{ width: 40 }} />
-      </View>
+      )}
 
       {/* Scrollable content */}
       <ScrollView
@@ -624,22 +627,6 @@ export function ProposalReviewView({
                   locations={[0.45, 0.75, 1]}
                   style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 130 }}
                 />
-                {/* x/4 tracker badge — top-right of left card */}
-                <View style={{
-                  position: 'absolute',
-                  top: 10,
-                  right: 10,
-                  backgroundColor: userATrackerCount >= 3 ? GREEN : userATrackerCount === 2 ? AMBER : RED,
-                  borderRadius: 20,
-                  paddingHorizontal: 8,
-                  paddingVertical: 4,
-                  borderWidth: 2,
-                  borderColor: '#FFFFFF',
-                }}>
-                  <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 12, color: '#FFFFFF' }}>
-                    {userATrackerCount}/4
-                  </Text>
-                </View>
                 <View style={{ position: 'absolute', bottom: 14, left: 14 }}>
                   <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 28, color: '#FFF', letterSpacing: -0.3 }}>
                     {userA.firstName}, {userA.age}
@@ -673,22 +660,6 @@ export function ProposalReviewView({
                   locations={[0.45, 0.75, 1]}
                   style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 130 }}
                 />
-                {/* x/4 tracker badge — top-right of right card */}
-                <View style={{
-                  position: 'absolute',
-                  top: 10,
-                  right: 10,
-                  backgroundColor: userBTrackerCount >= 3 ? GREEN : userBTrackerCount === 2 ? AMBER : RED,
-                  borderRadius: 20,
-                  paddingHorizontal: 8,
-                  paddingVertical: 4,
-                  borderWidth: 2,
-                  borderColor: '#FFFFFF',
-                }}>
-                  <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 12, color: '#FFFFFF' }}>
-                    {userBTrackerCount}/4
-                  </Text>
-                </View>
                 <View style={{ position: 'absolute', bottom: 14, left: 14 }}>
                   <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 28, color: '#FFF', letterSpacing: -0.3 }}>
                     {userB.firstName}, {userB.age}

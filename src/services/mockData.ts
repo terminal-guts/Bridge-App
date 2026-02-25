@@ -593,7 +593,7 @@ export const mockPartialMatch: PartialMatch = {
   profile: {
     firstName: mockProfiles[0].firstName,
     age: mockProfiles[0].age,
-    currentJob: mockProfiles[0].currentJob,
+    occupation: mockProfiles[0].currentJob || '',
     photos: mockProfiles[0].photos.map(p => ({ ...p, url: p.url + '&blur=10' })), // Simulate blurred photos
     interests: mockProfiles[0].interests.slice(0, 3), // Only show 75%
     values: mockProfiles[0].values.slice(0, 3),
@@ -660,6 +660,7 @@ export const mockMessages: Message[] = [
     id: 'msg1',
     matchId: 'match1',
     senderId: 'currentUser',
+    type: 'text' as const,
     content: 'Hey Sarah! I see we both love exploring the NYC food scene. Have you tried that new omakase spot in West Village?',
     sentAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
     readAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
@@ -668,6 +669,7 @@ export const mockMessages: Message[] = [
     id: 'msg2',
     matchId: 'match1',
     senderId: 'user1',
+    type: 'text' as const,
     content: 'Hi Alex! Yes, I went there last week and it was incredible! The otoro was amazing. Are you into Japanese food?',
     sentAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
     readAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
@@ -676,6 +678,7 @@ export const mockMessages: Message[] = [
     id: 'msg3',
     matchId: 'match1',
     senderId: 'currentUser',
+    type: 'text' as const,
     content: 'Absolutely! I actually lived in Tokyo for a summer during college. Would love to grab dinner sometime and swap travel stories.',
     sentAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
     readAt: undefined,

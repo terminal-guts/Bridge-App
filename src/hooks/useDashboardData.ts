@@ -67,7 +67,7 @@ export const useDashboardData = (): UseDashboardDataReturn => {
           if (isFeatureEnabled('LOG_DATA_FETCHING')) {
             logger.info('[useDashboardData] Successfully fetched dashboard data:', result.data);
           }
-          setData(result.data);
+          setData(result.data ?? null);
         } else {
           throw new Error(result.error?.message || 'Failed to fetch dashboard data');
         }

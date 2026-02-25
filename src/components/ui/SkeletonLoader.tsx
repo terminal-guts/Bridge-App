@@ -52,7 +52,7 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
         width,
         height,
         opacity,
-      }}
+      } as any}
       className={`bg-neutral-200 ${borderRadius} ${className}`}
     />
   );

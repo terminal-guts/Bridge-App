@@ -55,7 +55,7 @@ const ChipComponent: React.FC<ChipProps> = ({
     if (variant === 'value') return 'text-emerald-700 font-medium';
     if (variant === 'location') return 'text-rose-700 font-medium';
     if (variant === 'hometown') return 'text-violet-700 font-medium';
-    if (selected || (variant !== 'none' && variant !== 'interest' && variant !== 'value' && variant !== 'location' && variant !== 'hometown')) {
+    if (selected || variant !== 'none') {
       return 'text-white font-medium';
     }
     return 'text-neutral-700';

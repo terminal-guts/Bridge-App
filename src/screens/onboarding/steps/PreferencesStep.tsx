@@ -36,6 +36,9 @@ export const PreferencesStep: React.FC<PreferencesStepProps> = ({
 
     updateData({
       preferences: {
+        ageMin: data.preferences?.ageMin ?? 18,
+        ageMax: data.preferences?.ageMax ?? 99,
+        gender: data.preferences?.gender ?? 'both',
         ...data.preferences,
         lookingFor: commitmentLevel as any,
       },

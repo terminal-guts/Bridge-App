@@ -120,6 +120,28 @@ export const GuideProvider: React.FC<GuideProviderProps> = ({ children }) => {
   );
 
   /**
+   * Complete the guide
+   */
+  const completeGuide = useCallback(async () => {
+    if (!activeGuide) return;
+
+    successHaptic();
+
+    // Mark as completed in AsyncStorage
+    await markGuideCompleted(activeGuide.id);
+
+    // Reload completed guides set
+    await reloadCompletedGuides();
+
+    // Close guide
+    setIsPlaying(false);
+    setActiveGuide(null);
+    setCurrentStep(0);
+
+    logger.info(`[GuideContext] Completed guide: ${activeGuide.id}`);
+  }, [activeGuide, reloadCompletedGuides]);
+
+  /**
    * Advance to next step
    */
   const nextStep = useCallback(async () => {
@@ -171,28 +193,6 @@ export const GuideProvider: React.FC<GuideProviderProps> = ({ children }) => {
 
     logger.info(`[GuideContext] Skipped guide: ${activeGuide.id}`);
   }, [activeGuide]);
-
-  /**
-   * Complete the guide
-   */
-  const completeGuide = useCallback(async () => {
-    if (!activeGuide) return;
-
-    successHaptic();
-
-    // Mark as completed in AsyncStorage
-    await markGuideCompleted(activeGuide.id);
-
-    // Reload completed guides set
-    await reloadCompletedGuides();
-
-    // Close guide
-    setIsPlaying(false);
-    setActiveGuide(null);
-    setCurrentStep(0);
-
-    logger.info(`[GuideContext] Completed guide: ${activeGuide.id}`);
-  }, [activeGuide, reloadCompletedGuides]);
 
   /**
    * Register a target element's layout

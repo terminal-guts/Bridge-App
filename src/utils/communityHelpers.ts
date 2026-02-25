@@ -270,7 +270,7 @@ export function isProposalWarning(expiresAt: string): boolean {
  */
 export function getMatchProgress(match: ActiveMatch): number {
   const MINIMUM_DAYS = 3;
-  const progress = (match.daysActive / MINIMUM_DAYS) * 100;
+  const progress = ((match.daysActive ?? 0) / MINIMUM_DAYS) * 100;
   return Math.min(progress, 100);
 }
 

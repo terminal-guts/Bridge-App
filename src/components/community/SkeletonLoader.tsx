@@ -16,7 +16,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-const StyledView = styled(View);
+const StyledView = styled(View) as typeof View;
 const AnimatedView = Animated.createAnimatedComponent(StyledView);
 
 interface SkeletonLoaderProps {
@@ -59,7 +59,7 @@ export function SkeletonLoader({
           borderRadius,
         },
         animatedStyle,
-      ]}
+      ] as any}
     />
   );
 }

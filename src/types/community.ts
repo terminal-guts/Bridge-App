@@ -98,6 +98,7 @@ export interface Proposal {
   communityDecidedAt?: string; // When community vote reached resolution
 
   passedToUsersAt?: string;   // When it moved to Deciding state
+  sentToUsersAt?: string;    // Alias used by proposalApiService
   decisionDeadlineAt?: string; // When users must decide by
 
   userADecision?: 'pending' | 'accepted' | 'declined';

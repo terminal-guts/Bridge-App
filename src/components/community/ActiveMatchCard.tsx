@@ -25,10 +25,10 @@ import {
   getMatchMilestoneIcon,
 } from '../../utils/communityHelpers';
 
-const StyledView = styled(View);
-const StyledText = styled(Text);
-const StyledImage = styled(Image);
-const StyledTouchable = styled(TouchableOpacity);
+const StyledView = styled(View) as typeof View;
+const StyledText = styled(Text) as typeof Text;
+const StyledImage = styled(Image) as typeof Image;
+const StyledTouchable = styled(TouchableOpacity) as typeof TouchableOpacity;
 
 interface ActiveMatchCardProps {
   match: ActiveMatch;
@@ -37,6 +37,8 @@ interface ActiveMatchCardProps {
 }
 
 export function ActiveMatchCard({ match, onMessage, onEndMatch }: ActiveMatchCardProps) {
+  if (!match.partnerProfile) return null;
+
   const handleMessage = () => {
     lightHaptic();
     onMessage();
@@ -50,10 +52,11 @@ export function ActiveMatchCard({ match, onMessage, onEndMatch }: ActiveMatchCar
   };
 
   // Calculate progress and milestones
-  const progress = getMatchProgress(match);
-  const progressColor = getMatchProgressColor(match.daysActive);
-  const milestone = getMatchMilestone(match.daysActive);
-  const milestoneIcon = getMatchMilestoneIcon(match.daysActive);
+  const daysActive = match.daysActive ?? 0;
+  const progress = getMatchProgress({ ...match, daysActive });
+  const progressColor = getMatchProgressColor(daysActive);
+  const milestone = getMatchMilestone(daysActive);
+  const milestoneIcon = getMatchMilestoneIcon(daysActive);
 
   return (
     <StyledView
@@ -77,7 +80,6 @@ export function ActiveMatchCard({ match, onMessage, onEndMatch }: ActiveMatchCar
             source={{
               uri:
                 match.partnerProfile.photos?.[0]?.url ||
-                match.partnerProfile.photos?.[0] ||
                 'https://i.pravatar.cc/100',
             }}
             className="w-16 h-16 rounded-full border-3 border-rose-200"
@@ -113,7 +115,7 @@ export function ActiveMatchCard({ match, onMessage, onEndMatch }: ActiveMatchCar
           <StyledView className="flex-row items-center">
             <StyledText className="text-sm mr-1">{milestoneIcon}</StyledText>
             <StyledText className="text-xs font-medium text-rose-700">
-              {match.daysActive} {match.daysActive === 1 ? 'day' : 'days'} together
+              {daysActive} {daysActive === 1 ? 'day' : 'days'} together
             </StyledText>
           </StyledView>
         </StyledView>

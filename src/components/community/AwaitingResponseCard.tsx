@@ -23,9 +23,9 @@ import {
   formatRelativeTime,
 } from '../../utils/communityHelpers';
 
-const StyledView = styled(View);
-const StyledText = styled(Text);
-const StyledImage = styled(Image);
+const StyledView = styled(View) as typeof View;
+const StyledText = styled(Text) as typeof Text;
+const StyledImage = styled(Image) as typeof Image;
 
 interface AwaitingResponseCardProps {
   proposal: MatchProposal;
@@ -81,7 +81,7 @@ export function AwaitingResponseCard({ proposal }: AwaitingResponseCardProps) {
       <StyledView className="items-center mb-5">
         <StyledImage
           source={{
-            uri: proposal.partnerProfile.photos?.[0]?.url || proposal.partnerProfile.photos?.[0],
+            uri: proposal.partnerProfile.photos?.[0]?.url,
           }}
           className="w-32 h-32 rounded-full mb-3"
           style={{
@@ -100,7 +100,7 @@ export function AwaitingResponseCard({ proposal }: AwaitingResponseCardProps) {
           <StyledView className="flex-row items-center">
             <Ionicons name="location-outline" size={16} color="#D97706" />
             <StyledText className="text-sm ml-1" style={{ color: '#B45309' }}>
-              {proposal.partnerProfile.location.city}, {proposal.partnerProfile.location.state}
+              {proposal.partnerProfile.location}
             </StyledText>
           </StyledView>
         )}

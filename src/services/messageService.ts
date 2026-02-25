@@ -30,6 +30,11 @@ import { Buffer } from 'buffer';
 const USE_REAL_BACKEND = FEATURES.MESSAGING_BACKEND_ENABLED && isRealSupabase();
 const STORAGE_BUCKET = 'chat-audio';
 
+// UUID v4 regex — mock IDs like "active-match-1" are not valid UUIDs and
+// must never reach Supabase (Postgres rejects them with code 22P02).
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isValidUUID = (id: string) => UUID_REGEX.test(id);
+
 // Log mode on initialization
 logger.info(`[MESSAGE SERVICE] Mode: ${USE_REAL_BACKEND ? 'REAL SUPABASE' : 'MOCK'}`);
 
@@ -166,7 +171,7 @@ const uploadAudioFile = async (
  */
 export const getMatchMessages = async (matchId: string): Promise<ApiResponse<Message[]>> => {
   try {
-    if (!USE_REAL_BACKEND) {
+    if (!USE_REAL_BACKEND || !isValidUUID(matchId)) {
       logger.info('[MESSAGE SERVICE] Mock: Getting messages for match:', matchId);
       const messages = mockMessages[matchId] || [];
       return { ok: true, data: messages };
@@ -278,7 +283,7 @@ export const sendMessage = async (
       sentAt,
     };
 
-    if (!USE_REAL_BACKEND) {
+    if (!USE_REAL_BACKEND || !isValidUUID(matchId)) {
       // Mock mode: store in memory
       logger.info('[MESSAGE SERVICE] Mock: Storing message locally');
       if (!mockMessages[matchId]) {
@@ -344,7 +349,7 @@ export const markMessagesAsRead = async (
   userId: string
 ): Promise<ApiResponse<void>> => {
   try {
-    if (!USE_REAL_BACKEND) {
+    if (!USE_REAL_BACKEND || !isValidUUID(matchId)) {
       logger.info('[MESSAGE SERVICE] Mock: Marking messages as read:', matchId);
       if (mockMessages[matchId]) {
         mockMessages[matchId] = mockMessages[matchId].map(msg => ({
@@ -413,7 +418,7 @@ export const subscribeToMessages = (
   matchId: string,
   callback: (message: Message) => void
 ): { unsubscribe: () => void } => {
-  if (!USE_REAL_BACKEND) {
+  if (!USE_REAL_BACKEND || !isValidUUID(matchId)) {
     logger.info('[MESSAGE SERVICE] Mock: Subscribing to match:', matchId);
 
     // Mock subscription using callbacks
@@ -490,7 +495,7 @@ export const getUnreadCount = async (
   userId: string
 ): Promise<ApiResponse<number>> => {
   try {
-    if (!USE_REAL_BACKEND) {
+    if (!USE_REAL_BACKEND || !isValidUUID(matchId)) {
       const messages = mockMessages[matchId] || [];
       const count = messages.filter(m => m.senderId !== userId && !m.readAt).length;
       return { ok: true, data: count };

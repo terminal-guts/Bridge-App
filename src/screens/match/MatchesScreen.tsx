@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, SafeAreaView, ActivityIndicator, Image, TouchableOpacity, StyleSheet, StatusBar, useWindowDimensions, Modal, TextInput, Alert, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, ScrollView, SafeAreaView, ActivityIndicator, Image, TouchableOpacity, StyleSheet, StatusBar, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MatchCard } from '../../components/matches/MatchCard';
 import { communityService } from '../../services/communityServiceIndex';
+import { MatchEndedEvent } from '../../services/communityService';
 import { ActiveMatch, MatchProposal } from '../../types/community';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ClockIcon } from '../../components/icons/Icons';
 
 // One of five mutually exclusive states the screen can be in
@@ -44,6 +46,105 @@ function formatMatchDate(isoDate: string): string {
     })}`;
 }
 
+// ── Per-variant popup content ────────────────────────────────────────────────
+function EndedMatchPopupContent({ event }: { event: MatchEndedEvent }) {
+    const { type, partnerName, partnerPhotoUrl, endReason } = event;
+
+    const config: Record<MatchEndedEvent['type'], { icon: string; headline: string; body: string }> = {
+        expired: {
+            icon: '⏰',
+            headline: 'Your match window closed',
+            body: 'The proposal timed out before anyone decided. Stay active — your next match could come soon.',
+        },
+        you_rejected: {
+            icon: '👋',
+            headline: 'You passed on this one',
+            body: "That's totally okay — trust your instincts. Keep at it, the right fit is worth waiting for. Every pass brings you closer to someone great.",
+        },
+        they_rejected: {
+            icon: '💔',
+            headline: "It wasn't a match this time",
+            body: "Not every connection clicks, and that's okay. Your community is still working to find your person.",
+        },
+        match_ended: {
+            icon: '🔚',
+            headline: 'Your match has ended',
+            body: 'This match has been moved to your Past Matches.',
+        },
+    };
+
+    const { icon, headline, body } = config[type];
+
+    return (
+        <View style={popupStyles.content}>
+            {partnerPhotoUrl ? (
+                <Image source={{ uri: partnerPhotoUrl }} style={popupStyles.avatar} />
+            ) : (
+                <View style={[popupStyles.avatar, popupStyles.avatarFallback]}>
+                    <Text style={popupStyles.avatarFallbackText}>{partnerName.charAt(0)}</Text>
+                </View>
+            )}
+            <Text style={popupStyles.icon}>{icon}</Text>
+            <Text style={popupStyles.headline}>{headline}</Text>
+            {type === 'match_ended' && endReason ? (
+                <View style={popupStyles.reasonBox}>
+                    <Text style={popupStyles.reasonLabel}>{partnerName} wrote:</Text>
+                    <Text style={popupStyles.reasonText}>"{endReason}"</Text>
+                </View>
+            ) : null}
+            <Text style={popupStyles.body}>{body}</Text>
+        </View>
+    );
+}
+
+const popupStyles = StyleSheet.create({
+    content: { alignItems: 'center', paddingBottom: 24 },
+    avatar: { width: 72, height: 72, borderRadius: 36, marginBottom: 12 },
+    avatarFallback: { backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
+    avatarFallbackText: { fontSize: 28, fontWeight: '700', color: '#6B7280' },
+    icon: { fontSize: 32, marginBottom: 10 },
+    headline: {
+        fontFamily: 'Outfit_700Bold',
+        fontSize: 20,
+        color: '#101828',
+        textAlign: 'center',
+        marginBottom: 12,
+    },
+    reasonBox: {
+        backgroundColor: '#F9FAFB',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#E4E7EC',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        width: '100%',
+        marginBottom: 14,
+    },
+    reasonLabel: {
+        fontFamily: 'Outfit_600SemiBold',
+        fontSize: 12,
+        color: '#98A2B3',
+        marginBottom: 4,
+        letterSpacing: 0.4,
+    },
+    reasonText: {
+        fontFamily: 'Outfit_400Regular',
+        fontSize: 14,
+        color: '#344054',
+        fontStyle: 'italic',
+        lineHeight: 20,
+    },
+    body: {
+        fontFamily: 'Outfit_400Regular',
+        fontSize: 14,
+        color: '#667085',
+        textAlign: 'center',
+        lineHeight: 20,
+        paddingHorizontal: 8,
+    },
+});
+
+// ── Main screen ──────────────────────────────────────────────────────────────
 export function MatchesScreen() {
     const [activeMatch, setActiveMatch] = useState<ActiveMatch | null>(null);
     const [pendingProposals, setPendingProposals] = useState<MatchProposal[]>([]);
@@ -51,6 +152,7 @@ export function MatchesScreen() {
     const [now, setNow] = useState(Date.now());
     const [endMatchModalVisible, setEndMatchModalVisible] = useState(false);
     const [endMatchReason, setEndMatchReason] = useState('');
+    const [popupEvent, setPopupEvent] = useState<MatchEndedEvent | null>(null);
     const navigation = useNavigation<any>();
     const { height: windowHeight } = useWindowDimensions();
     const insets = useSafeAreaInsets();
@@ -84,14 +186,35 @@ export function MatchesScreen() {
         });
     }, []);
 
-    const handleEndMatchConfirm = () => {
+    // Check for a pending ended-match event each time the tab is focused
+    useFocusEffect(
+        useCallback(() => {
+            const event = communityService.getEndedMatchEvent();
+            if (!event) return;
+            AsyncStorage.getItem(`match_popup_seen_${event.eventId}`).then(seen => {
+                if (!seen) {
+                    setPopupEvent(event);
+                } else {
+                    communityService.clearEndedMatchEvent();
+                }
+            });
+        }, []),
+    );
+
+    const handlePopupContinue = useCallback(async () => {
+        if (!popupEvent) return;
+        await AsyncStorage.setItem(`match_popup_seen_${popupEvent.eventId}`, '1');
+        communityService.clearEndedMatchEvent();
+        setPopupEvent(null);
+    }, [popupEvent]);
+
+    const handleEndMatchConfirm = useCallback(() => {
         if (endMatchReason.trim().length < END_MATCH_MIN_CHARS) return;
+        Keyboard.dismiss();
         setEndMatchModalVisible(false);
         setEndMatchReason('');
-        Alert.alert('Match Ended', 'Your match has been ended.', [
-            { text: 'OK', onPress: () => {} },
-        ]);
-    };
+        communityService.endActiveMatch(endMatchReason.trim());
+    }, [endMatchReason]);
 
     if (loading) {
         return (
@@ -288,6 +411,23 @@ export function MatchesScreen() {
                 </View>
             </ScrollView>
 
+            {/* ── Ended Match Popup ────────────────────────────────────────── */}
+            <Modal
+                visible={!!popupEvent}
+                transparent
+                animationType="fade"
+                onRequestClose={handlePopupContinue}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalCard}>
+                        {popupEvent && <EndedMatchPopupContent event={popupEvent} />}
+                        <TouchableOpacity style={styles.continueBtn} onPress={handlePopupContinue} activeOpacity={0.85}>
+                            <Text style={styles.continueBtnText}>Continue</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
             {/* ── End Match Modal ──────────────────────────────────────────── */}
             <Modal
                 visible={endMatchModalVisible}
@@ -468,6 +608,17 @@ const styles = StyleSheet.create({
     },
     btnDisabled: {
         opacity: 0.4,
+    },
+    continueBtn: {
+        backgroundColor: '#437FFF',
+        borderRadius: 12,
+        paddingVertical: 15,
+        alignItems: 'center',
+    },
+    continueBtnText: {
+        fontFamily: 'Outfit_600SemiBold',
+        fontSize: 16,
+        color: '#FFFFFF',
     },
 });
 

@@ -62,10 +62,10 @@ export const EnhancedTimer: React.FC<EnhancedTimerProps> = ({
       if (remaining === 0 && onExpired) {
         // Wrap onExpired in try-catch to handle both sync and async errors
         try {
-          const result = onExpired();
+          const maybePromise = onExpired() as unknown;
           // If it's a promise, catch any errors
-          if (result && typeof result.catch === 'function') {
-            result.catch((error: Error) => {
+          if (maybePromise instanceof Promise) {
+            maybePromise.catch((error: Error) => {
               logger.error('[EnhancedTimer] onExpired callback error:', error);
             });
           }
