@@ -15,28 +15,10 @@ def get_supabase_client():
            or os.environ.get("SUPABASE_ANON_KEY"))
 
     if not url or not key:
-        print("\n" + "!"*60)
-        print("DATABASE ERROR: No Supabase URL or key found.")
-        print(f"  URL found: {bool(url)}")
-        print(f"  Key found: {bool(key)}")
-        print("!"*60 + "\n")
         raise RuntimeError("Cannot start without Supabase credentials")
 
     # Strip whitespace and trailing slashes
     url = url.strip().rstrip("/")
     key = key.strip()
 
-    print(f"[Supabase] Connecting to: {url}")
-    print(f"[Supabase] Using key type: {'service_role' if os.environ.get('SUPABASE_SERVICE_ROLE_KEY') else 'anon'}")
-
-    try:
-        client = create_client(url, key)
-        # Verify connection with a simple query
-        client.table("profiles").select("id").limit(1).execute()
-        print("[Supabase] Connection verified successfully")
-        return client
-    except Exception as e:
-        print(f"[Supabase] Connection failed: {e}")
-        print(f"[Supabase] URL: {url}")
-        print(f"[Supabase] Key prefix: {key[:20]}...")
-        raise RuntimeError(f"Supabase connection failed: {e}")
+    return create_client(url, key)
