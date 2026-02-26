@@ -16,10 +16,10 @@ Current dating apps are lonely and time-consuming. Bridge brings the "friends-of
 * **Safe & High-Quality:** Our strike system and community moderation ensure a respectful and authentic environment.
 
 ### HOW IT WORKS:
-1. **Algorithm Proposal:** Bridge generates a potential pairing based on deep compatibility.
-2. **Community Voting:** Your friends and other users vote on whether the pairing is a good fit.
-3. **Mutual Acceptance:** If the proposal passes, both people see each other's full profiles and choose whether to accept the match.
-4. **Meaningful Connection:** Start chatting with a 3-day commitment to actually get to know each other.
+1. **Community Contribution:** Every day, contribute to the community by voting on 3 curated match proposals.
+2. **Help Your Friends:** Once your daily contribution is complete, unlock the Friends Area to help find matches for your own friends.
+3. **Curated Proposals:** Receive your own curated match proposals that have already been validated by the community and your friends.
+4. **Mutual Acceptance:** View full profiles and choose whether to accept. If both accept, start chatting with a 3-day commitment to a real conversation.
 
 Join Bridge today and experience a more human, thoughtful way to find your fit.
 
