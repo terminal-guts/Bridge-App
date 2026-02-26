@@ -583,7 +583,7 @@ async def complete_onboarding(data: OnboardingCompletion, background_tasks: Back
 
         # 4. Trigger Photo Analysis in background
         if data.photos:
-            background_tasks.add_task(photo_service.verify_batch, data.photos, data.user_id)
+            background_tasks.add_task(photo_analysis_service.verify_batch, data.photos, data.user_id)
         
         return {"status": "success", "message": "Onboarding completed"}
         
