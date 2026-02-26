@@ -91,7 +91,7 @@ See **[GETTING_STARTED.md](./GETTING_STARTED.md)** for complete setup instructio
 ## Project Structure
 
 ```
-Bridge-Version1-Mock/
+Bridge-App/
 ├── src/
 │   ├── components/          # Reusable UI components
 │   │   ├── ui/             # Base UI components (buttons, inputs, etc.)
@@ -138,7 +138,7 @@ Bridge-Version1-Mock/
 1. **Clone and install**:
    ```bash
    git clone <repo-url>
-   cd Bridge-Version1-Mock
+   cd Bridge-App
    npm install
    ```
 

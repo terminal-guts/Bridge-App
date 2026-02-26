@@ -1,7 +1,7 @@
 {
-  "name": "bridge-frontend-mock",
+  "name": "bridge-app",
   "version": "1.0.0",
-  "description": "Bridge - Frontend Mock (No Backend)",
+  "description": "Bridge - Production App",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
