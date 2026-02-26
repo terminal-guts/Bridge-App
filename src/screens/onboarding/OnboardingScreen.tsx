@@ -5,8 +5,8 @@ import { styled } from 'nativewind';
 import { NavigationProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList, OnboardingData } from '../../types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createUserProfile, saveOnboardingStep } from '../../services/profileService';
-import { supabase } from '../../lib/supabase';
 import { Body } from '../../components/ui';
 import { getStepMappingByIndex } from '../../config/onboardingMapping';
 import { createLogger } from '../../utils/secureLogger';
@@ -50,12 +50,13 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
 
-  // Fetch the authenticated user ID once on mount
+  // Fetch the authenticated user ID from AsyncStorage on mount
   useEffect(() => {
     const loadUserId = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.id) {
-        setAuthUserId(user.id);
+      const savedUserStr = await AsyncStorage.getItem('bridge_auth_user');
+      if (savedUserStr) {
+        const saved = JSON.parse(savedUserStr);
+        if (saved?.id) setAuthUserId(saved.id);
       }
     };
     loadUserId();
@@ -141,39 +142,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
       const saveResult = await saveOnboardingStep(mapping.key, onboardingData, authUserId || undefined);
 
       if (!saveResult.ok) {
-        // Check if this is a NOT NULL constraint error (expected on early steps)
-        const isNotNullError = saveResult.error?.message?.includes('violates not-null constraint');
-        const isMissingRequiredField = saveResult.error?.message?.includes('null value in column');
-
-        if (isNotNullError || isMissingRequiredField) {
-          // Expected error - we don't have all required fields yet
-          // Continue to next step without blocking
-        } else {
-          // Unexpected error - show alert and block
-          Alert.alert(
-            'Save Failed',
-            saveResult.error?.message || 'Unable to save your answer. Please try again.',
-            [
-              {
-                text: 'Retry',
-                onPress: () => goNext(),
-              },
-              {
-                text: 'Skip',
-                style: 'cancel',
-                onPress: () => {
-                  // Continue anyway
-                  if (currentStep < totalSteps - 1) {
-                    setCurrentStep(currentStep + 1);
-                  } else {
-                    completeOnboarding();
-                  }
-                },
-              },
-            ]
-          );
-          return;
-        }
+        // Intermediate step saves are best-effort — never block the user.
+        // The full profile is committed at the end via createUserProfile.
+        logger.warn('[OnboardingScreen] Step save failed (non-blocking):', saveResult.error?.message);
       }
     }
 
@@ -198,31 +169,27 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   const completeOnboarding = async () => {
     setIsCreatingProfile(true);
     try {
-      // Get current user session
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      // Get current user ID from AsyncStorage
+      const savedUserStr = await AsyncStorage.getItem('bridge_auth_user');
+      const savedUser = savedUserStr ? JSON.parse(savedUserStr) : null;
+      const userId = authUserId || savedUser?.id;
 
-      if (!user?.id) {
-        // This should not happen if anonymous auth was successful in WelcomeScreen
+      if (!userId) {
         logger.error('No authenticated user found during onboarding completion');
         setIsCreatingProfile(false);
         Alert.alert(
           'Authentication Required',
           'You must be signed in to complete onboarding. Please restart the process.',
-          [
-            {
-              text: 'Go Back',
-              onPress: () => navigation.navigate('Welcome'),
-            },
-          ]
+          [{ text: 'Go Back', onPress: () => navigation.navigate('Welcome') }]
         );
         return;
       }
 
-      logger.info('Creating profile for user:', user.id);
+      logger.info('Creating profile for user:', userId);
       logger.info('Photos to upload:', onboardingData.photos?.length || 0);
 
       // Create user profile with all onboarding data
-      const profileResult = await createUserProfile(user.id, onboardingData);
+      const profileResult = await createUserProfile(userId, onboardingData);
 
       setIsCreatingProfile(false);
 
