@@ -4,7 +4,6 @@
  * Connects to the Bridge Railway backend for profile management.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ApiResponse,
   UserProfile,
@@ -29,12 +28,11 @@ const createErrorResponse = (code: string, message: string): ApiResponse<any> =>
 });
 
 async function getCurrentUserId(): Promise<string> {
-  const savedUserStr = await AsyncStorage.getItem('bridge_auth_user');
-  if (savedUserStr) {
-    const saved = JSON.parse(savedUserStr);
-    if (saved?.id) return saved.id;
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    throw new Error('Not authenticated');
   }
-  throw new Error('Not authenticated');
+  return user.id;
 }
 
 /**

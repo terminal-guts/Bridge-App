@@ -4,8 +4,8 @@ import { styled } from 'nativewind';
 import { Button, H1, H2, Body } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { verifyPhone, sendOtpToPhone, verifyEmail, sendOtpToEmail, getCurrentUser } from '../../services/authService';
-import { createUserProfile, fetchAndSetUserProfile } from '../../services/profileService';
+import { verifyPhone, sendOtpToPhone, verifyEmail, sendOtpToEmail } from '../../services/authService';
+import { fetchAndSetUserProfile } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('PhoneVerificationScreen');
@@ -115,37 +115,25 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
       return;
     }
 
-    // User is now authenticated!
-    const userResult = await getCurrentUser();
+    // User is now authenticated via Supabase! Session is persisted automatically.
+    // verifyResult.data contains the authenticated user.
+    const userId = verifyResult.data!.id;
+    logger.info('[AUTH] User authenticated:', userId);
 
-    if (!userResult.ok || !userResult.data) {
-      setLoading(false);
-      Alert.alert('Error', 'Failed to get user information');
-      return;
-    }
-
-    if (fromOnboarding && onboardingData) {
-      const profileResult = await createUserProfile(
-        userResult.data.id,
-        onboardingData
-      );
-
-      if (!profileResult.ok) {
-        setLoading(false);
-        Alert.alert('Profile Creation Failed', profileResult.error?.message || 'Failed to create profile');
-        return;
-      }
-    } else {
-      // Task: Invoke Supabase to load profile for existing users
-      const fetchResult = await fetchAndSetUserProfile(userResult.data.id);
-      if (!fetchResult.ok && fetchResult.error?.code !== 'PROFILE_NOT_FOUND') {
-        logger.warn('[AUTH] Could not load profile from Supabase:', fetchResult.error?.message);
-      }
-    }
+    // Try to fetch existing profile to determine where to navigate
+    const fetchResult = await fetchAndSetUserProfile(userId);
 
     setLoading(false);
-    // Success! Navigate to main app
-    navigation.navigate('MainTabs');
+
+    if (fetchResult.ok && fetchResult.data) {
+      // User has a profile — go to main app
+      logger.info('[AUTH] Profile found, navigating to MainTabs');
+      navigation.navigate('MainTabs');
+    } else {
+      // No profile yet — send to onboarding to complete signup
+      logger.info('[AUTH] No profile found, navigating to Onboarding');
+      navigation.navigate('Onboarding');
+    }
   };
 
   const isCodeComplete = code.every(digit => digit !== '');

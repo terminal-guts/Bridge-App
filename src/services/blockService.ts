@@ -6,7 +6,6 @@
  * nor B→A matches, grids, or proposals will ever be surfaced.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { ApiResponse, UserProfile } from '../types';
 import { createLogger } from '../utils/secureLogger';
@@ -14,15 +13,13 @@ import { createLogger } from '../utils/secureLogger';
 const logger = createLogger('BlockService');
 
 /**
- * Determine the current user ID from Supabase auth.
+ * Determine the current user ID from Supabase auth session.
  */
 async function getCurrentUserId(): Promise<string> {
-  const savedUserStr = await AsyncStorage.getItem('bridge_auth_user');
-  if (savedUserStr) {
-    const saved = JSON.parse(savedUserStr);
-    if (saved?.id) return saved.id;
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    throw new Error('Not authenticated');
   }
-  throw new Error('Not authenticated');
   return user.id;
 }
 

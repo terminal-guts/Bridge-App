@@ -5,9 +5,9 @@ import { styled } from 'nativewind';
 import { NavigationProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList, OnboardingData } from '../../types';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createUserProfile, saveOnboardingStep } from '../../services/profileService';
 import { getCurrentUser } from '../../services/authService';
+import { supabase } from '../../lib/supabase';
 import { Body } from '../../components/ui';
 import { getStepMappingByIndex } from '../../config/onboardingMapping';
 import { createLogger } from '../../utils/secureLogger';
@@ -51,17 +51,19 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
 
-  // Fetch the authenticated user ID from AsyncStorage on mount
+  // Fetch the authenticated user ID from Supabase session.
+  // Re-checks on step changes because the user gets authenticated at step 1
+  // (phone verification) — before that, there's no session yet.
   useEffect(() => {
+    if (authUserId) return; // Already have it
     const loadUserId = async () => {
-      const savedUserStr = await AsyncStorage.getItem('bridge_auth_user');
-      if (savedUserStr) {
-        const saved = JSON.parse(savedUserStr);
-        if (saved?.id) setAuthUserId(saved.id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.id) {
+        setAuthUserId(user.id);
       }
     };
     loadUserId();
-  }, []);
+  }, [currentStep, authUserId]);
   const [onboardingData, setOnboardingData] = useState<Partial<OnboardingData>>({
     interests: [],
     values: [],
@@ -170,26 +172,22 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   const completeOnboarding = async () => {
     setIsCreatingProfile(true);
     try {
-      // Get current user ID — try all sources
+      // Get current user ID from Supabase session
       let userId = authUserId;
       if (!userId) {
-        const savedUserStr = await AsyncStorage.getItem('bridge_auth_user');
-        logger.info('[OnboardingScreen] bridge_auth_user from AsyncStorage:', savedUserStr);
-        const savedUser = savedUserStr ? JSON.parse(savedUserStr) : null;
-        userId = savedUser?.id ?? null;
-      }
-      if (!userId) {
         const userResult = await getCurrentUser();
-        logger.info('[OnboardingScreen] getCurrentUser result:', JSON.stringify(userResult));
         userId = userResult.data?.id ?? null;
       }
 
       if (!userId) {
         logger.error('No authenticated user found during onboarding completion');
         setIsCreatingProfile(false);
-        // Use MOCK_USER_ID as last resort so onboarding is never fully blocked
-        userId = '00000000-0000-0000-0000-000000000001';
-        logger.warn('[OnboardingScreen] Falling back to MOCK_USER_ID');
+        Alert.alert(
+          'Authentication Required',
+          'You must be signed in to complete onboarding. Please restart the process.',
+          [{ text: 'Go Back', onPress: () => navigation.navigate('Welcome') }]
+        );
+        return;
       }
 
       logger.info('Creating profile for user:', userId);
