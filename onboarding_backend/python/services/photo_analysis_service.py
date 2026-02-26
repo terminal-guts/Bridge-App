@@ -114,7 +114,7 @@ class PhotoAnalysisService:
                             
                 # Also update profile flag if any photo is flagged
                 if any(ai_flags):
-                    supabase.table("profiles") \
+                    supabase.table("user_profiles") \
                         .update({"ai_audit_flag": True}) \
                         .eq("id", user_id) \
                         .execute()
