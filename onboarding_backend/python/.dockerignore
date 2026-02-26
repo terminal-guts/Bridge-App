@@ -14,8 +14,8 @@ __pycache__/
 .vscode/
 *.swp
 
-# Environment files (secrets should be set in Railway dashboard)
-.env
+# Environment files (ideally set in Railway dashboard)
+# .env is included for now until Railway env vars are configured
 .env.local
 .env.*.local
 
