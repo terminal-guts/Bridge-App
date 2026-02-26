@@ -115,6 +115,30 @@ async def root():
 async def health():
     return {"status": "healthy"}
 
+@app.get("/debug/supabase")
+async def debug_supabase():
+    import os
+    client_type = type(supabase).__name__
+    url = os.environ.get("SUPABASE_URL") or os.environ.get("EXPO_PUBLIC_SUPABASE_URL")
+    has_service_key = bool(os.environ.get("SUPABASE_SERVICE_ROLE_KEY"))
+    has_anon_key = bool(os.environ.get("SUPABASE_ANON_KEY"))
+    # Test a simple query
+    try:
+        result = supabase.table("profiles").select("id").limit(1).execute()
+        query_works = True
+        row_count = len(result.data) if result.data else 0
+    except Exception as e:
+        query_works = False
+        row_count = str(e)
+    return {
+        "client_type": client_type,
+        "url": url[:40] if url else None,
+        "has_service_role_key": has_service_key,
+        "has_anon_key": has_anon_key,
+        "query_works": query_works,
+        "row_count": row_count,
+    }
+
 @app.get("/debug/twilio")
 async def debug_twilio():
     return {
