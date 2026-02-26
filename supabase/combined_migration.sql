@@ -14,6 +14,9 @@
 -- These tables may exist from partial previous runs with stale schemas.
 -- friend_codes & friends are NOT dropped (they have real data).
 -- CASCADE handles FK dependencies between dropped tables.
+DROP TABLE IF EXISTS daily_pairings CASCADE;
+DROP TABLE IF EXISTS pool_vote_assignments CASCADE;
+DROP TABLE IF EXISTS onboarding_progress CASCADE;
 DROP TABLE IF EXISTS blocked_users CASCADE;
 DROP TABLE IF EXISTS user_settings CASCADE;
 DROP TABLE IF EXISTS karma_scores CASCADE;
@@ -237,18 +240,22 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     preferred_gender TEXT DEFAULT 'both',
-    age_min INTEGER,
-    age_max INTEGER,
+    interested_in_genders TEXT[] DEFAULT '{}',
+    age_min INTEGER DEFAULT 18,
+    age_max INTEGER DEFAULT 99,
     looking_for TEXT DEFAULT 'relationship',
-    preferred_height_min_inches INTEGER,
-    preferred_height_max_inches INTEGER,
-    max_distance INTEGER,
+    height_min INTEGER,
+    height_max INTEGER,
+    max_distance INTEGER DEFAULT 50,
+    distance_miles INTEGER DEFAULT 50,
     preferred_ethnicities TEXT[] DEFAULT '{}',
     preferred_politics TEXT[] DEFAULT '{}',
     partner_drinking TEXT[] DEFAULT '{}',
     partner_cannabis TEXT[] DEFAULT '{}',
     partner_tobacco TEXT[] DEFAULT '{}',
     partner_other_drugs TEXT[] DEFAULT '{}',
+    partner_lifestyle_preferences JSONB DEFAULT '{}'::jsonb,
+    non_negotiables TEXT[] DEFAULT '{}',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT unique_user_preferences UNIQUE (user_id)
@@ -284,6 +291,7 @@ CREATE TABLE IF NOT EXISTS user_photos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     storage_path TEXT NOT NULL,
+    url TEXT NOT NULL,
     is_main BOOLEAN DEFAULT FALSE,
     display_order INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW()
@@ -314,11 +322,14 @@ CREATE POLICY "Users can delete their own photos"
 CREATE TABLE IF NOT EXISTS deep_question_answers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    answers JSONB DEFAULT '{}',
-    displayed_question_ids INTEGER[] DEFAULT '{}',
+    question_id INTEGER NOT NULL,
+    question_text TEXT NOT NULL,
+    answer_text TEXT NOT NULL,
+    tier INTEGER DEFAULT 1,
+    is_displayed BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT unique_user_deep_questions UNIQUE (user_id)
+    CONSTRAINT unique_user_question UNIQUE (user_id, question_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_deep_question_answers_user_id ON deep_question_answers(user_id);
@@ -349,43 +360,36 @@ CREATE POLICY "Users can delete their own deep question answers"
 -- ============================================================
 CREATE TABLE IF NOT EXISTS daily_surveys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    ranker_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    recipient_user_id UUID NOT NULL
-        CONSTRAINT daily_surveys_recipient_user_id_fkey
-        REFERENCES auth.users(id) ON DELETE CASCADE,
-    candidate_1_user_id UUID NOT NULL
-        CONSTRAINT daily_surveys_candidate_1_user_id_fkey
-        REFERENCES auth.users(id) ON DELETE CASCADE,
-    candidate_2_user_id UUID NOT NULL
-        CONSTRAINT daily_surveys_candidate_2_user_id_fkey
-        REFERENCES auth.users(id) ON DELETE CASCADE,
-    candidate_3_user_id UUID NOT NULL
-        CONSTRAINT daily_surveys_candidate_3_user_id_fkey
-        REFERENCES auth.users(id) ON DELETE CASCADE,
-    survey_date DATE NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    anchor_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    candidate_ids UUID[] DEFAULT '{}',
+    selected_candidate_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    submitted_by_friend_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    survey_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    submitted_at TIMESTAMPTZ,
     is_completed BOOLEAN DEFAULT FALSE,
     completed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_daily_surveys_ranker ON daily_surveys(ranker_user_id);
+CREATE INDEX IF NOT EXISTS idx_daily_surveys_user_id ON daily_surveys(user_id);
+CREATE INDEX IF NOT EXISTS idx_daily_surveys_anchor_id ON daily_surveys(anchor_id);
 CREATE INDEX IF NOT EXISTS idx_daily_surveys_date ON daily_surveys(survey_date);
-CREATE INDEX IF NOT EXISTS idx_daily_surveys_ranker_date ON daily_surveys(ranker_user_id, survey_date);
 
 ALTER TABLE daily_surveys ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view their own surveys" ON daily_surveys;
 CREATE POLICY "Users can view their own surveys"
-    ON daily_surveys FOR SELECT USING (auth.uid() = ranker_user_id);
+    ON daily_surveys FOR SELECT USING (auth.uid() = user_id OR auth.uid() = anchor_id);
 DROP POLICY IF EXISTS "Users can update their own surveys" ON daily_surveys;
 CREATE POLICY "Users can update their own surveys"
-    ON daily_surveys FOR UPDATE USING (auth.uid() = ranker_user_id) WITH CHECK (auth.uid() = ranker_user_id);
+    ON daily_surveys FOR UPDATE USING (auth.uid() = user_id OR auth.uid() = submitted_by_friend_id);
 DROP POLICY IF EXISTS "Service role can insert surveys" ON daily_surveys;
 CREATE POLICY "Service role can insert surveys"
     ON daily_surveys FOR INSERT WITH CHECK (TRUE);
 DROP POLICY IF EXISTS "Users can delete their own surveys" ON daily_surveys;
 CREATE POLICY "Users can delete their own surveys"
-    ON daily_surveys FOR DELETE USING (auth.uid() = ranker_user_id);
+    ON daily_surveys FOR DELETE USING (auth.uid() = user_id);
 
 
 -- ============================================================
@@ -393,12 +397,13 @@ CREATE POLICY "Users can delete their own surveys"
 -- ============================================================
 CREATE TABLE IF NOT EXISTS matches (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id_1 UUID NOT NULL
-        CONSTRAINT matches_user_id_1_fkey
+    user1_id UUID NOT NULL
+        CONSTRAINT matches_user1_id_fkey
         REFERENCES auth.users(id) ON DELETE CASCADE,
-    user_id_2 UUID NOT NULL
-        CONSTRAINT matches_user_id_2_fkey
+    user2_id UUID NOT NULL
+        CONSTRAINT matches_user2_id_fkey
         REFERENCES auth.users(id) ON DELETE CASCADE,
+    proposal_id UUID REFERENCES proposals(id) ON DELETE SET NULL,
     status TEXT NOT NULL DEFAULT 'pending'
         CHECK (status IN ('pending', 'accepted', 'active', 'ended', 'expired')),
     community_score NUMERIC(5,2),
@@ -410,11 +415,11 @@ CREATE TABLE IF NOT EXISTS matches (
     expires_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT different_match_users CHECK (user_id_1 <> user_id_2)
+    CONSTRAINT different_match_users CHECK (user1_id <> user2_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_matches_user_id_1 ON matches(user_id_1);
-CREATE INDEX IF NOT EXISTS idx_matches_user_id_2 ON matches(user_id_2);
+CREATE INDEX IF NOT EXISTS idx_matches_user1_id ON matches(user1_id);
+CREATE INDEX IF NOT EXISTS idx_matches_user2_id ON matches(user2_id);
 CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status);
 CREATE INDEX IF NOT EXISTS idx_matches_created_at ON matches(created_at DESC);
 
@@ -426,7 +431,7 @@ CREATE TRIGGER update_matches_updated_at
 CREATE TABLE IF NOT EXISTS match_exits (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
-    exiting_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     exit_reason TEXT,
     exit_details TEXT,
     messages_exchanged INTEGER,
@@ -465,11 +470,11 @@ CREATE POLICY "Users can view match exits for their matches"
     USING (EXISTS (
         SELECT 1 FROM matches
         WHERE matches.id = match_exits.match_id
-        AND (auth.uid() = matches.user_id_1 OR auth.uid() = matches.user_id_2)
+        AND (auth.uid() = matches.user1_id OR auth.uid() = matches.user2_id)
     ));
 DROP POLICY IF EXISTS "Users can create match exits" ON match_exits;
 CREATE POLICY "Users can create match exits"
-    ON match_exits FOR INSERT WITH CHECK (auth.uid() = exiting_user_id);
+    ON match_exits FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Safely add matches to realtime (ignore if already added)
 DO $$ BEGIN
@@ -613,17 +618,17 @@ END $$;
 CREATE TABLE IF NOT EXISTS proposal_votes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     proposal_id UUID NOT NULL REFERENCES proposals(id) ON DELETE CASCADE,
-    voter_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    voter_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     vote_type TEXT NOT NULL CHECK (vote_type IN ('YES', 'NO', 'UNSURE', 'RECOMMEND')),
     is_friend_vote BOOLEAN DEFAULT FALSE,
-    friend_of UUID REFERENCES auth.users(id),
+    friend_of TEXT, -- 'user_a', 'user_b', 'both'
     recommend_to_id UUID REFERENCES auth.users(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT unique_vote_per_proposal UNIQUE (proposal_id, voter_user_id)
+    CONSTRAINT unique_vote_per_proposal UNIQUE (proposal_id, voter_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_proposal_votes_proposal ON proposal_votes(proposal_id);
-CREATE INDEX IF NOT EXISTS idx_proposal_votes_voter ON proposal_votes(voter_user_id);
+CREATE INDEX IF NOT EXISTS idx_proposal_votes_voter ON proposal_votes(voter_id);
 
 ALTER TABLE proposal_votes ENABLE ROW LEVEL SECURITY;
 
@@ -632,7 +637,7 @@ CREATE POLICY "Authenticated users can read votes"
     ON proposal_votes FOR SELECT USING (auth.role() = 'authenticated');
 DROP POLICY IF EXISTS "Users can cast their own votes" ON proposal_votes;
 CREATE POLICY "Users can cast their own votes"
-    ON proposal_votes FOR INSERT WITH CHECK (auth.uid() = voter_user_id);
+    ON proposal_votes FOR INSERT WITH CHECK (auth.uid() = voter_id);
 
 
 -- ============================================================
@@ -737,7 +742,138 @@ CREATE POLICY "Users can update their own settings"
 
 
 -- ============================================================
--- 14. BLOCKED USERS
+-- 14. ONBOARDING PROGRESS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS onboarding_progress (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  current_step TEXT NOT NULL DEFAULT 'phone',
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_onboarding_progress_user_id ON onboarding_progress(user_id);
+
+ALTER TABLE onboarding_progress ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage their own onboarding progress" ON onboarding_progress;
+CREATE POLICY "Users can manage their own onboarding progress"
+  ON onboarding_progress FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+DROP TRIGGER IF EXISTS set_onboarding_progress_updated_at ON onboarding_progress;
+CREATE TRIGGER set_onboarding_progress_updated_at
+  BEFORE UPDATE ON onboarding_progress
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+
+-- ============================================================
+-- 15. POOL VOTE ASSIGNMENTS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS pool_vote_assignments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    proposal_id UUID NOT NULL REFERENCES proposals(id) ON DELETE CASCADE,
+    voter_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    assignment_date DATE DEFAULT CURRENT_DATE,
+    has_voted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT unique_pool_assignment UNIQUE (proposal_id, voter_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pool_assignments_voter_date ON pool_vote_assignments(voter_id, assignment_date);
+CREATE INDEX IF NOT EXISTS idx_pool_assignments_proposal ON pool_vote_assignments(proposal_id);
+
+ALTER TABLE pool_vote_assignments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own pool assignments" ON pool_vote_assignments;
+CREATE POLICY "Users can view own pool assignments"
+    ON pool_vote_assignments FOR SELECT USING (voter_id = auth.uid());
+
+
+-- ============================================================
+-- 16. DAILY PAIRINGS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS daily_pairings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    pairing_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    partner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    compatibility_score FLOAT NOT NULL DEFAULT 0,
+    category_scores JSONB NOT NULL DEFAULT '{}'::jsonb,
+    weighted_scores JSONB NOT NULL DEFAULT '{}'::jsonb,
+    seen BOOLEAN DEFAULT FALSE,
+    seen_at TIMESTAMPTZ,
+    proposal_created BOOLEAN DEFAULT FALSE,
+    proposal_id UUID REFERENCES proposals(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    CONSTRAINT unique_user_daily_pairing UNIQUE (user_id, pairing_date),
+    CONSTRAINT no_self_pairing CHECK (user_id <> partner_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_pairings_user_date ON daily_pairings(user_id, pairing_date);
+CREATE INDEX IF NOT EXISTS idx_daily_pairings_partner_date ON daily_pairings(partner_id, pairing_date);
+CREATE INDEX IF NOT EXISTS idx_daily_pairings_date ON daily_pairings(pairing_date);
+
+ALTER TABLE daily_pairings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own daily pairings" ON daily_pairings;
+CREATE POLICY "Users can view own daily pairings"
+    ON daily_pairings FOR SELECT USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can update own daily pairings" ON daily_pairings;
+CREATE POLICY "Users can update own daily pairings"
+    ON daily_pairings FOR UPDATE USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Service role can insert daily pairings" ON daily_pairings;
+CREATE POLICY "Service role can insert daily pairings"
+    ON daily_pairings FOR INSERT WITH CHECK (TRUE);
+
+
+-- ============================================================
+-- 17. DAILY GRIDS (Legacy)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS daily_grids (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    candidate_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    assignment_date DATE DEFAULT CURRENT_DATE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT unique_grid_assignment UNIQUE (user_id, candidate_id, assignment_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_grids_user_date ON daily_grids(user_id, assignment_date);
+
+ALTER TABLE daily_grids ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their own grid assignments" ON daily_grids;
+CREATE POLICY "Users can view their own grid assignments"
+    ON daily_grids FOR SELECT USING (auth.uid() = user_id);
+
+
+-- ============================================================
+-- 18. VOTES (Legacy)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS votes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    voter_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    candidate_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    vote_type TEXT NOT NULL,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT unique_vote UNIQUE (voter_id, candidate_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_votes_voter ON votes(voter_id);
+CREATE INDEX IF NOT EXISTS idx_votes_candidate ON votes(candidate_id);
+
+ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage their own votes" ON votes;
+CREATE POLICY "Users can manage their own votes"
+    ON votes FOR ALL USING (auth.uid() = voter_id);
+
+
+-- ============================================================
+-- 19. BLOCKED USERS
 -- ============================================================
 CREATE TABLE IF NOT EXISTS blocked_users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
