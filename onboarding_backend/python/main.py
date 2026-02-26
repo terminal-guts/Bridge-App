@@ -309,11 +309,11 @@ async def save_onboarding_step(request: SaveStepRequest):
                 "user_id": request.user_id,
                 "age_min": prefs.get("ageMin"),
                 "age_max": prefs.get("ageMax"),
-                "height_min": prefs.get("heightMin"),
-                "height_max": prefs.get("heightMax"),
+                "preferred_height_min_inches": prefs.get("heightMin"),
+                "preferred_height_max_inches": prefs.get("heightMax"),
                 "preferred_gender": prefs.get("preferredGender"),
                 "looking_for": prefs.get("lookingFor"),
-                "distance_miles": prefs.get("distanceMiles")
+                "max_distance": prefs.get("distanceMiles")
             }
             
             # Filter out None values to avoid overwriting existing data with nulls
@@ -544,29 +544,31 @@ async def complete_onboarding(data: OnboardingCompletion, background_tasks: Back
             **profile_data
         }).execute()
         
-        # some shit to do with preferences
+        # Save preferences to user_preferences table
         pref_data = {
             "user_id": data.user_id,
             "looking_for": data.looking_for,
             "interested_in_genders": data.interested_in_genders,
             "age_min": data.age_min,
             "age_max": data.age_max,
-            "height_min": data.height_min,
-            "height_max": data.height_max,
+            "preferred_height_min_inches": data.height_min,
+            "preferred_height_max_inches": data.height_max,
             "max_distance": data.max_distance,
             "preferred_ethnicities": data.preferred_ethnicities,
             "partner_lifestyle_preferences": data.partner_lifestyle_preferences
         }
         # k, v cache
         pref_data = {k: v for k, v in pref_data.items() if v is not None}
-        supabase.table("user_preferences").upsert(pref_data).execute()
-        
-        # 2. Save Photo metadata
+        if len(pref_data) > 1:  # More than just user_id
+            supabase.table("user_preferences").upsert(pref_data, on_conflict="user_id").execute()
+
+        # 2. Save Photo metadata (delete existing first to avoid duplicates)
+        supabase.table("user_photos").delete().eq("user_id", data.user_id).execute()
         for i, url in enumerate(data.photos):
             supabase.table("user_photos").insert({
                 "user_id": data.user_id,
                 "url": url,
-                "storage_path": url.split("/")[-1], # Simplified
+                "storage_path": url.split("/")[-1],
                 "display_order": i,
                 "is_main": i == 0
             }).execute()
