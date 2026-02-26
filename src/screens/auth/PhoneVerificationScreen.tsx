@@ -100,7 +100,7 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
 
     // App Store Reviewer Bypass
     const isTestPhone = phoneNumber === '+15555555555' || phoneNumber === '5555555555';
-    if (!isEmail && isTestPhone && otpCode === '123456') {
+    if (!isEmail && isTestPhone && otpCode === '123456' && (__DEV__ || process.env.EXPO_PUBLIC_ENABLE_REVIEWER_BYPASS === 'true')) {
       logger.info('[AUTH] App Store Reviewer bypass detected');
       const bypassResult = await signInWithPassword('reviewer@bridgedate.app', 'AppReview2024!');
 
@@ -116,10 +116,9 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
         }
         return;
       } else {
-        logger.warn('[AUTH] Reviewer account login failed, attempting mock session');
-        // Fallback: Navigate to MainTabs anyway in review mode
+        logger.error('[AUTH] Reviewer account login failed');
         setLoading(false);
-        navigation.navigate('MainTabs');
+        Alert.alert('Bypass Failed', 'Reviewer account login failed. Please check credentials or network.');
         return;
       }
     }

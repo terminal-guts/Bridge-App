@@ -45,7 +45,6 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
 }) => {
   // Start with keyboard visible for persistent keyboard pages to prevent layout shift
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(keyboardPersistent);
-  const StyledRNTouchableOpacity = styled(RNTouchableOpacity);
 
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
