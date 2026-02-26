@@ -650,6 +650,7 @@ class ProfileUpdate(BaseModel):
     custom_gender: Optional[str] = None
     hometown: Optional[str] = None
     current_job: Optional[str] = None
+    occupation: Optional[str] = None 
     company_position: Optional[str] = None
     education_level: Optional[str] = None
     school: Optional[str] = None

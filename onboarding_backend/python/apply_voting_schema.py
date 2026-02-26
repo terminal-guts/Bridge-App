@@ -35,3 +35,9 @@ if __name__ == "__main__":
         apply_sql_file(schema_path)
     else:
         print(f"Could not find votes_schema.sql at {schema_path}")
+
+
+# if __name__ == "__main__":
+#     #apply schema to database
+#     apply_sql_file(Path(__file__).parent.parent / "sql" / "votes_schema.sql")
+
