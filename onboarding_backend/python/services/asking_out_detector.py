@@ -15,7 +15,11 @@ import spacy
 from spacy.matcher import PhraseMatcher
 from typing import Dict, Any, List
 
-nlp = spacy.load("en_core_web_sm")
+try:
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    print("[AskingOutDetector] WARNING: spaCy model 'en_core_web_sm' not found. Falling back to blank model.")
+    nlp = spacy.blank("en")
 
 
 # ============================================================================

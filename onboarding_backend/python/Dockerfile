@@ -16,6 +16,9 @@ COPY requirements.txt .
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Download spaCy language model required by asking_out_detector
+RUN python -m spacy download en_core_web_sm
+
 # Copy the rest of the application code into the container at /app
 COPY . .
 
