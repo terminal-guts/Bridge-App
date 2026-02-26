@@ -49,7 +49,7 @@ const BOTTOM_PILLS: Record<MatchStatus, Array<{ label: string; bg: string; Icon?
 interface MatchCardProps {
     status: MatchStatus;
     name: string;
-    age: number;
+    age?: number;
     matchDate?: string;
     imageUrl: string;
     matchedByAvatars: string[];
@@ -119,7 +119,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                         ))}
 
                         {/* Name + age */}
-                        <Text style={styles.nameText}>{name}, {age}</Text>
+                        <Text style={styles.nameText}>{name}{age ? `, ${age}` : ''}</Text>
 
                         {/* Matched by row */}
                         {matchedByAvatars.length > 0 && (

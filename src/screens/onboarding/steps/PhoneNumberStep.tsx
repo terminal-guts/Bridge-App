@@ -36,12 +36,12 @@ export const PhoneNumberStep: React.FC<PhoneNumberStepProps> = ({
     }
 
     if (digitsOnly.length < 10) {
-      setError('Please enter a valid phone number');
+      setError('Please enter a valid US phone number');
       return;
     }
 
     updateData({
-      phoneNumber: phoneNumber.trim(),
+      phoneNumber: digitsOnly,
     });
     onNext();
   };
@@ -77,6 +77,7 @@ export const PhoneNumberStep: React.FC<PhoneNumberStepProps> = ({
         placeholder="(555) 555-5555"
         value={phoneNumber}
         onChangeText={(text) => {
+          // Reject non-numeric input gracefully by only keeping digits for formatting
           const formatted = formatPhoneNumber(text);
           setPhoneNumber(formatted);
           if (error) setError('');

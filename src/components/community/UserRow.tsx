@@ -17,7 +17,7 @@ const stableRandom = (seed: string, min: number, max: number): number => {
 };
 
 export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch }) => {
-    const name = item.friend.firstName || 'Unknown';
+    const name = item.friend.firstName || 'User';
     const imageUrl = item.friend.photos?.[0]?.url || 'https://via.placeholder.com/150';
     const streak = item.streakDays || 0;
     const actionType = item.hasCompletedGrid ? 'points' : 'match';

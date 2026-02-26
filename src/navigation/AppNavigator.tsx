@@ -10,6 +10,7 @@ import { FEATURES } from '../config/features';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { fetchAndSetUserProfile } from '../services/profileService';
 import { notificationService } from '../services/notificationService';
+import { showToast } from '../utils/toast';
 
 // Auth Screens
 import {
@@ -158,6 +159,12 @@ const MainTabs = () => {
 // Root Stack Navigator
 export const AppNavigator = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const navigationRef = React.useRef<any>(null);
+  const authStateRef = React.useRef<boolean | null>(null);
+
+  useEffect(() => {
+    authStateRef.current = isAuthenticated;
+  }, [isAuthenticated]);
 
   useEffect(() => {
     // Use ref object instead of closure variable to avoid staleness in async callbacks
@@ -216,10 +223,18 @@ export const AppNavigator = () => {
     // Listen for Supabase auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMountedRef.current) return;
+
+      const wasAuthenticated = authStateRef.current;
       setIsAuthenticated(!!session);
 
       if (event === 'SIGNED_IN' && session?.user) {
         setupNotifications();
+      } else if (event === 'SIGNED_OUT' && wasAuthenticated) {
+        logger.info('[AppNavigator] Unexpected SIGNED_OUT event');
+        showToast.error('Session Expired', 'Your session expired. Please sign in again.');
+        if (navigationRef.current) {
+          navigationRef.current.navigate('Welcome');
+        }
       }
     });
 
@@ -240,7 +255,7 @@ export const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <ErrorBoundary
         onError={(error, errorInfo) => {
           logger.error('[App Error Boundary]', error, errorInfo);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, SafeAreaView, StatusBar, ActivityIndicator, Image, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, StatusBar, ActivityIndicator, Image, TouchableOpacity, StyleSheet, Dimensions, Share } from 'react-native';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 import { styled } from 'nativewind';
@@ -8,7 +8,9 @@ import { ProposalReviewView } from '../../components/community/ProposalReviewVie
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { MainTabParamList } from '../../types';
+import { OfflineBanner } from '../../components/OfflineBanner';
 import { communityService } from '../../services/communityServiceIndex';
+import { getUserFriendCode } from '../../services/friendService';
 import { FriendWithGridStatus } from '../../types/community';
 
 // ── Match reset countdown timer ───────────────────────────────────────────────
@@ -101,10 +103,19 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [loading, setLoading] = useState(true);
   // null = still checking, true = can see friends area, false = must vote first
   const [hasCompletedVoting, setHasCompletedVoting] = useState<boolean | null>(null);
+  const [friendCode, setFriendCode] = useState<string>('');
 
   const loadFriendsData = useCallback(async () => {
     try {
-      const data = await communityService.getFriendsAreaData();
+      const [data, codeRes] = await Promise.all([
+        communityService.getFriendsAreaData(),
+        getUserFriendCode()
+      ]);
+
+      if (codeRes.ok && codeRes.data) {
+        setFriendCode(codeRes.data.code);
+      }
+
       const toMatch = data.friends.filter((f: FriendWithGridStatus) => !f.hasCompletedGrid);
       const helped = data.friends
         .filter((f: FriendWithGridStatus) => f.hasCompletedGrid)
@@ -184,6 +195,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   return (
     <StyledSafeAreaView className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" />
+      <OfflineBanner />
 
       {/* Header section */}
       <View className="px-6 pt-4">
@@ -216,21 +228,36 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
       {usersToMatch.length === 0 && alreadyHelped.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.tagline}>Your circle starts with one friend</Text>
+          <Text style={styles.tagline}>No friends yet</Text>
           <Image
             source={require('../../../assets/no_match_illustration.png')}
             style={styles.illustration}
             resizeMode="contain"
           />
           <Text style={styles.subtitle}>
-            Add friends to help them find{'\n'}meaningful connections
+            Share your friend code to connect with people you know. Once you're friends, you can vote on each other's matches.
           </Text>
+
+          {friendCode ? (
+            <View style={styles.codeContainer}>
+              <Text style={styles.codeLabel}>YOUR FRIEND CODE</Text>
+              <Text style={styles.codeValue}>{friendCode}</Text>
+              <TouchableOpacity
+                style={styles.shareIconButton}
+                onPress={() => Share.share({ message: `Add me on Bridge! My friend code is: ${friendCode}` })}
+              >
+                <Ionicons name="share-outline" size={20} color="#FFFFFF" />
+                <Text style={styles.shareIconButtonText}>Share Code</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
           <TouchableOpacity
             style={styles.ctaButton}
             activeOpacity={0.85}
             onPress={() => (navigation as any).navigate('FriendCode')}
           >
-            <Text style={styles.ctaText}>Add your first friend</Text>
+            <Text style={styles.ctaText}>Enter a Friend Code</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -297,6 +324,46 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   ctaText: { fontFamily: 'Outfit_600SemiBold', fontSize: 15, color: '#FFFFFF' },
+  tagline: { fontFamily: 'Outfit_600SemiBold', fontSize: 20, lineHeight: 26, color: '#0B1226', textAlign: 'center', marginBottom: 12 },
+  illustration: { width: 300, height: 300, marginBottom: 32 },
+  subtitle: { fontFamily: 'Outfit_500Medium', fontSize: 14, lineHeight: 17, color: '#6B7280', textAlign: 'center', marginBottom: 16 },
+  codeContainer: {
+    backgroundColor: '#F4F7FF',
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#D1DEFF',
+  },
+  codeLabel: {
+    fontFamily: 'Outfit_600SemiBold',
+    fontSize: 12,
+    color: '#2B65F9',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  codeValue: {
+    fontFamily: 'Outfit_700Bold',
+    fontSize: 24,
+    color: '#010101',
+    marginBottom: 16,
+  },
+  shareIconButton: {
+    backgroundColor: '#2B65F9',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  shareIconButtonText: {
+    fontFamily: 'Outfit_600SemiBold',
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
 });
 
 export default CommunityScreen;

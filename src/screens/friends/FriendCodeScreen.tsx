@@ -56,7 +56,7 @@ const validateFriendCode = (code: string, userCode: string): string => {
   }
 
   if (isOwnCode(code, userCode)) {
-    return "You can't add yourself as a friend!";
+    return "That's your own code";
   }
 
   return '';
@@ -150,7 +150,8 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
     setError('');
     setSuccess(false);
 
-    const validationError = validateFriendCode(friendCode, myFriendCode);
+    const normalizedCode = friendCode.trim().toUpperCase();
+    const validationError = validateFriendCode(normalizedCode, myFriendCode);
     if (validationError) {
       setError(validationError);
       return;
@@ -158,7 +159,7 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
 
     setAdding(true);
     try {
-      const result = await addFriendByCode(friendCode);
+      const result = await addFriendByCode(normalizedCode);
 
       if (result.ok && result.data) {
         setSuccess(true);
@@ -179,7 +180,13 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
           ]
         );
       } else {
-        setError(result.error?.message || 'Failed to add friend');
+        let msg = result.error?.message || 'Failed to add friend';
+        if (msg.includes('already friends')) {
+          msg = "You're already friends with this person";
+        } else if (msg.includes('not found')) {
+          msg = "Invalid code";
+        }
+        setError(msg);
       }
     } catch (error: any) {
       setError('An unexpected error occurred. Please try again.');

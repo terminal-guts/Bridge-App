@@ -7,6 +7,7 @@ import { MatchEndedEvent } from '../../services/communityService';
 import { ActiveMatch, MatchProposal } from '../../types/community';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { OfflineBanner } from '../../components/OfflineBanner';
 import { ClockIcon } from '../../components/icons/Icons';
 
 // One of five mutually exclusive states the screen can be in
@@ -53,22 +54,22 @@ function EndedMatchPopupContent({ event }: { event: MatchEndedEvent }) {
     const config: Record<MatchEndedEvent['type'], { icon: string; headline: string; body: string }> = {
         expired: {
             icon: '⏰',
-            headline: 'Your match window closed',
+            headline: 'Your match expired',
             body: 'The proposal timed out before anyone decided. Stay active — your next match could come soon.',
         },
         you_rejected: {
             icon: '👋',
-            headline: 'You passed on this one',
+            headline: 'You passed',
             body: "That's totally okay — trust your instincts. Keep at it, the right fit is worth waiting for. Every pass brings you closer to someone great.",
         },
         they_rejected: {
             icon: '💔',
-            headline: "It wasn't a match this time",
+            headline: "They passed",
             body: "Not every connection clicks, and that's okay. Your community is still working to find your person.",
         },
         match_ended: {
             icon: '🔚',
-            headline: 'Your match has ended',
+            headline: 'Match ended',
             body: 'This match has been moved to your Past Matches.',
         },
     };
@@ -160,9 +161,9 @@ export function MatchesScreen() {
     // Tab bar: 54 (navigator handles insets.bottom separately), card marginBottom: 56
     const activeCardHeight = windowHeight - insets.top - 82 - 54 - 56;
 
-    // Tick every minute so the timer display stays fresh
+    // Tick every second so the timer display stays fresh and counts down in real time
     useEffect(() => {
-        const id = setInterval(() => setNow(Date.now()), 60_000);
+        const id = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(id);
     }, []);
 
@@ -293,7 +294,8 @@ export function MatchesScreen() {
             const totalHours = diffMs / 3600000;
             const h = Math.floor(totalHours);
             const m = Math.floor((diffMs % 3600000) / 60000);
-            timerLabel = `${h}h ${m}m`;
+            const s = Math.floor((diffMs % 60000) / 1000);
+            timerLabel = h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`;
             timerClr = timerColor(totalHours);
             timerBg = timerBgColor(totalHours);
             timerBdrClr = timerBorderColor(totalHours);
@@ -308,7 +310,7 @@ export function MatchesScreen() {
 
     const partnerPhoto = partner?.photos?.[0]?.url || '';
     const partnerName = partner?.firstName || 'Unknown';
-    const partnerAge = partner?.age || 0;
+    const partnerAge = partner?.age;
 
     const endorserAvatars =
         (screenState === 'active_match'
@@ -347,6 +349,7 @@ export function MatchesScreen() {
 
     return (
         <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+            <OfflineBanner />
             {/* Header row: title left, countdown timer right */}
             <View style={[styles.headerRow, { paddingTop: insets.top + 16 }]}>
                 <Text style={styles.headerTitle}>Match</Text>

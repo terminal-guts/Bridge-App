@@ -6,7 +6,6 @@ import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import { signOut } from '../../services/authService';
-import { deleteUserAccount } from '../../services/accountService';
 import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';
 
@@ -40,87 +39,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
     }
   };
 
-  const handleDeleteAccount = () => {
-    if (!currentUserId) {
-      Alert.alert('Error', 'User not logged in');
-      return;
-    }
-
-    Alert.alert(
-      'Delete Account',
-      'Are you absolutely sure you want to delete your account?\n\nThis will permanently delete:\n• Your profile and photos\n• All your matches and messages\n• Your preferences and settings\n• All your data from Bridge\n\nThis action cannot be undone.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            // Second confirmation
-            Alert.alert(
-              'Final Confirmation',
-              'Type DELETE to confirm account deletion.',
-              [
-                {
-                  text: 'Cancel',
-                  style: 'cancel',
-                },
-                {
-                  text: 'I understand, delete my account',
-                  style: 'destructive',
-                  onPress: async () => {
-                    try {
-                      Alert.alert(
-                        'Deleting Account',
-                        'Please wait while we delete your data...',
-                        [],
-                        { cancelable: false }
-                      );
-
-                      const result = await deleteUserAccount(currentUserId);
-
-                      if (result.ok) {
-                        Alert.alert(
-                          'Account Deleted',
-                          'Your account has been permanently deleted. We\'re sorry to see you go.',
-                          [
-                            {
-                              text: 'OK',
-                              onPress: () => {
-                                // Sign out will happen automatically from auth deletion
-                                navigation.navigate('Welcome');
-                              },
-                            },
-                          ]
-                        );
-                      } else {
-                        Alert.alert(
-                          'Deletion Error',
-                          result.error?.message || 'Failed to delete account. Please contact support.',
-                          [
-                            {
-                              text: 'OK',
-                            },
-                          ]
-                        );
-                      }
-                    } catch (error: any) {
-                      Alert.alert(
-                        'Error',
-                        'An unexpected error occurred. Please try again or contact support.'
-                      );
-                    }
-                  },
-                },
-              ]
-            );
-          },
-        },
-      ]
-    );
-  };
 
   const SettingRow = ({
     icon,
@@ -276,12 +194,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
                   ]
                 );
               }}
-            />
-            <SettingRow
-              icon="trash-outline"
-              title="Delete Account"
-              subtitle="Permanently delete your account and data"
-              onPress={handleDeleteAccount}
             />
           </Card>
         </StyledView>

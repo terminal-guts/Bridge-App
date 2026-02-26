@@ -10,6 +10,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { Button } from './ui';
+import { Ionicons } from '@expo/vector-icons';
+import { TouchableOpacity as RNTouchableOpacity } from 'react-native';
 
 interface OnboardingLayoutProps {
   children: React.ReactNode;
@@ -28,6 +30,7 @@ const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 const StyledKeyboardAvoidingView = styled(KeyboardAvoidingView);
+const StyledRNTouchableOpacity = styled(RNTouchableOpacity);
 
 export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   children,
@@ -85,6 +88,17 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
           enabled={true}
         >
           <StyledView className="flex-1">
+            {/* Back Button */}
+            {showBackButton && onBack && (
+              <StyledRNTouchableOpacity
+                onPress={onBack}
+                className="absolute top-4 left-4 z-50 p-2"
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#101828" />
+              </StyledRNTouchableOpacity>
+            )}
+
             {/* Scrollable Content */}
             <StyledScrollView
               className="flex-1"
@@ -154,8 +168,19 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   // - Button pinned to bottom as sticky footer
   // - No keyboard considerations
   return (
-    <StyledSafeAreaView edges={['bottom']} className="flex-1 bg-neutral-50">
+    <StyledSafeAreaView edges={['top', 'bottom']} className="flex-1 bg-neutral-50">
       <StyledView className="flex-1">
+        {/* Back Button */}
+        {showBackButton && onBack && (
+          <StyledRNTouchableOpacity
+            onPress={onBack}
+            className="absolute top-4 left-4 z-50 p-2"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="arrow-back" size={24} color="#101828" />
+          </StyledRNTouchableOpacity>
+        )}
+
         {/* Scrollable Content */}
         <StyledScrollView
           className="flex-1"
