@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, TextInput } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, TextInput, Pressable } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
@@ -19,7 +19,6 @@ interface PhoneVerificationStepProps {
 }
 
 const StyledView = styled(View);
-const StyledTextInput = styled(TextInput);
 
 export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
   data,
@@ -27,12 +26,11 @@ export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
   onNext,
   onBack,
 }) => {
-  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const inputRefs = React.useRef<Array<TextInput | null>>([]);
+  const inputRef = useRef<TextInput>(null);
 
-  // Auto-send code on mount
   useEffect(() => {
     if (data.phoneNumber) {
       sendOTP();
@@ -45,82 +43,38 @@ export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
     logger.info('[SMS] Automatically sending verification code via Twilio to:', data.phoneNumber);
     const response = await sendOtpToPhone(data.phoneNumber || '');
     setIsSending(false);
-
     if (response.ok) {
       setError('');
-      // Optional: Add a toast success message here
     } else {
       setError(response.error?.message || 'Failed to send code');
     }
   };
 
-  const handleCodeChange = (text: string, index: number) => {
-    // Handle autofill/paste (multiple characters)
-    if (text.length > 1) {
-      const pasteData = text.slice(0, 6).split('');
-      const newCode = [...code];
-      pasteData.forEach((char, i) => {
-        if (index + i < 6) newCode[index + i] = char;
-      });
-      setCode(newCode);
-
-      // Auto-submit if we have a full code
-      if (newCode.join('').length === 6) {
-        validateAndContinue(newCode.join(''));
-      } else {
-        // Focus the next empty one
-        const nextIndex = Math.min(index + pasteData.length, 5);
-        inputRefs.current[nextIndex]?.focus();
-      }
-      return;
-    }
-
-    // Only allow single numbers for manual entry
-    if (text && !/^\d$/.test(text)) {
-      return;
-    }
-
-    const newCode = [...code];
-    newCode[index] = text;
-    setCode(newCode);
+  const handleCodeChange = (text: string) => {
+    // Only allow digits, max 6
+    const digits = text.replace(/\D/g, '').slice(0, 6);
+    setCode(digits);
     setError('');
 
-    // Auto-focus next input
-    if (text && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    // Auto-submit when all 6 digits are entered
-    if (index === 5 && text) {
-      const fullCode = newCode.join('');
-      if (fullCode.length === 6) {
-        validateAndContinue(fullCode);
-      }
-    }
-  };
-
-  const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !code[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
+    if (digits.length === 6) {
+      validateAndContinue(digits);
     }
   };
 
   const validateAndContinue = async (verificationCode?: string) => {
-    const fullCode = verificationCode || code.join('');
+    const fullCode = verificationCode ?? code;
 
     if (fullCode.length !== 6) {
       setError('Please enter the 6-digit code');
       return;
     }
 
-    // Verify code with real backend
     const response = await verifyPhone(data.phoneNumber || '', fullCode);
 
     if (response.ok) {
       updateData({
         phoneNumber: data.phoneNumber,
-        phoneVerified: true, // Added phoneVerified as per instruction
-        // Removed verificationCode from updateData as it's not typically stored in OnboardingData
+        phoneVerified: true,
       });
       onNext();
     } else {
@@ -129,10 +83,12 @@ export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
   };
 
   const resendCode = async () => {
-    setCode(['', '', '', '', '', '']);
-    inputRefs.current[0]?.focus();
+    setCode('');
+    inputRef.current?.focus();
     await sendOTP();
   };
+
+  const digits = code.split('');
 
   return (
     <OnboardingLayout
@@ -147,26 +103,38 @@ export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
           We sent a 6-digit code to {data.phoneNumber}
         </Body>
 
-        <StyledView className="flex-row justify-between mb-8">
-          {code.map((digit, index) => (
-            <TextInput
-              key={index}
-              ref={(ref) => {
-                inputRefs.current[index] = ref;
-              }}
-              // NativeWind className works on standard components
-              className="w-12 h-14 border-2 border-neutral-300 rounded-lg text-center text-2xl font-semibold"
-              value={digit}
-              onChangeText={(text) => handleCodeChange(text, index)}
-              onKeyPress={(e) => handleKeyPress(e, index)}
-              keyboardType="number-pad"
-              maxLength={index === 0 ? 6 : 1} // Allow first box to receive autofill
-              autoFocus={index === 0}
-              textContentType="oneTimeCode"
-              autoComplete="one-time-code"
-            />
-          ))}
-        </StyledView>
+        {/* Tapping the boxes focuses the hidden input */}
+        <Pressable onPress={() => inputRef.current?.focus()}>
+          <StyledView className="flex-row justify-between mb-8">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <StyledView
+                key={index}
+                className={`w-12 h-14 border-2 rounded-lg items-center justify-center ${
+                  digits[index] !== undefined
+                    ? 'border-blue-500'
+                    : 'border-neutral-300'
+                }`}
+              >
+                <Body className="text-2xl font-semibold text-center">
+                  {digits[index] ?? ''}
+                </Body>
+              </StyledView>
+            ))}
+          </StyledView>
+        </Pressable>
+
+        {/* Single hidden input that captures all keyboard input and iOS autofill */}
+        <TextInput
+          ref={inputRef}
+          value={code}
+          onChangeText={handleCodeChange}
+          keyboardType="number-pad"
+          maxLength={6}
+          textContentType="oneTimeCode"
+          autoComplete="one-time-code"
+          autoFocus={true}
+          style={{ position: 'absolute', opacity: 0, width: 1, height: 1 }}
+        />
 
         {error ? (
           <Body className="text-red-500 text-sm mb-4">{error}</Body>
