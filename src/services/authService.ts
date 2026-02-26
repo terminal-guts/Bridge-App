@@ -1,7 +1,7 @@
 /**
- * Authentication Service - MOCK VERSION
+ * Authentication Service
  *
- * Provides tap-through authentication for development without backend
+ * Provides authentication via OTP (SMS/Email) using the Bridge backend.
  */
 
 import { ApiResponse } from '../types';
@@ -34,8 +34,7 @@ const createErrorResponse = (code: string, message: string): ApiResponse<any> =>
 };
 
 /**
- * Send OTP code to phone number - MOCK VERSION
- * Always succeeds immediately for tap-through flow
+ * Send OTP code to phone number
  */
 export const sendOtpToPhone = async (phoneNumber: string): Promise<ApiResponse<void>> => {
   try {
@@ -116,7 +115,7 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
 };
 
 /**
- * Sign out the current user - MOCK VERSION
+ * Sign out the current user
  */
 export const signOut = async (): Promise<ApiResponse<void>> => {
   try {
@@ -143,7 +142,7 @@ export const signOut = async (): Promise<ApiResponse<void>> => {
 };
 
 /**
- * Get the current authenticated user - MOCK VERSION
+ * Get the current authenticated user
  */
 export const getCurrentUser = async (): Promise<ApiResponse<User | null>> => {
   try {
@@ -187,8 +186,7 @@ export const getCurrentUser = async (): Promise<ApiResponse<User | null>> => {
 };
 
 /**
- * Verify phone number with OTP code - MOCK VERSION
- * Always succeeds for tap-through flow
+ * Verify phone number with OTP code
  */
 export const verifyPhone = async (phone: string, code: string): Promise<ApiResponse<User>> => {
   try {
@@ -309,8 +307,7 @@ export const verifyEmail = async (email: string, code: string): Promise<ApiRespo
 };
 
 /**
- * Require phone verification - MOCK VERSION
- * Always returns mock user for seamless development
+ * Require phone verification
  */
 export const requirePhoneVerification = async (): Promise<ApiResponse<User>> => {
   try {

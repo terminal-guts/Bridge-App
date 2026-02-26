@@ -179,7 +179,7 @@ export const FEATURES: FeatureFlags = {
   DEVELOPMENT_UNLOCK_FRIENDS_AREA: false, // ❌ DISABLED - Require daily tasks
 
   // Backend Integration
-  COMMUNITY_BACKEND_ENABLED: false, // Using mock service for proposal voting demo
+  COMMUNITY_BACKEND_ENABLED: true, // ✅ ENABLED - Using real backend
   MESSAGING_BACKEND_ENABLED: true, // ✅ REAL MESSAGING - SUPABASE + REALTIME
 
   // Experimental (disabled by default)
@@ -187,7 +187,7 @@ export const FEATURES: FeatureFlags = {
   ENABLE_GLASSMORPHISM: false,
   ENABLE_DEEP_QUESTIONS_PREVIEW: true,
   DAILY_PAIRING_ENABLED: true,
-  ENABLE_DEV_STATE_TOGGLE: true,
+  ENABLE_DEV_STATE_TOGGLE: false, // ❌ DISABLED for production
 };
 
 /**

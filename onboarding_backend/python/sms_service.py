@@ -44,6 +44,11 @@ class SMSService:
         # Always print code for debugging purposes
         print(f"[DEBUG] OTP for {to_number}: {code}")
 
+        # Bypass for App Store Review
+        if to_number == "+15555555555":
+            print(f"[SMS] App Store Review test number detected. Bypassing Twilio.")
+            return True
+
         if not self.client:
             print(f"\n========================================")
             print(f"[SMS SIMULATION] (No Twilio Credentials)")

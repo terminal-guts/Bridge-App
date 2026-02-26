@@ -1,20 +1,17 @@
 /**
- * Settings Service - MOCK VERSION
+ * Settings Service - REAL SUPABASE VERSION
  *
  * Handles user settings and preferences (notifications, privacy).
- * Provides in-memory settings management for development without backend.
  */
 
 import { ApiResponse } from '../types';
+import { supabase } from '../lib/supabase';
 import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('SettingsService');
 
-// Mock in-memory storage
-let mockSettings: UserSettings | null = null;
-
 /**
- * User settings interface
+ * User settings interface (aligned with backend if possible, or using JSONB)
  */
 export interface UserSettings {
   id: string;
@@ -34,11 +31,10 @@ export interface UserSettings {
   updatedAt: string;
 }
 
-
 /**
  * Default settings for new users
  */
-const DEFAULT_SETTINGS: Omit<UserSettings, 'id' | 'userId' | 'createdAt' | 'updatedAt'> = {
+const DEFAULT_SETTINGS = {
   notifications: {
     newMatches: true,
     messages: true,
@@ -62,93 +58,116 @@ const createErrorResponse = (code: string, message: string): ApiResponse<any> =>
   };
 };
 
+async function getCurrentUserId(): Promise<string> {
+  const { data } = await supabase.auth.getUser();
+  if (!data?.user?.id) throw new Error('Not authenticated');
+  return data.user.id;
+}
 
 /**
- * Get user settings for the authenticated user - MOCK VERSION
- * Returns default settings from memory
+ * Get user settings for the authenticated user
  */
 export const getUserSettings = async (userId?: string): Promise<ApiResponse<UserSettings>> => {
   try {
-    logger.info('[MOCK SETTINGS] Getting user settings');
+    const finalUserId = userId || await getCurrentUserId();
+    logger.info('[SETTINGS] Getting user settings for:', finalUserId);
 
-    // If no settings exist, create defaults
-    if (!mockSettings) {
-      mockSettings = {
-        id: 'settings-1',
-        userId: '00000000-0000-0000-0000-000000000001',
-        ...DEFAULT_SETTINGS,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+    const { data, error } = await supabase
+      .from('user_settings')
+      .select('*')
+      .eq('user_id', finalUserId)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!data) {
+      // Initialize default settings if none exist
+      return resetUserSettings();
     }
 
+    // Map DB columns to frontend interface
+    // Note: If DB has different columns, map them here.
+    // If using JSONB for the whole thing, it might look like data.settings
     return {
       ok: true,
-      data: mockSettings,
+      data: {
+        id: data.id,
+        userId: data.user_id,
+        notifications: data.notifications || DEFAULT_SETTINGS.notifications,
+        privacy: data.privacy || DEFAULT_SETTINGS.privacy,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      },
     };
   } catch (error: any) {
-    logger.error('[MOCK SETTINGS] Get settings error:', error);
+    logger.error('[SETTINGS] Get settings error:', error);
     return createErrorResponse('FETCH_ERROR', error.message || 'Failed to fetch settings');
   }
 };
 
-
 /**
- * Update user settings for the authenticated user - MOCK VERSION
- * Updates settings in memory
+ * Update user settings for the authenticated user
  */
 export const updateUserSettings = async (
   userId: string | Partial<UserSettings>,
   settings?: Partial<UserSettings>
 ): Promise<ApiResponse<UserSettings>> => {
   try {
-    const finalSettings = typeof userId === 'string' ? settings : userId;
-    logger.info('[MOCK SETTINGS] Updating user settings');
+    const finalUserId = typeof userId === 'string' ? userId : await getCurrentUserId();
+    const updates = typeof userId === 'string' ? settings : userId;
 
-    // Ensure settings exist
-    if (!mockSettings) {
-      mockSettings = {
-        id: 'settings-1',
-        userId: typeof userId === 'string' ? userId : '00000000-0000-0000-0000-000000000001',
-        ...DEFAULT_SETTINGS,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    }
+    logger.info('[SETTINGS] Updating user settings for:', finalUserId);
 
-    if (finalSettings) {
-      // Update notifications
-      if (finalSettings.notifications) {
-        mockSettings.notifications = {
-          ...mockSettings.notifications,
-          ...finalSettings.notifications,
-        } as UserSettings['notifications'];
-      }
+    // Fetch existing to merge
+    const { data: existing } = await supabase
+      .from('user_settings')
+      .select('*')
+      .eq('user_id', finalUserId)
+      .maybeSingle();
 
-      // Update privacy
-      if (finalSettings.privacy) {
-        mockSettings.privacy = {
-          ...mockSettings.privacy,
-          ...finalSettings.privacy,
-        } as UserSettings['privacy'];
-      }
-    }
+    const currentNotifications = (existing?.notifications || DEFAULT_SETTINGS.notifications);
+    const currentPrivacy = (existing?.privacy || DEFAULT_SETTINGS.privacy);
 
-    // Update timestamp
-    mockSettings.updatedAt = new Date().toISOString();
+    const payload = {
+      user_id: finalUserId,
+      notifications: {
+        ...currentNotifications,
+        ...(updates?.notifications || {}),
+      },
+      privacy: {
+        ...currentPrivacy,
+        ...(updates?.privacy || {}),
+      },
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from('user_settings')
+      .upsert(payload, { on_conflict: 'user_id' })
+      .select()
+      .single();
+
+    if (error) throw error;
 
     return {
       ok: true,
-      data: mockSettings,
+      data: {
+        id: data.id,
+        userId: data.user_id,
+        notifications: data.notifications,
+        privacy: data.privacy,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      },
     };
   } catch (error: any) {
-    logger.error('[MOCK SETTINGS] Update settings error:', error);
+    logger.error('[SETTINGS] Update settings error:', error);
     return createErrorResponse('UPDATE_ERROR', error.message || 'Failed to update settings');
   }
 };
 
 /**
- * Update notification settings for the authenticated user - MOCK VERSION
+ * Update notification settings
  */
 export const updateNotificationSettings = async (
   userId: string,
@@ -158,7 +177,7 @@ export const updateNotificationSettings = async (
 };
 
 /**
- * Update privacy settings for the authenticated user - MOCK VERSION
+ * Update privacy settings
  */
 export const updatePrivacySettings = async (
   userId: string,
@@ -168,8 +187,13 @@ export const updatePrivacySettings = async (
 };
 
 /**
- * Reset settings to defaults for the authenticated user - MOCK VERSION
+ * Reset settings to defaults
  */
 export const resetUserSettings = async (): Promise<ApiResponse<UserSettings>> => {
-  return updateUserSettings(DEFAULT_SETTINGS);
+  try {
+    const userId = await getCurrentUserId();
+    return updateUserSettings(userId, DEFAULT_SETTINGS);
+  } catch (error: any) {
+    return createErrorResponse('RESET_ERROR', error.message || 'Failed to reset settings');
+  }
 };

@@ -25,6 +25,7 @@ import {
   decideOnProposal,
   transformBackendProposal,
 } from './proposalApiService';
+import { getBlockedUserIds } from './blockService';
 import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('CommunityBackend');
@@ -109,11 +110,20 @@ class CommunityBackendService {
     const userId = await getCurrentUserId();
 
     try {
-      const result = await getProposalsForVoting(userId);
+      const [result, blockedIds] = await Promise.all([
+        getProposalsForVoting(userId),
+        getBlockedUserIds(userId)
+      ]);
+
       const rawProposals = result.proposals || [];
 
+      // Filter out proposals involving blocked users
+      const filteredProposals = rawProposals.filter((raw: any) => {
+        return !blockedIds.includes(raw.user_a_id) && !blockedIds.includes(raw.user_b_id);
+      });
+
       // Transform backend proposals to frontend Proposal type
-      return rawProposals.map((raw: any) => {
+      return filteredProposals.map((raw: any) => {
         const transformed = transformBackendProposal(raw);
 
         // Build UserProfile objects from enriched profile data
@@ -247,6 +257,7 @@ class CommunityBackendService {
 
   async getFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
     const userId = await getCurrentUserId();
+    const blockedIds = await getBlockedUserIds(userId);
 
     // Get all friendships (both directions)
     const { data: friendships1 } = await supabase
@@ -277,12 +288,17 @@ class CommunityBackendService {
     const profileMap = new Map<string, any>();
     (profiles || []).forEach(p => profileMap.set(p.id, p));
 
-    // Build friend list
-    return allFriendships.map(f => {
-      const friendId = f.user_id === userId ? f.friend_id : f.user_id;
-      const profile = profileMap.get(friendId);
+    // Build friend list and filter blocked
+    return allFriendships
+      .filter(f => {
+        const friendId = f.user_id === userId ? f.friend_id : f.user_id;
+        return !blockedIds.includes(friendId);
+      })
+      .map(f => {
+        const friendId = f.user_id === userId ? f.friend_id : f.user_id;
+        const profile = profileMap.get(friendId);
 
-      return {
+        return {
         friendshipId: f.id,
         userId,
         friendId,
@@ -370,10 +386,18 @@ class CommunityBackendService {
     const userId = await getCurrentUserId();
 
     try {
-      const result = await getPendingDecisions(userId);
+      const [result, blockedIds] = await Promise.all([
+        getPendingDecisions(userId),
+        getBlockedUserIds(userId)
+      ]);
       const rawProposals = result.proposals || [];
 
-      return rawProposals.map((raw: any) => {
+      return rawProposals
+        .filter((raw: any) => {
+          const partnerId = raw.user_a_id === userId ? raw.user_b_id : raw.user_a_id;
+          return !blockedIds.includes(partnerId);
+        })
+        .map((raw: any) => {
         const partnerId = raw.user_a_id === userId ? raw.user_b_id : raw.user_a_id;
         const partnerProfile = raw.partner_profile
           ? mapProfileRow(raw.partner_profile)

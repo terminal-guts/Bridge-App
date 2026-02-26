@@ -374,7 +374,11 @@ async def send_otp(request: Request, payload: PhoneRequest):
 async def verify_otp(request: Request, payload: VerifyRequest):
     stored_code = verification_codes.get(payload.phone_number)
     
-    if stored_code and stored_code == payload.code:
+    # Allow static code for App Store Review test number
+    is_test_number = payload.phone_number in ["+15555555555", "5555555555"]
+    is_static_code = payload.code == "123456"
+
+    if (stored_code and stored_code == payload.code) or (is_test_number and is_static_code):
         # Code matches
         if payload.phone_number in verification_codes:
             del verification_codes[payload.phone_number]
@@ -447,7 +451,12 @@ async def moderate_text(request: Request, payload: ModerationRequest):
 @limiter.limit("10/minute")
 async def verify_email_otp(request: Request, payload: VerifyEmailRequest):
     stored_code = verification_codes.get(payload.email)
-    if stored_code and stored_code == payload.code:
+
+    # Allow static code for App Store Review test email
+    is_test_email = payload.email == "test@bridgedate.app"
+    is_static_code = payload.code == "123456"
+
+    if (stored_code and stored_code == payload.code) or (is_test_email and is_static_code):
         if payload.email in verification_codes:
             del verification_codes[payload.email]
             
