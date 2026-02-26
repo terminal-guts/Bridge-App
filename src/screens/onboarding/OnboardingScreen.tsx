@@ -6,6 +6,7 @@ import { NavigationProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList, OnboardingData } from '../../types';
 import { createUserProfile, saveOnboardingStep } from '../../services/profileService';
+import { supabase } from '../../lib/supabase';
 import { Body } from '../../components/ui';
 import { getStepMappingByIndex } from '../../config/onboardingMapping';
 import { createLogger } from '../../utils/secureLogger';
@@ -49,14 +50,19 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
 
-  // Fetch the authenticated user ID from Supabase on mount
+  // Fetch the authenticated user ID from Supabase session.
+  // Re-checks on step changes because the user gets authenticated at step 1
+  // (phone verification) — before that, there's no session yet.
   useEffect(() => {
+    if (authUserId) return; // Already have it
     const loadUserId = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user?.id) setAuthUserId(user.id);
+      if (user?.id) {
+        setAuthUserId(user.id);
+      }
     };
     loadUserId();
-  }, []);
+  }, [currentStep, authUserId]);
   const [onboardingData, setOnboardingData] = useState<Partial<OnboardingData>>({
     interests: [],
     values: [],
@@ -175,9 +181,12 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
       if (!userId) {
         logger.error('No authenticated user found during onboarding completion');
         setIsCreatingProfile(false);
-        // Use MOCK_USER_ID as last resort so onboarding is never fully blocked
-        userId = '00000000-0000-0000-0000-000000000001';
-        logger.warn('[OnboardingScreen] Falling back to MOCK_USER_ID');
+        Alert.alert(
+          'Authentication Required',
+          'You must be signed in to complete onboarding. Please restart the process.',
+          [{ text: 'Go Back', onPress: () => navigation.navigate('Welcome') }]
+        );
+        return;
       }
 
       logger.info('Creating profile for user:', userId);

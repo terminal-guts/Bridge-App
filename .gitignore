@@ -2,6 +2,7 @@ node_modules
 .DS_Store
 .expo/
 .env
+.mcp.json
 
 # Python
 **/__pycache__/

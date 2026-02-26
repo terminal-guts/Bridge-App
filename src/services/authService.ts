@@ -1,14 +1,15 @@
 /**
  * Authentication Service
  *
- * Provides authentication via OTP (SMS/Email) using the Bridge backend.
+ * Provides authentication via Supabase native OTP (SMS/Email).
+ * Phone OTP requires Twilio configured in Supabase project settings.
+ * Email OTP works out of the box with Supabase.
  */
 
 import { ApiResponse } from '../types';
 import { cleanupSubscriptions } from './messageService';
 import { supabase } from '../lib/supabase';
 import { createLogger } from '../utils/secureLogger';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const logger = createLogger('AuthService');
 
@@ -18,49 +19,55 @@ interface User {
   phone?: string;
 }
 
-const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
-let mockCurrentUser: User | null = null;
-
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://bridge-frontend-production.up.railway.app';
-
 /**
- * Error response helper
+ * Convert a formatted US phone number to E.164 format for Supabase.
+ * "(555) 555-5555" → "+15555555555"
+ * "5555555555" → "+15555555555"
+ * "+15555555555" → "+15555555555" (already E.164)
  */
-const createErrorResponse = (code: string, message: string): ApiResponse<any> => {
-  return {
-    ok: false,
-    error: { code, message },
-  };
-};
+function toE164(phone: string): string {
+  // If already in E.164 format, return as-is
+  if (phone.startsWith('+')) return phone;
+
+  // Strip all non-digit characters
+  const digits = phone.replace(/\D/g, '');
+
+  // If 10 digits, assume US and prepend +1
+  if (digits.length === 10) {
+    return `+1${digits}`;
+  }
+
+  // If 11 digits starting with 1, assume US with country code
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `+${digits}`;
+  }
+
+  // Otherwise, prepend + and hope for the best
+  return `+${digits}`;
+}
 
 /**
- * Send OTP code to phone number
+ * Send OTP code to phone number via Supabase Auth
  */
 export const sendOtpToPhone = async (phoneNumber: string): Promise<ApiResponse<void>> => {
   try {
-    logger.info('[SMS] Attempting to send OTP via Twilio to:', phoneNumber);
+    const e164 = toE164(phoneNumber);
+    logger.info('[SMS] Sending OTP via Supabase to:', e164);
 
-    const response = await fetch(`${API_URL}/onboarding/send-otp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone_number: phoneNumber }),
-    });
+    const { error } = await supabase.auth.signInWithOtp({ phone: e164 });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = 'Failed to send OTP';
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage = errorData.detail || errorMessage;
-      } catch (e) {
-        // Not JSON - might be Localtunnel interstitial or server crash
-        logger.error('[SMS] Non-JSON error response:', errorText.slice(0, 100));
-        errorMessage = `Server Error: ${response.status}. Please check your backend connection.`;
-      }
-      throw new Error(errorMessage);
+    if (error) {
+      logger.error('[SMS] Supabase OTP error:', error.message);
+      return {
+        ok: false,
+        error: {
+          code: 'OTP_SEND_ERROR',
+          message: error.message,
+        },
+      };
     }
 
-    logger.info('[SMS] OTP request successful for:', phoneNumber);
+    logger.info('[SMS] OTP sent successfully to:', e164);
     return { ok: true };
   } catch (error: any) {
     logger.error('[SMS] Error sending OTP:', error.message);
@@ -75,32 +82,26 @@ export const sendOtpToPhone = async (phoneNumber: string): Promise<ApiResponse<v
 };
 
 /**
- * Send OTP code to email - Task 4
+ * Send OTP code to email via Supabase Auth
  */
 export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> => {
   try {
-    logger.info('[EMAIL] Attempting to send OTP to:', email);
+    logger.info('[EMAIL] Sending OTP via Supabase to:', email);
 
-    const response = await fetch(`${API_URL}/onboarding/send-email-otp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
+    const { error } = await supabase.auth.signInWithOtp({ email });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = 'Failed to send email OTP';
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage = errorData.detail || errorMessage;
-      } catch (e) {
-        logger.error('[EMAIL] Non-JSON error response:', errorText.slice(0, 100));
-        errorMessage = `Server Error: ${response.status}. Please check your backend connection.`;
-      }
-      throw new Error(errorMessage);
+    if (error) {
+      logger.error('[EMAIL] Supabase OTP error:', error.message);
+      return {
+        ok: false,
+        error: {
+          code: 'EMAIL_OTP_ERROR',
+          message: error.message,
+        },
+      };
     }
 
-    logger.info('[EMAIL] OTP request successful for:', email);
+    logger.info('[EMAIL] OTP sent successfully to:', email);
     return { ok: true };
   } catch (error: any) {
     logger.error('[EMAIL] Error sending OTP:', error.message);
@@ -124,11 +125,9 @@ export const signOut = async (): Promise<ApiResponse<void>> => {
     // Clean up message subscriptions
     cleanupSubscriptions();
 
-    // Clear Supabase session so the user is fully logged out
+    // Sign out from Supabase (clears session from AsyncStorage automatically)
     await supabase.auth.signOut();
 
-    mockCurrentUser = null;
-    await AsyncStorage.removeItem('bridge_auth_user');
     return { ok: true };
   } catch (error: any) {
     return {
@@ -142,37 +141,23 @@ export const signOut = async (): Promise<ApiResponse<void>> => {
 };
 
 /**
- * Get the current authenticated user
+ * Get the current authenticated user from the Supabase session
  */
 export const getCurrentUser = async (): Promise<ApiResponse<User | null>> => {
   try {
-    // Return mock user if signed in
-    if (mockCurrentUser) {
-      return {
-        ok: true,
-        data: mockCurrentUser,
-      };
-    }
+    const { data: { user }, error } = await supabase.auth.getUser();
 
-    const savedUserStr = await AsyncStorage.getItem('bridge_auth_user');
-    if (savedUserStr) {
-      mockCurrentUser = JSON.parse(savedUserStr);
-      return {
-        ok: true,
-        data: mockCurrentUser,
-      };
+    if (error || !user) {
+      return { ok: true, data: null };
     }
-
-    // Auto-create mock user for seamless development
-    mockCurrentUser = {
-      id: MOCK_USER_ID,
-      phone: '+1234567890',
-      email: 'dev@bridge.app',
-    };
 
     return {
       ok: true,
-      data: mockCurrentUser,
+      data: {
+        id: user.id,
+        email: user.email,
+        phone: user.phone,
+      },
     };
   } catch (error: any) {
     return {
@@ -186,53 +171,50 @@ export const getCurrentUser = async (): Promise<ApiResponse<User | null>> => {
 };
 
 /**
- * Verify phone number with OTP code
+ * Verify phone number with OTP code via Supabase Auth.
+ * On success, a real Supabase session is created and persisted.
  */
 export const verifyPhone = async (phone: string, code: string): Promise<ApiResponse<User>> => {
   try {
-    logger.info('[SMS] Verifying code:', code, 'for phone:', phone);
+    const e164 = toE164(phone);
+    logger.info('[SMS] Verifying OTP for:', e164);
 
-    const response = await fetch(`${API_URL}/onboarding/verify-otp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone_number: phone, code: code }),
+    const { data, error } = await supabase.auth.verifyOtp({
+      phone: e164,
+      token: code,
+      type: 'sms',
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = 'Invalid verification code';
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage = errorData.detail || errorMessage;
-      } catch (e) {
-        logger.error('[SMS] Non-JSON verify response:', errorText.slice(0, 100));
-        errorMessage = `Server Error: ${response.status}. Check if your backend is running at ${API_URL}`;
-      }
-      throw new Error(errorMessage);
+    if (error) {
+      logger.error('[SMS] Verification failed:', error.message);
+      return {
+        ok: false,
+        error: {
+          code: 'VERIFICATION_ERROR',
+          message: error.message,
+        },
+      };
     }
 
-    logger.info('[SMS] Phone verification successful!');
-
-    const responseText = await response.text();
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (e) {
-      logger.error('[SMS] Parse error on success:', responseText.slice(0, 100));
-      throw new Error(`Server at ${API_URL} returned HTML instead of JSON (Status: ${response.status}). Are you hitting the right service?`);
+    if (!data.user) {
+      return {
+        ok: false,
+        error: {
+          code: 'VERIFICATION_ERROR',
+          message: 'Verification succeeded but no user returned',
+        },
+      };
     }
 
-    mockCurrentUser = {
-      id: data.user_id || MOCK_USER_ID,
-      phone,
-      email: 'dev@bridge.app',
-    };
-
-    await AsyncStorage.setItem('bridge_auth_user', JSON.stringify(mockCurrentUser));
+    logger.info('[SMS] Phone verification successful! User ID:', data.user.id);
 
     return {
       ok: true,
-      data: mockCurrentUser,
+      data: {
+        id: data.user.id,
+        phone: data.user.phone,
+        email: data.user.email,
+      },
     };
   } catch (error: any) {
     logger.error('[SMS] Verification error:', error.message);
@@ -247,52 +229,49 @@ export const verifyPhone = async (phone: string, code: string): Promise<ApiRespo
 };
 
 /**
- * Verify email with OTP code - Task 4
+ * Verify email with OTP code via Supabase Auth.
+ * On success, a real Supabase session is created and persisted.
  */
 export const verifyEmail = async (email: string, code: string): Promise<ApiResponse<User>> => {
   try {
-    logger.info('[EMAIL] Verifying code:', code, 'for email:', email);
+    logger.info('[EMAIL] Verifying OTP for:', email);
 
-    const response = await fetch(`${API_URL}/onboarding/verify-email-otp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, code }),
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token: code,
+      type: 'email',
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = 'Invalid verification code';
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage = errorData.detail || errorMessage;
-      } catch (e) {
-        logger.error('[EMAIL] Non-JSON verify response:', errorText.slice(0, 100));
-        errorMessage = `Server Error: ${response.status}. Check if your backend is running at ${API_URL}`;
-      }
-      throw new Error(errorMessage);
+    if (error) {
+      logger.error('[EMAIL] Verification failed:', error.message);
+      return {
+        ok: false,
+        error: {
+          code: 'VERIFICATION_ERROR',
+          message: error.message,
+        },
+      };
     }
 
-    const responseText = await response.text();
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (e) {
-      logger.error('[EMAIL] Parse error on success:', responseText.slice(0, 100));
-      throw new Error(`Server at ${API_URL} returned HTML instead of JSON (Status: ${response.status}). Are you hitting the right service?`);
+    if (!data.user) {
+      return {
+        ok: false,
+        error: {
+          code: 'VERIFICATION_ERROR',
+          message: 'Verification succeeded but no user returned',
+        },
+      };
     }
 
-    logger.info('[EMAIL] Email verification successful!');
-
-    mockCurrentUser = {
-      id: data.user_id || MOCK_USER_ID,
-      email,
-    };
-
-    await AsyncStorage.setItem('bridge_auth_user', JSON.stringify(mockCurrentUser));
+    logger.info('[EMAIL] Email verification successful! User ID:', data.user.id);
 
     return {
       ok: true,
-      data: mockCurrentUser,
+      data: {
+        id: data.user.id,
+        email: data.user.email,
+        phone: data.user.phone,
+      },
     };
   } catch (error: any) {
     logger.error('[EMAIL] Verification error:', error.message);
@@ -303,28 +282,5 @@ export const verifyEmail = async (email: string, code: string): Promise<ApiRespo
         message: error.message || 'An unexpected error occurred',
       },
     };
-  }
-};
-
-/**
- * Require phone verification
- */
-export const requirePhoneVerification = async (): Promise<ApiResponse<User>> => {
-  try {
-    // Auto-create mock user if not exists
-    if (!mockCurrentUser) {
-      mockCurrentUser = {
-        id: MOCK_USER_ID,
-        phone: '+1234567890',
-        email: 'dev@bridge.app',
-      };
-    }
-
-    return {
-      ok: true,
-      data: mockCurrentUser,
-    };
-  } catch (error: any) {
-    return createErrorResponse('AUTH_ERROR', error.message || 'Authentication failed');
   }
 };

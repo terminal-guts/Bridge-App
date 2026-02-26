@@ -7,7 +7,7 @@ import { styled } from 'nativewind';
 import { H2, H3, Body, Card, Button, ProfileSkeleton } from '../../components/ui';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { MainTabParamList, UserProfile, Match, DeepQuestionAnswer } from '../../types';
-import { requirePhoneVerification } from '../../services/authService';
+import { getCurrentUser } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { getUserMatches, updateMatchExitFeedback } from '../../services/matchService';
 import { getFriendCount } from '../../services/friendService';
@@ -258,7 +258,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
       logger.info('[ProfileScreen] loadProfile called');
 
       // Ensure user is authenticated, create anonymous session if needed
-      const userResult = await requirePhoneVerification();
+      const userResult = await getCurrentUser();
       if (!userResult.ok || !userResult.data) {
         Alert.alert('Error', 'Failed to authenticate');
         if (isMountedRef.current) {
@@ -314,7 +314,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
 
   const loadMatches = useCallback(async () => {
     try {
-      const userResult = await requirePhoneVerification();
+      const userResult = await getCurrentUser();
       if (!userResult.ok || !userResult.data) return;
 
       const matchesResult = await getUserMatches();

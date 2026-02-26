@@ -163,35 +163,43 @@ export const AppNavigator = () => {
     // Use ref object instead of closure variable to avoid staleness in async callbacks
     const isMountedRef = { current: true };
 
-    // Check for existing session on app start using Supabase Auth
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (isMountedRef.current) {
-        setIsAuthenticated(!!session);
-        if (session?.user?.id) {
-          fetchAndSetUserProfile(session.user.id);
-        }
-      }
-    });
-
-    // Initial session check
-    const checkInitialSession = async () => {
+    // Check for existing Supabase session on app start
+    const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (isMountedRef.current) {
-          setIsAuthenticated(!!session);
-          if (session?.user?.id) {
-            fetchAndSetUserProfile(session.user.id);
+        if (FEATURES.DEVELOPMENT_FORCE_FRESH_SESSION) {
+          await supabase.auth.signOut();
+        }
+
+        // Validate session with Supabase server (not just local cache)
+        const { data: { user }, error } = await supabase.auth.getUser();
+
+        if (!isMountedRef.current) return;
+
+        if (error) {
+          logger.info('Auth verification failed:', error.message);
+          await supabase.auth.signOut();
+          if (!isMountedRef.current) return;
+          setIsAuthenticated(false);
+        } else if (user) {
+          logger.info('[AppNavigator] Authenticated user:', user.id);
+          const profileResult = await fetchAndSetUserProfile(user.id);
+          if (!profileResult.ok && profileResult.error?.code !== 'PROFILE_NOT_FOUND') {
+            logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
           }
+          if (!isMountedRef.current) return;
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
         }
       } catch (err) {
-        logger.error('Error checking initial session:', err);
+        logger.error('Error initializing auth:', err);
         if (isMountedRef.current) {
           setIsAuthenticated(false);
         }
       }
     };
 
-    checkInitialSession();
+    initializeAuth();
 
     // Register push notifications
     let cleanupNotifications: (() => void) | undefined;
@@ -205,7 +213,15 @@ export const AppNavigator = () => {
       }
     };
 
-    setupNotifications();
+    // Listen for Supabase auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMountedRef.current) return;
+      setIsAuthenticated(!!session);
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        setupNotifications();
+      }
+    });
 
     return () => {
       isMountedRef.current = false;
