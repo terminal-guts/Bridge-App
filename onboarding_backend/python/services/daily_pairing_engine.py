@@ -10,6 +10,7 @@ import datetime
 import random
 
 from services.scoring import calculate_compatibility, passes_basic_filter
+from services.proposal_engine import fetch_rejected_pairs, fetch_blocked_pairs
 
 SOFT_MIN_SCORE = 20.0
 RECENT_PAIRING_LOOKBACK_DAYS = 7
@@ -139,11 +140,17 @@ def _build_scored_edges(
     active_match_pairs: Set[frozenset],
     recent_pairs: Set[frozenset],
     dq_map: Dict[str, List[Dict]] = None,
+    rejected_pairs: Set[frozenset] = None,
+    blocked_pairs: Set[frozenset] = None,
 ) -> List[Tuple[str, str, float, Dict]]:
     edges = []
     n = len(users)
     if dq_map is None:
         dq_map = {}
+    if rejected_pairs is None:
+        rejected_pairs = set()
+    if blocked_pairs is None:
+        blocked_pairs = set()
 
     print(f"[DAILY_PAIRING] Scoring {n * (n - 1) // 2} possible pairs...")
 
@@ -153,7 +160,7 @@ def _build_scored_edges(
             b = users[j]
             pair_key = frozenset({a["id"], b["id"]})
 
-            if pair_key in active_match_pairs:
+            if pair_key in active_match_pairs or pair_key in rejected_pairs or pair_key in blocked_pairs:
                 continue
 
             prefs_a = prefs_map.get(a["id"], {})
@@ -292,12 +299,18 @@ def run_daily_pairing(supabase) -> Dict[str, Any]:
     dq_map = _fetch_deep_questions(supabase, user_ids)
     recent_pairs = _fetch_recent_pairings(supabase)
     active_match_pairs = _fetch_active_match_pairs(supabase)
+    rejected_pairs = fetch_rejected_pairs(supabase)
+    blocked_pairs = fetch_blocked_pairs(supabase)
     print(f"[DAILY_PAIRING] Context: {len(prefs_map)} prefs, "
           f"{len(dq_map)} users with deep questions, "
           f"{len(recent_pairs)} recent pairs, "
-          f"{len(active_match_pairs)} active matches")
+          f"{len(active_match_pairs)} active matches, "
+          f"{len(rejected_pairs)} rejected proposals, "
+          f"{len(blocked_pairs)} blocked pairs")
 
-    edges = _build_scored_edges(users, prefs_map, active_match_pairs, recent_pairs, dq_map)
+    edges = _build_scored_edges(
+        users, prefs_map, active_match_pairs, recent_pairs, dq_map, rejected_pairs, blocked_pairs
+    )
 
     if not edges:
         return {
