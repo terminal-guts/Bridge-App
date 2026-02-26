@@ -164,48 +164,36 @@ export const AppNavigator = () => {
     // Use ref object instead of closure variable to avoid staleness in async callbacks
     const isMountedRef = { current: true };
 
-    // Check for existing session on app start
+    // Check for existing session on app start using AsyncStorage
+    // (App uses custom OTP auth with MD5-derived UUIDs, not Supabase Auth)
     const initializeAuth = async () => {
       try {
-        // Generate new session key for this app launch
         const sessionKey = Date.now().toString();
         await AsyncStorage.setItem('appSessionKey', sessionKey);
 
-        // DEVELOPMENT MODE: Optionally start from welcome screen for testing
-        // Controlled by FEATURES.DEVELOPMENT_FORCE_FRESH_SESSION flag
         if (FEATURES.DEVELOPMENT_FORCE_FRESH_SESSION) {
-          await supabase.auth.signOut();
+          await AsyncStorage.removeItem('bridge_auth_user');
         }
 
-        // IMPORTANT: Use getUser() instead of getSession() to verify with the server
-        // getSession() only checks AsyncStorage cache which may contain stale sessions
-        // getUser() validates the session with the Supabase server
-        const { data: { user }, error } = await supabase.auth.getUser();
+        const savedUserStr = await AsyncStorage.getItem('bridge_auth_user');
+        const savedUser = savedUserStr ? JSON.parse(savedUserStr) : null;
 
         if (!isMountedRef.current) return;
 
-        if (error) {
-          logger.info('Auth verification failed:', error.message);
-          // Clear any stale session data
-          await supabase.auth.signOut();
-          if (!isMountedRef.current) return; // Check after async operation
-          setIsAuthenticated(false);
-        } else {
-          if (user) {
-            // Load user profile from Supabase on app startup
-            logger.info('[AppNavigator] Loading profile for authenticated user:', user.id);
-            const profileResult = await fetchAndSetUserProfile(user.id);
-            if (!profileResult.ok && profileResult.error?.code !== 'PROFILE_NOT_FOUND') {
-              logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
-            }
+        if (savedUser?.id) {
+          logger.info('[AppNavigator] Found existing session for user:', savedUser.id);
+          const profileResult = await fetchAndSetUserProfile(savedUser.id);
+          if (!profileResult.ok && profileResult.error?.code !== 'PROFILE_NOT_FOUND') {
+            logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
           }
           if (!isMountedRef.current) return;
-          setIsAuthenticated(!!user);
+          setIsAuthenticated(true);
+        } else {
+          if (!isMountedRef.current) return;
+          setIsAuthenticated(false);
         }
       } catch (err) {
-        logger.error('Error getting session:', err);
-        // Clear any stale session data on error
-        await supabase.auth.signOut();
+        logger.error('Error initializing auth:', err);
         if (isMountedRef.current) {
           setIsAuthenticated(false);
         }
@@ -214,7 +202,7 @@ export const AppNavigator = () => {
 
     initializeAuth();
 
-    // Register push notifications and subscribe to real-time events
+    // Register push notifications
     let cleanupNotifications: (() => void) | undefined;
 
     const setupNotifications = async () => {
@@ -226,31 +214,10 @@ export const AppNavigator = () => {
       }
     };
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!isMountedRef.current) return;
-      setIsAuthenticated(!!session);
-
-      // Set up notifications on sign in
-      if (event === 'SIGNED_IN' && session?.user) {
-        setupNotifications();
-      }
-
-      // Create mock data on sign in (development only)
-      if (event === 'SIGNED_IN' && session?.user && FEATURES.DEVELOPMENT_CREATE_MOCK_DATA) {
-        logger.info('[DevData] User signed in, creating mock data...');
-        try {
-          await createDevelopmentData(session.user.id);
-          if (!isMountedRef.current) return; // Check after async operation
-        } catch (error) {
-          logger.error('[DevData] Failed to create mock data:', error);
-        }
-      }
-    });
+    setupNotifications();
 
     return () => {
       isMountedRef.current = false;
-      subscription.unsubscribe();
       cleanupNotifications?.();
     };
   }, []);
