@@ -30,6 +30,7 @@ const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 const StyledKeyboardAvoidingView = styled(KeyboardAvoidingView);
+const StyledRNTouchableOpacity = styled(RNTouchableOpacity);
 
 export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   children,
