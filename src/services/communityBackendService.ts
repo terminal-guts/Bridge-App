@@ -662,6 +662,20 @@ class CommunityBackendService {
   }
 
   // ========================================================================
+  // Match ended event tracking
+  // ========================================================================
+
+  private pendingEndedEvent: import('./communityService').MatchEndedEvent | null = null;
+
+  getEndedMatchEvent(): import('./communityService').MatchEndedEvent | null {
+    return this.pendingEndedEvent;
+  }
+
+  clearEndedMatchEvent(): void {
+    this.pendingEndedEvent = null;
+  }
+
+  // ========================================================================
   // Stubs required by CommunityService interface
   // ========================================================================
 
