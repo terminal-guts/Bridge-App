@@ -34,7 +34,7 @@ def fetch_eligible_users(supabase) -> List[Dict]:
               datetime.timedelta(days=INACTIVITY_THRESHOLD_DAYS)).isoformat()
 
     try:
-        result = supabase.table("user_profiles").select("*") \
+        result = supabase.table("profiles").select("*") \
             .eq("profile_completed", True) \
             .eq("is_paused", False) \
             .gte("last_active_at", cutoff) \
@@ -44,7 +44,7 @@ def fetch_eligible_users(supabase) -> List[Dict]:
         # Fallback: fetch without last_active_at filter (column may not exist yet)
         print(f"[PROPOSALS] Warning fetching with activity filter: {e}")
         try:
-            result = supabase.table("user_profiles").select("*") \
+            result = supabase.table("profiles").select("*") \
                 .eq("profile_completed", True) \
                 .eq("is_paused", False) \
                 .execute()

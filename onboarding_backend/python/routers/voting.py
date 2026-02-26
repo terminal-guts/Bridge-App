@@ -141,7 +141,7 @@ async def get_daily_grid(user_id: str):
         # Fetch potential candidates (LIMIT 50, then random pick)
         # Note: In real app, perform filtering in DB. Here we fetch some and filter.
         # This is a naive implementation for small scale.
-        all_profiles = supabase.table("user_profiles").select("*").limit(100).execute()
+        all_profiles = supabase.table("profiles").select("*").limit(100).execute()
         
         potential = [p for p in all_profiles.data if p["id"] not in voted_ids]
         

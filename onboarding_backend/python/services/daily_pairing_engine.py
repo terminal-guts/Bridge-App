@@ -20,7 +20,7 @@ def _fetch_eligible_users(supabase) -> List[Dict]:
     cutoff = (datetime.datetime.now(datetime.timezone.utc) -
               datetime.timedelta(days=14)).isoformat()
     try:
-        result = supabase.table("user_profiles").select("*") \
+        result = supabase.table("profiles").select("*") \
             .eq("profile_completed", True) \
             .eq("is_paused", False) \
             .gte("last_active_at", cutoff) \
@@ -29,7 +29,7 @@ def _fetch_eligible_users(supabase) -> List[Dict]:
     except Exception as e:
         print(f"[DAILY_PAIRING] Warning with activity filter: {e}")
         try:
-            result = supabase.table("user_profiles").select("*") \
+            result = supabase.table("profiles").select("*") \
                 .eq("profile_completed", True) \
                 .eq("is_paused", False) \
                 .execute()
@@ -359,7 +359,7 @@ def get_user_daily_pairing(supabase, user_id: str, date: Optional[str] = None) -
                 .execute()
             pairing["seen"] = True
 
-        partner_result = supabase.table("user_profiles") \
+        partner_result = supabase.table("profiles") \
             .select("id, first_name, age, gender, location, interests, values, "
                     "bio, height_inches, ethnicity, religion, political_leaning, "
                     "education_level, current_job") \

@@ -270,11 +270,11 @@ def seed():
         user_id = create_auth_user(email)
         print(f"auth:{user_id[:8]}", end=" ")
 
-        supabase.table("user_profiles").upsert({
-            "user_id": user_id,
+        supabase.table("profiles").upsert({
+            "id": user_id,
             **profile,
             "is_paused": False,
-        }, on_conflict="user_id").execute()
+        }, on_conflict="id").execute()
         print("profile", end=" ")
 
         prefs = PREFERENCES.get(name, {})

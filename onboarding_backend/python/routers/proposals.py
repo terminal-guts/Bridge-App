@@ -215,7 +215,7 @@ async def get_proposals_for_voting(user_id: str):
 def _fetch_proposal_profile(user_id: str, blur: bool = False) -> Dict:
     """Fetch a user profile for proposal display. If blur=True, limit fields."""
     try:
-        result = supabase.table("user_profiles") \
+        result = supabase.table("profiles") \
             .select("id, first_name, age, gender, location, interests, values, bio, height_inches, ethnicity, religion, political_leaning, education_level, school, current_job, company_position") \
             .eq("id", user_id) \
             .single() \

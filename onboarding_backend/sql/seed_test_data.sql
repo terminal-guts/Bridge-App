@@ -18,7 +18,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DELETE FROM deep_question_answers WHERE user_id IN (SELECT id FROM auth.users WHERE email LIKE '%.test@bridge-app.dev');
 DELETE FROM user_preferences WHERE user_id IN (SELECT id FROM auth.users WHERE email LIKE '%.test@bridge-app.dev');
 DELETE FROM daily_pairings WHERE user_id IN (SELECT id FROM auth.users WHERE email LIKE '%.test@bridge-app.dev');
-DELETE FROM user_profiles WHERE user_id IN (SELECT id FROM auth.users WHERE email LIKE '%.test@bridge-app.dev');
+DELETE FROM profiles WHERE id IN (SELECT id FROM auth.users WHERE email LIKE '%.test@bridge-app.dev');
 DELETE FROM friend_codes WHERE user_id IN (SELECT id FROM auth.users WHERE email LIKE '%.test@bridge-app.dev');
 DELETE FROM auth.users WHERE email LIKE '%.test@bridge-app.dev';
 
@@ -90,7 +90,7 @@ BEGIN
   VALUES (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'aisha.test@bridge-app.dev', pw_hash, NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}');
   SELECT id INTO aisha_id FROM auth.users WHERE email = 'aisha.test@bridge-app.dev';
 
-  INSERT INTO user_profiles (user_id, first_name, last_name, age, gender, interested_in_genders, location, latitude, longitude, hometown, current_job, education_level, school, height_inches, ethnicity, religion, political_leaning, has_children, family_plans, drinking_frequency, cannabis_frequency, tobacco_frequency, other_drugs_frequency, interests, "values", bio, is_paused)
+  INSERT INTO profiles (id, first_name, last_name, age, gender, interested_in_genders, location, latitude, longitude, hometown, current_job, education_level, school, height_inches, ethnicity, religion, political_leaning, has_children, family_plans, drinking_frequency, cannabis_frequency, tobacco_frequency, other_drugs_frequency, interests, "values", bio, is_paused)
   VALUES
     (alex_id,   'Alex',   'Chen',      21, ARRAY['male'],   ARRAY['female'], 'Houston, TX', 29.7174, -95.4018, 'Austin, TX',      'Software Engineering Intern', 'bachelors', 'Rice University', 71, 'Asian',       'agnostic',  'liberal',      'no', 'want_someday', 'sometimes', 'never',     'never', 'never', ARRAY['coding','hiking','photography','cooking','basketball'],        ARRAY['honesty','ambition','curiosity','kindness'],              'CS major who loves building things. Weekend hiker and amateur chef.', false),
     (maya_id,   'Maya',   'Patel',     20, ARRAY['female'], ARRAY['male'],   'Houston, TX', 29.7152, -95.3987, 'Dallas, TX',      'Research Assistant',          'bachelors', 'Rice University', 64, 'South Asian', 'hindu',     'liberal',      'no', 'want_someday', 'sometimes', 'never',     'never', 'never', ARRAY['reading','yoga','painting','travel','cooking'],               ARRAY['family','kindness','growth','honesty'],                   'Biochem major with a love for art.', false),
@@ -140,6 +140,6 @@ END $$;
 
 SELECT u.email, p.first_name, p.age, p.gender[1] as gender, array_length(p.interests, 1) as num_interests
 FROM auth.users u
-JOIN user_profiles p ON p.user_id = u.id
+JOIN profiles p ON p.id = u.id
 WHERE u.email LIKE '%.test@bridge-app.dev'
 ORDER BY p.first_name;
