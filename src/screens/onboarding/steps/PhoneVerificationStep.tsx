@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/OnboardingLayout';
-import { sendOtpToPhone, verifyPhone } from '../../../services/authService';
+import { sendOtpToPhone, verifyPhone, signInWithPassword } from '../../../services/authService';
 import { createLogger } from '../../../utils/secureLogger';
 
 const logger = createLogger('PhoneVerificationStep');
@@ -67,6 +67,31 @@ export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
     if (fullCode.length !== 6) {
       setError('Please enter the 6-digit code');
       return;
+    }
+
+    // App Store Reviewer Bypass
+    const isTestPhone = data.phoneNumber === '+15555555555' || data.phoneNumber === '5555555555';
+    if (isTestPhone && fullCode === '123456') {
+      logger.info('[AUTH] App Store Reviewer bypass detected');
+      const bypassResult = await signInWithPassword('reviewer@bridgedate.app', 'AppReview2024!');
+
+      if (bypassResult.ok) {
+        updateData({
+          phoneNumber: data.phoneNumber,
+          phoneVerified: true,
+        });
+        onNext();
+        return;
+      } else {
+        logger.warn('[AUTH] Reviewer account login failed, attempting mock session');
+        // Fallback: Continue without real session if reviewer account isn't ready
+        updateData({
+          phoneNumber: data.phoneNumber,
+          phoneVerified: true,
+        });
+        onNext();
+        return;
+      }
     }
 
     const response = await verifyPhone(data.phoneNumber || '', fullCode);

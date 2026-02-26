@@ -407,7 +407,7 @@ export const uploadMultiplePhotos = async (
       };
     }
 
-    return createErrorResponse('ALL_UPLOADS_FAILED', errors.join('; '));
+    return createErrorResponse('PHOTO_UPLOAD_FAILED', errors.join('; '));
   } catch (error: any) {
     logger.error('Multiple photo upload error:', error);
     return createErrorResponse('UPLOAD_ERROR', error.message || 'Failed to upload photos');

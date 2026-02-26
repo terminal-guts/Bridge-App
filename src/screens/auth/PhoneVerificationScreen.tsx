@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { Button, H1, H2, Body } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { verifyPhone, sendOtpToPhone, verifyEmail, sendOtpToEmail } from '../../services/authService';
+import { verifyPhone, sendOtpToPhone, verifyEmail, sendOtpToEmail, signInWithPassword } from '../../services/authService';
 import { fetchAndSetUserProfile } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
 
@@ -97,6 +97,32 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
 
     // Join the code array into a single string
     const otpCode = code.join('');
+
+    // App Store Reviewer Bypass
+    const isTestPhone = phoneNumber === '+15555555555' || phoneNumber === '5555555555';
+    if (!isEmail && isTestPhone && otpCode === '123456') {
+      logger.info('[AUTH] App Store Reviewer bypass detected');
+      const bypassResult = await signInWithPassword('reviewer@bridgedate.app', 'AppReview2024!');
+
+      if (bypassResult.ok) {
+        // Continue to profile fetch as if verified
+        const userId = bypassResult.data!.id;
+        const fetchResult = await fetchAndSetUserProfile(userId);
+        setLoading(false);
+        if (fetchResult.ok && fetchResult.data) {
+          navigation.navigate('MainTabs');
+        } else {
+          navigation.navigate('Onboarding');
+        }
+        return;
+      } else {
+        logger.warn('[AUTH] Reviewer account login failed, attempting mock session');
+        // Fallback: Navigate to MainTabs anyway in review mode
+        setLoading(false);
+        navigation.navigate('MainTabs');
+        return;
+      }
+    }
 
     // Verify OTP with Backend (which checks Supabase)
     let verifyResult;

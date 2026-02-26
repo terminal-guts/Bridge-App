@@ -1668,8 +1668,8 @@ class CommunityService {
       mockState.pendingEndedEvent = {
         type: state,
         eventId: `mock-${state}-${Date.now()}`,
-        partnerName: activeMatchPartner.firstName,
-        partnerPhotoUrl: activeMatchPartner.photos?.[0]?.url,
+        partnerName: MOCK_ACTIVE_MATCH_PARTNER.firstName,
+        partnerPhotoUrl: MOCK_ACTIVE_MATCH_PARTNER.photos?.[0]?.url,
         endReason: state === 'match_ended'
           ? "I had a great time getting to know you, but I don't think we're the right fit. Wishing you the best!"
           : undefined,

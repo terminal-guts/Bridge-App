@@ -82,6 +82,61 @@ export const sendOtpToPhone = async (phoneNumber: string): Promise<ApiResponse<v
 };
 
 /**
+ * Sign in with email and password (for App Store reviewer bypass)
+ */
+export const signInWithPassword = async (email: string, password: string): Promise<ApiResponse<User>> => {
+  try {
+    logger.info('[AUTH] Signing in with password for:', email);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      logger.error('[AUTH] Sign in with password failed:', error.message);
+      return {
+        ok: false,
+        error: {
+          code: 'AUTH_ERROR',
+          message: error.message,
+        },
+      };
+    }
+
+    if (!data.user) {
+      return {
+        ok: false,
+        error: {
+          code: 'AUTH_ERROR',
+          message: 'Sign in succeeded but no user returned',
+        },
+      };
+    }
+
+    logger.info('[AUTH] Sign in with password successful! User ID:', data.user.id);
+
+    return {
+      ok: true,
+      data: {
+        id: data.user.id,
+        email: data.user.email,
+        phone: data.user.phone,
+      },
+    };
+  } catch (error: any) {
+    logger.error('[AUTH] Sign in with password error:', error.message);
+    return {
+      ok: false,
+      error: {
+        code: 'AUTH_ERROR',
+        message: error.message || 'An unexpected error occurred',
+      },
+    };
+  }
+};
+
+/**
  * Send OTP code to email via Supabase Auth
  */
 export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> => {

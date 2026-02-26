@@ -60,9 +60,9 @@ function mapBackendToUserProfile(data: any): UserProfile {
   return {
     id: data.id,
     userId: data.user_id || data.id,
-    firstName: data.first_name || '',
+    firstName: data.first_name || 'User',
     lastName: data.last_name || '',
-    age: data.age || 0,
+    age: (data.age && data.age > 0) ? data.age : undefined,
     gender: data.gender || [],
     pronouns: data.pronouns || '',
     pronounsList: data.pronouns_list || [],

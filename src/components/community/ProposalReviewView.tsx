@@ -533,11 +533,11 @@ export function ProposalReviewView({
   if (proposals.length === 0 || currentIndex >= proposals.length) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 24 }}>
-        <Text style={{ fontSize: 20, fontFamily: 'Outfit_600SemiBold', color: '#010101', marginBottom: 8, textAlign: 'center' }}>
-          All Caught Up!
+        <Text style={{ fontSize: 24, fontFamily: 'Outfit_700Bold', color: '#010101', marginBottom: 12, textAlign: 'center' }}>
+          No proposals today
         </Text>
-        <Text style={{ fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#78716C', textAlign: 'center' }}>
-          No more proposals to review. Check back later!
+        <Text style={{ fontSize: 16, fontFamily: 'Outfit_400Regular', color: '#6B7280', textAlign: 'center', lineHeight: 22 }}>
+          Check back tomorrow — your friends will propose new matches for you.
         </Text>
       </View>
     );
@@ -557,6 +557,13 @@ export function ProposalReviewView({
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+      {!showBackButton && !loading && proposals.length > 0 && (
+        <View style={{ backgroundColor: '#F4F7FF', paddingVertical: 10, paddingHorizontal: 20, alignItems: 'center' }}>
+          <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 13, color: '#2B65F9', textAlign: 'center' }}>
+            Vote on {proposals.length} proposal{proposals.length > 1 ? 's' : ''} to unlock the Friends Area
+          </Text>
+        </View>
+      )}
 
       {/* Header row */}
       {showBackButton ? (
@@ -629,7 +636,7 @@ export function ProposalReviewView({
                 />
                 <View style={{ position: 'absolute', bottom: 14, left: 14 }}>
                   <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 28, color: '#FFF', letterSpacing: -0.3 }}>
-                    {userA.firstName}, {userA.age}
+                    {userA.firstName}{userA.age ? `, ${userA.age}` : ''}
                   </Text>
                   <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#FFF', opacity: 0.85 }}>
                     {userA.currentJob || ''}
@@ -662,7 +669,7 @@ export function ProposalReviewView({
                 />
                 <View style={{ position: 'absolute', bottom: 14, left: 14 }}>
                   <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 28, color: '#FFF', letterSpacing: -0.3 }}>
-                    {userB.firstName}, {userB.age}
+                    {userB.firstName}{userB.age ? `, ${userB.age}` : ''}
                   </Text>
                   <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#FFF', opacity: 0.85 }}>
                     {userB.currentJob || ''}
@@ -968,9 +975,11 @@ export function ProposalReviewView({
                       <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 16, color: '#FFF' }}>
                         {userA.firstName}
                       </Text>
-                      <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#FFF', opacity: 0.85 }}>
-                        {userA.age} yrs
-                      </Text>
+                      {userA.age ? (
+                        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#FFF', opacity: 0.85 }}>
+                          {userA.age} yrs
+                        </Text>
+                      ) : null}
                     </View>
                   </TouchableOpacity>
 
@@ -993,9 +1002,11 @@ export function ProposalReviewView({
                       <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 16, color: '#FFF' }}>
                         {userB.firstName}
                       </Text>
-                      <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#FFF', opacity: 0.85 }}>
-                        {userB.age} yrs
-                      </Text>
+                      {userB.age ? (
+                        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#FFF', opacity: 0.85 }}>
+                          {userB.age} yrs
+                        </Text>
+                      ) : null}
                     </View>
                   </TouchableOpacity>
                 </View>
