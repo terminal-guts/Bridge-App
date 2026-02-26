@@ -7,7 +7,6 @@ import { ActivityIndicator, View, TouchableOpacity, useWindowDimensions } from '
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { FEATURES } from '../config/features';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { fetchAndSetUserProfile } from '../services/profileService';
 import { notificationService } from '../services/notificationService';
@@ -164,43 +163,35 @@ export const AppNavigator = () => {
     // Use ref object instead of closure variable to avoid staleness in async callbacks
     const isMountedRef = { current: true };
 
-    // Check for existing session on app start using AsyncStorage
-    // (App uses custom OTP auth with MD5-derived UUIDs, not Supabase Auth)
-    const initializeAuth = async () => {
-      try {
-        const sessionKey = Date.now().toString();
-        await AsyncStorage.setItem('appSessionKey', sessionKey);
-
-        if (FEATURES.DEVELOPMENT_FORCE_FRESH_SESSION) {
-          await AsyncStorage.removeItem('bridge_auth_user');
+    // Check for existing session on app start using Supabase Auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (isMountedRef.current) {
+        setIsAuthenticated(!!session);
+        if (session?.user?.id) {
+          fetchAndSetUserProfile(session.user.id);
         }
+      }
+    });
 
-        const savedUserStr = await AsyncStorage.getItem('bridge_auth_user');
-        const savedUser = savedUserStr ? JSON.parse(savedUserStr) : null;
-
-        if (!isMountedRef.current) return;
-
-        if (savedUser?.id) {
-          logger.info('[AppNavigator] Found existing session for user:', savedUser.id);
-          const profileResult = await fetchAndSetUserProfile(savedUser.id);
-          if (!profileResult.ok && profileResult.error?.code !== 'PROFILE_NOT_FOUND') {
-            logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
+    // Initial session check
+    const checkInitialSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (isMountedRef.current) {
+          setIsAuthenticated(!!session);
+          if (session?.user?.id) {
+            fetchAndSetUserProfile(session.user.id);
           }
-          if (!isMountedRef.current) return;
-          setIsAuthenticated(true);
-        } else {
-          if (!isMountedRef.current) return;
-          setIsAuthenticated(false);
         }
       } catch (err) {
-        logger.error('Error initializing auth:', err);
+        logger.error('Error checking initial session:', err);
         if (isMountedRef.current) {
           setIsAuthenticated(false);
         }
       }
     };
 
-    initializeAuth();
+    checkInitialSession();
 
     // Register push notifications
     let cleanupNotifications: (() => void) | undefined;
@@ -218,6 +209,7 @@ export const AppNavigator = () => {
 
     return () => {
       isMountedRef.current = false;
+      subscription.unsubscribe();
       cleanupNotifications?.();
     };
   }, []);

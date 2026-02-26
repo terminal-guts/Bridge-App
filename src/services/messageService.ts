@@ -86,16 +86,14 @@ const generateMessageId = (): string => {
   return `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
-const getCurrentUserId = async (): Promise<string | null> => {
+async function getCurrentUserId(): Promise<string> {
   if (!USE_REAL_BACKEND) {
     return '00000000-0000-0000-0000-000000000001';
   }
-  const { getCurrentUser } = await import('./authService');
-  const userRes = await getCurrentUser();
-  if (userRes.ok && userRes.data) return userRes.data.id;
-  const { data } = await supabase.auth.getUser();
-  return data?.user?.id ?? null;
-};
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.id) throw new Error('Not authenticated');
+  return user.id;
+}
 
 // ============================================================================
 // Audio Upload Functions

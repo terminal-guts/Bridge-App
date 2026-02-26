@@ -18,15 +18,11 @@ const logger = createLogger('DeveloperService');
 /**
  * Get current user ID
  */
-export const getCurrentUserId = async (): Promise<string | null> => {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    return user?.id || null;
-  } catch (error) {
-    logger.error('[DevService] Error getting user ID:', error);
-    return null;
-  }
-};
+export async function getCurrentUserId(): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.id) throw new Error('Not authenticated');
+  return user.id;
+}
 
 /**
  * Quick add a pending match

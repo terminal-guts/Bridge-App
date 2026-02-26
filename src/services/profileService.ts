@@ -4,7 +4,6 @@
  * Connects to the Bridge Railway backend for profile management.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ApiResponse,
   UserProfile,
@@ -29,12 +28,18 @@ const createErrorResponse = (code: string, message: string): ApiResponse<any> =>
 });
 
 async function getCurrentUserId(): Promise<string> {
-  const savedUserStr = await AsyncStorage.getItem('bridge_auth_user');
-  if (savedUserStr) {
-    const saved = JSON.parse(savedUserStr);
-    if (saved?.id) return saved.id;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.id) throw new Error('Not authenticated');
+  return user.id;
+}
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (session?.access_token) {
+    headers['Authorization'] = `Bearer ${session.access_token}`;
   }
-  throw new Error('Not authenticated');
+  return headers;
 }
 
 /**
@@ -54,7 +59,7 @@ function heightToInches(heightStr: string | undefined): number | undefined {
 function mapBackendToUserProfile(data: any): UserProfile {
   return {
     id: data.id,
-    userId: data.id,
+    userId: data.user_id || data.id,
     firstName: data.first_name || '',
     lastName: data.last_name || '',
     age: data.age || 0,
@@ -130,7 +135,7 @@ export const saveOnboardingStep = async (
 
     const response = await fetch(`${API_URL}/onboarding/save-step`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({
         user_id: finalUserId,
         step_key: stepKey,
@@ -160,6 +165,18 @@ export const createUserProfile = async (
   try {
     logger.info('[ProfileService] createUserProfile:', userId);
 
+    // Upload photos before building the payload
+    let photoUrls: string[] = [];
+    if (data.photos && data.photos.length > 0) {
+      const uris = data.photos.map(p => p.url || (p as any).uri).filter(Boolean);
+      if (uris.length > 0) {
+        const uploadRes = await uploadMultiplePhotos(uris);
+        if (uploadRes.ok && uploadRes.data) {
+          photoUrls = uploadRes.data.map(p => p.url);
+        }
+      }
+    }
+
     // Map frontend camelCase to backend snake_case
     const payload = {
       user_id: userId,
@@ -168,7 +185,7 @@ export const createUserProfile = async (
       age: data.age,
       gender: data.gender,
       location: data.location,
-      photos: (data.photos || []).map(p => p.url),
+      photos: photoUrls,
       pronouns: data.pronounsList?.join('/'),
       pronouns_list: data.pronounsList,
       hometown: data.hometown,
@@ -208,7 +225,7 @@ export const createUserProfile = async (
 
     const response = await fetch(`${API_URL}/onboarding/complete`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify(payload),
     });
 
@@ -237,7 +254,9 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
     const userId = await getCurrentUserId();
     logger.info('[ProfileService] getUserProfile:', userId);
 
-    const response = await fetch(`${API_URL}/profile/${userId}`);
+    const response = await fetch(`${API_URL}/profile/${userId}`, {
+      headers: await getAuthHeaders(),
+    });
     if (!response.ok) {
       throw new Error(`Failed to fetch profile: ${response.status}`);
     }
@@ -300,7 +319,7 @@ export const updateUserProfile = async (
 
     const response = await fetch(`${API_URL}/profile/${userId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify(payload),
     });
 
@@ -558,7 +577,9 @@ export const getProfileById = async (id: string): Promise<Profile | null> => {
       return elsaProfile;
     }
 
-    const response = await fetch(`${API_URL}/profile/${id}`);
+    const response = await fetch(`${API_URL}/profile/${id}`, {
+      headers: await getAuthHeaders(),
+    });
     if (!response.ok) return null;
     const result = await response.json();
     if (result.status === 'success') {

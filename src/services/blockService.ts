@@ -6,7 +6,6 @@
  * nor B→A matches, grids, or proposals will ever be surfaced.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { ApiResponse, UserProfile } from '../types';
 import { createLogger } from '../utils/secureLogger';
@@ -17,12 +16,8 @@ const logger = createLogger('BlockService');
  * Determine the current user ID from Supabase auth.
  */
 async function getCurrentUserId(): Promise<string> {
-  const savedUserStr = await AsyncStorage.getItem('bridge_auth_user');
-  if (savedUserStr) {
-    const saved = JSON.parse(savedUserStr);
-    if (saved?.id) return saved.id;
-  }
-  throw new Error('Not authenticated');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.id) throw new Error('Not authenticated');
   return user.id;
 }
 
@@ -153,7 +148,7 @@ export const getBlockedUsers = async (): Promise<ApiResponse<BlockedUser[]>> => 
       .from('blocked_users')
       .select('*')
       .eq('user_id', currentUserId)
-      .order('created_at', { ascending: false });
+      .order('blocked_at', { ascending: false });
 
     if (blocksError) throw blocksError;
 
@@ -177,7 +172,7 @@ export const getBlockedUsers = async (): Promise<ApiResponse<BlockedUser[]>> => 
         userId: block.user_id,
         blockedUserId: block.blocked_user_id,
         reason: block.reason,
-        blockedAt: block.created_at,
+        blockedAt: block.blocked_at,
         blockedUserProfile: p
           ? ({
               id: p.id,
