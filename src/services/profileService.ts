@@ -117,7 +117,15 @@ export const saveOnboardingStep = async (
   userId?: string,
 ): Promise<ApiResponse<void>> => {
   try {
-    const finalUserId = userId || await getCurrentUserId();
+    let finalUserId = userId;
+    if (!finalUserId) {
+      try {
+        finalUserId = await getCurrentUserId();
+      } catch {
+        // No user ID yet (pre-auth step) — skip save silently
+        return { ok: true };
+      }
+    }
     logger.info('[ProfileService] saveOnboardingStep:', stepKey);
 
     const response = await fetch(`${API_URL}/onboarding/save-step`, {
