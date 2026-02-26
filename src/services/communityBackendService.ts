@@ -35,9 +35,9 @@ const logger = createLogger('CommunityBackend');
 // ============================================================================
 
 async function getCurrentUserId(): Promise<string> {
-  const { data } = await supabase.auth.getUser();
-  if (!data?.user?.id) throw new Error('Not authenticated');
-  return data.user.id;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.id) throw new Error('Not authenticated');
+  return user.id;
 }
 
 function mapProfileRow(row: any): UserProfile {

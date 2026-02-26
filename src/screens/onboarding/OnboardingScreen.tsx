@@ -6,7 +6,6 @@ import { NavigationProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList, OnboardingData } from '../../types';
 import { createUserProfile, saveOnboardingStep } from '../../services/profileService';
-import { getCurrentUser } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
 import { Body } from '../../components/ui';
 import { getStepMappingByIndex } from '../../config/onboardingMapping';
@@ -172,11 +171,11 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   const completeOnboarding = async () => {
     setIsCreatingProfile(true);
     try {
-      // Get current user ID from Supabase session
+      // Get current user ID from Supabase
       let userId = authUserId;
       if (!userId) {
-        const userResult = await getCurrentUser();
-        userId = userResult.data?.id ?? null;
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id ?? null;
       }
 
       if (!userId) {

@@ -189,12 +189,10 @@ export const AppNavigator = () => {
           if (!isMountedRef.current) return;
           setIsAuthenticated(true);
         } else {
-          if (!isMountedRef.current) return;
           setIsAuthenticated(false);
         }
       } catch (err) {
         logger.error('Error initializing auth:', err);
-        await supabase.auth.signOut();
         if (isMountedRef.current) {
           setIsAuthenticated(false);
         }

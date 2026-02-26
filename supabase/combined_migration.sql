@@ -9,28 +9,6 @@
 
 
 -- ============================================================
--- 0a. DROP NEW TABLES (reverse dependency order)
--- ============================================================
--- These tables may exist from partial previous runs with stale schemas.
--- friend_codes & friends are NOT dropped (they have real data).
--- CASCADE handles FK dependencies between dropped tables.
-DROP TABLE IF EXISTS daily_pairings CASCADE;
-DROP TABLE IF EXISTS pool_vote_assignments CASCADE;
-DROP TABLE IF EXISTS onboarding_progress CASCADE;
-DROP TABLE IF EXISTS blocked_users CASCADE;
-DROP TABLE IF EXISTS user_settings CASCADE;
-DROP TABLE IF EXISTS karma_scores CASCADE;
-DROP TABLE IF EXISTS endorsements CASCADE;
-DROP TABLE IF EXISTS proposal_votes CASCADE;
-DROP TABLE IF EXISTS proposals CASCADE;
-DROP TABLE IF EXISTS messages CASCADE;
-DROP TABLE IF EXISTS match_exits CASCADE;
-DROP TABLE IF EXISTS matches CASCADE;
-DROP TABLE IF EXISTS daily_surveys CASCADE;
-DROP TABLE IF EXISTS deep_question_answers CASCADE;
-DROP TABLE IF EXISTS user_photos CASCADE;
-DROP TABLE IF EXISTS user_preferences CASCADE;
-DROP TABLE IF EXISTS user_profiles CASCADE;
 
 
 -- ============================================================
