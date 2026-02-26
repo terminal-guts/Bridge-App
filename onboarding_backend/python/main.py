@@ -587,10 +587,11 @@ async def complete_onboarding(data: OnboardingCompletion, background_tasks: Back
         
         return {"status": "success", "message": "Onboarding completed"}
         
+    except HTTPException:
+        raise  # Re-raise moderation and validation errors to the client
     except Exception as e:
         print(f"Error completing onboarding: {e}")
-        # Dont crash if DB partial fail
-        return {"status": "success", "message": "Onboarding completed locally (with partial DB success)"}
+        raise HTTPException(status_code=500, detail=f"Failed to complete onboarding: {str(e)}")
 
 @app.post("/moderate/text")
 async def moderate_text(request: Dict[str, Any]):
