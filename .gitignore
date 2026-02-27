@@ -1,4 +1,5 @@
 node_modules
+web_output.log
 .DS_Store
 .expo/
 .env

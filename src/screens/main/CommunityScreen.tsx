@@ -139,7 +139,15 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
     try {
       const task = await communityService.getCommunityTaskProgress();
-      const votingDone = task.hasVotedOnProposals;
+      let votingDone = task.hasVotedOnProposals;
+
+      if (!votingDone) {
+        const available = await communityService.getProposalsToVote();
+        if (available.length === 0) {
+          votingDone = true;
+        }
+      }
+
       setHasCompletedVoting(votingDone);
       if (votingDone) {
         await loadFriendsData();

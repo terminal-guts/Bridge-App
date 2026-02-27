@@ -23,6 +23,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
     const imageUrl = item.friend.photos?.[0]?.url || 'https://via.placeholder.com/150';
     const optimizedImageUrl = useMemo(() => getOptimizedImageUrl(imageUrl, 68), [imageUrl]);
     const streak = item.streakDays || 0;
+    const friendProfileComplete = item.friend.profileCompleted === true;
     const actionType = item.hasCompletedGrid ? 'points' : 'match';
     const points = item.assistsCount > 0
         ? item.assistsCount * 10
@@ -54,7 +55,11 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
             </View>
 
             {actionType === 'match' ? (
-                <TouchableOpacity onPress={onMatch} style={styles.matchBtn} activeOpacity={0.75}>
+                <TouchableOpacity
+                    onPress={friendProfileComplete ? onMatch : undefined}
+                    style={[styles.matchBtn, !friendProfileComplete && styles.matchBtnDisabled]}
+                    activeOpacity={friendProfileComplete ? 0.75 : 1}
+                >
                     <Text style={styles.matchBtnText}>Match</Text>
                 </TouchableOpacity>
             ) : (
@@ -136,6 +141,11 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         fontSize: 15,
         color: '#2B65F9',
+    },
+    matchBtnDisabled: {
+        backgroundColor: '#F3F4F6',
+        borderColor: '#D1D5DB',
+        opacity: 0.8,
     },
     pointsBtn: {
         flexDirection: 'row',
