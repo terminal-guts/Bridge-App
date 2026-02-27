@@ -60,7 +60,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                     style={[styles.matchBtn, !friendProfileComplete && styles.matchBtnDisabled]}
                     activeOpacity={friendProfileComplete ? 0.75 : 1}
                 >
-                    <Text style={styles.matchBtnText}>Match</Text>
+                    <Text style={[styles.matchBtnText, !friendProfileComplete && styles.matchBtnTextDisabled]}>Match</Text>
                 </TouchableOpacity>
             ) : (
                 <TouchableOpacity style={styles.pointsBtn} activeOpacity={0.75} onPress={() => setShowKarmaModal(true)}>
@@ -146,6 +146,9 @@ const styles = StyleSheet.create({
         backgroundColor: '#F3F4F6',
         borderColor: '#D1D5DB',
         opacity: 0.8,
+    },
+    matchBtnTextDisabled: {
+        color: '#9CA3AF',
     },
     pointsBtn: {
         flexDirection: 'row',
