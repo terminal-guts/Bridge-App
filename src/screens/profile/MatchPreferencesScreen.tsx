@@ -704,7 +704,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                   setPreferences((prev) => ({ ...prev, ageMin: Math.round(value) }))
                 }
                 minimumValue={18}
-                maximumValue={preferences.ageMax}
+                maximumValue={preferences.ageMax ?? 80}
                 step={1}
                 minimumTrackTintColor="#437FFF"
                 maximumTrackTintColor="#D0D5DD"
@@ -723,7 +723,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                 onValueChange={(value) =>
                   setPreferences((prev) => ({ ...prev, ageMax: Math.round(value) }))
                 }
-                minimumValue={preferences.ageMin}
+                minimumValue={preferences.ageMin ?? 18}
                 maximumValue={80}
                 step={1}
                 minimumTrackTintColor="#437FFF"

@@ -623,7 +623,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
             </StyledTouchableOpacity>
             <StyledView className="flex-1">
               <Body style={{ color: 'rgba(255, 255, 255, 0.8)' }} className="text-xs uppercase tracking-wider mb-0.5">Your Story</Body>
-              <H3 className="text-white font-bold">Deep Questions</H3>
+              <H3 className="text-white font-bold">Questions</H3>
             </StyledView>
           </StyledView>
         </StyledView>

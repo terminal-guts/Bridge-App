@@ -1056,7 +1056,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
             </Section>
           )}
           {displayedQuestions.length > 0 && (
-            <Section title="Deep Questions" icon="chatbubble-ellipses-outline" delay={250}>
+            <Section title="Questions" icon="chatbubble-ellipses-outline" delay={250}>
               {displayedQuestions.map((qa) => {
                 const config = TIER_CONFIG[qa.tier as 1 | 2 | 3];
                 return (

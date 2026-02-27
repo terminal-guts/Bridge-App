@@ -13,7 +13,7 @@ import {
 import { Profile } from '../types/profile';
 import { supabase } from '../lib/supabase';
 import { createLogger } from '../utils/secureLogger';
-import { uploadMultiplePhotos } from './photoService';
+import { uploadMultiplePhotos, getMultiplePhotoSignedUrls } from './photoService';
 
 const logger = createLogger('ProfileService');
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://bridge-frontend-production.up.railway.app';
@@ -47,6 +47,10 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
  */
 function heightToInches(heightStr: string | undefined): number | undefined {
   if (!heightStr) return undefined;
+  // Handle raw inches value saved by HeightStep (e.g. "68")
+  const raw = parseInt(heightStr, 10);
+  if (!isNaN(raw) && raw >= 48 && raw <= 84) return raw;
+  // Handle formatted string (e.g. "5'8"")
   const match = heightStr.match(/(\d+)'(\d+)"/);
   if (match) {
     const feet = parseInt(match[1]);
@@ -67,7 +71,7 @@ function mapBackendToUserProfile(data: any): UserProfile {
     pronouns: data.pronouns || '',
     pronounsList: data.pronouns_list || [],
     customGender: data.custom_gender,
-    interestedInGenders: data.interested_in_genders || [],
+    interestedInGenders: data.interested_in_genders || data.preferences?.interested_in_genders || [],
     height: data.height_inches ? `${Math.floor(data.height_inches / 12)}'${data.height_inches % 12}"` : (data.height || ''),
     ethnicity: data.ethnicity || '',
     religion: data.religion || '',
@@ -76,7 +80,7 @@ function mapBackendToUserProfile(data: any): UserProfile {
     hometown: data.hometown,
     currentJob: data.current_job,
     companyPosition: data.company_position,
-    educationLevel: data.education_level || 'bachelors',
+    educationLevel: data.education_level || '',
     school: data.school,
     hasChildren: data.has_children,
     familyPlans: data.family_plans,
@@ -93,7 +97,26 @@ function mapBackendToUserProfile(data: any): UserProfile {
       isMain: p.is_main || false,
       order: p.display_order || 0,
     })),
-    preferences: data.preferences || {},
+    preferences: {
+      ageMin: data.preferences?.age_min ?? data.preferences?.ageMin ?? 22,
+      ageMax: data.preferences?.age_max ?? data.preferences?.ageMax ?? 30,
+      gender: (data.preferences?.preferred_gender ?? data.preferences?.gender ?? 'female') as 'male' | 'female' | 'both',
+      lookingFor: (data.preferences?.looking_for ?? data.preferences?.lookingFor ?? 'relationship') as 'relationship' | 'casual' | 'friendship' | 'unsure',
+      heightMin: data.preferences?.preferred_height_min_inches ?? data.preferences?.height_min ?? data.preferences?.heightMin ?? 60,
+      heightMax: data.preferences?.preferred_height_max_inches ?? data.preferences?.height_max ?? data.preferences?.heightMax ?? 84,
+      maxDistance: data.preferences?.max_distance ?? data.preferences?.maxDistance ?? 50,
+    },
+    preferredEthnicities: data.preferred_ethnicities || data.preferences?.preferred_ethnicities || [],
+    preferredPolitics: data.preferred_politics || data.preferences?.preferred_politics || [],
+    partnerLifestylePreferences: (
+      data.preferences?.partner_drinking !== undefined ||
+      data.preferences?.partner_cannabis !== undefined
+    ) ? {
+      drinking: data.preferences?.partner_drinking || [],
+      cannabis: data.preferences?.partner_cannabis || [],
+      tobacco: data.preferences?.partner_tobacco || [],
+      otherDrugs: data.preferences?.partner_other_drugs || [],
+    } : (data.partner_lifestyle_preferences || data.preferences?.partner_lifestyle_preferences || undefined),
     nonNegotiables: data.non_negotiables || [],
     deepQuestions: (data.deep_questions || []).map((dq: any) => ({
       questionId: dq.question_id,
@@ -266,7 +289,27 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
       throw new Error(result.message || 'Failed to fetch profile');
     }
 
-    return { ok: true, data: mapBackendToUserProfile(result.data) };
+    const profile = mapBackendToUserProfile(result.data);
+
+    // Resolve storage paths to signed URLs.
+    // Photos are stored as paths (e.g. "userId/photo_123.jpg"), not full URLs.
+    if (profile.photos && profile.photos.length > 0) {
+      const storagePaths = profile.photos
+        .map(p => p.url)
+        .filter(url => url && !url.startsWith('http'));
+
+      if (storagePaths.length > 0) {
+        const urlMapRes = await getMultiplePhotoSignedUrls(storagePaths, 3600);
+        if (urlMapRes.ok && urlMapRes.data) {
+          profile.photos = profile.photos.map(p => ({
+            ...p,
+            url: urlMapRes.data![p.url] || p.url,
+          }));
+        }
+      }
+    }
+
+    return { ok: true, data: profile };
   } catch (error: any) {
     logger.error('[ProfileService] getUserProfile error:', error);
     return createErrorResponse('FETCH_PROFILE_ERROR', error.message || 'Failed to fetch profile');
@@ -314,8 +357,30 @@ export const updateUserProfile = async (
     if (updates.bio !== undefined) payload.bio = updates.bio;
     if (updates.isPaused !== undefined) payload.is_paused = updates.isPaused;
     if (updates.photos !== undefined) payload.photos = updates.photos;
-    if (updates.preferences !== undefined) payload.preferences = updates.preferences;
     if (updates.deepQuestions !== undefined) payload.deep_questions = updates.deepQuestions;
+
+    // Build user_preferences update — must use exact snake_case column names from the DB schema
+    if (updates.preferences !== undefined || updates.preferredEthnicities !== undefined ||
+        updates.preferredPolitics !== undefined || updates.partnerLifestylePreferences !== undefined) {
+      const prefPayload: any = {};
+      if (updates.preferences?.ageMin !== undefined) prefPayload.age_min = updates.preferences.ageMin;
+      if (updates.preferences?.ageMax !== undefined) prefPayload.age_max = updates.preferences.ageMax;
+      if (updates.preferences?.gender !== undefined) prefPayload.preferred_gender = updates.preferences.gender;
+      if (updates.preferences?.lookingFor !== undefined) prefPayload.looking_for = updates.preferences.lookingFor;
+      if (updates.preferences?.heightMin !== undefined) prefPayload.preferred_height_min_inches = updates.preferences.heightMin;
+      if (updates.preferences?.heightMax !== undefined) prefPayload.preferred_height_max_inches = updates.preferences.heightMax;
+      if (updates.preferences?.maxDistance !== undefined) prefPayload.max_distance = updates.preferences.maxDistance;
+      if (updates.preferredEthnicities !== undefined) prefPayload.preferred_ethnicities = updates.preferredEthnicities;
+      if (updates.preferredPolitics !== undefined) prefPayload.preferred_politics = updates.preferredPolitics;
+      // Partner lifestyle stored as separate columns, not a single JSON column
+      if (updates.partnerLifestylePreferences !== undefined) {
+        prefPayload.partner_drinking = updates.partnerLifestylePreferences.drinking;
+        prefPayload.partner_cannabis = updates.partnerLifestylePreferences.cannabis;
+        prefPayload.partner_tobacco = updates.partnerLifestylePreferences.tobacco;
+        prefPayload.partner_other_drugs = updates.partnerLifestylePreferences.otherDrugs;
+      }
+      if (Object.keys(prefPayload).length > 0) payload.preferences = prefPayload;
+    }
 
     const response = await fetch(`${API_URL}/profile/${userId}`, {
       method: 'PUT',
@@ -325,6 +390,14 @@ export const updateUserProfile = async (
 
     if (!response.ok) {
       throw new Error(`Failed to update profile: ${response.status}`);
+    }
+
+    // interestedInGenders lives in the `profiles` table — the backend PUT endpoint
+    // doesn't expose this field, so update it directly via Supabase client.
+    if (updates.interestedInGenders !== undefined) {
+      await supabase.from('profiles').update({
+        interested_in_genders: updates.interestedInGenders,
+      }).eq('id', userId);
     }
 
     return getUserProfile();

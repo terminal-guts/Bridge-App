@@ -625,7 +625,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                     case 'Match Preferences':
                       navigation.navigate('MatchPreferences');
                       break;
-                    case 'Deep Questions':
+                    case 'Questions':
                       setActiveTab('questions');
                       break;
                     case 'About Me':

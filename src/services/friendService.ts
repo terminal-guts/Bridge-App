@@ -333,7 +333,7 @@ export const getFriends = async (): Promise<ApiResponse<FriendWithProfile[]>> =>
 
     // 🚨 DEVELOPMENT MODE: Return mock friends for quick testing
     const { FEATURES } = await import('../config/features');
-    if (FEATURES.DEVELOPMENT_AUTO_FILL_ONBOARDING || FEATURES.ENABLE_DEVELOPER_MENU) {
+    if (FEATURES.DEVELOPMENT_AUTO_FILL_ONBOARDING) {
       const { mockProfiles } = await import('./mockData');
 
       // Create mock friends from mock profiles
@@ -457,7 +457,7 @@ export const getFriendCount = async (): Promise<ApiResponse<number>> => {
 
     // 🚨 DEVELOPMENT MODE: Return mock friend count to match getFriends() behavior
     const { FEATURES } = await import('../config/features');
-    if (FEATURES.DEVELOPMENT_AUTO_FILL_ONBOARDING || FEATURES.ENABLE_DEVELOPER_MENU) {
+    if (FEATURES.DEVELOPMENT_AUTO_FILL_ONBOARDING) {
       // Return 3 to match the mock friends in getFriends()
       return { ok: true, data: 3 };
     }

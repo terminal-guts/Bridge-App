@@ -33,6 +33,55 @@ import {
 } from '../types/community';
 
 // ============================================================================
+// TIMER HELPERS
+// ============================================================================
+
+/**
+ * Returns the timestamp (ms) of the next 7 PM US Central Time.
+ * Uses America/Chicago which automatically handles CST (UTC-6) and CDT (UTC-5).
+ */
+function getNext7PMCentral(): number {
+  const now = new Date();
+  const centralFmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    hour: '2-digit',
+    hour12: false,
+  });
+  const dateFmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  // Current Central hour determines if today's 7 PM has already passed
+  const currentCentralHour = parseInt(centralFmt.format(now), 10);
+  const dateParts = dateFmt.formatToParts(now);
+  const year = parseInt(dateParts.find(p => p.type === 'year')!.value, 10);
+  const month = parseInt(dateParts.find(p => p.type === 'month')!.value, 10) - 1;
+  const day = parseInt(dateParts.find(p => p.type === 'day')!.value, 10);
+
+  // Target day: today if before 7 PM, tomorrow if at or after 7 PM
+  const targetDay = currentCentralHour < 19 ? day : day + 1;
+
+  // Try both CST (UTC-6) and CDT (UTC-5) offsets; validate by round-tripping
+  for (const offsetH of [6, 5]) {
+    const rawUtcHour = 19 + offsetH; // e.g. 25 for CST
+    const dayRollover = Math.floor(rawUtcHour / 24);
+    const utcHour = rawUtcHour % 24;
+    const candidate = Date.UTC(year, month, targetDay + dayRollover, utcHour, 0, 0);
+
+    const verifiedHour = parseInt(centralFmt.format(new Date(candidate)), 10);
+    if (verifiedHour === 19) {
+      return candidate;
+    }
+  }
+
+  // Fallback: 24h from now
+  return now.getTime() + 24 * 60 * 60 * 1000;
+}
+
+// ============================================================================
 // MOCK DATA GENERATORS
 // ============================================================================
 
@@ -1607,8 +1656,8 @@ class CommunityService {
   // DEV STATE TOGGLE API
   // ==========================================================================
 
-  /** Timestamp (ms) of the next 24-hour match reset */
-  private nextResetAt: number = Date.now() + 24 * 60 * 60 * 1000;
+  /** Timestamp (ms) of the next 7 PM US Central Time reset */
+  private nextResetAt: number = getNext7PMCentral();
 
   /** Returns the timestamp of the next match reset */
   getNextResetAt(): number {
@@ -1623,14 +1672,14 @@ class CommunityService {
    * - Friends who have an active match (isMatched: true) will still appear as
    *   "already helped" because getFriendsAreaData checks isMatched independently.
    * - The proposedPairings set is NEVER cleared — pairings are lifetime unique.
-   * - The nextResetAt is set to 24h from now.
+   * - The nextResetAt is advanced to the next 7 PM US Central Time.
    */
   triggerReset(): void {
-    this.nextResetAt = Date.now() + 24 * 60 * 60 * 1000;
+    this.nextResetAt = getNext7PMCentral();
     // Only clear today's "helped" flags — matched friends remain shown as helped
     // because getFriendsAreaData checks isMatched separately.
     mockState.helpedFriends = [];
-    logger.info('[Mock] 24-hour reset triggered. Helped friends cleared. Pairing history preserved.');
+    logger.info('[Mock] Daily reset triggered at 7 PM Central. Helped friends cleared. Pairing history preserved.');
     this.notifyStateChange();
   }
 

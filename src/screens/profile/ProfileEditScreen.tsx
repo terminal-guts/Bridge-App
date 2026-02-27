@@ -1203,7 +1203,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               containerClassName="mb-4"
             />
             <Input
-              label="Height"
+              label="Height (inches)"
               required
               value={isHeightFocused ? profile.height : formatHeight(profile.height)}
               onChangeText={(text) => {

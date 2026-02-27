@@ -4,7 +4,7 @@
     "slug": "bridge",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/favicon.png",
+    "icon": "./assets/BridgeLogo-Photoroom.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/BridgeLogo-Photoroom.png",
@@ -15,12 +15,20 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.bridge.app"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.bridge.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Bridge needs camera access to take profile photos.",
+        "NSPhotoLibraryUsageDescription": "Bridge needs photo library access to upload profile photos.",
+        "NSPhotoLibraryAddUsageDescription": "Bridge needs permission to save photos.",
+        "NSMicrophoneUsageDescription": "Bridge needs microphone access for voice features.",
+        "NSLocationWhenInUseUsageDescription": "Bridge uses your location to show nearby matches."
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/favicon.png",
+        "foregroundImage": "./assets/BridgeLogo-Photoroom.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.bridge.app"
@@ -29,7 +37,22 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-image-picker",
+      "expo-av",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/BridgeLogo-Photoroom.png",
+          "color": "#437FFF"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Bridge uses your location to show nearby matches."
+        }
+      ]
     ]
   }
 }

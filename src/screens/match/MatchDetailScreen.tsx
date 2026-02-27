@@ -448,7 +448,7 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
             </StyledView>
           </Card>
 
-          {/* Deep Questions */}
+          {/* Questions */}
           {profile.deepQuestions && profile.deepQuestions.length > 0 && (
             <Card
               onPress={() => navigation.navigate('DeepQuestions', { userId: profile.userId, editable: false })}
@@ -456,7 +456,7 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
             >
               <StyledView className="flex-row justify-between items-center">
                 <StyledView className="flex-1">
-                  <H3 className="mb-1">Deep Questions</H3>
+                  <H3 className="mb-1">Questions</H3>
                   <Body className="text-neutral-600">
                     View {profile.firstName}'s {profile.deepQuestions.length} answers
                   </Body>

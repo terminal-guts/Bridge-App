@@ -29,6 +29,7 @@ export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const isVerifyingRef = useRef(false);
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -62,6 +63,7 @@ export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
   };
 
   const validateAndContinue = async (verificationCode?: string) => {
+    if (isVerifyingRef.current) return;
     const fullCode = verificationCode ?? code;
 
     if (fullCode.length !== 6) {
@@ -89,7 +91,9 @@ export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
       }
     }
 
+    isVerifyingRef.current = true;
     const response = await verifyPhone(data.phoneNumber || '', fullCode);
+    isVerifyingRef.current = false;
 
     if (response.ok) {
       updateData({

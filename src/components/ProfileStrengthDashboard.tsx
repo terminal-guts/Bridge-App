@@ -149,7 +149,7 @@ const calculateStrength = (profile: UserProfile): {
   }
 
   sections.push({
-    name: 'Deep Questions',
+    name: 'Questions',
     icon: 'chatbubble-ellipses-outline',
     score: breakdown.sections.deepQuestions.score,
     maxScore: breakdown.sections.deepQuestions.maxScore,

@@ -12,6 +12,9 @@ import { OfflineBanner } from '../../components/OfflineBanner';
 import { communityService } from '../../services/communityServiceIndex';
 import { getUserFriendCode } from '../../services/friendService';
 import { FriendWithGridStatus } from '../../types/community';
+import { getUserProfile } from '../../services/profileService';
+import { UserProfile } from '../../types';
+import { ProfileCompletionBanner } from '../../components/ProfileCompletionBanner';
 
 // ── Match reset countdown timer ───────────────────────────────────────────────
 function MatchResetTimer() {
@@ -104,6 +107,13 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   // null = still checking, true = can see friends area, false = must vote first
   const [hasCompletedVoting, setHasCompletedVoting] = useState<boolean | null>(null);
   const [friendCode, setFriendCode] = useState<string>('');
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    getUserProfile().then(result => {
+      if (result.ok && result.data) setProfile(result.data);
+    });
+  }, []);
 
   const loadFriendsData = useCallback(async () => {
     try {
@@ -131,7 +141,18 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     setLoading(true);
     try {
       const task = await communityService.getCommunityTaskProgress();
-      const votingDone = task.hasVotedOnProposals;
+      let votingDone = task.hasVotedOnProposals;
+
+      // If the user hasn't voted yet, check whether any proposals exist.
+      // If none are available, skip the gate — no point showing "All Caught Up"
+      // to a new user who has nothing to vote on.
+      if (!votingDone) {
+        const available = await communityService.getProposalsToVote();
+        if (available.length === 0) {
+          votingDone = true;
+        }
+      }
+
       setHasCompletedVoting(votingDone);
       if (votingDone) {
         await loadFriendsData();
@@ -196,6 +217,10 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     <StyledSafeAreaView className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" />
       <OfflineBanner />
+      <ProfileCompletionBanner
+        profile={profile}
+        onPress={() => (navigation as any).navigate('Profile')}
+      />
 
       {/* Header section */}
       <View className="px-6 pt-4">

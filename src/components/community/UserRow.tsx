@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { FriendWithGridStatus } from '../../types/community';
 import { FireIcon, StarIcon } from '../icons/Icons';
 import { KarmaInfoModal } from './KarmaInfoModal';
+import { calculateProfileCompleteness } from '../../utils/profileCompleteness';
 
 interface UserRowProps {
     item: FriendWithGridStatus;
@@ -20,6 +21,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
     const name = item.friend.firstName || 'User';
     const imageUrl = item.friend.photos?.[0]?.url || 'https://via.placeholder.com/150';
     const streak = item.streakDays || 0;
+    const friendProfileComplete = calculateProfileCompleteness(item.friend).percentage === 100;
     const actionType = item.hasCompletedGrid ? 'points' : 'match';
     const points = item.assistsCount > 0
         ? item.assistsCount * 10
@@ -48,8 +50,12 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
             </View>
 
             {actionType === 'match' ? (
-                <TouchableOpacity onPress={onMatch} style={styles.matchBtn} activeOpacity={0.75}>
-                    <Text style={styles.matchBtnText}>Match</Text>
+                <TouchableOpacity
+                    onPress={friendProfileComplete ? onMatch : undefined}
+                    style={[styles.matchBtn, !friendProfileComplete && styles.matchBtnDisabled]}
+                    activeOpacity={friendProfileComplete ? 0.75 : 1}
+                >
+                    <Text style={[styles.matchBtnText, !friendProfileComplete && styles.matchBtnTextDisabled]}>Match</Text>
                 </TouchableOpacity>
             ) : (
                 <TouchableOpacity style={styles.pointsBtn} activeOpacity={0.75} onPress={() => setShowKarmaModal(true)}>
@@ -130,6 +136,13 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         fontSize: 15,
         color: '#2B65F9',
+    },
+    matchBtnDisabled: {
+        borderColor: '#D1D5DB',
+        backgroundColor: '#F3F4F6',
+    },
+    matchBtnTextDisabled: {
+        color: '#9CA3AF',
     },
     pointsBtn: {
         flexDirection: 'row',

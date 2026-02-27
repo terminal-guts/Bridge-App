@@ -63,7 +63,6 @@ import { FriendListScreen } from '../screens/friends/FriendListScreen';
 // Types
 import { RootStackParamList, MainTabParamList } from '../types';
 import { createDevelopmentData } from '../services/developmentDataService';
-import { DeveloperMenu } from '../components/DeveloperMenu';
 import { DevStateToggle } from '../components/DevStateToggle';
 import { createLogger } from '../utils/secureLogger';
 
@@ -321,8 +320,6 @@ export const AppNavigator = () => {
           - StrikeWarning
           */}
         </Stack.Navigator>
-        {/* Developer Menu - Must be inside NavigationContainer to use useNavigation */}
-        {FEATURES.ENABLE_DEVELOPER_MENU && <DeveloperMenu />}
         {/* Dev State Toggle - quick UI state switcher */}
         {FEATURES.ENABLE_DEV_STATE_TOGGLE && <DevStateToggle />}
       </ErrorBoundary>

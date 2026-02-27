@@ -59,21 +59,6 @@ export interface FeatureFlags {
 
   /**
    * 🚨 DEVELOPMENT ONLY 🚨
-   * Enable floating developer menu for god-mode access
-   * Features:
-   * - Quick navigation to any screen
-   * - Data management (create/reset matches, surveys, friends)
-   * - Profile management (complete/clear profile)
-   * - Auth controls (sign out, copy user ID)
-   * - Time controls (extend match expiry)
-   *
-   * ⚠️ SET TO FALSE FOR PRODUCTION ⚠️
-   * @default true (development)
-   */
-  ENABLE_DEVELOPER_MENU: boolean;
-
-  /**
-   * 🚨 DEVELOPMENT ONLY 🚨
    * Skip authentication checks for easier development
    * Allows accessing all screens without being signed in
    *
@@ -173,7 +158,6 @@ export const FEATURES: FeatureFlags = {
   DEVELOPMENT_AUTO_FILL_ONBOARDING: false, // ❌ DISABLED - Use real onboarding
   DEVELOPMENT_CREATE_MOCK_DATA: false, // ❌ DISABLED - Use real data
   DEVELOPMENT_FORCE_FRESH_SESSION: false, // ❌ DISABLED - Annoying for testing
-  ENABLE_DEVELOPER_MENU: false, // ❌ DISABLED
   DEVELOPMENT_SKIP_AUTH: false, // ❌ KEEP AUTH FLOW FOR REALISTIC TESTING
   DEV_USER_ID: null, // Use default dev user
   DEVELOPMENT_UNLOCK_FRIENDS_AREA: false, // ❌ DISABLED - Require daily tasks
@@ -187,7 +171,7 @@ export const FEATURES: FeatureFlags = {
   ENABLE_GLASSMORPHISM: false,
   ENABLE_DEEP_QUESTIONS_PREVIEW: true,
   DAILY_PAIRING_ENABLED: true,
-  ENABLE_DEV_STATE_TOGGLE: false, // ❌ DISABLED for production
+  ENABLE_DEV_STATE_TOGGLE: true, // ✅ ENABLED
 };
 
 /**
@@ -210,7 +194,6 @@ export const FEATURE_PRESETS = {
     DEVELOPMENT_AUTO_FILL_ONBOARDING: true,
     DEVELOPMENT_CREATE_MOCK_DATA: true,
     DEVELOPMENT_FORCE_FRESH_SESSION: false,
-    ENABLE_DEVELOPER_MENU: true,
     DEVELOPMENT_UNLOCK_FRIENDS_AREA: true,
     COMMUNITY_BACKEND_ENABLED: false, // Use mock service during development
     MESSAGING_BACKEND_ENABLED: true, // Real messaging enabled
@@ -227,7 +210,6 @@ export const FEATURE_PRESETS = {
     DEVELOPMENT_AUTO_FILL_ONBOARDING: false,
     DEVELOPMENT_CREATE_MOCK_DATA: false,
     DEVELOPMENT_FORCE_FRESH_SESSION: false,
-    ENABLE_DEVELOPER_MENU: false,
     DEVELOPMENT_UNLOCK_FRIENDS_AREA: false,
     COMMUNITY_BACKEND_ENABLED: true,
     MESSAGING_BACKEND_ENABLED: true,
@@ -244,7 +226,6 @@ export const FEATURE_PRESETS = {
     DEVELOPMENT_AUTO_FILL_ONBOARDING: false,
     DEVELOPMENT_CREATE_MOCK_DATA: false,
     DEVELOPMENT_FORCE_FRESH_SESSION: false,
-    ENABLE_DEVELOPER_MENU: false,
     DEVELOPMENT_UNLOCK_FRIENDS_AREA: false,
     COMMUNITY_BACKEND_ENABLED: true,
     MESSAGING_BACKEND_ENABLED: true,

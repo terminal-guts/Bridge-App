@@ -2,13 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, SafeAreaView, ActivityIndicator, Image, TouchableOpacity, StyleSheet, StatusBar, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MatchCard } from '../../components/matches/MatchCard';
-import { communityService } from '../../services/communityServiceIndex';
-import { MatchEndedEvent } from '../../services/communityService';
+import { communityService, MatchEndedEvent } from '../../services/communityService';
 import { ActiveMatch, MatchProposal } from '../../types/community';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OfflineBanner } from '../../components/OfflineBanner';
 import { ClockIcon } from '../../components/icons/Icons';
+import { getUserProfile } from '../../services/profileService';
+import { UserProfile } from '../../types';
+import { ProfileCompletionBanner } from '../../components/ProfileCompletionBanner';
 
 // One of five mutually exclusive states the screen can be in
 type ScreenState =
@@ -150,6 +152,13 @@ export function MatchesScreen() {
     const [activeMatch, setActiveMatch] = useState<ActiveMatch | null>(null);
     const [pendingProposals, setPendingProposals] = useState<MatchProposal[]>([]);
     const [loading, setLoading] = useState(true);
+    const [profile, setProfile] = useState<UserProfile | null>(null);
+
+    useEffect(() => {
+        getUserProfile().then(result => {
+            if (result.ok && result.data) setProfile(result.data);
+        });
+    }, []);
     const [now, setNow] = useState(Date.now());
     const [endMatchModalVisible, setEndMatchModalVisible] = useState(false);
     const [endMatchReason, setEndMatchReason] = useState('');
@@ -250,6 +259,10 @@ export function MatchesScreen() {
         return (
             <SafeAreaView style={styles.root}>
                 <StatusBar barStyle="dark-content" />
+                <ProfileCompletionBanner
+                    profile={profile}
+                    onPress={() => navigation.navigate('Profile')}
+                />
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Match</Text>
                 </View>
@@ -350,6 +363,10 @@ export function MatchesScreen() {
     return (
         <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
             <OfflineBanner />
+            <ProfileCompletionBanner
+                profile={profile}
+                onPress={() => navigation.navigate('Profile')}
+            />
             {/* Header row: title left, countdown timer right */}
             <View style={[styles.headerRow, { paddingTop: insets.top + 16 }]}>
                 <Text style={styles.headerTitle}>Match</Text>

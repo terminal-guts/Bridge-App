@@ -16,21 +16,53 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const PROFILE_CONTENT_STYLE = { paddingBottom: 150 } as const;
 
 const VALUES_EMOJI: Record<string, string> = {
-    'Kindness': '💗', 'Honesty': '💛', 'Growth': '🌱', 'Family': '🎁',
-    'Ambition': '🎯', 'Humor': '😄', 'Empathy': '🧡', 'Curiosity': '🔍',
-    'Creativity': '🎨', 'Loyalty': '🤝', 'Adventure': '🌍', 'Health': '💪',
-    'Fun': '🎉', 'Faith': '🙏', 'Justice': '⚖️', 'Wisdom': '🦉',
-    'Respect': '🌟', 'Integrity': '💎', 'Freedom': '🦋', 'Love': '❤️',
+    // Personal Values
+    'Honesty': '💛', 'Integrity': '💎', 'Loyalty': '🤝', 'Trust': '🔒',
+    'Respect': '🌟', 'Authenticity': '🪞', 'Kindness': '💗', 'Compassion': '🫶',
+    'Empathy': '🧡', 'Generosity': '🎁',
+    // Relationship Values
+    'Communication': '💬', 'Commitment': '💍', 'Partnership': '🤝',
+    'Independence': '🦅', 'Interdependence': '🔗', 'Romance': '🌹',
+    'Intimacy': '💞', 'Friendship First': '👫',
+    // Life Values
+    'Family': '👨‍👩‍👧', 'Career': '💼', 'Ambition': '🎯', 'Success': '🏆',
+    'Work-Life Balance': '⚖️', 'Adventure': '🌍', 'Stability': '🏡',
+    'Growth Mindset': '🌱', 'Learning': '📚', 'Creativity': '🎨',
+    // Social Values
+    'Community': '🏘️', 'Social Justice': '✊', 'Environmentalism': '🌿',
+    'Equality': '🟰', 'Diversity': '🌈', 'Tradition': '🏛️',
+    'Innovation': '💡', 'Service': '🙌', 'Leadership': '👑',
+    // Personal Growth
+    'Self-Improvement': '📈', 'Mindfulness': '🧘', 'Spirituality': '🙏',
+    'Health': '💪', 'Fitness': '🏋️', 'Mental Health': '🧠',
+    'Emotional Intelligence': '💭',
 };
 
 const INTERESTS_EMOJI: Record<string, string> = {
-    'Travel': '✈️', 'Live music': '🎵', 'Coffee chats': '☕', 'Hiking': '🥾',
-    'Book clubs': '📚', 'Food walks': '🥘', 'Weekend getaways': '✨',
-    'Art galleries': '🎨', 'Board games': '🎲', 'Cooking': '🍳',
-    'Photography': '📷', 'Sports': '⚽', 'Music': '🎸', 'Dancing': '💃',
-    'Gaming': '🎮', 'Movies': '🎬', 'Yoga': '🧘', 'Running': '🏃',
-    'Swimming': '🏊', 'Reading': '📖', 'Fitness': '💪', 'Wine tasting': '🍷',
-    'Cycling': '🚴', 'Rock climbing': '🧗',
+    // Activities
+    'Tennis': '🎾', 'Golf': '⛳', 'Running': '🏃', 'Yoga': '🧘',
+    'Pilates': '🤸', 'CrossFit': '🏋️', 'Hiking': '🥾', 'Skiing': '⛷️',
+    'Cycling': '🚴', 'Swimming': '🏊', 'Basketball': '🏀', 'Soccer': '⚽',
+    'Climbing': '🧗', 'Lifting': '🏋️', 'Live Sports': '🏟️', 'Watching Sports': '📺',
+    // Culture & Entertainment
+    'Museums': '🏛️', 'Art Galleries': '🖼️', 'Theater': '🎭',
+    'Live Music': '🎵', 'Concerts': '🎤', 'Comedy Shows': '😂',
+    'Film': '🎬', 'Documentaries': '🎥', 'Reading': '📖',
+    'Writing': '✍️', 'Photography': '📷',
+    // Food & Drink
+    'Cooking': '🍳', 'Baking': '🥐', 'Wine Tasting': '🍷',
+    'Craft Beer': '🍺', 'Coffee': '☕', 'Cocktails': '🍸',
+    'Fine Dining': '🍽️', 'Food Markets': '🛒', 'Brunch': '🥞',
+    // Travel & Adventure
+    'Travel': '✈️', 'Weekend Trips': '🗺️', 'International Travel': '🌍',
+    'Road Trips': '🚗', 'Camping': '⛺',
+    // Lifestyle
+    'Startups': '🚀', 'Investing': '📈', 'Real Estate': '🏠',
+    'Fashion': '👗', 'Interior Design': '🛋️', 'Meditation': '🧘',
+    'Wellness': '🌿', 'Volunteering': '🤝', 'Podcasts': '🎙️',
+    // Social
+    'Dinner Parties': '🥂', 'Game Nights': '🎲', 'Dancing': '💃',
+    'Karaoke': '🎤', 'Trivia Nights': '🧠', 'Poker': '🃏', 'Video Games': '🎮',
 };
 
 function getEmoji(text: string, map: Record<string, string>): string {
@@ -227,12 +259,6 @@ export default function ProfileMatchScreen() {
                                 </View>
                                 <Text style={styles.cardTitle}>Community validation</Text>
                             </View>
-                            <TouchableOpacity style={styles.whyMatchButton}>
-                                <View style={styles.whyMatchIconCircle}>
-                                    <Sparkles size={10} color="#FFFFFF" strokeWidth={2} fill="#FFFFFF" />
-                                </View>
-                                <Text style={styles.whyMatchText}>Why this match</Text>
-                            </TouchableOpacity>
                         </View>
 
                         <Text style={styles.scoreValue}>{communityScore}%</Text>
@@ -478,7 +504,6 @@ const styles = StyleSheet.create({
     },
     cardHeader: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 10,
     },
@@ -499,30 +524,6 @@ const styles = StyleSheet.create({
         fontFamily: 'PlusJakartaSans_600SemiBold',
         fontSize: 15,
         color: '#0F1724',
-    },
-    whyMatchButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#E8F0FF',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 9999,
-        borderWidth: 1,
-        borderColor: 'rgba(0, 0, 0, 0.08)',
-        gap: 6,
-    },
-    whyMatchIconCircle: {
-        width: 18,
-        height: 18,
-        backgroundColor: '#2B6BE6',
-        borderRadius: 9,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    whyMatchText: {
-        fontFamily: 'PlusJakartaSans_500Medium',
-        fontSize: 13,
-        color: '#154F9C',
     },
     scoreValue: {
         fontFamily: 'PlusJakartaSans_700Bold',
