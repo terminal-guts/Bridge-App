@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { View, SafeAreaView, StatusBar, ScrollView, FlatList, Image, TouchableOpacity, Alert, RefreshControl, Modal, Switch, Animated, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, SafeAreaView, StatusBar, ScrollView, FlatList, TouchableOpacity, Alert, RefreshControl, Modal, Switch, Animated, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PROFILE_CACHE_DURATION, NAVIGATION_DELAY, AVATAR_SIZE_XL } from '../../constants';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -196,6 +197,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [backgroundLoading, setBackgroundLoading] = useState(false);
   const [friendCount, setFriendCount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'about' | 'questions' | 'matches'>('about');
   // Preview modal removed - now using ProfilePreviewScreen for standardized view
@@ -242,6 +244,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
   // Performance: Cache timing ref to avoid redundant API calls
   const lastFetchRef = useRef<number>(0);
 
+  // Track if this is the initial mount to handle loading states
+  const initialMountRef = useRef(true);
+
   // Track component mount status to prevent state updates after unmount
   const isMountedRef = useRef(true);
 
@@ -253,7 +258,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
   }, []);
 
   // Performance: Wrap data loading functions in useCallback
-  const loadProfile = useCallback(async () => {
+  const loadProfile = useCallback(async (forceRefresh: boolean = false) => {
     try {
       logger.info('[ProfileScreen] loadProfile called');
 
@@ -268,7 +273,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
       }
 
       // SECURITY FIX: getUserProfile() now gets userId from auth session automatically
-      const profileResult = await getUserProfile();
+      const profileResult = await getUserProfile(forceRefresh);
       if (!profileResult.ok || !profileResult.data) {
         // Don't show error if offline - keep existing data
         if (!isOffline) {
@@ -306,18 +311,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
         Alert.alert('Error', error.message || 'An unexpected error occurred');
       }
     } finally {
-      if (isMountedRef.current) {
-        setLoading(false);
-      }
+      // Loading handled in useFocusEffect
     }
   }, [isOffline]);
 
-  const loadMatches = useCallback(async () => {
+  const loadMatches = useCallback(async (forceRefresh: boolean = false) => {
     try {
       const userResult = await getCurrentUser();
       if (!userResult.ok || !userResult.data) return;
 
-      const matchesResult = await getUserMatches();
+      const matchesResult = await getUserMatches(forceRefresh);
       if (matchesResult.ok && matchesResult.data) {
         const pastMatches = matchesResult.data.filter(m => m.status === 'accepted');
         if (isMountedRef.current) {
@@ -348,6 +351,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
     useCallback(() => {
       logger.info('[ProfileScreen] useFocusEffect triggered - reloading profile data');
 
+      const isDataPresent = profile !== null;
+
+      // Only show the main loading skeleton on the very first mount
+      // For subsequent focuses, we use a background refresh pattern
+      if (!isDataPresent && initialMountRef.current) {
+        setLoading(true);
+      } else {
+        setBackgroundLoading(true);
+      }
+
       // Load all data in parallel for better performance
       Promise.all([
         loadProfile(),
@@ -360,12 +373,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
           'Failed to load profile',
           'Please pull down to refresh or try again later.'
         );
+      })
+      .finally(() => {
+        if (isMountedRef.current) {
+          setLoading(false);
+          setBackgroundLoading(false);
+          initialMountRef.current = false;
+        }
       });
 
       // Clear banner dismissal on app start (for development/testing)
       // Remove this in production if you want dismissal to persist
       AsyncStorage.removeItem('@profile_completion_banner_dismissed').catch(console.error);
-    }, [loadProfile, loadMatches, loadFriendCount])
+    }, [loadProfile, loadMatches, loadFriendCount]) // Removed profile from dependencies to avoid infinite loop
   );
 
   // Start profile guide ONLY once per session when profile loads
@@ -386,8 +406,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
     // Force refresh bypasses cache
     lastFetchRef.current = 0;
     await Promise.all([
-      loadProfile(),
-      loadMatches(),
+      loadProfile(true),
+      loadMatches(true),
       loadFriendCount(),
     ]);
     lastFetchRef.current = Date.now();
@@ -1266,9 +1286,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                   shadowRadius: 10,
                   elevation: 6,
                 } as any}
-                resizeMode="cover"
+                contentFit="cover"
+                transition={200}
+                cachePolicy="disk"
                 onError={(e) => {
-                  logger.warn('Failed to load profile photo:', e.nativeEvent.error);
+                  logger.warn('Failed to load profile photo:', e);
                 }}
               />
             ) : (

@@ -14,8 +14,15 @@ import { Profile } from '../types/profile';
 import { supabase } from '../lib/supabase';
 import { createLogger } from '../utils/secureLogger';
 import { uploadMultiplePhotos } from './photoService';
+import { PROFILE_CACHE_DURATION } from '../constants';
 
 const logger = createLogger('ProfileService');
+
+// In-memory cache for the current user's profile
+let profileCache: {
+  data: UserProfile;
+  timestamp: number;
+} | null = null;
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://bridge-frontend-production.up.railway.app';
 
 // ============================================================================
@@ -248,11 +255,19 @@ export const createUserProfile = async (
 /**
  * Get the current user's profile.
  * Calls the /profile/{user_id} endpoint on the backend.
+ * Uses in-memory caching to reduce redundant network requests.
  */
-export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
+export const getUserProfile = async (forceRefresh: boolean = false): Promise<ApiResponse<UserProfile>> => {
   try {
     const userId = await getCurrentUserId();
-    logger.info('[ProfileService] getUserProfile:', userId);
+
+    // Check cache if not forcing refresh
+    if (!forceRefresh && profileCache && (Date.now() - profileCache.timestamp < PROFILE_CACHE_DURATION)) {
+      logger.info('[ProfileService] Returning cached profile for:', userId);
+      return { ok: true, data: profileCache.data };
+    }
+
+    logger.info('[ProfileService] Fetching profile from backend for:', userId);
 
     const response = await fetch(`${API_URL}/profile/${userId}`, {
       headers: await getAuthHeaders(),
@@ -266,7 +281,15 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
       throw new Error(result.message || 'Failed to fetch profile');
     }
 
-    return { ok: true, data: mapBackendToUserProfile(result.data) };
+    const profile = mapBackendToUserProfile(result.data);
+
+    // Update cache
+    profileCache = {
+      data: profile,
+      timestamp: Date.now(),
+    };
+
+    return { ok: true, data: profile };
   } catch (error: any) {
     logger.error('[ProfileService] getUserProfile error:', error);
     return createErrorResponse('FETCH_PROFILE_ERROR', error.message || 'Failed to fetch profile');
@@ -327,7 +350,10 @@ export const updateUserProfile = async (
       throw new Error(`Failed to update profile: ${response.status}`);
     }
 
-    return getUserProfile();
+    // Invalidate cache after update to ensure next fetch gets fresh data
+    profileCache = null;
+
+    return getUserProfile(true);
   } catch (error: any) {
     logger.error('[ProfileService] updateUserProfile error:', error);
     return createErrorResponse('UPDATE_PROFILE_ERROR', error.message || 'Failed to update profile');
@@ -493,7 +519,7 @@ export const getGuideCompletionStatus = async (
 export const fetchAndSetUserProfile = async (
   _userId?: string,
 ): Promise<ApiResponse<UserProfile>> => {
-  return getUserProfile();
+  return getUserProfile(true); // Always force refresh during explicit fetch-and-set
 };
 
 /**

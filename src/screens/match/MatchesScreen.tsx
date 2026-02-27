@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, SafeAreaView, ActivityIndicator, Image, TouchableOpacity, StyleSheet, StatusBar, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, ActivityIndicator, TouchableOpacity, StyleSheet, StatusBar, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MatchCard } from '../../components/matches/MatchCard';
 import { communityService } from '../../services/communityServiceIndex';
@@ -79,7 +80,13 @@ function EndedMatchPopupContent({ event }: { event: MatchEndedEvent }) {
     return (
         <View style={popupStyles.content}>
             {partnerPhotoUrl ? (
-                <Image source={{ uri: partnerPhotoUrl }} style={popupStyles.avatar} />
+                <Image
+                    source={{ uri: partnerPhotoUrl }}
+                    style={popupStyles.avatar}
+                    contentFit="cover"
+                    transition={200}
+                    cachePolicy="disk"
+                />
             ) : (
                 <View style={[popupStyles.avatar, popupStyles.avatarFallback]}>
                     <Text style={popupStyles.avatarFallbackText}>{partnerName.charAt(0)}</Text>
@@ -167,9 +174,9 @@ export function MatchesScreen() {
         return () => clearInterval(id);
     }, []);
 
-    const loadMatches = async () => {
+    const loadMatches = async (forceRefresh: boolean = false) => {
         try {
-            const data = await communityService.getFriendsAreaData();
+            const data = await communityService.getFriendsAreaData(forceRefresh);
             setActiveMatch(data.activeMatch);
             setPendingProposals(data.pendingProposals || []);
         } catch (error) {
@@ -183,13 +190,19 @@ export function MatchesScreen() {
         loadMatches();
         return communityService.onStateChange(() => {
             setLoading(true);
-            loadMatches();
+            loadMatches(true);
         });
     }, []);
 
     // Check for a pending ended-match event each time the tab is focused
     useFocusEffect(
         useCallback(() => {
+            const isDataPresent = activeMatch !== null || pendingProposals.length > 0;
+            if (!isDataPresent) {
+                setLoading(true);
+            }
+            loadMatches();
+
             const event = communityService.getEndedMatchEvent();
             if (!event) return;
             AsyncStorage.getItem(`match_popup_seen_${event.eventId}`).then(seen => {

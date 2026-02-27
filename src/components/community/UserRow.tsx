@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { FriendWithGridStatus } from '../../types/community';
+import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { FireIcon, StarIcon } from '../icons/Icons';
 import { KarmaInfoModal } from './KarmaInfoModal';
 
@@ -19,6 +21,7 @@ const stableRandom = (seed: string, min: number, max: number): number => {
 export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch }) => {
     const name = item.friend.firstName || 'User';
     const imageUrl = item.friend.photos?.[0]?.url || 'https://via.placeholder.com/150';
+    const optimizedImageUrl = useMemo(() => getOptimizedImageUrl(imageUrl, 68), [imageUrl]);
     const streak = item.streakDays || 0;
     const actionType = item.hasCompletedGrid ? 'points' : 'match';
     const points = item.assistsCount > 0
@@ -30,8 +33,11 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
         <View style={styles.row}>
             <View style={styles.left}>
                 <Image
-                    source={{ uri: imageUrl }}
+                    source={{ uri: optimizedImageUrl }}
                     style={styles.avatar}
+                    contentFit="cover"
+                    transition={200}
+                    cachePolicy="disk"
                 />
                 <View style={styles.info}>
                     <View style={styles.nameRow}>

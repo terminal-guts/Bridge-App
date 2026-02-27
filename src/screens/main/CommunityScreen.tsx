@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, SafeAreaView, StatusBar, ActivityIndicator, Image, TouchableOpacity, StyleSheet, Dimensions, Share } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, StatusBar, ActivityIndicator, TouchableOpacity, StyleSheet, Dimensions, Share } from 'react-native';
+import { Image } from 'expo-image';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 import { styled } from 'nativewind';
@@ -101,14 +102,15 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [usersToMatch, setUsersToMatch] = useState<FriendWithGridStatus[]>([]);
   const [alreadyHelped, setAlreadyHelped] = useState<FriendWithGridStatus[]>([]);
   const [loading, setLoading] = useState(true);
+  const [backgroundLoading, setBackgroundLoading] = useState(false);
   // null = still checking, true = can see friends area, false = must vote first
   const [hasCompletedVoting, setHasCompletedVoting] = useState<boolean | null>(null);
   const [friendCode, setFriendCode] = useState<string>('');
 
-  const loadFriendsData = useCallback(async () => {
+  const loadFriendsData = useCallback(async (forceRefresh: boolean = false) => {
     try {
       const [data, codeRes] = await Promise.all([
-        communityService.getFriendsAreaData(),
+        communityService.getFriendsAreaData(forceRefresh),
         getUserFriendCode()
       ]);
 
@@ -128,7 +130,13 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   }, []);
 
   const initialize = useCallback(async () => {
-    setLoading(true);
+    const isDataPresent = usersToMatch.length > 0 || alreadyHelped.length > 0;
+    if (!isDataPresent) {
+      setLoading(true);
+    } else {
+      setBackgroundLoading(true);
+    }
+
     try {
       const task = await communityService.getCommunityTaskProgress();
       const votingDone = task.hasVotedOnProposals;
@@ -161,7 +169,8 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       return; // skip first focus (handled by the init useEffect)
     }
     if (hasCompletedVoting) {
-      loadFriendsData();
+      setBackgroundLoading(true);
+      loadFriendsData().finally(() => setBackgroundLoading(false));
     }
   }, [hasCompletedVoting, loadFriendsData]));
 

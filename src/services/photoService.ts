@@ -494,18 +494,27 @@ export const deleteMultiplePhotos = async (
 /**
  * Get signed URL for a photo (private bucket access)
  * SECURITY: Photos are now private, so we generate time-limited signed URLs
+ * Supports image transformations for optimized delivery (thumbnails, etc.)
  *
  * @param storagePath - The storage path to the photo
  * @param expiresIn - Time in seconds until URL expires (default: 1 hour)
+ * @param transform - Optional image transformation parameters
  */
 export const getPhotoSignedUrl = async (
   storagePath: string,
-  expiresIn: number = 3600
+  expiresIn: number = 3600,
+  transform?: {
+    width?: number;
+    height?: number;
+    resize?: 'cover' | 'contain' | 'fill';
+    quality?: number;
+    format?: 'origin' | 'webp';
+  }
 ): Promise<ApiResponse<string>> => {
   try {
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .createSignedUrl(storagePath, expiresIn);
+      .createSignedUrl(storagePath, expiresIn, transform ? { transform } : undefined);
 
     if (error || !data?.signedUrl) {
       return createErrorResponse(
@@ -532,10 +541,18 @@ export const getPhotoSignedUrl = async (
  *
  * @param storagePaths - Array of storage paths
  * @param expiresIn - Time in seconds until URLs expire (default: 1 hour)
+ * @param transform - Optional image transformation parameters (applied to all)
  */
 export const getMultiplePhotoSignedUrls = async (
   storagePaths: string[],
-  expiresIn: number = 3600
+  expiresIn: number = 3600,
+  transform?: {
+    width?: number;
+    height?: number;
+    resize?: 'cover' | 'contain' | 'fill';
+    quality?: number;
+    format?: 'origin' | 'webp';
+  }
 ): Promise<ApiResponse<Record<string, string>>> => {
   try {
     if (!storagePaths || storagePaths.length === 0) {
@@ -550,7 +567,7 @@ export const getMultiplePhotoSignedUrls = async (
 
     // Generate signed URLs for each path
     for (const path of storagePaths) {
-      const result = await getPhotoSignedUrl(path, expiresIn);
+      const result = await getPhotoSignedUrl(path, expiresIn, transform);
       if (result.ok && result.data) {
         urlMap[path] = result.data;
       } else {

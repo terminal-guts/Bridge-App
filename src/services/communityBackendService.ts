@@ -27,8 +27,26 @@ import {
 } from './proposalApiService';
 import { getBlockedUserIds } from './blockService';
 import { createLogger } from '../utils/secureLogger';
+import { PROFILE_CACHE_DURATION } from '../constants';
 
 const logger = createLogger('CommunityBackend');
+
+// In-memory caches
+let friendsAreaDataCache: {
+  data: {
+    friends: FriendWithGridStatus[];
+    pendingProposals: any[];
+    activeMatch: ActiveMatch | null;
+  };
+  timestamp: number;
+  userId: string;
+} | null = null;
+
+let taskProgressCache: {
+  data: CommunityTask;
+  timestamp: number;
+  userId: string;
+} | null = null;
 
 // ============================================================================
 // Helpers
@@ -157,6 +175,9 @@ class CommunityBackendService {
 
     const userId = await getCurrentUserId();
     const voteType = vote === 'yes' ? 'YES' : 'NO';
+
+    // Invalidate caches
+    taskProgressCache = null;
 
     await castProposalVote(proposalId, userId, voteType as any);
     if (!this.sessionVotedProposals.has(proposalId)) {
@@ -437,6 +458,10 @@ class CommunityBackendService {
   async respondToMatchProposal(proposalId: string, accept: boolean): Promise<void> {
     const userId = await getCurrentUserId();
     const decision = accept ? 'accepted' : 'declined';
+
+    // Invalidate caches
+    friendsAreaDataCache = null;
+
     await decideOnProposal(proposalId, userId, decision);
   }
 
@@ -588,8 +613,14 @@ class CommunityBackendService {
   // Community Task Progress (Supabase)
   // ========================================================================
 
-  async getCommunityTaskProgress(): Promise<CommunityTask> {
+  async getCommunityTaskProgress(forceRefresh: boolean = false): Promise<CommunityTask> {
     const userId = await getCurrentUserId();
+
+    // Check cache
+    if (!forceRefresh && taskProgressCache && taskProgressCache.userId === userId && (Date.now() - taskProgressCache.timestamp < PROFILE_CACHE_DURATION)) {
+      return taskProgressCache.data;
+    }
+
     const today = new Date().toISOString().split('T')[0];
 
     // Count today's votes from the proposal_votes table
@@ -613,7 +644,7 @@ class CommunityBackendService {
     const hasCreatedProposal = !!survey?.submitted_at;
     const allComplete = hasVoted;
 
-    return {
+    const task: CommunityTask = {
       id: `task-${today}`,
       userId,
       taskDate: today,
@@ -626,24 +657,49 @@ class CommunityBackendService {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+
+    // Update cache
+    taskProgressCache = {
+      data: task,
+      timestamp: Date.now(),
+      userId,
+    };
+
+    return task;
   }
 
   // ========================================================================
   // Friends Area Aggregate
   // ========================================================================
 
-  async getFriendsAreaData(): Promise<{
+  async getFriendsAreaData(forceRefresh: boolean = false): Promise<{
     friends: FriendWithGridStatus[];
     pendingProposals: any[];
     activeMatch: ActiveMatch | null;
   }> {
+    const userId = await getCurrentUserId();
+
+    // Check cache
+    if (!forceRefresh && friendsAreaDataCache && friendsAreaDataCache.userId === userId && (Date.now() - friendsAreaDataCache.timestamp < PROFILE_CACHE_DURATION)) {
+      return friendsAreaDataCache.data;
+    }
+
     const [friends, pendingProposals, activeMatch] = await Promise.all([
       this.getFriendsAsAnchors(),
       this.getPendingMatchProposals(),
       this.getActiveMatch(),
     ]);
 
-    return { friends, pendingProposals, activeMatch };
+    const data = { friends, pendingProposals, activeMatch };
+
+    // Update cache
+    friendsAreaDataCache = {
+      data,
+      timestamp: Date.now(),
+      userId,
+    };
+
+    return data;
   }
 
   // ========================================================================

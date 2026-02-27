@@ -8,16 +8,29 @@
 import { supabase } from '../lib/supabase';
 import { ApiResponse, Match, UserProfile } from '../types';
 import { requireAuth } from '../utils/auth';
+import { PROFILE_CACHE_DURATION } from '../constants';
+
+// In-memory cache for user matches
+let matchesCache: {
+  data: Match[];
+  timestamp: number;
+  userId: string;
+} | null = null;
 
 /**
  * Get all matches for the current user
  * Optimized with SQL joins to eliminate N+1 query problem
  * SECURITY FIX: Gets userId from authenticated session, not from client
  */
-export const getUserMatches = async (): Promise<ApiResponse<Match[]>> => {
+export const getUserMatches = async (forceRefresh: boolean = false): Promise<ApiResponse<Match[]>> => {
   try {
     // SECURITY: Get user ID from authenticated session
     const userId = await requireAuth();
+
+    // Check cache
+    if (!forceRefresh && matchesCache && matchesCache.userId === userId && (Date.now() - matchesCache.timestamp < PROFILE_CACHE_DURATION)) {
+      return { ok: true, data: matchesCache.data };
+    }
 
     // 🚨 DEVELOPMENT MODE: Check for mock Love Tab state first
     const { getMockLoveTabState } = await import('./developerService');
@@ -173,6 +186,13 @@ export const getUserMatches = async (): Promise<ApiResponse<Match[]>> => {
       };
     });
 
+    // Update cache
+    matchesCache = {
+      data: formattedMatches,
+      timestamp: Date.now(),
+      userId,
+    };
+
     return { ok: true, data: formattedMatches };
   } catch (error: any) {
     return {
@@ -213,6 +233,9 @@ export const acceptMatch = async (matchId: string): Promise<ApiResponse<Match>> 
         },
       };
     }
+
+    // Invalidate cache
+    matchesCache = null;
 
     return { ok: true, data: data.data };
   } catch (error: any) {
@@ -260,6 +283,9 @@ export const rejectMatch = async (
         },
       };
     }
+
+    // Invalidate cache
+    matchesCache = null;
 
     return { ok: true };
   } catch (error: any) {
@@ -310,6 +336,9 @@ export const exitMatch = async (
       };
     }
 
+    // Invalidate cache
+    matchesCache = null;
+
     return { ok: true };
   } catch (error: any) {
     return {
@@ -347,6 +376,9 @@ export const updateMatchExitFeedback = async (
         },
       };
     }
+
+    // Invalidate cache
+    matchesCache = null;
 
     return { ok: true };
   } catch (error: any) {
