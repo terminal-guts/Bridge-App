@@ -12,6 +12,7 @@ import {
 } from '../types';
 import { Profile } from '../types/profile';
 import { supabase } from '../lib/supabase';
+import { getAuthenticatedUserId } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
 import { uploadMultiplePhotos, getMultiplePhotoSignedUrls } from './photoService';
 
@@ -28,9 +29,9 @@ const createErrorResponse = (code: string, message: string): ApiResponse<any> =>
 });
 
 async function getCurrentUserId(): Promise<string> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.id) throw new Error('Not authenticated');
-  return user.id;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) throw new Error('Not authenticated');
+  return userId;
 }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
@@ -287,6 +288,10 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
 
     const result = await response.json();
     if (result.status !== 'success') {
+      // If profile not found, return a specific error code that AppNavigator expects
+      if (response.status === 404) {
+        return createErrorResponse('PROFILE_NOT_FOUND', 'Profile not found');
+      }
       throw new Error(result.message || 'Failed to fetch profile');
     }
 
@@ -393,12 +398,12 @@ export const updateUserProfile = async (
       throw new Error(`Failed to update profile: ${response.status}`);
     }
 
-    // interestedInGenders lives in the `profiles` table — the backend PUT endpoint
+    // interestedInGenders lives in the `user_profiles` table — the backend PUT endpoint
     // doesn't expose this field, so update it directly via Supabase client.
     if (updates.interestedInGenders !== undefined) {
-      await supabase.from('profiles').update({
+      await supabase.from('user_profiles').update({
         interested_in_genders: updates.interestedInGenders,
-      }).eq('id', userId);
+      }).eq('user_id', userId);
     }
 
     return getUserProfile();
@@ -565,9 +570,56 @@ export const getGuideCompletionStatus = async (
 // ============================================================================
 
 export const fetchAndSetUserProfile = async (
-  _userId?: string,
+  userId?: string,
 ): Promise<ApiResponse<UserProfile>> => {
-  return getUserProfile();
+  try {
+    const targetUserId = userId || await getAuthenticatedUserId();
+    if (!targetUserId) {
+      return createErrorResponse('AUTH_REQUIRED', 'No user ID provided or found in session');
+    }
+
+    logger.info('[ProfileService] fetchAndSetUserProfile for:', targetUserId);
+
+    const response = await fetch(`${API_URL}/profile/${targetUserId}`, {
+      headers: await getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return createErrorResponse('PROFILE_NOT_FOUND', 'Profile not found');
+      }
+      throw new Error(`Failed to fetch profile: ${response.status}`);
+    }
+
+    const result = await response.json();
+    if (result.status !== 'success') {
+      throw new Error(result.message || 'Failed to fetch profile');
+    }
+
+    const profile = mapBackendToUserProfile(result.data);
+
+    // Resolve signed URLs
+    if (profile.photos && profile.photos.length > 0) {
+      const storagePaths = profile.photos
+        .map(p => p.url)
+        .filter(url => url && !url.startsWith('http'));
+
+      if (storagePaths.length > 0) {
+        const urlMapRes = await getMultiplePhotoSignedUrls(storagePaths, 86400);
+        if (urlMapRes.ok && urlMapRes.data) {
+          profile.photos = profile.photos.map(p => ({
+            ...p,
+            url: urlMapRes.data![p.url] || p.url,
+          }));
+        }
+      }
+    }
+
+    return { ok: true, data: profile };
+  } catch (error: any) {
+    logger.error('[ProfileService] fetchAndSetUserProfile error:', error);
+    return createErrorResponse('FETCH_PROFILE_ERROR', error.message || 'Failed to fetch profile');
+  }
 };
 
 /**

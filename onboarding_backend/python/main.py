@@ -278,11 +278,11 @@ async def save_onboarding_step(request: SaveStepRequest):
             # We can put placeholders.
             
             # Note: real auth usually creates this trigger, but for manual saving from frontend mock:
-            user_exists = supabase.table("profiles").select("id").eq("id", request.user_id).execute()
+            user_exists = supabase.table("user_profiles").select("user_id").eq("user_id", request.user_id).execute()
             if not user_exists.data:
                 print(f"[ONBOARDING] Auto-creating missing profile for {request.user_id}")
-                supabase.table("profiles").insert({
-                    "id": request.user_id,
+                supabase.table("user_profiles").insert({
+                    "user_id": request.user_id,
                     "first_name": "", # Placeholder
                     "last_name": "", # Placeholder
                     "age": 18, # Placeholder
@@ -397,7 +397,7 @@ async def verify_otp(request: Request, payload: VerifyRequest):
             user_id = f"00000000-0000-0000-0000-{derived_user_id[:12]}"
             
             # Check if profile exists
-            response = supabase.table("profiles").select("id").eq("id", user_id).execute()
+            response = supabase.table("user_profiles").select("user_id").eq("user_id", user_id).execute()
             user_exists = bool(response.data)
             
             if user_exists:
@@ -468,7 +468,7 @@ async def verify_email_otp(request: Request, payload: VerifyEmailRequest):
         
         user_exists = False
         try:
-            response = supabase.table("profiles").select("id").eq("id", user_id).execute()
+            response = supabase.table("user_profiles").select("user_id").eq("user_id", user_id).execute()
             user_exists = bool(response.data)
             if user_exists:
                 print(f"[AUTH] Found existing user profile for email: {user_id}")
@@ -540,8 +540,8 @@ async def complete_onboarding(data: OnboardingCompletion, background_tasks: Back
         # Remove None values
         profile_data = {k: v for k, v in profile_data.items() if v is not None}
         
-        response = supabase.table("profiles").upsert({
-            "id": data.user_id,
+        response = supabase.table("user_profiles").upsert({
+            "user_id": data.user_id,
             **profile_data
         }).execute()
         
@@ -619,7 +619,7 @@ async def get_profile(user_id: str):
         print(f"[PROFILE] Fetching profile for user: {user_id}")
         
         # 1. Get Profile
-        profile_res = supabase.table("profiles").select("*").eq("id", user_id).maybe_single().execute()
+        profile_res = supabase.table("user_profiles").select("*").eq("user_id", user_id).maybe_single().execute()
         if not profile_res.data:
             raise HTTPException(status_code=404, detail="Profile not found")
             
@@ -702,7 +702,7 @@ async def update_profile(user_id: str, data: ProfileUpdate):
                 profile_fields[field] = value
 
         if profile_fields:
-            supabase.table("profiles").update(profile_fields).eq("id", user_id).execute()
+            supabase.table("user_profiles").update(profile_fields).eq("user_id", user_id).execute()
 
         # 2. Update preferences if provided
         if data.preferences is not None:

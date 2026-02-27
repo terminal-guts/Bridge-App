@@ -7,6 +7,7 @@
  */
 
 import { supabase } from '../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
  * Get the currently authenticated user's ID from the session.
@@ -14,13 +15,17 @@ import { supabase } from '../lib/supabase';
  */
 export async function getAuthenticatedUserId(): Promise<string | null> {
   try {
-    const { data: { user }, error } = await supabase.auth.getUser();
-
-    if (error || !user) {
-      return null;
+    // Priority 1: Custom auth storage (required by architecture)
+    const storedUserJson = await AsyncStorage.getItem('bridge_auth_user');
+    if (storedUserJson) {
+      const userData = JSON.parse(storedUserJson);
+      if (userData?.id) return userData.id;
     }
 
-    return user.id;
+    // Priority 2: Fallback to Supabase session (standard)
+    // Note: In this custom architecture, getUser() may return null even if logged in.
+    const { data: { user } } = await supabase.auth.getUser();
+    return user?.id || null;
   } catch (error) {
     console.error('Error getting authenticated user:', error);
     return null;
@@ -46,16 +51,32 @@ export async function requireAuth(): Promise<string> {
  * Returns user ID and phone number.
  */
 export async function requireAuthWithPhone(): Promise<{ userId: string; phone: string }> {
-  const { data: { user }, error } = await supabase.auth.getUser();
+  try {
+    // Priority 1: Custom auth storage
+    const storedUserJson = await AsyncStorage.getItem('bridge_auth_user');
+    if (storedUserJson) {
+      const userData = JSON.parse(storedUserJson);
+      if (userData?.id) {
+        return {
+          userId: userData.id,
+          phone: userData.phone || '',
+        };
+      }
+    }
 
-  if (error || !user) {
-    throw new Error('Authentication required. Please sign in to continue.');
+    // Priority 2: Fallback to Supabase
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      return {
+        userId: user.id,
+        phone: user.phone || '',
+      };
+    }
+  } catch (error) {
+    console.error('Error in requireAuthWithPhone:', error);
   }
 
-  return {
-    userId: user.id,
-    phone: user.phone || '',
-  };
+  throw new Error('Authentication required. Please sign in to continue.');
 }
 
 /**
