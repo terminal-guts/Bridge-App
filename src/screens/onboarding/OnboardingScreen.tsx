@@ -56,7 +56,11 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   useEffect(() => {
     if (authUserId) return; // Already have it
     const loadUserId = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) {
+        logger.warn('[OnboardingScreen] Failed to fetch auth user:', error.message);
+        return;
+      }
       if (user?.id) {
         setAuthUserId(user.id);
       }

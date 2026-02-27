@@ -223,8 +223,9 @@ export function MatchesScreen() {
         Keyboard.dismiss();
         setEndMatchModalVisible(false);
         setEndMatchReason('');
-        communityService.endActiveMatch(endMatchReason.trim());
-    }, [endMatchReason]);
+        const matchId = activeMatch?.matchId ?? activeMatch?.id ?? '';
+        communityService.endActiveMatch(matchId, endMatchReason.trim());
+    }, [endMatchReason, activeMatch]);
 
     if (loading) {
         return (
@@ -347,7 +348,7 @@ export function MatchesScreen() {
             navigation.navigate('Chat', {
                 matchId: match.matchId ?? match.id,
                 recipientName: partnerName,
-                recipientId: partner?.id,
+                recipientId: partner?.userId ?? partner?.id,
             });
         } else {
             navigation.navigate('ProposalProfile', {

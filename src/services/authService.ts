@@ -13,6 +13,11 @@ import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('AuthService');
 
+// Flag set before intentional sign-outs so AppNavigator doesn't show a "Session Expired" toast
+let _intentionalSignOut = false;
+export const isIntentionalSignOut = () => _intentionalSignOut;
+export const resetIntentionalSignOut = () => { _intentionalSignOut = false; };
+
 interface User {
   id: string;
   email?: string;
@@ -176,6 +181,7 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
 export const signOut = async (): Promise<ApiResponse<void>> => {
   try {
     logger.info('[AUTH] Signing out user');
+    _intentionalSignOut = true;
 
     // Clean up message subscriptions
     cleanupSubscriptions();

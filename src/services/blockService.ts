@@ -148,7 +148,7 @@ export const getBlockedUsers = async (): Promise<ApiResponse<BlockedUser[]>> => 
       .from('blocked_users')
       .select('*')
       .eq('user_id', currentUserId)
-      .order('blocked_at', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (blocksError) throw blocksError;
 
@@ -172,7 +172,7 @@ export const getBlockedUsers = async (): Promise<ApiResponse<BlockedUser[]>> => 
         userId: block.user_id,
         blockedUserId: block.blocked_user_id,
         reason: block.reason,
-        blockedAt: block.blocked_at,
+        blockedAt: block.blocked_at ?? block.created_at,
         blockedUserProfile: p
           ? ({
               id: p.id,

@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import { FEATURES } from '../config/features';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { fetchAndSetUserProfile } from '../services/profileService';
+import { isIntentionalSignOut, resetIntentionalSignOut } from '../services/authService';
 import { notificationService } from '../services/notificationService';
 import { showToast } from '../utils/toast';
 
@@ -229,8 +230,13 @@ export const AppNavigator = () => {
       if (event === 'SIGNED_IN' && session?.user) {
         setupNotifications();
       } else if (event === 'SIGNED_OUT' && wasAuthenticated) {
-        logger.info('[AppNavigator] Unexpected SIGNED_OUT event');
-        showToast.error('Session Expired', 'Your session expired. Please sign in again.');
+        if (isIntentionalSignOut()) {
+          resetIntentionalSignOut();
+          logger.info('[AppNavigator] Intentional sign-out');
+        } else {
+          logger.info('[AppNavigator] Unexpected SIGNED_OUT — session expired');
+          showToast.error('Session Expired', 'Your session expired. Please sign in again.');
+        }
         if (navigationRef.current) {
           navigationRef.current.navigate('Welcome');
         }

@@ -409,24 +409,30 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
           <Card className="mb-4">
             <H3 className="mb-3">Lifestyle</H3>
             <StyledView className="space-y-2">
-              <StyledView className="flex-row justify-between">
-                <Body className="text-neutral-600">Drinking</Body>
-                <Body className="capitalize">{profile.lifestyle.drinking}</Body>
-              </StyledView>
-              <StyledView className="flex-row justify-between">
-                <Body className="text-neutral-600">Smoking</Body>
-                <Body className="capitalize">{profile.lifestyle.smoking}</Body>
-              </StyledView>
-              <StyledView className="flex-row justify-between">
-                <Body className="text-neutral-600">Exercise</Body>
-                <Body className="capitalize">{profile.lifestyle.exercise}</Body>
-              </StyledView>
-              {profile.lifestyle.children && (
+              {profile.lifestyle?.drinking ? (
+                <StyledView className="flex-row justify-between">
+                  <Body className="text-neutral-600">Drinking</Body>
+                  <Body className="capitalize">{profile.lifestyle.drinking}</Body>
+                </StyledView>
+              ) : null}
+              {profile.lifestyle?.smoking ? (
+                <StyledView className="flex-row justify-between">
+                  <Body className="text-neutral-600">Smoking</Body>
+                  <Body className="capitalize">{profile.lifestyle.smoking}</Body>
+                </StyledView>
+              ) : null}
+              {profile.lifestyle?.exercise ? (
+                <StyledView className="flex-row justify-between">
+                  <Body className="text-neutral-600">Exercise</Body>
+                  <Body className="capitalize">{profile.lifestyle.exercise}</Body>
+                </StyledView>
+              ) : null}
+              {profile.lifestyle?.children ? (
                 <StyledView className="flex-row justify-between">
                   <Body className="text-neutral-600">Children</Body>
                   <Body className="capitalize">{profile.lifestyle.children.replace('_', ' ')}</Body>
                 </StyledView>
-              )}
+              ) : null}
               {profile.religion && (
                 <StyledView className="flex-row justify-between">
                   <Body className="text-neutral-600">Religion</Body>

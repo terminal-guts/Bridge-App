@@ -297,7 +297,11 @@ export const addFriendByCode = async (
     }
 
     // The function returns an array with one row
-    const result = data[0];
+    const result = data?.[0];
+
+    if (!result) {
+      return createErrorResponse('ADD_FRIEND_ERROR', 'No response from server');
+    }
 
     if (!result.success) {
       return createErrorResponse('ADD_FRIEND_FAILED', result.message);

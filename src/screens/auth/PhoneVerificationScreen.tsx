@@ -102,7 +102,8 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
     const isTestPhone = phoneNumber === '+15555555555' || phoneNumber === '5555555555';
     if (!isEmail && isTestPhone && otpCode === '123456' && (__DEV__ || process.env.EXPO_PUBLIC_ENABLE_REVIEWER_BYPASS === 'true')) {
       logger.info('[AUTH] App Store Reviewer bypass detected');
-      const bypassResult = await signInWithPassword('reviewer@bridgedate.app', 'AppReview2024!');
+      const reviewerPassword = process.env.EXPO_PUBLIC_REVIEWER_PASSWORD || 'AppReview2024!';
+      const bypassResult = await signInWithPassword('reviewer@bridgedate.app', reviewerPassword);
 
       if (bypassResult.ok) {
         // Continue to profile fetch as if verified
