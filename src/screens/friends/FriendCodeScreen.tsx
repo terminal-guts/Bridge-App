@@ -11,6 +11,7 @@ import { supabase } from '../../lib/supabase';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { OfflineBanner } from '../../components/OfflineBanner';
 import { createLogger } from '../../utils/secureLogger';
+import { showToast } from '../../utils/toast';
 
 const logger = createLogger('FriendCodeScreen');
 
@@ -84,7 +85,7 @@ const shareFriendCode = async (friendCode: string): Promise<void> => {
 const copyToClipboard = async (friendCode: string): Promise<void> => {
   try {
     await Clipboard.setStringAsync(friendCode);
-    Alert.alert('Copied!', 'Your friend code has been copied to clipboard');
+    showToast.success('Copied!', 'Your friend code has been copied to clipboard');
   } catch (error) {
     logger.error('Error copying to clipboard:', error);
     Alert.alert('Error', 'Failed to copy friend code');

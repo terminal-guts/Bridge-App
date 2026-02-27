@@ -552,6 +552,7 @@ export const cleanupSubscriptions = (): void => {
     supabase.removeChannel(channel);
   });
   activeChannels.clear();
+  mockMessages = {};
   mockCallbacks = {};
 };
 

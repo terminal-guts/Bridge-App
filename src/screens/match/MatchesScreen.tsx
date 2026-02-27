@@ -299,7 +299,7 @@ export function MatchesScreen() {
     // ── Countdown timer ─────────────────────────────────────────────────────
     const expiryTs: number | null = (() => {
         if (screenState === 'active_match') {
-            const exp = (activeMatch as any)?.expiresAt;
+            const exp = activeMatch?.expiresAt;
             return exp ? new Date(exp).getTime() : null;
         }
         return currentProposal?.expiresAt ? new Date(currentProposal.expiresAt).getTime() : null;

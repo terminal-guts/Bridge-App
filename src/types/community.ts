@@ -328,6 +328,7 @@ export interface ActiveMatch {
   matchedUser?: UserProfile; // Alias for partnerProfile
   partnerProfile?: UserProfile;
   matchedAt: string;
+  expiresAt?: string;
   canEndAt?: string;
   daysActive?: number;
   canEndMatch?: boolean; // True after 3 days
