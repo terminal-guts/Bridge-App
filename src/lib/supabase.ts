@@ -202,7 +202,7 @@ export const supabase = realSupabase || (createMockClient() as unknown as Supaba
 /**
  * Helper to check if we're using real Supabase
  */
-export const isRealSupabase = (): boolean => hasRealCredentials;
+export const isRealSupabase = (): boolean => !!hasRealCredentials;
 
 /**
  * Get the Supabase URL (useful for debugging)

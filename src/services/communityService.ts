@@ -1226,26 +1226,6 @@ class CommunityService {
   }
 
   /**
-   * End an active match
-   */
-  async endActiveMatch(matchId: string, reason: string): Promise<void> {
-    await this.delay(300);
-
-    const match = await this.getActiveMatch();
-    if (!match) {
-      throw new Error('No active match');
-    }
-
-    if (match.daysUntilCanEnd > 0) {
-      throw new Error(`Cannot end match for ${match.daysUntilCanEnd} more day(s)`);
-    }
-
-    logger.info('[Mock] Ending active match:', matchId);
-    logger.info('[Mock] Reason for ending:', reason);
-    // TODO: In production, send reason to backend for analytics
-  }
-
-  /**
    * Get user's karma score
    */
   async getKarmaScore(): Promise<KarmaScore> {
@@ -1759,7 +1739,7 @@ class CommunityService {
    * From the perspective of this user, no popup appears — they initiated it.
    * The partner's session would show a 'match_ended' popup (not modelled in mock).
    */
-  endActiveMatch(reason: string): void {
+  endActiveMatch(matchId: string, reason: string): void {
     // Archive current active match as a past match
     const partnerProfile = MOCK_ACTIVE_MATCH_PARTNER;
     const pastMatch: Match = {
@@ -1771,6 +1751,7 @@ class CommunityService {
       status: 'accepted',
       communityScore: 82,
       matchedAt: new Date(Date.now() - 5 * 24 * 3600000).toISOString(),
+      expiresAt: new Date(Date.now() - 24 * 3600000).toISOString(),
       currentUserId: 'current-user',
       unmatchedAt: new Date().toISOString(),
       unmatchSurveyResponse: reason,

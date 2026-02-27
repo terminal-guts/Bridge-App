@@ -117,6 +117,8 @@ export interface UserProfile {
   displayedQuestions?: number[]; // Question IDs to display on profile (max 3, one per tier)
   sectionVisibility?: Record<string, boolean>; // Which sections are visible to others (does not affect edit view)
   isPaused?: boolean; // Whether profile is paused
+  isVerified?: boolean; // Whether the profile has been verified by the team
+  profileCompleted?: boolean; // True when all required fields are filled — set by backend, gates matching pool
   // Partner preferences (collected in Match Preferences screen)
   // Arrays to support multiple selections (e.g., ["yes", "sometimes"])
   // Also supports legacy string format for backward compatibility
@@ -429,6 +431,7 @@ export interface OnboardingData {
   drugsFrequency?: string; // Legacy field name, prefer otherDrugsFrequency
   interests: string[];
   values: string[];
+  bio?: string;
   lifestyle: LifestylePreferences;
   preferences: MatchPreferences;
   deepQuestions?: DeepQuestionAnswer[];

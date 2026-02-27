@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, SafeAreaView, StatusBar, ActivityIndicator, Image, TouchableOpacity, StyleSheet, Dimensions, Share } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, StatusBar, ActivityIndicator, Image, TouchableOpacity, StyleSheet, Dimensions, Share, Alert } from 'react-native';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 import { styled } from 'nativewind';
@@ -134,6 +134,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       setAlreadyHelped(helped);
     } catch (error) {
       console.error("Failed to load community data:", error);
+      Alert.alert('Error', 'Failed to load community data. Pull down to refresh.');
     }
   }, []);
 
@@ -349,9 +350,6 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   ctaText: { fontFamily: 'Outfit_600SemiBold', fontSize: 15, color: '#FFFFFF' },
-  tagline: { fontFamily: 'Outfit_600SemiBold', fontSize: 20, lineHeight: 26, color: '#0B1226', textAlign: 'center', marginBottom: 12 },
-  illustration: { width: 300, height: 300, marginBottom: 32 },
-  subtitle: { fontFamily: 'Outfit_500Medium', fontSize: 14, lineHeight: 17, color: '#6B7280', textAlign: 'center', marginBottom: 16 },
   codeContainer: {
     backgroundColor: '#F4F7FF',
     borderRadius: 16,

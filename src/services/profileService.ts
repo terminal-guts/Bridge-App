@@ -70,7 +70,7 @@ function mapBackendToUserProfile(data: any): UserProfile {
     gender: data.gender || [],
     pronouns: data.pronouns || '',
     pronounsList: data.pronouns_list || [],
-    customGender: data.custom_gender,
+    customMyGender: data.custom_gender,
     interestedInGenders: data.interested_in_genders || data.preferences?.interested_in_genders || [],
     height: data.height_inches ? `${Math.floor(data.height_inches / 12)}'${data.height_inches % 12}"` : (data.height || ''),
     ethnicity: data.ethnicity || '',
@@ -117,6 +117,7 @@ function mapBackendToUserProfile(data: any): UserProfile {
       tobacco: data.preferences?.partner_tobacco || [],
       otherDrugs: data.preferences?.partner_other_drugs || [],
     } : (data.partner_lifestyle_preferences || data.preferences?.partner_lifestyle_preferences || undefined),
+    lifestyle: data.lifestyle || {},
     nonNegotiables: data.non_negotiables || [],
     deepQuestions: (data.deep_questions || []).map((dq: any) => ({
       questionId: dq.question_id,
@@ -197,6 +198,9 @@ export const createUserProfile = async (
         const uploadRes = await uploadMultiplePhotos(uris);
         if (uploadRes.ok && uploadRes.data) {
           photoUrls = uploadRes.data.map(p => p.url);
+        } else {
+          logger.error('[ProfileService] Photo upload failed — aborting profile creation');
+          return createErrorResponse('PHOTO_UPLOAD_FAILED', 'Failed to upload photos. Please try again.');
         }
       }
     }
@@ -337,7 +341,7 @@ export const updateUserProfile = async (
     if (updates.location !== undefined) payload.location = updates.location;
     if (updates.pronouns !== undefined) payload.pronouns = updates.pronouns;
     if (updates.pronounsList !== undefined) payload.pronouns_list = updates.pronounsList;
-    if (updates.customGender !== undefined) payload.custom_gender = updates.customGender;
+    if (updates.customMyGender !== undefined) payload.custom_gender = updates.customMyGender;
     if (updates.hometown !== undefined) payload.hometown = updates.hometown;
     if (updates.currentJob !== undefined) payload.current_job = updates.currentJob;
     if (updates.companyPosition !== undefined) payload.company_position = updates.companyPosition;
@@ -579,7 +583,7 @@ function mapToLegacyProfile(up: UserProfile): Profile {
     name: up.firstName,
     age: up.age,
     image: up.photos?.[0]?.url || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800',
-    isVerified: up.isVerified,
+    isVerified: up.isVerified ?? false,
     karmaPoints: 80,
     matchPercentage: 75,
     matchedBy: [
