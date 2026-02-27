@@ -126,6 +126,7 @@ function mapBackendToUserProfile(data: any): UserProfile {
     })),
     isPaused: data.is_paused || false,
     isVerified: data.is_verified || false,
+    profileCompleted: data.profile_completed || false,
     createdAt: data.created_at || new Date().toISOString(),
     updatedAt: data.updated_at || new Date().toISOString(),
   } as UserProfile;
@@ -299,7 +300,7 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
         .filter(url => url && !url.startsWith('http'));
 
       if (storagePaths.length > 0) {
-        const urlMapRes = await getMultiplePhotoSignedUrls(storagePaths, 3600);
+        const urlMapRes = await getMultiplePhotoSignedUrls(storagePaths, 86400); // 24-hour TTL
         if (urlMapRes.ok && urlMapRes.data) {
           profile.photos = profile.photos.map(p => ({
             ...p,

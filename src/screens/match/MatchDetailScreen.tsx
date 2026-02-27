@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, SafeAreaView, StatusBar, ScrollView, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, H2, H3, Body, Button, Card, Chip } from '../../components/ui';
@@ -132,8 +132,13 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
 }) => {
   const { matchId } = route.params;
   const [match, setMatch] = useState<Match | null>(null);
+  const matchRef = useRef<Match | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+
+  useEffect(() => {
+    matchRef.current = match;
+  }, [match]);
 
   useEffect(() => {
     loadMatch();
@@ -173,10 +178,11 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
   };
 
   const handleAccept = async () => {
-    if (!match) return;
+    const currentMatch = matchRef.current;
+    if (!currentMatch) return;
 
     setActionLoading(true);
-    const result = await acceptMatch(match.id);
+    const result = await acceptMatch(currentMatch.id);
     setActionLoading(false);
 
     if (!result.ok) {
@@ -188,10 +194,11 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
   };
 
   const handleRejectConfirmed = async () => {
-    if (!match) return;
+    const currentMatch = matchRef.current;
+    if (!currentMatch) return;
 
     setActionLoading(true);
-    const result = await rejectMatch(match.id, 'Not interested');
+    const result = await rejectMatch(currentMatch.id, 'Not interested');
     setActionLoading(false);
 
     if (!result.ok) {

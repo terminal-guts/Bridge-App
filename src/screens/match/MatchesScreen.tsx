@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, SafeAreaView, ActivityIndicator, Image, TouchableOpacity, StyleSheet, StatusBar, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MatchCard } from '../../components/matches/MatchCard';
@@ -153,10 +153,16 @@ export function MatchesScreen() {
     const [pendingProposals, setPendingProposals] = useState<MatchProposal[]>([]);
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState<UserProfile | null>(null);
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => { isMountedRef.current = false; };
+    }, []);
 
     useEffect(() => {
         getUserProfile().then(result => {
-            if (result.ok && result.data) setProfile(result.data);
+            if (isMountedRef.current && result.ok && result.data) setProfile(result.data);
         });
     }, []);
     const [now, setNow] = useState(Date.now());
@@ -179,12 +185,13 @@ export function MatchesScreen() {
     const loadMatches = async () => {
         try {
             const data = await communityService.getFriendsAreaData();
+            if (!isMountedRef.current) return;
             setActiveMatch(data.activeMatch);
             setPendingProposals(data.pendingProposals || []);
         } catch (error) {
             console.error('Failed to load match data', error);
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) setLoading(false);
         }
     };
 
