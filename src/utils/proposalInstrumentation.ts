@@ -149,7 +149,7 @@ export function instrumentProposals(
       proposalsReachedThreshold += 1;
     }
 
-    if (proposal.status === 'passed_to_match' || proposal.status === 'deciding') {
+    if (proposal.status === 'accepted' || proposal.status === 'confirmed') {
       approvedCount += 1;
     } else if (proposal.status === 'rejected' || proposal.status === 'declined') {
       rejectedCount += 1;

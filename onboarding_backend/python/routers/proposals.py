@@ -479,6 +479,56 @@ async def get_pending_decisions(user_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/{proposal_id}/push-candidate")
+async def push_candidate_match(proposal_id: str):
+    """
+    Explicitly push a candidate_match to confirmed state, sending it to both users
+    and starting the decision deadline timer. 
+    """
+    try:
+        result = supabase.table("proposals") \
+            .select("*") \
+            .eq("id", proposal_id) \
+            .single() \
+            .execute()
+
+        proposal = result.data
+        if not proposal:
+            raise HTTPException(status_code=404, detail="Proposal not found")
+        
+        if proposal.get("status") != "candidate_match":
+            raise HTTPException(status_code=400, detail="Only candidate_matches can be pushed")
+            
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        # 48 hours deadline, same as used in proposal_lifecycle DECISION_DEADLINE_HOURS
+        deadline = (datetime.datetime.now(datetime.timezone.utc) +
+                    datetime.timedelta(hours=48)).isoformat()
+                    
+        update_data = {
+            "status": "confirmed",
+            "updated_at": now_iso,
+            "sent_to_users_at": now_iso,
+            "decision_deadline_at": deadline,
+        }
+        
+        supabase.table("proposals") \
+            .update(update_data) \
+            .eq("id", proposal_id) \
+            .execute()
+            
+        return {
+            "status": "success",
+            "proposal_status": "confirmed",
+            "sent_to_users_at": now_iso,
+            "decision_deadline_at": deadline
+        }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ============================================================================
 # Lifecycle Management Endpoints
 # ============================================================================

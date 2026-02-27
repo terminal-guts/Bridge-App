@@ -205,7 +205,7 @@ export function evaluateProposal(
 
     // ── PHASE 2: User Decision checks ─────────────────────────────
 
-    if (stats.isAcceptanceExpired && proposal.status === 'deciding') {
+    if (stats.isAcceptanceExpired && proposal.status === 'confirmed') {
         return {
             action: 'users_expire',
             reason: `Decision deadline (${USER_DECISION_WINDOW_HOURS}h) expired before both users responded.`,
@@ -213,7 +213,7 @@ export function evaluateProposal(
         };
     }
 
-    if (proposal.status === 'deciding') {
+    if (proposal.status === 'confirmed') {
         if (proposal.userADecision === 'accepted' && proposal.userBDecision === 'accepted') {
             return {
                 action: 'users_pass_to_match',
@@ -376,7 +376,7 @@ export function computeVotingStats(
  * Returns true if the proposal status is terminal (no further action needed).
  */
 function isTerminalStatus(status: ProposalStatus): boolean {
-    return ['passed_to_match', 'declined', 'expired', 'rejected'].includes(status);
+    return ['accepted', 'declined', 'expired_sent', 'rejected'].includes(status);
 }
 
 /**
@@ -386,14 +386,14 @@ function isTerminalStatus(status: ProposalStatus): boolean {
 export function actionToStatus(action: ThresholdAction): ProposalStatus | null {
     switch (action) {
         case 'community_approve':
-            return 'deciding';
+            return 'confirmed';
         case 'community_reject':
             return 'rejected';
         case 'community_expire':
         case 'users_expire':
-            return 'expired';
+            return 'expired_sent';
         case 'users_pass_to_match':
-            return 'passed_to_match';
+            return 'accepted';
         case 'users_decline':
             return 'declined';
         case 'continue_showing':

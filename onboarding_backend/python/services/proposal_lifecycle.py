@@ -228,7 +228,7 @@ def evaluate_proposal(
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     # Already in a terminal state — no change
-    if current_status in ("confirmed", "rejected", "expired_sent", "accepted", "declined"):
+    if current_status in ("candidate_match", "confirmed", "rejected", "expired_sent", "accepted", "declined"):
         return current_status, {}
 
     # 1. Check expiry (7-day hard cutoff)
@@ -258,13 +258,10 @@ def evaluate_proposal(
 
     # 4. Check confirmation
     if check_confirmation(proposal, pool_yes, pool_no, friend_yes, friend_no):
-        deadline = (datetime.datetime.now(datetime.timezone.utc) +
-                    datetime.timedelta(hours=DECISION_DEADLINE_HOURS)).isoformat()
-        return "confirmed", {
+        return "candidate_match", {
             "reason": "community_confirmed",
             "confirmed_at": now_iso,
-            "sent_to_users_at": now_iso,
-            "decision_deadline_at": deadline,
+            # Defer sending to users and decision deadline until explicit push action
         }
 
     # 5. Check pool eligibility (may stop pool exposure)
@@ -401,6 +398,7 @@ def run_lifecycle_checks(supabase) -> Dict[str, Any]:
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+    candidate_match_count = 0
     confirmed_count = 0
     rejected_count = 0
     expired_count = 0
@@ -435,7 +433,9 @@ def run_lifecycle_checks(supabase) -> Dict[str, Any]:
             except Exception as e:
                 print(f"[LIFECYCLE] Error updating proposal {proposal['id']}: {e}")
 
-            if new_status == "confirmed":
+            if new_status == "candidate_match":
+                candidate_match_count += 1
+            elif new_status == "confirmed":
                 confirmed_count += 1
             elif new_status == "rejected":
                 rejected_count += 1
@@ -461,6 +461,7 @@ def run_lifecycle_checks(supabase) -> Dict[str, Any]:
     return {
         "status": "success",
         "proposals_checked": len(proposals),
+        "candidate_matches": candidate_match_count,
         "confirmed": confirmed_count,
         "rejected": rejected_count,
         "expired_sent": expired_count,

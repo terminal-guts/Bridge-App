@@ -58,9 +58,7 @@ export interface RandomMatchAssignment {
   completedAt?: string;
 }
 
-// ==================== Proposal Types ====================
-
-export type ProposalStatus = 'pending' | 'deciding' | 'rejected' | 'expired' | 'passed_to_match' | 'declined';
+export type ProposalStatus = 'voting' | 'candidate_match' | 'confirmed' | 'rejected' | 'expired_sent' | 'accepted' | 'declined' | 'pending' | 'deciding';
 
 export interface Proposal {
   id: string;
