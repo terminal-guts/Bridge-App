@@ -120,12 +120,6 @@ export default function ProfileMatchScreen() {
                                 </View>
                                 <Text style={styles.cardTitle}>Community validation</Text>
                             </View>
-                            <TouchableOpacity style={styles.whyMatchButton}>
-                                <View style={styles.whyMatchIconCircle}>
-                                    <Sparkles size={10} color="#FFFFFF" strokeWidth={2} fill="#FFFFFF" />
-                                </View>
-                                <Text style={styles.whyMatchText}>Why this match</Text>
-                            </TouchableOpacity>
                         </View>
 
                         <Text style={styles.scoreValue}>{profile.matchPercentage}%</Text>

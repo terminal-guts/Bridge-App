@@ -14,6 +14,8 @@ import { Profile } from '../types/profile';
 import { supabase } from '../lib/supabase';
 import { createLogger } from '../utils/secureLogger';
 import { uploadMultiplePhotos, getMultiplePhotoSignedUrls } from './photoService';
+import { getQuestionById } from '../utils/deepQuestions';
+import { getQuestionTier } from '../utils/questionTiers';
 
 const logger = createLogger('ProfileService');
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://bridge-frontend-production.up.railway.app';
@@ -45,6 +47,18 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 /**
  * Maps backend profile data to frontend UserProfile type
  */
+/**
+ * Extracts the raw Supabase storage path from a signed or public URL.
+ * If the input is already a plain path (not a URL), returns it unchanged.
+ * e.g. "https://...supabase.co/.../profile-photos/userId/photo.jpg?token=..."
+ *   → "userId/photo.jpg"
+ */
+function extractStoragePath(url: string): string {
+  if (!url || !url.startsWith('http')) return url;
+  const match = url.match(/\/profile-photos\/(.+?)(?:\?|$)/);
+  return match ? match[1] : url;
+}
+
 function heightToInches(heightStr: string | undefined): number | undefined {
   if (!heightStr) return undefined;
   // Handle raw inches value saved by HeightStep (e.g. "68")
@@ -119,12 +133,27 @@ function mapBackendToUserProfile(data: any): UserProfile {
     } : (data.partner_lifestyle_preferences || data.preferences?.partner_lifestyle_preferences || undefined),
     lifestyle: data.lifestyle || {},
     nonNegotiables: data.non_negotiables || [],
-    deepQuestions: (data.deep_questions || []).map((dq: any) => ({
-      questionId: dq.question_id,
-      question: dq.question_text,
-      answer: dq.answer_text,
-      tier: dq.tier,
-    })),
+    deepQuestions: (() => {
+      // DB schema: one row per user with answers as JSONB {questionId: answerText}
+      const dqRow = Array.isArray(data.deep_questions) ? data.deep_questions[0] : null;
+      const answersMap: Record<string, string> = dqRow?.answers || {};
+      return Object.entries(answersMap).map(([qId, answer]) => {
+        const questionId = parseInt(qId, 10);
+        const tier = getQuestionTier(questionId) as 1 | 2 | 3;
+        const questionObj = getQuestionById(questionId);
+        return {
+          questionId,
+          question: questionObj?.question || '',
+          answer: answer as string,
+          tier,
+          updatedAt: new Date().toISOString(),
+        };
+      });
+    })(),
+    displayedQuestions: (() => {
+      const dqRow = Array.isArray(data.deep_questions) ? data.deep_questions[0] : null;
+      return dqRow?.displayed_question_ids || [];
+    })(),
     isPaused: data.is_paused || false,
     isVerified: data.is_verified || false,
     profileCompleted: data.profile_completed || false,
@@ -361,8 +390,16 @@ export const updateUserProfile = async (
     if (updates.values !== undefined) payload.values = updates.values;
     if (updates.bio !== undefined) payload.bio = updates.bio;
     if (updates.isPaused !== undefined) payload.is_paused = updates.isPaused;
-    if (updates.photos !== undefined) payload.photos = updates.photos;
-    if (updates.deepQuestions !== undefined) payload.deep_questions = updates.deepQuestions;
+    if (updates.photos !== undefined) {
+      // Always store raw storage paths — never signed/public URLs.
+      // Signed URLs rotate and would cause photos to break on next load.
+      payload.photos = updates.photos.map(p => ({
+        ...p,
+        url: extractStoragePath(p.url),
+      }));
+    }
+    // deep_questions and displayedQuestions are saved directly to Supabase
+    // (not via the backend PUT endpoint, which expects a different schema)
 
     // Build user_preferences update — must use exact snake_case column names from the DB schema
     if (updates.preferences !== undefined || updates.preferredEthnicities !== undefined ||
@@ -395,6 +432,27 @@ export const updateUserProfile = async (
 
     if (!response.ok) {
       throw new Error(`Failed to update profile: ${response.status}`);
+    }
+
+    // deep_question_answers table: {user_id, answers: JSONB, displayed_question_ids: int[]}
+    // One row per user — upsert only changed fields.
+    if (updates.deepQuestions !== undefined || updates.displayedQuestions !== undefined) {
+      const upsertData: any = { user_id: userId };
+      if (updates.deepQuestions !== undefined) {
+        upsertData.answers = updates.deepQuestions.reduce((acc, dq) => ({
+          ...acc,
+          [String(dq.questionId)]: dq.answer,
+        }), {} as Record<string, string>);
+      }
+      if (updates.displayedQuestions !== undefined) {
+        upsertData.displayed_question_ids = updates.displayedQuestions;
+      }
+      const { error: dqError } = await supabase
+        .from('deep_question_answers')
+        .upsert(upsertData, { onConflict: 'user_id' });
+      if (dqError) {
+        logger.warn('[ProfileService] Could not save deep question answers:', dqError.message);
+      }
     }
 
     // interestedInGenders lives in the `profiles` table — the backend PUT endpoint

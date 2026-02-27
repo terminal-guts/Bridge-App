@@ -229,6 +229,9 @@ export const AppNavigator = () => {
 
       if (event === 'SIGNED_IN' && session?.user) {
         setupNotifications();
+        if (FEATURES.DEVELOPMENT_CREATE_MOCK_DATA) {
+          createDevelopmentData(session.user.id);
+        }
       } else if (event === 'SIGNED_OUT' && wasAuthenticated) {
         if (isIntentionalSignOut()) {
           resetIntentionalSignOut();

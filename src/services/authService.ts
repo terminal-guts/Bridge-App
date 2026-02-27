@@ -57,6 +57,13 @@ function toE164(phone: string): string {
 export const sendOtpToPhone = async (phoneNumber: string): Promise<ApiResponse<void>> => {
   try {
     const e164 = toE164(phoneNumber);
+
+    // App Store reviewer bypass — skip real SMS for test number
+    if (e164 === '+15555555555' && process.env.EXPO_PUBLIC_ENABLE_REVIEWER_BYPASS === 'true') {
+      logger.info('[SMS] Reviewer bypass: skipping OTP send for test number');
+      return { ok: true };
+    }
+
     logger.info('[SMS] Sending OTP via Supabase to:', e164);
 
     const { error } = await supabase.auth.signInWithOtp({ phone: e164 });

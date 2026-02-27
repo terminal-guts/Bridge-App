@@ -610,6 +610,56 @@ async def moderate_image(request: Dict[str, Any]):
     # For now, we'll provide a placeholder that users can call
     return {"status": "Endpoint ready. Integration with upload flow recommended."}
 
+def compute_profile_completed(profile: dict, preferences: dict, photos: list) -> bool:
+    """
+    Dynamically determines whether a profile is complete enough to enter the matching pool.
+    Must stay in sync with proposal_engine.py and daily_pairing_engine.py filters.
+    Mirrors the frontend calculateProfileCompleteness logic.
+    """
+    p = profile
+    prefs = preferences or {}
+
+    # Basic info
+    if not p.get("first_name", "").strip(): return False
+    if not p.get("last_name", "").strip(): return False
+    if not p.get("age") or p["age"] < 18: return False
+    if not p.get("height_inches"): return False
+    if not p.get("ethnicity", "").strip(): return False
+    if not p.get("location", "").strip(): return False
+    if not p.get("current_job", "").strip(): return False
+    if not p.get("religion", "").strip(): return False
+
+    # Identity
+    pronouns_ok = (p.get("pronouns_list") and len(p["pronouns_list"]) > 0) or \
+                  (p.get("pronouns") and p["pronouns"] != "prefer_not_to_say")
+    if not pronouns_ok: return False
+    if not p.get("gender") or len(p["gender"]) == 0: return False
+
+    # Lifestyle
+    if not p.get("political_leaning") or p["political_leaning"] == "prefer_not_to_say": return False
+    if not p.get("has_children"): return False
+    if not p.get("family_plans", "").strip(): return False
+    if not p.get("drinking_frequency", "").strip(): return False
+    if not p.get("cannabis_frequency", "").strip(): return False
+    if not p.get("tobacco_frequency", "").strip(): return False
+    if not p.get("other_drugs_frequency", "").strip(): return False
+
+    # Personal
+    if not p.get("interests") or len(p["interests"]) < 1: return False
+    if not p.get("values") or len(p["values"]) < 1: return False
+
+    # Photos
+    if not photos or len(photos) == 0: return False
+
+    # Match preferences
+    if not prefs.get("interested_in_genders") or len(prefs["interested_in_genders"]) == 0: return False
+    if not prefs.get("age_min") or not prefs.get("age_max"): return False
+    if not prefs.get("preferred_height_min_inches") or not prefs.get("preferred_height_max_inches"): return False
+    if prefs.get("max_distance") is None: return False
+
+    return True
+
+
 @app.get("/profile/{user_id}")
 async def get_profile(user_id: str):
     """
@@ -632,11 +682,17 @@ async def get_profile(user_id: str):
         # 3. Get Photos
         photos_res = supabase.table("user_photos").select("*").eq("user_id", user_id).order("display_order").execute()
         profile["photos"] = photos_res.data if photos_res.data else []
-        
+
         # 4. Get Deep Questions
         dq_res = supabase.table("deep_question_answers").select("*").eq("user_id", user_id).execute()
         profile["deep_questions"] = dq_res.data if dq_res.data else []
-        
+
+        # 5. Dynamically compute profile_completed and persist if it changed
+        computed = compute_profile_completed(profile, profile.get("preferences", {}), profile["photos"])
+        if computed != profile.get("profile_completed", False):
+            supabase.table("profiles").update({"profile_completed": computed}).eq("id", user_id).execute()
+        profile["profile_completed"] = computed
+
         return {"status": "success", "data": profile}
         
     except Exception as e:
@@ -733,6 +789,17 @@ async def update_profile(user_id: str, data: ProfileUpdate):
                     "answer_text": dq.get("answer_text") or dq.get("answer"),
                     "tier": dq.get("tier", 1),
                 }, on_conflict="user_id, question_id").execute()
+
+        # Recompute profile_completed after any update
+        updated_profile_res = supabase.table("profiles").select("*").eq("id", user_id).maybe_single().execute()
+        updated_prefs_res = supabase.table("user_preferences").select("*").eq("user_id", user_id).maybe_single().execute()
+        updated_photos_res = supabase.table("user_photos").select("id").eq("user_id", user_id).execute()
+        computed = compute_profile_completed(
+            updated_profile_res.data or {},
+            updated_prefs_res.data or {},
+            updated_photos_res.data or [],
+        )
+        supabase.table("profiles").update({"profile_completed": computed}).eq("id", user_id).execute()
 
         return {"status": "success", "message": "Profile updated"}
 

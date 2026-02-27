@@ -316,21 +316,27 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
 
       <StyledScrollView className="flex-1">
         {/* Photo Gallery */}
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          className="mb-4"
-        >
-          {profile.photos.map((photo) => (
-            <StyledImage
-              key={photo.id}
-              source={{ uri: photo.url }}
-              className="w-screen h-96"
-              resizeMode="cover"
-            />
-          ))}
-        </ScrollView>
+        {profile.photos && profile.photos.length > 0 ? (
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            className="mb-4"
+          >
+            {profile.photos.map((photo) => (
+              <StyledImage
+                key={photo.id}
+                source={{ uri: photo.url }}
+                className="w-screen h-96"
+                resizeMode="cover"
+              />
+            ))}
+          </ScrollView>
+        ) : (
+          <StyledView className="w-full h-96 mb-4 bg-neutral-100 items-center justify-center">
+            <Body className="text-neutral-400">No photos available</Body>
+          </StyledView>
+        )}
 
         <StyledView className="px-4">
           {/* Match Info Banner */}

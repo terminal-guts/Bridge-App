@@ -16,7 +16,7 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.bridge.app",
+      "bundleIdentifier": "com.bridgedate.app",
       "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "Bridge needs camera access to take profile photos.",

@@ -3,7 +3,6 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { FriendWithGridStatus } from '../../types/community';
 import { FireIcon, StarIcon } from '../icons/Icons';
 import { KarmaInfoModal } from './KarmaInfoModal';
-import { calculateProfileCompleteness } from '../../utils/profileCompleteness';
 
 interface UserRowProps {
     item: FriendWithGridStatus;
@@ -21,7 +20,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
     const name = item.friend.firstName || 'User';
     const imageUrl = item.friend.photos?.[0]?.url || 'https://via.placeholder.com/150';
     const streak = item.streakDays || 0;
-    const friendProfileComplete = calculateProfileCompleteness(item.friend).percentage === 100;
+    const friendProfileComplete = item.friend.profileCompleted === true;
     const actionType = item.hasCompletedGrid ? 'points' : 'match';
     const points = item.assistsCount > 0
         ? item.assistsCount * 10

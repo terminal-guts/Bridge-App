@@ -156,14 +156,14 @@ export interface FeatureFlags {
 export const FEATURES: FeatureFlags = {
   // Development Helpers - REAL USER TESTING MODE
   DEVELOPMENT_AUTO_FILL_ONBOARDING: false, // ❌ DISABLED - Use real onboarding
-  DEVELOPMENT_CREATE_MOCK_DATA: false, // ❌ DISABLED - Use real data
+  DEVELOPMENT_CREATE_MOCK_DATA: true, // ✅ Seeds Supabase match/friend data for dev account on sign-in
   DEVELOPMENT_FORCE_FRESH_SESSION: false, // ❌ DISABLED - Annoying for testing
   DEVELOPMENT_SKIP_AUTH: false, // ❌ KEEP AUTH FLOW FOR REALISTIC TESTING
   DEV_USER_ID: null, // Use default dev user
   DEVELOPMENT_UNLOCK_FRIENDS_AREA: false, // ❌ DISABLED - Require daily tasks
 
   // Backend Integration
-  COMMUNITY_BACKEND_ENABLED: true, // ✅ ENABLED - Using real backend
+  COMMUNITY_BACKEND_ENABLED: true, // ✅ REAL BACKEND - Supabase community service
   MESSAGING_BACKEND_ENABLED: true, // ✅ REAL MESSAGING - SUPABASE + REALTIME
 
   // Experimental (disabled by default)
@@ -171,7 +171,7 @@ export const FEATURES: FeatureFlags = {
   ENABLE_GLASSMORPHISM: false,
   ENABLE_DEEP_QUESTIONS_PREVIEW: true,
   DAILY_PAIRING_ENABLED: true,
-  ENABLE_DEV_STATE_TOGGLE: true, // ✅ ENABLED
+  ENABLE_DEV_STATE_TOGGLE: false, // ❌ DISABLED for screenshots
 };
 
 /**

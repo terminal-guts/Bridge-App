@@ -9,12 +9,6 @@ export default function CommunityValidation() {
                 <Text className="font-outfit-medium text-[#2563EB]/20 text-base">
                     Community validation
                 </Text>
-                <View className="flex flex-row items-center justify-center py-1 px-2.5 bg-[#2563EB]/10 border border-[#2563EB]/20 rounded-full shadow-[0px_4px_8px_rgba(37,99,235,0.21)] gap-1">
-                    <HelpCircle size={14} color="#2563EB" />
-                    <Text className="font-outfit-regular text-[#2563EB] text-xs">
-                        Why this match
-                    </Text>
-                </View>
             </View>
 
             <View className="flex flex-row justify-between items-center gap-3">

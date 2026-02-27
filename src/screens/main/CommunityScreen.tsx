@@ -254,12 +254,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
       {usersToMatch.length === 0 && alreadyHelped.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.tagline}>No friends yet</Text>
-          <Image
-            source={require('../../../assets/no_match_illustration.png')}
-            style={styles.illustration}
-            resizeMode="contain"
-          />
           <Text style={styles.subtitle}>
             Share your friend code to connect with people you know. Once you're friends, you can vote on each other's matches.
           </Text>
@@ -268,23 +262,24 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             <View style={styles.codeContainer}>
               <Text style={styles.codeLabel}>YOUR FRIEND CODE</Text>
               <Text style={styles.codeValue}>{friendCode}</Text>
-              <TouchableOpacity
-                style={styles.shareIconButton}
-                onPress={() => Share.share({ message: `Add me on Bridge! My friend code is: ${friendCode}` })}
-              >
-                <Ionicons name="share-outline" size={20} color="#FFFFFF" />
-                <Text style={styles.shareIconButtonText}>Share Code</Text>
-              </TouchableOpacity>
+              <View style={styles.codeButtonRow}>
+                <TouchableOpacity
+                  style={styles.shareIconButton}
+                  onPress={() => Share.share({ message: `Add me on Bridge! My friend code is: ${friendCode}` })}
+                >
+                  <Ionicons name="share-outline" size={20} color="#FFFFFF" />
+                  <Text style={styles.shareIconButtonText}>Share Code</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.enterCodeButton}
+                  activeOpacity={0.85}
+                  onPress={() => (navigation as any).navigate('FriendCode')}
+                >
+                  <Text style={styles.enterCodeButtonText}>Enter Code</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ) : null}
-
-          <TouchableOpacity
-            style={styles.ctaButton}
-            activeOpacity={0.85}
-            onPress={() => (navigation as any).navigate('FriendCode')}
-          >
-            <Text style={styles.ctaText}>Enter a Friend Code</Text>
-          </TouchableOpacity>
         </View>
       ) : (
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -332,10 +327,10 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingBottom: 80, width: '100%' },
   tagline: { fontFamily: 'Outfit_600SemiBold', fontSize: 20, lineHeight: 26, color: '#0B1226', textAlign: 'center', marginBottom: 12 },
   illustration: { width: 300, height: 300, marginBottom: 32 },
-  subtitle: { fontFamily: 'Outfit_500Medium', fontSize: 14, lineHeight: 17, color: '#6B7280', textAlign: 'center', marginBottom: 16 },
+  subtitle: { fontFamily: 'Outfit_600SemiBold', fontSize: 17, lineHeight: 24, color: '#0B1226', textAlign: 'center', marginBottom: 20, width: '100%' },
   ctaButton: {
     backgroundColor: '#007AFF',
     width: 250,
@@ -373,19 +368,40 @@ const styles = StyleSheet.create({
     color: '#010101',
     marginBottom: 16,
   },
+  codeButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
   shareIconButton: {
+    flex: 1,
     backgroundColor: '#2B65F9',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 12,
   },
   shareIconButtonText: {
     fontFamily: 'Outfit_600SemiBold',
     fontSize: 14,
     color: '#FFFFFF',
+  },
+  enterCodeButton: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#2B65F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  enterCodeButtonText: {
+    fontFamily: 'Outfit_600SemiBold',
+    fontSize: 14,
+    color: '#2B65F9',
   },
 });
 
