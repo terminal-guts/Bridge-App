@@ -85,9 +85,34 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
             });
 
             logger.info('[DEBUG] 2. Creating recording object...');
-            const { recording } = await Audio.Recording.createAsync(
-                Audio.RecordingOptionsPresets.HIGH_QUALITY
-            );
+            const mp4Options = {
+                isMeteringEnabled: true,
+                android: {
+                    extension: '.mp4',
+                    outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+                    audioEncoder: Audio.AndroidAudioEncoder.AAC,
+                    sampleRate: 44100,
+                    numberOfChannels: 2,
+                    bitRate: 128000,
+                },
+                ios: {
+                    extension: '.mp4',
+                    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+                    audioQuality: Audio.IOSAudioQuality.MAX,
+                    sampleRate: 44100,
+                    numberOfChannels: 2,
+                    bitRate: 128000,
+                    linearPCMBitDepth: 16,
+                    linearPCMIsBigEndian: false,
+                    linearPCMIsFloat: false,
+                },
+                web: {
+                    mimeType: 'audio/mp4',
+                    bitsPerSecond: 128000,
+                },
+            };
+
+            const { recording } = await Audio.Recording.createAsync(mp4Options);
 
             // CRITICAL: If the user already released the button while we were creating the object
             if (!isButtonPressed.current) {

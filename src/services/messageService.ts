@@ -117,7 +117,7 @@ const uploadAudioFile = async (
   try {
     // Generate unique filename
     const timestamp = Date.now();
-    const filename = `${matchId}/${senderId}/${timestamp}.m4a`;
+    const filename = `${matchId}/${senderId}/${timestamp}.mp4`;
 
     // Read the file as base64
     const base64 = await FileSystem.readAsStringAsync(localUri, {
@@ -138,7 +138,7 @@ const uploadAudioFile = async (
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(filename, bytes.buffer, {
-        contentType: 'audio/m4a',
+        contentType: 'audio/mp4',
         upsert: false,
       });
 
