@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, SafeAreaView, StatusBar, TouchableOpacity, TextInput, StyleSheet, Keyboard, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { styled } from 'nativewind';
-import { Button, H1, H2, Body } from '../../components/ui';
+import { Button, H2, Body } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { verifyPhone, sendOtpToPhone, verifyEmail, sendOtpToEmail, signInWithPassword } from '../../services/authService';
+import { verifyEmail, sendOtpToEmail, signInWithPassword } from '../../services/authService';
 import { fetchAndSetUserProfile } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
 
-const logger = createLogger('PhoneVerificationScreen');
+const logger = createLogger('EmailVerificationScreen');
 
 interface PhoneVerificationScreenProps {
   navigation: NavigationProp<RootStackParamList, 'PhoneVerification'>;
@@ -24,18 +24,17 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
   navigation,
   route
 }) => {
-  const { phoneNumber, fromOnboarding, onboardingData, isEmail } = route.params;
+  const { phoneNumber } = route.params;
+  const email = phoneNumber; // Route param is named phoneNumber for compat, but it's always email now
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Create refs for each input
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
   useEffect(() => {
-    // Auto-focus first input on mount
     inputRefs.current[0]?.focus();
   }, []);
 
@@ -52,14 +51,11 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
   }, [resendTimer]);
 
   const handleCodeChange = (index: number, value: string) => {
-    // Only allow digits
     if (value && !/^\d+$/.test(value)) return;
 
     const newCode = [...code];
 
-    // Handle paste or single character input
     if (value.length > 1) {
-      // Handle paste - split and fill boxes
       const digits = value.slice(0, 6).split('');
       digits.forEach((digit, i) => {
         if (index + i < 6) {
@@ -67,15 +63,11 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
         }
       });
       setCode(newCode);
-      // Focus the last filled input or the next empty one
       const nextIndex = Math.min(index + digits.length, 5);
       inputRefs.current[nextIndex]?.focus();
     } else {
-      // Handle single character
       newCode[index] = value;
       setCode(newCode);
-
-      // Auto-focus next input
       if (value && index < 5) {
         inputRefs.current[index + 1]?.focus();
       }
@@ -83,30 +75,24 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
   };
 
   const handleKeyPress = (index: number, key: string) => {
-    // Handle backspace
     if (key === 'Backspace' && !code[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
   const handleVerify = async () => {
-    // Dismiss keyboard
     Keyboard.dismiss();
-
     setLoading(true);
 
-    // Join the code array into a single string
     const otpCode = code.join('');
 
     // App Store Reviewer Bypass
-    const isTestPhone = phoneNumber === '+15555555555' || phoneNumber === '5555555555';
-    if (!isEmail && isTestPhone && otpCode === '123456' && (__DEV__ || process.env.EXPO_PUBLIC_ENABLE_REVIEWER_BYPASS === 'true')) {
+    if (email === 'reviewer@bridgedate.app' && otpCode === '123456' && (__DEV__ || process.env.EXPO_PUBLIC_ENABLE_REVIEWER_BYPASS === 'true')) {
       logger.info('[AUTH] App Store Reviewer bypass detected');
       const reviewerPassword = process.env.EXPO_PUBLIC_REVIEWER_PASSWORD || 'AppReview2024!';
       const bypassResult = await signInWithPassword('reviewer@bridgedate.app', reviewerPassword);
 
       if (bypassResult.ok) {
-        // Continue to profile fetch as if verified
         const userId = bypassResult.data!.id;
         const fetchResult = await fetchAndSetUserProfile(userId);
         setLoading(false);
@@ -119,44 +105,31 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
       } else {
         logger.error('[AUTH] Reviewer account login failed');
         setLoading(false);
-        Alert.alert('Bypass Failed', 'Reviewer account login failed. Please check credentials or network.');
+        Alert.alert('Bypass Failed', 'Reviewer account login failed.');
         return;
       }
     }
 
-    // Verify OTP with Backend (which checks Supabase)
-    let verifyResult;
-    if (isEmail) {
-      verifyResult = await verifyEmail(phoneNumber, otpCode);
-    } else {
-      verifyResult = await verifyPhone(phoneNumber, otpCode);
-    }
+    const verifyResult = await verifyEmail(email, otpCode);
 
     if (!verifyResult.ok) {
       setLoading(false);
       Alert.alert('Verification Failed', verifyResult.error?.message || 'Invalid code. Please try again.');
-      // Clear the code inputs
       setCode(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
       return;
     }
 
-    // User is now authenticated via Supabase! Session is persisted automatically.
-    // verifyResult.data contains the authenticated user.
     const userId = verifyResult.data!.id;
     logger.info('[AUTH] User authenticated:', userId);
 
-    // Try to fetch existing profile to determine where to navigate
     const fetchResult = await fetchAndSetUserProfile(userId);
-
     setLoading(false);
 
     if (fetchResult.ok && fetchResult.data) {
-      // User has a profile — go to main app
       logger.info('[AUTH] Profile found, navigating to MainTabs');
       navigation.navigate('MainTabs');
     } else {
-      // No profile yet — send to onboarding to complete signup
       logger.info('[AUTH] No profile found, navigating to Onboarding');
       navigation.navigate('Onboarding');
     }
@@ -167,20 +140,13 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
   const handleResendCode = async () => {
     if (!canResend) return;
 
-    // Resend OTP code
-    let result;
-    if (isEmail) {
-      result = await sendOtpToEmail(phoneNumber);
-    } else {
-      result = await sendOtpToPhone(phoneNumber);
-    }
+    const result = await sendOtpToEmail(email);
 
     if (!result.ok) {
       Alert.alert('Error', 'Failed to resend code. Please try again.');
       return;
     }
 
-    // Reset UI
     setCanResend(false);
     setResendTimer(60);
     setCode(['', '', '', '', '', '']);
@@ -203,15 +169,13 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
             {/* Icon */}
             <StyledView className="items-center mb-6">
               <StyledView className="w-20 h-20 bg-primary-100 rounded-full items-center justify-center mb-4">
-                <H1 className="text-primary-500 text-2xl">📱</H1>
+                <Body className="text-primary-500 text-2xl">{'✉️'}</Body>
               </StyledView>
 
-              {/* Title */}
-              <H2 className="text-center mb-2">Verify your {isEmail ? 'email' : 'phone'}</H2>
+              <H2 className="text-center mb-2">Verify your email</H2>
 
-              {/* Description */}
               <Body className="text-neutral-600 text-center mb-6 px-6">
-                Enter the 6-digit code sent to {phoneNumber}
+                Enter the 6-digit code sent to {email}
               </Body>
             </StyledView>
 
@@ -234,7 +198,7 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
                     styles.otpInput,
                     focusedIndex === index && styles.otpInputFocused
                   ]}
-                  selectionColor="#FF6B6B"
+                  selectionColor="#437FFF"
                 />
               ))}
             </StyledView>

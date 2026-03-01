@@ -374,7 +374,6 @@ export type RootStackParamList = {
   MatchPreferences: undefined;
   BlockedUsers: undefined;
   PauseProfile: undefined;
-  ChangePhoneNumber: undefined;
   TermsOfService: undefined;
   PrivacyPolicy: undefined;
   HelpSupport: undefined;

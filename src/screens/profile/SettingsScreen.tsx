@@ -129,12 +129,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               onPress={() => navigation.navigate('PauseProfile')}
             />
             <SettingRow
-              icon="call-outline"
-              title="Change Phone Number"
-              subtitle="Update your phone number"
-              onPress={() => navigation.navigate('ChangePhoneNumber')}
-            />
-            <SettingRow
               icon="ban-outline"
               title="Blocked Users"
               subtitle="Manage blocked profiles"

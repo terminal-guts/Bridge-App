@@ -47,7 +47,7 @@ import { ProfileEditScreen } from '../screens/profile/ProfileEditScreen';
 import { MatchPreferencesScreen } from '../screens/profile/MatchPreferencesScreen';
 import { BlockedUsersScreen } from '../screens/profile/BlockedUsersScreen';
 import { PauseProfileScreen } from '../screens/profile/PauseProfileScreen';
-import { ChangePhoneNumberScreen } from '../screens/profile/ChangePhoneNumberScreen';
+// ChangePhoneNumberScreen removed — email-only auth
 import ProfileMatchScreen from '../screens/profile/ProfileMatchScreen';
 
 // Legal Screens
@@ -310,7 +310,7 @@ export const AppNavigator = () => {
           <Stack.Screen name="MatchPreferences" component={MatchPreferencesScreen} />
           <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} />
           <Stack.Screen name="PauseProfile" component={PauseProfileScreen} />
-          <Stack.Screen name="ChangePhoneNumber" component={ChangePhoneNumberScreen} />
+          {/* ChangePhoneNumber removed — email-only auth */}
 
           {/* Legal & Support */}
           <Stack.Screen name="TermsOfService" component={TermsOfService} />

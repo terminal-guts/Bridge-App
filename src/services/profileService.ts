@@ -1,7 +1,7 @@
 /**
- * Profile Service — Real Backend Implementation
+ * Profile Service — Direct Supabase Implementation
  *
- * Connects to the Bridge Railway backend for profile management.
+ * All profile CRUD operations go directly to Supabase tables.
  */
 
 import {
@@ -16,9 +16,9 @@ import { createLogger } from '../utils/secureLogger';
 import { uploadMultiplePhotos, getMultiplePhotoSignedUrls } from './photoService';
 import { getQuestionById } from '../utils/deepQuestions';
 import { getQuestionTier } from '../utils/questionTiers';
+import { ONBOARDING_STEP_MAPPING } from '../config/onboardingMapping';
 
 const logger = createLogger('ProfileService');
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://bridge-frontend-production.up.railway.app';
 
 // ============================================================================
 // HELPERS
@@ -35,23 +35,11 @@ async function getCurrentUserId(): Promise<string> {
   return user.id;
 }
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (session?.access_token) {
-    headers['Authorization'] = `Bearer ${session.access_token}`;
-  }
-  return headers;
-}
-
-/**
- * Maps backend profile data to frontend UserProfile type
- */
 /**
  * Extracts the raw Supabase storage path from a signed or public URL.
  * If the input is already a plain path (not a URL), returns it unchanged.
  * e.g. "https://...supabase.co/.../profile-photos/userId/photo.jpg?token=..."
- *   → "userId/photo.jpg"
+ *   -> "userId/photo.jpg"
  */
 function extractStoragePath(url: string): string {
   if (!url || !url.startsWith('http')) return url;
@@ -134,7 +122,6 @@ function mapBackendToUserProfile(data: any): UserProfile {
     lifestyle: data.lifestyle || {},
     nonNegotiables: data.non_negotiables || [],
     deepQuestions: (() => {
-      // DB schema: one row per user with answers as JSONB {questionId: answerText}
       const dqRow = Array.isArray(data.deep_questions) ? data.deep_questions[0] : null;
       const answersMap: Record<string, string> = dqRow?.answers || {};
       return Object.entries(answersMap).map(([qId, answer]) => {
@@ -167,8 +154,8 @@ function mapBackendToUserProfile(data: any): UserProfile {
 // ============================================================================
 
 /**
- * Save a single onboarding step's data.
- * Calls the /onboarding/save-step endpoint on the backend.
+ * Save a single onboarding step's data directly to Supabase.
+ * Uses the step mapping to determine which table(s) and column(s) to write.
  */
 export const saveOnboardingStep = async (
   stepKey: string,
@@ -187,18 +174,49 @@ export const saveOnboardingStep = async (
     }
     logger.info('[ProfileService] saveOnboardingStep:', stepKey);
 
-    const response = await fetch(`${API_URL}/onboarding/save-step`, {
-      method: 'POST',
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({
-        user_id: finalUserId,
-        step_key: stepKey,
-        data: data,
-      }),
-    });
+    const mapping = ONBOARDING_STEP_MAPPING[stepKey];
+    if (!mapping || mapping.columns.length === 0) {
+      return { ok: true }; // No data to save (e.g., welcome step)
+    }
 
-    if (!response.ok) {
-      throw new Error(`Failed to save step: ${response.status}`);
+    let transformed: Record<string, any>;
+    if (mapping.transform) {
+      transformed = mapping.transform(data);
+    } else {
+      // Default: map column names from the onboarding data
+      transformed = {};
+      for (const col of mapping.columns) {
+        // Convert snake_case column to camelCase key
+        const camelKey = col.replace(/_(\w)/g, (_: string, c: string) => c.toUpperCase());
+        if ((data as any)[camelKey] !== undefined) {
+          transformed[col] = (data as any)[camelKey];
+        } else if ((data as any)[col] !== undefined) {
+          transformed[col] = (data as any)[col];
+        }
+      }
+    }
+
+    // Check if transform returned multi-table format { profiles: {...}, preferences: {...} }
+    if (transformed.profiles || transformed.preferences) {
+      if (transformed.profiles && Object.keys(transformed.profiles).length > 0) {
+        const { error } = await supabase.from('user_profiles')
+          .upsert({ user_id: finalUserId, ...transformed.profiles }, { onConflict: 'user_id' });
+        if (error) logger.warn('[ProfileService] Profile upsert error:', error.message);
+      }
+      if (transformed.preferences && Object.keys(transformed.preferences).length > 0) {
+        const { error } = await supabase.from('user_preferences')
+          .upsert({ user_id: finalUserId, ...transformed.preferences }, { onConflict: 'user_id' });
+        if (error) logger.warn('[ProfileService] Preferences upsert error:', error.message);
+      }
+    } else {
+      // Single-table update
+      const table = mapping.table;
+      if (table === 'user_profiles' || table === 'user_preferences') {
+        const { error } = await supabase.from(table)
+          .upsert({ user_id: finalUserId, ...transformed }, { onConflict: 'user_id' });
+        if (error) logger.warn(`[ProfileService] ${table} upsert error:`, error.message);
+      }
+      // user_photos handled separately via photoService
     }
 
     return { ok: true };
@@ -210,7 +228,7 @@ export const saveOnboardingStep = async (
 
 /**
  * Create the full user profile at the end of onboarding.
- * Calls the /onboarding/complete endpoint on the backend.
+ * Upserts directly into user_profiles, user_preferences, and deep_question_answers.
  */
 export const createUserProfile = async (
   userId: string,
@@ -220,13 +238,18 @@ export const createUserProfile = async (
     logger.info('[ProfileService] createUserProfile:', userId);
 
     // Upload photos before building the payload
-    let photoUrls: string[] = [];
+    let photoData: any[] = [];
     if (data.photos && data.photos.length > 0) {
       const uris = data.photos.map(p => p.url || (p as any).uri).filter(Boolean);
       if (uris.length > 0) {
         const uploadRes = await uploadMultiplePhotos(uris);
         if (uploadRes.ok && uploadRes.data) {
-          photoUrls = uploadRes.data.map(p => p.url);
+          photoData = uploadRes.data.map((p, i) => ({
+            id: p.id || p.url,
+            url: p.url,
+            is_main: i === 0,
+            display_order: i,
+          }));
         } else {
           logger.error('[ProfileService] Photo upload failed — aborting profile creation');
           return createErrorResponse('PHOTO_UPLOAD_FAILED', 'Failed to upload photos. Please try again.');
@@ -234,25 +257,23 @@ export const createUserProfile = async (
       }
     }
 
-    // Map frontend camelCase to backend snake_case
-    const payload = {
+    // Build user_profiles payload
+    const profilePayload: Record<string, any> = {
       user_id: userId,
-      email: data.email,
       first_name: data.firstName,
       last_name: data.lastName,
       age: data.age,
       gender: data.gender,
-      location: data.location,
-      photos: photoUrls,
       pronouns: data.pronounsList?.join('/'),
       pronouns_list: data.pronounsList,
+      height_inches: heightToInches(data.height),
+      ethnicity: data.ethnicity,
+      location: data.location,
       hometown: data.hometown,
       current_job: data.currentJob,
       company_position: data.companyPosition,
       education_level: data.educationLevel,
       school: data.school,
-      height_inches: heightToInches(data.height),
-      ethnicity: data.ethnicity,
       religion: data.religion,
       political_leaning: data.politicalLeaning,
       has_children: data.hasChildren,
@@ -264,45 +285,72 @@ export const createUserProfile = async (
       interests: data.interests,
       values: data.values,
       bio: data.bio,
-      looking_for: data.preferences?.lookingFor,
+      email: data.email,
       interested_in_genders: data.interestedInGenders,
-      age_min: data.preferences?.ageMin,
-      age_max: data.preferences?.ageMax,
-      height_min: data.preferences?.heightMin,
-      height_max: data.preferences?.heightMax,
-      max_distance: data.preferences?.maxDistance,
-      preferred_ethnicities: data.preferredEthnicities,
-      partner_lifestyle_preferences: data.partnerLifestylePreferences,
-      deep_questions: (data.deepQuestions || []).map(dq => ({
-        question_id: dq.questionId,
-        question_text: dq.question,
-        answer_text: dq.answer,
-        tier: dq.tier,
-      })),
+      photos: photoData,
+      non_negotiables: data.nonNegotiables || [],
     };
 
-    const response = await fetch(`${API_URL}/onboarding/complete`, {
-      method: 'POST',
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(payload),
+    // Remove undefined values so they don't overwrite existing data
+    Object.keys(profilePayload).forEach(key => {
+      if (profilePayload[key] === undefined) delete profilePayload[key];
     });
 
-    if (!response.ok) {
-      throw new Error(`Failed to complete onboarding: ${response.status}`);
+    const { error: profileError } = await supabase
+      .from('user_profiles')
+      .upsert(profilePayload, { onConflict: 'user_id' });
+
+    if (profileError) {
+      logger.error('[ProfileService] Profile upsert error:', profileError.message);
+      throw new Error(profileError.message);
     }
 
-    // Save Rice email directly to Supabase (in case backend doesn't handle it)
-    if (data.email) {
-      const { error: emailError } = await supabase
-        .from('user_profiles')
-        .update({ email: data.email })
-        .eq('user_id', userId);
-      if (emailError) {
-        logger.warn('[ProfileService] Failed to save email directly:', emailError.message);
+    // Build user_preferences payload
+    const prefsPayload: Record<string, any> = {
+      user_id: userId,
+      looking_for: data.preferences?.lookingFor,
+      age_min: data.preferences?.ageMin,
+      age_max: data.preferences?.ageMax,
+      preferred_height_min_inches: data.preferences?.heightMin,
+      preferred_height_max_inches: data.preferences?.heightMax,
+      max_distance: data.preferences?.maxDistance,
+      preferred_ethnicities: data.preferredEthnicities,
+      interested_in_genders: data.interestedInGenders,
+    };
+
+    Object.keys(prefsPayload).forEach(key => {
+      if (prefsPayload[key] === undefined) delete prefsPayload[key];
+    });
+
+    if (Object.keys(prefsPayload).length > 1) {
+      const { error: prefsError } = await supabase
+        .from('user_preferences')
+        .upsert(prefsPayload, { onConflict: 'user_id' });
+      if (prefsError) {
+        logger.warn('[ProfileService] Preferences upsert error:', prefsError.message);
       }
     }
 
-    // After completion, fetch the profile to return it
+    // Deep questions
+    if (data.deepQuestions && data.deepQuestions.length > 0) {
+      const answersMap = data.deepQuestions.reduce((acc, dq) => ({
+        ...acc,
+        [String(dq.questionId)]: dq.answer,
+      }), {} as Record<string, string>);
+
+      const { error: dqError } = await supabase
+        .from('deep_question_answers')
+        .upsert({
+          user_id: userId,
+          answers: answersMap,
+          displayed_question_ids: data.displayedQuestions || [],
+        }, { onConflict: 'user_id' });
+      if (dqError) {
+        logger.warn('[ProfileService] Deep questions upsert error:', dqError.message);
+      }
+    }
+
+    // Fetch the newly created profile to return it
     return getUserProfile();
   } catch (error: any) {
     logger.error('[ProfileService] createUserProfile error:', error);
@@ -315,37 +363,45 @@ export const createUserProfile = async (
 // ============================================================================
 
 /**
- * Get the current user's profile.
- * Calls the /profile/{user_id} endpoint on the backend.
+ * Get the current user's profile directly from Supabase tables.
  */
 export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
   try {
     const userId = await getCurrentUserId();
     logger.info('[ProfileService] getUserProfile:', userId);
 
-    const response = await fetch(`${API_URL}/profile/${userId}`, {
-      headers: await getAuthHeaders(),
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch profile: ${response.status}`);
+    // Query all three tables in parallel
+    const [profileResult, prefsResult, dqResult] = await Promise.all([
+      supabase.from('user_profiles').select('*').eq('user_id', userId).single(),
+      supabase.from('user_preferences').select('*').eq('user_id', userId).single(),
+      supabase.from('deep_question_answers').select('*').eq('user_id', userId),
+    ]);
+
+    if (profileResult.error) {
+      if (profileResult.error.code === 'PGRST116') {
+        // No row found — profile doesn't exist yet
+        return createErrorResponse('PROFILE_NOT_FOUND', 'Profile not found');
+      }
+      throw new Error(profileResult.error.message);
     }
 
-    const result = await response.json();
-    if (result.status !== 'success') {
-      throw new Error(result.message || 'Failed to fetch profile');
-    }
+    // Combine data for the mapper
+    const combinedData = {
+      ...profileResult.data,
+      preferences: prefsResult.data || {},
+      deep_questions: dqResult.data || [],
+    };
 
-    const profile = mapBackendToUserProfile(result.data);
+    const profile = mapBackendToUserProfile(combinedData);
 
     // Resolve storage paths to signed URLs.
-    // Photos are stored as paths (e.g. "userId/photo_123.jpg"), not full URLs.
     if (profile.photos && profile.photos.length > 0) {
       const storagePaths = profile.photos
         .map(p => p.url)
         .filter(url => url && !url.startsWith('http'));
 
       if (storagePaths.length > 0) {
-        const urlMapRes = await getMultiplePhotoSignedUrls(storagePaths, 86400); // 24-hour TTL
+        const urlMapRes = await getMultiplePhotoSignedUrls(storagePaths, 86400);
         if (urlMapRes.ok && urlMapRes.data) {
           profile.photos = profile.photos.map(p => ({
             ...p,
@@ -364,7 +420,7 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
 
 /**
  * Update the current user's profile (partial update).
- * Calls the PUT /profile/{user_id} endpoint on the backend.
+ * Writes directly to user_profiles, user_preferences, and deep_question_answers.
  */
 export const updateUserProfile = async (
   updates: Partial<UserProfile>,
@@ -373,47 +429,59 @@ export const updateUserProfile = async (
     const userId = await getCurrentUserId();
     logger.info('[ProfileService] updateUserProfile:', userId);
 
-    // Map UserProfile camelCase updates to backend snake_case
-    const payload: any = {};
-    if (updates.firstName !== undefined) payload.first_name = updates.firstName;
-    if (updates.lastName !== undefined) payload.last_name = updates.lastName;
-    if (updates.age !== undefined) payload.age = updates.age;
-    if (updates.gender !== undefined) payload.gender = updates.gender;
-    if (updates.location !== undefined) payload.location = updates.location;
-    if (updates.pronouns !== undefined) payload.pronouns = updates.pronouns;
-    if (updates.pronounsList !== undefined) payload.pronouns_list = updates.pronounsList;
-    if (updates.customMyGender !== undefined) payload.custom_gender = updates.customMyGender;
-    if (updates.hometown !== undefined) payload.hometown = updates.hometown;
-    if (updates.currentJob !== undefined) payload.current_job = updates.currentJob;
-    if (updates.companyPosition !== undefined) payload.company_position = updates.companyPosition;
-    if (updates.educationLevel !== undefined) payload.education_level = updates.educationLevel;
-    if (updates.school !== undefined) payload.school = updates.school;
-    if (updates.height !== undefined) payload.height_inches = heightToInches(updates.height);
-    if (updates.ethnicity !== undefined) payload.ethnicity = updates.ethnicity;
-    if (updates.religion !== undefined) payload.religion = updates.religion;
-    if (updates.politicalLeaning !== undefined) payload.political_leaning = updates.politicalLeaning;
-    if (updates.hasChildren !== undefined) payload.has_children = updates.hasChildren;
-    if (updates.familyPlans !== undefined) payload.family_plans = updates.familyPlans;
-    if (updates.drinkingFrequency !== undefined) payload.drinking_frequency = updates.drinkingFrequency;
-    if (updates.cannabisFrequency !== undefined) payload.cannabis_frequency = updates.cannabisFrequency;
-    if (updates.tobaccoFrequency !== undefined) payload.tobacco_frequency = updates.tobaccoFrequency;
-    if (updates.otherDrugsFrequency !== undefined) payload.other_drugs_frequency = updates.otherDrugsFrequency;
-    if (updates.interests !== undefined) payload.interests = updates.interests;
-    if (updates.values !== undefined) payload.values = updates.values;
-    if (updates.bio !== undefined) payload.bio = updates.bio;
-    if (updates.isPaused !== undefined) payload.is_paused = updates.isPaused;
+    // Build user_profiles payload
+    const profilePayload: any = {};
+    if (updates.firstName !== undefined) profilePayload.first_name = updates.firstName;
+    if (updates.lastName !== undefined) profilePayload.last_name = updates.lastName;
+    if (updates.age !== undefined) profilePayload.age = updates.age;
+    if (updates.gender !== undefined) profilePayload.gender = updates.gender;
+    if (updates.location !== undefined) profilePayload.location = updates.location;
+    if (updates.pronouns !== undefined) profilePayload.pronouns = updates.pronouns;
+    if (updates.pronounsList !== undefined) profilePayload.pronouns_list = updates.pronounsList;
+    if (updates.customMyGender !== undefined) profilePayload.custom_gender = updates.customMyGender;
+    if (updates.hometown !== undefined) profilePayload.hometown = updates.hometown;
+    if (updates.currentJob !== undefined) profilePayload.current_job = updates.currentJob;
+    if (updates.companyPosition !== undefined) profilePayload.company_position = updates.companyPosition;
+    if (updates.educationLevel !== undefined) profilePayload.education_level = updates.educationLevel;
+    if (updates.school !== undefined) profilePayload.school = updates.school;
+    if (updates.height !== undefined) profilePayload.height_inches = heightToInches(updates.height);
+    if (updates.ethnicity !== undefined) profilePayload.ethnicity = updates.ethnicity;
+    if (updates.religion !== undefined) profilePayload.religion = updates.religion;
+    if (updates.politicalLeaning !== undefined) profilePayload.political_leaning = updates.politicalLeaning;
+    if (updates.hasChildren !== undefined) profilePayload.has_children = updates.hasChildren;
+    if (updates.familyPlans !== undefined) profilePayload.family_plans = updates.familyPlans;
+    if (updates.drinkingFrequency !== undefined) profilePayload.drinking_frequency = updates.drinkingFrequency;
+    if (updates.cannabisFrequency !== undefined) profilePayload.cannabis_frequency = updates.cannabisFrequency;
+    if (updates.tobaccoFrequency !== undefined) profilePayload.tobacco_frequency = updates.tobaccoFrequency;
+    if (updates.otherDrugsFrequency !== undefined) profilePayload.other_drugs_frequency = updates.otherDrugsFrequency;
+    if (updates.interests !== undefined) profilePayload.interests = updates.interests;
+    if (updates.values !== undefined) profilePayload.values = updates.values;
+    if (updates.bio !== undefined) profilePayload.bio = updates.bio;
+    if (updates.isPaused !== undefined) profilePayload.is_paused = updates.isPaused;
+    if (updates.interestedInGenders !== undefined) profilePayload.interested_in_genders = updates.interestedInGenders;
+    if ((updates as any).guideCompletions !== undefined) profilePayload.guide_completions = (updates as any).guideCompletions;
     if (updates.photos !== undefined) {
       // Always store raw storage paths — never signed/public URLs.
-      // Signed URLs rotate and would cause photos to break on next load.
-      payload.photos = updates.photos.map(p => ({
+      profilePayload.photos = updates.photos.map(p => ({
         ...p,
         url: extractStoragePath(p.url),
       }));
     }
-    // deep_questions and displayedQuestions are saved directly to Supabase
-    // (not via the backend PUT endpoint, which expects a different schema)
 
-    // Build user_preferences update — must use exact snake_case column names from the DB schema
+    // Update user_profiles
+    if (Object.keys(profilePayload).length > 0) {
+      profilePayload.updated_at = new Date().toISOString();
+      const { error } = await supabase
+        .from('user_profiles')
+        .update(profilePayload)
+        .eq('user_id', userId);
+      if (error) {
+        logger.error('[ProfileService] Profile update error:', error.message);
+        throw new Error(error.message);
+      }
+    }
+
+    // Build and update user_preferences
     if (updates.preferences !== undefined || updates.preferredEthnicities !== undefined ||
         updates.preferredPolitics !== undefined || updates.partnerLifestylePreferences !== undefined) {
       const prefPayload: any = {};
@@ -426,28 +494,24 @@ export const updateUserProfile = async (
       if (updates.preferences?.maxDistance !== undefined) prefPayload.max_distance = updates.preferences.maxDistance;
       if (updates.preferredEthnicities !== undefined) prefPayload.preferred_ethnicities = updates.preferredEthnicities;
       if (updates.preferredPolitics !== undefined) prefPayload.preferred_politics = updates.preferredPolitics;
-      // Partner lifestyle stored as separate columns, not a single JSON column
       if (updates.partnerLifestylePreferences !== undefined) {
         prefPayload.partner_drinking = updates.partnerLifestylePreferences.drinking;
         prefPayload.partner_cannabis = updates.partnerLifestylePreferences.cannabis;
         prefPayload.partner_tobacco = updates.partnerLifestylePreferences.tobacco;
         prefPayload.partner_other_drugs = updates.partnerLifestylePreferences.otherDrugs;
       }
-      if (Object.keys(prefPayload).length > 0) payload.preferences = prefPayload;
+      if (Object.keys(prefPayload).length > 0) {
+        prefPayload.updated_at = new Date().toISOString();
+        const { error } = await supabase
+          .from('user_preferences')
+          .upsert({ user_id: userId, ...prefPayload }, { onConflict: 'user_id' });
+        if (error) {
+          logger.warn('[ProfileService] Preferences update error:', error.message);
+        }
+      }
     }
 
-    const response = await fetch(`${API_URL}/profile/${userId}`, {
-      method: 'PUT',
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to update profile: ${response.status}`);
-    }
-
-    // deep_question_answers table: {user_id, answers: JSONB, displayed_question_ids: int[]}
-    // One row per user — upsert only changed fields.
+    // Deep question answers
     if (updates.deepQuestions !== undefined || updates.displayedQuestions !== undefined) {
       const upsertData: any = { user_id: userId };
       if (updates.deepQuestions !== undefined) {
@@ -465,14 +529,6 @@ export const updateUserProfile = async (
       if (dqError) {
         logger.warn('[ProfileService] Could not save deep question answers:', dqError.message);
       }
-    }
-
-    // interestedInGenders lives in the `profiles` table — the backend PUT endpoint
-    // doesn't expose this field, so update it directly via Supabase client.
-    if (updates.interestedInGenders !== undefined) {
-      await supabase.from('profiles').update({
-        interested_in_genders: updates.interestedInGenders,
-      }).eq('id', userId);
     }
 
     return getUserProfile();
@@ -668,7 +724,7 @@ function mapToLegacyProfile(up: UserProfile): Profile {
 }
 
 /**
- * Legacy compatibility - used by ProfileMatchScreen
+ * Get any user's profile by ID — used by ProfileMatchScreen and community features.
  */
 export const getProfileById = async (id: string): Promise<Profile | null> => {
   try {
@@ -691,7 +747,7 @@ export const getProfileById = async (id: string): Promise<Profile | null> => {
           { emoji: '💗', text: 'Kindness' },
           { emoji: '🤝', text: 'Honesty' },
           { emoji: '🌱', text: 'Growth' },
-          { emoji: '👨‍👩‍👧‍👦', text: 'Family' },
+          { emoji: '👨\u200d👩\u200d👧\u200d👦', text: 'Family' },
           { emoji: '🎯', text: 'Ambition' },
           { emoji: '😂', text: 'Humor' },
           { emoji: '🤗', text: 'Empathy' },
@@ -725,16 +781,23 @@ export const getProfileById = async (id: string): Promise<Profile | null> => {
       return elsaProfile;
     }
 
-    const response = await fetch(`${API_URL}/profile/${id}`, {
-      headers: await getAuthHeaders(),
-    });
-    if (!response.ok) return null;
-    const result = await response.json();
-    if (result.status === 'success') {
-      const up = mapBackendToUserProfile(result.data);
-      return mapToLegacyProfile(up);
-    }
-    return null;
+    // Query Supabase directly for any user's profile
+    const [profileResult, prefsResult, dqResult] = await Promise.all([
+      supabase.from('user_profiles').select('*').eq('user_id', id).single(),
+      supabase.from('user_preferences').select('*').eq('user_id', id).single(),
+      supabase.from('deep_question_answers').select('*').eq('user_id', id),
+    ]);
+
+    if (profileResult.error || !profileResult.data) return null;
+
+    const combinedData = {
+      ...profileResult.data,
+      preferences: prefsResult.data || {},
+      deep_questions: dqResult.data || [],
+    };
+
+    const up = mapBackendToUserProfile(combinedData);
+    return mapToLegacyProfile(up);
   } catch {
     return null;
   }

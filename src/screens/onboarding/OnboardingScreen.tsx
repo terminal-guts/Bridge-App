@@ -15,11 +15,6 @@ const logger = createLogger('OnboardingScreen');
 import { resetAllGuides } from '../../services/guideService';
 
 // Import all onboarding steps
-import { SignUpMethodStep } from './steps/SignUpMethodStep';
-import { PhoneNumberStep } from './steps/PhoneNumberStep';
-import { PhoneVerificationStep } from './steps/PhoneVerificationStep';
-import { RiceEmailStep } from './steps/RiceEmailStep';
-import { RiceEmailVerificationStep } from './steps/RiceEmailVerificationStep';
 import { EmailSignUpStep } from './steps/EmailSignUpStep';
 import { EmailSignUpVerificationStep } from './steps/EmailSignUpVerificationStep';
 import { NameStep } from './steps/NameStep';
@@ -81,7 +76,6 @@ const PROFILE_STEPS: StepDefinition[] = [
 
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
   const [currentStep, setCurrentStep] = useState(0);
-  const [signupMethod, setSignupMethod] = useState<'phone' | 'email'>('phone');
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
 
@@ -130,32 +124,14 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
     photos: [],
   });
 
-  // Build steps array dynamically based on signup method
+  // Build steps array — email-only signup
   const steps = useMemo((): StepDefinition[] => {
-    const methodStep: StepDefinition = {
-      component: SignUpMethodStep, title: 'Sign Up', hasTextInput: false,
-    };
-
-    if (signupMethod === 'email') {
-      // Email path: no need for separate Rice email verification (already verified via signup)
-      return [
-        methodStep,
-        { component: EmailSignUpStep, title: 'Email', hasTextInput: true },
-        { component: EmailSignUpVerificationStep, title: 'Verify Email', hasTextInput: true },
-        ...PROFILE_STEPS,
-      ];
-    }
-
-    // Phone path: need Rice email verification after phone auth
     return [
-      methodStep,
-      { component: PhoneNumberStep, title: 'Phone Number', hasTextInput: true, mappingKey: 'phone_number' },
-      { component: PhoneVerificationStep, title: 'Verification', hasTextInput: true },
-      { component: RiceEmailStep, title: 'Rice Email', hasTextInput: true },
-      { component: RiceEmailVerificationStep, title: 'Verify Email', hasTextInput: true },
+      { component: EmailSignUpStep, title: 'Email', hasTextInput: true },
+      { component: EmailSignUpVerificationStep, title: 'Verify Email', hasTextInput: true },
       ...PROFILE_STEPS,
     ];
-  }, [signupMethod]);
+  }, []);
 
   const totalSteps = steps.length;
 
@@ -174,10 +150,6 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   const CurrentStepComponent = steps[currentStep].component;
 
   const updateData = (data: Partial<OnboardingData>) => {
-    // Intercept signupMethod changes to update local state
-    if (data.signupMethod && data.signupMethod !== signupMethod) {
-      setSignupMethod(data.signupMethod);
-    }
     setOnboardingData(prev => ({ ...prev, ...data }));
   };
 
