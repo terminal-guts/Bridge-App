@@ -237,6 +237,7 @@ export const createUserProfile = async (
     // Map frontend camelCase to backend snake_case
     const payload = {
       user_id: userId,
+      email: data.email,
       first_name: data.firstName,
       last_name: data.lastName,
       age: data.age,
@@ -288,6 +289,17 @@ export const createUserProfile = async (
 
     if (!response.ok) {
       throw new Error(`Failed to complete onboarding: ${response.status}`);
+    }
+
+    // Save Rice email directly to Supabase (in case backend doesn't handle it)
+    if (data.email) {
+      const { error: emailError } = await supabase
+        .from('user_profiles')
+        .update({ email: data.email })
+        .eq('user_id', userId);
+      if (emailError) {
+        logger.warn('[ProfileService] Failed to save email directly:', emailError.message);
+      }
     }
 
     // After completion, fetch the profile to return it

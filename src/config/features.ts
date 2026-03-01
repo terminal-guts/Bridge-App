@@ -156,7 +156,7 @@ export interface FeatureFlags {
 export const FEATURES: FeatureFlags = {
   // Development Helpers - REAL USER TESTING MODE
   DEVELOPMENT_AUTO_FILL_ONBOARDING: false, // ❌ DISABLED - Use real onboarding
-  DEVELOPMENT_CREATE_MOCK_DATA: true, // ✅ Seeds Supabase match/friend data for dev account on sign-in
+  DEVELOPMENT_CREATE_MOCK_DATA: false, // ❌ DISABLED - Use real data only
   DEVELOPMENT_FORCE_FRESH_SESSION: false, // ❌ DISABLED - Annoying for testing
   DEVELOPMENT_SKIP_AUTH: false, // ❌ KEEP AUTH FLOW FOR REALISTIC TESTING
   DEV_USER_ID: null, // Use default dev user

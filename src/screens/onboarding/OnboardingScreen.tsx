@@ -17,6 +17,8 @@ import { resetAllGuides } from '../../services/guideService';
 // Import all onboarding steps
 import { PhoneNumberStep } from './steps/PhoneNumberStep';
 import { PhoneVerificationStep } from './steps/PhoneVerificationStep';
+import { RiceEmailStep } from './steps/RiceEmailStep';
+import { RiceEmailVerificationStep } from './steps/RiceEmailVerificationStep';
 import { NameStep } from './steps/NameStep';
 import { AgeStep } from './steps/AgeStep';
 import { GenderStep } from './steps/GenderStep';
@@ -97,6 +99,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   const steps = [
     { component: PhoneNumberStep, title: 'Phone Number', hasTextInput: true },
     { component: PhoneVerificationStep, title: 'Verification', hasTextInput: true },
+    { component: RiceEmailStep, title: 'Rice Email', hasTextInput: true },
+    { component: RiceEmailVerificationStep, title: 'Verify Email', hasTextInput: true },
     { component: NameStep, title: 'Name', hasTextInput: true },
     { component: AgeStep, title: 'Birthday', hasTextInput: false }, // Will be converted to birthday picker
     { component: GenderStep, title: 'Gender', hasTextInput: false },

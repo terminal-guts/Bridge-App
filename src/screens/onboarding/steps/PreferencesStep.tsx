@@ -17,6 +17,13 @@ interface PreferencesStepProps {
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 
+const COMMITMENT_OPTIONS = [
+  { value: 'relationship', label: 'Relationship', description: 'Looking for something serious' },
+  { value: 'casual', label: 'Casual', description: 'Keeping things light' },
+  { value: 'friendship', label: 'Friendship', description: 'Just looking for friends' },
+  { value: 'unsure', label: 'Not sure yet', description: "Open to seeing what happens" },
+];
+
 export const PreferencesStep: React.FC<PreferencesStepProps> = ({
   data,
   updateData,
@@ -30,7 +37,7 @@ export const PreferencesStep: React.FC<PreferencesStepProps> = ({
 
   const validateAndContinue = () => {
     if (!commitmentLevel) {
-      setError('Please select Relationship to continue');
+      setError('Please select what you\'re looking for');
       return;
     }
 
@@ -53,37 +60,43 @@ export const PreferencesStep: React.FC<PreferencesStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-        <H1 className="mb-3">Commitment Level</H1>
+        <H1 className="mb-3">What are you looking for?</H1>
         <Body className="text-neutral-600 mb-8">
-          Bridge promotes genuine connection.
+          Bridge promotes genuine connection. You can change this later.
         </Body>
 
-        {/* Relationship Option */}
-        <StyledTouchableOpacity
-          onPress={() => {
-            // Toggle: if selected, deselect; if deselected, select
-            setCommitmentLevel(commitmentLevel === 'relationship' ? '' : 'relationship');
-            setError('');
-          }}
-          className={`p-4 rounded-lg border ${
-            commitmentLevel === 'relationship'
-              ? 'bg-primary-500 border-primary-500'
-              : 'bg-white border-neutral-300'
-          }`}
-        >
-          <Body
-            className={`${
-              commitmentLevel === 'relationship'
-                ? 'text-white font-semibold'
-                : 'text-neutral-700'
+        {COMMITMENT_OPTIONS.map((option) => (
+          <StyledTouchableOpacity
+            key={option.value}
+            onPress={() => {
+              setCommitmentLevel(commitmentLevel === option.value ? '' : option.value);
+              setError('');
+            }}
+            className={`p-4 rounded-lg border mb-3 ${
+              commitmentLevel === option.value
+                ? 'bg-primary-500 border-primary-500'
+                : 'bg-white border-neutral-300'
             }`}
           >
-            Relationship
-          </Body>
-        </StyledTouchableOpacity>
+            <Body
+              className={`font-semibold ${
+                commitmentLevel === option.value ? 'text-white' : 'text-neutral-700'
+              }`}
+            >
+              {option.label}
+            </Body>
+            <Body
+              className={`text-sm mt-1 ${
+                commitmentLevel === option.value ? 'text-white/80' : 'text-neutral-500'
+              }`}
+            >
+              {option.description}
+            </Body>
+          </StyledTouchableOpacity>
+        ))}
 
         {error && (
-          <Body className="text-error text-sm mt-4">{error}</Body>
+          <Body className="text-error text-sm mt-2">{error}</Body>
         )}
       </StyledView>
     </OnboardingLayout>

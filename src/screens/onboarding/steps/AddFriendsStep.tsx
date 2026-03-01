@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
-import { View, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, TouchableOpacity, Share, Alert, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
-import { H1, H2, Body } from '../../../components/ui';
+import { H1, H2, Body, Input } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/OnboardingLayout';
 import { Ionicons } from '@expo/vector-icons';
+import { getUserFriendCode, addFriendByCode } from '../../../services/friendService';
+import * as Clipboard from 'expo-clipboard';
+import { showToast } from '../../../utils/toast';
+import { createLogger } from '../../../utils/secureLogger';
+
+const logger = createLogger('AddFriendsStep');
 
 interface AddFriendsStepProps {
   data: Partial<OnboardingData>;
@@ -17,16 +23,8 @@ interface AddFriendsStepProps {
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-const StyledScrollView = styled(ScrollView);
 
-// Mock contacts for demonstration
-const MOCK_CONTACTS = [
-  { id: '1', name: 'Alex Johnson', phoneNumber: '+1 (555) 123-4567', onBridge: true },
-  { id: '2', name: 'Sarah Chen', phoneNumber: '+1 (555) 234-5678', onBridge: true },
-  { id: '3', name: 'Mike Williams', phoneNumber: '+1 (555) 345-6789', onBridge: false },
-  { id: '4', name: 'Emily Davis', phoneNumber: '+1 (555) 456-7890', onBridge: true },
-  { id: '5', name: 'Chris Martinez', phoneNumber: '+1 (555) 567-8901', onBridge: false },
-];
+const FRIEND_CODE_PATTERN = /^BRIDGE-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
 
 export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
   data,
@@ -34,116 +32,183 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
   onNext,
   onBack,
 }) => {
-  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  const [myCode, setMyCode] = useState('');
+  const [friendCode, setFriendCode] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [addedFriends, setAddedFriends] = useState<string[]>([]);
 
-  const toggleContact = (contactId: string) => {
-    setSelectedContacts(prev =>
-      prev.includes(contactId)
-        ? prev.filter(id => id !== contactId)
-        : [...prev, contactId]
-    );
+  useEffect(() => {
+    const loadCode = async () => {
+      try {
+        const result = await getUserFriendCode();
+        if (result.ok && result.data) {
+          setMyCode(result.data.code);
+        }
+      } catch (err) {
+        logger.error('Failed to load friend code:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadCode();
+  }, []);
+
+  const handleCopy = async () => {
+    if (!myCode) return;
+    try {
+      await Clipboard.setStringAsync(myCode);
+      showToast.success('Copied!', 'Friend code copied to clipboard');
+    } catch (err) {
+      logger.error('Copy failed:', err);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!myCode) return;
+    try {
+      await Share.share({
+        message: `Add me on Bridge! My friend code is: ${myCode}\n\nBridge - The first community-driven dating experience`,
+      });
+    } catch (err) {
+      logger.error('Share failed:', err);
+    }
+  };
+
+  const handleAddFriend = async () => {
+    setError('');
+    const normalized = friendCode.trim().toUpperCase();
+
+    if (!normalized) {
+      setError('Please enter a friend code');
+      return;
+    }
+
+    if (!FRIEND_CODE_PATTERN.test(normalized)) {
+      setError('Invalid format. Should be like: BRIDGE-XXXX-XXXX');
+      return;
+    }
+
+    if (normalized === myCode) {
+      setError("That's your own code");
+      return;
+    }
+
+    setAdding(true);
+    try {
+      const result = await addFriendByCode(normalized);
+      if (result.ok) {
+        const name = result.data?.friendProfile?.firstName || 'Friend';
+        setAddedFriends(prev => [...prev, name]);
+        setFriendCode('');
+        showToast.success('Friend added!', `${name} is now your friend`);
+      } else {
+        let msg = result.error?.message || 'Failed to add friend';
+        if (msg.includes('already friends')) msg = "You're already friends with this person";
+        else if (msg.includes('not found')) msg = 'Code not found. Double-check and try again.';
+        setError(msg);
+      }
+    } catch (err: any) {
+      setError('Something went wrong. Please try again.');
+      logger.error('Add friend error:', err);
+    } finally {
+      setAdding(false);
+    }
   };
 
   const handleContinue = () => {
-    updateData({
-      friendsAdded: selectedContacts,
-    });
+    updateData({ friendsAdded: addedFriends });
     onNext();
   };
 
   const handleSkip = () => {
-    updateData({
-      friendsAdded: [],
-    });
+    updateData({ friendsAdded: [] });
     onNext();
   };
-
-  const contactsOnBridge = MOCK_CONTACTS.filter(c => c.onBridge);
-  const contactsNotOnBridge = MOCK_CONTACTS.filter(c => !c.onBridge);
 
   return (
     <OnboardingLayout
       onContinue={handleContinue}
       showBackButton={true}
-      hasTextInput={false}
+      hasTextInput={true}
     >
       <H1 className="mb-3">Add friends</H1>
       <Body className="text-neutral-600 mb-6">
-        Connect with friends already on Bridge or invite new ones
+        Friends vote on your daily matches and help you find the right person.
       </Body>
 
-      <StyledScrollView className="flex-1 mb-4" showsVerticalScrollIndicator={false}>
-        {/* Friends on Bridge */}
-        {contactsOnBridge.length > 0 && (
-          <StyledView className="mb-6">
-            <H2 className="text-lg font-semibold mb-3">On Bridge</H2>
-            {contactsOnBridge.map(contact => (
-              <StyledTouchableOpacity
-                key={contact.id}
-                onPress={() => toggleContact(contact.id)}
-                className="flex-row items-center justify-between bg-white p-4 rounded-lg mb-2 border border-neutral-200"
-              >
-                <StyledView className="flex-row items-center flex-1">
-                  <StyledView className="w-10 h-10 rounded-full bg-primary-100 items-center justify-center mr-3">
-                    <Body className="text-primary-600 font-semibold">
-                      {contact.name.charAt(0)}
-                    </Body>
-                  </StyledView>
-                  <StyledView className="flex-1">
-                    <Body className="font-semibold">{contact.name}</Body>
-                    <Body className="text-neutral-500 text-sm">{contact.phoneNumber}</Body>
-                  </StyledView>
-                </StyledView>
-                <StyledView
-                  className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
-                    selectedContacts.includes(contact.id)
-                      ? 'bg-primary-500 border-primary-500'
-                      : 'border-neutral-300'
-                  }`}
-                >
-                  {selectedContacts.includes(contact.id) && (
-                    <Ionicons name="checkmark" size={16} color="white" />
-                  )}
-                </StyledView>
-              </StyledTouchableOpacity>
-            ))}
+      {/* Your Friend Code */}
+      {loading ? (
+        <StyledView className="items-center py-6">
+          <ActivityIndicator size="small" color="#437FFF" />
+        </StyledView>
+      ) : (
+        <StyledView className="bg-primary-50 border border-primary-200 rounded-xl p-4 mb-6">
+          <Body className="text-neutral-600 text-sm mb-2 text-center">Your friend code</Body>
+          <StyledTouchableOpacity onPress={handleCopy} className="items-center mb-3">
+            <H2 className="text-primary-500">{myCode || '...'}</H2>
+            <Body className="text-neutral-400 text-xs mt-1">Tap to copy</Body>
+          </StyledTouchableOpacity>
+          <StyledView className="flex-row">
+            <StyledTouchableOpacity
+              onPress={handleShare}
+              className="flex-1 bg-primary-500 py-3 rounded-lg items-center mr-2"
+            >
+              <Body className="text-white font-semibold">Share</Body>
+            </StyledTouchableOpacity>
+            <StyledTouchableOpacity
+              onPress={handleCopy}
+              className="flex-1 bg-white border border-primary-300 py-3 rounded-lg items-center ml-2"
+            >
+              <Body className="text-primary-500 font-semibold">Copy</Body>
+            </StyledTouchableOpacity>
           </StyledView>
-        )}
+        </StyledView>
+      )}
 
-        {/* Friends not on Bridge */}
-        {contactsNotOnBridge.length > 0 && (
-          <StyledView className="mb-6">
-            <H2 className="text-lg font-semibold mb-3">Invite to Bridge</H2>
-            {contactsNotOnBridge.map(contact => (
-              <StyledTouchableOpacity
-                key={contact.id}
-                className="flex-row items-center justify-between bg-white p-4 rounded-lg mb-2 border border-neutral-200"
-              >
-                <StyledView className="flex-row items-center flex-1">
-                  <StyledView className="w-10 h-10 rounded-full bg-neutral-100 items-center justify-center mr-3">
-                    <Body className="text-neutral-600 font-semibold">
-                      {contact.name.charAt(0)}
-                    </Body>
-                  </StyledView>
-                  <StyledView className="flex-1">
-                    <Body className="font-semibold">{contact.name}</Body>
-                    <Body className="text-neutral-500 text-sm">{contact.phoneNumber}</Body>
-                  </StyledView>
-                </StyledView>
-                <StyledTouchableOpacity className="bg-primary-500 px-4 py-2 rounded-lg">
-                  <Body className="text-white font-semibold">Invite</Body>
-                </StyledTouchableOpacity>
-              </StyledTouchableOpacity>
-            ))}
-          </StyledView>
-        )}
-      </StyledScrollView>
+      {/* Enter a Friend's Code */}
+      <StyledView className="mb-4">
+        <Body className="font-semibold mb-2">Have a friend's code?</Body>
+        <Input
+          placeholder="BRIDGE-XXXX-XXXX"
+          value={friendCode}
+          onChangeText={(text) => {
+            setFriendCode(text.toUpperCase());
+            if (error) setError('');
+          }}
+          autoCapitalize="characters"
+          error={error}
+          containerClassName="mb-3"
+        />
+        <StyledTouchableOpacity
+          onPress={handleAddFriend}
+          disabled={adding}
+          className={`py-3 rounded-lg items-center ${adding ? 'bg-primary-300' : 'bg-primary-500'}`}
+        >
+          <Body className="text-white font-semibold">
+            {adding ? 'Adding...' : 'Add Friend'}
+          </Body>
+        </StyledTouchableOpacity>
+      </StyledView>
+
+      {/* Added Friends */}
+      {addedFriends.length > 0 && (
+        <StyledView className="mb-4">
+          <Body className="text-neutral-600 text-sm mb-2">
+            Added ({addedFriends.length}):
+          </Body>
+          {addedFriends.map((name, i) => (
+            <StyledView key={i} className="flex-row items-center mb-1">
+              <Ionicons name="checkmark-circle" size={18} color="#22C55E" />
+              <Body className="text-neutral-700 ml-2">{name}</Body>
+            </StyledView>
+          ))}
+        </StyledView>
+      )}
 
       {/* Skip button */}
-      <StyledTouchableOpacity
-        onPress={handleSkip}
-        className="items-center py-3"
-      >
+      <StyledTouchableOpacity onPress={handleSkip} className="items-center py-3">
         <Body className="text-neutral-600">Skip for now</Body>
       </StyledTouchableOpacity>
     </OnboardingLayout>

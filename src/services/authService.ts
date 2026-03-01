@@ -373,3 +373,97 @@ export const verifyEmail = async (email: string, code: string): Promise<ApiRespo
   }
 };
 
+/**
+ * Send a verification code to a @rice.edu email.
+ * Uses a Supabase Edge Function that generates a 6-digit OTP and emails it.
+ * Does NOT create a new auth session (phone session stays intact).
+ */
+export const sendRiceEmailVerification = async (email: string): Promise<ApiResponse<void>> => {
+  try {
+    if (!isAllowedEmailDomain(email)) {
+      return {
+        ok: false,
+        error: { code: 'INVALID_DOMAIN', message: 'Only @rice.edu emails are allowed.' },
+      };
+    }
+
+    logger.info('[EMAIL_VERIFY] Sending verification code to:', email);
+
+    const { data, error } = await supabase.functions.invoke('send-email-verification', {
+      body: { email: email.toLowerCase() },
+    });
+
+    if (error) {
+      logger.error('[EMAIL_VERIFY] Edge function error:', error.message);
+      return {
+        ok: false,
+        error: { code: 'SEND_VERIFY_ERROR', message: error.message },
+      };
+    }
+
+    if (data?.error) {
+      return {
+        ok: false,
+        error: { code: 'SEND_VERIFY_ERROR', message: data.error },
+      };
+    }
+
+    logger.info('[EMAIL_VERIFY] Verification code sent successfully');
+    return { ok: true };
+  } catch (error: any) {
+    logger.error('[EMAIL_VERIFY] Error:', error.message);
+    return {
+      ok: false,
+      error: { code: 'SEND_VERIFY_ERROR', message: error.message || 'Failed to send verification code' },
+    };
+  }
+};
+
+/**
+ * Verify the 6-digit code sent to the @rice.edu email.
+ * Calls the verify_email_code RPC which marks the email as verified in user_profiles.
+ */
+export const verifyRiceEmailCode = async (email: string, code: string): Promise<ApiResponse<boolean>> => {
+  try {
+    logger.info('[EMAIL_VERIFY] Verifying code for:', email);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return {
+        ok: false,
+        error: { code: 'AUTH_ERROR', message: 'Not authenticated' },
+      };
+    }
+
+    const { data, error } = await supabase.rpc('verify_email_code', {
+      p_user_id: user.id,
+      p_email: email.toLowerCase(),
+      p_code: code,
+    });
+
+    if (error) {
+      logger.error('[EMAIL_VERIFY] Verification error:', error.message);
+      return {
+        ok: false,
+        error: { code: 'VERIFY_ERROR', message: error.message },
+      };
+    }
+
+    if (data === true) {
+      logger.info('[EMAIL_VERIFY] Email verified successfully');
+      return { ok: true, data: true };
+    } else {
+      return {
+        ok: false,
+        error: { code: 'WRONG_CODE', message: 'Incorrect code. Please try again.' },
+      };
+    }
+  } catch (error: any) {
+    logger.error('[EMAIL_VERIFY] Error:', error.message);
+    return {
+      ok: false,
+      error: { code: 'VERIFY_ERROR', message: error.message || 'Verification failed' },
+    };
+  }
+};
+
