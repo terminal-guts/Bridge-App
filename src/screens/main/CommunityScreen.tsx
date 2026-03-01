@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useReducer } from 'react';
 import { View, Text, ScrollView, SafeAreaView, StatusBar, ActivityIndicator, Image, TouchableOpacity, StyleSheet, Dimensions, Share, Alert } from 'react-native';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -17,33 +17,40 @@ import { UserProfile } from '../../types';
 import { ProfileCompletionBanner } from '../../components/ProfileCompletionBanner';
 
 // ── Match reset countdown timer ───────────────────────────────────────────────
+//
+// Uses a ref for the target timestamp and a force-render counter.
+// `remaining` is computed fresh from Date.now() on every render — never stored
+// in state — so React batching and unmount/remount cycles can't stale-lock it.
 function MatchResetTimer() {
-  const [remaining, setRemaining] = useState(() =>
-    Math.max(0, Number(communityService.getNextResetAt()) - Date.now()),
-  );
+  // Target timestamp (epoch ms) from the service
+  const targetRef = useRef(Number(communityService.getNextResetAt()));
+  // Incrementing counter just to force a re-render every second
+  const [, tick] = useReducer((n: number) => n + 1, 0);
 
   useEffect(() => {
-    const tick = () => {
-      const ms = Number(communityService.getNextResetAt()) - Date.now();
+    const id = setInterval(() => {
+      const ms = targetRef.current - Date.now();
       if (ms <= 0) {
         communityService.triggerReset();
-        setRemaining(24 * 60 * 60 * 1000);
-      } else {
-        setRemaining(ms);
+        targetRef.current = Number(communityService.getNextResetAt());
       }
-    };
+      tick(); // force re-render
+    }, 1000);
 
-    const interval = setInterval(tick, 1000);
-    // Re-sync when dev toggle changes the reset time
+    // Re-sync when dev toggle / triggerReset changes the reset time
     const unsub = communityService.onStateChange(() => {
-      setRemaining(Math.max(0, Number(communityService.getNextResetAt()) - Date.now()));
+      targetRef.current = Number(communityService.getNextResetAt());
+      tick();
     });
 
     return () => {
-      clearInterval(interval);
+      clearInterval(id);
       unsub();
     };
   }, []);
+
+  // Computed fresh every render — never stale
+  const remaining = Math.max(0, targetRef.current - Date.now());
 
   const hours   = Math.floor(remaining / 3600000);
   const minutes = Math.floor((remaining % 3600000) / 60000);
@@ -51,7 +58,7 @@ function MatchResetTimer() {
 
   let label: string;
   if (hours > 0) {
-    label = `${hours}h ${minutes}m`;
+    label = `${hours}h ${minutes}m ${seconds}s`;
   } else if (minutes > 0) {
     label = `${minutes}m ${seconds}s`;
   } else {
@@ -141,6 +148,8 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const initialize = useCallback(async () => {
     setLoading(true);
     try {
+      // Wait for AsyncStorage state to load before reading voting progress.
+      await communityService.ready;
       const task = await communityService.getCommunityTaskProgress();
       let votingDone = task.hasVotedOnProposals;
 
@@ -182,6 +191,10 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       initializedRef.current = true;
       return; // skip first focus (handled by the init useEffect)
     }
+    // Refresh profile on each tab focus so the completion banner stays current
+    getUserProfile().then(result => {
+      if (result.ok && result.data) setProfile(result.data);
+    });
     if (hasCompletedVoting) {
       loadFriendsData();
     }

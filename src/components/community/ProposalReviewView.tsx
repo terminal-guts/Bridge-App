@@ -359,6 +359,17 @@ export function ProposalReviewView({
       logger.error('[ProposalReviewView] Vote submission error (non-blocking):', err);
     });
 
+    // Optimistically update local vote counts so compatScore recomputes immediately
+    setProposals(prev => prev.map((p, i) => {
+      if (i !== currentIndex) return p;
+      return {
+        ...p,
+        yesVotes: vote === 'yes' ? (p.yesVotes ?? 0) + 1 : (p.yesVotes ?? 0),
+        noVotes: vote === 'no' ? (p.noVotes ?? 0) + 1 : (p.noVotes ?? 0),
+        totalVotes: (p.totalVotes ?? 0) + 1,
+      };
+    }));
+
     // Always advance after a short delay
     advanceProposal();
   }, [voting, currentIndex, proposals, advanceProposal]);
@@ -429,6 +440,16 @@ export function ProposalReviewView({
       communityService.submitProposalVote(current.id, 'yes', friendKarmaWeight).catch((err: any) => {
         logger.error('[ProposalReviewView] Friend rec vote submission error:', err);
       });
+
+      // Optimistically update local vote counts so compatScore recomputes immediately
+      setProposals(prev => prev.map((p, i) => {
+        if (i !== currentIndex) return p;
+        return {
+          ...p,
+          yesVotes: (p.yesVotes ?? 0) + 1,
+          totalVotes: (p.totalVotes ?? 0) + 1,
+        };
+      }));
     }
     setShowForFriendModal(false);
     setVoting(true);

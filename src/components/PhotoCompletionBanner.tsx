@@ -1,8 +1,8 @@
 /**
  * Photo Completion Banner Component
  *
- * Displays a banner encouraging users to complete their photo uploads (6 photos total).
- * Only shown when About Me section is 100% complete but photos < 6.
+ * Displays a banner encouraging users to complete their photo uploads (3 photos required).
+ * Only shown when About Me section is 100% complete but photos < 3.
  */
 
 import React, { useMemo } from 'react';
@@ -41,12 +41,12 @@ export const PhotoCompletionBanner: React.FC<PhotoCompletionBannerProps> = ({
 
   logger.info('PhotoCompletionBanner:', {
     aboutMe: aboutMePercentage + '%',
-    photos: `${photoCount}/6 (${photoPercentage}%)`,
+    photos: `${photoCount}/3 (${photoPercentage}%)`,
   });
 
   // DISPLAY LOGIC:
-  // Only show when About Me section is 100% complete AND photos < 6
-  if (aboutMePercentage < 100 || photoCount >= 6) {
+  // Only show when About Me section is 100% complete AND photos < 3
+  if (aboutMePercentage < 100 || photoCount >= 3) {
     return null;
   }
 
@@ -83,10 +83,10 @@ export const PhotoCompletionBanner: React.FC<PhotoCompletionBannerProps> = ({
         </StyledView>
         <StyledView className="flex-1">
           <Body className="text-white font-bold text-sm mb-0.5">
-            {photoCount}/6 Photos ({photoPercentage}%)
+            {photoCount}/3 Photos ({photoPercentage}%)
           </Body>
           <Body className="text-white/90 text-xs">
-            Add {6 - photoCount} more photo{6 - photoCount > 1 ? 's' : ''} for a complete profile
+            Add {3 - photoCount} more photo{3 - photoCount > 1 ? 's' : ''} for a complete profile
           </Body>
         </StyledView>
         <StyledView className="w-8 h-8 items-center justify-center ml-2">

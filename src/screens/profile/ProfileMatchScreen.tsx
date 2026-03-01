@@ -167,7 +167,7 @@ export default function ProfileMatchScreen() {
 
     const photos = partnerProfile.photos || [];
     const photoUrl = photos[currentPhotoIndex]?.url || '';
-    const karmaPts = partnerProfile.karma?.score ?? 80;
+    const karmaPts = partnerProfile.karma?.totalAssists ?? 0;
 
     return (
         <View style={styles.container}>

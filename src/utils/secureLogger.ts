@@ -148,6 +148,15 @@ const sanitizeObject = (obj: any, depth = 0): any => {
     return obj.map(item => sanitizeObject(item, depth + 1));
   }
 
+  // Handle Error instances — their properties are non-enumerable so Object.entries returns []
+  if (obj instanceof Error) {
+    return {
+      name: obj.name,
+      message: sanitizeString(obj.message || ''),
+      ...(typeof (obj as any).code === 'string' ? { code: (obj as any).code } : {}),
+    };
+  }
+
   // Handle objects
   const sanitized: any = {};
 

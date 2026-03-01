@@ -380,6 +380,21 @@ export interface GetFriendsAreaResponse {
   friendSuperpowers: FriendSuperpower[];
 }
 
+// ==================== Match Ended Events ====================
+
+/** Passed from communityService → MatchesScreen to drive the one-time popup */
+export interface MatchEndedEvent {
+  type: 'expired' | 'you_rejected' | 'they_rejected' | 'match_ended';
+  /** Unique per-event ID used for AsyncStorage "seen once" tracking */
+  eventId: string;
+  /** Partner name for display in the popup */
+  partnerName: string;
+  /** Partner photo URL for display in the popup */
+  partnerPhotoUrl?: string;
+  /** Optional reason text (for match_ended variant) */
+  endReason?: string;
+}
+
 // ==================== Constants ====================
 
 export const KARMA_TIERS: Record<KarmaTier, KarmaBadge> = {

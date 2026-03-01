@@ -8,9 +8,6 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
 
-    -- Gender preference
-    preferred_gender TEXT DEFAULT 'both',
-
     -- Age range
     age_min INTEGER,
     age_max INTEGER,

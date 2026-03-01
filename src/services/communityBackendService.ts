@@ -5,7 +5,10 @@
  * and Edge Functions for proposal voting/generation.
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
+import { getNext7PMCentral } from '../utils/centralTime';
+import { getMultiplePhotoSignedUrls } from './photoService';
 import {
   DailyGrid,
   Proposal,
@@ -16,6 +19,7 @@ import {
   CommunityTask,
   FriendWithGridStatus,
   FriendshipTier,
+  MatchEndedEvent,
   ACTIVE_MATCH_MINIMUM_DAYS,
 } from '../types/community';
 import {
@@ -42,10 +46,10 @@ async function getCurrentUserId(): Promise<string> {
 
 function mapProfileRow(row: any): UserProfile {
   return {
-    id: row.id,
-    userId: row.id,
-    firstName: row.first_name || '',
-    lastName: row.last_name || '',
+    id: row.user_id || row.id,
+    userId: row.user_id || row.id,
+    firstName: (row.first_name || '').replace(/[''"`]+$/, '').trim(),
+    lastName: (row.last_name || '').replace(/[''"`]+$/, '').trim(),
     age: row.age || 0,
     gender: row.gender || [],
     pronouns: row.pronouns || '',
@@ -58,7 +62,10 @@ function mapProfileRow(row: any): UserProfile {
     companyPosition: row.company_position || '',
     educationLevel: row.education_level || '',
     school: row.school || '',
-    photos: (row.photos || []).map((p: any) => ({
+    photos: ((row.photos && row.photos.length > 0)
+      ? row.photos
+      : (row.profile_photo_path ? [{ id: '1', url: row.profile_photo_path, is_main: true, display_order: 0 }] : [])
+    ).map((p: any) => ({
       id: p.id || p.url,
       url: p.url,
       isMain: p.is_main ?? p.isMain ?? false,
@@ -95,7 +102,58 @@ function deriveKarmaTier(assists: number): KarmaTier {
 // Service
 // ============================================================================
 
+// AsyncStorage keys for the 24h daily cycle
+const STORAGE_KEY_NEXT_RESET = '@bridge:next_reset_at';
+const STORAGE_KEY_VOTES = '@bridge:votes_submitted';
+
 class CommunityBackendService {
+  // ── 24h daily-cycle timer ──────────────────────────────────────────────────
+  private nextResetAt: number = getNext7PMCentral();
+  readonly ready: Promise<void>;
+
+  constructor() {
+    this.ready = this.initTimerFromStorage();
+  }
+
+  private async initTimerFromStorage(): Promise<void> {
+    try {
+      const [storedReset, storedVotes] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEY_NEXT_RESET),
+        AsyncStorage.getItem(STORAGE_KEY_VOTES),
+      ]);
+
+      if (storedReset) {
+        const parsed = parseInt(storedReset, 10);
+        if (!isNaN(parsed)) {
+          if (Date.now() >= parsed) {
+            // Reset window passed while app was closed — start fresh cycle.
+            this.nextResetAt = getNext7PMCentral();
+            this.sessionVoteCount = 0;
+            this.sessionVotedProposals.clear();
+            await Promise.all([
+              AsyncStorage.setItem(STORAGE_KEY_NEXT_RESET, String(this.nextResetAt)),
+              AsyncStorage.setItem(STORAGE_KEY_VOTES, '0'),
+            ]);
+          } else {
+            this.nextResetAt = parsed;
+            if (storedVotes) {
+              const votes = parseInt(storedVotes, 10);
+              if (!isNaN(votes)) this.sessionVoteCount = votes;
+            }
+          }
+          return;
+        }
+      }
+
+      // First install — seed storage
+      await Promise.all([
+        AsyncStorage.setItem(STORAGE_KEY_NEXT_RESET, String(this.nextResetAt)),
+        AsyncStorage.setItem(STORAGE_KEY_VOTES, '0'),
+      ]);
+    } catch {
+      // AsyncStorage failure — proceed with in-memory defaults
+    }
+  }
 
   // Track votes locally for session (also persisted in DB)
   private sessionVoteCount = 0;
@@ -162,6 +220,7 @@ class CommunityBackendService {
     if (!this.sessionVotedProposals.has(proposalId)) {
       this.sessionVotedProposals.add(proposalId);
       this.sessionVoteCount++;
+      AsyncStorage.setItem(STORAGE_KEY_VOTES, String(this.sessionVoteCount)).catch(() => {});
     }
   }
 
@@ -177,7 +236,7 @@ class CommunityBackendService {
     const { data: survey } = await supabase
       .from('daily_surveys')
       .select('*')
-      .eq('user_id', userId)
+      .eq('ranker_user_id', userId)
       .eq('survey_date', today)
       .maybeSingle();
 
@@ -186,7 +245,7 @@ class CommunityBackendService {
       const { data: profile } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('user_id', userId)
         .maybeSingle();
 
       const anchor = profile ? mapProfileRow(profile) : { id: userId, firstName: 'You' } as UserProfile;
@@ -203,37 +262,42 @@ class CommunityBackendService {
       };
     }
 
-    // Fetch candidate profiles
-    const candidateIds = survey.candidate_ids || [];
+    // Collect candidate IDs from separate columns
+    const candidateIds = [
+      survey.candidate_1_user_id,
+      survey.candidate_2_user_id,
+      survey.candidate_3_user_id,
+    ].filter(Boolean);
     const candidates: UserProfile[] = [];
 
     if (candidateIds.length > 0) {
       const { data: profiles } = await supabase
         .from('user_profiles')
         .select('*')
-        .in('id', candidateIds);
+        .in('user_id', candidateIds);
 
       if (profiles) {
         candidates.push(...profiles.map(mapProfileRow));
       }
     }
 
-    // Fetch anchor profile
+    // Fetch anchor profile (recipient_user_id is the person being matched)
+    const anchorId = survey.recipient_user_id || userId;
     const { data: anchorProfile } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('id', survey.anchor_id || userId)
+      .eq('user_id', anchorId)
       .maybeSingle();
 
     return {
       id: survey.id,
-      anchorUserId: survey.anchor_id || userId,
+      anchorUserId: anchorId,
       anchor: anchorProfile ? mapProfileRow(anchorProfile) : { id: userId, firstName: 'You' } as UserProfile,
       candidates,
       gridDate: today,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      hasVoted: !!survey.submitted_at,
-      hasMatched: !!survey.selected_candidate_id,
+      hasVoted: !!survey.is_completed,
+      hasMatched: !!survey.is_completed,
     };
   }
 
@@ -244,10 +308,10 @@ class CommunityBackendService {
     await supabase
       .from('daily_surveys')
       .update({
-        selected_candidate_id: candidateId,
-        submitted_at: new Date().toISOString(),
+        is_completed: true,
+        completed_at: new Date().toISOString(),
       })
-      .eq('user_id', userId)
+      .eq('ranker_user_id', userId)
       .eq('survey_date', today);
   }
 
@@ -258,19 +322,29 @@ class CommunityBackendService {
   async getFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
     const userId = await getCurrentUserId();
     const blockedIds = await getBlockedUserIds(userId);
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 
-    // Get all friendships (both directions)
-    const { data: friendships1 } = await supabase
-      .from('friends')
-      .select('id, user_id, friend_id, created_at')
-      .eq('user_id', userId);
+    // Get all friendships (both directions) — include streak columns
+    const [{ data: friendships1 }, { data: friendships2 }] = await Promise.all([
+      supabase
+        .from('friends')
+        .select('id, user_id, friend_id, added_at, streak_days, last_mutual_date')
+        .eq('user_id', userId),
+      supabase
+        .from('friends')
+        .select('id, user_id, friend_id, added_at, streak_days, last_mutual_date')
+        .eq('friend_id', userId),
+    ]);
 
-    const { data: friendships2 } = await supabase
-      .from('friends')
-      .select('id, user_id, friend_id, created_at')
-      .eq('friend_id', userId);
-
-    const allFriendships = [...(friendships1 || []), ...(friendships2 || [])];
+    // Merge both directions and deduplicate by friend ID (bidirectional rows exist)
+    const seen = new Set<string>();
+    const allFriendships = [...(friendships1 || []), ...(friendships2 || [])].filter(f => {
+      const friendId = f.user_id === userId ? f.friend_id : f.user_id;
+      if (seen.has(friendId)) return false;
+      seen.add(friendId);
+      return true;
+    });
 
     if (allFriendships.length === 0) return [];
 
@@ -279,17 +353,30 @@ class CommunityBackendService {
       f.user_id === userId ? f.friend_id : f.user_id
     );
 
-    // Fetch friend profiles
-    const { data: profiles } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .in('id', friendIds);
+    // Fetch friend profiles and today's grid completions in parallel
+    const [{ data: profiles }, { data: completions }] = await Promise.all([
+      supabase
+        .from('user_profiles')
+        .select('*')
+        .in('user_id', friendIds),
+      supabase
+        .from('friend_grid_completions')
+        .select('user_id, friend_id')
+        .eq('completed_date', today)
+        .or(`user_id.eq.${userId},friend_id.eq.${userId}`),
+    ]);
 
     const profileMap = new Map<string, any>();
-    (profiles || []).forEach(p => profileMap.set(p.id, p));
+    (profiles || []).forEach(p => profileMap.set(p.user_id, p));
+
+    // Build a set of friend IDs the current user has already helped today
+    const helpedToday = new Set<string>();
+    (completions || []).forEach((c: any) => {
+      if (c.user_id === userId) helpedToday.add(c.friend_id);
+    });
 
     // Build friend list and filter blocked
-    return allFriendships
+    const friends = allFriendships
       .filter(f => {
         const friendId = f.user_id === userId ? f.friend_id : f.user_id;
         return !blockedIds.includes(friendId);
@@ -298,29 +385,106 @@ class CommunityBackendService {
         const friendId = f.user_id === userId ? f.friend_id : f.user_id;
         const profile = profileMap.get(friendId);
 
+        // Determine streak: if last_mutual_date is stale (before yesterday), streak broke
+        let streakDays = f.streak_days || 0;
+        const lastMutual = f.last_mutual_date;
+        if (lastMutual && lastMutual < yesterday) {
+          streakDays = 0;
+        }
+
         return {
-        friendshipId: f.id,
-        userId,
-        friendId,
-        friend: profile ? mapProfileRow(profile) : { id: friendId, firstName: 'Friend' } as UserProfile,
-        isAnchorToday: true, // All friends show up
-        hasCompletedGrid: false,
-        addedAt: f.created_at || new Date().toISOString(),
-        streakDays: 0,
-        assistsCount: 0,
-        friendshipTier: 'good' as FriendshipTier,
-      };
-    });
+          friendshipId: f.id,
+          userId,
+          friendId,
+          friend: profile ? mapProfileRow(profile) : { id: friendId, firstName: 'Friend' } as UserProfile,
+          isAnchorToday: true,
+          hasCompletedGrid: helpedToday.has(friendId),
+          addedAt: f.added_at || new Date().toISOString(),
+          streakDays,
+          assistsCount: 0,
+          friendshipTier: deriveFriendshipTier(streakDays),
+        };
+      });
+
+    // For friends with no photos from user_profiles, check user_photos table
+    const friendsMissingPhotos = friends
+      .filter(f => !f.friend.photos || f.friend.photos.length === 0)
+      .map(f => f.friendId);
+
+    if (friendsMissingPhotos.length > 0) {
+      const { data: userPhotos } = await supabase
+        .from('user_photos')
+        .select('user_id, storage_path, is_main, display_order')
+        .in('user_id', friendsMissingPhotos)
+        .order('display_order', { ascending: true });
+
+      if (userPhotos && userPhotos.length > 0) {
+        const photosByUser = new Map<string, any[]>();
+        for (const p of userPhotos) {
+          if (!photosByUser.has(p.user_id)) photosByUser.set(p.user_id, []);
+          photosByUser.get(p.user_id)!.push(p);
+        }
+        for (const f of friends) {
+          if ((!f.friend.photos || f.friend.photos.length === 0) && photosByUser.has(f.friendId)) {
+            f.friend.photos = photosByUser.get(f.friendId)!.map(p => ({
+              id: p.storage_path,
+              url: p.storage_path,
+              isMain: p.is_main || false,
+              order: p.display_order || 0,
+            }));
+          }
+        }
+      }
+    }
+
+    // Resolve Supabase storage paths to signed URLs for friend photos
+    const allStoragePaths: string[] = [];
+    for (const f of friends) {
+      for (const p of f.friend.photos || []) {
+        if (p.url && !p.url.startsWith('http')) {
+          allStoragePaths.push(p.url);
+        }
+      }
+    }
+    if (allStoragePaths.length > 0) {
+      const urlMapRes = await getMultiplePhotoSignedUrls(allStoragePaths, 86400);
+      if (urlMapRes.ok && urlMapRes.data) {
+        for (const f of friends) {
+          f.friend.photos = (f.friend.photos || []).map(p => ({
+            ...p,
+            url: urlMapRes.data![p.url] || p.url,
+          }));
+        }
+      } else {
+        logger.warn('[getFriendsAsAnchors] Signed URL generation failed, using public URLs');
+        for (const f of friends) {
+          f.friend.photos = (f.friend.photos || []).map(p => {
+            if (p.url && !p.url.startsWith('http')) {
+              const { data } = supabase.storage.from('profile-photos').getPublicUrl(p.url);
+              return { ...p, url: data.publicUrl };
+            }
+            return p;
+          });
+        }
+      }
+    }
+
+    // Debug: log photo status per friend
+    for (const f of friends) {
+      logger.info(`[getFriendsAsAnchors] Friend ${f.friend.firstName}: ${f.friend.photos?.length || 0} photos, first URL: ${f.friend.photos?.[0]?.url?.substring(0, 60) || 'NONE'}`);
+    }
+
+    return friends;
   }
 
   async getFriendGrid(friendId: string): Promise<DailyGrid> {
     const today = new Date().toISOString().split('T')[0];
 
-    // Check if there's a survey for this friend
+    // Check if there's a survey for this friend (recipient_user_id = the friend being matched)
     const { data: survey } = await supabase
       .from('daily_surveys')
       .select('*')
-      .eq('anchor_id', friendId)
+      .eq('recipient_user_id', friendId)
       .eq('survey_date', today)
       .maybeSingle();
 
@@ -328,15 +492,19 @@ class CommunityBackendService {
       throw new Error('Friend has no grid today');
     }
 
-    // Fetch candidate profiles
-    const candidateIds = survey.candidate_ids || [];
+    // Collect candidate IDs from separate columns
+    const candidateIds = [
+      survey.candidate_1_user_id,
+      survey.candidate_2_user_id,
+      survey.candidate_3_user_id,
+    ].filter(Boolean);
     const candidates: UserProfile[] = [];
 
     if (candidateIds.length > 0) {
       const { data: profiles } = await supabase
         .from('user_profiles')
         .select('*')
-        .in('id', candidateIds);
+        .in('user_id', candidateIds);
 
       if (profiles) {
         candidates.push(...profiles.map(mapProfileRow));
@@ -347,7 +515,7 @@ class CommunityBackendService {
     const { data: friendProfile } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('id', friendId)
+      .eq('user_id', friendId)
       .maybeSingle();
 
     return {
@@ -357,8 +525,8 @@ class CommunityBackendService {
       candidates,
       gridDate: today,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      hasVoted: !!survey.submitted_at,
-      hasMatched: !!survey.selected_candidate_id,
+      hasVoted: !!survey.is_completed,
+      hasMatched: !!survey.is_completed,
     };
   }
 
@@ -366,16 +534,21 @@ class CommunityBackendService {
     const userId = await getCurrentUserId();
     const today = new Date().toISOString().split('T')[0];
 
-    // Record the friend's proposal
+    // Mark the survey as completed for this friend
     await supabase
       .from('daily_surveys')
       .update({
-        selected_candidate_id: candidateId,
-        submitted_by_friend_id: userId,
-        submitted_at: new Date().toISOString(),
+        is_completed: true,
+        completed_at: new Date().toISOString(),
       })
-      .eq('anchor_id', friendId)
+      .eq('recipient_user_id', friendId)
       .eq('survey_date', today);
+
+    // Record grid completion and update streak
+    await supabase.rpc('record_grid_completion', {
+      p_user_id: userId,
+      p_friend_id: friendId,
+    });
   }
 
   // ========================================================================
@@ -471,7 +644,7 @@ class CommunityBackendService {
     const { data: partnerRow } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('id', partnerId)
+      .eq('user_id', partnerId)
       .maybeSingle();
 
     const partnerProfile = partnerRow ? mapProfileRow(partnerRow) : { id: partnerId, firstName: 'Match' } as UserProfile;
@@ -602,15 +775,15 @@ class CommunityBackendService {
     const votesCompleted = (voteCount || 0) + this.sessionVoteCount;
     const hasVoted = votesCompleted >= 3;
 
-    // Check if user submitted a daily survey today
+    // Check if user completed a daily survey today
     const { data: survey } = await supabase
       .from('daily_surveys')
-      .select('submitted_at')
-      .eq('user_id', userId)
+      .select('is_completed')
+      .eq('ranker_user_id', userId)
       .eq('survey_date', today)
       .maybeSingle();
 
-    const hasCreatedProposal = !!survey?.submitted_at;
+    const hasCreatedProposal = !!survey?.is_completed;
     const allComplete = hasVoted;
 
     return {
@@ -665,9 +838,9 @@ class CommunityBackendService {
   // Match ended event tracking
   // ========================================================================
 
-  private pendingEndedEvent: import('./communityService').MatchEndedEvent | null = null;
+  private pendingEndedEvent: MatchEndedEvent | null = null;
 
-  getEndedMatchEvent(): import('./communityService').MatchEndedEvent | null {
+  getEndedMatchEvent(): MatchEndedEvent | null {
     return this.pendingEndedEvent;
   }
 
@@ -676,18 +849,34 @@ class CommunityBackendService {
   }
 
   // ========================================================================
-  // Stubs required by CommunityService interface
+  // 24h daily-cycle timer + state-change events
   // ========================================================================
 
-  onStateChange(_callback: (state: any) => void): () => void {
-    return () => {};
+  private stateChangeListeners: Array<() => void> = [];
+
+  onStateChange(callback: () => void): () => void {
+    this.stateChangeListeners.push(callback);
+    return () => {
+      this.stateChangeListeners = this.stateChangeListeners.filter(l => l !== callback);
+    };
   }
 
-  getNextResetAt(): Date {
-    return new Date();
+  private notifyStateChange(): void {
+    this.stateChangeListeners.forEach(l => l());
   }
 
-  async triggerReset(): Promise<void> {}
+  getNextResetAt(): number {
+    return this.nextResetAt;
+  }
+
+  triggerReset(): void {
+    this.nextResetAt = getNext7PMCentral();
+    this.sessionVoteCount = 0;
+    this.sessionVotedProposals.clear();
+    AsyncStorage.setItem(STORAGE_KEY_NEXT_RESET, String(this.nextResetAt)).catch(() => {});
+    AsyncStorage.setItem(STORAGE_KEY_VOTES, '0').catch(() => {});
+    this.notifyStateChange();
+  }
 }
 
 export const communityBackendService = new CommunityBackendService();

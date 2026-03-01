@@ -11,8 +11,14 @@
  * - State management for testing flows
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createLogger } from '../utils/secureLogger';
 import type { Match } from '../types';
+import type { MatchEndedEvent } from '../types/community';
+
+// AsyncStorage keys for persisting the 24h cycle across app restarts
+const STORAGE_KEY_NEXT_RESET = '@bridge:next_reset_at';
+const STORAGE_KEY_VOTES = '@bridge:votes_submitted';
 
 const logger = createLogger('CommunityService');
 
@@ -36,50 +42,7 @@ import {
 // TIMER HELPERS
 // ============================================================================
 
-/**
- * Returns the timestamp (ms) of the next 7 PM US Central Time.
- * Uses America/Chicago which automatically handles CST (UTC-6) and CDT (UTC-5).
- */
-function getNext7PMCentral(): number {
-  const now = new Date();
-  const centralFmt = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Chicago',
-    hour: '2-digit',
-    hour12: false,
-  });
-  const dateFmt = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Chicago',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-
-  // Current Central hour determines if today's 7 PM has already passed
-  const currentCentralHour = parseInt(centralFmt.format(now), 10);
-  const dateParts = dateFmt.formatToParts(now);
-  const year = parseInt(dateParts.find(p => p.type === 'year')!.value, 10);
-  const month = parseInt(dateParts.find(p => p.type === 'month')!.value, 10) - 1;
-  const day = parseInt(dateParts.find(p => p.type === 'day')!.value, 10);
-
-  // Target day: today if before 7 PM, tomorrow if at or after 7 PM
-  const targetDay = currentCentralHour < 19 ? day : day + 1;
-
-  // Try both CST (UTC-6) and CDT (UTC-5) offsets; validate by round-tripping
-  for (const offsetH of [6, 5]) {
-    const rawUtcHour = 19 + offsetH; // e.g. 25 for CST
-    const dayRollover = Math.floor(rawUtcHour / 24);
-    const utcHour = rawUtcHour % 24;
-    const candidate = Date.UTC(year, month, targetDay + dayRollover, utcHour, 0, 0);
-
-    const verifiedHour = parseInt(centralFmt.format(new Date(candidate)), 10);
-    if (verifiedHour === 19) {
-      return candidate;
-    }
-  }
-
-  // Fallback: 24h from now
-  return now.getTime() + 24 * 60 * 60 * 1000;
-}
+import { getNext7PMCentral } from '../utils/centralTime';
 
 // ============================================================================
 // MOCK DATA GENERATORS
@@ -452,16 +415,8 @@ export type MockMatchState =
   | 'they_rejected'  // They passed on you
   | 'match_ended';   // Active match was ended by partner
 
-/** Passed from communityService → MatchesScreen to drive the one-time popup */
-export interface MatchEndedEvent {
-  type: 'expired' | 'you_rejected' | 'they_rejected' | 'match_ended';
-  /** Unique per-event ID used for AsyncStorage "seen once" tracking */
-  eventId: string;
-  partnerName: string;
-  partnerPhotoUrl?: string;
-  /** Only present for 'match_ended' — the reason the partner wrote */
-  endReason?: string;
-}
+// MatchEndedEvent is now defined in types/community.ts — re-export for backwards compat
+export type { MatchEndedEvent } from '../types/community';
 
 export type MockFriendsState =
   | 'empty'          // No friends in community
@@ -490,14 +445,16 @@ interface MockState {
       decidedAt?: string;
     };
   };
+  // Tracks vote deltas applied this session so getProposalsToVote returns live counts
+  proposalVoteCounts: Record<string, { yes: number; no: number; total: number }>;
 }
 
 let mockState: MockState = {
   dailyTasksCompleted: false,
   gridProposalSubmitted: false,
-  votesSubmitted: 3,  // Always bypass the voting gate in dev mode
+  votesSubmitted: 0,  // Loaded from AsyncStorage on init; 0 = gate shows until voted today
   votedProposals: {},
-  friendsAreaUnlocked: true,
+  friendsAreaUnlocked: false,
   mockDataEnabled: true,
   timeRestrictionDisabled: true,
   fastForwardMode: false,
@@ -508,6 +465,7 @@ let mockState: MockState = {
   pendingEndedEvent: null,
   runtimePastMatches: [],
   proposalDecisions: {},
+  proposalVoteCounts: {},
 };
 
 // Shared module-level reference so setMatchState() can build ended-event payloads
@@ -986,6 +944,85 @@ const mockActiveMatch: ActiveMatch = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class CommunityService {
+  // ── Startup ready gate ──────────────────────────────────────────────────────
+  private _ready: Promise<void>;
+
+  constructor() {
+    this._ready = this.initFromStorage();
+  }
+
+  /**
+   * Resolves once AsyncStorage has been read and voting/timer state is restored.
+   * Await this in any screen that checks voting progress on mount.
+   */
+  get ready(): Promise<void> {
+    return this._ready;
+  }
+
+  /**
+   * Load persisted 24h-cycle state from AsyncStorage.
+   *
+   * - If the stored nextResetAt has already passed → trigger a fresh reset.
+   * - If it's still in the future → restore it and reload today's vote count.
+   * - If nothing is stored (first install) → seed storage and start at 0 votes.
+   */
+  private async initFromStorage(): Promise<void> {
+    try {
+      const [storedResetAt, storedVotes] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEY_NEXT_RESET),
+        AsyncStorage.getItem(STORAGE_KEY_VOTES),
+      ]);
+
+      let resolvedResetAt: number | null = null;
+      if (storedResetAt) {
+        const parsed = parseInt(storedResetAt, 10);
+        if (!isNaN(parsed)) resolvedResetAt = parsed;
+      }
+
+      if (resolvedResetAt !== null) {
+        if (Date.now() >= resolvedResetAt) {
+          // The 7 PM window has passed while the app was closed — reset now.
+          this.nextResetAt = getNext7PMCentral();
+          mockState.votesSubmitted = 0;
+          mockState.votedProposals = {};
+          mockState.proposalVoteCounts = {};
+          mockState.dailyTasksCompleted = false;
+          mockState.gridProposalSubmitted = false;
+          mockState.friendsAreaUnlocked = false;
+          mockState.helpedFriends = [];
+          await Promise.all([
+            AsyncStorage.setItem(STORAGE_KEY_NEXT_RESET, String(this.nextResetAt)),
+            AsyncStorage.setItem(STORAGE_KEY_VOTES, '0'),
+          ]);
+          logger.info('[Mock] Startup reset: 7 PM window passed while app was closed. Gate re-engaged.');
+        } else {
+          // Cycle is still active — restore the timer and today's vote count.
+          this.nextResetAt = resolvedResetAt;
+          if (storedVotes !== null) {
+            const votes = parseInt(storedVotes, 10);
+            if (!isNaN(votes)) {
+              mockState.votesSubmitted = votes;
+              mockState.friendsAreaUnlocked = votes >= 3;
+              mockState.dailyTasksCompleted = votes >= 3 && mockState.gridProposalSubmitted;
+              logger.info('[Mock] Restored state from storage. Votes today:', votes, '| Next reset in:', Math.round((this.nextResetAt - Date.now()) / 60000), 'min');
+            }
+          }
+        }
+      } else {
+        // First install — seed storage and start the user at 0 votes.
+        this.nextResetAt = getNext7PMCentral();
+        mockState.votesSubmitted = 0;
+        await Promise.all([
+          AsyncStorage.setItem(STORAGE_KEY_NEXT_RESET, String(this.nextResetAt)),
+          AsyncStorage.setItem(STORAGE_KEY_VOTES, '0'),
+        ]);
+        logger.info('[Mock] First install — seeded timer. Next reset in:', Math.round((this.nextResetAt - Date.now()) / 60000), 'min');
+      }
+    } catch (err) {
+      logger.warn('[Mock] AsyncStorage init failed — using in-memory defaults:', err);
+    }
+  }
+
   /**
    * Get today's daily grid (random matcher assignment)
    *
@@ -1057,7 +1094,17 @@ class CommunityService {
       return scoreB - scoreA;
     });
 
-    return ranked.slice(0, 3);
+    // Merge any vote deltas accumulated this session so the score badge is live
+    return ranked.slice(0, 3).map(p => {
+      const delta = mockState.proposalVoteCounts[p.id];
+      if (!delta) return p;
+      return {
+        ...p,
+        yesVotes: (p.yesVotes ?? 0) + delta.yes,
+        noVotes: (p.noVotes ?? 0) + delta.no,
+        totalVotes: (p.totalVotes ?? 0) + delta.total,
+      };
+    });
   }
 
   /**
@@ -1085,11 +1132,27 @@ class CommunityService {
     // 'skip' corresponds to "Not Sure" — a deliberate vote choice that should count.
     // The only case that should NOT count is a cancel (which never calls this function).
     // Re-voting on the same proposal updates the preference but does NOT add to the count.
-    const isNewVote = !(proposalId in mockState.votedProposals);
+    const prevVote = mockState.votedProposals[proposalId]; // undefined if new
+    const isNewVote = prevVote === undefined;
     mockState.votedProposals[proposalId] = vote;
     if (karmaWeight > 0 && isNewVote) {
       mockState.votesSubmitted += 1;
+      // Persist so the gate stays unlocked after an app restart.
+      AsyncStorage.setItem(STORAGE_KEY_VOTES, String(mockState.votesSubmitted)).catch(() => {});
     }
+
+    // Update running vote tallies so the score badge reflects live community sentiment.
+    const tally = mockState.proposalVoteCounts[proposalId] ?? { yes: 0, no: 0, total: 0 };
+    if (!isNewVote) {
+      // Undo the previous vote before applying the new one
+      if (prevVote === 'yes') tally.yes = Math.max(0, tally.yes - 1);
+      else if (prevVote === 'no') tally.no = Math.max(0, tally.no - 1);
+      tally.total = Math.max(0, tally.total - 1);
+    }
+    if (vote === 'yes') tally.yes += 1;
+    else if (vote === 'no') tally.no += 1;
+    tally.total += 1;
+    mockState.proposalVoteCounts[proposalId] = tally;
 
     // Check if daily tasks are now complete
     this.checkDailyTasksComplete();
@@ -1576,6 +1639,7 @@ class CommunityService {
       pendingEndedEvent: null,
       runtimePastMatches: [],
       proposalDecisions: {},
+      proposalVoteCounts: {},
     };
 
     logger.info('[Mock] State reset complete');
@@ -1656,10 +1720,21 @@ class CommunityService {
    */
   triggerReset(): void {
     this.nextResetAt = getNext7PMCentral();
-    // Only clear today's "helped" flags — matched friends remain shown as helped
+    // Clear today's "helped" flags — matched friends remain shown as helped
     // because getFriendsAreaData checks isMatched separately.
     mockState.helpedFriends = [];
-    logger.info('[Mock] Daily reset triggered at 7 PM Central. Helped friends cleared. Pairing history preserved.');
+    // Reset voting/task state so the friends area is locked again until the user
+    // votes on the new day's 3 proposals.
+    mockState.votesSubmitted = 0;
+    mockState.votedProposals = {};
+    mockState.proposalVoteCounts = {};
+    mockState.dailyTasksCompleted = false;
+    mockState.gridProposalSubmitted = false;
+    mockState.friendsAreaUnlocked = false;
+    // Persist so the gate is still active after an app restart.
+    AsyncStorage.setItem(STORAGE_KEY_NEXT_RESET, String(this.nextResetAt)).catch(() => {});
+    AsyncStorage.setItem(STORAGE_KEY_VOTES, '0').catch(() => {});
+    logger.info('[Mock] Daily reset triggered at 7 PM Central. Voting gate re-engaged. Pairing history preserved.');
     this.notifyStateChange();
   }
 
@@ -1672,7 +1747,11 @@ class CommunityService {
   /** Dev helper: reset the voting gate so the user sees 3 fresh proposals on next Community enter */
   resetToVotingGate(): void {
     mockState.votesSubmitted = 0;
+    mockState.votedProposals = {};
+    mockState.proposalVoteCounts = {};
     mockState.dailyTasksCompleted = false;
+    mockState.friendsAreaUnlocked = false;
+    AsyncStorage.setItem(STORAGE_KEY_VOTES, '0').catch(() => {});
     this.notifyStateChange();
   }
 

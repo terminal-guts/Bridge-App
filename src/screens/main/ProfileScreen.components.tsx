@@ -691,17 +691,6 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
           </Body>
         </StyledView>
 
-        {/* Location */}
-        <StyledView className="flex-row items-center justify-between py-2 border-b border-primary-100/50">
-          <StyledView className="flex-row items-center">
-            <Ionicons name="location-outline" size={16} color="#437FFF" />
-            <Body className="text-neutral-700 text-sm ml-2">Location</Body>
-          </StyledView>
-          <Body className="text-neutral-900 font-semibold text-sm">
-            {profile.location || '-'}
-          </Body>
-        </StyledView>
-
         {/* Values & Interests Count - Values Left, Interests Right */}
         {((profile.values?.length || 0) > 0 || (profile.interests?.length || 0) > 0) && (
           <StyledView className="flex-row gap-2 pt-2">

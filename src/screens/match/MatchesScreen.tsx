@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, SafeAreaView, ActivityIndicator, Image, TouchableOpacity, StyleSheet, StatusBar, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MatchCard } from '../../components/matches/MatchCard';
-import { communityService, MatchEndedEvent } from '../../services/communityService';
-import { ActiveMatch, MatchProposal } from '../../types/community';
+import { communityService } from '../../services/communityServiceIndex';
+import { ActiveMatch, MatchProposal, MatchEndedEvent } from '../../types/community';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OfflineBanner } from '../../components/OfflineBanner';
@@ -224,6 +224,10 @@ export function MatchesScreen() {
     // Check for a pending ended-match event each time the tab is focused
     useFocusEffect(
         useCallback(() => {
+            // Refresh profile on each tab focus so the completion banner stays current
+            getUserProfile().then(result => {
+                if (isMountedRef.current && result.ok && result.data) setProfile(result.data);
+            });
             const event = communityService.getEndedMatchEvent();
             if (!event) return;
             AsyncStorage.getItem(`match_popup_seen_${event.eventId}`).then(seen => {

@@ -18,7 +18,7 @@ const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 
 const COMMITMENT_OPTIONS = [
-  { value: 'relationship', label: 'Relationship', description: 'Looking for something serious' },
+  { value: 'relationship', label: 'Relationship' },
 ];
 
 export const PreferencesStep: React.FC<PreferencesStepProps> = ({
@@ -81,13 +81,6 @@ export const PreferencesStep: React.FC<PreferencesStepProps> = ({
               }`}
             >
               {option.label}
-            </Body>
-            <Body
-              className={`text-sm mt-1 ${
-                commitmentLevel === option.value ? 'text-white/80' : 'text-neutral-500'
-              }`}
-            >
-              {option.description}
             </Body>
           </StyledTouchableOpacity>
         ))}

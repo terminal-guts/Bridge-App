@@ -102,7 +102,14 @@ function mapBackendToUserProfile(data: any): UserProfile {
     preferences: {
       ageMin: data.preferences?.age_min ?? data.preferences?.ageMin ?? 22,
       ageMax: data.preferences?.age_max ?? data.preferences?.ageMax ?? 30,
-      gender: (data.preferences?.preferred_gender ?? data.preferences?.gender ?? 'female') as 'male' | 'female' | 'both',
+      gender: (() => {
+        const genders: string[] = data.interested_in_genders || data.preferences?.interested_in_genders || [];
+        if (genders.length === 1) {
+          if (genders[0] === 'male') return 'male' as const;
+          if (genders[0] === 'female') return 'female' as const;
+        }
+        return 'both' as const;
+      })(),
       lookingFor: (data.preferences?.looking_for ?? data.preferences?.lookingFor ?? 'relationship') as 'relationship' | 'casual' | 'friendship' | 'unsure',
       heightMin: data.preferences?.preferred_height_min_inches ?? data.preferences?.height_min ?? data.preferences?.heightMin ?? 60,
       heightMax: data.preferences?.preferred_height_max_inches ?? data.preferences?.height_max ?? data.preferences?.heightMax ?? 84,
@@ -146,6 +153,17 @@ function mapBackendToUserProfile(data: any): UserProfile {
     profileCompleted: data.profile_completed || false,
     createdAt: data.created_at || new Date().toISOString(),
     updatedAt: data.updated_at || new Date().toISOString(),
+    karma: data.karma_score ? {
+      userId: data.karma_score.user_id,
+      totalAssists: data.karma_score.total_assists ?? 0,
+      totalProposals: data.karma_score.total_proposals ?? 0,
+      totalVotes: data.karma_score.total_votes ?? 0,
+      accurateVotes: data.karma_score.accurate_votes ?? 0,
+      badgeTier: data.karma_score.badge_tier ?? 'new',
+      proposalSuccessRate: data.karma_score.proposal_success_rate ?? 0,
+      votingAccuracyRate: data.karma_score.voting_accuracy_rate ?? 0,
+      slowModeActive: data.karma_score.slow_mode_active ?? false,
+    } : undefined,
   } as UserProfile;
 }
 
@@ -350,8 +368,7 @@ export const createUserProfile = async (
       }
     }
 
-    // Fetch the newly created profile to return it
-    return getUserProfile();
+    return { ok: true };
   } catch (error: any) {
     logger.error('[ProfileService] createUserProfile error:', error);
     return createErrorResponse('CREATE_PROFILE_ERROR', error.message || 'Failed to create profile');
@@ -370,11 +387,12 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
     const userId = await getCurrentUserId();
     logger.info('[ProfileService] getUserProfile:', userId);
 
-    // Query all three tables in parallel
-    const [profileResult, prefsResult, dqResult] = await Promise.all([
+    // Query all tables in parallel
+    const [profileResult, prefsResult, dqResult, karmaResult] = await Promise.all([
       supabase.from('user_profiles').select('*').eq('user_id', userId).single(),
       supabase.from('user_preferences').select('*').eq('user_id', userId).single(),
       supabase.from('deep_question_answers').select('*').eq('user_id', userId),
+      supabase.from('karma_scores').select('*').eq('user_id', userId).maybeSingle(),
     ]);
 
     if (profileResult.error) {
@@ -390,6 +408,7 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
       ...profileResult.data,
       preferences: prefsResult.data || {},
       deep_questions: dqResult.data || [],
+      karma_score: karmaResult.data || null,
     };
 
     const profile = mapBackendToUserProfile(combinedData);
@@ -487,7 +506,7 @@ export const updateUserProfile = async (
       const prefPayload: any = {};
       if (updates.preferences?.ageMin !== undefined) prefPayload.age_min = updates.preferences.ageMin;
       if (updates.preferences?.ageMax !== undefined) prefPayload.age_max = updates.preferences.ageMax;
-      if (updates.preferences?.gender !== undefined) prefPayload.preferred_gender = updates.preferences.gender;
+      // preferred_gender removed — derived from interested_in_genders in user_profiles
       if (updates.preferences?.lookingFor !== undefined) prefPayload.looking_for = updates.preferences.lookingFor;
       if (updates.preferences?.heightMin !== undefined) prefPayload.preferred_height_min_inches = updates.preferences.heightMin;
       if (updates.preferences?.heightMax !== undefined) prefPayload.preferred_height_max_inches = updates.preferences.heightMax;
@@ -531,7 +550,7 @@ export const updateUserProfile = async (
       }
     }
 
-    return getUserProfile();
+    return { ok: true };
   } catch (error: any) {
     logger.error('[ProfileService] updateUserProfile error:', error);
     return createErrorResponse('UPDATE_PROFILE_ERROR', error.message || 'Failed to update profile');
@@ -710,7 +729,7 @@ function mapToLegacyProfile(up: UserProfile): Profile {
     age: up.age,
     image: up.photos?.[0]?.url || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800',
     isVerified: up.isVerified ?? false,
-    karmaPoints: 80,
+    karmaPoints: up.karma?.totalAssists ?? 0,
     matchPercentage: 75,
     matchedBy: [
       'https://i.pravatar.cc/32?u=1',
@@ -736,7 +755,7 @@ export const getProfileById = async (id: string): Promise<Profile | null> => {
         age: 29,
         image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=375&h=451',
         isVerified: true,
-        karmaPoints: 80,
+        karmaPoints: 0,
         matchPercentage: 75,
         matchedBy: [
           'https://i.pravatar.cc/32?u=1',
@@ -782,10 +801,11 @@ export const getProfileById = async (id: string): Promise<Profile | null> => {
     }
 
     // Query Supabase directly for any user's profile
-    const [profileResult, prefsResult, dqResult] = await Promise.all([
+    const [profileResult, prefsResult, dqResult, karmaResult] = await Promise.all([
       supabase.from('user_profiles').select('*').eq('user_id', id).single(),
       supabase.from('user_preferences').select('*').eq('user_id', id).single(),
       supabase.from('deep_question_answers').select('*').eq('user_id', id),
+      supabase.from('karma_scores').select('*').eq('user_id', id).maybeSingle(),
     ]);
 
     if (profileResult.error || !profileResult.data) return null;
@@ -794,6 +814,7 @@ export const getProfileById = async (id: string): Promise<Profile | null> => {
       ...profileResult.data,
       preferences: prefsResult.data || {},
       deep_questions: dqResult.data || [],
+      karma_score: karmaResult.data || null,
     };
 
     const up = mapBackendToUserProfile(combinedData);

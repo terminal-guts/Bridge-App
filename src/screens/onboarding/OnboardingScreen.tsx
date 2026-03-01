@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { View, StatusBar, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
@@ -23,9 +23,7 @@ import { GenderStep } from './steps/GenderStep';
 import { PronounsStep } from './steps/PronounsStep';
 import { HeightStep } from './steps/HeightStep';
 import { EthnicityStep } from './steps/EthnicityStep';
-import { DatingDistanceStep } from './steps/DatingDistanceStep';
 import { ChildrenStep } from './steps/ChildrenStep';
-import { WhereLiveNowStep } from './steps/WhereLiveNowStep';
 import { CurrentJobStep } from './steps/CurrentJobStep';
 import { ReligionStep } from './steps/ReligionStep';
 import { PoliticalBeliefsStep } from './steps/PoliticalBeliefsStep';
@@ -59,9 +57,7 @@ const PROFILE_STEPS: StepDefinition[] = [
   { component: PronounsStep, title: 'Pronouns', hasTextInput: false, mappingKey: 'pronouns' },
   { component: HeightStep, title: 'Height', hasTextInput: false, mappingKey: 'height' },
   { component: EthnicityStep, title: 'Ethnicity', hasTextInput: false, mappingKey: 'ethnicity' },
-  { component: DatingDistanceStep, title: 'Distance', hasTextInput: false, mappingKey: 'dating_distance' },
   { component: ChildrenStep, title: 'Children', hasTextInput: false, mappingKey: 'children' },
-  { component: WhereLiveNowStep, title: 'Location', hasTextInput: true, mappingKey: 'location' },
   { component: CurrentJobStep, title: 'Occupation', hasTextInput: true, mappingKey: 'current_job' },
   { component: ReligionStep, title: 'Religion', hasTextInput: false, mappingKey: 'religion' },
   { component: PoliticalBeliefsStep, title: 'Politics', hasTextInput: false, mappingKey: 'political_beliefs' },
@@ -78,6 +74,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   const [currentStep, setCurrentStep] = useState(0);
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
+  // Guard against concurrent goNext invocations (rapid taps / double-submit)
+  const isGoingNextRef = useRef(false);
 
   // Fetch the authenticated user ID from Supabase session.
   // Re-checks on step changes because the user gets authenticated during
@@ -154,26 +152,41 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   };
 
   const goNext = async () => {
-    // Save current step data before advancing (key-based mapping)
-    const stepKey = steps[currentStep].mappingKey;
-    if (stepKey) {
-      const mapping = ONBOARDING_STEP_MAPPING[stepKey];
-      if (mapping && mapping.columns.length > 0) {
-        const saveResult = await saveOnboardingStep(mapping.key, onboardingData, authUserId || undefined);
+    // Prevent concurrent invocations from rapid taps
+    if (isGoingNextRef.current) return;
+    isGoingNextRef.current = true;
 
-        if (!saveResult.ok) {
-          // Intermediate step saves are best-effort — never block the user.
-          logger.warn('[OnboardingScreen] Step save failed (non-blocking):', saveResult.error?.message);
+    // Snapshot currentStep at call time to avoid stale closure issues
+    const stepAtCall = currentStep;
+
+    try {
+      // Save current step data before advancing (key-based mapping)
+      const stepKey = steps[stepAtCall].mappingKey;
+      if (stepKey) {
+        const mapping = ONBOARDING_STEP_MAPPING[stepKey];
+        if (mapping && mapping.columns.length > 0) {
+          const saveResult = await saveOnboardingStep(mapping.key, onboardingData, authUserId || undefined);
+
+          if (!saveResult.ok) {
+            // Intermediate step saves are best-effort — never block the user.
+            logger.warn('[OnboardingScreen] Step save failed (non-blocking):', saveResult.error?.message);
+          }
         }
       }
-    }
 
-    // Advance to next step
-    if (currentStep < totalSteps - 1) {
-      setCurrentStep(currentStep + 1);
-    } else {
-      // Complete onboarding (final validation & photo upload)
-      completeOnboarding();
+      // Advance to next step using functional update to avoid stale closure
+      if (stepAtCall < totalSteps - 1) {
+        setCurrentStep(prev => {
+          // Only advance if we're still on the step we started from
+          if (prev === stepAtCall) return prev + 1;
+          return prev;
+        });
+      } else {
+        // Complete onboarding (final validation & photo upload)
+        completeOnboarding();
+      }
+    } finally {
+      isGoingNextRef.current = false;
     }
   };
 
@@ -187,6 +200,11 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   };
 
   const completeOnboarding = async () => {
+    // Defensive guard: should only be called from the last step
+    if (currentStep !== totalSteps - 1) {
+      logger.error(`[OnboardingScreen] completeOnboarding called from wrong step: ${currentStep} (expected ${totalSteps - 1})`);
+      return;
+    }
     setIsCreatingProfile(true);
     try {
       // Get current user ID from Supabase
