@@ -448,10 +448,12 @@ export interface OnboardingData {
   };
 
   // Onboarding progress
+  signupMethod?: 'phone' | 'email';
   birthday?: string;
   friendsAdded?: string[];
   displayedQuestions?: number[];
   phoneVerified?: boolean;
+  emailVerified?: boolean;
   verificationCode?: string;
 
   // Legacy fields (kept for backward compatibility)

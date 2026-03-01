@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, StatusBar, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
@@ -8,17 +8,20 @@ import { RootStackParamList, OnboardingData } from '../../types';
 import { createUserProfile, saveOnboardingStep } from '../../services/profileService';
 import { supabase } from '../../lib/supabase';
 import { Body } from '../../components/ui';
-import { getStepMappingByIndex } from '../../config/onboardingMapping';
+import { ONBOARDING_STEP_MAPPING } from '../../config/onboardingMapping';
 import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('OnboardingScreen');
 import { resetAllGuides } from '../../services/guideService';
 
 // Import all onboarding steps
+import { SignUpMethodStep } from './steps/SignUpMethodStep';
 import { PhoneNumberStep } from './steps/PhoneNumberStep';
 import { PhoneVerificationStep } from './steps/PhoneVerificationStep';
 import { RiceEmailStep } from './steps/RiceEmailStep';
 import { RiceEmailVerificationStep } from './steps/RiceEmailVerificationStep';
+import { EmailSignUpStep } from './steps/EmailSignUpStep';
+import { EmailSignUpVerificationStep } from './steps/EmailSignUpVerificationStep';
 import { NameStep } from './steps/NameStep';
 import { AgeStep } from './steps/AgeStep';
 import { GenderStep } from './steps/GenderStep';
@@ -43,18 +46,48 @@ interface OnboardingScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Onboarding'>;
 }
 
+interface StepDefinition {
+  component: React.FC<any>;
+  title: string;
+  hasTextInput: boolean;
+  mappingKey?: string; // Key into ONBOARDING_STEP_MAPPING; undefined = no data to save
+}
+
 const StyledView = styled(View);
 const StyledSafeAreaView = styled(SafeAreaView);
-const StyledTouchableOpacity = styled(TouchableOpacity);
+
+// Profile steps shared by both signup paths
+const PROFILE_STEPS: StepDefinition[] = [
+  { component: NameStep, title: 'Name', hasTextInput: true, mappingKey: 'name' },
+  { component: AgeStep, title: 'Birthday', hasTextInput: false, mappingKey: 'age' },
+  { component: GenderStep, title: 'Gender', hasTextInput: false, mappingKey: 'gender' },
+  { component: PronounsStep, title: 'Pronouns', hasTextInput: false, mappingKey: 'pronouns' },
+  { component: HeightStep, title: 'Height', hasTextInput: false, mappingKey: 'height' },
+  { component: EthnicityStep, title: 'Ethnicity', hasTextInput: false, mappingKey: 'ethnicity' },
+  { component: DatingDistanceStep, title: 'Distance', hasTextInput: false, mappingKey: 'dating_distance' },
+  { component: ChildrenStep, title: 'Children', hasTextInput: false, mappingKey: 'children' },
+  { component: WhereLiveNowStep, title: 'Location', hasTextInput: true, mappingKey: 'location' },
+  { component: CurrentJobStep, title: 'Occupation', hasTextInput: true, mappingKey: 'current_job' },
+  { component: ReligionStep, title: 'Religion', hasTextInput: false, mappingKey: 'religion' },
+  { component: PoliticalBeliefsStep, title: 'Politics', hasTextInput: false, mappingKey: 'political_beliefs' },
+  { component: LifestyleStep, title: 'Lifestyle', hasTextInput: false, mappingKey: 'lifestyle' },
+  { component: ValuesStep, title: 'Values', hasTextInput: false, mappingKey: 'values' },
+  { component: InterestsStep, title: 'Interests', hasTextInput: false, mappingKey: 'interests' },
+  { component: PhotoUploadStep, title: 'Photos', hasTextInput: false, mappingKey: 'photos' },
+  { component: PreferencesStep, title: 'Commitment Level', hasTextInput: false, mappingKey: 'preferences' },
+  { component: AddFriendsStep, title: 'Add Friends', hasTextInput: false },
+  { component: WelcomeToBridgeStep, title: 'Welcome', hasTextInput: false, mappingKey: 'welcome' },
+];
 
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
   const [currentStep, setCurrentStep] = useState(0);
+  const [signupMethod, setSignupMethod] = useState<'phone' | 'email'>('phone');
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
 
   // Fetch the authenticated user ID from Supabase session.
-  // Re-checks on step changes because the user gets authenticated at step 1
-  // (phone verification) — before that, there's no session yet.
+  // Re-checks on step changes because the user gets authenticated during
+  // verification (phone step 2 or email step 2) — before that, there's no session.
   useEffect(() => {
     if (authUserId) return; // Already have it
     const loadUserId = async () => {
@@ -69,6 +102,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
     };
     loadUserId();
   }, [currentStep, authUserId]);
+
   const [onboardingData, setOnboardingData] = useState<Partial<OnboardingData>>({
     interests: [],
     values: [],
@@ -91,43 +125,40 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
       // NOTE: lookingFor is required and collected in PreferencesStep
       heightMin: 60,
       heightMax: 84,
-      // All other fields removed - they are deprecated or not collected in onboarding
-    } as any, // Cast to any to avoid TS errors for missing required fields (they'll be filled in during onboarding)
+    } as any,
     photos: [],
   });
 
-  const steps = [
-    { component: PhoneNumberStep, title: 'Phone Number', hasTextInput: true },
-    { component: PhoneVerificationStep, title: 'Verification', hasTextInput: true },
-    { component: RiceEmailStep, title: 'Rice Email', hasTextInput: true },
-    { component: RiceEmailVerificationStep, title: 'Verify Email', hasTextInput: true },
-    { component: NameStep, title: 'Name', hasTextInput: true },
-    { component: AgeStep, title: 'Birthday', hasTextInput: false }, // Will be converted to birthday picker
-    { component: GenderStep, title: 'Gender', hasTextInput: false },
-    { component: PronounsStep, title: 'Pronouns', hasTextInput: false },
-    { component: HeightStep, title: 'Height', hasTextInput: false },
-    { component: EthnicityStep, title: 'Ethnicity', hasTextInput: false },
-    { component: DatingDistanceStep, title: 'Distance', hasTextInput: false },
-    { component: ChildrenStep, title: 'Children', hasTextInput: false }, // Future plans removed, skip button added
-    { component: WhereLiveNowStep, title: 'Location', hasTextInput: true },
-    { component: CurrentJobStep, title: 'Occupation', hasTextInput: true },
-    // REMOVED FROM ONBOARDING (still in profile edit): WhereFromStep, CompanyPositionStep, EducationLevelStep, SchoolStep
-    { component: ReligionStep, title: 'Religion', hasTextInput: false },
-    { component: PoliticalBeliefsStep, title: 'Politics', hasTextInput: false },
-    { component: LifestyleStep, title: 'Lifestyle', hasTextInput: false },
-    { component: ValuesStep, title: 'Values', hasTextInput: false },
-    { component: InterestsStep, title: 'Interests', hasTextInput: false },
-    { component: PhotoUploadStep, title: 'Photos', hasTextInput: false }, // Changed to 1 photo
-    // REMOVED FROM ONBOARDING (still in profile edit): DeepQuestionsStep, NonNegotiablesStep
-    { component: PreferencesStep, title: 'Commitment Level', hasTextInput: false },
-    { component: AddFriendsStep, title: 'Add Friends', hasTextInput: false },
-    { component: WelcomeToBridgeStep, title: 'Welcome', hasTextInput: false },
-  ];
+  // Build steps array dynamically based on signup method
+  const steps = useMemo((): StepDefinition[] => {
+    const methodStep: StepDefinition = {
+      component: SignUpMethodStep, title: 'Sign Up', hasTextInput: false,
+    };
+
+    if (signupMethod === 'email') {
+      // Email path: no need for separate Rice email verification (already verified via signup)
+      return [
+        methodStep,
+        { component: EmailSignUpStep, title: 'Email', hasTextInput: true },
+        { component: EmailSignUpVerificationStep, title: 'Verify Email', hasTextInput: true },
+        ...PROFILE_STEPS,
+      ];
+    }
+
+    // Phone path: need Rice email verification after phone auth
+    return [
+      methodStep,
+      { component: PhoneNumberStep, title: 'Phone Number', hasTextInput: true, mappingKey: 'phone_number' },
+      { component: PhoneVerificationStep, title: 'Verification', hasTextInput: true },
+      { component: RiceEmailStep, title: 'Rice Email', hasTextInput: true },
+      { component: RiceEmailVerificationStep, title: 'Verify Email', hasTextInput: true },
+      ...PROFILE_STEPS,
+    ];
+  }, [signupMethod]);
 
   const totalSteps = steps.length;
 
   // Bounds check — reset to step 0 if currentStep is out of range.
-  // The effect MUST be declared unconditionally (Rules of Hooks); early return is below.
   React.useEffect(() => {
     if (currentStep < 0 || currentStep >= totalSteps) {
       logger.error(`[OnboardingScreen] Invalid currentStep: ${currentStep} (totalSteps: ${totalSteps})`);
@@ -142,19 +173,25 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   const CurrentStepComponent = steps[currentStep].component;
 
   const updateData = (data: Partial<OnboardingData>) => {
+    // Intercept signupMethod changes to update local state
+    if (data.signupMethod && data.signupMethod !== signupMethod) {
+      setSignupMethod(data.signupMethod);
+    }
     setOnboardingData(prev => ({ ...prev, ...data }));
   };
 
   const goNext = async () => {
-    // Save current step data before advancing
-    const mapping = getStepMappingByIndex(currentStep);
-    if (mapping && mapping.columns.length > 0) {
-      const saveResult = await saveOnboardingStep(mapping.key, onboardingData, authUserId || undefined);
+    // Save current step data before advancing (key-based mapping)
+    const stepKey = steps[currentStep].mappingKey;
+    if (stepKey) {
+      const mapping = ONBOARDING_STEP_MAPPING[stepKey];
+      if (mapping && mapping.columns.length > 0) {
+        const saveResult = await saveOnboardingStep(mapping.key, onboardingData, authUserId || undefined);
 
-      if (!saveResult.ok) {
-        // Intermediate step saves are best-effort — never block the user.
-        // The full profile is committed at the end via createUserProfile.
-        logger.warn('[OnboardingScreen] Step save failed (non-blocking):', saveResult.error?.message);
+        if (!saveResult.ok) {
+          // Intermediate step saves are best-effort — never block the user.
+          logger.warn('[OnboardingScreen] Step save failed (non-blocking):', saveResult.error?.message);
+        }
       }
     }
 

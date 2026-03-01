@@ -16,11 +16,12 @@ import { TouchableOpacity as RNTouchableOpacity } from 'react-native';
 interface OnboardingLayoutProps {
   children: React.ReactNode;
   onBack?: () => void;
-  onContinue: () => void;
+  onContinue?: () => void;
   onSkip?: () => void; // Optional skip callback
   continueLabel?: string;
   continueDisabled?: boolean;
   showBackButton?: boolean;
+  hideContinueButton?: boolean; // Hide the continue button entirely (for custom navigation)
   hasTextInput?: boolean; // New prop to differentiate typing vs non-typing questions
   keyboardPersistent?: boolean; // New prop to prevent keyboard dismissal
   topPadding?: number; // Optional top padding override
@@ -40,6 +41,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   continueLabel = 'Continue',
   continueDisabled = false,
   showBackButton = true,
+  hideContinueButton = false,
   hasTextInput = false,
   keyboardPersistent = false,
   topPadding,
@@ -72,7 +74,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
     if (!keyboardPersistent) {
       Keyboard.dismiss();
     }
-    onContinue();
+    onContinue?.();
   };
 
   if (hasTextInput) {
@@ -128,36 +130,38 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
             </StyledScrollView>
 
             {/* Continue Button - Fixed position above keyboard */}
-            <StyledView
-              className="px-6 bg-neutral-50"
-              style={{
-                paddingTop: 16,
-                paddingBottom: 16,  // Let KeyboardAvoidingView handle positioning naturally
-                borderTopWidth: 1,
-                borderTopColor: '#F3F4F6',
-              }}
-            >
-              <Button
-                onPress={handleContinue}
-                variant="primary"
-                size="lg"
-                fullWidth
-                disabled={continueDisabled}
+            {!hideContinueButton && (
+              <StyledView
+                className="px-6 bg-neutral-50"
+                style={{
+                  paddingTop: 16,
+                  paddingBottom: 16,  // Let KeyboardAvoidingView handle positioning naturally
+                  borderTopWidth: 1,
+                  borderTopColor: '#F3F4F6',
+                }}
               >
-                {continueLabel}
-              </Button>
-              {onSkip && (
                 <Button
-                  onPress={onSkip}
-                  variant="ghost"
+                  onPress={handleContinue}
+                  variant="primary"
                   size="lg"
                   fullWidth
-                  className="mt-3"
+                  disabled={continueDisabled}
                 >
-                  Skip for now
+                  {continueLabel}
                 </Button>
-              )}
-            </StyledView>
+                {onSkip && (
+                  <Button
+                    onPress={onSkip}
+                    variant="ghost"
+                    size="lg"
+                    fullWidth
+                    className="mt-3"
+                  >
+                    Skip for now
+                  </Button>
+                )}
+              </StyledView>
+            )}
           </StyledView>
         </StyledKeyboardAvoidingView>
       </StyledSafeAreaView>
@@ -198,34 +202,36 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
         </StyledScrollView>
 
         {/* Continue Button - Sticky footer at bottom */}
-        <StyledView
-          className="px-6 py-6 bg-neutral-50"
-          style={{
-            borderTopWidth: 1,
-            borderTopColor: '#F3F4F6',
-          }}
-        >
-          <Button
-            onPress={handleContinue}
-            variant="primary"
-            size="lg"
-            fullWidth
-            disabled={continueDisabled}
+        {!hideContinueButton && (
+          <StyledView
+            className="px-6 py-6 bg-neutral-50"
+            style={{
+              borderTopWidth: 1,
+              borderTopColor: '#F3F4F6',
+            }}
           >
-            {continueLabel}
-          </Button>
-          {onSkip && (
             <Button
-              onPress={onSkip}
-              variant="ghost"
+              onPress={handleContinue}
+              variant="primary"
               size="lg"
               fullWidth
-              className="mt-3"
+              disabled={continueDisabled}
             >
-              Skip for now
+              {continueLabel}
             </Button>
-          )}
-        </StyledView>
+            {onSkip && (
+              <Button
+                onPress={onSkip}
+                variant="ghost"
+                size="lg"
+                fullWidth
+                className="mt-3"
+              >
+                Skip for now
+              </Button>
+            )}
+          </StyledView>
+        )}
       </StyledView>
     </StyledSafeAreaView>
   );
