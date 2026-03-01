@@ -7,7 +7,7 @@ import { styled } from 'nativewind';
 import { H2, H3, Body, Card, Button, ProfileSkeleton } from '../../components/ui';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { MainTabParamList, UserProfile, Match, DeepQuestionAnswer } from '../../types';
-import { getCurrentUser } from '../../services/authService';
+import { getCurrentUser, signOut } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { getUserMatches, updateMatchExitFeedback } from '../../services/matchService';
 import { getFriendCount } from '../../services/friendService';
@@ -272,7 +272,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
       if (!profileResult.ok || !profileResult.data) {
         // Don't show error if offline - keep existing data
         if (!isOffline) {
-          Alert.alert('Error', 'Failed to load profile');
+          Alert.alert('Error', 'Failed to load profile', [
+            { text: 'Retry', onPress: () => loadProfile() },
+            {
+              text: 'Sign Out',
+              style: 'destructive',
+              onPress: async () => {
+                await signOut();
+                navigation.navigate('Welcome');
+              },
+            },
+          ]);
         }
         if (isMountedRef.current) {
           setLoading(false);
