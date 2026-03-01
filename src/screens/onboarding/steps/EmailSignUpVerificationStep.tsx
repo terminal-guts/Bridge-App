@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, TextInput, Pressable } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/OnboardingLayout';
-import { verifyEmail, sendOtpToEmail } from '../../../services/authService';
+import { verifyEmailSignUpCode, sendEmailSignUpCode } from '../../../services/authService';
 import { createLogger } from '../../../utils/secureLogger';
 
 const logger = createLogger('EmailSignUpVerificationStep');
@@ -57,8 +57,10 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
     }
 
     isVerifyingRef.current = true;
-    logger.info('[EMAIL] Verifying OTP for signup:', data.email);
-    const result = await verifyEmail(data.email, fullCode);
+    logger.info('[EMAIL] Verifying signup code for:', data.email);
+
+    // This verifies the code AND creates the auth session via the Edge Function
+    const result = await verifyEmailSignUpCode(data.email, fullCode);
     isVerifyingRef.current = false;
 
     if (result.ok) {
@@ -76,7 +78,7 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
     setCode('');
     inputRef.current?.focus();
 
-    const result = await sendOtpToEmail(data.email);
+    const result = await sendEmailSignUpCode(data.email);
     setIsResending(false);
 
     if (!result.ok) {

@@ -467,3 +467,118 @@ export const verifyRiceEmailCode = async (email: string, code: string): Promise<
   }
 };
 
+/**
+ * Send a verification code to a @rice.edu email for signup.
+ * Uses the email-signup Edge Function (no JWT required).
+ * Sends a branded 6-digit OTP via Resend.
+ */
+export const sendEmailSignUpCode = async (email: string): Promise<ApiResponse<void>> => {
+  try {
+    if (!isAllowedEmailDomain(email)) {
+      return {
+        ok: false,
+        error: { code: 'INVALID_DOMAIN', message: 'Only @rice.edu emails are allowed.' },
+      };
+    }
+
+    logger.info('[EMAIL_SIGNUP] Sending verification code to:', email);
+
+    const { data, error } = await supabase.functions.invoke('email-signup', {
+      body: { email: email.toLowerCase(), action: 'send' },
+    });
+
+    if (error) {
+      logger.error('[EMAIL_SIGNUP] Edge function error:', error.message);
+      return {
+        ok: false,
+        error: { code: 'SEND_ERROR', message: error.message },
+      };
+    }
+
+    if (data?.error) {
+      return {
+        ok: false,
+        error: { code: 'SEND_ERROR', message: data.error },
+      };
+    }
+
+    logger.info('[EMAIL_SIGNUP] Verification code sent successfully');
+    return { ok: true };
+  } catch (error: any) {
+    logger.error('[EMAIL_SIGNUP] Error:', error.message);
+    return {
+      ok: false,
+      error: { code: 'SEND_ERROR', message: error.message || 'Failed to send verification code' },
+    };
+  }
+};
+
+/**
+ * Verify the 6-digit code and create an auth session for email signup.
+ * Uses the email-signup Edge Function which creates the user and returns session tokens.
+ */
+export const verifyEmailSignUpCode = async (
+  email: string,
+  code: string
+): Promise<ApiResponse<User>> => {
+  try {
+    logger.info('[EMAIL_SIGNUP] Verifying code for:', email);
+
+    const { data, error } = await supabase.functions.invoke('email-signup', {
+      body: { email: email.toLowerCase(), action: 'verify', code },
+    });
+
+    if (error) {
+      logger.error('[EMAIL_SIGNUP] Verification error:', error.message);
+      return {
+        ok: false,
+        error: { code: 'VERIFY_ERROR', message: error.message },
+      };
+    }
+
+    if (data?.error) {
+      return {
+        ok: false,
+        error: { code: 'VERIFY_ERROR', message: data.error },
+      };
+    }
+
+    if (!data?.access_token || !data?.refresh_token) {
+      return {
+        ok: false,
+        error: { code: 'SESSION_ERROR', message: 'Verification succeeded but no session returned' },
+      };
+    }
+
+    // Set the session on the client so the user is now authenticated
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    });
+
+    if (sessionError) {
+      logger.error('[EMAIL_SIGNUP] Failed to set session:', sessionError.message);
+      return {
+        ok: false,
+        error: { code: 'SESSION_ERROR', message: 'Failed to establish session' },
+      };
+    }
+
+    logger.info('[EMAIL_SIGNUP] Email signup successful! User ID:', data.user?.id);
+
+    return {
+      ok: true,
+      data: {
+        id: data.user.id,
+        email: data.user.email,
+      },
+    };
+  } catch (error: any) {
+    logger.error('[EMAIL_SIGNUP] Error:', error.message);
+    return {
+      ok: false,
+      error: { code: 'VERIFY_ERROR', message: error.message || 'Verification failed' },
+    };
+  }
+};
+

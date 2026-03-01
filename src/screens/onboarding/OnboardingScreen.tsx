@@ -93,7 +93,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
     const loadUserId = async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
       if (error) {
-        logger.warn('[OnboardingScreen] Failed to fetch auth user:', error.message);
+        // Expected before verification step — session doesn't exist yet
+        logger.info('[OnboardingScreen] No auth session yet (pre-verification):', error.message);
         return;
       }
       if (user?.id) {
