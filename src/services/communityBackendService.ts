@@ -367,7 +367,10 @@ class CommunityBackendService {
     ]);
 
     const profileMap = new Map<string, any>();
-    (profiles || []).forEach(p => profileMap.set(p.user_id, p));
+    (profiles || []).forEach(p => {
+      logger.info(`[getFriendsAsAnchors] RAW profile for ${p.first_name}: photos=${JSON.stringify(p.photos)?.substring(0, 200)}, profile_photo_path=${p.profile_photo_path}`);
+      profileMap.set(p.user_id, p);
+    });
 
     // Build a set of friend IDs the current user has already helped today
     const helpedToday = new Set<string>();
@@ -406,17 +409,15 @@ class CommunityBackendService {
         };
       });
 
-    // For friends with no photos from user_profiles, check user_photos table
-    const friendsMissingPhotos = friends
-      .filter(f => !f.friend.photos || f.friend.photos.length === 0)
-      .map(f => f.friendId);
-
-    if (friendsMissingPhotos.length > 0) {
+    // Always check user_photos table for ALL friends (JSONB may be empty/stale)
+    {
       const { data: userPhotos } = await supabase
         .from('user_photos')
         .select('user_id, storage_path, is_main, display_order')
-        .in('user_id', friendsMissingPhotos)
+        .in('user_id', friendIds)
         .order('display_order', { ascending: true });
+
+      logger.info(`[getFriendsAsAnchors] user_photos table returned ${userPhotos?.length || 0} rows for ${friendIds.length} friends`);
 
       if (userPhotos && userPhotos.length > 0) {
         const photosByUser = new Map<string, any[]>();
@@ -424,6 +425,7 @@ class CommunityBackendService {
           if (!photosByUser.has(p.user_id)) photosByUser.set(p.user_id, []);
           photosByUser.get(p.user_id)!.push(p);
         }
+        // Use user_photos data for friends that have no photos from the JSONB
         for (const f of friends) {
           if ((!f.friend.photos || f.friend.photos.length === 0) && photosByUser.has(f.friendId)) {
             f.friend.photos = photosByUser.get(f.friendId)!.map(p => ({
@@ -432,12 +434,29 @@ class CommunityBackendService {
               isMain: p.is_main || false,
               order: p.display_order || 0,
             }));
+            logger.info(`[getFriendsAsAnchors] Used user_photos fallback for ${f.friend.firstName}: ${f.friend.photos.length} photos`);
           }
         }
       }
     }
 
-    // Resolve Supabase storage paths to signed URLs for friend photos
+    // Extract storage paths from ALL photo URLs (handles both raw paths and expired signed/public URLs)
+    const extractPath = (url: string): string => {
+      if (!url) return url;
+      if (!url.startsWith('http')) return url; // Already a storage path
+      const match = url.match(/\/profile-photos\/(.+?)(?:\?|$)/);
+      return match ? match[1] : url;
+    };
+
+    // Normalize all photo URLs to storage paths first
+    for (const f of friends) {
+      f.friend.photos = (f.friend.photos || []).map(p => ({
+        ...p,
+        url: extractPath(p.url),
+      }));
+    }
+
+    // Collect all storage paths that need signed URLs
     const allStoragePaths: string[] = [];
     for (const f of friends) {
       for (const p of f.friend.photos || []) {
@@ -446,9 +465,16 @@ class CommunityBackendService {
         }
       }
     }
+
     if (allStoragePaths.length > 0) {
+      logger.info(`[getFriendsAsAnchors] Resolving ${allStoragePaths.length} photo paths: ${JSON.stringify(allStoragePaths)}`);
       const urlMapRes = await getMultiplePhotoSignedUrls(allStoragePaths, 86400);
+      logger.info(`[getFriendsAsAnchors] Signed URL result: ok=${urlMapRes.ok}, keys=${Object.keys(urlMapRes.data || {}).length}, error=${urlMapRes.error?.message || 'none'}`);
       if (urlMapRes.ok && urlMapRes.data) {
+        // Log each mapping
+        for (const [path, url] of Object.entries(urlMapRes.data)) {
+          logger.info(`[getFriendsAsAnchors] URL map: ${path} -> ${url.substring(0, 80)}...`);
+        }
         for (const f of friends) {
           f.friend.photos = (f.friend.photos || []).map(p => ({
             ...p,
@@ -456,22 +482,27 @@ class CommunityBackendService {
           }));
         }
       } else {
-        logger.warn('[getFriendsAsAnchors] Signed URL generation failed, using public URLs');
+        logger.warn('[getFriendsAsAnchors] Signed URL failed, trying public URLs');
         for (const f of friends) {
           f.friend.photos = (f.friend.photos || []).map(p => {
             if (p.url && !p.url.startsWith('http')) {
               const { data } = supabase.storage.from('profile-photos').getPublicUrl(p.url);
+              logger.info(`[getFriendsAsAnchors] Public URL fallback: ${p.url} -> ${data.publicUrl.substring(0, 80)}`);
               return { ...p, url: data.publicUrl };
             }
             return p;
           });
         }
       }
+    } else {
+      logger.warn('[getFriendsAsAnchors] NO storage paths found for any friend photos!');
     }
 
-    // Debug: log photo status per friend
+    // Debug: log final photo status per friend
     for (const f of friends) {
-      logger.info(`[getFriendsAsAnchors] Friend ${f.friend.firstName}: ${f.friend.photos?.length || 0} photos, first URL: ${f.friend.photos?.[0]?.url?.substring(0, 60) || 'NONE'}`);
+      const firstUrl = f.friend.photos?.[0]?.url || 'NONE';
+      const isHttp = firstUrl.startsWith('http');
+      logger.info(`[getFriendsAsAnchors] FINAL Friend ${f.friend.firstName}: ${f.friend.photos?.length || 0} photos, isSignedUrl=${isHttp}, url=${firstUrl.substring(0, 100)}`);
     }
 
     return friends;
