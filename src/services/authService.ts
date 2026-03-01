@@ -390,7 +390,7 @@ export const sendRiceEmailVerification = async (email: string): Promise<ApiRespo
     logger.info('[EMAIL_VERIFY] Sending verification code to:', email);
 
     const { data, error } = await supabase.functions.invoke('send-email-verification', {
-      body: { email: email.toLowerCase() },
+      body: { email: email.toLowerCase(), action: 'send' },
     });
 
     if (error) {
@@ -421,24 +421,15 @@ export const sendRiceEmailVerification = async (email: string): Promise<ApiRespo
 
 /**
  * Verify the 6-digit code sent to the @rice.edu email.
- * Calls the verify_email_code RPC which marks the email as verified in user_profiles.
+ * Calls the send-email-verification Edge Function with action 'verify',
+ * which verifies the OTP server-side and marks the email as verified in user_profiles.
  */
 export const verifyRiceEmailCode = async (email: string, code: string): Promise<ApiResponse<boolean>> => {
   try {
     logger.info('[EMAIL_VERIFY] Verifying code for:', email);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return {
-        ok: false,
-        error: { code: 'AUTH_ERROR', message: 'Not authenticated' },
-      };
-    }
-
-    const { data, error } = await supabase.rpc('verify_email_code', {
-      p_user_id: user.id,
-      p_email: email.toLowerCase(),
-      p_code: code,
+    const { data, error } = await supabase.functions.invoke('send-email-verification', {
+      body: { email: email.toLowerCase(), code, action: 'verify' },
     });
 
     if (error) {
@@ -449,7 +440,14 @@ export const verifyRiceEmailCode = async (email: string, code: string): Promise<
       };
     }
 
-    if (data === true) {
+    if (data?.error) {
+      return {
+        ok: false,
+        error: { code: 'WRONG_CODE', message: data.error },
+      };
+    }
+
+    if (data?.verified) {
       logger.info('[EMAIL_VERIFY] Email verified successfully');
       return { ok: true, data: true };
     } else {
