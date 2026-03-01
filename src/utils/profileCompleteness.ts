@@ -45,7 +45,6 @@ const FIELD_WEIGHTS = {
   ageRange: 4,
   interestedInGenders: 5,
   heightPreference: 4,
-  maxDistance: 4,
   partnerLifestylePreferences: 5,  // all 4 habits
   preferredEthnicities: 4,
   preferredPolitics: 4,
@@ -359,18 +358,6 @@ export const calculateProfileCompleteness = (
     });
   }
 
-  // Max Distance (6 points)
-  if (profile.preferences?.maxDistance !== undefined) {
-    score += FIELD_WEIGHTS.maxDistance;
-  } else {
-    missingFields.push({
-      field: 'maxDistance',
-      label: 'Set your dating distance',
-      weight: FIELD_WEIGHTS.maxDistance,
-      category: 'important',
-    });
-  }
-
   // Partner Lifestyle Preferences (6 points) - All 4 habits required
   if (
     profile.partnerLifestylePreferences?.drinking &&
@@ -605,13 +592,6 @@ export const calculateMatchPreferencesCompleteness = (
     completedCount++;
   } else {
     missingFields.push('Height');
-  }
-
-  // 5. Dating Distance
-  if (profile.preferences?.maxDistance !== undefined) {
-    completedCount++;
-  } else {
-    missingFields.push('Dating Distance');
   }
 
   // 6. Preferred Ethnicities

@@ -153,17 +153,6 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
     }),
   },
 
-  // Step 7: Dating Distance
-  dating_distance: {
-    key: 'dating_distance',
-    type: 'single_choice',
-    table: 'user_preferences',
-    columns: ['max_distance'],
-    transform: (data: any) => ({
-      max_distance: data.preferences?.maxDistance !== undefined ? data.preferences.maxDistance : null,
-    }),
-  },
-
   // Step 9: Children & Family Plans (both collected on same page)
   children: {
     key: 'children',

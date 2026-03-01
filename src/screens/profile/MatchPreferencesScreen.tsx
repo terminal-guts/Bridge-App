@@ -141,7 +141,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
     lookingFor: 'relationship' as 'relationship' | 'casual' | 'friendship' | 'unsure',
     heightMin: 60, // 5'0"
     heightMax: 84, // 7'0"
-    maxDistance: 50 as number | null, // null means "don't care"
   });
   const [partnerPreferences, setPartnerPreferences] = useState({
     partnerDrinking: [] as string[],
@@ -161,7 +160,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
     ageRange: true,
     interestedInGenders: true,
     heightPreference: true,
-    datingDistance: true,
     partnerLifestyle: true,
     preferredEthnicities: true,
     politicalPreferences: true,
@@ -283,7 +281,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
           lookingFor: 'relationship', // Bridge only supports relationships
           heightMin: loadedPrefs.heightMin ?? 60,
           heightMax: loadedPrefs.heightMax ?? 84,
-          maxDistance: loadedPrefs.maxDistance !== undefined ? loadedPrefs.maxDistance : 50,
         });
 
         // Load partner preferences (handle both old string format and new array format)
@@ -312,7 +309,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             ageRange: profileResult.data.preferenceVisibility.ageRange ?? true,
             interestedInGenders: profileResult.data.preferenceVisibility.interestedInGenders ?? true,
             heightPreference: profileResult.data.preferenceVisibility.heightPreference ?? true,
-            datingDistance: profileResult.data.preferenceVisibility.datingDistance ?? true,
             partnerLifestyle: profileResult.data.preferenceVisibility.partnerLifestyle ?? true,
             preferredEthnicities: profileResult.data.preferenceVisibility.preferredEthnicities ?? true,
             politicalPreferences: profileResult.data.preferenceVisibility.politicalPreferences ?? true,
@@ -334,7 +330,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             lookingFor: 'relationship', // Include lookingFor to match current state structure
             heightMin: loadedPrefs.heightMin ?? 60,
             heightMax: loadedPrefs.heightMax ?? 84,
-            maxDistance: loadedPrefs.maxDistance !== undefined ? loadedPrefs.maxDistance : 50,
           },
           partnerPreferences: {
             partnerDrinking: Array.isArray(originalPrefs.drinking) ? originalPrefs.drinking : (originalPrefs.drinking ? [originalPrefs.drinking] : []),
@@ -349,7 +344,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             ageRange: true,
             interestedInGenders: true,
             heightPreference: true,
-            datingDistance: true,
             partnerLifestyle: true,
             preferredEthnicities: true,
             politicalPreferences: true,
@@ -793,61 +787,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                 maximumTrackTintColor="#D0D5DD"
                 thumbTintColor="#437FFF"
               />
-            </StyledView>
-          </Card>
-
-          {/* Dating Distance */}
-          <Card className="mb-6">
-            <StyledView className="flex-row items-center justify-between mb-3">
-              <H3>Dating Distance <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
-              <StyledTouchableOpacity
-                onPress={() => toggleVisibility('datingDistance')}
-                className="flex-row items-center"
-              >
-                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
-                <StyledView className={`w-5 h-5 rounded border ${
-                  preferenceVisibility.datingDistance ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
-                } items-center justify-center`}>
-                  {preferenceVisibility.datingDistance && (
-                    <Ionicons name="checkmark" size={14} color="white" />
-                  )}
-                </StyledView>
-              </StyledTouchableOpacity>
-            </StyledView>
-            <Body className="text-neutral-600 text-sm mb-4">
-              How far would you be willing to date?
-            </Body>
-
-            <StyledView className="mb-4">
-              <StyledView className="flex-row justify-between mb-2">
-                <Body className="text-neutral-600">Maximum Distance</Body>
-                <Body className="text-neutral-900 font-semibold">
-                  {(preferences.maxDistance === null || preferences.maxDistance === 200)
-                    ? "Distance doesn't matter"
-                    : `${preferences.maxDistance} miles`}
-                </Body>
-              </StyledView>
-              <Slider
-                key="distance-slider"
-                value={preferences.maxDistance === null ? 200 : preferences.maxDistance}
-                onValueChange={(value) => {
-                  const roundedValue = Math.round(value);
-                  setPreferences((prev) => ({
-                    ...prev,
-                    maxDistance: roundedValue === 200 ? null : roundedValue,
-                  }));
-                }}
-                minimumValue={1}
-                maximumValue={200}
-                step={1}
-                minimumTrackTintColor="#437FFF"
-                maximumTrackTintColor="#D0D5DD"
-                thumbTintColor="#437FFF"
-              />
-              <StyledView className="flex-row justify-between mt-2">
-                <Body className="text-xs text-neutral-500">1 mi</Body>
-                <Body className="text-xs text-neutral-500">No limit</Body>
-              </StyledView>
             </StyledView>
           </Card>
 
