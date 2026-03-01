@@ -12,6 +12,10 @@ import { getUserProfile } from '../../services/profileService';
 import { UserProfile } from '../../types';
 import { ProfileCompletionBanner } from '../../components/ProfileCompletionBanner';
 
+// Pre-register the illustration asset at module load time so it is available
+// before the screen mounts (avoids a first-render blank on fresh installs).
+const NO_MATCH_ILLUSTRATION = require('../../../assets/no_match_illustration.png');
+
 // One of five mutually exclusive states the screen can be in
 type ScreenState =
     | 'active_match'    // Both said yes — show chat button
@@ -147,6 +151,20 @@ const popupStyles = StyleSheet.create({
     },
 });
 
+// Wraps the illustration so it can retry on error (handles first-mount blank)
+function IllustrationImage() {
+    const [key, setKey] = React.useState(0);
+    return (
+        <Image
+            key={key}
+            source={NO_MATCH_ILLUSTRATION}
+            style={styles.illustration}
+            resizeMode="contain"
+            onError={() => setKey(k => k + 1)}
+        />
+    );
+}
+
 // ── Main screen ──────────────────────────────────────────────────────────────
 export function MatchesScreen() {
     const [activeMatch, setActiveMatch] = useState<ActiveMatch | null>(null);
@@ -276,11 +294,7 @@ export function MatchesScreen() {
                 </View>
                 <View style={styles.emptyContainer}>
                     <Text style={styles.tagline}>Real connections take a little time</Text>
-                    <Image
-                        source={require('../../../assets/no_match_illustration.png')}
-                        style={styles.illustration}
-                        resizeMode="contain"
-                    />
+                    <IllustrationImage />
                     <Text style={styles.subtitle}>
                         We're looking for your best match! Why not help friends in the meantime?
                     </Text>

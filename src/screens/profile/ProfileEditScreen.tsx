@@ -6,7 +6,7 @@ import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { getCurrentUser } from '../../services/authService';
+import { getCurrentUser, signOut } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { OfflineBanner } from '../../components/OfflineBanner';
@@ -810,9 +810,11 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
   };
 
   // Helper function to format height from inches to feet'inches"
-  const formatHeight = (inches: string): string => {
-    if (!inches || inches === '0') return '';
-    const inchesNum = parseInt(inches, 10);
+  const formatHeight = (value: string): string => {
+    if (!value || value === '0') return '';
+    // Already formatted (e.g. "6'1\"") — return as-is
+    if (value.includes("'")) return value;
+    const inchesNum = parseInt(value, 10);
     if (isNaN(inchesNum)) return '';
     const feet = Math.floor(inchesNum / 12);
     const remainingInches = inchesNum % 12;
@@ -974,6 +976,21 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
     return (
       <StyledSafeAreaView className="flex-1 bg-neutral-50">
         <StatusBar barStyle="dark-content" />
+        <StyledView className="absolute top-12 right-4 z-10">
+          <TouchableOpacity
+            onPress={async () => {
+              const result = await signOut();
+              if (result.ok) {
+                (navigation as any).navigate('Welcome');
+              } else {
+                Alert.alert('Error', 'Failed to sign out. Please try again.');
+              }
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Body className="text-primary-500 font-semibold">Sign Out</Body>
+          </TouchableOpacity>
+        </StyledView>
         <StyledView className="flex-1 justify-center items-center px-6">
           <Body className="text-neutral-500 mb-4">Failed to load profile</Body>
           <Button onPress={loadProfile} variant="primary">

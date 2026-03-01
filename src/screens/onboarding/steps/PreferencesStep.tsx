@@ -19,9 +19,6 @@ const StyledTouchableOpacity = styled(TouchableOpacity);
 
 const COMMITMENT_OPTIONS = [
   { value: 'relationship', label: 'Relationship', description: 'Looking for something serious' },
-  { value: 'casual', label: 'Casual', description: 'Keeping things light' },
-  { value: 'friendship', label: 'Friendship', description: 'Just looking for friends' },
-  { value: 'unsure', label: 'Not sure yet', description: "Open to seeing what happens" },
 ];
 
 export const PreferencesStep: React.FC<PreferencesStepProps> = ({

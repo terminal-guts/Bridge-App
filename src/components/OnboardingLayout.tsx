@@ -106,7 +106,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
               className="flex-1"
               contentContainerStyle={{
                 paddingHorizontal: 24,
-                paddingTop: topPadding ?? 32,
+                paddingTop: topPadding ?? 64,
                 paddingBottom: 16,
                 flexGrow: 1,
               }}
