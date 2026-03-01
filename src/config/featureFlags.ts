@@ -18,13 +18,13 @@ const logger = createLogger('FeatureFlags');
  */
 export const FEATURE_FLAGS = {
   // Dashboard data sources
-  USE_REAL_DASHBOARD_STATS: false,
-  USE_REAL_SURVEY_STATUS: false,
-  USE_REAL_FRIENDS_DATA: false,
-  USE_REAL_PRICING_DATA: false,
+  USE_REAL_DASHBOARD_STATS: true,
+  USE_REAL_SURVEY_STATUS: true,
+  USE_REAL_FRIENDS_DATA: true,
+  USE_REAL_PRICING_DATA: true,
 
   // Advanced features
-  ENABLE_REALTIME_UPDATES: false,
+  ENABLE_REALTIME_UPDATES: true,
   ENABLE_DASHBOARD_REFRESH: true,
 
   // Development helpers
