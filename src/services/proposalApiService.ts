@@ -2,16 +2,15 @@
  * Proposal API Service
  *
  * Real backend integration for the proposal system.
- * Calls the FastAPI /proposals endpoints.
+ * Calls Supabase Edge Functions (replaces former FastAPI dependency).
  */
 
+import { supabase } from '../lib/supabase';
 import type {
   Proposal,
   ProposalVoteType,
   VoteResult,
 } from '../types/community';
-
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://bridge-frontend-production.up.railway.app';
 
 // ============================================================================
 // Proposal Generation (Admin/Cron)
@@ -23,58 +22,44 @@ export async function generateProposals(maxProposals: number = 50): Promise<{
   proposals_created: number;
   pool_voters_assigned: number;
 }> {
-  const response = await fetch(`${API_URL}/proposals/generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ max_proposals: maxProposals }),
+  const { data, error } = await supabase.functions.invoke('generate-proposals', {
+    body: { max_proposals: maxProposals },
   });
-  if (!response.ok) throw new Error(`Generate proposals failed: ${response.status}`);
-  return response.json();
-}
-
-export async function assignDailyVoters(): Promise<{
-  status: string;
-  total_assigned: number;
-}> {
-  const response = await fetch(`${API_URL}/proposals/assign-daily-voters`, {
-    method: 'POST',
-  });
-  if (!response.ok) throw new Error(`Assign voters failed: ${response.status}`);
-  return response.json();
+  if (error) throw new Error(`Generate proposals failed: ${error.message}`);
+  return data;
 }
 
 // ============================================================================
 // Voting
 // ============================================================================
 
-export async function getProposalsForVoting(userId: string): Promise<{
+export async function getProposalsForVoting(_userId: string): Promise<{
   proposals: any[];
   pool_count: number;
   friend_count: number;
 }> {
-  const response = await fetch(`${API_URL}/proposals/for-voting?user_id=${userId}`);
-  if (!response.ok) throw new Error(`Fetch proposals failed: ${response.status}`);
-  return response.json();
+  // Edge Function extracts user ID from JWT — no need to pass userId
+  const { data, error } = await supabase.functions.invoke('get-proposals-for-voting');
+  if (error) throw new Error(`Fetch proposals failed: ${error.message}`);
+  return data;
 }
 
 export async function castProposalVote(
   proposalId: string,
-  voterId: string,
+  _voterId: string,
   voteType: ProposalVoteType,
   recommendToId?: string,
 ): Promise<VoteResult> {
-  const response = await fetch(`${API_URL}/proposals/vote`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  // Edge Function extracts voter ID from JWT — no need to pass voterId
+  const { data, error } = await supabase.functions.invoke('process-vote', {
+    body: {
       proposal_id: proposalId,
-      voter_id: voterId,
       vote_type: voteType,
       recommend_to_id: recommendToId,
-    }),
+    },
   });
-  if (!response.ok) throw new Error(`Cast vote failed: ${response.status}`);
-  return response.json();
+  if (error) throw new Error(`Cast vote failed: ${error.message}`);
+  return data;
 }
 
 // ============================================================================
@@ -84,49 +69,63 @@ export async function castProposalVote(
 export async function getPendingDecisions(userId: string): Promise<{
   proposals: any[];
 }> {
-  const response = await fetch(`${API_URL}/proposals/pending-decisions?user_id=${userId}`);
-  if (!response.ok) throw new Error(`Fetch pending decisions failed: ${response.status}`);
-  return response.json();
+  // Direct Supabase query — no Edge Function needed
+  const { data: proposals, error } = await supabase
+    .from('proposals')
+    .select('*')
+    .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`)
+    .in('status', ['deciding', 'expired']);
+
+  if (error) throw new Error(`Fetch pending decisions failed: ${error.message}`);
+
+  if (!proposals || proposals.length === 0) {
+    return { proposals: [] };
+  }
+
+  // Collect partner IDs for profile enrichment
+  const partnerIds = proposals.map(p =>
+    p.user_a_id === userId ? p.user_b_id : p.user_a_id
+  );
+
+  const { data: profiles } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .in('id', partnerIds);
+
+  const profileMap = new Map<string, any>();
+  (profiles || []).forEach(p => profileMap.set(p.id, p));
+
+  // Enrich proposals with partner profile
+  const enriched = proposals.map(p => {
+    const partnerId = p.user_a_id === userId ? p.user_b_id : p.user_a_id;
+    return {
+      ...p,
+      partner_profile: profileMap.get(partnerId) || null,
+    };
+  });
+
+  return { proposals: enriched };
 }
 
 export async function decideOnProposal(
   proposalId: string,
-  userId: string,
+  _userId: string,
   decision: 'accepted' | 'declined',
 ): Promise<{
   status: string;
   proposal_status: string;
   your_decision: string;
 }> {
-  const response = await fetch(`${API_URL}/proposals/${proposalId}/decide`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id: userId, decision }),
+  // Edge Function extracts user ID from JWT — no need to pass userId
+  const { data, error } = await supabase.functions.invoke('process-decision', {
+    body: { proposal_id: proposalId, decision },
   });
-  if (!response.ok) throw new Error(`Decision failed: ${response.status}`);
-  return response.json();
+  if (error) throw new Error(`Decision failed: ${error.message}`);
+  return data;
 }
 
 // ============================================================================
-// Query
-// ============================================================================
-
-export async function getProposal(proposalId: string): Promise<any> {
-  const response = await fetch(`${API_URL}/proposals/${proposalId}`);
-  if (!response.ok) throw new Error(`Fetch proposal failed: ${response.status}`);
-  return response.json();
-}
-
-export async function getUserProposalHistory(userId: string): Promise<{
-  proposals: any[];
-}> {
-  const response = await fetch(`${API_URL}/proposals/user/${userId}/history`);
-  if (!response.ok) throw new Error(`Fetch history failed: ${response.status}`);
-  return response.json();
-}
-
-// ============================================================================
-// Lifecycle
+// Lifecycle (Admin/Cron)
 // ============================================================================
 
 export async function triggerLifecycleCheck(): Promise<{
@@ -136,11 +135,9 @@ export async function triggerLifecycleCheck(): Promise<{
   rejected: number;
   expired_sent: number;
 }> {
-  const response = await fetch(`${API_URL}/proposals/lifecycle-check`, {
-    method: 'POST',
-  });
-  if (!response.ok) throw new Error(`Lifecycle check failed: ${response.status}`);
-  return response.json();
+  const { data, error } = await supabase.functions.invoke('proposal-lifecycle');
+  if (error) throw new Error(`Lifecycle check failed: ${error.message}`);
+  return data;
 }
 
 // ============================================================================
@@ -187,10 +184,7 @@ export function transformBackendProposal(raw: any): Partial<Proposal> {
 // ============================================================================
 
 /**
- * Trigger daily pairing generation.
- * Each user gets exactly ONE partner per day based on the 12-category scoring grid.
- *
- * SAFE: Only writes to daily_pairings. Does NOT touch conversations or matches.
+ * Trigger daily pairing generation via Edge Function.
  */
 export async function generateDailyPairings(): Promise<{
   status: string;
@@ -202,16 +196,14 @@ export async function generateDailyPairings(): Promise<{
   min_score: number;
   unmatched_users: number;
 }> {
-  const response = await fetch(`${API_URL}/proposals/generate-daily-pairings`, {
-    method: 'POST',
-  });
-  if (!response.ok) throw new Error(`Generate daily pairings failed: ${response.status}`);
-  return response.json();
+  const { data, error } = await supabase.functions.invoke('generate-daily-pairings');
+  if (error) throw new Error(`Generate daily pairings failed: ${error.message}`);
+  return data;
 }
 
 /**
  * Fetch a user's daily pairing for a given date.
- * Returns the partner profile + full 12-category compatibility coordinates.
+ * Direct Supabase query since this is a simple read.
  */
 export async function getDailyPairing(userId: string, date?: string): Promise<{
   status: string;
@@ -239,32 +231,33 @@ export async function getDailyPairing(userId: string, date?: string): Promise<{
   };
   message?: string;
 }> {
-  const params = new URLSearchParams({ user_id: userId });
-  if (date) params.append('date', date);
+  const pairingDate = date || new Date().toISOString().split('T')[0];
 
-  const response = await fetch(`${API_URL}/proposals/daily-pairing?${params}`);
-  if (!response.ok) throw new Error(`Get daily pairing failed: ${response.status}`);
-  return response.json();
-}
+  const { data: pairing, error } = await supabase
+    .from('daily_pairings')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('pairing_date', pairingDate)
+    .maybeSingle();
 
-/**
- * Get daily pairing stats for the last N days.
- */
-export async function getDailyPairingStats(days: number = 7): Promise<{
-  status: string;
-  days: number;
-  stats: Array<{
-    date: string;
-    total_pairings: number;
-    avg_score: number;
-    min_score: number;
-    max_score: number;
-    seen_count: number;
-    seen_rate: number;
-    proposal_count: number;
-  }>;
-}> {
-  const response = await fetch(`${API_URL}/proposals/daily-pairing/stats?days=${days}`);
-  if (!response.ok) throw new Error(`Get daily pairing stats failed: ${response.status}`);
-  return response.json();
+  if (error) throw new Error(`Get daily pairing failed: ${error.message}`);
+
+  if (!pairing) {
+    return { status: 'no_pairing', message: 'No pairing found for this date' };
+  }
+
+  // Fetch partner profile
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('id, first_name, age, gender, location, interests, values, bio, photos')
+    .eq('id', pairing.partner_id)
+    .maybeSingle();
+
+  return {
+    status: 'ok',
+    pairing: {
+      ...pairing,
+      partner_profile: profile || { id: pairing.partner_id, first_name: 'Partner' },
+    },
+  };
 }

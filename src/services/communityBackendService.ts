@@ -2,7 +2,7 @@
  * Community Backend Service - REAL IMPLEMENTATION
  *
  * Connects to Supabase for friends/matches/karma data
- * and FastAPI for proposal voting/generation.
+ * and Edge Functions for proposal voting/generation.
  */
 
 import { supabase } from '../lib/supabase';
@@ -103,7 +103,7 @@ class CommunityBackendService {
   private sessionVotedProposals = new Set<string>();
 
   // ========================================================================
-  // Proposals (via FastAPI)
+  // Proposals (via Edge Functions)
   // ========================================================================
 
   async getProposalsToVote(): Promise<Proposal[]> {
@@ -379,7 +379,7 @@ class CommunityBackendService {
   }
 
   // ========================================================================
-  // Pending Match Proposals (FastAPI)
+  // Pending Match Proposals (Supabase direct query)
   // ========================================================================
 
   async getPendingMatchProposals(): Promise<any[]> {
@@ -451,21 +451,21 @@ class CommunityBackendService {
     const { data: matchA } = await supabase
       .from('matches')
       .select('*')
-      .eq('user1_id', userId)
+      .eq('user_id_1', userId)
       .in('status', ['active', 'accepted'])
       .maybeSingle();
 
     const { data: matchB } = await supabase
       .from('matches')
       .select('*')
-      .eq('user2_id', userId)
+      .eq('user_id_2', userId)
       .in('status', ['active', 'accepted'])
       .maybeSingle();
 
     const match = matchA || matchB;
     if (!match) return null;
 
-    const partnerId = match.user1_id === userId ? match.user2_id : match.user1_id;
+    const partnerId = match.user_id_1 === userId ? match.user_id_2 : match.user_id_1;
 
     // Fetch partner profile
     const { data: partnerRow } = await supabase
@@ -532,7 +532,7 @@ class CommunityBackendService {
     // Create exit record
     await supabase.from('match_exits').insert({
       match_id: matchId,
-      user_id: userId,
+      exiting_user_id: userId,
       exit_reason: reason,
       days_since_match: daysSinceMatch,
       messages_exchanged: messageCount || 0,
@@ -596,7 +596,7 @@ class CommunityBackendService {
     const { count: voteCount } = await supabase
       .from('proposal_votes')
       .select('id', { count: 'exact', head: true })
-      .eq('voter_id', userId)
+      .eq('voter_user_id', userId)
       .gte('created_at', `${today}T00:00:00Z`);
 
     const votesCompleted = (voteCount || 0) + this.sessionVoteCount;
