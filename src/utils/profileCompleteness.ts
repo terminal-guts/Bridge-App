@@ -549,13 +549,12 @@ export const calculateMatchPreferencesCompleteness = (
     return {
       percentage: 0,
       completedCount: 0,
-      totalCount: 8,
+      totalCount: 7,
       missingFields: [
         "I'm Looking For",
         'Gender',
         'Age Range',
         'Height',
-        'Dating Distance',
         'Ethnicity',
         'Politics',
         'Lifestyle',
@@ -633,12 +632,12 @@ export const calculateMatchPreferencesCompleteness = (
     missingFields.push('Lifestyle');
   }
 
-  const percentage = Math.round((completedCount / 8) * 100);
+  const percentage = Math.round((completedCount / 7) * 100);
 
   return {
     percentage,
     completedCount,
-    totalCount: 8,
+    totalCount: 7,
     missingFields,
   };
 };
@@ -652,7 +651,7 @@ export interface ProfileStrengthBreakdown {
   sections: {
     aboutMe: {
       score: number; // Current score
-      maxScore: number; // Maximum possible score (19)
+      maxScore: number; // Maximum possible score (18)
       percentage: number; // Percentage for this section (0-100)
     };
     matchPreferences: {
@@ -660,7 +659,7 @@ export interface ProfileStrengthBreakdown {
       maxScore: number; // Maximum possible score (25)
       percentage: number; // Percentage for this section (0-100)
       completedCount: number; // Number of completed fields
-      totalCount: number; // Total required fields (8)
+      totalCount: number; // Total required fields (7)
     };
     photos: {
       score: number; // Current score
@@ -693,8 +692,8 @@ export const calculateProfileStrengthBreakdown = (
     return {
       overall: 0,
       sections: {
-        aboutMe: { score: 0, maxScore: 19, percentage: 0 },
-        matchPreferences: { score: 0, maxScore: 25, percentage: 0, completedCount: 0, totalCount: 8 },
+        aboutMe: { score: 0, maxScore: 18, percentage: 0 },
+        matchPreferences: { score: 0, maxScore: 25, percentage: 0, completedCount: 0, totalCount: 7 },
         photos: { score: 0, maxScore: 25, percentage: 0, count: 0 },
         deepQuestions: { score: 0, maxScore: 25, percentage: 0, displayedCount: 0, answeredCount: 0 },
       },
@@ -741,7 +740,7 @@ export const calculateProfileStrengthBreakdown = (
   if (interestCount >= 3) aboutScore += 1;
   if (valueCount >= 3) aboutScore += 1;
 
-  const aboutMePercentage = Math.round((aboutScore / 19) * 100);
+  const aboutMePercentage = Math.round((aboutScore / 18) * 100);
 
   // 2. MATCH PREFERENCES SECTION (max 25 points)
   const matchPrefsCompletion = calculateMatchPreferencesCompleteness(profile);
@@ -773,15 +772,15 @@ export const calculateProfileStrengthBreakdown = (
 
   // TOTAL CALCULATION
   const totalScore = aboutScore + preferencesScore + photosScore + questionsScore;
-  const maxTotal = 94; // 19 + 25 + 25 + 25
+  const maxTotal = 93; // 18 + 25 + 25 + 25
   const finalPercentage = Math.round((totalScore / maxTotal) * 100);
 
   console.log('📊 Profile Strength Breakdown (MASTER):', {
-    aboutMe: `${aboutScore}/19 (${aboutMePercentage}%)`,
+    aboutMe: `${aboutScore}/18 (${aboutMePercentage}%)`,
     matchPreferences: `${preferencesScore}/25 (${matchPrefsCompletion.percentage}%)`,
     photos: `${photosScore}/25 (${photosPercentage}%)`,
     deepQuestions: `${questionsScore}/25 (${questionsPercentage}%)`,
-    total: `${totalScore}/94 (${finalPercentage}%)`,
+    total: `${totalScore}/93 (${finalPercentage}%)`,
   });
 
   return {
@@ -789,7 +788,7 @@ export const calculateProfileStrengthBreakdown = (
     sections: {
       aboutMe: {
         score: aboutScore,
-        maxScore: 19,
+        maxScore: 18,
         percentage: aboutMePercentage,
       },
       matchPreferences: {
