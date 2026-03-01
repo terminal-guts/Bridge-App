@@ -438,12 +438,6 @@ export const MatchRevealView: React.FC<MatchRevealViewProps> = ({ match, profile
               >
                 <StyledView className="flex-1">
                   <Body style={{ fontSize: 18, fontWeight: '600', color: COLORS.neutral900 }}>{displayName}</Body>
-                  {profile.location && (
-                    <StyledView className="flex-row items-center mt-0.5">
-                      <Ionicons name="location-outline" size={11} color={COLORS.neutral400} />
-                      <Body className="text-xs ml-1" style={{ color: COLORS.neutral500 }}>{profile.location}</Body>
-                    </StyledView>
-                  )}
                 </StyledView>
                 <StyledView className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: COLORS.primary50 }}>
                   <Ionicons name="arrow-forward" size={14} color={COLORS.primary500} />

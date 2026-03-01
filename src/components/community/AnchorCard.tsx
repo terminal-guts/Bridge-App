@@ -67,13 +67,6 @@ export function AnchorCard({ anchor, karma, isRandomMatcher = false }: AnchorCar
       {/* Age */}
       <StyledText className="text-neutral-600 text-sm">{anchor.age}</StyledText>
 
-      {/* Location */}
-      <StyledText
-        className="text-neutral-500 text-xs mt-1 text-center"
-        numberOfLines={1}
-      >
-        {anchor.location}
-      </StyledText>
     </StyledView>
   );
 }

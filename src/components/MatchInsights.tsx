@@ -285,11 +285,6 @@ export const generateMatchHighlights = (
     highlights.push('Similar educational background');
   }
 
-  // Location proximity
-  if (currentUserProfile.location === recipientProfile.location) {
-    highlights.push('Living in the same area');
-  }
-
   // Community consensus
   if (communityScore && communityScore >= 80) {
     highlights.push(

@@ -15,7 +15,7 @@
  * - preferredPolitics (Match Preferences - collected post-onboarding)
  * - partnerLifestylePreferences (Match Preferences - collected post-onboarding)
  * - displayedQuestions (Deep Questions - collected post-onboarding)
- * - Additional photos (Onboarding collects 1, need 6 total for matching pool)
+ * - Additional photos (Onboarding collects 1, need 3 total for matching pool)
  */
 
 export type StepType = 'text' | 'single_choice' | 'multi_choice' | 'complex';
@@ -92,13 +92,11 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
         });
       };
 
+      const mappedInterestedIn = mapGender(data.interestedInGenders || []);
       return {
         profiles: {
           gender: mapGender(data.gender || []),
-          interested_in_genders: mapGender(data.interestedInGenders || []),
-        },
-        preferences: {
-          preferred_gender: data.preferences?.gender || 'both',
+          interested_in_genders: mappedInterestedIn,
         },
       };
     },
@@ -176,16 +174,6 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
       has_children: data.hasChildren,
       family_plans: data.familyPlans,
     }),
-  },
-
-  // REMOVED FROM ONBOARDING: Hometown (still available in profile edit)
-
-  // Step 9: Current Location
-  location: {
-    key: 'location',
-    type: 'text',
-    table: 'user_profiles',
-    columns: ['location'],
   },
 
   // Step 10: Current Job

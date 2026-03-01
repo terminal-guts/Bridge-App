@@ -99,8 +99,8 @@ export interface UserProfile {
   religion: string;
   politicalLeaning: PoliticalLeaning | 'other' | string;
   customPoliticalLeaning?: string; // Custom political leaning when 'other' is selected
-  location: string;
-  hometown?: string; // Where user is from originally
+  location?: string; // Archived — not collected at Rice beta launch
+  hometown?: string; // Archived — not collected at Rice beta launch
   hasChildren?: string; // Whether user currently has children
   familyPlans?: string; // User's family planning goals
   drinkingFrequency?: string; // Frequency of alcohol consumption
@@ -414,8 +414,8 @@ export interface OnboardingData {
   ethnicityPreference?: string[]; // Alternative name used in EthnicityStep
   hasChildren: string;
   familyPlans: string;
-  hometown?: string; // Where you're from
-  location: string;
+  hometown?: string; // Archived
+  location?: string; // Archived
   coordinates?: {
     latitude: number;
     longitude: number;

@@ -218,15 +218,6 @@ export const ProfileDetailModal: React.FC<ProfileDetailModalProps> = ({
               </Card>
             )}
 
-            {/* Location */}
-            {profile.location && (
-              <Card className="mb-4">
-                <StyledView className="flex-row items-center">
-                  <Ionicons name="location" size={20} color="#437FFF" />
-                  <Body className="text-neutral-700 ml-2">{profile.location}</Body>
-                </StyledView>
-              </Card>
-            )}
 
             {/* Bottom spacing */}
             <StyledView className="h-8" />

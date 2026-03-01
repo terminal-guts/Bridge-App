@@ -95,15 +95,6 @@ export function AwaitingResponseCard({ proposal }: AwaitingResponseCardProps) {
           {proposal.partnerProfile.firstName.charAt(0)}, {proposal.partnerProfile.age}
         </StyledText>
 
-        {/* Location */}
-        {proposal.partnerProfile.location && (
-          <StyledView className="flex-row items-center">
-            <Ionicons name="location-outline" size={16} color="#D97706" />
-            <StyledText className="text-sm ml-1" style={{ color: '#B45309' }}>
-              {proposal.partnerProfile.location}
-            </StyledText>
-          </StyledView>
-        )}
       </StyledView>
 
       {/* Acceptance Indicator */}

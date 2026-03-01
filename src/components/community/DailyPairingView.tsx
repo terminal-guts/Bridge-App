@@ -145,14 +145,6 @@ export function DailyPairingView({ userId, isActive = true }: DailyPairingViewPr
           <StyledText className="text-2xl font-bold text-neutral-900">
             {partner.first_name}, {partner.age}
           </StyledText>
-          {partner.location && (
-            <StyledView className="flex-row items-center mt-1">
-              <Ionicons name="location-outline" size={14} color="#78716C" />
-              <StyledText className="text-sm text-neutral-500 ml-1">
-                {partner.location}
-              </StyledText>
-            </StyledView>
-          )}
           {partner.current_job && (
             <StyledText className="text-sm text-neutral-500 mt-1">
               {partner.current_job}

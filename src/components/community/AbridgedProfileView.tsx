@@ -158,12 +158,6 @@ export function AbridgedProfileView({ user, compatibility }: AbridgedProfileView
         <Body className="text-2xl font-bold text-neutral-900">{user.age}</Body>
       </StyledView>
 
-      {/* Location */}
-      {user.location && (
-        <StyledView className="items-center mb-2">
-          <Body className="text-[10px] text-neutral-500" numberOfLines={1}>{user.location}</Body>
-        </StyledView>
-      )}
 
       {/* Core Info Section */}
       <StyledView className="px-1">

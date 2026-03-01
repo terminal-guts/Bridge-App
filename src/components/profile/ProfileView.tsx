@@ -299,21 +299,6 @@ export function ProfileView({
               </StyledView>
             )}
 
-            {/* Location */}
-            <StyledView style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: '#FFE4E6',
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              borderRadius: 20,
-            }}>
-              <Ionicons name="location" size={16} color="#BE123C" style={{ marginRight: 6 }} />
-              <StyledText style={{ fontSize: 13, color: '#BE123C', fontWeight: '500' }}>
-                {profile.location}
-              </StyledText>
-            </StyledView>
-
             {/* Occupation */}
             {profile.currentJob && (
               <StyledView style={{
@@ -327,23 +312,6 @@ export function ProfileView({
                 <Ionicons name="briefcase" size={16} color="#3B82F6" style={{ marginRight: 6 }} />
                 <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500' }}>
                   {profile.currentJob}
-                </StyledText>
-              </StyledView>
-            )}
-
-            {/* Hometown */}
-            {profile.hometown && (
-              <StyledView style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: '#EDE9FE',
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 20,
-              }}>
-                <Ionicons name="home-outline" size={16} color="#7C3AED" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: 13, color: '#7C3AED', fontWeight: '500' }}>
-                  {profile.hometown}
                 </StyledText>
               </StyledView>
             )}

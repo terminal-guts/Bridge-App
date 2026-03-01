@@ -128,21 +128,6 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                     </StyledView>
                 )}
 
-                {/* Location */}
-                <StyledView style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: '#F3F4F6',
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    borderRadius: 20,
-                }}>
-                    <Ionicons name="location" size={16} color="#F59E0B" style={{ marginRight: 6 }} />
-                    <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500' }}>
-                        {user.location}
-                    </StyledText>
-                </StyledView>
-
                 {/* Occupation */}
                 {user.currentJob && (
                     <StyledView style={{
@@ -160,22 +145,6 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                     </StyledView>
                 )}
 
-                {/* hometown */}
-                {user.hometown && (
-                    <StyledView style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: '#F3F4F6',
-                        paddingHorizontal: 12,
-                        paddingVertical: 8,
-                        borderRadius: 20,
-                    }}>
-                        <Ionicons name="home-outline" size={16} color="#EC4899" style={{ marginRight: 6 }} />
-                        <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500' }}>
-                            {user.hometown}
-                        </StyledText>
-                    </StyledView>
-                )}
 
                 {/* Ethnicity */}
                 {user.ethnicity && (

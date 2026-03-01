@@ -2,7 +2,7 @@
  * Profile Completeness Utilities
  *
  * Calculates profile completion percentage based on MANDATORY fields only.
- * Optional fields (photos, company, education, school, hometown) do NOT count toward completion.
+ * Optional fields (photos, company, education, school, hometown, location) do NOT count toward completion.
  */
 
 import { UserProfile } from '../types';
@@ -21,7 +21,6 @@ const FIELD_WEIGHTS = {
   age: 2,
   height: 2,
   ethnicity: 3,
-  location: 3,
   currentJob: 3,
   religion: 3,
 
@@ -90,14 +89,14 @@ export const calculateProfileCompleteness = (
   // NOTE: Company, education, school, and hometown are OPTIONAL and NOT scored
   // Photos are now MANDATORY
 
-  // Photos (10 points) - At least 1 photo required
+  // Photos (10 points) - At least 3 photos required
   const photoCount = profile.photos?.length || 0;
-  if (photoCount >= 1) {
+  if (photoCount >= 3) {
     score += FIELD_WEIGHTS.photos;
   } else {
     missingFields.push({
       field: 'photos',
-      label: 'Add at least one photo',
+      label: `Add at least 3 photos (${photoCount}/3)`,
       weight: FIELD_WEIGHTS.photos,
       category: 'essential',
     });
@@ -159,18 +158,6 @@ export const calculateProfileCompleteness = (
       field: 'ethnicity',
       label: 'Add your ethnicity',
       weight: FIELD_WEIGHTS.ethnicity,
-      category: 'essential',
-    });
-  }
-
-  // Location (3 points)
-  if (profile.location && profile.location.trim()) {
-    score += FIELD_WEIGHTS.location;
-  } else {
-    missingFields.push({
-      field: 'location',
-      label: 'Add your location',
-      weight: FIELD_WEIGHTS.location,
       category: 'essential',
     });
   }
@@ -520,7 +507,6 @@ export const calculateEditProfileCompleteness = (
   if (profile.age && profile.age >= 18) completedCount++; else missingFields.push('Age');
   if (profile.height?.trim()) completedCount++; else missingFields.push('Height');
   if (profile.ethnicity?.trim()) completedCount++; else missingFields.push('Ethnicity');
-  if (profile.location?.trim()) completedCount++; else missingFields.push('Location');
   if (profile.currentJob?.trim()) completedCount++; else missingFields.push('Occupation');
 
   // Identity (3 fields)
@@ -746,7 +732,6 @@ export const calculateProfileStrengthBreakdown = (
   if (profile.age) aboutScore += 1;
   if (profile.height) aboutScore += 1;
   if (profile.ethnicity) aboutScore += 1;
-  if (profile.location) aboutScore += 1;
   if (profile.currentJob) aboutScore += 1;
 
   // Identity (4 fields)
@@ -782,15 +767,15 @@ export const calculateProfileStrengthBreakdown = (
   const matchPrefsCompletion = calculateMatchPreferencesCompleteness(profile);
   const preferencesScore = Math.round((matchPrefsCompletion.percentage / 100) * 25);
 
-  // 3. PHOTOS SECTION (max 25 points) - 6 photos = 100%
+  // 3. PHOTOS SECTION (max 25 points) - 3 photos = 100%
   const photoCount = profile.photos?.length || 0;
   let photosScore = 0;
-  if (photoCount >= 6) {
+  if (photoCount >= 3) {
     photosScore = 25;
   } else if (photoCount > 0) {
-    photosScore = Math.round((photoCount / 6) * 25);
+    photosScore = Math.round((photoCount / 3) * 25);
   }
-  const photosPercentage = Math.round((photoCount / 6) * 100);
+  const photosPercentage = Math.min(Math.round((photoCount / 3) * 100), 100);
 
   // 4. DEEP QUESTIONS SECTION (max 25 points) - 3 displayed questions = 100%
   const displayedCount = profile.displayedQuestions?.length || 0;

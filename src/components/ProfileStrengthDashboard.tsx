@@ -58,7 +58,6 @@ const calculateStrength = (profile: UserProfile): {
   if (!profile.age) aboutSuggestions.push('Add your age');
   if (!profile.height) aboutSuggestions.push('Add your height');
   if (!profile.ethnicity) aboutSuggestions.push('Add your ethnicity');
-  if (!profile.location) aboutSuggestions.push('Add your location');
   if (!profile.currentJob) aboutSuggestions.push('Add your occupation');
   if (!((profile.pronounsList?.length ?? 0) > 0) && !(profile.pronouns && profile.pronouns !== 'prefer_not_to_say')) {
     aboutSuggestions.push('Add your pronouns');
@@ -120,9 +119,9 @@ const calculateStrength = (profile: UserProfile): {
   const photosSuggestions: string[] = [];
   const photoCount = breakdown.sections.photos.count;
   if (photoCount === 0) {
-    photosSuggestions.push('Add profile photos (6 recommended)');
-  } else if (photoCount < 6) {
-    photosSuggestions.push(`Add ${6 - photoCount} more photo${6 - photoCount > 1 ? 's' : ''}`);
+    photosSuggestions.push('Add profile photos (3 required)');
+  } else if (photoCount < 3) {
+    photosSuggestions.push(`Add ${3 - photoCount} more photo${3 - photoCount > 1 ? 's' : ''}`);
   }
 
   sections.push({

@@ -139,11 +139,6 @@ export function CandidateCard({
           {firstInitial}, {candidate.age}
         </StyledText>
 
-        {/* Location */}
-        <StyledText className="text-neutral-600 text-xs mt-1" numberOfLines={1}>
-          {candidate.location}
-        </StyledText>
-
         {/* Key Attributes */}
         <StyledView className="mt-2 w-full">
           {attributes.slice(0, 2).map((attr, index) => (

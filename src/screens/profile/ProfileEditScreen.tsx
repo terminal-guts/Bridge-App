@@ -348,7 +348,6 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
     company: true,
     educationLevel: true,
     school: true,
-    hometown: true,
     family: true,
     lifestyle: true,
   });
@@ -476,7 +475,6 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
         'firstName', 'lastName', 'age', 'height',
         'ethnicity', 'religion', 'politicalLeaning', 'customPoliticalLeaning',
         'currentJob', 'companyPosition', 'educationLevel', 'customEducationLevel', 'school',
-        'location', 'hometown',
         'hasChildren', 'familyPlans',
         'drinkingFrequency', 'cannabisFrequency', 'tobaccoFrequency', 'otherDrugsFrequency',
         'bio'
@@ -538,7 +536,6 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
             company: saved.company ?? true,
             educationLevel: saved.educationLevel ?? true,
             school: saved.school ?? true,
-            hometown: saved.hometown ?? true,
             family: saved.family ?? true,
             lifestyle: saved.lifestyle ?? true,
           });
@@ -1082,13 +1079,13 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               <StyledView className="flex-row items-center">
                 <H3>Photos <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
               </StyledView>
-              <Body className={`text-sm font-semibold ${profile.photos.length === 6 ? 'text-success' : 'text-error'}`}>
-                {profile.photos.length}/6
+              <Body className={`text-sm font-semibold ${profile.photos.length >= 3 ? 'text-success' : 'text-error'}`}>
+                {profile.photos.length}/3
               </Body>
             </StyledView>
             <Body className="text-neutral-600 text-sm mb-4">
-              {profile.photos.length < 6
-                ? `Upload 6 photos for a complete profile. ${6 - profile.photos.length} more recommended.`
+              {profile.photos.length < 3
+                ? `Upload ${3 - profile.photos.length} more photo${3 - profile.photos.length > 1 ? 's' : ''} for a complete profile.`
                 : 'Great! You have a complete photo set. Use ⭐ to set your main photo.'}
             </Body>
 
@@ -1759,45 +1756,6 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                 value={profile.school || ''}
                 onChangeText={(text) => updateProfile({ school: text })}
                 placeholder="e.g., Harvard Business School"
-              />
-            </StyledView>
-          </Card>
-
-          {/* Location */}
-          <Card className="mb-6">
-            <H3 className="mb-4">Location</H3>
-
-            <Input
-              label="Current Location"
-              required
-              value={profile.location || ''}
-              onChangeText={(text) => updateProfile({ location: text })}
-              placeholder="Where do you live?"
-              containerClassName="mb-4"
-            />
-            <StyledView>
-              <StyledView className="flex-row items-center justify-between mb-2">
-                <Body className="text-xs font-medium text-neutral-700">
-                  Hometown <Body className="text-[11px] text-neutral-400">(optional)</Body>
-                </Body>
-                <StyledTouchableOpacity
-                  onPress={() => toggleVisibility('hometown')}
-                  className="flex-row items-center"
-                >
-                  <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
-                  <StyledView className={`w-5 h-5 rounded border ${
-                    sectionVisibility.hometown ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
-                  } items-center justify-center`}>
-                    {sectionVisibility.hometown && (
-                      <Ionicons name="checkmark" size={14} color="white" />
-                    )}
-                  </StyledView>
-                </StyledTouchableOpacity>
-              </StyledView>
-              <Input
-                value={profile.hometown || ''}
-                onChangeText={(text) => updateProfile({ hometown: text })}
-                placeholder="Where are you from?"
               />
             </StyledView>
           </Card>
