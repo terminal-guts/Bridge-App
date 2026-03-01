@@ -262,12 +262,14 @@ export const createUserProfile = async (
       if (uris.length > 0) {
         const uploadRes = await uploadMultiplePhotos(uris);
         if (uploadRes.ok && uploadRes.data) {
-          photoData = uploadRes.data.map((p, i) => ({
-            id: p.id || p.url,
-            url: p.url,
-            is_main: i === 0,
-            display_order: i,
-          }));
+          photoData = uploadRes.data
+            .filter((p) => p.url && !p.url.startsWith('file://')) // Never save local file URIs
+            .map((p, i) => ({
+              id: p.id || p.url,
+              url: p.url,
+              is_main: i === 0,
+              display_order: i,
+            }));
         } else {
           logger.error('[ProfileService] Photo upload failed — aborting profile creation');
           return createErrorResponse('PHOTO_UPLOAD_FAILED', 'Failed to upload photos. Please try again.');
@@ -480,11 +482,13 @@ export const updateUserProfile = async (
     if (updates.interestedInGenders !== undefined) profilePayload.interested_in_genders = updates.interestedInGenders;
     if ((updates as any).guideCompletions !== undefined) profilePayload.guide_completions = (updates as any).guideCompletions;
     if (updates.photos !== undefined) {
-      // Always store raw storage paths — never signed/public URLs.
-      profilePayload.photos = updates.photos.map(p => ({
-        ...p,
-        url: extractStoragePath(p.url),
-      }));
+      // Always store raw storage paths — never signed/public URLs or local file:// URIs.
+      profilePayload.photos = updates.photos
+        .filter(p => p.url && !p.url.startsWith('file://'))
+        .map(p => ({
+          ...p,
+          url: extractStoragePath(p.url),
+        }));
     }
 
     // Update user_profiles

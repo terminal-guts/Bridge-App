@@ -45,6 +45,13 @@ async function getCurrentUserId(): Promise<string> {
 }
 
 function mapProfileRow(row: any): UserProfile {
+  // Filter out local file:// URIs — these are device-local ImagePicker cache paths
+  // that were incorrectly saved to the DB instead of Supabase storage paths.
+  const rawPhotos = ((row.photos && row.photos.length > 0)
+    ? row.photos
+    : (row.profile_photo_path ? [{ id: '1', url: row.profile_photo_path, is_main: true, display_order: 0 }] : [])
+  ).filter((p: any) => p.url && !p.url.startsWith('file://'));
+
   return {
     id: row.user_id || row.id,
     userId: row.user_id || row.id,
@@ -62,10 +69,7 @@ function mapProfileRow(row: any): UserProfile {
     companyPosition: row.company_position || '',
     educationLevel: row.education_level || '',
     school: row.school || '',
-    photos: ((row.photos && row.photos.length > 0)
-      ? row.photos
-      : (row.profile_photo_path ? [{ id: '1', url: row.profile_photo_path, is_main: true, display_order: 0 }] : [])
-    ).map((p: any) => ({
+    photos: rawPhotos.map((p: any) => ({
       id: p.id || p.url,
       url: p.url,
       isMain: p.is_main ?? p.isMain ?? false,
