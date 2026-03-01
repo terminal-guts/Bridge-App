@@ -479,16 +479,16 @@ export const calculateEditProfileCompleteness = (
     return {
       percentage: 0,
       completedCount: 0,
-      totalCount: 19,
+      totalCount: 18,
       missingFields: [],
     };
   }
 
   let completedCount = 0;
-  const totalCount = 19; // Total mandatory fields in "About Me" section
+  const totalCount = 18; // Total mandatory fields in "About Me" section (location removed)
   const missingFields: string[] = [];
 
-  // Basic Demographics (11 fields)
+  // Basic Demographics (6 fields — location removed)
   if (profile.firstName?.trim()) completedCount++; else missingFields.push('First Name');
   if (profile.lastName?.trim()) completedCount++; else missingFields.push('Last Name');
   if (profile.age && profile.age >= 18) completedCount++; else missingFields.push('Age');
@@ -703,10 +703,10 @@ export const calculateProfileStrengthBreakdown = (
     };
   }
 
-  // 1. ABOUT ME SECTION (max 19 points) - All fields equally weighted
+  // 1. ABOUT ME SECTION (max 18 points) - All fields equally weighted (location removed)
   let aboutScore = 0;
 
-  // Basic Demographics (7 fields)
+  // Basic Demographics (6 fields)
   if (profile.firstName?.trim()) aboutScore += 1;
   if (profile.lastName?.trim()) aboutScore += 1;
   if (profile.age) aboutScore += 1;
