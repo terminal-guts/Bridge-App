@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H1, Body, Input } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/OnboardingLayout';
-import { isAllowedEmailDomain, sendEmailSignUpCode } from '../../../services/authService';
+import { isAllowedEmailDomain, sendOtpToEmail } from '../../../services/authService';
 import { createLogger } from '../../../utils/secureLogger';
 
 const logger = createLogger('EmailSignUpStep');
@@ -49,7 +49,7 @@ export const EmailSignUpStep: React.FC<EmailSignUpStepProps> = ({
     }
 
     setIsSending(true);
-    const result = await sendEmailSignUpCode(trimmed);
+    const result = await sendOtpToEmail(trimmed);
     setIsSending(false);
 
     if (!result.ok) {

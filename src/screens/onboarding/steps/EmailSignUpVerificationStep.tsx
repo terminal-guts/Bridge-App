@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/OnboardingLayout';
-import { verifyEmailSignUpCode, sendEmailSignUpCode } from '../../../services/authService';
+import { verifyEmail, sendOtpToEmail } from '../../../services/authService';
 import { createLogger } from '../../../utils/secureLogger';
 
 const logger = createLogger('EmailSignUpVerificationStep');
@@ -59,8 +59,8 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
     isVerifyingRef.current = true;
     logger.info('[EMAIL] Verifying signup code for:', data.email);
 
-    // This verifies the code AND creates the auth session via the Edge Function
-    const result = await verifyEmailSignUpCode(data.email, fullCode);
+    // This verifies the code AND creates the auth session via native Supabase OTP
+    const result = await verifyEmail(data.email, fullCode);
     isVerifyingRef.current = false;
 
     if (result.ok) {
@@ -78,7 +78,7 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
     setCode('');
     inputRef.current?.focus();
 
-    const result = await sendEmailSignUpCode(data.email);
+    const result = await sendOtpToEmail(data.email);
     setIsResending(false);
 
     if (!result.ok) {
