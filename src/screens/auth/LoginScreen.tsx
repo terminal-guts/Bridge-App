@@ -6,7 +6,7 @@ import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { OnboardingLayout } from '../../components/OnboardingLayout';
 import { Ionicons } from '@expo/vector-icons';
-import { sendOtpToPhone, sendOtpToEmail } from '../../services/authService';
+import { sendOtpToPhone, sendOtpToEmail, isAllowedEmailDomain } from '../../services/authService';
 import { showToast } from '../../utils/toast';
 import { createLogger } from '../../utils/secureLogger';
 
@@ -60,6 +60,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       }
       if (!email.includes('@')) {
         setError('Please enter a valid email address');
+        return;
+      }
+      if (!isAllowedEmailDomain(email)) {
+        setError('Only Rice University emails (@rice.edu) are allowed.');
         return;
       }
     }
@@ -151,7 +155,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         ) : (
           <Input
             label="Email Address"
-            placeholder="email@example.com"
+            placeholder="netid@rice.edu"
             value={email}
             onChangeText={(text) => {
               setEmail(text);

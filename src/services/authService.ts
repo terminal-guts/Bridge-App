@@ -13,6 +13,16 @@ import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('AuthService');
 
+const ALLOWED_EMAIL_DOMAIN = 'rice.edu';
+
+/**
+ * Check if an email belongs to an allowed domain (@rice.edu).
+ */
+export const isAllowedEmailDomain = (email: string): boolean => {
+  const domain = email.split('@')[1]?.toLowerCase();
+  return domain === ALLOWED_EMAIL_DOMAIN || domain?.endsWith(`.${ALLOWED_EMAIL_DOMAIN}`);
+};
+
 // Flag set before intentional sign-outs so AppNavigator doesn't show a "Session Expired" toast
 let _intentionalSignOut = false;
 export const isIntentionalSignOut = () => _intentionalSignOut;
@@ -153,6 +163,16 @@ export const signInWithPassword = async (email: string, password: string): Promi
  */
 export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> => {
   try {
+    if (!isAllowedEmailDomain(email)) {
+      return {
+        ok: false,
+        error: {
+          code: 'INVALID_DOMAIN',
+          message: 'Only Rice University emails (@rice.edu) can sign up for Bridge.',
+        },
+      };
+    }
+
     logger.info('[EMAIL] Sending OTP via Supabase to:', email);
 
     const { error } = await supabase.auth.signInWithOtp({ email });
@@ -352,3 +372,4 @@ export const verifyEmail = async (email: string, code: string): Promise<ApiRespo
     };
   }
 };
+
