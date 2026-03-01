@@ -4,10 +4,10 @@
     "slug": "bridge",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/BridgeLogo-Photoroom.png",
+    "icon": "./assets/BridgeIcon_Final.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/BridgeLogo-Photoroom.png",
+      "image": "./assets/BridgeIcon_Final.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -31,7 +31,13 @@
         "foregroundImage": "./assets/BridgeLogo-Photoroom.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.bridge.app"
+      "package": "com.bridge.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -53,6 +59,11 @@
           "locationWhenInUsePermission": "Bridge uses your location to show nearby matches."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "1836c5e9-009d-477d-8769-8aef37693e5f"
+      }
+    }
   }
 }
