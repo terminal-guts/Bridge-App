@@ -244,7 +244,14 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      if (created) createdProposals.push(created);
+      if (created) {
+        createdProposals.push(created);
+        // Increment total_proposals for the proposer
+        const proposerId = created.proposed_by;
+        if (proposerId) {
+          await supabase.rpc('increment_total_proposals', { p_user_id: proposerId });
+        }
+      }
     }
 
     // 8. Assign pool voters to each proposal (new AND existing pending)

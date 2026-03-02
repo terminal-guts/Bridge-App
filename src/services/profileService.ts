@@ -155,6 +155,7 @@ function mapBackendToUserProfile(data: any): UserProfile {
     updatedAt: data.updated_at || new Date().toISOString(),
     karma: data.karma_score ? {
       userId: data.karma_score.user_id,
+      karmaPoints: data.karma_score.karma_points ?? 0,
       totalAssists: data.karma_score.total_assists ?? 0,
       totalProposals: data.karma_score.total_proposals ?? 0,
       totalVotes: data.karma_score.total_votes ?? 0,
@@ -162,7 +163,6 @@ function mapBackendToUserProfile(data: any): UserProfile {
       badgeTier: data.karma_score.badge_tier ?? 'new',
       proposalSuccessRate: data.karma_score.proposal_success_rate ?? 0,
       votingAccuracyRate: data.karma_score.voting_accuracy_rate ?? 0,
-      slowModeActive: data.karma_score.slow_mode_active ?? false,
     } : undefined,
   } as UserProfile;
 }

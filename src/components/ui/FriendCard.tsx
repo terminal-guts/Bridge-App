@@ -16,7 +16,7 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
-import { FriendWithGridStatus, FriendshipTier } from '../../types/community';
+import { FriendWithGridStatus } from '../../types/community';
 import { lightHaptic } from '../../utils/haptics';
 import {
     COLORS,
@@ -29,20 +29,20 @@ const StyledText = styled(Text);
 const StyledImage = styled(Image);
 const StyledTouchable = styled(TouchableOpacity);
 
-// Friendship tier label mapping
+// Karma tier label mapping
 const TIER_LABELS: Record<string, string> = {
-    new: 'New friend',
-    good: 'Good friends',
-    great: 'Great friends',
-    best: 'Best friends',
+    new: 'New',
+    solid: 'Solid',
+    trusted: 'Trusted',
+    elite: 'Elite',
 };
 
-// Friendship tier colors
+// Karma tier colors
 const TIER_COLORS: Record<string, { bg: string; text: string }> = {
     new: { bg: '#F1F5F9', text: '#64748B' },
-    good: { bg: '#E0F2FE', text: '#0284C7' },
-    great: { bg: '#DDD6FE', text: '#7C3AED' },
-    best: { bg: '#FEF3C7', text: '#D97706' },
+    solid: { bg: '#E0F2FE', text: '#0284C7' },
+    trusted: { bg: '#DDD6FE', text: '#7C3AED' },
+    elite: { bg: '#FEF3C7', text: '#D97706' },
 };
 
 /**
@@ -104,7 +104,8 @@ export const FriendCard = React.memo<FriendCardProps>(({
     const name = friend.friend?.firstName || friend.name || 'Friend';
     const photoUrl = friend.friend?.photos?.[0]?.url || friend.photoUrl || 'https://via.placeholder.com/100';
     const streak = friend.streakDays ?? friend.streak ?? 0;
-    const tier = friend.friendshipTier || 'new';
+    const tier = friend.karmaScore?.badgeTier || 'new';
+    const points = friend.karmaScore?.karmaPoints ?? friend.karmaPoints ?? 0;
     const assists = friend.karmaScore?.totalAssists ?? friend.assistsCount ?? 0;
 
     const handleAvatarPress = () => {
@@ -199,7 +200,7 @@ export const FriendCard = React.memo<FriendCardProps>(({
                 ) : (
                     <StyledView style={styles.karmaContainer}>
                         <StyledText style={[styles.karmaText, { color: karmaColor }]}>
-                            {assists}
+                            {points}
                         </StyledText>
                         {karmaStars && (
                             <StyledText style={styles.starsText}>{karmaStars}</StyledText>

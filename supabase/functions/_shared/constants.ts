@@ -3,6 +3,13 @@
  */
 
 export const FRIEND_VOTE_WEIGHT = 1.25;
+export const KARMA_WEIGHTS: Record<string, number> = {
+  new: 1.0,
+  solid: 1.1,
+  trusted: 1.2,
+  elite: 1.3,
+};
+
 export const MAX_PROPOSAL_DAYS = 5;
 export const DECISION_DEADLINE_HOURS = 48;
 

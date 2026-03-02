@@ -19,46 +19,15 @@ const StyledTouchableOpacity = styled(TouchableOpacity);
 
 interface KarmaBadgeProps {
   tier: KarmaTier;
-  assists?: number;
   compact?: boolean;
 }
 
-export function KarmaBadge({ tier, assists = 0, compact = false }: KarmaBadgeProps) {
+export function KarmaBadge({ tier, compact = false }: KarmaBadgeProps) {
   const [showTooltip, setShowTooltip] = useState(false);
   const badge = KARMA_TIERS[tier];
 
-  // Calculate next tier progress
-  const getNextTierProgress = () => {
-    const tiers = ['new', 'solid', 'trusted', 'elite'] as KarmaTier[];
-    const currentIndex = tiers.indexOf(tier);
-
-    if (currentIndex === tiers.length - 1) {
-      // Already at max tier
-      return {
-        current: assists,
-        needed: assists,
-        nextTier: null,
-        isMaxTier: true,
-      };
-    }
-
-    const nextTier = tiers[currentIndex + 1];
-    const nextBadge = KARMA_TIERS[nextTier];
-
-    return {
-      current: assists,
-      needed: nextBadge.minAssists,
-      nextTier: nextBadge.label,
-      isMaxTier: false,
-    };
-  };
-
-  const progress = getNextTierProgress();
-
   const handlePress = () => {
-    if (assists !== undefined) {
-      setShowTooltip(true);
-    }
+    setShowTooltip(true);
   };
 
   return (

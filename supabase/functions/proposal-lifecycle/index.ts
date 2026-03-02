@@ -33,9 +33,7 @@ function getCurrentThreshold(proposal: any): number | null {
   return THRESHOLD_SCHEDULE[day] ?? 0.55;
 }
 
-function calculateWeightedYesPct(poolYes: number, poolNo: number, friendYes: number, friendNo: number): number {
-  const weightedYes = poolYes + (friendYes * FRIEND_VOTE_WEIGHT);
-  const weightedNo = poolNo + (friendNo * FRIEND_VOTE_WEIGHT);
+function calculateWeightedYesPct(weightedYes: number, weightedNo: number): number {
   const total = weightedYes + weightedNo;
   return total === 0 ? 0.0 : weightedYes / total;
 }
@@ -77,6 +75,8 @@ Deno.serve(async (req: Request) => {
       const poolNo = proposal.pool_no_votes || 0;
       const friendYes = proposal.friend_yes_votes || 0;
       const friendNo = proposal.friend_no_votes || 0;
+      const weightedYes = proposal.weighted_yes || 0;
+      const weightedNo = proposal.weighted_no || 0;
 
       let newStatus = 'pending';
       const updateData: Record<string, any> = {};
@@ -142,7 +142,7 @@ Deno.serve(async (req: Request) => {
 
         if (totalPool >= CONFIRMATION_MIN_POOL_VOTES && totalAll >= CONFIRMATION_MIN_TOTAL_VOTES && totalYes >= CONFIRMATION_MIN_YES_VOTES) {
           const threshold = getCurrentThreshold(proposal);
-          if (threshold === null || calculateWeightedYesPct(poolYes, poolNo, friendYes, friendNo) >= threshold) {
+        if (threshold === null || calculateWeightedYesPct(weightedYes, weightedNo) >= threshold) {
             newStatus = 'deciding';
             const deadline = new Date(Date.now() + DECISION_DEADLINE_HOURS * 60 * 60 * 1000).toISOString();
             Object.assign(updateData, {
@@ -174,13 +174,34 @@ Deno.serve(async (req: Request) => {
           .update(updateData)
           .eq('id', proposal.id);
 
-        if (newStatus === 'deciding') confirmedCount++;
-        else if (newStatus === 'rejected') rejectedCount++;
-        else if (newStatus === 'expired') expiredCount++;
+        if (newStatus === 'deciding') {
+          confirmedCount++;
+        } else if (newStatus === 'rejected') {
+          rejectedCount++;
+          // Apply karma for rejection
+          await supabase.rpc('apply_karma_on_outcome', {
+            p_proposal_id: proposal.id,
+            p_outcome: 'rejected',
+          });
+        } else if (newStatus === 'expired') {
+          expiredCount++;
+          // Apply accuracy karma on expiry (same as rejected)
+          await supabase.rpc('apply_karma_on_outcome', {
+            p_proposal_id: proposal.id,
+            p_outcome: 'rejected',
+          });
+        }
       }
     }
 
-    // 2. Check decision deadlines on 'deciding' and 'expired' proposals
+    // 2. STREAK MANAGEMENT: Run at end of daily cycle
+    // (a) Freeze streaks where either friend had NO active proposal today
+    await supabase.rpc('freeze_inactive_streaks');
+
+    // (b) Kill dead streaks where friend HAD a proposal, user did NOT vote, and wasn't already frozen
+    await supabase.rpc('kill_dead_streaks');
+
+    // 3. Check decision deadlines on 'deciding' and 'expired' proposals
     const { data: decidingProposals } = await supabase
       .from('proposals')
       .select('*')

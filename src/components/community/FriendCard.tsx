@@ -44,20 +44,20 @@ interface FriendCardProps {
   onViewProfile: () => void;
 }
 
-// Friendship tier label mapping
+// Karma tier label mapping
 const TIER_LABELS: Record<string, string> = {
-  new: 'New friend',
-  good: 'Good friends',
-  great: 'Great friends',
-  best: 'Best friends',
+  new: 'New',
+  solid: 'Solid',
+  trusted: 'Trusted',
+  elite: 'Elite',
 };
 
-// Friendship tier colors
+// Karma tier colors
 const TIER_COLORS: Record<string, { bg: string; text: string }> = {
-  new: { bg: '#F1F5F9', text: '#64748B' }, // Light gray for new friends
-  good: { bg: '#E0F2FE', text: '#0284C7' }, // Light blue
-  great: { bg: '#DDD6FE', text: '#7C3AED' }, // Light purple
-  best: { bg: '#FEF3C7', text: '#D97706' }, // Light amber
+  new: { bg: '#F1F5F9', text: '#64748B' },
+  solid: { bg: '#E0F2FE', text: '#0284C7' },
+  trusted: { bg: '#DDD6FE', text: '#7C3AED' },
+  elite: { bg: '#FEF3C7', text: '#D97706' },
 };
 
 /**
@@ -117,17 +117,18 @@ export const FriendCard = React.memo<FriendCardProps>(({ friend, variant, onHelp
     onHelpMatch();
   };
 
-  // Get tier styling
-  const tierColors = TIER_COLORS[friend.friendshipTier] || TIER_COLORS.new;
-  const tierLabel = TIER_LABELS[friend.friendshipTier] || TIER_LABELS.new;
+  // Get tier styling from karma badgeTier
+  const karmaTier = friend.karmaScore?.badgeTier || 'new';
+  const tierColors = TIER_COLORS[karmaTier] || TIER_COLORS.new;
+  const tierLabel = TIER_LABELS[karmaTier] || TIER_LABELS.new;
 
   // Get streak display info
   const streakDisplay = getStreakDisplay(friend.streakDays);
 
   // Get karma info (for completed variant)
-  const karmaAssists = friend.karmaScore?.totalAssists ?? 0;
-  const karmaStars = getKarmaStars(karmaAssists);
-  const karmaColor = getKarmaColor(karmaAssists);
+  const karmaPoints = friend.karmaScore?.karmaPoints ?? 0;
+  const karmaStars = getKarmaStars(friend.assistsCount);
+  const karmaColor = getKarmaColor(friend.assistsCount);
 
   return (
     <StyledView
@@ -313,7 +314,7 @@ export const FriendCard = React.memo<FriendCardProps>(({ friend, variant, onHelp
               letterSpacing: -0.5,
             }}
           >
-            {karmaAssists}
+            {karmaPoints}
           </StyledText>
           {karmaStars && (
             <StyledText

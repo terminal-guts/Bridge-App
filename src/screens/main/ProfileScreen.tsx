@@ -1147,7 +1147,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                 }}>
                 <Ionicons name="star-outline" size={12} color="#34C759" />
                 <H2 className="text-xs" style={{ color: '#34C759', fontWeight: '600' }}>
-                  {profile.karma?.score ?? 0} pts
+                  {profile.karma?.karmaPoints ?? 0} pts
                 </H2>
               </StyledTouchableOpacity>
             </StyledView>
