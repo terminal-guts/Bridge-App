@@ -30,7 +30,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 ALTER TABLE karma_scores ADD COLUMN IF NOT EXISTS total_inaccurate_votes INTEGER DEFAULT 0;
-ALTER TABLE karma_scores DROP COLUMN IF EXISTS slow_mode_active;
 
 -- Update badge_tier based on karma_points logic
 CREATE OR REPLACE FUNCTION compute_karma_tier()
@@ -125,11 +124,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 3. Cleanup Legacy Grid Completion
-DROP TABLE IF EXISTS friend_grid_completions;
-DROP FUNCTION IF EXISTS record_grid_completion(UUID, UUID);
-
--- 4. Friend Streaks Updates
+-- 3. Friend Streaks Updates
 ALTER TABLE friends ADD COLUMN IF NOT EXISTS streak_frozen BOOLEAN DEFAULT FALSE;
 
 -- Function to freeze streaks for inactive friends
@@ -142,10 +137,17 @@ BEGIN
     -- Freeze streaks where either friend had NO active proposal today
     UPDATE friends f SET streak_frozen = true
     WHERE f.streak_days > 0
-      AND NOT EXISTS (
-        SELECT 1 FROM proposals p
-        WHERE (p.user_a_id = f.friend_id OR p.user_b_id = f.friend_id)
-          AND p.status IN ('pending', 'deciding')
+      AND (
+        NOT EXISTS (
+          SELECT 1 FROM proposals p
+          WHERE (p.user_a_id = f.friend_id OR p.user_b_id = f.friend_id)
+            AND p.status IN ('pending', 'deciding')
+        )
+        OR NOT EXISTS (
+          SELECT 1 FROM proposals p
+          WHERE (p.user_a_id = f.user_id OR p.user_b_id = f.user_id)
+            AND p.status IN ('pending', 'deciding')
+        )
       );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
