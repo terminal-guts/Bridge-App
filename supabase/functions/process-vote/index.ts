@@ -2,17 +2,21 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { corsHeaders } from '../_shared/cors.ts';
-
-// Friend vote weight multiplier for weighted YES percentage
-const FRIEND_VOTE_WEIGHT = 1.25;
-const MAX_PROPOSAL_DAYS = 5;
-const DECISION_DEADLINE_HOURS = 48;
-
-const THRESHOLD_SCHEDULE: Record<number, number | null> = {
-  1: 0.65, 2: 0.65,
-  3: 0.60, 4: 0.55,
-  5: null, // bypass — auto-send
-};
+import {
+  FRIEND_VOTE_WEIGHT,
+  MAX_PROPOSAL_DAYS,
+  DECISION_DEADLINE_HOURS,
+  THRESHOLD_SCHEDULE,
+  CONFIRMATION_MIN_POOL_VOTES,
+  CONFIRMATION_MIN_TOTAL_VOTES,
+  CONFIRMATION_MIN_YES_VOTES,
+  REJECTION_FLOOR_YES_RATE,
+  REJECTION_FLOOR_MIN_VOTES,
+  IMMEDIATE_CANCEL_POOL_VOTES,
+  POOL_ELIGIBILITY_POOL_YES_RATE,
+  POOL_ELIGIBILITY_FRIEND_MIN_VOTES,
+  POOL_ELIGIBILITY_FRIEND_YES_RATE,
+} from '../_shared/constants.ts';
 
 function getProposalDay(proposal: any): number {
   const created = proposal.voting_started_at || proposal.created_at;
@@ -131,7 +135,7 @@ Deno.serve(async (req: Request) => {
         vote_type,
         is_friend_vote: isFriendVote,
         friend_of: friendOf,
-        recommend_to_id: vote_type === 'RECOMMEND' ? recommend_to_id : null,
+        recommend_to_id: recommend_to_id || null,
         created_at: new Date().toISOString(),
       }, { onConflict: 'proposal_id,voter_user_id' });
 
@@ -200,9 +204,9 @@ Deno.serve(async (req: Request) => {
         .eq('proposal_id', proposal_id)
         .eq('is_friend_vote', false)
         .order('created_at', { ascending: true })
-        .limit(6);
+        .limit(IMMEDIATE_CANCEL_POOL_VOTES);
 
-      if (poolVotesSorted && poolVotesSorted.length >= 6) {
+      if (poolVotesSorted && poolVotesSorted.length >= IMMEDIATE_CANCEL_POOL_VOTES) {
         const allNo = poolVotesSorted.every(v => v.vote_type === 'NO');
         if (allNo) {
           newStatus = 'rejected';
@@ -215,17 +219,17 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Check pool floor cancel
+    // Check rejection floors
     if (newStatus === 'pending') {
       const totalPool = poolYes + poolNo;
       const totalAll = totalPool + friendYes + friendNo;
 
-      if (totalPool >= 12 && poolYesRate(poolYes, poolNo) < 0.35) {
+      if (totalPool >= REJECTION_FLOOR_MIN_VOTES && poolYesRate(poolYes, poolNo) < REJECTION_FLOOR_YES_RATE) {
         newStatus = 'rejected';
         Object.assign(lifecycleUpdate, { status: 'rejected', rejected_at: nowIso, updated_at: nowIso });
-      } else if (totalAll >= 12) {
+      } else if (totalAll >= REJECTION_FLOOR_MIN_VOTES) {
         const combinedYesRate = totalAll > 0 ? (poolYes + friendYes) / totalAll : 0;
-        if (combinedYesRate < 0.35) {
+        if (combinedYesRate < REJECTION_FLOOR_YES_RATE) {
           newStatus = 'rejected';
           Object.assign(lifecycleUpdate, { status: 'rejected', rejected_at: nowIso, updated_at: nowIso });
         }
@@ -238,7 +242,7 @@ Deno.serve(async (req: Request) => {
       const totalAll = totalPool + friendYes + friendNo;
       const totalYes = poolYes + friendYes;
 
-      if (totalPool >= 6 && totalAll >= 12 && totalYes >= 8) {
+      if (totalPool >= CONFIRMATION_MIN_POOL_VOTES && totalAll >= CONFIRMATION_MIN_TOTAL_VOTES && totalYes >= CONFIRMATION_MIN_YES_VOTES) {
         const threshold = getCurrentThreshold(updatedProposal);
         if (threshold === null || calculateWeightedYesPct(poolYes, poolNo, friendYes, friendNo) >= threshold) {
           newStatus = 'deciding';
@@ -256,8 +260,8 @@ Deno.serve(async (req: Request) => {
 
     // Check pool eligibility
     if (newStatus === 'pending') {
-      const eligible = poolYesRate(poolYes, poolNo) >= 0.35 ||
-        (friendYes + friendNo >= 6 && friendYesRate(friendYes, friendNo) >= 0.70);
+      const eligible = poolYesRate(poolYes, poolNo) >= POOL_ELIGIBILITY_POOL_YES_RATE ||
+        (friendYes + friendNo >= POOL_ELIGIBILITY_FRIEND_MIN_VOTES && friendYesRate(friendYes, friendNo) >= POOL_ELIGIBILITY_FRIEND_YES_RATE);
 
       if (eligible !== proposal.pool_eligible) {
         Object.assign(lifecycleUpdate, { pool_eligible: eligible, updated_at: nowIso });

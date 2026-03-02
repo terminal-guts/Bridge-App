@@ -12,11 +12,12 @@ import { styled } from 'nativewind';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 
 import { RootStackParamList } from '../../types';
-import { Proposal } from '../../types/community';
+import { Proposal, UserProfile } from '../../types/community';
 import { ProposalReviewView } from '../../components/community/ProposalReviewView';
 import { communityService } from '../../services/communityServiceIndex';
 import { supabase } from '../../lib/supabase';
 import { transformBackendProposal } from '../../services/proposalApiService';
+import { mapProfileRow, resolveProfilePhotos } from '../../services/communityBackendService';
 import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('FriendProposalScreen');
@@ -87,49 +88,23 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
 
         const transformed = transformBackendProposal(rawProposal);
 
-        // Build minimal UserProfile objects from raw DB rows
-        const buildProfile = (row: any, fallbackId: string) => {
-          if (!row) return { id: fallbackId, firstName: 'User' } as any;
-          return {
-            id: row.user_id || row.id,
-            userId: row.user_id || row.id,
-            firstName: (row.first_name || '').replace(/[''"`]+$/, '').trim(),
-            lastName: (row.last_name || '').replace(/[''"`]+$/, '').trim(),
-            age: row.age || 0,
-            gender: row.gender || [],
-            pronouns: row.pronouns || '',
-            height: row.height || '',
-            ethnicity: row.ethnicity || '',
-            religion: row.religion || '',
-            politicalLeaning: row.political_leaning || '',
-            location: row.location || row.where_live_now || '',
-            currentJob: row.current_job || '',
-            educationLevel: row.education_level || '',
-            school: row.school || '',
-            photos: ((row.photos && row.photos.length > 0)
-              ? row.photos
-              : (row.profile_photo_path ? [{ id: '1', url: row.profile_photo_path, is_main: true, display_order: 0 }] : [])
-            ).filter((p: any) => p.url && !p.url.startsWith('file://')).map((p: any) => ({
-              id: p.id || p.url,
-              url: p.url,
-              isMain: p.is_main ?? p.isMain ?? false,
-              order: p.display_order ?? p.order ?? 0,
-            })),
-            interests: row.interests || [],
-            values: row.values || [],
-            bio: row.bio || '',
-            lifestyle: row.lifestyle || {},
-            nonNegotiables: row.non_negotiables || [],
-            preferences: row.preferences || {},
-            createdAt: row.created_at || new Date().toISOString(),
-            updatedAt: row.updated_at || new Date().toISOString(),
-          };
-        };
+        const userA: UserProfile = profileA
+          ? mapProfileRow(profileA)
+          : { id: rawProposal.user_a_id, firstName: 'User A', photos: [] } as any;
+
+        const userB: UserProfile = profileB
+          ? mapProfileRow(profileB)
+          : { id: rawProposal.user_b_id, firstName: 'User B', photos: [] } as any;
+
+        // Resolve photos
+        await resolveProfilePhotos([userA, userB]);
+
+        if (cancelled) return;
 
         const fullProposal: Proposal = {
           ...transformed,
-          userA: buildProfile(profileA, rawProposal.user_a_id),
-          userB: buildProfile(profileB, rawProposal.user_b_id),
+          userA,
+          userB,
           endorsements: [],
           votingThreshold: 20,
           baseThreshold: 20,

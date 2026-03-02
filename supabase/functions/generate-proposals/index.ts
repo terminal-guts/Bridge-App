@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { calculateCompatibility, passesBasicFilter } from '../_shared/scoring.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { MAX_POOL_VOTES } from '../_shared/constants.ts';
 
 const MIN_COMPATIBILITY_SCORE = 25.0;
 const MAX_PROPOSALS_PER_RUN = 50;
@@ -246,7 +247,7 @@ Deno.serve(async (req: Request) => {
       if (created) createdProposals.push(created);
     }
 
-    // 8. Assign pool voters to each proposal
+    // 8. Assign pool voters to each proposal (new AND existing pending)
     const { data: friendships } = await supabase
       .from('friends')
       .select('user_id, friend_id');
@@ -259,37 +260,73 @@ Deno.serve(async (req: Request) => {
       friendsMap[row.friend_id].add(row.user_id);
     }
 
-    let totalAssigned = 0;
+    // Fetch existing pending proposals to assign more voters
+    const { data: existingPending } = await supabase
+      .from('proposals')
+      .select('id, user_a_id, user_b_id, status')
+      .eq('status', 'pending');
 
-    for (const proposal of createdProposals) {
+    // Combine newly created with existing pending
+    const existingIds = new Set(createdProposals.map(p => p.id));
+    const allToAssign = [
+      ...createdProposals,
+      ...(existingPending || []).filter(p => !existingIds.has(p.id))
+    ];
+
+    let totalAssigned = 0;
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    for (const proposal of allToAssign) {
+      // 1. Check how many pool voters already assigned/voted
+      const { data: assignments } = await supabase
+        .from('pool_vote_assignments')
+        .select('voter_id')
+        .eq('proposal_id', proposal.id);
+
+      const alreadyAssignedCount = (assignments || []).length;
+      const alreadyAssignedIds = new Set((assignments || []).map(a => a.voter_id));
+
+      // Don't exceed MAX_POOL_VOTES
+      if (alreadyAssignedCount >= MAX_POOL_VOTES) continue;
+
       const ua = proposal.user_a_id;
       const ub = proposal.user_b_id;
       const friendsOfA = friendsMap[ua] || new Set();
       const friendsOfB = friendsMap[ub] || new Set();
       const allFriends = new Set([...friendsOfA, ...friendsOfB]);
 
-      // Eligible pool voters: not user_a, not user_b, not friends of either
+      // Eligible pool voters:
+      // - not user_a, not user_b
+      // - not friends of either
+      // - hasn't already been assigned this proposal
       const eligible = eligibleProfiles.filter((u: any) =>
-        u.user_id !== ua && u.user_id !== ub && !allFriends.has(u.user_id)
+        u.user_id !== ua &&
+        u.user_id !== ub &&
+        !allFriends.has(u.user_id) &&
+        !alreadyAssignedIds.has(u.user_id)
       );
 
-      // Shuffle and pick up to VOTERS_PER_PROPOSAL
+      // Shuffle and pick up to VOTERS_PER_PROPOSAL, but don't exceed MAX_POOL_VOTES total
+      const remainingSlots = MAX_POOL_VOTES - alreadyAssignedCount;
+      const batchSize = Math.min(VOTERS_PER_PROPOSAL, remainingSlots);
+
       const shuffled = eligible.sort(() => Math.random() - 0.5);
-      const toAssign = shuffled.slice(0, VOTERS_PER_PROPOSAL);
+      const toAssign = shuffled.slice(0, batchSize);
 
       if (toAssign.length > 0) {
-        const assignments = toAssign.map((voter: any) => ({
+        const insertBatch = toAssign.map((voter: any) => ({
           proposal_id: proposal.id,
           voter_id: voter.user_id,
-          assignment_date: new Date().toISOString().split('T')[0],
+          assignment_date: todayStr,
           has_voted: false,
         }));
 
         const { error: assignErr } = await supabase
           .from('pool_vote_assignments')
-          .insert(assignments);
+          .insert(insertBatch);
 
-        if (!assignErr) totalAssigned += assignments.length;
+        if (!assignErr) totalAssigned += insertBatch.length;
+        else console.error(`Error assigning voters for proposal ${proposal.id}: ${assignErr.message}`);
       }
     }
 
@@ -298,6 +335,7 @@ Deno.serve(async (req: Request) => {
       eligible_users: eligibleProfiles.length,
       candidates_filtered: candidates.length,
       proposals_created: createdProposals.length,
+      proposals_assigned: allToAssign.length,
       pool_voters_assigned: totalAssigned,
       top_score: topPairs[0]?.compatibility_score || 0,
       avg_score: topPairs.length > 0
