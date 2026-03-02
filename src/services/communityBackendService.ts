@@ -7,7 +7,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
-import { getNext7PMCentral } from '../utils/centralTime';
+import { getNext7PMCentral, getLast7PMCentral } from '../utils/centralTime';
 import { getMultiplePhotoSignedUrls } from './photoService';
 import {
   Proposal,
@@ -43,7 +43,7 @@ async function getCurrentUserId(): Promise<string> {
   return user.id;
 }
 
-function mapProfileRow(row: any): UserProfile {
+export function mapProfileRow(row: any): UserProfile {
   // Filter out local file:// URIs — these are device-local ImagePicker cache paths
   // that were incorrectly saved to the DB instead of Supabase storage paths.
   const rawPhotos = ((row.photos && row.photos.length > 0)
@@ -86,6 +86,70 @@ function mapProfileRow(row: any): UserProfile {
     createdAt: row.created_at || new Date().toISOString(),
     updatedAt: row.updated_at || new Date().toISOString(),
   };
+}
+
+/**
+ * Resolves storage paths to signed URLs for an array of user profiles.
+ * Handles both raw paths and already-expired signed URLs.
+ */
+export async function resolveProfilePhotos(profiles: UserProfile[]): Promise<void> {
+  if (!profiles || profiles.length === 0) return;
+
+  const extractPath = (url: string): string => {
+    if (!url) return url;
+    if (!url.startsWith('http')) return url;
+    const match = url.match(/\/profile-photos\/(.+?)(?:\?|$)/);
+    return match ? match[1] : url;
+  };
+
+  // Normalize to storage paths
+  for (const p of profiles) {
+    if (p.photos) {
+      p.photos = p.photos.map(photo => ({
+        ...photo,
+        url: extractPath(photo.url),
+      }));
+    }
+  }
+
+  // Collect unique paths needing signing
+  const pathsToSign = new Set<string>();
+  for (const p of profiles) {
+    for (const photo of p.photos || []) {
+      if (photo.url && !photo.url.startsWith('http')) {
+        pathsToSign.add(photo.url);
+      }
+    }
+  }
+
+  if (pathsToSign.size === 0) return;
+
+  const paths = Array.from(pathsToSign);
+  const res = await getMultiplePhotoSignedUrls(paths, 86400);
+
+  if (res.ok && res.data) {
+    for (const p of profiles) {
+      if (p.photos) {
+        p.photos = p.photos.map(photo => ({
+          ...photo,
+          url: res.data![photo.url] || photo.url,
+        }));
+      }
+    }
+  } else {
+    // Fallback to public URLs if signing fails
+    for (const p of profiles) {
+      if (p.photos) {
+        p.photos = p.photos.map(photo => {
+          if (photo.url && !photo.url.startsWith('http')) {
+            const { data } = supabase.storage.from('profile-photos').getPublicUrl(photo.url);
+            return { ...photo, url: data.publicUrl };
+          }
+          return photo;
+        });
+      }
+    }
+  }
 }
 
 function deriveFriendshipTier(streakDays: number): FriendshipTier {
@@ -183,18 +247,20 @@ class CommunityBackendService {
         return !blockedIds.includes(raw.user_a_id) && !blockedIds.includes(raw.user_b_id);
       });
 
-      // Transform backend proposals to frontend Proposal type
-      return filteredProposals.map((raw: any) => {
+      // Build UserProfile objects from enriched profile data
+      const profilesToResolve: UserProfile[] = [];
+      const transformedProposals = filteredProposals.map((raw: any) => {
         const transformed = transformBackendProposal(raw);
 
-        // Build UserProfile objects from enriched profile data
         const userA: UserProfile = raw.user_a_profile
           ? mapProfileRow(raw.user_a_profile)
-          : { id: raw.user_a_id, firstName: 'User A' } as UserProfile;
+          : { id: raw.user_a_id, firstName: 'User A', photos: [] } as any;
 
         const userB: UserProfile = raw.user_b_profile
           ? mapProfileRow(raw.user_b_profile)
-          : { id: raw.user_b_id, firstName: 'User B' } as UserProfile;
+          : { id: raw.user_b_id, firstName: 'User B', photos: [] } as any;
+
+        profilesToResolve.push(userA, userB);
 
         return {
           ...transformed,
@@ -207,19 +273,24 @@ class CommunityBackendService {
           votingExpiresAt: raw.voting_expires_at || new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
         } as Proposal;
       });
+
+      // Resolve all photos in parallel
+      await resolveProfilePhotos(profilesToResolve);
+
+      return transformedProposals;
     } catch (error: any) {
       logger.error('Failed to fetch proposals for voting', error.message);
       return [];
     }
   }
 
-  async submitProposalVote(proposalId: string, vote: 'yes' | 'no' | 'skip', weight?: number): Promise<void> {
+  async submitProposalVote(proposalId: string, vote: 'yes' | 'no' | 'skip', recommendToId?: string): Promise<void> {
     if (vote === 'skip') return;
 
     const userId = await getCurrentUserId();
     const voteType = vote === 'yes' ? 'YES' : 'NO';
 
-    await castProposalVote(proposalId, userId, voteType as any);
+    await castProposalVote(proposalId, userId, voteType as any, recommendToId);
     if (!this.sessionVotedProposals.has(proposalId)) {
       this.sessionVotedProposals.add(proposalId);
       this.sessionVoteCount++;
@@ -397,94 +468,27 @@ class CommunityBackendService {
       });
 
     // Use pre-fetched user_photos to fill in friends with empty JSONB photos
-    {
-      logger.info(`[getFriendsAsAnchors] user_photos table returned ${userPhotos?.length || 0} rows for ${friendIds.length} friends`);
-
-      if (userPhotos && userPhotos.length > 0) {
-        const photosByUser = new Map<string, any[]>();
-        for (const p of userPhotos) {
-          if (!photosByUser.has(p.user_id)) photosByUser.set(p.user_id, []);
-          photosByUser.get(p.user_id)!.push(p);
-        }
-        // Use user_photos data for friends that have no photos from the JSONB
-        for (const f of friends) {
-          if ((!f.friend.photos || f.friend.photos.length === 0) && photosByUser.has(f.friendId)) {
-            f.friend.photos = photosByUser.get(f.friendId)!.map(p => ({
-              id: p.storage_path,
-              url: p.storage_path,
-              isMain: p.is_main || false,
-              order: p.display_order || 0,
-            }));
-            logger.info(`[getFriendsAsAnchors] Used user_photos fallback for ${f.friend.firstName}: ${f.friend.photos.length} photos`);
-          }
-        }
+    if (userPhotos && userPhotos.length > 0) {
+      const photosByUser = new Map<string, any[]>();
+      for (const p of userPhotos) {
+        if (!photosByUser.has(p.user_id)) photosByUser.set(p.user_id, []);
+        photosByUser.get(p.user_id)!.push(p);
       }
-    }
-
-    // Extract storage paths from ALL photo URLs (handles both raw paths and expired signed/public URLs)
-    const extractPath = (url: string): string => {
-      if (!url) return url;
-      if (!url.startsWith('http')) return url; // Already a storage path
-      const match = url.match(/\/profile-photos\/(.+?)(?:\?|$)/);
-      return match ? match[1] : url;
-    };
-
-    // Normalize all photo URLs to storage paths first
-    for (const f of friends) {
-      f.friend.photos = (f.friend.photos || []).map(p => ({
-        ...p,
-        url: extractPath(p.url),
-      }));
-    }
-
-    // Collect all storage paths that need signed URLs
-    const allStoragePaths: string[] = [];
-    for (const f of friends) {
-      for (const p of f.friend.photos || []) {
-        if (p.url && !p.url.startsWith('http')) {
-          allStoragePaths.push(p.url);
-        }
-      }
-    }
-
-    if (allStoragePaths.length > 0) {
-      logger.info(`[getFriendsAsAnchors] Resolving ${allStoragePaths.length} photo paths: ${JSON.stringify(allStoragePaths)}`);
-      const urlMapRes = await getMultiplePhotoSignedUrls(allStoragePaths, 86400);
-      logger.info(`[getFriendsAsAnchors] Signed URL result: ok=${urlMapRes.ok}, keys=${Object.keys(urlMapRes.data || {}).length}, error=${urlMapRes.error?.message || 'none'}`);
-      if (urlMapRes.ok && urlMapRes.data) {
-        // Log each mapping
-        for (const [path, url] of Object.entries(urlMapRes.data)) {
-          logger.info(`[getFriendsAsAnchors] URL map: ${path} -> ${url.substring(0, 80)}...`);
-        }
-        for (const f of friends) {
-          f.friend.photos = (f.friend.photos || []).map(p => ({
-            ...p,
-            url: urlMapRes.data![p.url] || p.url,
+      // Use user_photos data for friends that have no photos from the JSONB
+      for (const f of friends) {
+        if ((!f.friend.photos || f.friend.photos.length === 0) && photosByUser.has(f.friendId)) {
+          f.friend.photos = photosByUser.get(f.friendId)!.map(p => ({
+            id: p.storage_path,
+            url: p.storage_path,
+            isMain: p.is_main || false,
+            order: p.display_order || 0,
           }));
         }
-      } else {
-        logger.warn('[getFriendsAsAnchors] Signed URL failed, trying public URLs');
-        for (const f of friends) {
-          f.friend.photos = (f.friend.photos || []).map(p => {
-            if (p.url && !p.url.startsWith('http')) {
-              const { data } = supabase.storage.from('profile-photos').getPublicUrl(p.url);
-              logger.info(`[getFriendsAsAnchors] Public URL fallback: ${p.url} -> ${data.publicUrl.substring(0, 80)}`);
-              return { ...p, url: data.publicUrl };
-            }
-            return p;
-          });
-        }
       }
-    } else {
-      logger.warn('[getFriendsAsAnchors] NO storage paths found for any friend photos!');
     }
 
-    // Debug: log final photo status per friend
-    for (const f of friends) {
-      const firstUrl = f.friend.photos?.[0]?.url || 'NONE';
-      const isHttp = firstUrl.startsWith('http');
-      logger.info(`[getFriendsAsAnchors] FINAL Friend ${f.friend.firstName}: ${f.friend.photos?.length || 0} photos, isSignedUrl=${isHttp}, url=${firstUrl.substring(0, 100)}`);
-    }
+    // Resolve all photos
+    await resolveProfilePhotos(friends.map(f => f.friend));
 
     return friends;
   }
@@ -503,16 +507,19 @@ class CommunityBackendService {
       ]);
       const rawProposals = result.proposals || [];
 
-      return rawProposals
-        .filter((raw: any) => {
-          const partnerId = raw.user_a_id === userId ? raw.user_b_id : raw.user_a_id;
-          return !blockedIds.includes(partnerId);
-        })
-        .map((raw: any) => {
+      const filteredRaw = rawProposals.filter((raw: any) => {
+        const partnerId = raw.user_a_id === userId ? raw.user_b_id : raw.user_a_id;
+        return !blockedIds.includes(partnerId);
+      });
+
+      const profilesToResolve: UserProfile[] = [];
+      const proposals = filteredRaw.map((raw: any) => {
         const partnerId = raw.user_a_id === userId ? raw.user_b_id : raw.user_a_id;
         const partnerProfile = raw.partner_profile
           ? mapProfileRow(raw.partner_profile)
-          : { id: partnerId, firstName: 'Match' } as UserProfile;
+          : { id: partnerId, firstName: 'Match', photos: [] } as any;
+
+        profilesToResolve.push(partnerProfile);
 
         const myDecision = raw.user_a_id === userId ? raw.user_a_decision : raw.user_b_decision;
         const theirDecision = raw.user_a_id === userId ? raw.user_b_decision : raw.user_a_decision;
@@ -539,6 +546,9 @@ class CommunityBackendService {
           hasResponded: myDecision !== 'pending',
         };
       });
+
+      await resolveProfilePhotos(profilesToResolve);
+      return proposals;
     } catch (error: any) {
       logger.error('Failed to fetch pending decisions', error.message);
       return [];
@@ -585,7 +595,9 @@ class CommunityBackendService {
       .eq('user_id', partnerId)
       .maybeSingle();
 
-    const partnerProfile = partnerRow ? mapProfileRow(partnerRow) : { id: partnerId, firstName: 'Match' } as UserProfile;
+    const partnerProfile = partnerRow ? mapProfileRow(partnerRow) : { id: partnerId, firstName: 'Match', photos: [] } as any;
+
+    await resolveProfilePhotos([partnerProfile]);
 
     const matchedAt = new Date(match.created_at);
     const now = new Date();
@@ -701,16 +713,19 @@ class CommunityBackendService {
 
   async getCommunityTaskProgress(): Promise<CommunityTask> {
     const userId = await getCurrentUserId();
+    const lastReset = getLast7PMCentral();
     const today = new Date().toISOString().split('T')[0];
 
-    // Count today's votes from the proposal_votes table
+    // Count votes from the proposal_votes table since the last 7PM Central reset
     const { count: voteCount } = await supabase
       .from('proposal_votes')
       .select('id', { count: 'exact', head: true })
       .eq('voter_user_id', userId)
-      .gte('created_at', `${today}T00:00:00Z`);
+      .gte('created_at', new Date(lastReset).toISOString());
 
-    const votesCompleted = (voteCount || 0) + this.sessionVoteCount;
+    // Reconciliation: use whichever is higher (DB or local session tracker)
+    // to ensure immediate feedback while avoiding double-counting persisted votes.
+    const votesCompleted = Math.max(voteCount || 0, this.sessionVoteCount);
     const hasVoted = votesCompleted >= 3;
 
     return {

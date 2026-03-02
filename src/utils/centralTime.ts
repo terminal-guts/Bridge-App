@@ -58,3 +58,26 @@ export function getNext7PMCentral(): number {
   // Should never reach here, but just in case — 24h from now.
   return nowMs + 86400000;
 }
+
+/**
+ * Returns the UTC timestamp (ms) of the most recent 7 PM US Central Time.
+ */
+export function getLast7PMCentral(): number {
+  const nowMs = Date.now();
+  const d = new Date(nowMs);
+  const todayMidnightUTC = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+
+  // Try today and yesterday (in reverse)
+  for (let dayAdd = 0; dayAdd >= -1; dayAdd--) {
+    const baseMidnight = todayMidnightUTC + dayAdd * 86400000;
+    // 7 PM Central: try CST (6) and CDT (5) offsets
+    for (const offset of [5, 6]) {
+      const candidate = baseMidnight + (19 + offset) * 3600000;
+      if (getCentralOffsetHours(candidate) === offset && candidate <= nowMs) {
+        return candidate;
+      }
+    }
+  }
+
+  return nowMs - 86400000;
+}

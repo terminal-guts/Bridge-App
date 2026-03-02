@@ -1114,19 +1114,19 @@ class CommunityService {
    * before being counted toward proposal tallies. A Trusted Matchmaker's YES
    * carries more weight than a New Matchmaker's YES.
    *
-   * The `weight` parameter overrides the automatic karma-derived weight when
-   * the caller already knows the appropriate multiplier (e.g. friend-rec flow).
+   * The `recommendToId` parameter is used when a user recommends one of the
+   * candidates to a specific friend.
    */
-  async submitProposalVote(proposalId: string, vote: 'yes' | 'no' | 'skip', weight?: number): Promise<void> {
+  async submitProposalVote(proposalId: string, vote: 'yes' | 'no' | 'skip', recommendToId?: string): Promise<void> {
     await this.delay(300);
 
-    // Calculate the effective karma weight for this vote
-    const karmaWeight = weight !== undefined
-      ? weight
+    // Mock logic: recommendations always use a weight of 1.0 for simplicity in mock
+    const karmaWeight = recommendToId !== undefined
+      ? 1.0
       : getKarmaWeight(mockState.currentKarmaAssists);
 
     logger.info('[Mock] Voting on proposal:', proposalId, '-', vote,
-      `(karma weight: ${karmaWeight.toFixed(2)}, assists: ${mockState.currentKarmaAssists})`);
+      `(recommendToId: ${recommendToId || 'none'}, assists: ${mockState.currentKarmaAssists})`);
 
     // Count all explicit votes (yes, no, skip/not-sure) toward task progress.
     // 'skip' corresponds to "Not Sure" — a deliberate vote choice that should count.

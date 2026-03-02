@@ -435,9 +435,8 @@ export function ProposalReviewView({
         friendKarmaWeight,
       });
 
-      // Submit a 'yes' vote weighted by the recommending friend's karma tier.
-      // This ensures a Trusted Matchmaker's rec counts more than a New Matchmaker's.
-      communityService.submitProposalVote(current.id, 'yes', friendKarmaWeight).catch((err: any) => {
+      // Submit a 'yes' vote with the friend's ID as recommendToId.
+      communityService.submitProposalVote(current.id, 'yes', selectedFriendId).catch((err: any) => {
         logger.error('[ProposalReviewView] Friend rec vote submission error:', err);
       });
 
