@@ -136,6 +136,10 @@ ALTER TABLE friends ADD COLUMN IF NOT EXISTS streak_frozen BOOLEAN DEFAULT FALSE
 CREATE OR REPLACE FUNCTION freeze_inactive_streaks()
 RETURNS VOID AS $$
 BEGIN
+    -- First reset all frozen flags to re-evaluate for the current cycle
+    UPDATE friends SET streak_frozen = false WHERE streak_frozen = true;
+
+    -- Freeze streaks where either friend had NO active proposal today
     UPDATE friends f SET streak_frozen = true
     WHERE f.streak_days > 0
       AND NOT EXISTS (

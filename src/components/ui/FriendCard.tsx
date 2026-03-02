@@ -67,9 +67,7 @@ export const FriendCard = React.memo<FriendCardProps>(({
     const name = friend.friend?.firstName || friend.name || 'Friend';
     const photoUrl = friend.friend?.photos?.[0]?.url || friend.photoUrl || 'https://via.placeholder.com/100';
     const streak = friend.streakDays ?? friend.streak ?? 0;
-    const tier = friend.karmaScore?.badgeTier || 'new';
     const points = friend.karmaScore?.karmaPoints ?? friend.karmaPoints ?? 0;
-    const assists = friend.karmaScore?.totalAssists ?? friend.assistsCount ?? 0;
 
     const handleAvatarPress = () => {
         lightHaptic();
