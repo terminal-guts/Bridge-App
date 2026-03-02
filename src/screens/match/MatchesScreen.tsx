@@ -14,7 +14,7 @@ import { ProfileCompletionBanner } from '../../components/ProfileCompletionBanne
 
 // Pre-register the illustration asset at module load time so it is available
 // before the screen mounts (avoids a first-render blank on fresh installs).
-const NO_MATCH_ILLUSTRATION = require('../../../assets/no_match_illustration.png');
+const NO_MATCH_ILLUSTRATION = require('../../../assets/no_match_illustration.jpg');
 
 // One of five mutually exclusive states the screen can be in
 type ScreenState =
