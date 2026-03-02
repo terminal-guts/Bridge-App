@@ -6,16 +6,40 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "ios": {
+        "simulator": false
+      }
     },
-    "preview": {
-      "distribution": "internal"
+    "internal": {
+      "distribution": "store",
+      "ios": {
+        "autoIncrement": true
+      },
+      "channel": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "distribution": "store",
+      "ios": {
+        "autoIncrement": true
+      },
+      "channel": "production"
     }
   },
   "submit": {
-    "production": {}
+    "internal": {
+      "ios": {
+        "appleId": "saulbrauns@gmail.com",
+        "ascAppId": "6759764704",
+        "appleTeamId": "D9C93RG4RZ"
+      }
+    },
+    "production": {
+      "ios": {
+        "appleId": "saulbrauns@gmail.com",
+        "ascAppId": "6759764704",
+        "appleTeamId": "D9C93RG4RZ"
+      }
+    }
   }
 }
