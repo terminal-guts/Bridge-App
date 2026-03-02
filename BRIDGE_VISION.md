@@ -249,26 +249,27 @@ Displayed as:
 ---
 
 ### **Karma**
-A public tiered reputation score that reflects how good you are at:
-- Proposing successful matches
-- Voting thoughtfully
-- Showing up for friends
+A single numeric score (**karma points**) that reflects how active and accurate you are as a community matchmaker. Karma points are displayed consistently everywhere they appear: your profile, beside your name, and in the Friends Area.
 
-**Karma Tiers:**
-- **New Matchmaker** (0 assists) 🌱
-- **Solid Matchmaker** (3+ assists) ⭐
-- **Trusted Matchmaker** (10+ assists) 💎
-- **Elite Matchmaker** (25+ assists) 👑
+**How Karma Points Increase:**
+- **Voting frequently** on friends' proposals (participation)
+- **Voting accurately** — proposals you voted "yes" on that become real matches earn more karma; proposals you voted "no" on that get rejected also count as accurate
 
-**Karma affects:**
+**What Karma Affects (all backend-only, invisible to user):**
+- **Voting power** — higher karma = your vote carries slightly more weight in proposal outcomes
 - How often you appear as a **candidate** (capped effect)
 - The influence of your endorsements
-- Whether you enter "slow mode" when voting
 
-**Karma does NOT affect:**
+**What Karma Does NOT Affect:**
 - How often you are an **anchor** (anchoring is fair for all)
 - Who the system matches you with
 - Dating desirability or profile visibility
+
+**Karma Display:**
+- Frontend simply displays the karma points number — nothing else
+- Shown on your profile, beside your name, and in the Friends Area
+- All locations read from the same `karma_scores.karma_points` value
+- Tiers and vote multipliers are computed in the backend only — the frontend never needs to know about them
 
 ---
 
@@ -508,40 +509,38 @@ Overrides to suggestions are private; friends are not notified.
 
 ## Karma System (Detailed)
 
-Karma is a public **prominent badge** shown on your profile (visible to friends and matches).
+Karma is a **single numeric point value** displayed prominently on your profile, beside your name, and in the Friends Area. All locations use the same calculated value from `karma_scores.karma_points`.
 
-**Karma reflects:**
-- Proposal success rate
-- Voting accuracy
-- Thoughtfulness of participation
-- Helping friends
+### How Karma Points Are Earned
+- **+1 point** for each proposal vote cast (participation reward)
+- **+3 bonus points** if a proposal you voted "yes" on becomes a real match (accurate yes)
+- **+2 bonus points** if a proposal you voted "no" on gets rejected (accurate no)
+- **+10 points** when a proposal you created becomes a successful match (assist bonus)
 
-### Karma Gains
-- Your proposal becomes a successful match (assist)
-- Your Yes vote aligns with successful matches
-- Your No vote aligns with rejected matches
+### How Karma Points Decrease
+- **-1 point** if a proposal you voted "yes" on gets rejected (inaccurate yes)
+- **-1 point** if a proposal you voted "no" on becomes a match (inaccurate no)
+- Karma points have a floor of 0 (cannot go negative)
 
-### Karma Losses
-- Your proposals fail repeatedly
-- Your votes consistently misalign with community outcomes
-- Very low participation
-- Low accuracy → negative karma → slow mode
+### Backend-Only: Tiers and Vote Weight
+Tiers and voting multipliers are computed entirely in the backend. The frontend never sees or uses them — it only displays the raw karma points number.
 
-### Slow Mode
-If karma drops below a threshold:
-- 30-second lock when reviewing proposals
-- Encourages thoughtful voting
-- Does not affect anchoring frequency
+**Tiers (derived from points):**
+- New: 0-49 points (1.0x vote weight)
+- Solid: 50-149 points (1.1x vote weight)
+- Trusted: 150-499 points (1.2x vote weight)
+- Elite: 500+ points (1.3x vote weight)
 
-### What Karma Does *Affect*
-- How often you appear as a **candidate** (capped effect)
-- How your proposals are prioritized in the daily ranking
-- Weight of your endorsements in merged proposals
+### What Karma Does *Affect* (backend only)
+- Vote weight (slight multiplier based on tier)
+- How often you appear as a candidate (capped effect)
+- How your proposals are prioritized
+- Weight of your endorsements
 
 ### What Karma Does *Not* Affect
-- How often you are an **anchor**
+- How often you are an anchor
 - Who the system matches you with
-- Dating desirability or profile visibility in dating contexts
+- Dating desirability or profile visibility
 
 ---
 
@@ -568,9 +567,25 @@ You earn an assist when:
 **Assists are part of your matchmaking identity, not your dating identity.**
 
 ### Assist & Karma Relationship
-Each assist yields a meaningful karma increase.
+Each assist yields +10 karma points. Higher assist count = higher karma tier = stronger voting weight.
 
-Higher assist count → higher likelihood that your endorsements are weighted more strongly internally.
+---
+
+## Streaks System (Detailed)
+
+A streak tracks **consecutive days that you and a specific friend have voted on each other's proposals**. Streaks are per-friendship (you can have different streak counts with different friends).
+
+### How Streaks Work
+- Each day both you and a friend vote on each other's active proposal, the streak increments by 1
+- The streak is displayed on friend cards in the Friends Area
+
+### Streak Freeze vs. Streak Death
+- **Streak FREEZES (paused, not lost)** if either friend **has no active proposal** to vote on that day. You can't help if there's nothing to help with. The streak counter stays where it is.
+- **Streak DIES (resets to 0)** if a friend **has an active proposal** and you **could have voted but chose not to** before the next 7PM cycle.
+
+### What Streaks Affect
+- Displayed as a number on friend cards (gamification / engagement)
+- Streaks do NOT affect voting weight or match outcomes
 
 ---
 
