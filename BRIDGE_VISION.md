@@ -3,15 +3,13 @@
 
 **All work in React Native. testing on iOS (primary platform)**
 
-*Last Updated: December 2025*
+*Last Updated: March 2026*
 
 ---
 
-> **⚠️ IMPORTANT: FRONTEND-ONLY DEVELOPMENT PROJECT ⚠️**
+> **Production App — Full Stack**
 >
-> **This project is a UI/UX prototype with dummy data only. There is NO backend, NO database, NO Supabase, and NO real user authentication.** All data is mocked for demonstration and testing purposes. The goal is to build and validate the frontend experience so testers can tap through all screens and features to evaluate the concept, idea, and design.
->
-> **When the frontend is complete, this app will be deployed for user testing to gather feedback on the UI/UX before any backend development begins.**
+> This is the production codebase deployed to the App Store. Frontend (React Native/Expo) + Backend (Supabase with PostgreSQL, Auth, Edge Functions, Realtime, Storage). All systems are live: proposal generation, community voting, karma points, friend streaks, match lifecycle.
 
 ---
 
@@ -248,7 +246,7 @@ Displayed as:
 
 ---
 
-### **Karma**
+### **Karma** *(live as of March 2026)*
 A single numeric score (**karma points**) that reflects how active and accurate you are as a community matchmaker. Karma points are displayed consistently everywhere they appear: your profile, beside your name, and in the Friends Area.
 
 **How Karma Points Increase:**
@@ -351,10 +349,14 @@ The algorithm generates **one proposal per eligible user** daily at 7PM Central:
 ## Daily User Flow (Updated March 2026)
 
 ### **7PM Central Daily Cycle**
-Everything resets at **7PM Central Time** each day:
-- New proposals are generated for eligible users
-- The proposal lifecycle ticks (thresholds checked, expired proposals cleaned up)
-- Daily pairings are regenerated
+Everything resets at **7PM Central Time** each day via pg_cron (00:00 UTC = 7PM CST / 6PM CDT):
+
+| Time (UTC) | Edge Function | What It Does |
+|------------|--------------|--------------|
+| 00:00 | `proposal-lifecycle` | Expire/reject/confirm proposals, apply karma on outcomes, freeze/kill streaks, auto-decline past-deadline decisions |
+| 00:05 | `generate-proposals` | Create new proposals for eligible users, assign pool voters (up to 6 per proposal) |
+| 00:10 | `generate-daily-pairings` | Daily pairing suggestions |
+
 - The 3-proposal voting gate resets (users must vote on 3 new community proposals)
 
 **What does NOT reset at 7PM:**
@@ -430,12 +432,20 @@ Day 4: 55% yes votes needed
 Day 5: auto-send (bypass threshold — proposal passes regardless)
 ```
 
-**Resolution Rules:**
-- If yes% meets threshold on any day → proposal moves to `deciding` status (sent to both users)
-- If yes% drops below threshold → proposal is **rejected**
-- If proposal reaches Day 5 without resolution → auto-sent to users
+**Resolution Rules (checked after every vote AND at 7PM cron):**
+- **Immediate cancel:** If the first 6 pool votes are ALL "no" → instantly rejected
+- **Rejection floor:** If ≥12 pool votes AND pool yes-rate < 35% → rejected. Also if ≥12 total votes AND combined yes-rate < 35% → rejected
+- **Confirmation:** If ≥6 pool votes AND ≥12 total votes AND ≥8 yes votes AND weighted yes% ≥ day threshold → `deciding` (sent to both users)
+- **Day 5 auto-send:** Bypasses threshold — proposal passes regardless of percentage
+- **Pool eligibility:** Proposal stays in the community queue if pool yes-rate ≥ 35% OR (≥6 friend votes with ≥70% friend yes-rate)
 - Vote tallies **persist across days** (carryover proposals keep all accumulated votes)
-- Lifecycle is checked by `proposal-lifecycle` Edge Function at 7PM Central
+- Lifecycle is checked **inline in `process-vote`** (instant transitions) AND by `proposal-lifecycle` cron at 7PM Central
+
+**Weighted Voting (live as of March 2026):**
+- Every vote is weighted by the voter's karma tier: New=1.0x, Solid=1.1x, Trusted=1.2x, Elite=1.3x
+- Friend votes get an additional 1.25x multiplier on top of their tier weight
+- Weighted yes/no totals (not raw counts) are what get compared against threshold percentages
+- Vote recounting happens from scratch after every vote (source of truth = `proposal_votes` table)
 
 **After Voting → Deciding Phase (48h):**
 - Both users see each other's full profile
@@ -571,7 +581,7 @@ Each assist yields +10 karma points. Higher assist count = higher karma tier = s
 
 ---
 
-## Streaks System (Detailed)
+## Streaks System (Detailed) *(live as of March 2026)*
 
 A streak tracks **consecutive days that you and a specific friend have voted on each other's proposals**. Streaks are per-friendship (you can have different streak counts with different friends).
 
@@ -586,6 +596,32 @@ A streak tracks **consecutive days that you and a specific friend have voted on 
 ### What Streaks Affect
 - Displayed as a number on friend cards (gamification / engagement)
 - Streaks do NOT affect voting weight or match outcomes
+
+---
+
+## Matching System — Technical Flow (March 2026)
+
+**End-to-end flow for a single proposal:**
+
+1. **7PM — `generate-proposals`**: Algorithm scores all eligible user pairs across 13 categories (age 18%, distance 15%, lifestyle 12%, values 8%, interests 8%, family 8%, religion 6%, politics 6%, height 5%, ethnicity 5%, deep questions 5%, education 3%, career 1%). Pairs scoring ≥25 get proposals. Each proposal gets up to 6 random pool voters assigned.
+
+2. **User opens app → Community tab**: Must vote on 3 community pool proposals to unlock Friends Area. Each vote calls `process-vote` edge function.
+
+3. **`process-vote`**: Records vote → +1 karma → full recount of all votes with karma-tier weighting → inline lifecycle cascade (expiry → immediate cancel → rejection floor → confirmation → pool eligibility). Proposals can transition status instantly after any vote without waiting for cron.
+
+4. **Friends Area (after 3 votes)**: "Help Your Friends" shows friends with active proposals you haven't voted on. Voting on a friend's proposal also calls `process-vote` + triggers `update_friend_streak()`.
+
+5. **Proposal passes** (weighted yes% ≥ threshold with enough votes): Status → `deciding`. Both users see each other's full profile. 48-hour acceptance window.
+
+6. **`process-decision`**: If both accept → match created, proposer gets +10 karma, accurate voters rewarded. All other proposals for both users cancelled. If either declines → pair permanently blocked.
+
+7. **7PM — `proposal-lifecycle`**: Batch-checks all pending proposals (same logic as inline). Awards karma on rejected proposals. Runs `freeze_inactive_streaks()` then `kill_dead_streaks()`. Auto-declines past-deadline decisions.
+
+8. **Match ends**: User re-enters matchmaking pool. Expired proposals (timed out, not rejected) allow the same pair to be retried.
+
+**Key DB tables**: `proposals`, `proposal_votes`, `pool_vote_assignments`, `matches`, `karma_scores`, `friends`
+**Key edge functions**: `generate-proposals`, `process-vote`, `proposal-lifecycle`, `process-decision`
+**Key DB functions**: `increment_karma_for_vote`, `apply_karma_on_outcome`, `compute_karma_tier` (trigger), `update_friend_streak`, `freeze_inactive_streaks`, `kill_dead_streaks`, `increment_total_proposals`
 
 ---
 
