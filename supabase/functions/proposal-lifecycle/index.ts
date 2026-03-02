@@ -142,7 +142,7 @@ Deno.serve(async (req: Request) => {
 
         if (totalPool >= CONFIRMATION_MIN_POOL_VOTES && totalAll >= CONFIRMATION_MIN_TOTAL_VOTES && totalYes >= CONFIRMATION_MIN_YES_VOTES) {
           const threshold = getCurrentThreshold(proposal);
-        if (threshold === null || calculateWeightedYesPct(weightedYes, weightedNo) >= threshold) {
+          if (threshold === null || calculateWeightedYesPct(weightedYes, weightedNo) >= threshold) {
             newStatus = 'deciding';
             const deadline = new Date(Date.now() + DECISION_DEADLINE_HOURS * 60 * 60 * 1000).toISOString();
             Object.assign(updateData, {
@@ -185,11 +185,7 @@ Deno.serve(async (req: Request) => {
           });
         } else if (newStatus === 'expired') {
           expiredCount++;
-          // Apply accuracy karma on expiry (same as rejected)
-          await supabase.rpc('apply_karma_on_outcome', {
-            p_proposal_id: proposal.id,
-            p_outcome: 'rejected',
-          });
+          // Expired proposals do NOT penalize voters
         }
       }
     }
@@ -215,6 +211,13 @@ Deno.serve(async (req: Request) => {
           .from('proposals')
           .update({ status: 'declined', updated_at: nowIso })
           .eq('id', proposal.id);
+
+        // Apply karma for auto-declined deciding proposal
+        await supabase.rpc('apply_karma_on_outcome', {
+          p_proposal_id: proposal.id,
+          p_outcome: 'rejected',
+        });
+
         autoDeclinedCount++;
       }
     }

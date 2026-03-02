@@ -56,6 +56,7 @@ CREATE TRIGGER trg_compute_karma_tier
 
 -- 2. Proposals Table Updates
 ALTER TABLE proposals ADD COLUMN IF NOT EXISTS weighted_yes NUMERIC DEFAULT 0;
+ALTER TABLE proposals ADD COLUMN IF NOT EXISTS weighted_no NUMERIC DEFAULT 0;
 
 -- Function to apply karma points based on proposal outcome
 CREATE OR REPLACE FUNCTION apply_karma_on_outcome(
@@ -123,7 +124,6 @@ BEGIN
     END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-ALTER TABLE proposals ADD COLUMN IF NOT EXISTS weighted_no NUMERIC DEFAULT 0;
 
 -- 3. Cleanup Legacy Grid Completion
 DROP TABLE IF EXISTS friend_grid_completions;
@@ -146,7 +146,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Function to kill dead streaks
 -- Function to kill dead streaks (Bidirectional to ensure consistency)
 CREATE OR REPLACE FUNCTION kill_dead_streaks()
 RETURNS VOID AS $$

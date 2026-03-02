@@ -15,6 +15,7 @@ tsc_errors.txt
 tsc_output.txt
 filtered_tsc.txt
 supabase/.temp/
+expo_web.log
 
 # Python
 **/__pycache__/

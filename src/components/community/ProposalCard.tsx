@@ -172,8 +172,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
               {isFriend && (
                 <>
                   <KarmaBadge
-                    tier={endorsement.endorserProfile.karma?.badgeTier || 'new'}
-                    compact
+                    points={endorsement.endorserProfile.karma?.karmaPoints || 0}
                   />
                   <StyledText className="text-xs text-neutral-700">)</StyledText>
                 </>
