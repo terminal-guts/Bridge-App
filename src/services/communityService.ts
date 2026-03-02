@@ -248,6 +248,7 @@ function generateMockKarma(assists: number): KarmaScore {
 
   return {
     userId: 'current-user',
+    karmaPoints: assists * 10 + Math.floor(Math.random() * 50),
     totalAssists: assists,
     totalProposals,
     badgeTier: tier,

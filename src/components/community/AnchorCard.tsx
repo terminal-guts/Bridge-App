@@ -40,7 +40,7 @@ export function AnchorCard({ anchor, karma, isRandomMatcher = false }: AnchorCar
       {/* Karma Badge (top-right corner) */}
       {karma && (
         <StyledView className="absolute top-2 right-2 z-10">
-          <KarmaBadge tier={karma.badgeTier} assists={karma.totalAssists} compact />
+          <KarmaBadge points={karma.karmaPoints} />
         </StyledView>
       )}
 
