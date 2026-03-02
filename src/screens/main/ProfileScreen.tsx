@@ -1,17 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { View, SafeAreaView, StatusBar, ScrollView, FlatList, Image, TouchableOpacity, Alert, RefreshControl, Modal, Switch, Animated, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, SafeAreaView, StatusBar, ScrollView, FlatList, Image, TouchableOpacity, Alert, RefreshControl, Modal, Switch, Animated, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PROFILE_CACHE_DURATION, NAVIGATION_DELAY, AVATAR_SIZE_XL } from '../../constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
 import { H2, H3, Body, Card, Button, ProfileSkeleton } from '../../components/ui';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
-import { MainTabParamList, UserProfile, Match, DeepQuestionAnswer } from '../../types';
+import { MainTabParamList, UserProfile, DeepQuestionAnswer } from '../../types';
 import { getCurrentUser, signOut } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
-import { getUserMatches, updateMatchExitFeedback } from '../../services/matchService';
 import { getFriendCount } from '../../services/friendService';
-import { calculateProfileCompleteness } from '../../utils/profileCompleteness';
 import { Ionicons } from '@expo/vector-icons';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { OfflineBanner } from '../../components/OfflineBanner';
@@ -23,8 +21,6 @@ import {
   LifestyleSection,
   PreferencesSection,
   PartnerLifestyleSection,
-  MatchCard,
-  EmptyState,
   AboutMeSummary,
   MatchPreferencesSummary,
 } from './ProfileScreen.components';
@@ -52,9 +48,6 @@ const StyledScrollView = styled(ScrollView) as typeof ScrollView;
 const StyledFlatList = styled(FlatList) as typeof FlatList;
 const StyledImage = styled(Image) as typeof Image;
 const StyledTouchableOpacity = styled(TouchableOpacity) as typeof TouchableOpacity;
-const StyledAnimatedView = styled(Animated.View) as typeof Animated.View;
-const StyledTextInput = styled(TextInput) as typeof TextInput;
-const StyledKeyboardAvoidingView = styled(KeyboardAvoidingView) as typeof KeyboardAvoidingView;
 
 // Loading Skeleton for Questions Tab - with animation cleanup
 const QuestionsSkeleton: React.FC = () => {
@@ -193,31 +186,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const navigation = _navigation as any;
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [friendCount, setFriendCount] = useState<number>(0);
-  const [activeTab, setActiveTab] = useState<'about' | 'questions' | 'matches'>('about');
+  const [activeTab, setActiveTab] = useState<'about' | 'questions'>('about');
   // Preview modal removed - now using ProfilePreviewScreen for standardized view
   const [showKarmaInfoModal, setShowKarmaInfoModal] = useState(false);
-  const [showVisibilityModal, setShowVisibilityModal] = useState(false);
   const [showPhotoCarousel, setShowPhotoCarousel] = useState(false);
   const [photoCarouselIndex] = useState(0);
-  // Only these 4 sections have visibility controls
-  const [sectionVisibility, setSectionVisibility] = useState({
-    religion: true,
-    politics: true,
-    family: true,
-    lifestyle: true,
-  });
   const [showEditAnswerModal, setShowEditAnswerModal] = useState(false);
   const [selectedQuestionForEdit, setSelectedQuestionForEdit] = useState<DeepQuestionAnswer | null>(null);
   const [editingAnswer, setEditingAnswer] = useState('');
-  const [showUnmatchModal, setShowUnmatchModal] = useState(false);
-  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [isEditingFeedback, setIsEditingFeedback] = useState(false);
-  const [editedFeedback, setEditedFeedback] = useState('');
-  const [savingFeedback, setSavingFeedback] = useState(false);
   const { isOffline} = useNetworkStatus();
 
   // NEW: Loading states for star/unstar operations (prevents race conditions)
@@ -234,10 +213,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
   // Guide system
   const { startGuideIfNeeded } = useGuide();
   const [hasTriggeredGuide, setHasTriggeredGuide] = useState(false);
-
-  // Animation refs for spring effects
-  const unmatchModalAnim = useRef(new Animated.Value(0)).current;
-  const visibilityModalAnim = useRef(new Animated.Value(0)).current;
 
   // Performance: Cache timing ref to avoid redundant API calls
   const lastFetchRef = useRef<number>(0);
@@ -303,12 +278,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
         setProfile(loadedProfile);
 
         // Load section visibility from profile if it exists
-        if (loadedProfile.sectionVisibility) {
-          setSectionVisibility(prev => ({
-            ...prev,
-            ...loadedProfile.sectionVisibility,
-          }));
-        }
       }
     } catch (error: any) {
       // Don't show error if offline - keep existing data
@@ -321,23 +290,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
       }
     }
   }, [isOffline]);
-
-  const loadMatches = useCallback(async () => {
-    try {
-      const userResult = await getCurrentUser();
-      if (!userResult.ok || !userResult.data) return;
-
-      const matchesResult = await getUserMatches();
-      if (matchesResult.ok && matchesResult.data) {
-        const pastMatches = matchesResult.data.filter(m => m.status === 'accepted');
-        if (isMountedRef.current) {
-          setMatches(pastMatches);
-        }
-      }
-    } catch (error) {
-      logger.error('Failed to load matches:', error);
-    }
-  }, []);
 
   const loadFriendCount = useCallback(async () => {
     try {
@@ -361,7 +313,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
       // Load all data in parallel for better performance
       Promise.all([
         loadProfile(),
-        loadMatches(),
         loadFriendCount()
       ]).catch(error => {
         logger.error('Failed to load profile data:', error);
@@ -375,7 +326,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
       // Clear banner dismissal on app start (for development/testing)
       // Remove this in production if you want dismissal to persist
       AsyncStorage.removeItem('@profile_completion_banner_dismissed').catch(console.error);
-    }, [loadProfile, loadMatches, loadFriendCount])
+    }, [loadProfile, loadFriendCount])
   );
 
   // Start profile guide ONLY once per session when profile loads
@@ -397,14 +348,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
     lastFetchRef.current = 0;
     await Promise.all([
       loadProfile(),
-      loadMatches(),
       loadFriendCount(),
     ]);
     lastFetchRef.current = Date.now();
     if (isMountedRef.current) {
       setRefreshing(false);
     }
-  }, [loadProfile, loadMatches, loadFriendCount]);
+  }, [loadProfile, loadFriendCount]);
 
   // IMPROVED: Handle inline answer editing using AnswerQuestionModal
   const handleEditAnswer = useCallback((question: DeepQuestionAnswer) => {
@@ -592,30 +542,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
     if (diffMonths < 12) return `${diffMonths}mo ago`;
     return `${Math.floor(diffMonths / 12)}y ago`;
   };
-
-  // Spring animations for modals - with cleanup to prevent memory leaks
-  useEffect(() => {
-    const animation = Animated.spring(visibilityModalAnim, {
-      toValue: showVisibilityModal ? 1 : 0,
-      useNativeDriver: true,
-      tension: 65,
-      friction: 11,
-    });
-    animation.start();
-    return () => animation.stop(); // Cleanup on unmount
-  }, [showVisibilityModal, visibilityModalAnim]);
-
-  useEffect(() => {
-    const animation = Animated.spring(unmatchModalAnim, {
-      toValue: showUnmatchModal ? 1 : 0,
-      useNativeDriver: true,
-      tension: 65,
-      friction: 11,
-    });
-    animation.start();
-    return () => animation.stop(); // Cleanup on unmount
-  }, [showUnmatchModal, unmatchModalAnim]);
-
 
   const renderAboutTab = () => {
     const photoCount = profile?.photos?.length || 0;
@@ -1082,96 +1008,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
     );
   };
 
-  const handleMatchPress = (match: Match) => {
-    setSelectedMatch(match);
-    setEditedFeedback(match.unmatchSurveyResponse || '');
-    setIsEditingFeedback(false);
-    setShowUnmatchModal(true);
-    lightHaptic();
-  };
-
-  const handleSaveFeedback = async () => {
-    if (!selectedMatch) return;
-
-    if (isMountedRef.current) {
-      setSavingFeedback(true);
-    }
-    mediumHaptic();
-
-    try {
-      const result = await updateMatchExitFeedback(selectedMatch.id, editedFeedback);
-
-      if (result.ok) {
-        // Update local state immutably (only if still mounted)
-        if (isMountedRef.current && selectedMatch) {
-          setSelectedMatch({
-            ...selectedMatch,
-            unmatchSurveyResponse: editedFeedback,
-          });
-          setIsEditingFeedback(false);
-        }
-        showToast.success('Feedback updated successfully');
-      } else {
-        showToast.error(result.error?.message || 'Failed to update feedback');
-      }
-    } catch (error: any) {
-      showToast.error('An unexpected error occurred');
-    } finally {
-      if (isMountedRef.current) {
-        setSavingFeedback(false);
-      }
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditedFeedback(selectedMatch?.unmatchSurveyResponse || '');
-    setIsEditingFeedback(false);
-    lightHaptic();
-  };
-
-  const handleStartEdit = () => {
-    setIsEditingFeedback(true);
-    mediumHaptic();
-  };
-
-  // Calculate profile completion for matches tab empty state (memoized for performance)
-  // MUST be at top level to avoid hooks violation
-  const { profileCompletion, isProfileComplete } = useMemo(() => {
-    const completionData = calculateProfileCompleteness(profile);
-    return {
-      profileCompletion: completionData.percentage,
-      isProfileComplete: completionData.percentage === 100
-    };
-  }, [profile]);
-
-  const renderMatchesTab = () => {
-
-    return (
-      <StyledView className="px-4 py-6">
-        <StyledView className="mb-4">
-          <H3>Past Matches</H3>
-          <Body className="text-neutral-600 text-sm mt-1">Only Visible to You</Body>
-        </StyledView>
-
-        {matches.length > 0 ? (
-          matches.map((match) => (
-            <MatchCard key={match.id} match={match} onMatchPress={handleMatchPress} />
-          ))
-        ) : (
-          <EmptyState
-            icon="heart-outline"
-            title="No matches yet"
-            message={
-              isProfileComplete
-                ? "Invite friends to help you get your first match!"
-                : "Complete your profile to start getting matches"
-            }
-          />
-        )}
-      </StyledView>
-    );
-  };
-
   if (loading) {
     return (
       <StyledSafeAreaView className="flex-1 bg-neutral-50">
@@ -1363,7 +1199,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               lightHaptic();
               setActiveTab('about');
             }}
-            className="flex-1 py-3 items-center relative"
+            style={{ width: '50%' }}
+            className="py-3 items-center relative"
             accessibilityLabel="About tab"
             accessibilityRole="tab"
             accessibilityState={{ selected: activeTab === 'about' }}
@@ -1379,221 +1216,37 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               <StyledView className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500" />
             )}
           </StyledTouchableOpacity>
-          <GuideTarget id="questions-tab">
+          <GuideTarget id="questions-tab" style={{ width: '50%' }}>
             <StyledTouchableOpacity
               onPress={() => {
                 lightHaptic();
                 setActiveTab('questions');
               }}
-              className="flex-1 py-3 items-center relative"
+              className="py-3 items-center relative"
               accessibilityLabel={`Questions tab, ${profile?.deepQuestions?.length || 0} answered`}
               accessibilityRole="tab"
               accessibilityState={{ selected: activeTab === 'questions' }}
             >
-              <StyledView className="flex-row items-center">
-                <Body
-                  className={`font-medium ${
-                    activeTab === 'questions' ? 'text-primary-500' : 'text-neutral-600'
-                  }`}
-                >
-                  Questions
-                </Body>
-              </StyledView>
+              <Body
+                className={`font-medium ${
+                  activeTab === 'questions' ? 'text-primary-500' : 'text-neutral-600'
+                }`}
+              >
+                Questions
+              </Body>
               {activeTab === 'questions' && (
                 <StyledView className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500" />
               )}
             </StyledTouchableOpacity>
           </GuideTarget>
-          <StyledTouchableOpacity
-            onPress={() => {
-              lightHaptic();
-              setActiveTab('matches');
-            }}
-            className="flex-1 py-3 items-center relative"
-            accessibilityLabel={`Matches tab, ${matches.length} matches`}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: activeTab === 'matches' }}
-          >
-            <Body
-              className={`font-medium ${
-                activeTab === 'matches' ? 'text-primary-500' : 'text-neutral-600'
-              }`}
-            >
-              Matches
-            </Body>
-            {activeTab === 'matches' && (
-              <StyledView className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500" />
-            )}
-          </StyledTouchableOpacity>
         </StyledView>
       </StyledView>
 
         {/* Tab Content */}
         {activeTab === 'about' && renderAboutTab()}
         {activeTab === 'questions' && renderQuestionsTab()}
-        {activeTab === 'matches' && renderMatchesTab()}
       </StyledScrollView>
 
-
-      {/* Profile Visibility Settings Modal */}
-      <Modal
-        visible={showVisibilityModal}
-        animationType="none"
-        transparent
-        onRequestClose={() => setShowVisibilityModal(false)}
-      >
-        <StyledAnimatedView
-          className="flex-1 bg-black/50 justify-end"
-          style={{
-            opacity: visibilityModalAnim,
-          }}
-        >
-          <StyledAnimatedView
-            className="bg-white rounded-t-3xl"
-            style={{
-              maxHeight: '85%',
-              transform: [{
-                translateY: visibilityModalAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [300, 0],
-                }),
-              }],
-            }}
-          >
-            {/* Header */}
-            <StyledView className="px-4 py-4 border-b border-neutral-200">
-              <StyledView className="flex-row items-center justify-between mb-2">
-                <StyledView className="flex-row items-center">
-                  <Ionicons name="eye-off" size={24} color="#A855F7" />
-                  <H3 className="ml-2">Profile Visibility</H3>
-                </StyledView>
-                <StyledTouchableOpacity
-                  onPress={() => setShowVisibilityModal(false)}
-                  accessibilityLabel="Close"
-                  accessibilityRole="button"
-                >
-                  <Ionicons name="close" size={24} color="#101828" />
-                </StyledTouchableOpacity>
-              </StyledView>
-              <Body className="text-neutral-600 text-sm">
-                Choose which sections of your profile are visible to potential matches
-              </Body>
-            </StyledView>
-
-            {/* Visibility Controls */}
-            <StyledScrollView className="flex-1 px-4 py-4">
-              {/* Info Card */}
-              <Card className="bg-blue-50 border-2 border-blue-200 mb-5">
-                <StyledView className="flex-row items-start">
-                  <Ionicons name="information-circle" size={20} color="#437FFF" />
-                  <Body className="flex-1 text-blue-900 text-sm ml-2">
-                    Hidden sections won't be visible to others, but you can still edit them and they may affect matching.
-                  </Body>
-                </StyledView>
-              </Card>
-
-              {/* Section Toggles - Only sensitive sections */}
-              <StyledView className="space-y-3">
-                {/* Religion */}
-                <StyledView className="flex-row items-center justify-between py-3 border-b border-neutral-100">
-                  <StyledView className="flex-1">
-                    <Body className="text-neutral-900 font-semibold mb-1">Religion</Body>
-                    <Body className="text-neutral-600 text-sm">Your religious beliefs</Body>
-                  </StyledView>
-                  <Switch
-                    value={sectionVisibility.religion}
-                    onValueChange={(value) => {
-                      mediumHaptic();
-                      setSectionVisibility({...sectionVisibility, religion: value});
-                    }}
-                    trackColor={{ false: '#D0D5DD', true: '#B4D4FF' }}
-                    thumbColor={sectionVisibility.religion ? '#437FFF' : '#F4F4F5'}
-                  />
-                </StyledView>
-
-                {/* Politics */}
-                <StyledView className="flex-row items-center justify-between py-3 border-b border-neutral-100">
-                  <StyledView className="flex-1">
-                    <Body className="text-neutral-900 font-semibold mb-1">Politics</Body>
-                    <Body className="text-neutral-600 text-sm">Your political views</Body>
-                  </StyledView>
-                  <Switch
-                    value={sectionVisibility.politics}
-                    onValueChange={(value) => {
-                      mediumHaptic();
-                      setSectionVisibility({...sectionVisibility, politics: value});
-                    }}
-                    trackColor={{ false: '#D0D5DD', true: '#B4D4FF' }}
-                    thumbColor={sectionVisibility.politics ? '#437FFF' : '#F4F4F5'}
-                  />
-                </StyledView>
-
-                {/* Family & Relationships */}
-                <StyledView className="flex-row items-center justify-between py-3 border-b border-neutral-100">
-                  <StyledView className="flex-1">
-                    <Body className="text-neutral-900 font-semibold mb-1">Family & Relationships</Body>
-                    <Body className="text-neutral-600 text-sm">Children status, family plans</Body>
-                  </StyledView>
-                  <Switch
-                    value={sectionVisibility.family}
-                    onValueChange={(value) => {
-                      mediumHaptic();
-                      setSectionVisibility({...sectionVisibility, family: value});
-                    }}
-                    trackColor={{ false: '#D0D5DD', true: '#B4D4FF' }}
-                    thumbColor={sectionVisibility.family ? '#437FFF' : '#F4F4F5'}
-                  />
-                </StyledView>
-
-                {/* Lifestyle & Habits */}
-                <StyledView className="flex-row items-center justify-between py-3">
-                  <StyledView className="flex-1">
-                    <Body className="text-neutral-900 font-semibold mb-1">Lifestyle & Habits</Body>
-                    <Body className="text-neutral-600 text-sm">Drinking, cannabis, tobacco use</Body>
-                  </StyledView>
-                  <Switch
-                    value={sectionVisibility.lifestyle}
-                    onValueChange={(value) => {
-                      mediumHaptic();
-                      setSectionVisibility({...sectionVisibility, lifestyle: value});
-                    }}
-                    trackColor={{ false: '#D0D5DD', true: '#B4D4FF' }}
-                    thumbColor={sectionVisibility.lifestyle ? '#437FFF' : '#F4F4F5'}
-                  />
-                </StyledView>
-              </StyledView>
-            </StyledScrollView>
-
-            {/* Footer */}
-            <StyledView className="px-4 py-4 border-t border-neutral-200">
-              <Button
-                onPress={async () => {
-                  try {
-                    // Save visibility settings to database
-                    const result = await updateUserProfile({ sectionVisibility });
-                    if (result.ok) {
-                      // Update local profile state to keep in sync
-                      if (profile) {
-                        setProfile({ ...profile, sectionVisibility });
-                      }
-                      setShowVisibilityModal(false);
-                      Alert.alert('Saved', 'Your visibility settings have been updated');
-                    } else {
-                      Alert.alert('Error', result.error?.message || 'Failed to save settings');
-                    }
-                  } catch (error: any) {
-                    Alert.alert('Error', error.message || 'Failed to save settings');
-                  }
-                }}
-                variant="primary"
-                fullWidth
-              >
-                Save Settings
-              </Button>
-            </StyledView>
-          </StyledAnimatedView>
-        </StyledAnimatedView>
-      </Modal>
 
       {/* IMPROVED: Use AnswerQuestionModal (same as DeepQuestionsScreen) */}
       <AnswerQuestionModal
@@ -1620,147 +1273,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
         }}
         onChangeQuestion={currentEditingQuestion ? handleChangeQuestion : undefined}
       />
-
-      {/* Unmatch Survey Modal */}
-      <Modal
-        visible={showUnmatchModal}
-        animationType="none"
-        transparent
-        onRequestClose={() => setShowUnmatchModal(false)}
-      >
-        <StyledKeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          className="flex-1"
-        >
-          <StyledAnimatedView
-            className="flex-1 bg-black/50 justify-start pt-20 px-6"
-            style={{
-              opacity: unmatchModalAnim,
-            }}
-          >
-            <StyledAnimatedView
-              className="bg-white rounded-2xl p-6"
-              style={{
-                transform: [{
-                  scale: unmatchModalAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.9, 1],
-                  }),
-                }],
-              }}
-            >
-            {/* Header */}
-            <StyledView className="flex-row items-center justify-between mb-4">
-              <H3>Match Details</H3>
-              <StyledTouchableOpacity
-                onPress={() => {
-                  lightHaptic();
-                  setShowUnmatchModal(false);
-                }}
-                accessibilityLabel="Close"
-                accessibilityRole="button"
-              >
-                <Ionicons name="close" size={24} color="#101828" />
-              </StyledTouchableOpacity>
-            </StyledView>
-
-            {/* Match Name and Dates */}
-            {selectedMatch && (
-              <>
-                <StyledView className="mb-4 pb-4 border-b border-neutral-100">
-                  <Body className="text-neutral-900 font-bold text-lg mb-2">
-                    {(selectedMatch.user2Profile || selectedMatch.user1Profile)?.firstName}
-                  </Body>
-                  <StyledView className="flex-row items-center mb-1">
-                    <Ionicons name="heart" size={16} color="#10B981" />
-                    <Body className="text-neutral-600 text-sm ml-2">
-                      Matched: {selectedMatch.acceptedAt
-                        ? new Date(selectedMatch.acceptedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-                        : 'Unknown'}
-                    </Body>
-                  </StyledView>
-                  {selectedMatch.unmatchedAt && (
-                    <StyledView className="flex-row items-center">
-                      <Ionicons name="close-circle" size={16} color="#EF4444" />
-                      <Body className="text-neutral-600 text-sm ml-2">
-                        Unmatched: {new Date(selectedMatch.unmatchedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                      </Body>
-                    </StyledView>
-                  )}
-                </StyledView>
-
-                {/* Survey Response */}
-                <StyledView className="mb-4">
-                  <Body className="text-neutral-900 font-semibold mb-2">Your Feedback:</Body>
-                  {isEditingFeedback ? (
-                    <StyledTextInput
-                      value={editedFeedback}
-                      onChangeText={setEditedFeedback}
-                      placeholder="Share your thoughts about this match..."
-                      placeholderTextColor="#9CA3AF"
-                      multiline
-                      textAlignVertical="top"
-                      className="bg-neutral-50 rounded-lg p-4 text-neutral-900 min-h-[120px] border border-neutral-200"
-                      style={{ fontSize: 16, lineHeight: 24 }}
-                      maxLength={500}
-                    />
-                  ) : selectedMatch.unmatchSurveyResponse ? (
-                    <StyledView className="bg-neutral-50 rounded-lg p-4">
-                      <Body className="text-neutral-700 leading-6">
-                        {selectedMatch.unmatchSurveyResponse}
-                      </Body>
-                    </StyledView>
-                  ) : (
-                    <StyledView className="bg-neutral-50 rounded-lg p-4">
-                      <Body className="text-neutral-500 italic">
-                        No feedback provided
-                      </Body>
-                    </StyledView>
-                  )}
-                  {isEditingFeedback && (
-                    <Body className="text-neutral-500 text-xs mt-2 text-right">
-                      {editedFeedback.length}/500
-                    </Body>
-                  )}
-                </StyledView>
-
-                {/* Action Buttons */}
-                {isEditingFeedback ? (
-                  <StyledView className="flex-row gap-3">
-                    <StyledTouchableOpacity
-                      onPress={handleCancelEdit}
-                      className="flex-1 bg-neutral-100 py-3 rounded-lg items-center"
-                      activeOpacity={0.7}
-                      disabled={savingFeedback}
-                    >
-                      <Body className="text-neutral-700 font-semibold">Cancel</Body>
-                    </StyledTouchableOpacity>
-                    <StyledTouchableOpacity
-                      onPress={handleSaveFeedback}
-                      className="flex-1 bg-primary-500 py-3 rounded-lg items-center"
-                      activeOpacity={0.7}
-                      disabled={savingFeedback}
-                    >
-                      <Body className="text-white font-semibold">
-                        {savingFeedback ? 'Saving...' : 'Save'}
-                      </Body>
-                    </StyledTouchableOpacity>
-                  </StyledView>
-                ) : (
-                  <StyledTouchableOpacity
-                    onPress={handleStartEdit}
-                    className="bg-primary-500 py-3 rounded-lg items-center"
-                    activeOpacity={0.7}
-                  >
-                    <Body className="text-white font-semibold">Edit Response</Body>
-                  </StyledTouchableOpacity>
-                )}
-              </>
-            )}
-          </StyledAnimatedView>
-        </StyledAnimatedView>
-        </StyledKeyboardAvoidingView>
-      </Modal>
 
       {/* PHASE 2: Question Selection Modal */}
       <Modal

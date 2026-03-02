@@ -56,14 +56,32 @@ Deno.serve(async (req: Request) => {
       }, { headers: corsHeaders });
     }
 
-    // 2. Exclude users who already have a pairing for today
-    const { data: existingPairings } = await supabase
-      .from('daily_pairings')
-      .select('user_id')
-      .eq('pairing_date', today);
+    // 2. Fetch exclusion sets + existing pairings in parallel
+    const [existingPairingsRes, blockedRes, matchesRes] = await Promise.all([
+      supabase.from('daily_pairings').select('user_id').eq('pairing_date', today),
+      supabase.from('blocked_users').select('user_id, blocked_user_id'),
+      supabase.from('matches').select('user_id_1, user_id_2').in('status', ['active', 'pending', 'accepted']),
+    ]);
 
-    const alreadyPaired = new Set((existingPairings || []).map((p: any) => p.user_id));
-    const unpaired = eligibleProfiles.filter((p: any) => !alreadyPaired.has(p.user_id));
+    const alreadyPaired = new Set((existingPairingsRes.data || []).map((p: any) => p.user_id));
+
+    const blockedPairs = new Set<string>();
+    for (const row of (blockedRes.data || [])) {
+      blockedPairs.add([row.user_id, row.blocked_user_id].sort().join('|'));
+    }
+
+    const matchPairs = new Set<string>();
+    const matchedUsers = new Set<string>();
+    for (const row of (matchesRes.data || [])) {
+      matchPairs.add([row.user_id_1, row.user_id_2].sort().join('|'));
+      matchedUsers.add(row.user_id_1);
+      matchedUsers.add(row.user_id_2);
+    }
+
+    // Exclude users who already have a pairing today OR have an active match
+    const unpaired = eligibleProfiles.filter((p: any) =>
+      !alreadyPaired.has(p.user_id) && !matchedUsers.has(p.user_id)
+    );
 
     if (unpaired.length < 2) {
       return Response.json({
@@ -74,23 +92,7 @@ Deno.serve(async (req: Request) => {
       }, { headers: corsHeaders });
     }
 
-    // 3. Fetch exclusion sets
-    const [blockedRes, matchesRes] = await Promise.all([
-      supabase.from('blocked_users').select('user_id, blocked_user_id'),
-      supabase.from('matches').select('user_id_1, user_id_2').in('status', ['active', 'pending', 'accepted']),
-    ]);
-
-    const blockedPairs = new Set<string>();
-    for (const row of (blockedRes.data || [])) {
-      blockedPairs.add([row.user_id, row.blocked_user_id].sort().join('|'));
-    }
-
-    const matchPairs = new Set<string>();
-    for (const row of (matchesRes.data || [])) {
-      matchPairs.add([row.user_id_1, row.user_id_2].sort().join('|'));
-    }
-
-    // 4. Fetch recent pairings for recency penalty
+    // 3. Fetch recent pairings for recency penalty
     const recencyDate = new Date();
     recencyDate.setUTCDate(recencyDate.getUTCDate() - RECENCY_WINDOW_DAYS);
     const recencyDateStr = recencyDate.toISOString().split('T')[0];

@@ -763,7 +763,6 @@ const MOCK_PROFILE: UserProfile = {
     { questionId: 3, tier: 3, question: "What's a life lesson that took you a while to learn?", answer: "That it's okay to change your mind about what you want. Growth means evolving, and your past decisions don't have to define your future." },
   ],
   displayedQuestions: [1, 2, 3],
-  sectionVisibility: { religion: true, politics: true, family: true, lifestyle: true },
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
@@ -953,16 +952,14 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   const expiresAt = match?.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   const displayedQuestions = (profile.displayedQuestions || []).map(id => profile.deepQuestions?.find(q => q.questionId === id)).filter((q): q is DeepQuestionAnswer => q !== undefined).sort((a, b) => (a.tier || 0) - (b.tier || 0));
   const hasLifestyleInfo = profile.drinkingFrequency || profile.cannabisFrequency || profile.tobaccoFrequency || profile.otherDrugsFrequency;
-  const visibility = { religion: profile.sectionVisibility?.religion ?? true, politics: profile.sectionVisibility?.politics ?? true, family: profile.sectionVisibility?.family ?? true, lifestyle: profile.sectionVisibility?.lifestyle ?? true };
-
   const basicInfoPills: Array<{ icon: string; text: string }> = [];
   if (profile.gender?.length) basicInfoPills.push({ icon: 'person-outline', text: profile.gender.join(', ') });
   if (profile.pronounsList?.length) basicInfoPills.push({ icon: 'chatbubble-outline', text: profile.pronounsList.join('/') });
   if (profile.height) basicInfoPills.push({ icon: 'resize-outline', text: profile.height });
   if (profile.location) basicInfoPills.push({ icon: 'location-outline', text: profile.location });
   if (profile.ethnicity) basicInfoPills.push({ icon: 'globe-outline', text: profile.ethnicity });
-  if (visibility.religion && profile.religion) basicInfoPills.push({ icon: 'sparkles-outline', text: profile.religion });
-  if (visibility.politics && profile.politicalLeaning) basicInfoPills.push({ icon: 'flag-outline', text: formatFrequency(profile.politicalLeaning) || '' });
+  if (profile.religion) basicInfoPills.push({ icon: 'sparkles-outline', text: profile.religion });
+  if (profile.politicalLeaning) basicInfoPills.push({ icon: 'flag-outline', text: formatFrequency(profile.politicalLeaning) || '' });
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
@@ -1037,7 +1034,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
           {basicInfoPills.length > 0 && <StyledView className="flex-row flex-wrap mb-6">{basicInfoPills.map((pill) => <InfoPill key={`${pill.icon}-${pill.text}`} icon={pill.icon} text={pill.text} />)}</StyledView>}
           {profile.interests?.length > 0 && <Section title="Interests" icon="heart-outline" delay={50}><StyledView className="flex-row flex-wrap">{profile.interests.map((interest) => <Tag key={interest} label={interest} variant="primary" isMutual={mutualInterests.includes(interest)} />)}</StyledView></Section>}
           {profile.values?.length > 0 && <Section title="Values" icon="diamond-outline" delay={100}><StyledView className="flex-row flex-wrap">{profile.values.map((value) => <Tag key={value} label={value} variant="success" isMutual={mutualValues.includes(value)} />)}</StyledView></Section>}
-          {visibility.family && (profile.hasChildren || profile.familyPlans) && (
+          {(profile.hasChildren || profile.familyPlans) && (
             <Section title="Family" icon="people-outline" delay={150}>
               <StyledView className="rounded-2xl p-4" style={{ backgroundColor: COLORS.neutral50 }}>
                 {profile.hasChildren && <StyledView className="flex-row items-center mb-2.5"><Ionicons name="person-outline" size={17} color={COLORS.neutral400} /><Body className="ml-2.5" style={{ color: COLORS.neutral600 }}>{formatFrequency(profile.hasChildren)}</Body></StyledView>}
@@ -1045,7 +1042,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
               </StyledView>
             </Section>
           )}
-          {visibility.lifestyle && hasLifestyleInfo && (
+          {hasLifestyleInfo && (
             <Section title="Lifestyle" icon="leaf-outline" delay={200}>
               <StyledView className="rounded-2xl px-4 py-1" style={{ backgroundColor: COLORS.neutral50 }}>
                 {profile.drinkingFrequency && <LifestyleRow icon="wine-outline" label="Drinking" value={formatFrequency(profile.drinkingFrequency) || ''} />}

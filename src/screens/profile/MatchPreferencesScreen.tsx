@@ -155,17 +155,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Visibility settings for profile - all default to true (visible)
-  const [preferenceVisibility, setPreferenceVisibility] = useState({
-    ageRange: true,
-    interestedInGenders: true,
-    heightPreference: true,
-    partnerLifestyle: true,
-    preferredEthnicities: true,
-    politicalPreferences: true,
-    nonNegotiables: true,
-  });
-
   // Track original data for change detection
   const originalDataRef = useRef<string | null>(null);
 
@@ -303,19 +292,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         // Load preferred politics
         setPreferredPolitics(profileResult.data.preferredPolitics || []);
 
-        // Load preference visibility settings (default all to true if not set)
-        if (profileResult.data.preferenceVisibility) {
-          setPreferenceVisibility({
-            ageRange: profileResult.data.preferenceVisibility.ageRange ?? true,
-            interestedInGenders: profileResult.data.preferenceVisibility.interestedInGenders ?? true,
-            heightPreference: profileResult.data.preferenceVisibility.heightPreference ?? true,
-            partnerLifestyle: profileResult.data.preferenceVisibility.partnerLifestyle ?? true,
-            preferredEthnicities: profileResult.data.preferenceVisibility.preferredEthnicities ?? true,
-            politicalPreferences: profileResult.data.preferenceVisibility.politicalPreferences ?? true,
-            nonNegotiables: profileResult.data.preferenceVisibility.nonNegotiables ?? true,
-          });
-        }
-
         // Extract dealbreaker IDs from dealbreakers array
         const nonNegotiableIds = (profileResult.data.nonNegotiables || []).map(d => d.type);
         setNonNegotiables(nonNegotiableIds);
@@ -340,15 +316,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
           preferredEthnicities: profileResult.data.preferredEthnicities || [],
           interestedInGenders: profileResult.data.interestedInGenders || [],
           preferredPolitics: profileResult.data.preferredPolitics || [],
-          preferenceVisibility: profileResult.data.preferenceVisibility || {
-            ageRange: true,
-            interestedInGenders: true,
-            heightPreference: true,
-            partnerLifestyle: true,
-            preferredEthnicities: true,
-            politicalPreferences: true,
-            nonNegotiables: true,
-          },
           nonNegotiables: nonNegotiableIds,
         });
       }
@@ -366,12 +333,11 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         preferredEthnicities,
         interestedInGenders,
         preferredPolitics,
-        preferenceVisibility,
         nonNegotiables,
       });
       setHasUnsavedChanges(currentData !== originalDataRef.current);
     }
-  }, [preferences, partnerPreferences, preferredEthnicities, interestedInGenders, preferredPolitics, preferenceVisibility, nonNegotiables]);
+  }, [preferences, partnerPreferences, preferredEthnicities, interestedInGenders, preferredPolitics, nonNegotiables]);
 
   const handleClose = () => {
     if (hasUnsavedChanges) {
@@ -458,7 +424,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         nonNegotiables: nonNegotiableObjects,
         interestedInGenders: interestedInGenders,
         preferredPolitics: preferredPolitics,
-        preferenceVisibility: preferenceVisibility,
         // Partner preferences
         partnerLifestylePreferences: {
           drinking: partnerPreferences.partnerDrinking,
@@ -494,14 +459,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         return [id];
       }
     });
-  };
-
-  const toggleVisibility = (field: keyof typeof preferenceVisibility) => {
-    setPreferenceVisibility(prev => ({
-      ...prev,
-      [field]: !prev[field],
-    }));
-    lightHaptic();
   };
 
   // Calculate match preferences completion for current editing state
@@ -670,22 +627,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Age Range */}
           <Card className="mb-6">
-            <StyledView className="flex-row items-center justify-between mb-4">
-              <H3>Age Range <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
-              <StyledTouchableOpacity
-                onPress={() => toggleVisibility('ageRange')}
-                className="flex-row items-center"
-              >
-                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
-                <StyledView className={`w-5 h-5 rounded border ${
-                  preferenceVisibility.ageRange ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
-                } items-center justify-center`}>
-                  {preferenceVisibility.ageRange && (
-                    <Ionicons name="checkmark" size={14} color="white" />
-                  )}
-                </StyledView>
-              </StyledTouchableOpacity>
-            </StyledView>
+            <H3 className="mb-4">Age Range <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
             <StyledView className="mb-4">
               <StyledView className="flex-row justify-between mb-2">
                 <Body className="text-neutral-600">Minimum Age</Body>
@@ -729,22 +671,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Height Preference */}
           <Card className="mb-6">
-            <StyledView className="flex-row items-center justify-between mb-3">
-              <H3>Height <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
-              <StyledTouchableOpacity
-                onPress={() => toggleVisibility('heightPreference')}
-                className="flex-row items-center"
-              >
-                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
-                <StyledView className={`w-5 h-5 rounded border ${
-                  preferenceVisibility.heightPreference ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
-                } items-center justify-center`}>
-                  {preferenceVisibility.heightPreference && (
-                    <Ionicons name="checkmark" size={14} color="white" />
-                  )}
-                </StyledView>
-              </StyledTouchableOpacity>
-            </StyledView>
+            <H3 className="mb-3">Height <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
             <Body className="text-neutral-600 text-sm mb-4">
               Set your height preferences for potential matches
             </Body>
@@ -792,24 +719,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Preferred Ethnicities */}
           <Card className="mb-6">
-            <StyledView className="flex-row items-center justify-between mb-2">
-              <StyledView className="flex-1 flex-shrink mr-2">
-                <H3>Ethnicity <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
-              </StyledView>
-              <StyledTouchableOpacity
-                onPress={() => toggleVisibility('preferredEthnicities')}
-                className="flex-row items-center flex-shrink-0"
-              >
-                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
-                <StyledView className={`w-5 h-5 rounded border ${
-                  preferenceVisibility.preferredEthnicities ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
-                } items-center justify-center`}>
-                  {preferenceVisibility.preferredEthnicities && (
-                    <Ionicons name="checkmark" size={14} color="white" />
-                  )}
-                </StyledView>
-              </StyledTouchableOpacity>
-            </StyledView>
+            <H3 className="mb-2">Ethnicity <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
             <Body className="text-neutral-600 text-sm mb-4">
               Select the ethnicities you're interested in for potential matches
             </Body>
@@ -868,22 +778,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Preferred Politics */}
           <Card className="mb-6">
-            <StyledView className="flex-row items-center justify-between mb-2">
-              <H3>Politics <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
-              <StyledTouchableOpacity
-                onPress={() => toggleVisibility('politicalPreferences')}
-                className="flex-row items-center"
-              >
-                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
-                <StyledView className={`w-5 h-5 rounded border ${
-                  preferenceVisibility.politicalPreferences ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
-                } items-center justify-center`}>
-                  {preferenceVisibility.politicalPreferences && (
-                    <Ionicons name="checkmark" size={14} color="white" />
-                  )}
-                </StyledView>
-              </StyledTouchableOpacity>
-            </StyledView>
+            <H3 className="mb-2">Politics <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
             <Body className="text-neutral-600 text-sm mb-4">
               Select the political views you're open to matching with
             </Body>
@@ -935,24 +830,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Lifestyle */}
           <Card className="mb-6">
-            <StyledView className="flex-row items-center justify-between mb-2">
-              <StyledView className="flex-1 flex-shrink mr-2">
-                <H3>Lifestyle <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
-              </StyledView>
-              <StyledTouchableOpacity
-                onPress={() => toggleVisibility('partnerLifestyle')}
-                className="flex-row items-center flex-shrink-0"
-              >
-                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
-                <StyledView className={`w-5 h-5 rounded border ${
-                  preferenceVisibility.partnerLifestyle ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
-                } items-center justify-center`}>
-                  {preferenceVisibility.partnerLifestyle && (
-                    <Ionicons name="checkmark" size={14} color="white" />
-                  )}
-                </StyledView>
-              </StyledTouchableOpacity>
-            </StyledView>
+            <H3 className="mb-2">Lifestyle <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
             <Body className="text-neutral-600 text-sm mb-4">
               What lifestyle habits do you prefer in a partner?
             </Body>
@@ -1124,24 +1002,9 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Non-Negotiables */}
           <Card className="mb-8">
-            <StyledView className="flex-row items-center justify-between mb-2">
-              <StyledView className="flex-row items-center">
-                <H3>Non-Negotiables</H3>
-                <Body className="text-neutral-400 text-sm ml-2">(optional)</Body>
-              </StyledView>
-              <StyledTouchableOpacity
-                onPress={() => toggleVisibility('nonNegotiables')}
-                className="flex-row items-center"
-              >
-                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
-                <StyledView className={`w-5 h-5 rounded border ${
-                  preferenceVisibility.nonNegotiables ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
-                } items-center justify-center`}>
-                  {preferenceVisibility.nonNegotiables && (
-                    <Ionicons name="checkmark" size={14} color="white" />
-                  )}
-                </StyledView>
-              </StyledTouchableOpacity>
+            <StyledView className="flex-row items-center mb-2">
+              <H3>Non-Negotiables</H3>
+              <Body className="text-neutral-400 text-sm ml-2">(optional)</Body>
             </StyledView>
             <Body className="text-neutral-600 text-sm mb-4">
               Select one characteristic that is a no-go for you

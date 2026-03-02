@@ -10,7 +10,6 @@ import { supabase } from '../lib/supabase';
 import { getNext7PMCentral } from '../utils/centralTime';
 import { getMultiplePhotoSignedUrls } from './photoService';
 import {
-  DailyGrid,
   Proposal,
   ActiveMatch,
   KarmaScore,
@@ -229,108 +228,16 @@ class CommunityBackendService {
   }
 
   // ========================================================================
-  // Grid (legacy - kept for interface compatibility)
-  // ========================================================================
-
-  async getTodaysGrid(): Promise<DailyGrid> {
-    const userId = await getCurrentUserId();
-
-    // Try to fetch from daily_surveys table
-    const today = new Date().toISOString().split('T')[0];
-    const { data: survey } = await supabase
-      .from('daily_surveys')
-      .select('*')
-      .eq('ranker_user_id', userId)
-      .eq('survey_date', today)
-      .maybeSingle();
-
-    if (!survey) {
-      // Return empty grid - no survey assigned today
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      const anchor = profile ? mapProfileRow(profile) : { id: userId, firstName: 'You' } as UserProfile;
-
-      return {
-        id: `grid-${today}`,
-        anchorUserId: userId,
-        anchor,
-        candidates: [],
-        gridDate: today,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        hasVoted: false,
-        hasMatched: false,
-      };
-    }
-
-    // Collect candidate IDs from separate columns
-    const candidateIds = [
-      survey.candidate_1_user_id,
-      survey.candidate_2_user_id,
-      survey.candidate_3_user_id,
-    ].filter(Boolean);
-    const candidates: UserProfile[] = [];
-
-    if (candidateIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .in('user_id', candidateIds);
-
-      if (profiles) {
-        candidates.push(...profiles.map(mapProfileRow));
-      }
-    }
-
-    // Fetch anchor profile (recipient_user_id is the person being matched)
-    const anchorId = survey.recipient_user_id || userId;
-    const { data: anchorProfile } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('user_id', anchorId)
-      .maybeSingle();
-
-    return {
-      id: survey.id,
-      anchorUserId: anchorId,
-      anchor: anchorProfile ? mapProfileRow(anchorProfile) : { id: userId, firstName: 'You' } as UserProfile,
-      candidates,
-      gridDate: today,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      hasVoted: !!survey.is_completed,
-      hasMatched: !!survey.is_completed,
-    };
-  }
-
-  async submitDailyGridProposal(candidateId: string): Promise<void> {
-    const userId = await getCurrentUserId();
-    const today = new Date().toISOString().split('T')[0];
-
-    await supabase
-      .from('daily_surveys')
-      .update({
-        is_completed: true,
-        completed_at: new Date().toISOString(),
-      })
-      .eq('ranker_user_id', userId)
-      .eq('survey_date', today);
-  }
-
-  // ========================================================================
   // Friends (Supabase)
   // ========================================================================
 
   async getFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
     const userId = await getCurrentUserId();
-    const blockedIds = await getBlockedUserIds(userId);
-    const today = new Date().toISOString().split('T')[0];
     const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 
-    // Get all friendships (both directions) — include streak columns
-    const [{ data: friendships1 }, { data: friendships2 }] = await Promise.all([
+    // Get all friendships (both directions) + blocked IDs in parallel
+    const [blockedIds, { data: friendships1 }, { data: friendships2 }] = await Promise.all([
+      getBlockedUserIds(userId),
       supabase
         .from('friends')
         .select('id, user_id, friend_id, added_at, streak_days, last_mutual_date')
@@ -357,30 +264,106 @@ class CommunityBackendService {
       f.user_id === userId ? f.friend_id : f.user_id
     );
 
-    // Fetch friend profiles and today's grid completions in parallel
-    const [{ data: profiles }, { data: completions }] = await Promise.all([
+    // Fetch friend profiles, active proposals, matches, and photos in parallel
+    const [
+      { data: profiles },
+      { data: friendProposalsA },
+      { data: friendProposalsB },
+      { data: matchesA },
+      { data: matchesB },
+      { data: userPhotos },
+    ] = await Promise.all([
       supabase
         .from('user_profiles')
         .select('*')
         .in('user_id', friendIds),
+      // Proposals where friend is user_a
       supabase
-        .from('friend_grid_completions')
-        .select('user_id, friend_id')
-        .eq('completed_date', today)
-        .or(`user_id.eq.${userId},friend_id.eq.${userId}`),
+        .from('proposals')
+        .select('id, user_a_id, user_b_id, status')
+        .in('user_a_id', friendIds)
+        .eq('status', 'pending'),
+      // Proposals where friend is user_b
+      supabase
+        .from('proposals')
+        .select('id, user_a_id, user_b_id, status')
+        .in('user_b_id', friendIds)
+        .eq('status', 'pending'),
+      // Matches where friend is user_id_1
+      supabase
+        .from('matches')
+        .select('user_id_1, user_id_2')
+        .in('user_id_1', friendIds)
+        .in('status', ['active', 'pending', 'accepted']),
+      // Matches where friend is user_id_2
+      supabase
+        .from('matches')
+        .select('user_id_1, user_id_2')
+        .in('user_id_2', friendIds)
+        .in('status', ['active', 'pending', 'accepted']),
+      // Friend photos (JSONB may be empty/stale)
+      supabase
+        .from('user_photos')
+        .select('user_id, storage_path, is_main, display_order')
+        .in('user_id', friendIds)
+        .order('display_order', { ascending: true }),
     ]);
 
     const profileMap = new Map<string, any>();
     (profiles || []).forEach(p => {
-      logger.info(`[getFriendsAsAnchors] RAW profile for ${p.first_name}: photos=${JSON.stringify(p.photos)?.substring(0, 200)}, profile_photo_path=${p.profile_photo_path}`);
       profileMap.set(p.user_id, p);
     });
 
-    // Build a set of friend IDs the current user has already helped today
-    const helpedToday = new Set<string>();
-    (completions || []).forEach((c: any) => {
-      if (c.user_id === userId) helpedToday.add(c.friend_id);
-    });
+    // Build map: friendId → active proposal ID (if any)
+    const friendProposalMap = new Map<string, string>();
+    for (const p of (friendProposalsA || [])) {
+      friendProposalMap.set(p.user_a_id, p.id);
+    }
+    for (const p of (friendProposalsB || [])) {
+      friendProposalMap.set(p.user_b_id, p.id);
+    }
+
+    // Build set of friends with active matches
+    const friendsWithMatch = new Set<string>();
+    for (const m of (matchesA || [])) {
+      if (friendIds.includes(m.user_id_1)) friendsWithMatch.add(m.user_id_1);
+    }
+    for (const m of (matchesB || [])) {
+      if (friendIds.includes(m.user_id_2)) friendsWithMatch.add(m.user_id_2);
+    }
+
+    // Fetch current user's votes on friends' active proposals
+    const activeProposalIds = Array.from(friendProposalMap.values());
+    let votedProposalIds = new Set<string>();
+
+    if (activeProposalIds.length > 0) {
+      const { data: userVotes } = await supabase
+        .from('proposal_votes')
+        .select('proposal_id')
+        .eq('voter_user_id', userId)
+        .in('proposal_id', activeProposalIds);
+
+      votedProposalIds = new Set((userVotes || []).map((v: any) => v.proposal_id));
+    }
+
+    // Determine hasCompletedGrid for each friend:
+    // false (Help) = friend has active proposal user has NEVER voted on
+    // true (Already Helped) = everything else
+    const alreadyHelped = new Set<string>();
+    for (const friendId of friendIds) {
+      const proposalId = friendProposalMap.get(friendId);
+      if (!proposalId) {
+        // No active proposal → already helped (nothing to vote on)
+        alreadyHelped.add(friendId);
+      } else if (friendsWithMatch.has(friendId)) {
+        // Has active match → already helped
+        alreadyHelped.add(friendId);
+      } else if (votedProposalIds.has(proposalId)) {
+        // User already voted on this proposal → already helped
+        alreadyHelped.add(friendId);
+      }
+      // Otherwise: friend has active proposal user hasn't voted on → Help
+    }
 
     // Build friend list and filter blocked
     const friends = allFriendships
@@ -405,7 +388,7 @@ class CommunityBackendService {
           friendId,
           friend: profile ? mapProfileRow(profile) : { id: friendId, firstName: 'Friend' } as UserProfile,
           isAnchorToday: true,
-          hasCompletedGrid: helpedToday.has(friendId),
+          hasCompletedGrid: alreadyHelped.has(friendId),
           addedAt: f.added_at || new Date().toISOString(),
           streakDays,
           assistsCount: 0,
@@ -413,14 +396,8 @@ class CommunityBackendService {
         };
       });
 
-    // Always check user_photos table for ALL friends (JSONB may be empty/stale)
+    // Use pre-fetched user_photos to fill in friends with empty JSONB photos
     {
-      const { data: userPhotos } = await supabase
-        .from('user_photos')
-        .select('user_id, storage_path, is_main, display_order')
-        .in('user_id', friendIds)
-        .order('display_order', { ascending: true });
-
       logger.info(`[getFriendsAsAnchors] user_photos table returned ${userPhotos?.length || 0} rows for ${friendIds.length} friends`);
 
       if (userPhotos && userPhotos.length > 0) {
@@ -510,80 +487,6 @@ class CommunityBackendService {
     }
 
     return friends;
-  }
-
-  async getFriendGrid(friendId: string): Promise<DailyGrid> {
-    const today = new Date().toISOString().split('T')[0];
-
-    // Check if there's a survey for this friend (recipient_user_id = the friend being matched)
-    const { data: survey } = await supabase
-      .from('daily_surveys')
-      .select('*')
-      .eq('recipient_user_id', friendId)
-      .eq('survey_date', today)
-      .maybeSingle();
-
-    if (!survey) {
-      throw new Error('Friend has no grid today');
-    }
-
-    // Collect candidate IDs from separate columns
-    const candidateIds = [
-      survey.candidate_1_user_id,
-      survey.candidate_2_user_id,
-      survey.candidate_3_user_id,
-    ].filter(Boolean);
-    const candidates: UserProfile[] = [];
-
-    if (candidateIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .in('user_id', candidateIds);
-
-      if (profiles) {
-        candidates.push(...profiles.map(mapProfileRow));
-      }
-    }
-
-    // Fetch friend profile
-    const { data: friendProfile } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('user_id', friendId)
-      .maybeSingle();
-
-    return {
-      id: survey.id,
-      anchorUserId: friendId,
-      anchor: friendProfile ? mapProfileRow(friendProfile) : { id: friendId, firstName: 'Friend' } as UserProfile,
-      candidates,
-      gridDate: today,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      hasVoted: !!survey.is_completed,
-      hasMatched: !!survey.is_completed,
-    };
-  }
-
-  async submitFriendGridProposal(friendId: string, candidateId: string): Promise<void> {
-    const userId = await getCurrentUserId();
-    const today = new Date().toISOString().split('T')[0];
-
-    // Mark the survey as completed for this friend
-    await supabase
-      .from('daily_surveys')
-      .update({
-        is_completed: true,
-        completed_at: new Date().toISOString(),
-      })
-      .eq('recipient_user_id', friendId)
-      .eq('survey_date', today);
-
-    // Record grid completion and update streak
-    await supabase.rpc('record_grid_completion', {
-      p_user_id: userId,
-      p_friend_id: friendId,
-    });
   }
 
   // ========================================================================
@@ -810,27 +713,16 @@ class CommunityBackendService {
     const votesCompleted = (voteCount || 0) + this.sessionVoteCount;
     const hasVoted = votesCompleted >= 3;
 
-    // Check if user completed a daily survey today
-    const { data: survey } = await supabase
-      .from('daily_surveys')
-      .select('is_completed')
-      .eq('ranker_user_id', userId)
-      .eq('survey_date', today)
-      .maybeSingle();
-
-    const hasCreatedProposal = !!survey?.is_completed;
-    const allComplete = hasVoted;
-
     return {
       id: `task-${today}`,
       userId,
       taskDate: today,
       hasVotedOnProposals: hasVoted,
       proposalsVotedCount: Math.min(votesCompleted, 3),
-      hasCreatedProposal,
-      hasCompletedRandomMatch: hasCreatedProposal,
-      allTasksCompleted: allComplete,
-      completedAt: allComplete ? new Date().toISOString() : undefined,
+      hasCreatedProposal: false,
+      hasCompletedRandomMatch: false,
+      allTasksCompleted: hasVoted,
+      completedAt: hasVoted ? new Date().toISOString() : undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -859,14 +751,12 @@ class CommunityBackendService {
   // ========================================================================
 
   /**
-   * Mark a friend as helped today (i.e., the current user submitted a proposal for them).
-   * In the real backend this is persisted via the friend_proposal_submissions table.
-   * For now it is a no-op stub — the actual persistence happens in submitFriendGridProposal.
+   * Mark a friend as helped (i.e., the current user voted on their proposal).
+   * No-op — the actual persistence happens via proposal_votes when the user votes.
    */
   async markFriendAsHelped(_friendId: string): Promise<void> {
-    // Real implementation: the daily_surveys row for this friend is already updated
-    // by submitFriendGridProposal. No separate record needed.
-    logger.info('[Backend] markFriendAsHelped called — persistence handled by submitFriendGridProposal');
+    // Voting on a friend's proposal is recorded in proposal_votes table
+    // via submitProposalVote(). No separate record needed.
   }
 
   // ========================================================================

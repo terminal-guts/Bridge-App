@@ -6,8 +6,7 @@
  */
 
 import * as ImageManipulator from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
-import { Buffer } from 'buffer';
+import { decode } from 'base64-arraybuffer';
 import { supabase } from '../lib/supabase';
 import { Photo, ApiResponse } from '../types';
 import { requireAuth } from '../utils/auth';
@@ -18,7 +17,6 @@ import {
   formatRetryTime,
 } from '../utils/rateLimiter';
 import { createLogger } from '../utils/secureLogger';
-import { Platform } from 'react-native';
 
 // Create namespaced logger for this service
 const logger = createLogger('PhotoService');
@@ -123,118 +121,33 @@ const compressImage = async (
 };
 
 /**
- * Convert base64 string to ArrayBuffer (React Native compatible)
+ * Read image URI as base64 string for upload
+ * Uses fetch + FileReader (standard API, works with Expo SDK 54+)
  */
-const base64ToArrayBuffer = (base64: string): ArrayBuffer => {
-  // Remove data URL prefix if present
-  const base64String = base64.replace(/^data:image\/\w+;base64,/, '');
+const uriToBase64 = async (uri: string): Promise<string> => {
+  logger.debug('Reading file as base64 from URI:', uri.substring(0, 50));
 
-  // Decode base64 to binary string
-  const binaryString = typeof atob !== 'undefined'
-    ? atob(base64String)
-    : Buffer.from(base64String, 'base64').toString('binary');
+  const response = await fetch(uri);
+  const blob = await response.blob();
 
-  // Convert binary string to ArrayBuffer
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
+  const base64: string = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      // result is "data:image/jpeg;base64,AAAA..." — strip the prefix
+      const dataUrl = reader.result as string;
+      const base64String = dataUrl.split(',')[1];
+      if (base64String) {
+        resolve(base64String);
+      } else {
+        reject(new Error('Failed to extract base64 from data URL'));
+      }
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
 
-  return bytes.buffer;
-};
-
-/**
- * Convert image URI to ArrayBuffer for upload (React Native compatible)
- * Tries multiple methods with fallbacks for maximum compatibility
- */
-const uriToArrayBuffer = async (uri: string): Promise<ArrayBuffer> => {
-  logger.debug('Reading file from URI:', uri.substring(0, 50));
-
-  // METHOD 1: Try using FileSystem with string literal encoding
-  try {
-    logger.debug('Method 1: Trying FileSystem with string literal encoding...');
-
-    const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: 'base64' as any, // Use string literal instead of enum
-    });
-
-    logger.debug('File read successfully with Method 1, converting to ArrayBuffer...');
-    const arrayBuffer = base64ToArrayBuffer(base64);
-    logger.debug('ArrayBuffer created, size:', arrayBuffer.byteLength);
-
-    return arrayBuffer;
-  } catch (error: any) {
-    logger.warn('Method 1 failed:', error.message);
-  }
-
-  // METHOD 2: Try using FileSystem with EncodingType enum (if it exists)
-  try {
-    logger.debug('Method 2: Trying FileSystem with EncodingType enum...');
-
-    // Check if EncodingType exists
-    if ((FileSystem as any).EncodingType?.Base64) {
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: (FileSystem as any).EncodingType.Base64,
-      });
-
-      logger.debug('File read successfully with Method 2, converting to ArrayBuffer...');
-      const arrayBuffer = base64ToArrayBuffer(base64);
-      logger.debug('ArrayBuffer created, size:', arrayBuffer.byteLength);
-
-      return arrayBuffer;
-    } else {
-      logger.debug('EncodingType.Base64 not available, skipping Method 2');
-    }
-  } catch (error: any) {
-    logger.warn('Method 2 failed:', error.message);
-  }
-
-  // METHOD 3: Try using fetch API to read file as arrayBuffer
-  try {
-    logger.debug('Method 3: Trying fetch API to read file...');
-
-    const response = await fetch(uri);
-
-    if (!response.ok) {
-      throw new Error(`Fetch failed with status ${response.status}`);
-    }
-
-    const arrayBuffer = await response.arrayBuffer();
-    logger.debug('File read successfully with Method 3, ArrayBuffer size:', arrayBuffer.byteLength);
-
-    return arrayBuffer;
-  } catch (error: any) {
-    logger.warn('Method 3 failed:', error.message);
-  }
-
-  // METHOD 4: Try using XMLHttpRequest (React Native fallback)
-  try {
-    logger.debug('Method 4: Trying XMLHttpRequest...');
-
-    return await new Promise<ArrayBuffer>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('GET', uri, true);
-      xhr.responseType = 'arraybuffer';
-
-      xhr.onload = () => {
-        if (xhr.status === 200) {
-          logger.debug('File read successfully with Method 4, ArrayBuffer size:', xhr.response.byteLength);
-          resolve(xhr.response);
-        } else {
-          reject(new Error(`XMLHttpRequest failed with status ${xhr.status}`));
-        }
-      };
-
-      xhr.onerror = () => reject(new Error('XMLHttpRequest failed'));
-      xhr.send();
-    });
-  } catch (error: any) {
-    logger.error('Method 4 failed:', error.message);
-  }
-
-  // All methods failed
-  logger.error('All methods to read file failed!');
-  throw new Error('Failed to process image: All file reading methods failed. Please ensure photo permissions are granted.');
+  logger.debug('File read successfully, base64 length:', base64.length);
+  return base64;
 };
 
 /**
@@ -254,28 +167,27 @@ const uploadPhotoInternal = async (
       return createErrorResponse('INVALID_INPUT', 'Image URI is required');
     }
 
-    // Step 1: Compress and optimize image
+    // Step 1: Compress and optimize image (always outputs JPEG)
     logger.debug('Compressing image...');
     const compressedUri = await compressImage(imageUri, compressionOptions);
 
-    // Step 2: Convert to ArrayBuffer
-    logger.debug('Converting to ArrayBuffer...');
-    const arrayBuffer = await uriToArrayBuffer(compressedUri);
+    // Step 2: Read file as base64
+    logger.debug('Reading file as base64...');
+    const base64Data = await uriToBase64(compressedUri);
 
-    // Step 3: Generate storage path
+    // Step 3: Generate storage path (always .jpg since compression outputs JPEG)
     const photoId = generatePhotoId();
-    const extension = getFileExtension(imageUri);
-    const storagePath = generateStoragePath(userId, photoId, extension);
+    const storagePath = generateStoragePath(userId, photoId, 'jpg');
 
     logger.debug('Uploading to Supabase Storage:', storagePath);
 
-    // Step 4: Upload to Supabase Storage using ArrayBuffer
+    // Step 4: Upload to Supabase Storage using decoded base64
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(storagePath, arrayBuffer, {
-        contentType: `image/${extension === 'jpg' ? 'jpeg' : extension}`,
+      .upload(storagePath, decode(base64Data), {
+        contentType: 'image/jpeg',
         cacheControl: '3600',
-        upsert: false, // Don't overwrite existing photos
+        upsert: false,
       });
 
     if (uploadError) {

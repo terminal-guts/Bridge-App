@@ -100,9 +100,12 @@ export function useFriendsArea(): UseFriendsAreaResult {
    * Propose match for friend
    */
   const proposeForFriend = useCallback(
-    async (friendId: string, candidateId: string) => {
+    async (friendId: string, _candidateId: string) => {
       try {
-        await communityService.submitFriendGridProposal(friendId, candidateId);
+        // Voting on a friend's proposal is recorded via proposal_votes
+        // (handled by ProposalReviewView → submitProposalVote).
+        // Here we just mark helped and update UI.
+        await communityService.markFriendAsHelped(friendId);
 
         // Update friend's completion status optimistically
         setFriends((prev) =>

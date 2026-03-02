@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { getCurrentUser, signOut } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
+import { uploadPhoto } from '../../services/photoService';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { OfflineBanner } from '../../components/OfflineBanner';
 import { PhotoCompletionBanner } from '../../components/PhotoCompletionBanner';
@@ -298,8 +299,6 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
   const [newValue, setNewValue] = useState('');
   const [isHeightFocused, setIsHeightFocused] = useState(false);
   const [heightError, setHeightError] = useState<string>('');
-  const [showVisibilityModal, setShowVisibilityModal] = useState(false);
-
   // "Other" custom input modals
   const [showCustomGenderModal, setShowCustomGenderModal] = useState(false);
   const [customGenderValue, setCustomGenderValue] = useState('');
@@ -340,19 +339,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
   // Track original profile for change detection
   const originalProfileRef = useRef<string | null>(null);
 
-  // Section visibility controls - all default to true (visible)
-  const [sectionVisibility, setSectionVisibility] = useState({
-    religion: true,
-    politics: true,
-    occupation: true,
-    company: true,
-    educationLevel: true,
-    school: true,
-    family: true,
-    lifestyle: true,
-  });
   const { isOffline } = useNetworkStatus();
-  const visibilityModalAnim = useRef(new Animated.Value(0)).current;
 
 
   // Calculate "About Me" section completion percentage in real-time
@@ -364,15 +351,6 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
   useEffect(() => {
     loadProfile();
   }, []);
-
-  useEffect(() => {
-    Animated.spring(visibilityModalAnim, {
-      toValue: showVisibilityModal ? 1 : 0,
-      useNativeDriver: true,
-      tension: 65,
-      friction: 11,
-    }).start();
-  }, [showVisibilityModal]);
 
   useEffect(() => {
     Animated.spring(customGenderModalAnim, {
@@ -526,20 +504,6 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
         // Store original profile for change detection
         originalProfileRef.current = JSON.stringify(profileResult.data);
 
-        // Load sectionVisibility from profile, default to all visible if not set
-        if (profileResult.data.sectionVisibility) {
-          const saved = profileResult.data.sectionVisibility;
-          setSectionVisibility({
-            religion: saved.religion ?? true,
-            politics: saved.politics ?? true,
-            occupation: saved.occupation ?? true,
-            company: saved.company ?? true,
-            educationLevel: saved.educationLevel ?? true,
-            school: saved.school ?? true,
-            family: saved.family ?? true,
-            lifestyle: saved.lifestyle ?? true,
-          });
-        }
       } else {
         Alert.alert('Error', 'Failed to load profile');
       }
@@ -587,13 +551,26 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
 
     setSaving(true);
     try {
-      // Include sectionVisibility in the profile update
-      const profileWithVisibility = {
-        ...profile,
-        sectionVisibility,
-      };
+      // Upload any new photos (file:// URIs) to Supabase Storage first
+      const uploadedPhotos = [];
+      for (const photo of profile.photos || []) {
+        if (photo.url.startsWith('file://')) {
+          const uploadRes = await uploadPhoto(photo.url, photo.order, photo.isMain);
+          if (uploadRes.ok && uploadRes.data) {
+            uploadedPhotos.push(uploadRes.data.photo);
+          } else {
+            logger.error('Photo upload failed:', uploadRes.error?.message);
+            Alert.alert('Error', `Failed to upload photo: ${uploadRes.error?.message || 'Unknown error'}`);
+            setSaving(false);
+            return;
+          }
+        } else {
+          uploadedPhotos.push(photo);
+        }
+      }
 
-      const result = await updateUserProfile(profileWithVisibility);
+      const profileToSave = { ...profile, photos: uploadedPhotos };
+      const result = await updateUserProfile(profileToSave);
 
       if (result.ok) {
         navigation.goBack();
@@ -950,14 +927,6 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
 
   // Deprecated activity helper functions removed (activities no longer in onboarding)
 
-  const toggleVisibility = (field: keyof typeof sectionVisibility) => {
-    setSectionVisibility(prev => ({
-      ...prev,
-      [field]: !prev[field],
-    }));
-    lightHaptic();
-  };
-
   if (loading) {
     return (
       <StyledSafeAreaView className="flex-1 bg-neutral-50">
@@ -1060,11 +1029,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
           {/* Preview Profile Button */}
           <StyledTouchableOpacity
             onPress={() => {
-              // Pass current profile state with unsaved visibility changes
-              const previewProfile = profile ? {
-                ...profile,
-                sectionVisibility,
-              } : undefined;
+              const previewProfile = profile ? { ...profile } : undefined;
               navigation.navigate('ProfilePreview', { previewProfile });
             }}
             className="mb-4 bg-neutral-100 border border-neutral-300 rounded-lg px-4 py-3 flex-row items-center justify-center"
@@ -1469,22 +1434,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
             {/* BACKGROUND & BELIEFS */}
             <SectionHeader title="BACKGROUND & BELIEFS" />
             {/* Religion */}
-            <StyledView className="flex-row items-center justify-between mb-2">
-              <Body className="text-xs font-medium text-neutral-700">Religion <StyledText style={{ color: '#EF4444' }}>*</StyledText></Body>
-              <StyledTouchableOpacity
-                onPress={() => toggleVisibility('religion')}
-                className="flex-row items-center"
-              >
-                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
-                <StyledView className={`w-5 h-5 rounded border ${
-                  sectionVisibility.religion ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
-                } items-center justify-center`}>
-                  {sectionVisibility.religion && (
-                    <Ionicons name="checkmark" size={14} color="white" />
-                  )}
-                </StyledView>
-              </StyledTouchableOpacity>
-            </StyledView>
+            <Body className="text-xs font-medium text-neutral-700 mb-2">Religion <StyledText style={{ color: '#EF4444' }}>*</StyledText></Body>
             <StyledView className="flex-row flex-wrap gap-2 mb-4">
               {RELIGION_OPTIONS.map((option) => (
                 <StyledTouchableOpacity
@@ -1527,22 +1477,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
             </StyledView>
 
             {/* Political Leaning */}
-            <StyledView className="flex-row items-center justify-between mb-2">
-              <Body className="text-xs font-medium text-neutral-700">Political Leaning <StyledText style={{ color: '#EF4444' }}>*</StyledText></Body>
-              <StyledTouchableOpacity
-                onPress={() => toggleVisibility('politics')}
-                className="flex-row items-center"
-              >
-                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
-                <StyledView className={`w-5 h-5 rounded border ${
-                  sectionVisibility.politics ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
-                } items-center justify-center`}>
-                  {sectionVisibility.politics && (
-                    <Ionicons name="checkmark" size={14} color="white" />
-                  )}
-                </StyledView>
-              </StyledTouchableOpacity>
-            </StyledView>
+            <Body className="text-xs font-medium text-neutral-700 mb-2">Political Leaning <StyledText style={{ color: '#EF4444' }}>*</StyledText></Body>
             <StyledView className="flex-row flex-wrap gap-2">
               {POLITICAL_OPTIONS.map((option) => (
                 <StyledTouchableOpacity
@@ -1605,22 +1540,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
             <H3 className="mb-4">Professional & Education</H3>
 
             <StyledView className="mb-4">
-              <StyledView className="flex-row items-center justify-between mb-2">
-                <Body className="text-xs font-medium text-neutral-700">Occupation <StyledText style={{ color: '#EF4444' }}>*</StyledText></Body>
-                <StyledTouchableOpacity
-                  onPress={() => toggleVisibility('occupation')}
-                  className="flex-row items-center"
-                >
-                  <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
-                  <StyledView className={`w-5 h-5 rounded border ${
-                    sectionVisibility.occupation ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
-                  } items-center justify-center`}>
-                    {sectionVisibility.occupation && (
-                      <Ionicons name="checkmark" size={14} color="white" />
-                    )}
-                  </StyledView>
-                </StyledTouchableOpacity>
-              </StyledView>
+              <Body className="text-xs font-medium text-neutral-700 mb-2">Occupation <StyledText style={{ color: '#EF4444' }}>*</StyledText></Body>
               <Input
                 value={profile.currentJob || ''}
                 onChangeText={(text) => updateProfile({ currentJob: text })}
@@ -1628,24 +1548,9 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               />
             </StyledView>
             <StyledView className="mb-4">
-              <StyledView className="flex-row items-center justify-between mb-2">
-                <Body className="text-xs font-medium text-neutral-700">
-                  Company/Position <Body className="text-[11px] text-neutral-400">(optional)</Body>
-                </Body>
-                <StyledTouchableOpacity
-                  onPress={() => toggleVisibility('company')}
-                  className="flex-row items-center"
-                >
-                  <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
-                  <StyledView className={`w-5 h-5 rounded border ${
-                    sectionVisibility.company ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
-                  } items-center justify-center`}>
-                    {sectionVisibility.company && (
-                      <Ionicons name="checkmark" size={14} color="white" />
-                    )}
-                  </StyledView>
-                </StyledTouchableOpacity>
-              </StyledView>
+              <Body className="text-xs font-medium text-neutral-700 mb-2">
+                Company/Position <Body className="text-[11px] text-neutral-400">(optional)</Body>
+              </Body>
               <Input
                 value={profile.companyPosition || ''}
                 onChangeText={(text) => updateProfile({ companyPosition: text })}
@@ -1654,24 +1559,9 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
             </StyledView>
 
             {/* Education Level */}
-            <StyledView className="flex-row items-center justify-between mb-2">
-              <Body className="text-xs font-medium text-neutral-700">
-                Education Level <Body className="text-[11px] text-neutral-400">(optional)</Body>
-              </Body>
-              <StyledTouchableOpacity
-                onPress={() => toggleVisibility('educationLevel')}
-                className="flex-row items-center"
-              >
-                <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
-                <StyledView className={`w-5 h-5 rounded border ${
-                  sectionVisibility.educationLevel ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
-                } items-center justify-center`}>
-                  {sectionVisibility.educationLevel && (
-                    <Ionicons name="checkmark" size={14} color="white" />
-                  )}
-                </StyledView>
-              </StyledTouchableOpacity>
-            </StyledView>
+            <Body className="text-xs font-medium text-neutral-700 mb-2">
+              Education Level <Body className="text-[11px] text-neutral-400">(optional)</Body>
+            </Body>
             <StyledView className="flex-row flex-wrap gap-2 mb-4">
               {EDUCATION_LEVELS.map((option) => (
                 <StyledTouchableOpacity
@@ -1734,24 +1624,9 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
             </StyledView>
 
             <StyledView className="mb-4">
-              <StyledView className="flex-row items-center justify-between mb-2">
-                <Body className="text-xs font-medium text-neutral-700">
-                  School / University <Body className="text-[11px] text-neutral-400">(optional)</Body>
-                </Body>
-                <StyledTouchableOpacity
-                  onPress={() => toggleVisibility('school')}
-                  className="flex-row items-center"
-                >
-                  <Body className="text-xs text-neutral-500 mr-2">Show on profile</Body>
-                  <StyledView className={`w-5 h-5 rounded border ${
-                    sectionVisibility.school ? 'bg-purple-500 border-purple-500' : 'border-neutral-300'
-                  } items-center justify-center`}>
-                    {sectionVisibility.school && (
-                      <Ionicons name="checkmark" size={14} color="white" />
-                    )}
-                  </StyledView>
-                </StyledTouchableOpacity>
-              </StyledView>
+              <Body className="text-xs font-medium text-neutral-700 mb-2">
+                School / University <Body className="text-[11px] text-neutral-400">(optional)</Body>
+              </Body>
               <Input
                 value={profile.school || ''}
                 onChangeText={(text) => updateProfile({ school: text })}
@@ -1858,149 +1733,6 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
           />
         </StyledView>
       </StyledScrollView>
-
-      {/* Profile Visibility Settings Modal */}
-      <Modal
-        visible={showVisibilityModal}
-        animationType="none"
-        transparent
-        onRequestClose={() => setShowVisibilityModal(false)}
-      >
-        <StyledAnimatedView
-          className="flex-1 bg-black/50 justify-end"
-          style={{
-            opacity: visibilityModalAnim,
-          }}
-        >
-          <StyledAnimatedView
-            className="bg-white rounded-t-3xl max-h-[85%]"
-            style={{
-              transform: [{
-                translateY: visibilityModalAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [600, 0],
-                }),
-              }],
-            }}
-          >
-            {/* Header - Outside scrollable area, fixed at top */}
-            <StyledView className="px-6 pt-6 pb-4 border-b border-neutral-100 bg-white rounded-t-3xl">
-              <StyledView className="flex-row items-center justify-between mb-2">
-                <StyledView className="flex-row items-center">
-                  <Ionicons name="eye-off" size={24} color="#475467" />
-                  <H3 className="ml-2">Profile Visibility</H3>
-                </StyledView>
-                <StyledTouchableOpacity
-                  onPress={() => setShowVisibilityModal(false)}
-                  accessibilityLabel="Close"
-                  accessibilityRole="button"
-                >
-                  <Ionicons name="close" size={24} color="#101828" />
-                </StyledTouchableOpacity>
-              </StyledView>
-
-              <Body className="text-neutral-600 text-sm">
-                Choose which sections of your profile are visible to others
-              </Body>
-            </StyledView>
-
-            {/* Scrollable Content */}
-            <StyledScrollView className="px-6 py-4" showsVerticalScrollIndicator={false}>
-                {/* Info Card */}
-                <Card className="bg-blue-50 border border-blue-200 mb-4">
-                  <StyledView className="flex-row items-start">
-                    <Ionicons name="information-circle" size={20} color="#437FFF" />
-                    <Body className="flex-1 text-blue-900 text-sm ml-2">
-                      Control visibility of sensitive profile information. Hidden sections won't appear on your public profile but may still be used for matching.
-                    </Body>
-                  </StyledView>
-                </Card>
-
-                {/* Section Toggles - Only 4 sensitive sections */}
-                <StyledView className="space-y-3">
-                  {/* Religion */}
-                  <StyledView className="flex-row items-center justify-between py-3 border-b border-neutral-100">
-                    <StyledView className="flex-1">
-                      <Body className="text-neutral-900 font-semibold mb-1">Religion</Body>
-                      <Body className="text-neutral-600 text-sm">Your religious beliefs</Body>
-                    </StyledView>
-                    <Switch
-                      value={sectionVisibility.religion}
-                      onValueChange={(value) => {
-                        mediumHaptic();
-                        setSectionVisibility({...sectionVisibility, religion: value});
-                      }}
-                      trackColor={{ false: '#D0D5DD', true: '#B4D4FF' }}
-                      thumbColor={sectionVisibility.religion ? '#437FFF' : '#F4F4F5'}
-                    />
-                  </StyledView>
-
-                  {/* Politics */}
-                  <StyledView className="flex-row items-center justify-between py-3 border-b border-neutral-100">
-                    <StyledView className="flex-1">
-                      <Body className="text-neutral-900 font-semibold mb-1">Politics</Body>
-                      <Body className="text-neutral-600 text-sm">Your political views</Body>
-                    </StyledView>
-                    <Switch
-                      value={sectionVisibility.politics}
-                      onValueChange={(value) => {
-                        mediumHaptic();
-                        setSectionVisibility({...sectionVisibility, politics: value});
-                      }}
-                      trackColor={{ false: '#D0D5DD', true: '#B4D4FF' }}
-                      thumbColor={sectionVisibility.politics ? '#437FFF' : '#F4F4F5'}
-                    />
-                  </StyledView>
-
-                  {/* Family & Relationships */}
-                  <StyledView className="flex-row items-center justify-between py-3 border-b border-neutral-100">
-                    <StyledView className="flex-1">
-                      <Body className="text-neutral-900 font-semibold mb-1">Family & Relationships</Body>
-                      <Body className="text-neutral-600 text-sm">Children status, family plans</Body>
-                    </StyledView>
-                    <Switch
-                      value={sectionVisibility.family}
-                      onValueChange={(value) => {
-                        mediumHaptic();
-                        setSectionVisibility({...sectionVisibility, family: value});
-                      }}
-                      trackColor={{ false: '#D0D5DD', true: '#B4D4FF' }}
-                      thumbColor={sectionVisibility.family ? '#437FFF' : '#F4F4F5'}
-                    />
-                  </StyledView>
-
-                  {/* Lifestyle & Habits */}
-                  <StyledView className="flex-row items-center justify-between py-3">
-                    <StyledView className="flex-1">
-                      <Body className="text-neutral-900 font-semibold mb-1">Lifestyle & Habits</Body>
-                      <Body className="text-neutral-600 text-sm">Drinking, cannabis, tobacco use</Body>
-                    </StyledView>
-                    <Switch
-                      value={sectionVisibility.lifestyle}
-                      onValueChange={(value) => {
-                        mediumHaptic();
-                        setSectionVisibility({...sectionVisibility, lifestyle: value});
-                      }}
-                      trackColor={{ false: '#D0D5DD', true: '#B4D4FF' }}
-                      thumbColor={sectionVisibility.lifestyle ? '#437FFF' : '#F4F4F5'}
-                    />
-                  </StyledView>
-                </StyledView>
-            </StyledScrollView>
-
-            {/* Footer - Fixed at bottom */}
-            <StyledView className="px-6 py-4 border-t border-neutral-100 bg-white">
-              <Button
-                onPress={() => setShowVisibilityModal(false)}
-                variant="primary"
-                fullWidth
-              >
-                Done
-              </Button>
-            </StyledView>
-          </StyledAnimatedView>
-        </StyledAnimatedView>
-      </Modal>
 
       {/* Gender "Other" Custom Input Modal */}
       <Modal

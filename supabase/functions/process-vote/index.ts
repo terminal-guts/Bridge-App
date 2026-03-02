@@ -5,14 +5,13 @@ import { corsHeaders } from '../_shared/cors.ts';
 
 // Friend vote weight multiplier for weighted YES percentage
 const FRIEND_VOTE_WEIGHT = 1.25;
-const MAX_PROPOSAL_DAYS = 7;
+const MAX_PROPOSAL_DAYS = 5;
 const DECISION_DEADLINE_HOURS = 48;
 
 const THRESHOLD_SCHEDULE: Record<number, number | null> = {
   1: 0.65, 2: 0.65,
-  3: 0.60, 4: 0.60,
-  5: 0.55, 6: 0.55,
-  7: null, // bypass — auto-send
+  3: 0.60, 4: 0.55,
+  5: null, // bypass — auto-send
 };
 
 function getProposalDay(proposal: any): number {

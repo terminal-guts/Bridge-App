@@ -3,14 +3,13 @@ import { createAdminClient } from '../_shared/supabase-client.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 
 const FRIEND_VOTE_WEIGHT = 1.25;
-const MAX_PROPOSAL_DAYS = 7;
+const MAX_PROPOSAL_DAYS = 5;
 const DECISION_DEADLINE_HOURS = 48;
 
 const THRESHOLD_SCHEDULE: Record<number, number | null> = {
   1: 0.65, 2: 0.65,
-  3: 0.60, 4: 0.60,
-  5: 0.55, 6: 0.55,
-  7: null,
+  3: 0.60, 4: 0.55,
+  5: null,
 };
 
 function getProposalDay(proposal: any): number {
@@ -77,7 +76,7 @@ Deno.serve(async (req: Request) => {
       let newStatus = 'pending';
       const updateData: Record<string, any> = {};
 
-      // Check expiry (7-day hard cutoff)
+      // Check expiry (5-day hard cutoff)
       if (getProposalDay(proposal) > MAX_PROPOSAL_DAYS) {
         newStatus = 'expired';
         const deadline = new Date(Date.now() + DECISION_DEADLINE_HOURS * 60 * 60 * 1000).toISOString();

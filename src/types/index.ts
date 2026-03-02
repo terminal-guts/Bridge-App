@@ -369,7 +369,6 @@ export type RootStackParamList = {
   Settings: undefined;
   FriendCode: { returnTo?: string; matchId?: string } | undefined;
   FriendList: undefined;
-  FriendGrid: { friendId: string; friendName: string };
   FriendProposal: { friendId: string; friendName: string; friendPhotoUrl?: string; friendAge?: number; friendJob?: string };
   MatchPreferences: undefined;
   BlockedUsers: undefined;

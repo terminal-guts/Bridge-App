@@ -26,7 +26,6 @@ import {
   CommunityScreen,
 } from '../screens/main';
 import { DeepQuestionsScreen } from '../screens/main/DeepQuestionsScreen';
-import { FriendGridScreen } from '../screens/community/FriendGridScreen';
 import { FriendProposalScreen } from '../screens/community/FriendProposalScreen';
 
 // Onboarding
@@ -289,7 +288,6 @@ export const AppNavigator = () => {
           <Stack.Screen name="MainTabs" component={MainTabs} />
 
           {/* Community Screens */}
-          <Stack.Screen name="FriendGrid" component={FriendGridScreen} />
           <Stack.Screen name="FriendProposal" component={FriendProposalScreen} />
 
           {/* Match Screens */}

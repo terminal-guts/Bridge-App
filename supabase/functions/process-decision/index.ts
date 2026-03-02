@@ -138,7 +138,7 @@ Deno.serve(async (req: Request) => {
 
       const { error: matchErr } = await supabase
         .from('matches')
-        .upsert({
+        .insert({
           user_id_1: u1,
           user_id_2: u2,
           status: 'active',
@@ -147,12 +147,20 @@ Deno.serve(async (req: Request) => {
           matched_at: nowIso,
           created_at: nowIso,
           updated_at: nowIso,
-        }, { onConflict: 'user_id_1,user_id_2' });
+        });
 
       if (matchErr) {
         console.error('Match creation error:', matchErr);
         // Don't fail the whole request — the proposal is already updated
       }
+
+      // Cancel any other active proposals involving either user (safety net)
+      await supabase
+        .from('proposals')
+        .update({ status: 'declined', declined_at: nowIso, updated_at: nowIso })
+        .in('status', ['pending', 'deciding'])
+        .neq('id', proposal_id)
+        .or(`user_a_id.eq.${u1},user_a_id.eq.${u2},user_b_id.eq.${u1},user_b_id.eq.${u2}`);
     }
 
     return Response.json({

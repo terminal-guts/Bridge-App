@@ -59,16 +59,29 @@ Deno.serve(async (req: Request) => {
     }
 
     // 3. Fetch exclusion sets in parallel
-    const [existingRes, blockedRes, matchesRes] = await Promise.all([
-      supabase.from('proposals').select('user_a_id, user_b_id'),
+    const [existingRes, activeProposalRes, blockedRes, matchesRes] = await Promise.all([
+      // Permanently blocked pairs: all proposals except expired (rejected/declined = permanent block)
+      supabase.from('proposals').select('user_a_id, user_b_id, status')
+        .not('status', 'eq', 'expired'),
+      // Users who already have an active proposal or are in the deciding window (one at a time)
+      supabase.from('proposals').select('user_a_id, user_b_id')
+        .in('status', ['pending', 'deciding', 'expired']),
       supabase.from('blocked_users').select('user_id, blocked_user_id'),
       supabase.from('matches').select('user_id_1, user_id_2').in('status', ['pending', 'accepted', 'active']),
     ]);
 
+    // Pairs that can never be re-proposed (all non-expired proposals)
     const existingPairs = new Set<string>();
     for (const row of (existingRes.data || [])) {
       const key = [row.user_a_id, row.user_b_id].sort().join('|');
       existingPairs.add(key);
+    }
+
+    // Users who already have an active proposal — cannot get a new one
+    const usersWithActiveProposal = new Set<string>();
+    for (const row of (activeProposalRes.data || [])) {
+      usersWithActiveProposal.add(row.user_a_id);
+      usersWithActiveProposal.add(row.user_b_id);
     }
 
     const blockedPairs = new Set<string>();
@@ -77,10 +90,14 @@ Deno.serve(async (req: Request) => {
       blockedPairs.add(key);
     }
 
+    // Users with active matches — excluded from matchmaking entirely
+    const matchedUsers = new Set<string>();
     const matchPairs = new Set<string>();
     for (const row of (matchesRes.data || [])) {
       const key = [row.user_id_1, row.user_id_2].sort().join('|');
       matchPairs.add(key);
+      matchedUsers.add(row.user_id_1);
+      matchedUsers.add(row.user_id_2);
     }
 
     // 4. Fetch deep question answers for scoring
@@ -115,9 +132,17 @@ Deno.serve(async (req: Request) => {
         const a = eligibleProfiles[i];
         const b = eligibleProfiles[j];
 
+        // Skip users who already have an active proposal or match
+        if (usersWithActiveProposal.has(a.user_id) || usersWithActiveProposal.has(b.user_id)) {
+          continue;
+        }
+        if (matchedUsers.has(a.user_id) || matchedUsers.has(b.user_id)) {
+          continue;
+        }
+
         const pairKey = [a.user_id, b.user_id].sort().join('|');
 
-        // Skip excluded pairs
+        // Skip excluded pairs (permanently blocked or already proposed)
         if (existingPairs.has(pairKey) || blockedPairs.has(pairKey) || matchPairs.has(pairKey)) {
           continue;
         }
@@ -184,7 +209,7 @@ Deno.serve(async (req: Request) => {
 
     // 7. Create proposals in DB
     const now = new Date().toISOString();
-    const votingExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const votingExpires = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
     const createdProposals: any[] = [];
 
     for (const pair of topPairs) {
