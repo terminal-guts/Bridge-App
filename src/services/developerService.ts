@@ -186,10 +186,9 @@ export const getAppState = async (): Promise<any> => {
   const userId = await getCurrentUserId();
   if (!userId) return null;
 
-  const [profile, matches, surveys, friends] = await Promise.all([
+  const [profile, matches, friends] = await Promise.all([
     supabase.from('user_profiles').select('id, first_name, is_paused, karma_score').eq('user_id', userId).single(),
     supabase.from('matches').select('id').or(`user_id_1.eq.${userId},user_id_2.eq.${userId}`),
-    supabase.from('daily_surveys').select('id').eq('ranker_user_id', userId),
     supabase.from('friends').select('id').eq('user_id', userId),
   ]);
 
@@ -197,7 +196,6 @@ export const getAppState = async (): Promise<any> => {
     userId,
     profile: profile.data,
     matchCount: matches.data?.length || 0,
-    surveyCount: surveys.data?.length || 0,
     friendCount: friends.data?.length || 0,
   };
 };

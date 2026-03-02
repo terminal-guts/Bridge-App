@@ -13,4 +13,3 @@ export * from './accountService';
 export * from './surveyService';
 export * from './matchService';
 export * from './messageService';
-export * from './dashboardService';

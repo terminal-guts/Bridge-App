@@ -296,55 +296,6 @@ const createMockMessages = async (
 };
 
 /**
- * Create mock daily survey
- */
-const createMockDailySurvey = async (currentUserId: string): Promise<void> => {
-  logger.info('[DevData] Creating mock daily survey...');
-
-  // Get current user's profile to determine gender
-  const profileResponse = await getUserProfile();
-
-  if (!profileResponse.ok || !profileResponse.data) {
-    logger.error('[DevData] Current user profile not found');
-    return;
-  }
-
-  const currentProfile = profileResponse.data;
-  const currentGender = currentProfile.gender?.[0]?.toLowerCase() || 'male';
-  const oppositeGender = currentGender === 'male' ? 'female' : 'male';
-  const sameGender = currentGender;
-
-  // Create recipient (opposite gender)
-  const recipientUserId = generateUUID();
-  await createMockUserProfile(recipientUserId, oppositeGender, 10);
-
-  // Create 3 candidates (same gender as current user)
-  const candidateIds: string[] = [];
-  for (let i = 0; i < 3; i++) {
-    const candidateUserId = generateUUID();
-    await createMockUserProfile(candidateUserId, sameGender as 'female' | 'male', 20 + i);
-    candidateIds.push(candidateUserId);
-  }
-
-  // Create daily survey
-  const { error } = await supabase.from('daily_surveys').insert({
-    ranker_user_id: currentUserId,
-    recipient_user_id: recipientUserId,
-    candidate_1_user_id: candidateIds[0],
-    candidate_2_user_id: candidateIds[1],
-    candidate_3_user_id: candidateIds[2],
-    survey_date: new Date().toISOString().split('T')[0],
-    is_completed: false,
-  });
-
-  if (error) {
-    logger.error('[DevData] Error creating survey:', error);
-  } else {
-    logger.info('[DevData] Created mock daily survey');
-  }
-};
-
-/**
  * Create mock friends
  */
 const createMockFriends = async (currentUserId: string): Promise<void> => {
@@ -413,7 +364,6 @@ export const createDevelopmentData = async (currentUserId: string, recreate: boo
     // Create all mock data
     await Promise.all([
       createMockMatches(currentUserId),
-      createMockDailySurvey(currentUserId),
       createMockFriends(currentUserId),
     ]);
 
@@ -435,12 +385,6 @@ export const cleanupDevelopmentData = async (currentUserId: string): Promise<voi
       .from('matches')
       .delete()
       .or(`user_id_1.eq.${currentUserId},user_id_2.eq.${currentUserId}`);
-
-    // Delete surveys
-    await supabase
-      .from('daily_surveys')
-      .delete()
-      .eq('ranker_user_id', currentUserId);
 
     // Delete friends
     await supabase
