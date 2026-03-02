@@ -253,7 +253,6 @@ function generateMockKarma(assists: number): KarmaScore {
     badgeTier: tier,
     proposalSuccessRate: totalProposals > 0 ? assists / totalProposals : 0,
     votingAccuracyRate: 0.7 + Math.random() * 0.25, // 70-95%
-    slowModeActive: false,
     lastUpdated: new Date().toISOString(),
   };
 }
@@ -1331,13 +1330,6 @@ class CommunityService {
   }> {
     await this.delay(500);
 
-    // Helper to derive friendship tier from streak
-    const getFriendshipTier = (streakDays: number): 'good' | 'great' | 'best' => {
-      if (streakDays <= 3) return 'good';
-      if (streakDays <= 10) return 'great';
-      return 'best';
-    };
-
     // ── Friends list ────────────────────────────────────────────────────────
     // Empty state: return no friends (but still build match data below)
     const friends = mockState.friendsState === 'empty' ? [] : [
@@ -1363,7 +1355,6 @@ class CommunityService {
         ],
         streakDays: 5,
         assistsCount: 12,
-        friendshipTier: getFriendshipTier(5),
       },
       {
         friendshipId: 'friendship-2',
@@ -1387,7 +1378,6 @@ class CommunityService {
         ],
         streakDays: 12,
         assistsCount: 18,
-        friendshipTier: getFriendshipTier(12),
       },
       {
         friendshipId: 'friendship-3',
@@ -1411,7 +1401,6 @@ class CommunityService {
         ],
         streakDays: 2,
         assistsCount: 5,
-        friendshipTier: getFriendshipTier(2),
       },
       {
         friendshipId: 'friendship-4',
@@ -1430,7 +1419,6 @@ class CommunityService {
         addedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
         streakDays: 15,
         assistsCount: 22,
-        friendshipTier: getFriendshipTier(15),
       },
       {
         friendshipId: 'friendship-5',
@@ -1455,7 +1443,6 @@ class CommunityService {
         ],
         streakDays: 20,
         assistsCount: 30,
-        friendshipTier: getFriendshipTier(20),
       },
     ].map(f => {
       // Use the live streak value from the tracker if participation has occurred,
@@ -1463,13 +1450,9 @@ class CommunityService {
       const liveStreak = getFriendStreak(f.friendId);
       const effectiveStreak = liveStreak > 0 ? liveStreak : f.streakDays;
 
-      // Re-derive friendship tier from the effective streak length.
-      const effectiveTier = getFriendshipTier(effectiveStreak);
-
       return {
         ...f,
         streakDays: effectiveStreak,
-        friendshipTier: effectiveTier,
         // If the user voted a match for this friend, or the friend is matched, mark them as helped
         hasCompletedGrid: f.hasCompletedGrid || f.isMatched || mockState.helpedFriends.includes(f.friendId),
       };

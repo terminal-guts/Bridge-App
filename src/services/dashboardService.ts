@@ -188,12 +188,11 @@ export const getUserStreak = async (userId: string): Promise<ApiResponse<{
 }>> => {
   try {
     const { data, error } = await supabase
-      .from('user_streaks')
-      .select('current_streak, longest_streak, last_survey_date')
-      .eq('user_id', userId)
-      .single();
+      .from('friends')
+      .select('streak_days, last_mutual_date')
+      .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
 
-    if (error && error.code !== 'PGRST116') {
+    if (error) {
       logger.error('Streak fetch error:', error);
       return {
         ok: false,
@@ -204,24 +203,25 @@ export const getUserStreak = async (userId: string): Promise<ApiResponse<{
       };
     }
 
-    // Return default values if no streak record exists
-    if (!data) {
-      return {
-        ok: true,
-        data: {
-          currentStreak: 0,
-          longestStreak: 0,
-          lastSurveyDate: null,
-        },
-      };
+    // Find the maximum streak among all friendships
+    let maxStreak = 0;
+    let latestMutualDate: string | null = null;
+
+    if (data && data.length > 0) {
+      for (const row of data) {
+        if (row.streak_days > maxStreak) {
+          maxStreak = row.streak_days;
+          latestMutualDate = row.last_mutual_date;
+        }
+      }
     }
 
     return {
       ok: true,
       data: {
-        currentStreak: data.current_streak || 0,
-        longestStreak: data.longest_streak || 0,
-        lastSurveyDate: data.last_survey_date,
+        currentStreak: maxStreak,
+        longestStreak: maxStreak, // We don't track longest streak in the friends table yet
+        lastSurveyDate: latestMutualDate,
       },
     };
   } catch (error: any) {

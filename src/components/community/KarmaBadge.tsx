@@ -9,8 +9,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import { EvaIcon } from '../icons';
-import { KARMA_TIERS, KarmaTier } from '../../types/community';
 import { KarmaInfoModal } from './KarmaInfoModal';
 
 const StyledView = styled(View);
@@ -18,47 +16,14 @@ const StyledText = styled(Text);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 
 interface KarmaBadgeProps {
-  tier: KarmaTier;
-  assists?: number;
-  compact?: boolean;
+  points?: number;
 }
 
-export function KarmaBadge({ tier, assists = 0, compact = false }: KarmaBadgeProps) {
+export function KarmaBadge({ points = 0 }: KarmaBadgeProps) {
   const [showTooltip, setShowTooltip] = useState(false);
-  const badge = KARMA_TIERS[tier];
-
-  // Calculate next tier progress
-  const getNextTierProgress = () => {
-    const tiers = ['new', 'solid', 'trusted', 'elite'] as KarmaTier[];
-    const currentIndex = tiers.indexOf(tier);
-
-    if (currentIndex === tiers.length - 1) {
-      // Already at max tier
-      return {
-        current: assists,
-        needed: assists,
-        nextTier: null,
-        isMaxTier: true,
-      };
-    }
-
-    const nextTier = tiers[currentIndex + 1];
-    const nextBadge = KARMA_TIERS[nextTier];
-
-    return {
-      current: assists,
-      needed: nextBadge.minAssists,
-      nextTier: nextBadge.label,
-      isMaxTier: false,
-    };
-  };
-
-  const progress = getNextTierProgress();
 
   const handlePress = () => {
-    if (assists !== undefined) {
-      setShowTooltip(true);
-    }
+    setShowTooltip(true);
   };
 
   return (
@@ -66,41 +31,20 @@ export function KarmaBadge({ tier, assists = 0, compact = false }: KarmaBadgePro
       <StyledTouchableOpacity
         onPress={handlePress}
         activeOpacity={0.7}
-        className="flex-row items-center"
+        style={{
+          flexDirection: 'row', alignItems: 'center',
+          paddingHorizontal: 9, paddingVertical: 4,
+          backgroundColor: 'rgba(52, 199, 89, 0.1)',
+          borderWidth: 1, borderColor: '#34C759',
+          borderRadius: 999,
+        }}
       >
-        {compact ? (
-          // Compact mode: Icon only
-          <StyledView
-            className="px-2 py-1 rounded-full flex-row items-center"
-            style={{ backgroundColor: badge.bgColor }}
-          >
-            <EvaIcon
-              name={badge.icon}
-              variant={tier === 'new' ? 'outline' : 'fill'}
-              color={badge.color}
-              size={14}
-            />
-          </StyledView>
-        ) : (
-          // Full mode: Icon + label
-          <StyledView
-            className="px-3 py-1.5 rounded-full flex-row items-center"
-            style={{ backgroundColor: badge.bgColor }}
-          >
-            <EvaIcon
-              name={badge.icon}
-              variant={tier === 'new' ? 'outline' : 'fill'}
-              color={badge.color}
-              size={14}
-            />
-            <StyledText
-              className="text-xs font-medium"
-              style={{ color: badge.color, marginLeft: 4 }}
-            >
-              {badge.label}
-            </StyledText>
-          </StyledView>
-        )}
+        <StyledText
+          className="text-xs font-semibold"
+          style={{ color: '#34C759' }}
+        >
+          {points} pts
+        </StyledText>
       </StyledTouchableOpacity>
 
       <KarmaInfoModal visible={showTooltip} onClose={() => setShowTooltip(false)} />

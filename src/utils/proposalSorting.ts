@@ -5,7 +5,7 @@
  * karma levels, and friend relationships.
  */
 
-import { Proposal, Endorsement, KARMA_TIERS } from '../types/community';
+import { Proposal, Endorsement } from '../types/community';
 
 /**
  * Calculate endorsement score for a proposal

@@ -16,7 +16,7 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
-import { FriendWithGridStatus, KARMA_TIERS } from '../../types/community';
+import { FriendWithGridStatus } from '../../types/community';
 import { lightHaptic } from '../../utils/haptics';
 
 const StyledView = styled(View) as typeof View;
@@ -53,9 +53,7 @@ export function FriendGridRow({ friend, onViewGrid, onChatPress, onProfilePress 
     onProfilePress();
   };
 
-  const karmaBadge = friend.karmaScore
-    ? KARMA_TIERS[friend.karmaScore.badgeTier]
-    : KARMA_TIERS.new;
+  const points = friend.karmaScore?.karmaPoints || 0;
 
   const candidatePreviews = friend.candidatePreviews || [];
   const showPreviews = candidatePreviews.length > 0;
@@ -85,7 +83,9 @@ export function FriendGridRow({ friend, onViewGrid, onChatPress, onProfilePress 
             <StyledText className="text-base font-semibold text-neutral-900">
               {friend.friend.firstName}
             </StyledText>
-            <StyledText className="text-lg ml-1">{karmaBadge.icon}</StyledText>
+            <StyledText className="text-xs font-semibold text-green-600 ml-2">
+              {points} pts
+            </StyledText>
           </StyledView>
 
           {/* Candidate Previews */}

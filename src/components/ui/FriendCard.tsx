@@ -16,7 +16,7 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
-import { FriendWithGridStatus, FriendshipTier } from '../../types/community';
+import { FriendWithGridStatus } from '../../types/community';
 import { lightHaptic } from '../../utils/haptics';
 import {
     COLORS,
@@ -29,21 +29,6 @@ const StyledText = styled(Text);
 const StyledImage = styled(Image);
 const StyledTouchable = styled(TouchableOpacity);
 
-// Friendship tier label mapping
-const TIER_LABELS: Record<string, string> = {
-    new: 'New friend',
-    good: 'Good friends',
-    great: 'Great friends',
-    best: 'Best friends',
-};
-
-// Friendship tier colors
-const TIER_COLORS: Record<string, { bg: string; text: string }> = {
-    new: { bg: '#F1F5F9', text: '#64748B' },
-    good: { bg: '#E0F2FE', text: '#0284C7' },
-    great: { bg: '#DDD6FE', text: '#7C3AED' },
-    best: { bg: '#FEF3C7', text: '#D97706' },
-};
 
 /**
  * Get streak visual treatment based on streak length
@@ -54,28 +39,6 @@ const getStreakDisplay = (streakDays: number) => {
     if (streakDays >= STREAK_TIERS.STAR) return { emoji: '🔥', suffix: '💫' };
     if (streakDays >= STREAK_TIERS.SPARKLE) return { emoji: '🔥', suffix: '✨' };
     return { emoji: '🔥', suffix: null };
-};
-
-/**
- * Get karma stars based on assist count
- */
-const getKarmaStars = (assists: number): string => {
-    if (assists >= KARMA_TIERS.THREE_STARS_SPARKLE) return '⭐⭐⭐✨';
-    if (assists >= KARMA_TIERS.THREE_STARS) return '⭐⭐⭐';
-    if (assists >= KARMA_TIERS.TWO_STARS) return '⭐⭐';
-    if (assists >= KARMA_TIERS.ONE_STAR) return '⭐';
-    return '';
-};
-
-/**
- * Get karma color based on assist count
- */
-const getKarmaColor = (assists: number): string => {
-    if (assists >= KARMA_TIERS.THREE_STARS_SPARKLE) return COLORS.KARMA_DIAMOND;
-    if (assists >= KARMA_TIERS.THREE_STARS) return COLORS.KARMA_GOLD;
-    if (assists >= KARMA_TIERS.TWO_STARS) return COLORS.KARMA_SILVER;
-    if (assists >= KARMA_TIERS.ONE_STAR) return COLORS.KARMA_BRONZE;
-    return COLORS.KARMA_GRAY;
 };
 
 interface FriendCardProps {
@@ -104,8 +67,7 @@ export const FriendCard = React.memo<FriendCardProps>(({
     const name = friend.friend?.firstName || friend.name || 'Friend';
     const photoUrl = friend.friend?.photos?.[0]?.url || friend.photoUrl || 'https://via.placeholder.com/100';
     const streak = friend.streakDays ?? friend.streak ?? 0;
-    const tier = friend.friendshipTier || 'new';
-    const assists = friend.karmaScore?.totalAssists ?? friend.assistsCount ?? 0;
+    const points = friend.karmaScore?.karmaPoints ?? friend.karmaPoints ?? 0;
 
     const handleAvatarPress = () => {
         lightHaptic();
@@ -125,10 +87,7 @@ export const FriendCard = React.memo<FriendCardProps>(({
         else if (onHelpMatch) onHelpMatch();
     };
 
-    const tierColors = TIER_COLORS[tier] || TIER_COLORS.new;
     const streakDisplay = streak > 0 ? getStreakDisplay(streak) : null;
-    const karmaStars = variant === 'completed' ? getKarmaStars(assists) : null;
-    const karmaColor = variant === 'completed' ? getKarmaColor(assists) : undefined;
 
     return (
         <StyledView
@@ -173,16 +132,6 @@ export const FriendCard = React.memo<FriendCardProps>(({
                         </StyledView>
                     )}
 
-                    <StyledView
-                        style={[
-                            styles.tierBadge,
-                            { backgroundColor: tierColors.bg, borderColor: tierColors.text + '20' }
-                        ]}
-                    >
-                        <StyledText style={[styles.tierText, { color: tierColors.text }]}>
-                            {TIER_LABELS[tier] || tier}
-                        </StyledText>
-                    </StyledView>
                 </StyledView>
             </StyledTouchable>
 
@@ -198,12 +147,9 @@ export const FriendCard = React.memo<FriendCardProps>(({
                     </StyledTouchable>
                 ) : (
                     <StyledView style={styles.karmaContainer}>
-                        <StyledText style={[styles.karmaText, { color: karmaColor }]}>
-                            {assists}
+                        <StyledText style={[styles.karmaText, { color: '#34C759' }]}>
+                            {points} pts
                         </StyledText>
-                        {karmaStars && (
-                            <StyledText style={styles.starsText}>{karmaStars}</StyledText>
-                        )}
                     </StyledView>
                 )}
             </StyledView>
@@ -309,14 +255,9 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end',
     },
     karmaText: {
-        fontSize: 22,
+        fontSize: 18,
         fontWeight: '800',
         letterSpacing: -0.5,
-    },
-    starsText: {
-        fontSize: 14,
-        marginTop: 1,
-        letterSpacing: -1,
     },
 });
 

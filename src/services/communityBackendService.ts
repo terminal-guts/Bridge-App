@@ -17,7 +17,6 @@ import {
   UserProfile,
   CommunityTask,
   FriendWithGridStatus,
-  FriendshipTier,
   MatchEndedEvent,
   ACTIVE_MATCH_MINIMUM_DAYS,
 } from '../types/community';
@@ -152,16 +151,10 @@ export async function resolveProfilePhotos(profiles: UserProfile[]): Promise<voi
   }
 }
 
-function deriveFriendshipTier(streakDays: number): FriendshipTier {
-  if (streakDays >= 10) return 'best';
-  if (streakDays >= 3) return 'great';
-  return 'good';
-}
-
-function deriveKarmaTier(assists: number): KarmaTier {
-  if (assists >= 25) return 'elite';
-  if (assists >= 10) return 'trusted';
-  if (assists >= 3) return 'solid';
+function deriveKarmaTier(points: number): KarmaTier {
+  if (points >= 500) return 'elite';
+  if (points >= 150) return 'trusted';
+  if (points >= 50) return 'solid';
   return 'new';
 }
 
@@ -335,7 +328,7 @@ class CommunityBackendService {
       f.user_id === userId ? f.friend_id : f.user_id
     );
 
-    // Fetch friend profiles, active proposals, matches, and photos in parallel
+    // Fetch friend profiles, active proposals, matches, karma scores and photos in parallel
     const [
       { data: profiles },
       { data: friendProposalsA },
@@ -343,6 +336,7 @@ class CommunityBackendService {
       { data: matchesA },
       { data: matchesB },
       { data: userPhotos },
+      { data: karmaScores },
     ] = await Promise.all([
       supabase
         .from('user_profiles')
@@ -378,11 +372,21 @@ class CommunityBackendService {
         .select('user_id, storage_path, is_main, display_order')
         .in('user_id', friendIds)
         .order('display_order', { ascending: true }),
+      // Friend karma scores
+      supabase
+        .from('karma_scores')
+        .select('*')
+        .in('user_id', friendIds),
     ]);
 
     const profileMap = new Map<string, any>();
     (profiles || []).forEach(p => {
       profileMap.set(p.user_id, p);
+    });
+
+    const karmaMap = new Map<string, any>();
+    (karmaScores || []).forEach(k => {
+      karmaMap.set(k.user_id, k);
     });
 
     // Build map: friendId → active proposal ID (if any)
@@ -453,6 +457,7 @@ class CommunityBackendService {
           streakDays = 0;
         }
 
+        const friendKarma = karmaMap.get(friendId);
         return {
           friendshipId: f.id,
           userId,
@@ -462,8 +467,16 @@ class CommunityBackendService {
           hasCompletedGrid: alreadyHelped.has(friendId),
           addedAt: f.added_at || new Date().toISOString(),
           streakDays,
-          assistsCount: 0,
-          friendshipTier: deriveFriendshipTier(streakDays),
+          assistsCount: friendKarma?.total_assists || 0,
+          karmaScore: friendKarma ? {
+            userId: friendId,
+            karmaPoints: friendKarma.karma_points || 0,
+            totalAssists: friendKarma.total_assists || 0,
+            totalProposals: friendKarma.total_proposals || 0,
+            badgeTier: friendKarma.badge_tier || 'new',
+            proposalSuccessRate: friendKarma.proposal_success_rate || 0,
+            votingAccuracyRate: friendKarma.voting_accuracy_rate || 0,
+          } : undefined,
         };
       });
 
@@ -684,25 +697,25 @@ class CommunityBackendService {
     if (!karma) {
       return {
         userId,
+        karmaPoints: 0,
         totalAssists: 0,
         totalProposals: 0,
         badgeTier: 'new',
         proposalSuccessRate: 0,
         votingAccuracyRate: 0,
-        slowModeActive: false,
         lastUpdated: new Date().toISOString(),
       };
     }
 
-    const assists = karma.total_assists || 0;
+    const points = karma.karma_points || 0;
     return {
       userId,
-      totalAssists: assists,
+      karmaPoints: points,
+      totalAssists: karma.total_assists || 0,
       totalProposals: karma.total_proposals || 0,
-      badgeTier: deriveKarmaTier(assists),
+      badgeTier: karma.badge_tier || deriveKarmaTier(points),
       proposalSuccessRate: karma.proposal_success_rate || 0,
       votingAccuracyRate: karma.voting_accuracy_rate || 0,
-      slowModeActive: karma.slow_mode_active || false,
       lastUpdated: karma.updated_at || new Date().toISOString(),
     };
   }
@@ -767,11 +780,10 @@ class CommunityBackendService {
 
   /**
    * Mark a friend as helped (i.e., the current user voted on their proposal).
-   * No-op — the actual persistence happens via proposal_votes when the user votes.
    */
-  async markFriendAsHelped(_friendId: string): Promise<void> {
-    // Voting on a friend's proposal is recorded in proposal_votes table
-    // via submitProposalVote(). No separate record needed.
+  async markFriendAsHelped(friendId: string): Promise<void> {
+    const userId = await getCurrentUserId();
+    await supabase.rpc('update_friend_streak', { p_user_id: userId, p_friend_id: friendId });
   }
 
   // ========================================================================
