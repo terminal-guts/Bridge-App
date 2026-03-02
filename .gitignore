@@ -4,6 +4,18 @@ node_modules
 .env
 .mcp.json
 
+# Build output
+dist/
+
+# Reference images (stored locally, not needed for builds)
+Images/
+
+# Build artifacts / temp files
+tsc_errors.txt
+tsc_output.txt
+filtered_tsc.txt
+supabase/.temp/
+
 # Python
 **/__pycache__/
 *.pyc
