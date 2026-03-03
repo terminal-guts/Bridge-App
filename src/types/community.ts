@@ -164,14 +164,15 @@ export type KarmaTier = 'new' | 'solid' | 'trusted' | 'elite';
 
 export interface KarmaScore {
   userId: string;
+  karmaPoints: number;
   totalAssists: number;
   totalProposals: number;
   totalVotes?: number;
   accurateVotes?: number;
+  totalInaccurateVotes?: number;
   badgeTier: KarmaTier;
   proposalSuccessRate: number; // Percentage
   votingAccuracyRate: number; // Percentage
-  slowModeActive?: boolean;
   lastUpdated?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -183,7 +184,6 @@ export interface KarmaBadge {
   icon: string;
   color: string;
   bgColor: string;
-  minAssists: number;
 }
 
 export type AssistType = 'creator' | 'endorser' | 'voter';
@@ -248,8 +248,6 @@ export interface DailyTaskStatus {
 
 // ==================== Friend Grid Types ====================
 
-export type FriendshipTier = 'good' | 'great' | 'best';
-
 export interface FriendGrid {
   friendId: string;
   friend: UserProfile;
@@ -283,7 +281,6 @@ export interface FriendWithGridStatus {
   addedAt: string;
   streakDays: number; // Days in a row both users filled out grids for each other
   assistsCount: number; // Total successful setups this friend has made
-  friendshipTier: FriendshipTier; // Derived from streakDays
 }
 
 // Extended type for UI rendering with variant (pending vs completed)
@@ -404,7 +401,6 @@ export const KARMA_TIERS: Record<KarmaTier, KarmaBadge> = {
     icon: 'star', // Eva Icon name
     color: '#94A3B8',
     bgColor: '#F1F5F9',
-    minAssists: 0,
   },
   solid: {
     tier: 'solid',
@@ -412,7 +408,6 @@ export const KARMA_TIERS: Record<KarmaTier, KarmaBadge> = {
     icon: 'star',
     color: '#10B981',
     bgColor: '#ECFDF5',
-    minAssists: 3,
   },
   trusted: {
     tier: 'trusted',
@@ -420,7 +415,6 @@ export const KARMA_TIERS: Record<KarmaTier, KarmaBadge> = {
     icon: 'award',
     color: '#8B5CF6',
     bgColor: '#F5F3FF',
-    minAssists: 10,
   },
   elite: {
     tier: 'elite',
@@ -428,7 +422,6 @@ export const KARMA_TIERS: Record<KarmaTier, KarmaBadge> = {
     icon: 'award',
     color: '#F59E0B',
     bgColor: '#FFFBEB',
-    minAssists: 25,
   },
 };
 

@@ -15,7 +15,6 @@ import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { Proposal, UserProfile, Endorsement } from '../../types/community';
 import { KarmaBadge } from './KarmaBadge';
-import { isHighlyRecommended } from '../../utils/proposalSorting';
 
 const StyledView = styled(View) as typeof View;
 const StyledText = styled(Text) as typeof Text;
@@ -38,7 +37,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
   showRecommendedBadge = true,
 }) => {
   const hasVoted = yourVote !== undefined;
-  const highlyRecommended = showRecommendedBadge && isHighlyRecommended(proposal);
+  const highlyRecommended = false;
 
   // Animation refs
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -172,9 +171,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
               {isFriend && (
                 <>
                   <KarmaBadge
-                    tier={endorsement.endorserProfile.karma?.badgeTier || 'new'}
-                    assists={endorsement.endorserProfile.karma?.totalAssists || 0}
-                    compact
+                    points={endorsement.endorserProfile.karma?.karmaPoints || 0}
                   />
                   <StyledText className="text-xs text-neutral-700">)</StyledText>
                 </>

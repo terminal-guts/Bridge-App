@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Bridge",
+    "name": "Bridge: Social Matchmaking",
     "slug": "bridge",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -18,13 +18,15 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.bridgedate.app",
       "buildNumber": "1",
+      "appleTeamId": "D9C93RG4RZ",
       "infoPlist": {
         "NSCameraUsageDescription": "Bridge needs camera access to take profile photos.",
         "NSPhotoLibraryUsageDescription": "Bridge needs photo library access to upload profile photos.",
         "NSPhotoLibraryAddUsageDescription": "Bridge needs permission to save photos.",
         "NSMicrophoneUsageDescription": "Bridge needs microphone access for voice features.",
         "NSLocationWhenInUseUsageDescription": "Bridge uses your location to show nearby matches."
-      }
+      },
+      "runtimeVersion": "1.0.0"
     },
     "android": {
       "adaptiveIcon": {
@@ -36,8 +38,15 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
-      ]
+      ],
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -64,6 +73,9 @@
       "eas": {
         "projectId": "1836c5e9-009d-477d-8769-8aef37693e5f"
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/1836c5e9-009d-477d-8769-8aef37693e5f"
     }
   }
 }

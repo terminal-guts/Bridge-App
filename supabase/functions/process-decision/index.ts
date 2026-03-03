@@ -154,6 +154,12 @@ Deno.serve(async (req: Request) => {
         // Don't fail the whole request — the proposal is already updated
       }
 
+      // Apply karma for successful match
+      await supabase.rpc('apply_karma_on_outcome', {
+        p_proposal_id: proposal.id,
+        p_outcome: 'passed_to_match',
+      });
+
       // Cancel any other active proposals involving either user (safety net)
       await supabase
         .from('proposals')

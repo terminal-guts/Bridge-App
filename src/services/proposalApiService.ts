@@ -90,10 +90,10 @@ export async function getPendingDecisions(userId: string): Promise<{
   const { data: profiles } = await supabase
     .from('user_profiles')
     .select('*')
-    .in('id', partnerIds);
+    .in('user_id', partnerIds);
 
   const profileMap = new Map<string, any>();
-  (profiles || []).forEach(p => profileMap.set(p.id, p));
+  (profiles || []).forEach(p => profileMap.set(p.user_id, p));
 
   // Enrich proposals with partner profile
   const enriched = proposals.map(p => {
@@ -141,6 +141,16 @@ export async function triggerLifecycleCheck(): Promise<{
 }
 
 // ============================================================================
+// New User Assignment
+// ============================================================================
+
+export async function assignNewUserProposals(): Promise<{ assigned: number }> {
+  const { data, error } = await supabase.functions.invoke('assign-new-user-proposals');
+  if (error) throw new Error(`Assign new user proposals failed: ${error.message}`);
+  return data;
+}
+
+// ============================================================================
 // Helper: Transform backend proposal to frontend Proposal type
 // ============================================================================
 
@@ -179,85 +189,3 @@ export function transformBackendProposal(raw: any): Partial<Proposal> {
   };
 }
 
-// ============================================================================
-// Daily Pairing API (Scoring-Grid Coordinates)
-// ============================================================================
-
-/**
- * Trigger daily pairing generation via Edge Function.
- */
-export async function generateDailyPairings(): Promise<{
-  status: string;
-  date: string;
-  eligible_users: number;
-  pairings_created: number;
-  avg_score: number;
-  top_score: number;
-  min_score: number;
-  unmatched_users: number;
-}> {
-  const { data, error } = await supabase.functions.invoke('generate-daily-pairings');
-  if (error) throw new Error(`Generate daily pairings failed: ${error.message}`);
-  return data;
-}
-
-/**
- * Fetch a user's daily pairing for a given date.
- * Direct Supabase query since this is a simple read.
- */
-export async function getDailyPairing(userId: string, date?: string): Promise<{
-  status: string;
-  pairing?: {
-    id: string;
-    pairing_date: string;
-    user_id: string;
-    partner_id: string;
-    compatibility_score: number;
-    category_scores: Record<string, number>;
-    weighted_scores: Record<string, number>;
-    seen: boolean;
-    partner_profile: {
-      id: string;
-      first_name: string;
-      age: number;
-      gender: string[];
-      location: string;
-      interests: string[];
-      values: string[];
-      bio: string;
-      photos: Array<{ url: string; is_main: boolean }>;
-    };
-    expires_at: string;
-  };
-  message?: string;
-}> {
-  const pairingDate = date || new Date().toISOString().split('T')[0];
-
-  const { data: pairing, error } = await supabase
-    .from('daily_pairings')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('pairing_date', pairingDate)
-    .maybeSingle();
-
-  if (error) throw new Error(`Get daily pairing failed: ${error.message}`);
-
-  if (!pairing) {
-    return { status: 'no_pairing', message: 'No pairing found for this date' };
-  }
-
-  // Fetch partner profile
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('id, first_name, age, gender, location, interests, values, bio, photos')
-    .eq('id', pairing.partner_id)
-    .maybeSingle();
-
-  return {
-    status: 'ok',
-    pairing: {
-      ...pairing,
-      partner_profile: profile || { id: pairing.partner_id, first_name: 'Partner' },
-    },
-  };
-}

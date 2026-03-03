@@ -244,7 +244,9 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      if (created) createdProposals.push(created);
+      if (created) {
+        createdProposals.push(created);
+      }
     }
 
     // 8. Assign pool voters to each proposal (new AND existing pending)
@@ -310,8 +312,12 @@ Deno.serve(async (req: Request) => {
       const remainingSlots = MAX_POOL_VOTES - alreadyAssignedCount;
       const batchSize = Math.min(VOTERS_PER_PROPOSAL, remainingSlots);
 
-      const shuffled = eligible.sort(() => Math.random() - 0.5);
-      const toAssign = shuffled.slice(0, batchSize);
+      // Fisher-Yates shuffle for unbiased random ordering
+      for (let i = eligible.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
+      }
+      const toAssign = eligible.slice(0, batchSize);
 
       if (toAssign.length > 0) {
         const insertBatch = toAssign.map((voter: any) => ({

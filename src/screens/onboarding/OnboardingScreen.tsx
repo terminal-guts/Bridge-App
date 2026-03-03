@@ -10,6 +10,7 @@ import { supabase } from '../../lib/supabase';
 import { Body } from '../../components/ui';
 import { ONBOARDING_STEP_MAPPING } from '../../config/onboardingMapping';
 import { createLogger } from '../../utils/secureLogger';
+import { assignNewUserProposals } from '../../services/proposalApiService';
 
 const logger = createLogger('OnboardingScreen');
 import { resetAllGuides } from '../../services/guideService';
@@ -265,6 +266,12 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
       // Reset all guides for the new user so they see onboarding guides
       await resetAllGuides();
       logger.info('Guides reset for new user');
+
+      // Fire-and-forget: assign up to 3 community proposals so the new user
+      // has something to vote on immediately (instead of waiting for 7PM cron)
+      assignNewUserProposals()
+        .then((res) => logger.info('Assigned new user proposals:', res.assigned))
+        .catch((err) => logger.warn('Failed to assign new user proposals (non-blocking):', err.message));
 
       // Navigate to main app after successful profile creation
       (navigation as any).navigate('MainTabs');

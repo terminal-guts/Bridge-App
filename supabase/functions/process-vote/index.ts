@@ -16,6 +16,7 @@ import {
   POOL_ELIGIBILITY_POOL_YES_RATE,
   POOL_ELIGIBILITY_FRIEND_MIN_VOTES,
   POOL_ELIGIBILITY_FRIEND_YES_RATE,
+  KARMA_WEIGHTS,
 } from '../_shared/constants.ts';
 
 function getProposalDay(proposal: any): number {
@@ -34,9 +35,7 @@ function getCurrentThreshold(proposal: any): number | null {
   return THRESHOLD_SCHEDULE[day] ?? 0.55;
 }
 
-function calculateWeightedYesPct(poolYes: number, poolNo: number, friendYes: number, friendNo: number): number {
-  const weightedYes = poolYes + (friendYes * FRIEND_VOTE_WEIGHT);
-  const weightedNo = poolNo + (friendNo * FRIEND_VOTE_WEIGHT);
+function calculateWeightedYesPct(weightedYes: number, weightedNo: number): number {
   const total = weightedYes + weightedNo;
   if (total === 0) return 0.0;
   return weightedYes / total;
@@ -144,24 +143,56 @@ Deno.serve(async (req: Request) => {
       return Response.json({ error: 'Failed to record vote' }, { status: 500, headers: corsHeaders });
     }
 
-    // 5. Recount all votes for this proposal (source of truth)
+    // 5. Update voter karma & stats
+    await supabase.rpc('increment_karma_for_vote', { p_user_id: voterId });
+
+    // 6. Recount all votes for this proposal (source of truth)
+    // Now including weighted totals based on voter's badge_tier
     const { data: allVotes } = await supabase
       .from('proposal_votes')
-      .select('vote_type, is_friend_vote')
+      .select('vote_type, is_friend_vote, voter_user_id')
       .eq('proposal_id', proposal_id);
 
+    // Fetch voter tiers for weighting
+    const voterIds = (allVotes || []).map(v => v.voter_user_id);
+    const { data: karmaScores } = await supabase
+      .from('karma_scores')
+      .select('user_id, badge_tier')
+      .in('user_id', voterIds);
+
+    const tierMap: Record<string, string> = {};
+    for (const ks of (karmaScores || [])) {
+      tierMap[ks.user_id] = ks.badge_tier;
+    }
+
     let poolYes = 0, poolNo = 0, friendYes = 0, friendNo = 0;
+    let weightedYes = 0, weightedNo = 0;
+
     for (const v of (allVotes || [])) {
+      const tier = tierMap[v.voter_user_id] || 'new';
+      const weightMultiplier = KARMA_WEIGHTS[tier] || 1.0;
+
       if (v.is_friend_vote) {
-        if (v.vote_type === 'YES') friendYes++;
-        else if (v.vote_type === 'NO') friendNo++;
+        const friendWeight = weightMultiplier * FRIEND_VOTE_WEIGHT;
+        if (v.vote_type === 'YES') {
+          friendYes++;
+          weightedYes += friendWeight;
+        } else if (v.vote_type === 'NO') {
+          friendNo++;
+          weightedNo += friendWeight;
+        }
       } else {
-        if (v.vote_type === 'YES') poolYes++;
-        else if (v.vote_type === 'NO') poolNo++;
+        if (v.vote_type === 'YES') {
+          poolYes++;
+          weightedYes += weightMultiplier;
+        } else if (v.vote_type === 'NO') {
+          poolNo++;
+          weightedNo += weightMultiplier;
+        }
       }
     }
 
-    // 6. Update vote tallies on the proposal
+    // 7. Update vote tallies & weighted totals on the proposal
     const { error: tallyErr } = await supabase
       .from('proposals')
       .update({
@@ -169,6 +200,8 @@ Deno.serve(async (req: Request) => {
         pool_no_votes: poolNo,
         friend_yes_votes: friendYes,
         friend_no_votes: friendNo,
+        weighted_yes: weightedYes,
+        weighted_no: weightedNo,
         updated_at: new Date().toISOString(),
       })
       .eq('id', proposal_id);
@@ -177,8 +210,8 @@ Deno.serve(async (req: Request) => {
       console.error('Tally update error:', tallyErr);
     }
 
-    // 7. Inline lifecycle evaluation
-    const updatedProposal = { ...proposal, pool_yes_votes: poolYes, pool_no_votes: poolNo, friend_yes_votes: friendYes, friend_no_votes: friendNo };
+    // 8. Inline lifecycle evaluation
+    const updatedProposal = { ...proposal, pool_yes_votes: poolYes, pool_no_votes: poolNo, friend_yes_votes: friendYes, friend_no_votes: friendNo, weighted_yes: weightedYes, weighted_no: weightedNo };
     const nowIso = new Date().toISOString();
     let newStatus = 'pending';
     const lifecycleUpdate: Record<string, any> = {};
@@ -244,7 +277,7 @@ Deno.serve(async (req: Request) => {
 
       if (totalPool >= CONFIRMATION_MIN_POOL_VOTES && totalAll >= CONFIRMATION_MIN_TOTAL_VOTES && totalYes >= CONFIRMATION_MIN_YES_VOTES) {
         const threshold = getCurrentThreshold(updatedProposal);
-        if (threshold === null || calculateWeightedYesPct(poolYes, poolNo, friendYes, friendNo) >= threshold) {
+        if (threshold === null || calculateWeightedYesPct(weightedYes, weightedNo) >= threshold) {
           newStatus = 'deciding';
           const deadline = new Date(Date.now() + DECISION_DEADLINE_HOURS * 60 * 60 * 1000).toISOString();
           Object.assign(lifecycleUpdate, {
@@ -276,12 +309,20 @@ Deno.serve(async (req: Request) => {
         .eq('id', proposal_id);
     }
 
-    // 8. Mark pool_vote_assignment as voted
+    // 9. Mark pool_vote_assignment as voted
     await supabase
       .from('pool_vote_assignments')
       .update({ has_voted: true })
       .eq('proposal_id', proposal_id)
       .eq('voter_id', voterId);
+
+    // 10. If friend vote, update friend streak
+    if (isFriendVote) {
+      const friendId = friendOf; // This is the ID of the friend the voter is connected to
+      if (friendId) {
+        await supabase.rpc('update_friend_streak', { p_user_id: voterId, p_friend_id: friendId });
+      }
+    }
 
     return Response.json({
       status: 'success',

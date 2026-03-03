@@ -89,7 +89,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
             {/* Hero Section - Left Aligned */}
             <StyledView className="flex-1 justify-center">
               <Animated.Image
-                source={require('../../../Images/BridgeAppLogo.png')}
+                source={require('../../../assets/BridgeAppLogo.png')}
                 className="w-48 h-24 mb-2"
                 resizeMode="contain"
                 style={{
