@@ -676,12 +676,12 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      selectionLimit: remainingSlots,
+      allowsEditing: true,
+      aspect: [3, 4],
       quality: 1,
     });
 
-    handleMultiplePhotoResult(result);
+    handlePhotoResult(result);
   };
 
   const handlePhotoResult = (result: ImagePicker.ImagePickerResult) => {
@@ -1250,18 +1250,16 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                       // Join back into string for storage, filter empties
                       updateProfile({ ethnicity: updatedEthnicities.filter(e => e.trim() !== '').join(' / ') });
                     }}
-                    className={`px-3 py-2 rounded-lg border ${
-                      isSelected
+                    className={`px-3 py-2 rounded-lg border ${isSelected
                         ? 'bg-primary-500 border-primary-500'
                         : 'bg-white border-neutral-300'
-                    }`}
+                      }`}
                   >
                     <Body
-                      className={`text-sm ${
-                        isSelected
+                      className={`text-sm ${isSelected
                           ? 'text-white font-medium'
                           : 'text-neutral-700'
-                      }`}
+                        }`}
                     >
                       {option}
                     </Body>
@@ -1336,18 +1334,16 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
 
                       updateProfile({ pronounsList: updatedPronouns });
                     }}
-                    className={`px-2.5 py-1.5 rounded-lg border ${
-                      isSelected
+                    className={`px-2.5 py-1.5 rounded-lg border ${isSelected
                         ? 'bg-primary-500 border-primary-500'
                         : 'bg-white border-neutral-300'
-                    }`}
+                      }`}
                   >
                     <Body
-                      className={`text-xs ${
-                        isSelected
+                      className={`text-xs ${isSelected
                           ? 'text-white font-medium'
                           : 'text-neutral-700'
-                      }`}
+                        }`}
                     >
                       {pronoun}
                     </Body>
@@ -1384,18 +1380,16 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
 
                       updateProfile({ gender: updatedGenders });
                     }}
-                    className={`px-3 py-2 rounded-lg border ${
-                      isSelected
+                    className={`px-3 py-2 rounded-lg border ${isSelected
                         ? 'bg-primary-500 border-primary-500'
                         : 'bg-white border-neutral-300'
-                    }`}
+                      }`}
                   >
                     <Body
-                      className={`text-sm ${
-                        isSelected
+                      className={`text-sm ${isSelected
                           ? 'text-white font-medium'
                           : 'text-neutral-700'
-                      }`}
+                        }`}
                     >
                       {option.label}
                     </Body>
@@ -1446,18 +1440,16 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                     // Toggle behavior: deselect if already selected
                     updateProfile({ religion: profile.religion === option ? '' : option });
                   }}
-                  className={`px-3 py-2 rounded-lg border ${
-                    profile.religion === option
+                  className={`px-3 py-2 rounded-lg border ${profile.religion === option
                       ? 'bg-primary-500 border-primary-500'
                       : 'bg-white border-neutral-300'
-                  }`}
+                    }`}
                 >
                   <Body
-                    className={`text-sm ${
-                      profile.religion === option
+                    className={`text-sm ${profile.religion === option
                         ? 'text-white font-medium'
                         : 'text-neutral-700'
-                    }`}
+                      }`}
                   >
                     {option}
                   </Body>
@@ -1489,18 +1481,16 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                     // Toggle behavior: deselect if already selected
                     updateProfile({ politicalLeaning: profile.politicalLeaning === option.value ? '' : option.value });
                   }}
-                  className={`px-3 py-2 rounded-lg border ${
-                    profile.politicalLeaning === option.value
+                  className={`px-3 py-2 rounded-lg border ${profile.politicalLeaning === option.value
                       ? 'bg-primary-500 border-primary-500'
                       : 'bg-white border-neutral-300'
-                  }`}
+                    }`}
                 >
                   <Body
-                    className={`text-sm ${
-                      profile.politicalLeaning === option.value
+                    className={`text-sm ${profile.politicalLeaning === option.value
                         ? 'text-white font-medium'
                         : 'text-neutral-700'
-                    }`}
+                      }`}
                   >
                     {option.label}
                   </Body>
@@ -1509,18 +1499,18 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
 
               {/* Custom political leaning value chip (when 'other' is selected) */}
               {profile.politicalLeaning === 'other' && profile.customPoliticalLeaning && (
-                  <StyledTouchableOpacity
-                    onPress={() => {
-                      updateProfile({ politicalLeaning: '', customPoliticalLeaning: '' });
-                      mediumHaptic();
-                    }}
-                    className="px-3 py-2 rounded-lg border bg-primary-500 border-primary-500"
-                  >
-                    <Body className="text-sm text-white font-medium">
-                      {profile.customPoliticalLeaning}
-                    </Body>
-                  </StyledTouchableOpacity>
-                )}
+                <StyledTouchableOpacity
+                  onPress={() => {
+                    updateProfile({ politicalLeaning: '', customPoliticalLeaning: '' });
+                    mediumHaptic();
+                  }}
+                  className="px-3 py-2 rounded-lg border bg-primary-500 border-primary-500"
+                >
+                  <Body className="text-sm text-white font-medium">
+                    {profile.customPoliticalLeaning}
+                  </Body>
+                </StyledTouchableOpacity>
+              )}
 
               {/* "Other" Button */}
               <StyledTouchableOpacity
@@ -1578,18 +1568,16 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                       updateProfile({ educationLevel: option.value });
                     }
                   }}
-                  className={`px-3 py-2 rounded-lg border ${
-                    profile.educationLevel === option.value
+                  className={`px-3 py-2 rounded-lg border ${profile.educationLevel === option.value
                       ? 'bg-primary-500 border-primary-500'
                       : 'bg-white border-neutral-300'
-                  }`}
+                    }`}
                 >
                   <Body
-                    className={`text-sm ${
-                      profile.educationLevel === option.value
+                    className={`text-sm ${profile.educationLevel === option.value
                         ? 'text-white font-medium'
                         : 'text-neutral-700'
-                    }`}
+                      }`}
                   >
                     {option.label}
                   </Body>
@@ -1598,18 +1586,18 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
 
               {/* Custom education value chip (when 'other' is selected) */}
               {profile.educationLevel === 'other' && profile.customEducationLevel && (
-                  <StyledTouchableOpacity
-                    onPress={() => {
-                      updateProfile({ educationLevel: '', customEducationLevel: '' });
-                      mediumHaptic();
-                    }}
-                    className="px-3 py-2 rounded-lg border bg-primary-500 border-primary-500"
-                  >
-                    <Body className="text-sm text-white font-medium">
-                      {profile.customEducationLevel}
-                    </Body>
-                  </StyledTouchableOpacity>
-                )}
+                <StyledTouchableOpacity
+                  onPress={() => {
+                    updateProfile({ educationLevel: '', customEducationLevel: '' });
+                    mediumHaptic();
+                  }}
+                  className="px-3 py-2 rounded-lg border bg-primary-500 border-primary-500"
+                >
+                  <Body className="text-sm text-white font-medium">
+                    {profile.customEducationLevel}
+                  </Body>
+                </StyledTouchableOpacity>
+              )}
 
               {/* "Other" Button */}
               <StyledTouchableOpacity
@@ -1653,18 +1641,16 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                     lightHaptic();
                     updateProfile({ hasChildren: option.value });
                   }}
-                  className={`px-3 py-2 rounded-lg border ${
-                    profile.hasChildren === option.value
+                  className={`px-3 py-2 rounded-lg border ${profile.hasChildren === option.value
                       ? 'bg-primary-500 border-primary-500'
                       : 'bg-white border-neutral-300'
-                  }`}
+                    }`}
                 >
                   <Body
-                    className={`text-sm ${
-                      profile.hasChildren === option.value
+                    className={`text-sm ${profile.hasChildren === option.value
                         ? 'text-white font-medium'
                         : 'text-neutral-700'
-                    }`}
+                      }`}
                   >
                     {option.label}
                   </Body>
@@ -1685,18 +1671,16 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                     lightHaptic();
                     updateProfile({ familyPlans: option.value });
                   }}
-                  className={`px-3 py-2 rounded-lg border ${
-                    profile.familyPlans === option.value
+                  className={`px-3 py-2 rounded-lg border ${profile.familyPlans === option.value
                       ? 'bg-primary-500 border-primary-500'
                       : 'bg-white border-neutral-300'
-                  }`}
+                    }`}
                 >
                   <Body
-                    className={`text-sm ${
-                      profile.familyPlans === option.value
+                    className={`text-sm ${profile.familyPlans === option.value
                         ? 'text-white font-medium'
                         : 'text-neutral-700'
-                    }`}
+                      }`}
                   >
                     {option.label}
                   </Body>
@@ -1828,18 +1812,16 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                     Keyboard.dismiss();
                   }
                 }}
-                className={`flex-1 rounded-lg py-3 items-center ${
-                  customGenderValue.trim()
+                className={`flex-1 rounded-lg py-3 items-center ${customGenderValue.trim()
                     ? 'bg-primary-500'
                     : 'bg-neutral-200'
-                }`}
+                  }`}
                 disabled={!customGenderValue.trim()}
               >
-                <Body className={`font-semibold ${
-                  customGenderValue.trim()
+                <Body className={`font-semibold ${customGenderValue.trim()
                     ? 'text-white'
                     : 'text-neutral-400'
-                }`}>
+                  }`}>
                   Add
                 </Body>
               </StyledTouchableOpacity>
@@ -1942,18 +1924,16 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                     Keyboard.dismiss();
                   }
                 }}
-                className={`flex-1 rounded-lg py-3 items-center ${
-                  customEthnicityValue.trim()
+                className={`flex-1 rounded-lg py-3 items-center ${customEthnicityValue.trim()
                     ? 'bg-primary-500'
                     : 'bg-neutral-200'
-                }`}
+                  }`}
                 disabled={!customEthnicityValue.trim()}
               >
-                <Body className={`font-semibold ${
-                  customEthnicityValue.trim()
+                <Body className={`font-semibold ${customEthnicityValue.trim()
                     ? 'text-white'
                     : 'text-neutral-400'
-                }`}>
+                  }`}>
                   Add
                 </Body>
               </StyledTouchableOpacity>
@@ -2058,18 +2038,16 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                     Keyboard.dismiss();
                   }
                 }}
-                className={`flex-1 rounded-lg py-3 items-center ${
-                  customEducationValue.trim()
+                className={`flex-1 rounded-lg py-3 items-center ${customEducationValue.trim()
                     ? 'bg-primary-500'
                     : 'bg-neutral-200'
-                }`}
+                  }`}
                 disabled={!customEducationValue.trim()}
               >
-                <Body className={`font-semibold ${
-                  customEducationValue.trim()
+                <Body className={`font-semibold ${customEducationValue.trim()
                     ? 'text-white'
                     : 'text-neutral-400'
-                }`}>
+                  }`}>
                   Add
                 </Body>
               </StyledTouchableOpacity>
@@ -2204,18 +2182,16 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                     Keyboard.dismiss();
                   }
                 }}
-                className={`flex-1 rounded-lg py-3 items-center ${
-                  customPoliticalValue.trim()
+                className={`flex-1 rounded-lg py-3 items-center ${customPoliticalValue.trim()
                     ? 'bg-primary-500'
                     : 'bg-neutral-200'
-                }`}
+                  }`}
                 disabled={!customPoliticalValue.trim()}
               >
-                <Body className={`font-semibold ${
-                  customPoliticalValue.trim()
+                <Body className={`font-semibold ${customPoliticalValue.trim()
                     ? 'text-white'
                     : 'text-neutral-400'
-                }`}>
+                  }`}>
                   Add
                 </Body>
               </StyledTouchableOpacity>
@@ -2328,18 +2304,16 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                     Keyboard.dismiss();
                   }
                 }}
-                className={`flex-1 rounded-lg py-3 items-center ${
-                  customReligionValue.trim()
+                className={`flex-1 rounded-lg py-3 items-center ${customReligionValue.trim()
                     ? 'bg-primary-500'
                     : 'bg-neutral-200'
-                }`}
+                  }`}
                 disabled={!customReligionValue.trim()}
               >
-                <Body className={`font-semibold ${
-                  customReligionValue.trim()
+                <Body className={`font-semibold ${customReligionValue.trim()
                     ? 'text-white'
                     : 'text-neutral-400'
-                }`}>
+                  }`}>
                   Add
                 </Body>
               </StyledTouchableOpacity>
@@ -2442,18 +2416,16 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                     Keyboard.dismiss();
                   }
                 }}
-                className={`flex-1 rounded-lg py-3 items-center ${
-                  customChildrenValue.trim()
+                className={`flex-1 rounded-lg py-3 items-center ${customChildrenValue.trim()
                     ? 'bg-primary-500'
                     : 'bg-neutral-200'
-                }`}
+                  }`}
                 disabled={!customChildrenValue.trim()}
               >
-                <Body className={`font-semibold ${
-                  customChildrenValue.trim()
+                <Body className={`font-semibold ${customChildrenValue.trim()
                     ? 'text-white'
                     : 'text-neutral-400'
-                }`}>
+                  }`}>
                   Add
                 </Body>
               </StyledTouchableOpacity>
@@ -2556,18 +2528,16 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                     Keyboard.dismiss();
                   }
                 }}
-                className={`flex-1 rounded-lg py-3 items-center ${
-                  customFamilyPlansValue.trim()
+                className={`flex-1 rounded-lg py-3 items-center ${customFamilyPlansValue.trim()
                     ? 'bg-primary-500'
                     : 'bg-neutral-200'
-                }`}
+                  }`}
                 disabled={!customFamilyPlansValue.trim()}
               >
-                <Body className={`font-semibold ${
-                  customFamilyPlansValue.trim()
+                <Body className={`font-semibold ${customFamilyPlansValue.trim()
                     ? 'text-white'
                     : 'text-neutral-400'
-                }`}>
+                  }`}>
                   Add
                 </Body>
               </StyledTouchableOpacity>
@@ -2662,18 +2632,16 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                     Keyboard.dismiss();
                   }
                 }}
-                className={`flex-1 rounded-lg py-3 items-center ${
-                  customInterestValue.trim()
+                className={`flex-1 rounded-lg py-3 items-center ${customInterestValue.trim()
                     ? 'bg-primary-500'
                     : 'bg-neutral-200'
-                }`}
+                  }`}
                 disabled={!customInterestValue.trim()}
               >
-                <Body className={`font-semibold ${
-                  customInterestValue.trim()
+                <Body className={`font-semibold ${customInterestValue.trim()
                     ? 'text-white'
                     : 'text-neutral-400'
-                }`}>
+                  }`}>
                   Add
                 </Body>
               </StyledTouchableOpacity>
@@ -2768,18 +2736,16 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                     Keyboard.dismiss();
                   }
                 }}
-                className={`flex-1 rounded-lg py-3 items-center ${
-                  customValueInputValue.trim()
+                className={`flex-1 rounded-lg py-3 items-center ${customValueInputValue.trim()
                     ? 'bg-primary-500'
                     : 'bg-neutral-200'
-                }`}
+                  }`}
                 disabled={!customValueInputValue.trim()}
               >
-                <Body className={`font-semibold ${
-                  customValueInputValue.trim()
+                <Body className={`font-semibold ${customValueInputValue.trim()
                     ? 'text-white'
                     : 'text-neutral-400'
-                }`}>
+                  }`}>
                   Add
                 </Body>
               </StyledTouchableOpacity>
