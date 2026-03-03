@@ -85,34 +85,9 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
             });
 
             logger.info('[DEBUG] 2. Creating recording object...');
-            const mp4Options = {
-                isMeteringEnabled: true,
-                android: {
-                    extension: '.mp4',
-                    outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-                    audioEncoder: Audio.AndroidAudioEncoder.AAC,
-                    sampleRate: 44100,
-                    numberOfChannels: 2,
-                    bitRate: 128000,
-                },
-                ios: {
-                    extension: '.mp4',
-                    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-                    audioQuality: Audio.IOSAudioQuality.MAX,
-                    sampleRate: 44100,
-                    numberOfChannels: 2,
-                    bitRate: 128000,
-                    linearPCMBitDepth: 16,
-                    linearPCMIsBigEndian: false,
-                    linearPCMIsFloat: false,
-                },
-                web: {
-                    mimeType: 'audio/mp4',
-                    bitsPerSecond: 128000,
-                },
-            };
-
-            const { recording } = await Audio.Recording.createAsync(mp4Options);
+            const { recording } = await Audio.Recording.createAsync(
+                Audio.RecordingOptionsPresets.HIGH_QUALITY
+            );
 
             // CRITICAL: If the user already released the button while we were creating the object
             if (!isButtonPressed.current) {
@@ -214,15 +189,12 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
                 className={`w-12 h-12 rounded-full items-center justify-center ${isRecording ? 'bg-rose-500' : 'bg-primary-500'
                     } ${disabled ? 'opacity-50' : ''}`}
             >
-                {isPreparing ? (
-                    <ActivityIndicator size="small" color="white" />
-                ) : (
-                    <Ionicons
-                        name={isRecording ? 'mic' : 'mic-outline'}
-                        size={24}
-                        color="white"
-                    />
-                )}
+                <Ionicons
+                    name={isRecording ? 'mic' : 'mic-outline'}
+                    size={24}
+                    color="white"
+                    style={{ opacity: isPreparing ? 0.3 : 1 }}
+                />
             </StyledTouchableOpacity>
         </StyledView>
     );
