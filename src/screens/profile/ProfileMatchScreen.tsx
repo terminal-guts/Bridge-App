@@ -425,6 +425,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+        backgroundColor: 'rgba(15, 23, 42, 0.75)',
+        borderRadius: 9999,
+        paddingHorizontal: 14,
+        paddingVertical: 6,
     },
     heroOverlayMatched: {
         position: 'absolute',
@@ -433,7 +437,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        opacity: 0.92,
+        backgroundColor: 'rgba(15, 23, 42, 0.75)',
+        borderRadius: 9999,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
     },
     heroName: {
         fontFamily: 'PlusJakartaSans_700Bold',
