@@ -101,13 +101,15 @@ export async function resolveProfilePhotos(profiles: UserProfile[]): Promise<voi
     return match ? match[1] : url;
   };
 
-  // Normalize to storage paths
+  // Filter out invalid local file:// URIs and normalize to storage paths
   for (const p of profiles) {
     if (p.photos) {
-      p.photos = p.photos.map(photo => ({
-        ...photo,
-        url: extractPath(photo.url),
-      }));
+      p.photos = p.photos
+        .filter(photo => photo.url && !photo.url.startsWith('file://'))
+        .map(photo => ({
+          ...photo,
+          url: extractPath(photo.url),
+        }));
     }
   }
 

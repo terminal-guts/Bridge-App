@@ -27,7 +27,11 @@ import {
   getMatchMessages,
   sendMessage as sendMessageAPI,
   subscribeToMessages,
-  markMessagesAsRead
+  markMessagesAsRead,
+  getFriendMessages,
+  sendFriendMessage,
+  subscribeToFriendMessages,
+  markFriendMessagesAsRead,
 } from '../services/messageService';
 import { Ionicons } from '@expo/vector-icons';
 import { AudioPlayer } from '../components/chat/AudioPlayer';
@@ -92,7 +96,7 @@ const StyledImage = styled(Image);
 const FLAT_LIST_CONTENT_STYLE = { padding: 16, paddingBottom: 8, flexGrow: 1 } as const;
 
 export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => {
-  const { matchId, recipientName, recipientId, isFriendChat } = route.params;
+  const { matchId, friendshipId, recipientName, recipientId, isFriendChat } = route.params;
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -135,33 +139,36 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
   useEffect(() => {
     loadMessages();
 
-    // Only subscribe to real-time messages for match chats
-    if (isFriend || !matchId) {
-      return;
-    }
-
-    // Subscribe to real-time messages
-    const subscription = subscribeToMessages(matchId, (newMsg) => {
+    const handleNewMessage = (newMsg: Message) => {
       setMessages(prev => {
-        // Prevent duplicates
-        if (prev.some(m => m.id === newMsg.id)) {
-          return prev;
-        }
+        if (prev.some(m => m.id === newMsg.id)) return prev;
         return [...prev, newMsg];
       });
 
-      // Auto-mark as read if message is from other user (use ref to avoid stale closure)
       const userId = currentUserIdRef.current;
       if (newMsg.senderId !== userId && userId) {
-        markMessagesAsRead(matchId, userId);
+        if (isFriend && recipientId) {
+          markFriendMessagesAsRead(userId, recipientId);
+        } else if (matchId) {
+          markMessagesAsRead(matchId, userId);
+        }
       }
-    });
+    };
+
+    // Subscribe to real-time messages for either match or friend chat
+    let subscription: { unsubscribe: () => void } | null = null;
+
+    if (isFriend && recipientId) {
+      subscription = subscribeToFriendMessages(recipientId, handleNewMessage);
+    } else if (matchId) {
+      subscription = subscribeToMessages(matchId, handleNewMessage);
+    }
 
     return () => {
-      subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchId, isFriend]);
+  }, [matchId, recipientId, isFriend]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -198,10 +205,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
 
       setCurrentUserId(userResult.data.id);
 
-      // Friend chat - coming soon
-      if (isFriend) {
-        // Friend chat functionality not yet implemented
-        setMessages([]);
+      // Friend chat — query by user pair, not friendship_id
+      if (isFriend && recipientId) {
+        const messagesResult = await getFriendMessages(userResult.data.id, recipientId);
+        if (messagesResult.ok) {
+          setMessages(messagesResult.data || []);
+          if (messagesResult.data && messagesResult.data.length > 0) {
+            await markFriendMessagesAsRead(userResult.data.id, recipientId);
+          }
+        } else {
+          setError(messagesResult.error?.message || 'Failed to load messages');
+        }
         setLoading(false);
         setRefreshing(false);
         return;
@@ -262,24 +276,35 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       setLoading(false);
       setRefreshing(false);
     }
-  }, [matchId, isFriend, navigation]);
+  }, [matchId, recipientId, isFriend, navigation]);
 
   const handleRefresh = useCallback(() => loadMessages(true), [loadMessages]);
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !currentUserId || !match || sendingMessage) return;
+    if (!newMessage.trim() || !currentUserId || sendingMessage) return;
 
-    const recipientId = match.currentUserId === match.user1Id
-      ? match.user2Id
-      : match.user1Id;
+    // For match chat, need match object; for friend chat, need friendshipId + recipientId
+    if (!isFriend && !match) return;
+    if (isFriend && (!friendshipId || !recipientId)) return;
+
+    const targetRecipientId = isFriend
+      ? recipientId!
+      : (match!.currentUserId === match!.user1Id ? match!.user2Id : match!.user1Id);
 
     const messageText = newMessage.trim();
     setNewMessage(''); // Clear input immediately for better UX
     setSendingMessage(true);
 
     try {
-      if (!matchId) return;
-      const result = await sendMessageAPI(matchId, recipientId, messageText);
+      let result;
+      if (isFriend && friendshipId) {
+        result = await sendFriendMessage(friendshipId, targetRecipientId, messageText);
+      } else if (matchId) {
+        result = await sendMessageAPI(matchId, targetRecipientId, messageText);
+      } else {
+        return;
+      }
+
       if (!result.ok || !result.data) {
         throw new Error(result.error?.message || 'Failed to send message');
       }
@@ -299,26 +324,30 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
   };
 
   const handleAudioRecordingComplete = async (uri: string, durationMillis: number) => {
-    if (!currentUserId || !match || sendingMessage) {
-      return;
-    }
+    if (!currentUserId || sendingMessage) return;
+    if (!isFriend && !match) return;
+    if (isFriend && (!friendshipId || !recipientId)) return;
 
-    const recipientId = match.currentUserId === match.user1Id
-      ? match.user2Id
-      : match.user1Id;
+    const targetRecipientId = isFriend
+      ? recipientId!
+      : (match!.currentUserId === match!.user1Id ? match!.user2Id : match!.user1Id);
 
     setSendingMessage(true);
 
     try {
-      if (!matchId) return;
-      // In a real app, we would upload the file to Supabase/S3 first
-      // and then send the URL as the content. For this mock, we use the local URI.
-      const result = await sendMessageAPI(matchId, recipientId, uri, 'audio', durationMillis);
+      let result;
+      if (isFriend && friendshipId) {
+        result = await sendFriendMessage(friendshipId, targetRecipientId, uri, 'audio', durationMillis);
+      } else if (matchId) {
+        result = await sendMessageAPI(matchId, targetRecipientId, uri, 'audio', durationMillis);
+      } else {
+        return;
+      }
+
       if (!result.ok || !result.data) {
         throw new Error(result.error?.message || 'Failed to send voice note');
       }
 
-      // Fallback: Add message to state manually if subscription doesn't trigger
       const sentMsg = result.data;
       setMessages(prev => {
         if (prev.some(m => m.id === sentMsg.id)) return prev;
@@ -448,12 +477,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     if (isFriend) {
       return (
         <StyledView className="flex-1 items-center justify-center px-8 py-12">
-          <StyledView className="w-20 h-20 bg-rose-50 rounded-full items-center justify-center mb-4">
-            <Ionicons name="construct" size={40} color="#F43F5E" />
+          <StyledView className="w-20 h-20 bg-primary-50 rounded-full items-center justify-center mb-4">
+            <Ionicons name="people" size={40} color="#437FFF" />
           </StyledView>
-          <H3 className="mb-2 text-center">Friend Chat Coming Soon</H3>
+          <H3 className="mb-2 text-center">Chat with {recipientName}</H3>
           <BodySmall className="text-neutral-600 text-center">
-            We're building the ability to chat with your friends.{'\n'}Stay tuned!
+            Say hi to your friend! You can coordinate matches and catch up here.
           </BodySmall>
         </StyledView>
       );
@@ -470,7 +499,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
         </BodySmall>
       </StyledView>
     );
-  }, [isFriend]);
+  }, [isFriend, recipientName]);
 
   const renderHeader = useCallback(() => null, []);
 
@@ -483,7 +512,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     );
   }
 
-  if (error && !match) {
+  if (error && !match && !isFriend) {
     return (
       <StyledSafeAreaView className="flex-1 bg-white justify-center items-center px-8">
         <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
@@ -569,52 +598,50 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
           }
         />
 
-        {/* Message Input - Only show for match chats */}
-        {!isFriend && (
-          <StyledView className="border-t border-neutral-200 px-4 py-3 bg-white">
-            <StyledView className="flex-row items-end">
-              <AudioRecorder
-                onRecordingComplete={handleAudioRecordingComplete}
-                disabled={sendingMessage}
+        {/* Message Input */}
+        <StyledView className="border-t border-neutral-200 px-4 py-3 bg-white">
+          <StyledView className="flex-row items-end">
+            <AudioRecorder
+              onRecordingComplete={handleAudioRecordingComplete}
+              disabled={sendingMessage}
+            />
+            <StyledView className="flex-1 bg-neutral-50 rounded-2xl px-4 py-2 mx-2">
+              <StyledTextInput
+                value={newMessage}
+                onChangeText={setNewMessage}
+                placeholder="Type a message..."
+                multiline
+                maxLength={1000}
+                className="text-neutral-900 text-base max-h-24"
+                placeholderTextColor="#98A2B3"
+                editable={!sendingMessage && !newMessage.startsWith('file://')}
               />
-              <StyledView className="flex-1 bg-neutral-50 rounded-2xl px-4 py-2 mx-2">
-                <StyledTextInput
-                  value={newMessage}
-                  onChangeText={setNewMessage}
-                  placeholder="Type a message..."
-                  multiline
-                  maxLength={1000}
-                  className="text-neutral-900 text-base max-h-24"
-                  placeholderTextColor="#98A2B3"
-                  editable={!sendingMessage && !newMessage.startsWith('file://')}
-                />
-              </StyledView>
-              {newMessage.trim() || sendingMessage ? (
-                <StyledTouchableOpacity
-                  onPress={sendMessage}
-                  disabled={!newMessage.trim() || sendingMessage}
-                  className={`w-10 h-10 rounded-full items-center justify-center ${newMessage.trim() && !sendingMessage ? 'bg-primary-500' : 'bg-neutral-200'
-                    }`}
-                >
-                  {sendingMessage ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <Ionicons
-                      name="send"
-                      size={20}
-                      color={newMessage.trim() ? 'white' : '#98A2B3'}
-                    />
-                  )}
-                </StyledTouchableOpacity>
-              ) : null}
             </StyledView>
-            {newMessage.length > 900 && (
-              <BodySmall className="text-neutral-500 mt-1 text-right">
-                {1000 - newMessage.length} characters remaining
-              </BodySmall>
-            )}
+            {newMessage.trim() || sendingMessage ? (
+              <StyledTouchableOpacity
+                onPress={sendMessage}
+                disabled={!newMessage.trim() || sendingMessage}
+                className={`w-10 h-10 rounded-full items-center justify-center ${newMessage.trim() && !sendingMessage ? 'bg-primary-500' : 'bg-neutral-200'
+                  }`}
+              >
+                {sendingMessage ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Ionicons
+                    name="send"
+                    size={20}
+                    color={newMessage.trim() ? 'white' : '#98A2B3'}
+                  />
+                )}
+              </StyledTouchableOpacity>
+            ) : null}
           </StyledView>
-        )}
+          {newMessage.length > 900 && (
+            <BodySmall className="text-neutral-500 mt-1 text-right">
+              {1000 - newMessage.length} characters remaining
+            </BodySmall>
+          )}
+        </StyledView>
       </KeyboardAvoidingView>
 
       {/* ── Dropdown Menu ──────────────────────────────────────────────── */}

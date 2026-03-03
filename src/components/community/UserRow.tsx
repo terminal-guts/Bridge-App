@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { FriendWithGridStatus } from '../../types/community';
 import { FireIcon, StarIcon } from '../icons/Icons';
 import { KarmaInfoModal } from './KarmaInfoModal';
@@ -8,6 +9,7 @@ interface UserRowProps {
     item: FriendWithGridStatus;
     index: number;
     onMatch?: () => void;
+    onChat?: () => void;
 }
 
 const stableRandom = (seed: string, min: number, max: number): number => {
@@ -16,7 +18,7 @@ const stableRandom = (seed: string, min: number, max: number): number => {
     return min + (Math.abs(h) % (max - min));
 };
 
-export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch }) => {
+export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onChat }) => {
     const name = item.friend.firstName || 'User';
     const imageUrl = item.friend.photos?.[0]?.url || 'https://via.placeholder.com/150';
     const streak = item.streakDays || 0;
@@ -47,6 +49,16 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                     </View>
                 </View>
             </View>
+
+            {onChat && (
+                <TouchableOpacity
+                    onPress={onChat}
+                    style={styles.chatBtn}
+                    activeOpacity={0.7}
+                >
+                    <Ionicons name="chatbubble-outline" size={20} color="#437FFF" />
+                </TouchableOpacity>
+            )}
 
             {actionType === 'match' ? (
                 <TouchableOpacity
@@ -121,6 +133,15 @@ const styles = StyleSheet.create({
         fontSize: 14,
         lineHeight: 18,
         color: '#737373',
+    },
+    chatBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#EEF3FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 10,
     },
     matchBtn: {
         paddingHorizontal: 22,

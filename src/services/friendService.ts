@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase';
 import { ApiResponse, UserProfile } from '../types';
 import { requireAuth } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
+import { getMultiplePhotoSignedUrls } from './photoService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   checkRateLimit,
@@ -400,6 +401,34 @@ export const getFriends = async (): Promise<ApiResponse<FriendWithProfile[]>> =>
       addedAt: item.added_at,
       profile: formatDatabaseProfile(item.friend_profile),
     }));
+
+    // Resolve storage paths to signed URLs for friend profile photos
+    const allPaths = new Set<string>();
+    for (const f of friends) {
+      if (f.profile.photos) {
+        for (const photo of f.profile.photos) {
+          if (photo.url && !photo.url.startsWith('http') && !photo.url.startsWith('file://')) {
+            allPaths.add(photo.url);
+          }
+        }
+      }
+    }
+
+    if (allPaths.size > 0) {
+      const urlMapRes = await getMultiplePhotoSignedUrls(Array.from(allPaths), 86400);
+      if (urlMapRes.ok && urlMapRes.data) {
+        for (const f of friends) {
+          if (f.profile.photos) {
+            f.profile.photos = f.profile.photos
+              .filter(p => p.url && !p.url.startsWith('file://'))
+              .map(p => ({
+                ...p,
+                url: urlMapRes.data![p.url] || p.url,
+              }));
+          }
+        }
+      }
+    }
 
     return {
       ok: true,

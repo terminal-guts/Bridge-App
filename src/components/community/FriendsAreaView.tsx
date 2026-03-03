@@ -233,6 +233,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
 
     // Navigate to Chat screen with friend
     navigation.navigate('Chat', {
+      friendshipId: friend.friendshipId,
       recipientId: friend.friendId,
       recipientName: friend.friend.firstName,
       isFriendChat: true, // Distinguish from match chat

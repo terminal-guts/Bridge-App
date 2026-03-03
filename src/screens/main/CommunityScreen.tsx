@@ -315,6 +315,12 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                   friendAge: user.friend.age,
                   friendJob: user.friend.currentJob,
                 })}
+                onChat={() => (navigation as any).navigate('Chat', {
+                  friendshipId: user.friendshipId,
+                  recipientId: user.friendId,
+                  recipientName: user.friend.firstName,
+                  isFriendChat: true,
+                })}
               />
             ))}
           </View>
@@ -330,7 +336,17 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
           <View className="pb-8">
             {alreadyHelped.map((user, index) => (
-              <UserRow key={user.friendId} item={user} index={index} />
+              <UserRow
+                key={user.friendId}
+                item={user}
+                index={index}
+                onChat={() => (navigation as any).navigate('Chat', {
+                  friendshipId: user.friendshipId,
+                  recipientId: user.friendId,
+                  recipientName: user.friend.firstName,
+                  isFriendChat: true,
+                })}
+              />
             ))}
           </View>
         </ScrollView>

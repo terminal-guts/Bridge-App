@@ -415,6 +415,11 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
 
     const profile = mapBackendToUserProfile(combinedData);
 
+    // Filter out invalid local file:// URIs that were incorrectly saved to the database
+    if (profile.photos && profile.photos.length > 0) {
+      profile.photos = profile.photos.filter(p => p.url && !p.url.startsWith('file://'));
+    }
+
     // Resolve storage paths to signed URLs.
     if (profile.photos && profile.photos.length > 0) {
       const storagePaths = profile.photos
@@ -822,6 +827,29 @@ export const getProfileById = async (id: string): Promise<Profile | null> => {
     };
 
     const up = mapBackendToUserProfile(combinedData);
+
+    // Filter out invalid local file:// URIs
+    if (up.photos && up.photos.length > 0) {
+      up.photos = up.photos.filter(p => p.url && !p.url.startsWith('file://'));
+    }
+
+    // Resolve storage paths to signed URLs
+    if (up.photos && up.photos.length > 0) {
+      const storagePaths = up.photos
+        .map(p => p.url)
+        .filter(url => url && !url.startsWith('http'));
+
+      if (storagePaths.length > 0) {
+        const urlMapRes = await getMultiplePhotoSignedUrls(storagePaths, 86400);
+        if (urlMapRes.ok && urlMapRes.data) {
+          up.photos = up.photos.map(p => ({
+            ...p,
+            url: urlMapRes.data![p.url] || p.url,
+          }));
+        }
+      }
+    }
+
     return mapToLegacyProfile(up);
   } catch {
     return null;

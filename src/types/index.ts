@@ -358,6 +358,7 @@ export type RootStackParamList = {
   };
   Chat: {
     matchId?: string;
+    friendshipId?: string;
     recipientName: string;
     recipientId?: string;
     isFriendChat?: boolean

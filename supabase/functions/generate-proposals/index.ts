@@ -59,8 +59,8 @@ Deno.serve(async (req: Request) => {
       }, { headers: corsHeaders });
     }
 
-    // 3. Fetch exclusion sets in parallel
-    const [existingRes, activeProposalRes, blockedRes, matchesRes] = await Promise.all([
+    // 3. Fetch exclusion sets in parallel (including friendships — friends should not be matched)
+    const [existingRes, activeProposalRes, blockedRes, matchesRes, friendshipsRes] = await Promise.all([
       // Permanently blocked pairs: all proposals except expired (rejected/declined = permanent block)
       supabase.from('proposals').select('user_a_id, user_b_id, status')
         .not('status', 'eq', 'expired'),
@@ -69,6 +69,7 @@ Deno.serve(async (req: Request) => {
         .in('status', ['pending', 'deciding', 'expired']),
       supabase.from('blocked_users').select('user_id, blocked_user_id'),
       supabase.from('matches').select('user_id_1, user_id_2').in('status', ['pending', 'accepted', 'active']),
+      supabase.from('friends').select('user_id, friend_id'),
     ]);
 
     // Pairs that can never be re-proposed (all non-expired proposals)
@@ -99,6 +100,18 @@ Deno.serve(async (req: Request) => {
       matchPairs.add(key);
       matchedUsers.add(row.user_id_1);
       matchedUsers.add(row.user_id_2);
+    }
+
+    // Friend pairs — friends should never be proposed as romantic matches
+    const friendPairs = new Set<string>();
+    const friendsMap: Record<string, Set<string>> = {};
+    for (const row of (friendshipsRes.data || [])) {
+      const key = [row.user_id, row.friend_id].sort().join('|');
+      friendPairs.add(key);
+      if (!friendsMap[row.user_id]) friendsMap[row.user_id] = new Set();
+      if (!friendsMap[row.friend_id]) friendsMap[row.friend_id] = new Set();
+      friendsMap[row.user_id].add(row.friend_id);
+      friendsMap[row.friend_id].add(row.user_id);
     }
 
     // 4. Fetch deep question answers for scoring
@@ -143,8 +156,8 @@ Deno.serve(async (req: Request) => {
 
         const pairKey = [a.user_id, b.user_id].sort().join('|');
 
-        // Skip excluded pairs (permanently blocked or already proposed)
-        if (existingPairs.has(pairKey) || blockedPairs.has(pairKey) || matchPairs.has(pairKey)) {
+        // Skip excluded pairs (permanently blocked, already proposed, or friends)
+        if (existingPairs.has(pairKey) || blockedPairs.has(pairKey) || matchPairs.has(pairKey) || friendPairs.has(pairKey)) {
           continue;
         }
 
@@ -250,17 +263,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // 8. Assign pool voters to each proposal (new AND existing pending)
-    const { data: friendships } = await supabase
-      .from('friends')
-      .select('user_id, friend_id');
-
-    const friendsMap: Record<string, Set<string>> = {};
-    for (const row of (friendships || [])) {
-      if (!friendsMap[row.user_id]) friendsMap[row.user_id] = new Set();
-      if (!friendsMap[row.friend_id]) friendsMap[row.friend_id] = new Set();
-      friendsMap[row.user_id].add(row.friend_id);
-      friendsMap[row.friend_id].add(row.user_id);
-    }
+    // friendsMap already built above in step 3
 
     // Fetch existing pending proposals to assign more voters
     const { data: existingPending } = await supabase
