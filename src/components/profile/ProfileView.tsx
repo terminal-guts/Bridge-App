@@ -10,6 +10,7 @@ import { View, Modal, ScrollView, Text, TouchableOpacity, Image, FlatList, Dimen
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 import { UserProfile } from '../../types';
+import { clampDisplayScore } from '../../utils/compatibilityHelpers';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -183,7 +184,7 @@ export function ProfileView({
                 marginBottom: 16,
               }}>
                 <StyledText style={{ fontSize: 48, fontWeight: '700', color: '#7C3AED' }}>
-                  {compatibilityScore}%
+                  {clampDisplayScore(compatibilityScore)}%
                 </StyledText>
                 <StyledText style={{ fontSize: 14, color: '#6B21A8', fontWeight: '600' }}>
                   Compatibility Match

@@ -11,6 +11,7 @@ import { styled } from 'nativewind';
 import { H3, Body } from './ui';
 import { Ionicons } from '@expo/vector-icons';
 import { UserProfile } from '../types';
+import { clampDisplayScore } from '../utils/compatibilityHelpers';
 
 const StyledView = styled(View);
 
@@ -90,9 +91,10 @@ interface CompatibilityScoreProps {
 }
 
 export const CompatibilityScore: React.FC<CompatibilityScoreProps> = ({
-  score,
+  score: rawScore,
   label = 'Community Match Score',
 }) => {
+  const score = clampDisplayScore(rawScore);
   const scoreColor = score >= 90 ? '#12B981' : score >= 75 ? '#437FFF' : '#8B5CF6';
   const scoreLabel = score >= 90 ? 'Excellent' : score >= 75 ? 'Great' : 'Good';
 

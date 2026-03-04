@@ -50,6 +50,7 @@ import {
 } from '../../utils/proposalMatching';
 import { communityService } from '../../services/communityServiceIndex';
 import { createLogger } from '../../utils/secureLogger';
+import { clampDisplayScore } from '../../utils/compatibilityHelpers';
 
 const logger = createLogger('ProposalReviewView');
 
@@ -349,9 +350,9 @@ export function ProposalReviewView({
 
     // Haptics — fire and forget, never block navigation
     if (vote === 'yes') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
     } else {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
     }
 
     // Submit vote — fire and forget, navigation never depends on this succeeding
@@ -453,7 +454,7 @@ export function ProposalReviewView({
     setShowForFriendModal(false);
     setVoting(true);
     // Haptics for recommendation confirmation
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
     // Advance without double-counting — the karma-weighted 'yes' above already counts
     // toward the voting gate (votesSubmitted++), so we advance UI-only here.
     advanceProposal();
@@ -489,11 +490,12 @@ export function ProposalReviewView({
     // Compatibility score: use real vote data when available (yesVotes/totalVotes),
     // fall back to preference-based score when no votes have been cast yet.
     const hasVotes = (proposal.totalVotes ?? 0) > 0;
-    const compatScore = hasVotes
+    const rawScore = hasVotes
       ? Math.round(((proposal.yesVotes ?? 0) / (proposal.totalVotes ?? 1)) * 100)
       : totalKnown > 0
-      ? Math.round((totalMatch / totalKnown) * 100)
-      : 0;
+        ? Math.round((totalMatch / totalKnown) * 100)
+        : 0;
+    const compatScore = clampDisplayScore(rawScore);
 
     const valuesMatchCount = (valuesResult as any).sharedValues?.length || 0;
     const valuesTotal = Math.max((userA.values || []).length, (userB.values || []).length, 1);
