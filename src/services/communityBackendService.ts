@@ -82,6 +82,7 @@ export function mapProfileRow(row: any): UserProfile {
     tobaccoFrequency: row.tobacco_frequency || '',
     nonNegotiables: row.non_negotiables || [],
     preferences: row.preferences || {},
+    profileCompleted: row.profile_completed || false,
     createdAt: row.created_at || new Date().toISOString(),
     updatedAt: row.updated_at || new Date().toISOString(),
   };

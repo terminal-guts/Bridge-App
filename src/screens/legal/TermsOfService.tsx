@@ -111,7 +111,7 @@ export const TermsOfService: React.FC<TermsOfServiceProps> = ({ navigation }) =>
         <Body className="text-neutral-700 mb-8 leading-6">
           If you have any questions about these Terms, please contact us at:
           {'\n\n'}Bridge Support
-          {'\n'}Email: legal@bridge.app
+          {'\n'}Email: bridge.date.app@gmail.com
           {'\n'}Address: New York, NY 10001
         </Body>
       </StyledScrollView>

@@ -17,6 +17,7 @@ import { uploadMultiplePhotos, getMultiplePhotoSignedUrls } from './photoService
 import { getQuestionById } from '../utils/deepQuestions';
 import { getQuestionTier } from '../utils/questionTiers';
 import { ONBOARDING_STEP_MAPPING } from '../config/onboardingMapping';
+import { calculateProfileStrengthBreakdown } from '../utils/profileCompleteness';
 
 const logger = createLogger('ProfileService');
 
@@ -557,6 +558,27 @@ export const updateUserProfile = async (
       if (dqError) {
         logger.warn('[ProfileService] Could not save deep question answers:', dqError.message);
       }
+    }
+
+    // Check if profile strength reached 100% → set profile_completed = true
+    try {
+      const fullProfile = await getUserProfile();
+      if (fullProfile.ok && fullProfile.data && !fullProfile.data.profileCompleted) {
+        const strength = calculateProfileStrengthBreakdown(fullProfile.data);
+        if (strength.overall >= 100) {
+          const { error: completeError } = await supabase
+            .from('user_profiles')
+            .update({ profile_completed: true, updated_at: new Date().toISOString() })
+            .eq('user_id', userId);
+          if (completeError) {
+            logger.warn('[ProfileService] Failed to set profile_completed:', completeError.message);
+          } else {
+            logger.info('[ProfileService] Profile strength reached 100% — profile_completed set to true');
+          }
+        }
+      }
+    } catch (err: any) {
+      logger.warn('[ProfileService] Profile completion check failed (non-blocking):', err.message);
     }
 
     return { ok: true };

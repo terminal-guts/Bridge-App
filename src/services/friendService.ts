@@ -661,6 +661,7 @@ const formatDatabaseProfile = (data: any): UserProfile => {
       lookingFor: data.looking_for || 'relationship',
     },
     isPaused: data.is_paused,
+    profileCompleted: data.profile_completed || false,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };

@@ -137,9 +137,9 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
         <Body className="text-neutral-700 mb-8 leading-6">
           If you have questions about this Privacy Policy or our data practices, please contact us at:
           {'\n\n'}Bridge Privacy Team
-          {'\n'}Email: privacy@bridge.app
+          {'\n'}Email: bridge.date.app@gmail.com
           {'\n'}Address: New York, NY 10001
-          {'\n\n'}For data protection inquiries or to exercise your rights, email: dpo@bridge.app
+          {'\n\n'}For data protection inquiries or to exercise your rights, email: bridge.date.app@gmail.com
         </Body>
       </StyledScrollView>
     </StyledSafeAreaView>
