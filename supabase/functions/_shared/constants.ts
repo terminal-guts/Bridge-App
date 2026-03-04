@@ -19,9 +19,9 @@ export const THRESHOLD_SCHEDULE: Record<number, number | null> = {
   5: null, // bypass — auto-send
 };
 
-export const CONFIRMATION_MIN_POOL_VOTES = 6;
-export const CONFIRMATION_MIN_TOTAL_VOTES = 12;
-export const CONFIRMATION_MIN_YES_VOTES = 8;
+export const CONFIRMATION_MIN_POOL_VOTES = 2;
+export const CONFIRMATION_MIN_TOTAL_VOTES = 2;
+export const CONFIRMATION_MIN_YES_VOTES = 2;
 
 export const REJECTION_FLOOR_YES_RATE = 0.35;
 export const REJECTION_FLOOR_MIN_VOTES = 12;

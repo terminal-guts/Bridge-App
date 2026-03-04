@@ -275,18 +275,22 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
       await resetAllGuides();
       logger.info('Guides reset for new user');
 
-      // Fire-and-forget: create a proposal FOR this user + backfill voting gates
-      // for all users. Falls back to simple assignment if the new function fails.
-      generateProposalForUser()
-        .then((res) => logger.info('Generate proposal for user:', res))
-        .catch((err) => {
-          logger.warn('generateProposalForUser failed, falling back:', err.message);
-          assignNewUserProposals()
-            .then((res) => logger.info('Fallback assignment:', res.assigned))
-            .catch((e) => logger.warn('Fallback assignment also failed (non-blocking):', e.message));
-        });
+      // Await proposal generation + backfill so proposals are ready before
+      // the Community screen loads. Falls back to simple assignment on failure.
+      try {
+        const res = await generateProposalForUser();
+        logger.info('Generate proposal for user:', res);
+      } catch (err: any) {
+        logger.warn('generateProposalForUser failed, falling back:', err.message);
+        try {
+          const res = await assignNewUserProposals();
+          logger.info('Fallback assignment:', res.assigned);
+        } catch (e: any) {
+          logger.warn('Fallback assignment also failed (non-blocking):', e.message);
+        }
+      }
 
-      // Navigate to main app after successful profile creation
+      // Navigate to main app after proposals are assigned
       (navigation as any).navigate('MainTabs');
     } catch (error: any) {
       logger.error('Onboarding error:', error);
