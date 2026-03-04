@@ -144,6 +144,17 @@ export async function triggerLifecycleCheck(): Promise<{
 // New User Assignment
 // ============================================================================
 
+export async function generateProposalForUser(): Promise<{
+  status: string;
+  proposal_created?: boolean;
+  compatibility_score?: number;
+  voters_backfilled?: number;
+}> {
+  const { data, error } = await supabase.functions.invoke('generate-proposal-for-user');
+  if (error) throw new Error(`Generate proposal for user failed: ${error.message}`);
+  return data;
+}
+
 export async function assignNewUserProposals(): Promise<{ assigned: number }> {
   const { data, error } = await supabase.functions.invoke('assign-new-user-proposals');
   if (error) throw new Error(`Assign new user proposals failed: ${error.message}`);

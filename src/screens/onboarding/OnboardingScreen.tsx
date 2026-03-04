@@ -10,7 +10,7 @@ import { supabase } from '../../lib/supabase';
 import { Body } from '../../components/ui';
 import { ONBOARDING_STEP_MAPPING } from '../../config/onboardingMapping';
 import { createLogger } from '../../utils/secureLogger';
-import { assignNewUserProposals } from '../../services/proposalApiService';
+import { assignNewUserProposals, generateProposalForUser } from '../../services/proposalApiService';
 
 const logger = createLogger('OnboardingScreen');
 import { resetAllGuides } from '../../services/guideService';
@@ -175,6 +175,14 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
         }
       }
 
+      // After email verification completes (step index 1), the user has a JWT.
+      // Fire-and-forget: assign existing proposals early so the gate isn't empty.
+      if (steps[stepAtCall].title === 'Verify Email') {
+        assignNewUserProposals()
+          .then((res) => logger.info('Early proposal assignment:', res.assigned))
+          .catch((err) => logger.warn('Early proposal assignment failed (non-blocking):', err.message));
+      }
+
       // Advance to next step using functional update to avoid stale closure
       if (stepAtCall < totalSteps - 1) {
         setCurrentStep(prev => {
@@ -267,11 +275,16 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
       await resetAllGuides();
       logger.info('Guides reset for new user');
 
-      // Fire-and-forget: assign up to 3 community proposals so the new user
-      // has something to vote on immediately (instead of waiting for 7PM cron)
-      assignNewUserProposals()
-        .then((res) => logger.info('Assigned new user proposals:', res.assigned))
-        .catch((err) => logger.warn('Failed to assign new user proposals (non-blocking):', err.message));
+      // Fire-and-forget: create a proposal FOR this user + backfill voting gates
+      // for all users. Falls back to simple assignment if the new function fails.
+      generateProposalForUser()
+        .then((res) => logger.info('Generate proposal for user:', res))
+        .catch((err) => {
+          logger.warn('generateProposalForUser failed, falling back:', err.message);
+          assignNewUserProposals()
+            .then((res) => logger.info('Fallback assignment:', res.assigned))
+            .catch((e) => logger.warn('Fallback assignment also failed (non-blocking):', e.message));
+        });
 
       // Navigate to main app after successful profile creation
       (navigation as any).navigate('MainTabs');
