@@ -1307,11 +1307,48 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
 
             {(() => {
               const answeredIds = profile?.deepQuestions?.map(q => q.questionId) || [];
+              const displayedIds = profile?.displayedQuestions || [];
               const unanswered = getUnansweredQuestions(answeredIds);
+              // Already answered but not currently displayed on profile
+              const answeredNotDisplayed = (profile?.deepQuestions || [])
+                .filter(q => !displayedIds.includes(q.questionId));
 
               return (
                 <>
-                  {unanswered.map((q, index) => (
+                  {answeredNotDisplayed.length > 0 && (
+                    <>
+                      <Body className="text-neutral-700 font-semibold text-sm mb-3">
+                        Already Answered ({answeredNotDisplayed.length})
+                      </Body>
+                      {answeredNotDisplayed.map((q) => {
+                        const questionText = DEEP_QUESTIONS.find(dq => dq.id === q.questionId)?.question || q.question;
+                        return (
+                          <StyledTouchableOpacity
+                            key={`answered-${q.questionId}`}
+                            onPress={() => {
+                              mediumHaptic();
+                              setShowQuestionSelectionModal(false);
+                              handleChangeToAnsweredQuestion(q.questionId);
+                            }}
+                            activeOpacity={0.7}
+                            className="mb-3"
+                          >
+                            <Card className="bg-blue-50 border border-blue-200">
+                              <Body className="text-neutral-900 font-medium text-base leading-6">{questionText}</Body>
+                              <Body className="text-neutral-500 text-sm mt-1" numberOfLines={2}>{q.answer}</Body>
+                            </Card>
+                          </StyledTouchableOpacity>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  {unanswered.length > 0 && (
+                    <Body className="text-neutral-700 font-semibold text-sm mb-3 mt-2">
+                      Unanswered ({unanswered.length})
+                    </Body>
+                  )}
+                  {unanswered.map((q) => (
                     <StyledTouchableOpacity
                       key={q.id}
                       onPress={() => {
@@ -1327,7 +1364,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                     </StyledTouchableOpacity>
                   ))}
 
-                  {unanswered.length === 0 && (
+                  {unanswered.length === 0 && answeredNotDisplayed.length === 0 && (
                     <Card className="bg-blue-50 border border-blue-200">
                       <StyledView className="items-center py-8">
                         <Ionicons name="checkmark-circle" size={48} color="#437FFF" />

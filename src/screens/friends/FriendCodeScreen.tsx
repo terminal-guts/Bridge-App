@@ -168,17 +168,8 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
         const friendName = result.data.friendProfile?.firstName || 'Friend';
         Alert.alert(
           'Friend Added!',
-          `${friendName} has been added to your friends list`,
-          [
-            {
-              text: 'View Friends',
-              onPress: () => navigation.navigate('FriendList'),
-            },
-            {
-              text: 'Add Another',
-              style: 'cancel',
-            },
-          ]
+          `${friendName} added as a friend`,
+          [{ text: 'OK' }]
         );
       } else {
         let msg = result.error?.message || 'Failed to add friend';
