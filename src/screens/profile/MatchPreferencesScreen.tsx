@@ -110,15 +110,21 @@ const ETHNICITY_OPTIONS = [
 ];
 
 const POLITICAL_OPTIONS = [
-  'Liberal',
-  'Conservative',
-  'Moderate',
-  'Progressive',
-  'Libertarian',
-  'Socialist',
-  'Apolitical',
   'No Preference',
+  'very_liberal',
+  'liberal',
+  'moderate',
+  'conservative',
+  'very_conservative',
+  'not_political',
 ];
+
+function formatPoliticalLabel(value: string): string {
+  if (value === 'No Preference') return 'No Preference';
+  return value.replace(/_/g, ' ').split(' ').map(word =>
+    word.charAt(0).toUpperCase() + word.slice(1)
+  ).join(' ');
+}
 
 const NON_NEGOTIABLES_LIST = [
   { id: 'outside_age_range', label: 'Outside of Age Range' },
@@ -805,7 +811,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                   >
                     <Body className={`text-sm ${
                       isSelected ? 'text-purple-700 font-medium' : 'text-neutral-700'
-                    }`}>{politics}</Body>
+                    }`}>{formatPoliticalLabel(politics)}</Body>
                   </StyledTouchableOpacity>
                 );
               })}
@@ -822,7 +828,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                     }}
                     className="px-3 py-2 rounded-full border bg-purple-100 border-purple-500"
                   >
-                    <Body className="text-sm text-purple-700 font-medium">{customPolitics}</Body>
+                    <Body className="text-sm text-purple-700 font-medium">{formatPoliticalLabel(customPolitics)}</Body>
                   </StyledTouchableOpacity>
                 ))}
             </StyledView>

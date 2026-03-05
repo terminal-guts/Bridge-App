@@ -411,8 +411,9 @@ function scorePolitics(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dic
 
   function oneDirection(theirLeaning: string, myLeaning: string, myPrefPolitics: string[]): number {
     if (theirLeaning === 'prefer_not_to_say' || myLeaning === 'prefer_not_to_say') return 0.5;
-    if (!myPrefPolitics.length || myPrefPolitics.includes('no_preference')) return 1.0;
-    if (myPrefPolitics.includes(theirLeaning)) return 1.0;
+    const normalizedPrefs = myPrefPolitics.map(p => p.toLowerCase().replace(/\s+/g, '_'));
+    if (!normalizedPrefs.length || normalizedPrefs.includes('no_preference')) return 1.0;
+    if (normalizedPrefs.includes(theirLeaning)) return 1.0;
     if (theirLeaning === myLeaning) return 1.0;
 
     // Check adjacency
