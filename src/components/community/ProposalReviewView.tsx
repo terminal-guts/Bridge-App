@@ -36,7 +36,6 @@ import { showToast } from '../../utils/toast';
 import {
   matchAge,
   matchHeight,
-  matchDatingDistance,
   matchEthnicity,
   matchPolitics,
   matchReligion,
@@ -466,9 +465,7 @@ export function ProposalReviewView({
     const userB = proposal.userB;
     const photoA = userA.photos?.find((p: any) => p.isMain) || userA.photos?.[0];
     const photoB = userB.photos?.find((p: any) => p.isMain) || userB.photos?.[0];
-    const actualDistance = 10;
     const heightResult = matchHeight(userA, userB);
-    const distanceResult = matchDatingDistance(userA, userB, actualDistance);
     const ethnicityResult = matchEthnicity(userA, userB);
     const politicsResult = matchPolitics(userA, userB);
     const religionResult = matchReligion(userA, userB);
@@ -478,21 +475,25 @@ export function ProposalReviewView({
     const otherSubstancesResult = matchOtherSubstances(userA, userB);
     const valuesResult = matchValues(userA, userB);
     const interestsResult = matchInterests(userA, userB);
-    const basicResults = [heightResult, distanceResult];
+    const basicResults = [heightResult];
     const beliefsResults = [politicsResult, religionResult];
     const lifestyleResults = [drinkResult, weedResult, tobaccoResult, otherSubstancesResult];
     const allResults = [heightResult, ethnicityResult, politicsResult, religionResult, drinkResult, weedResult, tobaccoResult, otherSubstancesResult];
     const totalKnown = countKnown(allResults);
     const totalMatch = countMatch(allResults);
 
-    // Compatibility score: random 70-99 display value, seeded by proposal ID for stability.
-    const idHash = proposal.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    const compatScore = 70 + (idHash % 30);
+    // Use real compatibility score from the proposal, with hash-based fallback for older rows
+    const compatScore = proposal.compatibilityScore
+      ? Math.round(proposal.compatibilityScore)
+      : 70 + (proposal.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 30);
 
     const valuesMatchCount = (valuesResult as any).sharedValues?.length || 0;
-    const valuesTotal = Math.max((userA.values || []).length, (userB.values || []).length, 1);
+    const valuesUnion = new Set([...(userA.values || []), ...(userB.values || [])]);
+    const valuesTotal = Math.max(valuesUnion.size, 1);
+
     const interestsMatchCount = (interestsResult as any).sharedInterests?.length || 0;
-    const interestsTotal = Math.max((userA.interests || []).length, (userB.interests || []).length, 1);
+    const interestsUnion = new Set([...(userA.interests || []), ...(userB.interests || [])]);
+    const interestsTotal = Math.max(interestsUnion.size, 1);
 
     // x/4 tracker: 4 core compatibility dimensions — age, religion, politics, lifestyle(drinking)
     const coreResults = [
@@ -510,7 +511,7 @@ export function ProposalReviewView({
 
     return {
       proposal, userA, userB, photoA, photoB,
-      heightResult, distanceResult, ethnicityResult, politicsResult, religionResult,
+      heightResult, ethnicityResult, politicsResult, religionResult,
       drinkResult, weedResult, tobaccoResult, otherSubstancesResult,
       basicResults, beliefsResults, lifestyleResults,
       compatScore, valuesMatchCount, valuesTotal, interestsMatchCount, interestsTotal,
@@ -561,7 +562,7 @@ export function ProposalReviewView({
   if (!matchData) return null;
   const {
     proposal, userA, userB, photoA, photoB,
-    heightResult, distanceResult, ethnicityResult, politicsResult, religionResult,
+    heightResult, ethnicityResult, politicsResult, religionResult,
     drinkResult, weedResult, tobaccoResult, otherSubstancesResult,
     basicResults, beliefsResults, lifestyleResults,
     compatScore, valuesMatchCount, valuesTotal, interestsMatchCount, interestsTotal,
@@ -654,9 +655,6 @@ export function ProposalReviewView({
                   <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 28, color: '#FFF', letterSpacing: -0.3 }}>
                     {userA.firstName}{userA.age ? `, ${userA.age}` : ''}
                   </Text>
-                  <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#FFF', opacity: 0.85 }}>
-                    {userA.currentJob || ''}
-                  </Text>
                 </View>
               </View>
 
@@ -688,9 +686,6 @@ export function ProposalReviewView({
                 <View style={{ position: 'absolute', bottom: 14, left: 14 }}>
                   <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 28, color: '#FFF', letterSpacing: -0.3 }}>
                     {userB.firstName}{userB.age ? `, ${userB.age}` : ''}
-                  </Text>
-                  <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#FFF', opacity: 0.85 }}>
-                    {userB.currentJob || ''}
                   </Text>
                 </View>
               </View>
@@ -745,13 +740,6 @@ export function ProposalReviewView({
         >
           {heightResult.status !== 'unknown' && (
             <ComparisonValueRow result={heightResult} label="Height" />
-          )}
-          {distanceResult.status !== 'unknown' && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <ValueBox label="Distance apart" value={distanceResult.leftValue} />
-              <MatchIcon status={distanceResult.status} />
-              <ValueBox label="Distance apart" value={distanceResult.rightValue} />
-            </View>
           )}
         </SectionCard>
 
