@@ -30,7 +30,7 @@ export const TermsOfService: React.FC<TermsOfServiceProps> = ({ navigation }) =>
 
       <StyledScrollView className="flex-1 px-4 py-4">
         <Body className="text-neutral-500 text-sm mb-4">
-          Last Updated: November 14, 2024
+          Last Updated: March 4, 2026
         </Body>
 
         <H2 className="mb-3">1. Acceptance of Terms</H2>
@@ -55,12 +55,12 @@ export const TermsOfService: React.FC<TermsOfServiceProps> = ({ navigation }) =>
 
         <H2 className="mb-3">5. Matchmaking Services</H2>
         <Body className="text-neutral-700 mb-6 leading-6">
-          Bridge provides a community-driven matchmaking service. Matches are generated based on community input and our algorithm. Bridge does not guarantee matches or successful relationships. Users participate in the matchmaking process by completing daily surveys at their discretion.
+          Bridge provides a community-driven matchmaking service. Matches are generated based on community input and our algorithm. Bridge does not guarantee matches or successful relationships. Users participate in the matchmaking process by voting on proposals and participating in community matchmaking at their discretion.
         </Body>
 
         <H2 className="mb-3">6. Payment Terms</H2>
         <Body className="text-neutral-700 mb-6 leading-6">
-          Users are charged only when both parties accept a match. Prices are dynamic and may vary based on market conditions during operating hours (9:30 AM - 4:00 PM ET). All payments are final and non-refundable unless required by law.
+          Bridge is currently free during our beta period. There are no charges, subscriptions, or hidden fees. We will provide advance notice before introducing any paid features.
         </Body>
 
         <H2 className="mb-3">7. Privacy and Data Protection</H2>
@@ -68,9 +68,9 @@ export const TermsOfService: React.FC<TermsOfServiceProps> = ({ navigation }) =>
           Your use of Bridge is also governed by our Privacy Policy. By using the App, you consent to the collection and use of information as detailed in the Privacy Policy.
         </Body>
 
-        <H2 className="mb-3">8. Strike System</H2>
+        <H2 className="mb-3">8. Enforcement Policy</H2>
         <Body className="text-neutral-700 mb-6 leading-6">
-          Bridge employs a three-strike system for policy violations. Users who receive three strikes will be permanently banned from the platform. Strikes may be issued for:
+          Bridge may take enforcement action, including account suspension or permanent removal, for policy violations. Violations include:
           {'\n'}• Providing false information
           {'\n'}• Harassment or inappropriate behavior
           {'\n'}• Sending inappropriate content
@@ -99,7 +99,7 @@ export const TermsOfService: React.FC<TermsOfServiceProps> = ({ navigation }) =>
 
         <H2 className="mb-3">13. Governing Law</H2>
         <Body className="text-neutral-700 mb-6 leading-6">
-          These Terms shall be governed and construed in accordance with the laws of New York, United States, without regard to its conflict of law provisions.
+          These Terms shall be governed and construed in accordance with the laws of Texas, United States, without regard to its conflict of law provisions.
         </Body>
 
         <H2 className="mb-3">14. Changes to Terms</H2>
@@ -112,7 +112,7 @@ export const TermsOfService: React.FC<TermsOfServiceProps> = ({ navigation }) =>
           If you have any questions about these Terms, please contact us at:
           {'\n\n'}Bridge Support
           {'\n'}Email: bridge.date.app@gmail.com
-          {'\n'}Address: New York, NY 10001
+          {'\n'}Address: Houston, TX
         </Body>
       </StyledScrollView>
     </StyledSafeAreaView>

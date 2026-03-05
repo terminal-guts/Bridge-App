@@ -2,21 +2,29 @@
  * Question Tiers Utility
  *
  * Centralized logic for managing deep question tiers.
- * Questions are organized into 3 tiers based on their ID ranges.
+ * Questions are organized into 3 tiers (5 questions each).
+ * IDs are non-contiguous (some were removed), so tiers use explicit sets.
  */
 
 export type QuestionTier = 1 | 2 | 3;
 
 /**
- * Get the tier for a given question ID
+ * Explicit tier membership — source of truth.
  *
- * Tier 1 (Getting to Know You): Questions 1-7
- * Tier 2 (Going Deeper): Questions 8-14
- * Tier 3 (Building Connection): Questions 15-21
+ * Tier 1 (Lighthearted): 1, 2, 5, 6, 22
+ * Tier 2 (Relationship):  9, 10, 12, 13, 23
+ * Tier 3 (Reflective):    14, 15, 16, 21, 24
+ */
+const TIER_1_IDS = new Set([1, 2, 5, 6, 22]);
+const TIER_2_IDS = new Set([9, 10, 12, 13, 23]);
+const TIER_3_IDS = new Set([14, 15, 16, 21, 24]);
+
+/**
+ * Get the tier for a given question ID
  */
 export const getQuestionTier = (questionId: number): QuestionTier => {
-  if (questionId >= 1 && questionId <= 7) return 1;
-  if (questionId >= 8 && questionId <= 14) return 2;
+  if (TIER_1_IDS.has(questionId)) return 1;
+  if (TIER_2_IDS.has(questionId)) return 2;
   return 3;
 };
 
@@ -27,7 +35,7 @@ export const getQuestionTier = (questionId: number): QuestionTier => {
 export const TIER_CONFIG = {
   1: {
     emoji: '👋',
-    name: 'Getting to Know You',
+    name: 'Lighthearted',
     bg: '#DBEAFE',      // Sky blue
     border: '#93C5FD',  // Sky blue border
     iconBg: 'bg-sky-400',
@@ -36,7 +44,7 @@ export const TIER_CONFIG = {
   },
   2: {
     emoji: '💭',
-    name: 'Going Deeper',
+    name: 'Relationship',
     bg: '#D1FAE5',      // Emerald/teal green - VERY DIFFERENT from blue
     border: '#6EE7B7',  // Bright emerald border
     iconBg: 'bg-emerald-400',
@@ -45,7 +53,7 @@ export const TIER_CONFIG = {
   },
   3: {
     emoji: '💜',
-    name: 'Building Connection',
+    name: 'Reflective',
     bg: '#FCE7F3',      // Pink
     border: '#F9A8D4',  // Pink border
     iconBg: 'bg-fuchsia-400',
@@ -112,14 +120,10 @@ export const validateTierDistribution = (displayedIds: number[]):
 
 /**
  * Get the total number of questions per tier
- * Tier 1: 7 questions
- * Tier 2: 7 questions
- * Tier 3: 7 questions
  */
-export const QUESTIONS_PER_TIER = 7;
+export const QUESTIONS_PER_TIER = 5;
 
 /**
  * Get the total number of questions across all tiers
- * 21 total questions (7 per tier)
  */
-export const TOTAL_QUESTIONS = 21;
+export const TOTAL_QUESTIONS = 15;

@@ -25,7 +25,7 @@ export const profileGuide: GuideDefinition = {
       tooltipPosition: 'bottom',
       title: 'Complete your profile to match',
       message:
-        'You need 100% profile completion to receive proposals.\n\nFill out:\n• All basic info\n• 3 deep questions (one per tier)\n• 6 photos minimum\n\nLet\'s make you matchable!',
+        'You need 100% profile completion to receive proposals.\n\nFill out:\n• All basic info\n• 3 deep questions (one per tier)\n• 3 photos minimum\n\nLet\'s make you matchable!',
       primaryButtonText: 'Next',
     },
 
@@ -51,7 +51,7 @@ export const profileGuide: GuideDefinition = {
       tooltipPosition: 'bottom',
       title: 'Show your authentic self',
       message:
-        'Upload 6 photos that show different sides of you:\n• Clear face shots\n• Hobbies & interests\n• Social moments\n• Natural expressions\n\nBe real, not perfect.',
+        'Upload 3 photos that show different sides of you:\n• Clear face shots\n• Hobbies & interests\n• Social moments\n• Natural expressions\n\nBe real, not perfect.',
       primaryButtonText: 'Complete Profile',
     },
   ],

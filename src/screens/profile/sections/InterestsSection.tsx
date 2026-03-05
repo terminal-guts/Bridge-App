@@ -11,30 +11,29 @@ const StyledView = styled(View);
 const StyledText = styled(Text);
 
 const MIN_INTERESTS = 3;
-const MAX_INTERESTS = 8;
+const MAX_INTERESTS = 5;
 
 const AVAILABLE_INTERESTS = [
   // Activities
-  'Tennis', 'Golf', 'Running', 'Yoga', 'Pilates', 'CrossFit', 'Hiking', 'Skiing',
-  'Cycling', 'Swimming', 'Basketball', 'Soccer', 'Climbing',
+  'Tennis', 'Golf', 'Running', 'Yoga', 'Hiking', 'Skiing',
+  'Basketball', 'Lifting', 'Live Sports', 'Watching Sports',
 
   // Culture & Entertainment
-  'Museums', 'Art Galleries', 'Theater', 'Live Music', 'Concerts', 'Comedy Shows',
-  'Film', 'Documentaries', 'Reading', 'Writing', 'Photography',
+  'Museums', 'Theater', 'Live Music', 'Comedy Shows',
+  'Film', 'Reading', 'Photography',
 
   // Food & Drink
-  'Cooking', 'Baking', 'Wine Tasting', 'Craft Beer', 'Coffee', 'Cocktails',
-  'Fine Dining', 'Food Markets', 'Brunch',
+  'Cooking', 'Coffee', 'Cocktails', 'Fine Dining', 'Brunch',
 
   // Travel & Adventure
-  'Travel', 'Weekend Trips', 'International Travel', 'Road Trips', 'Camping',
+  'Travel', 'Camping',
 
   // Lifestyle
-  'Startups', 'Investing', 'Real Estate', 'Fashion', 'Interior Design',
-  'Meditation', 'Wellness', 'Volunteering', 'Podcasts',
+  'Startups', 'Investing', 'Real Estate', 'Fashion', 'Meditation', 'Podcasts',
 
   // Social
-  'Dinner Parties', 'Game Nights', 'Dancing', 'Karaoke', 'Trivia Nights',
+  'Dinner Parties', 'Game Nights', 'Dancing', 'Trivia Nights',
+  'Poker', 'Video Games',
 ];
 
 // Convert to Set for O(1) lookup instead of O(n)

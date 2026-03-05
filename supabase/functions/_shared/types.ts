@@ -28,7 +28,7 @@ export interface DBUserProfile {
   values: string[];
   bio: string | null;
   photos: any[];
-  non_negotiables: any[];
+  non_negotiables: any[]; // SCRAPPED — always empty, kept for DB schema compat
   is_paused: boolean;
 }
 

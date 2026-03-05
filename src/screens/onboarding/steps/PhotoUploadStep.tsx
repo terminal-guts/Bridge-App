@@ -21,7 +21,7 @@ const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledImage = styled(Image);
 const StyledScrollView = styled(ScrollView);
 
-const MAX_PHOTOS = 6;
+const MAX_PHOTOS = 3;
 const MIN_PHOTOS = 1;
 
 export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({

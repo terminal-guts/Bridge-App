@@ -26,7 +26,7 @@ const STORAGE_BUCKET = 'profile-photos';
 const MAX_PHOTO_WIDTH = 1200; // Max width in pixels
 const MAX_PHOTO_HEIGHT = 1600; // Max height in pixels
 const JPEG_QUALITY = 0.85; // 85% quality for good balance
-const MAX_PHOTOS_PER_USER = 6;
+const MAX_PHOTOS_PER_USER = 3;
 
 // Supported image formats
 const SUPPORTED_FORMATS = ['jpg', 'jpeg', 'png', 'webp', 'heic'];
