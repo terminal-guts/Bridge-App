@@ -78,32 +78,32 @@ const MOCK_SCHOOLS = [
 
 const MOCK_INTERESTS = [
   'Running', 'Yoga', 'Reading', 'Cooking', 'Travel', 'Photography',
-  'Tennis', 'Hiking', 'Wine Tasting', 'Live Music', 'Art Museums',
+  'Tennis', 'Hiking', 'Cocktails', 'Live Music', 'Museums',
 ];
 
 const MOCK_VALUES = [
   'Family', 'Ambition', 'Honesty', 'Adventure', 'Career', 'Health',
-  'Creativity', 'Intelligence', 'Humor', 'Kindness',
+  'Creativity', 'Trust', 'Empathy', 'Kindness',
 ];
 
 const MOCK_QUESTIONS = [
   {
     tier: 1,
     questionId: 1,
-    question: "What's your ideal Sunday morning?",
-    answer: 'Coffee shop with a good book, then a long run in Central Park.',
+    question: 'Given the choice of anyone alive or dead, whom would you want as a dinner guest?',
+    answer: 'My late grandfather. He had the best stories and I never got to hear them all.',
   },
   {
     tier: 2,
-    questionId: 15,
-    question: "What's a relationship non-negotiable for you?",
-    answer: 'Lack of ambition and dishonesty. I value people who know what they want.',
+    questionId: 9,
+    question: "When you're overwhelmed or stressed, what actually helps you feel supported?",
+    answer: 'Honestly just someone sitting with me without trying to fix it.',
   },
   {
     tier: 3,
-    questionId: 30,
-    question: 'Where do you see yourself in 10 years?',
-    answer: 'Leading a team, married with kids, living in the West Village.',
+    questionId: 15,
+    question: 'What is your greatest accomplishment?',
+    answer: 'Getting into Rice on a full scholarship. First in my family to go to college.',
   },
 ];
 

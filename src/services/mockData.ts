@@ -50,8 +50,8 @@ export const mockProfiles: UserProfile[] = [
       { id: 'p1_5', url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&q=85', isMain: false, order: 5 },
       { id: 'p1_6', url: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=800&q=85', isMain: false, order: 6 },
     ],
-    interests: ['Pilates', 'Wine Tasting', 'Travel', 'Fine Dining', 'Art Galleries', 'Running'],
-    values: ['Ambition', 'Loyalty', 'Family', 'Growth Mindset', 'Integrity', 'Balance'],
+    interests: ['Yoga', 'Cocktails', 'Travel', 'Fine Dining', 'Museums', 'Running'],
+    values: ['Ambition', 'Trust', 'Family', 'Growth Mindset', 'Integrity', 'Stability'],
     lifestyle: {
       drinking: 'Sometimes',
       smoking: 'No',
@@ -62,10 +62,7 @@ export const mockProfiles: UserProfile[] = [
       children: 'want',
       pets: ['Dogs'],
     },
-    nonNegotiables: [
-      { id: 'd1', type: 'smoking', value: true },
-      { id: 'd2', type: 'children', value: 'dont_want' },
-    ],
+    nonNegotiables: [],
     preferences: {
       ageMin: 26,
       ageMax: 34,
@@ -90,25 +87,25 @@ export const mockProfiles: UserProfile[] = [
     },
     deepQuestions: [
       {
-        questionId: 11,
+        questionId: 1,
         tier: 1 as const,
-        question: 'What are you most grateful for?',
-        answer: 'My family and the opportunities they gave me to pursue my career in finance.',
+        question: 'Given the choice of anyone alive or dead, whom would you want as a dinner guest?',
+        answer: 'Warren Buffett. I want to understand how he thinks about long-term value, not just in markets but in relationships and life decisions.',
       },
       {
         questionId: 15,
-        tier: 2 as const,
+        tier: 3 as const,
         question: 'What is your greatest accomplishment?',
         answer: 'Making it to Goldman Sachs and building strong relationships with mentors who believed in me.',
       },
       {
-        questionId: 18,
-        tier: 3 as const,
-        question: 'What qualities do you find most attractive in a potential partner, and why?',
+        questionId: 12,
+        tier: 2 as const,
+        question: 'What do you notice first when you\'re attracted to someone?',
         answer: "Ambition and drive, but also someone who values work-life balance. I want a partner who understands the demands of a career but also knows when to disconnect and enjoy life.",
       },
     ],
-    displayedQuestions: [11, 15, 18],
+    displayedQuestions: [1, 15, 12],
     sectionVisibility: {
       religion: true,
       politics: true,
@@ -154,8 +151,8 @@ export const mockProfiles: UserProfile[] = [
       { id: 'p2_5', url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=800&q=85', isMain: false, order: 5 },
       { id: 'p2_6', url: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=800&q=85', isMain: false, order: 6 },
     ],
-    interests: ['Running', 'Cooking', 'Golf', 'Reading', 'Cocktail Bars', 'Basketball'],
-    values: ['Integrity', 'Adventure', 'Humor', 'Intelligence', 'Authenticity', 'Growth Mindset'],
+    interests: ['Running', 'Cooking', 'Golf', 'Reading', 'Cocktails', 'Basketball'],
+    values: ['Integrity', 'Adventure', 'Kindness', 'Respect', 'Authenticity', 'Growth Mindset'],
     lifestyle: {
       drinking: 'Sometimes',
       smoking: 'No',
@@ -166,9 +163,7 @@ export const mockProfiles: UserProfile[] = [
       children: 'open',
       pets: ['Dogs', 'Cats'],
     },
-    nonNegotiables: [
-      { id: 'd3', type: 'smoking', value: true },
-    ],
+    nonNegotiables: [],
     preferences: {
       ageMin: 24,
       ageMax: 32,
@@ -193,10 +188,10 @@ export const mockProfiles: UserProfile[] = [
     },
     deepQuestions: [
       {
-        questionId: 7,
+        questionId: 22,
         tier: 1 as const,
-        question: 'What would constitute a perfect day for you?',
-        answer: 'Morning run in Central Park, brunch with friends, afternoon working on a challenging case, evening cooking dinner and watching a good documentary.',
+        question: "What's the best trip or adventure you've ever been on?",
+        answer: 'Backpacking through Patagonia after the bar exam. It taught me that the best experiences are the ones that push you out of your comfort zone.',
       },
       {
         questionId: 10,
@@ -205,13 +200,13 @@ export const mockProfiles: UserProfile[] = [
         answer: 'Honesty, loyalty, and the ability to be yourself without judgment. Those are non-negotiable for me.',
       },
       {
-        questionId: 19,
+        questionId: 14,
         tier: 3 as const,
-        question: 'What would be important for someone to know about you if they were going to become a close friend or partner?',
-        answer: "I'm ambitious but also deeply value balance. Work is important but relationships come first. I need someone who understands that duality.",
+        question: "Is there something you've dreamed of doing for a long time? Why haven't you done it?",
+        answer: "Writing a novel. I have the ideas but law school and work keep pushing it back. One day I'll carve out the time.",
       },
     ],
-    displayedQuestions: [7, 10, 19],
+    displayedQuestions: [22, 10, 14],
     sectionVisibility: {
       religion: true,
       politics: true,
@@ -257,8 +252,8 @@ export const mockProfiles: UserProfile[] = [
       { id: 'p3_5', url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800&q=85', isMain: false, order: 5 },
       { id: 'p3_6', url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&q=85', isMain: false, order: 6 },
     ],
-    interests: ['Yoga', 'Meditation', 'Wine', 'Museums', 'Hiking', 'Reading'],
-    values: ['Balance', 'Mindfulness', 'Success', 'Authenticity', 'Integrity', 'Growth Mindset'],
+    interests: ['Yoga', 'Meditation', 'Cocktails', 'Museums', 'Hiking', 'Reading'],
+    values: ['Stability', 'Spirituality', 'Career', 'Authenticity', 'Integrity', 'Growth Mindset'],
     lifestyle: {
       drinking: 'Sometimes',
       smoking: 'No',
@@ -269,9 +264,7 @@ export const mockProfiles: UserProfile[] = [
       children: 'want',
       pets: ['Cats'],
     },
-    nonNegotiables: [
-      { id: 'd4', type: 'smoking', value: true },
-    ],
+    nonNegotiables: [],
     preferences: {
       ageMin: 26,
       ageMax: 35,
@@ -296,25 +289,25 @@ export const mockProfiles: UserProfile[] = [
     },
     deepQuestions: [
       {
-        questionId: 8,
+        questionId: 6,
         tier: 1 as const,
-        question: 'You are going to live until 90. Would you rather have the mind or body of your thirty year old self for the last 60 years of your life?',
-        answer: 'Mind, definitely. Physical health is important but mental clarity and wisdom are everything.',
-      },
-      {
-        questionId: 15,
-        tier: 2 as const,
-        question: 'What is your greatest accomplishment?',
-        answer: 'Winning my first case at the firm and calling my parents to tell them. They sacrificed so much for my education.',
+        question: 'Your house catches fire. What one item would you save?',
+        answer: 'My grandfather\'s watch. It\'s the one thing that can\'t be replaced and reminds me of everything he taught me.',
       },
       {
         questionId: 13,
-        tier: 3 as const,
+        tier: 2 as const,
         question: "What's something you're actively trying to improve about yourself right now?",
         answer: 'Work-life balance. I tend to overwork and I\'m learning to set better boundaries and prioritize my mental health.',
       },
+      {
+        questionId: 15,
+        tier: 3 as const,
+        question: 'What is your greatest accomplishment?',
+        answer: 'Winning my first case at the firm and calling my parents to tell them. They sacrificed so much for my education.',
+      },
     ],
-    displayedQuestions: [8, 15, 13],
+    displayedQuestions: [6, 13, 15],
     sectionVisibility: {
       religion: true,
       politics: true,
@@ -360,8 +353,8 @@ export const mockProfiles: UserProfile[] = [
       { id: 'p4_5', url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=800&q=85', isMain: false, order: 5 },
       { id: 'p4_6', url: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=800&q=85', isMain: false, order: 6 },
     ],
-    interests: ['Fitness', 'Coffee', 'Basketball', 'Travel', 'Documentaries', 'Cooking'],
-    values: ['Compassion', 'Drive', 'Family', 'Service', 'Integrity', 'Loyalty'],
+    interests: ['Lifting', 'Coffee', 'Basketball', 'Travel', 'Film', 'Cooking'],
+    values: ['Kindness', 'Ambition', 'Family', 'Community', 'Integrity', 'Trust'],
     lifestyle: {
       drinking: 'Sometimes',
       smoking: 'No',
@@ -372,10 +365,7 @@ export const mockProfiles: UserProfile[] = [
       children: 'want',
       pets: ['Dogs'],
     },
-    nonNegotiables: [
-      { id: 'd5', type: 'smoking', value: true },
-      { id: 'd6', type: 'drugs', value: true },
-    ],
+    nonNegotiables: [],
     preferences: {
       ageMin: 24,
       ageMax: 32,
@@ -488,8 +478,8 @@ export const currentUserProfile: UserProfile = {
   ],
 
   // Interests & Values
-  interests: ['Tennis', 'Skiing', 'Wine Tasting', 'Travel', 'Startups', 'Running', 'Podcasts', 'Cooking'],
-  values: ['Ambition', 'Adventure', 'Honesty', 'Growth Mindset', 'Family', 'Integrity', 'Balance'],
+  interests: ['Tennis', 'Skiing', 'Cocktails', 'Travel', 'Startups', 'Running', 'Podcasts', 'Cooking'],
+  values: ['Ambition', 'Adventure', 'Honesty', 'Growth Mindset', 'Family', 'Integrity', 'Stability'],
 
   // Partner Preferences (double-tap selections from onboarding)
   partnerLifestylePreferences: {
@@ -511,11 +501,7 @@ export const currentUserProfile: UserProfile = {
     pets: ['Dogs'],
   },
 
-  // Non-Negotiables
-  nonNegotiables: [
-    { id: 'cd1', type: 'smoking', value: true },
-    { id: 'cd2', type: 'drugs', value: true },
-  ],
+  nonNegotiables: [],
 
   // Match Preferences
   preferences: {
@@ -544,19 +530,19 @@ export const currentUserProfile: UserProfile = {
       answer: 'The ability to be more present in the moment instead of always thinking about the next deal. I find myself constantly planning ahead, but some of life\'s best moments are happening right now.',
     },
     {
-      questionId: 17,
+      questionId: 23,
       tier: 2 as const,
-      question: 'What are three things you hope to have in common with your future partner?',
-      answer: "Ambition balanced with values, a love for adventure and trying new things, and the ability to have deep conversations about what really matters in life.",
+      question: "What's something you could talk about for hours without getting bored?",
+      answer: "Market strategy, geopolitics, and honestly good food. I can go deep on any of those and lose track of time.",
     },
     {
-      questionId: 6,
+      questionId: 16,
       tier: 3 as const,
-      question: 'Your house catches fire. What one item would you save?',
-      answer: 'A photo album my grandmother made for me. It has irreplaceable memories and handwritten notes from family members who have passed. Material things can be replaced, but those memories and her handwriting are gone forever.',
+      question: 'If a crystal ball could tell you the truth about anything, what would you want to know?',
+      answer: "Whether the risks I'm taking now will pay off. Not financially — more like whether I'm building the life I'll look back on proudly.",
     },
   ],
-  displayedQuestions: [5, 17, 6], // Question IDs to display on profile
+  displayedQuestions: [5, 23, 16], // Question IDs to display on profile
 
   // Section Visibility
   sectionVisibility: {

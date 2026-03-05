@@ -71,7 +71,7 @@ const validateFriendCode = (code: string, userCode: string): string => {
 const shareFriendCode = async (friendCode: string): Promise<void> => {
   try {
     await Share.share({
-      message: `Add me on Bridge! My friend code is: ${friendCode}\n\nBridge - The first community-driven dating experience`,
+      message: `Add me on Bridge! My friend code is:\n\n${friendCode}\n\nDownload Bridge and enter my code to connect!`,
       title: 'My Bridge Friend Code',
     });
   } catch (error) {

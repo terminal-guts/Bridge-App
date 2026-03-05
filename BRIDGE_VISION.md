@@ -29,9 +29,9 @@
 
 ## Who We Are
 
-**For:** Our end user is 22-30 busy professionals seeking genuine relationships. We are beta launching at Rice Univsersity to test the app in 3 months though.
+**For:** Socially active undergraduate students at dense residential campuses who are embedded in tight friend groups, value peer validation, and are motivated by finding a meaningful relationship within their existing social community. Beta launching at Rice University.
 **Who:** Are dissatisfied with current dating solutions. Swiping is dead. Online dating is lonely.
-**Bridge is:** A dating app that provides a low-time solution for busy people to develop serious relationships
+**Bridge is:** A dating app that provides a low-time solution for students to develop serious relationships through their friend communities
 **Unlike:** Hinge, which requires 45+ minutes daily of scrolling and is isolating...
 **Bridge:** Takes 5 minutes per day and uses community-driven matching (no swiping/scrolling)
 
@@ -284,13 +284,6 @@ A count of how many successful matches your proposals have created.
 
 ---
 
-### **Friend Superpowers**
-Each friend has two global (per week) abilities:
-- **"This type is really good for them."**
-- **"Please avoid this type for them."**
-
-Anchor approval is required for both.
-
 ---
 
 ### **Friend Chat**
@@ -403,8 +396,7 @@ Shows everyone else:
 ### **How Friends Help:**
 1. **Vote on proposals:** Each friend's proposal has one candidate — you vote on whether it's a good match for them
 2. **Recommend during community voting:** If you see someone who'd be perfect for a friend, recommend them
-3. **Friend Superpowers:** Type preferences (coming soon)
-4. **Friend Chat:** Celebrate matches, give feedback
+3. **Friend Chat:** Celebrate matches, give feedback
 
 ---
 
@@ -478,42 +470,8 @@ Day 5: auto-send (bypass threshold — proposal passes regardless)
 
 ---
 
-## Friend Superpowers (Global Per Week)
-
-### "Good Type"
-Friend flags someone in the grid as an excellent fit.
-Anchor receives:
-
-> "Maya thinks this type of person could be great for you. Accept suggestion?"
-
-Anchor choices:
-- Accept
-- Override
-- Toggle this friend off from receiving their grids
-
-If accepted, similar profiles appear more often for that anchor.
-
-### "Avoid Type"
-Friend flags someone as a bad fit.
-
-Anchor receives:
-
-> "Ethan suggests avoiding this type. Accept or override?"
-
-Anchor can:
-- Accept
-- Override
-- Toggle friend off
-
-If accepted, similar profiles appear less often.
-
----
-
-## Friend Influence Controls
-
-Anchors may globally toggle off any friend from receiving their daily grid.
-
-Overrides to suggestions are private; friends are not notified.
+## Friend Superpowers — SCRAPPED
+Type-flagging superpowers ("good type" / "avoid type") have been removed. The only friend action during voting is **Recommend to Friend** — you can recommend any person you see to a friend at any time.
 
 ---
 
@@ -666,7 +624,7 @@ Friend chats contain:
 - Assists are visible only to friends + match reveals
 - Friend endorsements lower voting threshold
 - High karma friends have stronger endorsement weight
-- Friends have global weekly superpowers requiring anchor approval
+- Friends can recommend people to each other during voting
 - User may toggle off a friend entirely
 - No DMs to strangers—only friends and active matches
 
@@ -684,12 +642,8 @@ Friend chats contain:
 - Users can answer additional questions beyond the 3 minimum to improve match quality
 - Questions are displayed on user profiles to help potential matches understand them better
 
-### Non-Negotiables System
-- Users can select multiple non-negotiables from predefined options
-- Non-negotiable options include: Smokers, Doesn't Want Kids, Has Kids, Drug Use, Different Religion, Different Politics, No Pets
-- **Critical Matching Rule:** Users will NEVER receive prospective candidates who match any of their non-negotiables
-- Non-negotiables are saved with match preferences
-- UI provides clear visual feedback (red highlights) when non-negotiables are selected
+### Non-Negotiables System — SCRAPPED
+Non-negotiables have been completely removed from the product. There are no hard dealbreaker filters in proposal generation.
 
 ---
 
@@ -761,7 +715,6 @@ The algorithm considers:
 - Values alignment
 - Personality fit
 - Lifestyle compatibility
-- Non-negotiables
 - Gender-specific preference patterns
 
 ### Anti-Superficial Design
@@ -778,21 +731,20 @@ The algorithm considers:
 
 ## Primary Beachhead
 
-**24-30-year-old busy New Yorkers working in:**
-- Finance
-- Consulting
-- Law
-- Medicine
+**Socially active undergraduate students at dense residential campuses** — embedded in tight friend groups, value peer validation, and motivated by finding meaningful relationships within their existing social community.
+
+**Beta Launch:** Rice University (completely free — no payments during beta)
 
 ### Why This Market?
-- Work long hours → suffer most from time-demanding swiping models
-- Age 30 is a psychological milestone for settling down
-- People actively seeking serious relationships
-- Strong network effects in NYC professional communities
-- Values ambition and hard work in partners
+- Live on dense residential campuses → natural tight-knit friend groups
+- Already embedded in social communities → friend-driven matching feels native
+- Peer validation matters deeply at this life stage
+- Dissatisfied with swipe culture but actively want to date
+- Strong word-of-mouth dynamics on college campuses
+- High daily app engagement habits
 
 ### Market Size & Opportunity
-This is a saturated market, but AI and community-driven models create new opportunities.
+College campuses are ideal density environments for community-driven matching. Strong network effects in residential communities create natural viral growth.
 
 ---
 
@@ -848,15 +800,14 @@ This is a saturated market, but AI and community-driven models create new opport
 ## Go-to-Market Strategy
 
 ### Acquisition Channels
-1. **Waitlist signups** (currently in progress)
-   - Cold emails
-   - Customer development interviews
-   - Word of mouth
-2. **Post-v1 launch:**
-   - Word of mouth virality (driven by pricing incentives)
-   - Paid advertisements
-   - Social media campaigns
-3. **Leverage NYC professional networks** (finance, consulting, law, medicine)
+1. **Rice University beta launch** (completely free)
+   - On-campus word of mouth
+   - Friend group onboarding (invite your friend group)
+   - Student org partnerships
+2. **Post-beta expansion:**
+   - Campus-by-campus rollout to other dense residential universities
+   - Word of mouth virality through friend networks
+   - Social media campaigns targeting college students
 
 ### Retention Strategy
 - Daily matchmaking ritual creates habit
@@ -868,53 +819,23 @@ This is a saturated market, but AI and community-driven models create new opport
 
 # Part 6: Business Model
 
-## Primary Revenue: Pay-Per-Match
+## Rice Beta: Completely Free
+The Rice University beta launch is **100% free** — no payments, no pay-per-match, no premium tiers. The goal is to validate the community-driven matching model with real users before monetizing.
+
+## Future Revenue (Post-Beta)
+
+### Pay-Per-Match
 - Users pay only when both accept a match (after 48-hour window)
-- Price dynamically adjusts based on gender ratio
 - Creates sustainable revenue tied to successful outcomes
 
-## Secondary Revenue: Restaurant Partnerships
+### Restaurant Partnerships
 - Partner with restaurants to recommend them to matched couples
 - Restaurants pay to advertise on platform
 - Aligns with offline date transition
 
-## Cost Structure
-- Monthly app maintenance and hosting
-- Algorithm development and improvement
-- Customer support and safety moderation
-- Marketing and user acquisition
-
----
-
-## Dynamic Pricing Model (not for bridge beta launch at rice)
-
-### Market Hours Pricing
-Bridge uses a live pricing system modeled after financial markets to maintain gender balance.
-
-**Hours:** 9:30 AM - 4:00 PM (Eastern Time)
-**Display:** Home screen shows current match price for men and women
-
-### How It Works
-- Prices adjust dynamically based on gender ratio in the active matchmaking pool
-- If one gender is oversupplied → their match price increases
-- If one gender is undersupplied → their price decreases
-- When balanced (≈1:1) → prices equalize
-
-### Why It Exists
-- Ensures fair 1:1 matchmaking ecosystem
-- Protects accuracy of community-driven algorithm
-- Prevents flooding from one gender
-- Creates transparency and premium feel for NYC professionals
-- System is curated and structured, not chaotic
-
-### Viral Growth Mechanism
-**Word-of-mouth virality:** Men recommend the app to women to drive down their own prices, and vice versa. Users maintain platform balance through organic growth.
-
-### Key Principles
-- Users only pay when both accept a match
-- Payment never affects match outcomes
-- Prices update live during market hours
-- Matches still arrive at designated times regardless of price changes
+### Dynamic Pricing (Future Consideration)
+- Prices adjust dynamically based on gender ratio to maintain ecosystem balance
+- Not implemented during beta — under evaluation for post-launch
 
 ---
 
@@ -945,13 +866,13 @@ Bridge uses a live pricing system modeled after financial markets to maintain ge
    - Secure friend codes
    - Friends Area: "Help Your Friends" / "Already Helped" split
    - Vote on each friend's proposal (one candidate per friend)
-   - Friend superpowers (weekly type signals)
+   - Recommend to Friend during voting
    - Friend chat with system event cards
 7. **7PM Central Daily Cycle:**
    - pg_cron triggers: proposal-lifecycle, generate-proposals, generate-daily-pairings
    - 3-proposal gate resets
    - Vote tallies on carryover proposals persist
-8. Payment integration (pay-per-match)
+8. ~~Payment integration~~ — deferred post-beta (Rice beta is completely free)
 
 ---
 

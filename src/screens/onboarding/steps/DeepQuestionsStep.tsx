@@ -37,47 +37,26 @@ interface QuestionAnswer {
 }
 
 const QUESTIONS: Question[] = [
-  // Tier 1 (Set I)
-  { id: 1, tier: 1, text: "Given the choice of anyone in the world, whom would you want as a dinner guest?" },
-  { id: 2, tier: 1, text: "Would you like to be famous? In what way?" },
-  { id: 3, tier: 1, text: "Before making a telephone call, do you ever rehearse what you are going to say? Why?" },
-  { id: 4, tier: 1, text: 'What would constitute a "perfect" day for you?' },
-  { id: 5, tier: 1, text: "When did you last sing to yourself? To someone else?" },
-  { id: 6, tier: 1, text: "If you were able to live to the age of 90 and retain either the mind or body of a 30-year-old for the last 60 years of your life, which would you want?" },
-  { id: 7, tier: 1, text: "Do you have a secret hunch about how you will die?" },
-  { id: 8, tier: 1, text: "What are three qualities you value most in your closest friendships?" },
-  { id: 9, tier: 1, text: "For what in your life do you feel most grateful?" },
-  { id: 10, tier: 1, text: "If you could change anything about the way you were raised, what would it be?" },
-  { id: 11, tier: 1, text: "Take four minutes and tell your life story in as much detail as possible." },
-  { id: 12, tier: 1, text: "If you could wake up tomorrow having gained any one quality or ability, what would it be?" },
+  // Tier 1: Lighthearted
+  { id: 1, tier: 1, text: "Given the choice of anyone alive or dead, whom would you want as a dinner guest?" },
+  { id: 2, tier: 1, text: "Would you like to be famous? Why?" },
+  { id: 5, tier: 1, text: "If you could wake up tomorrow having gained any one quality or ability, what would it be?" },
+  { id: 6, tier: 1, text: "Your house catches fire. What one item would you save?" },
+  { id: 22, tier: 1, text: "What's the best trip or adventure you've ever been on?" },
 
-  // Tier 2 (Set II)
-  { id: 13, tier: 2, text: "If a crystal ball could tell you the truth about yourself, your life, the future or anything else, what would you want to know?" },
-  { id: 14, tier: 2, text: "Is there something that you've dreamed of doing for a long time? Why haven't you done it?" },
-  { id: 15, tier: 2, text: "What is the greatest accomplishment of your life?" },
-  { id: 16, tier: 2, text: "What do you value most in a friendship?" },
-  { id: 17, tier: 2, text: "What is your most treasured memory?" },
-  { id: 18, tier: 2, text: "What is your most terrible memory?" },
-  { id: 19, tier: 2, text: "If you knew that in one year you would die suddenly, would you change anything about the way you are now living? Why?" },
-  { id: 20, tier: 2, text: "What does friendship mean to you?" },
-  { id: 21, tier: 2, text: "What roles do love and affection play in your life?" },
-  { id: 22, tier: 2, text: "What are five qualities you most admire in the people closest to you?" },
-  { id: 23, tier: 2, text: "How close and warm is your family? Do you feel your childhood was happier than most other people's?" },
-  { id: 24, tier: 2, text: "How do you feel about your relationship with your mother?" },
+  // Tier 2: Relationship
+  { id: 9, tier: 2, text: "When you're overwhelmed or stressed, what actually helps you feel supported?" },
+  { id: 10, tier: 2, text: "What are three qualities you value most in your closest friendships?" },
+  { id: 12, tier: 2, text: "What do you notice first when you're attracted to someone?" },
+  { id: 13, tier: 2, text: "What's something you're actively trying to improve about yourself right now?" },
+  { id: 23, tier: 2, text: "What's something you could talk about for hours without getting bored?" },
 
-  // Tier 3 (Set III)
-  { id: 25, tier: 3, text: "What are three things you hope to have in common with your future partner?" },
-  { id: 26, tier: 3, text: 'Complete this sentence: "I wish I had someone with whom I could share..."' },
-  { id: 27, tier: 3, text: "What would be important for someone to know about you if they were going to become a close friend or partner?" },
-  { id: 28, tier: 3, text: "What qualities do you find most attractive in a potential partner, and why are they important to you?" },
-  { id: 29, tier: 3, text: "Share an embarrassing moment in your life that taught you something about yourself." },
-  { id: 30, tier: 3, text: "When did you last cry in front of another person? By yourself?" },
-  { id: 31, tier: 3, text: "What do you notice first when you're attracted to someone - what draws you in?" },
-  { id: 32, tier: 3, text: "What, if anything, is too serious to be joked about?" },
-  { id: 33, tier: 3, text: "If you were to die this evening with no opportunity to communicate with anyone, what would you most regret not having told someone? Why haven't you told them yet?" },
-  { id: 34, tier: 3, text: "Your house, containing everything you own, catches fire. After saving your loved ones and pets, you have time to safely make a final dash to save any one item. What would it be? Why?" },
-  { id: 35, tier: 3, text: "Of all the people in your family, whose death would you find most disturbing? Why?" },
-  { id: 36, tier: 3, text: "Share a personal challenge you're currently facing and how you're working through it." },
+  // Tier 3: Reflective
+  { id: 14, tier: 3, text: "Is there something you've dreamed of doing for a long time? Why haven't you done it?" },
+  { id: 15, tier: 3, text: "What is your greatest accomplishment?" },
+  { id: 16, tier: 3, text: "If a crystal ball could tell you the truth about anything, what would you want to know?" },
+  { id: 21, tier: 3, text: "Share an embarrassing moment that taught you something about yourself." },
+  { id: 24, tier: 3, text: "What's a belief or opinion you've changed your mind about recently?" },
 ];
 
 export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
@@ -211,9 +190,9 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
   const tiersCompleted = [tier1Answered, tier2Answered, tier3Answered].filter(Boolean).length;
 
   const tierDescriptions: Record<Tier, string> = {
-    1: 'Light & casual questions',
-    2: 'More personal questions',
-    3: 'Deep & meaningful questions',
+    1: 'Lighthearted & fun',
+    2: 'Relationship & connection',
+    3: 'Reflective & meaningful',
   };
 
   const tierColors: Record<Tier, { bg: string; border: string; text: string }> = {
@@ -370,7 +349,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
             Answer <Body className="font-bold text-neutral-900">3 questions minimum</Body> (one from each tier) to enter the matching pool.
           </Body>
           <Body className="text-neutral-500 text-sm mb-8">
-            You can answer up to 36 questions total if you'd like, but only 3 are required for your profile strength.
+            You can answer up to 15 questions total if you'd like, but only 3 are required for your profile strength.
           </Body>
 
           {/* Tiers */}

@@ -17,25 +17,21 @@ interface ValuesStepProps {
 const StyledView = styled(View);
 
 const AVAILABLE_VALUES = [
-  // Personal Values
-  'Honesty', 'Integrity', 'Loyalty', 'Trust', 'Respect', 'Authenticity',
-  'Kindness', 'Compassion', 'Empathy', 'Generosity',
+  // Personal
+  'Honesty', 'Integrity', 'Trust', 'Respect', 'Authenticity', 'Kindness', 'Empathy',
 
-  // Relationship Values
-  'Communication', 'Commitment', 'Partnership', 'Independence', 'Interdependence',
-  'Romance', 'Intimacy', 'Friendship First',
+  // Relationship
+  'Communication', 'Commitment', 'Independence', 'Romance',
 
-  // Life Values
-  'Family', 'Career', 'Ambition', 'Success', 'Work-Life Balance',
-  'Adventure', 'Stability', 'Growth Mindset', 'Learning', 'Creativity',
+  // Life
+  'Family', 'Career', 'Ambition', 'Work-Life Balance',
+  'Adventure', 'Stability', 'Growth Mindset', 'Creativity',
 
-  // Social Values
-  'Community', 'Social Justice', 'Environmentalism', 'Equality', 'Diversity',
-  'Tradition', 'Innovation', 'Service', 'Leadership',
+  // Social
+  'Community', 'Social Justice', 'Environmentalism', 'Diversity',
 
   // Personal Growth
-  'Self-Improvement', 'Mindfulness', 'Spirituality', 'Health', 'Fitness',
-  'Mental Health', 'Emotional Intelligence',
+  'Spirituality', 'Health',
 ];
 
 export const ValuesStep: React.FC<ValuesStepProps> = ({
@@ -56,8 +52,8 @@ export const ValuesStep: React.FC<ValuesStepProps> = ({
     if (myValues.includes(value)) {
       setMyValues(myValues.filter(v => v !== value));
     } else {
-      if (totalMyValues >= 8) {
-        setError('You can select up to 8 values');
+      if (totalMyValues >= 5) {
+        setError('You can select up to 5 values');
         return;
       }
       setMyValues([...myValues, value]);
@@ -71,8 +67,8 @@ export const ValuesStep: React.FC<ValuesStepProps> = ({
       return;
     }
 
-    if (totalMyValues > 8) {
-      setError('You can select up to 8 values');
+    if (totalMyValues > 5) {
+      setError('You can select up to 5 values');
       return;
     }
 
@@ -97,7 +93,7 @@ export const ValuesStep: React.FC<ValuesStepProps> = ({
         Select at least 3 - add custom values later.
       </Body>
       <Body className="text-primary-500 font-semibold mb-6">
-        {totalMyValues} of 8 selected
+        {totalMyValues} of 5 selected
       </Body>
 
       {/* Values Grid */}
