@@ -22,20 +22,18 @@ export const beginnerTourGuide: GuideDefinition = {
       tooltipPosition: 'center',
       title: 'Welcome to Bridge!',
       message:
-        "We're excited to have you here. Let's take a quick 30-second tour of how Bridge works.",
-      primaryButtonText: "Let's Go!",
+        "Take a quick 30-second tour to see how community-driven matchmaking works.",
+      primaryButtonText: "Let's Go",
     },
     {
       id: 'matching_gates',
-      targetElement: 'matching-gates',
-      highlightType: 'spotlight',
-      spotlightShape: 'rounded-rect',
-      spotlightPadding: 12,
-      tooltipPosition: 'bottom',
-      title: 'The Three Matching Gates',
+      highlightType: 'none',
+      tooltipPosition: 'center',
+      title: 'Unlock Friends',
       message:
-        'To enter the community, you first help others by voting on 3 potential matches. This keeps Bridge community-driven!',
-      primaryButtonText: 'Got It',
+        'Before helping your friends, help others on Bridge. Takes about 2 minutes!',
+      image: require('../../../assets/guide-voting-example.png'),
+      primaryButtonText: 'Got it',
     },
     {
       id: 'add_friend',
@@ -46,8 +44,8 @@ export const beginnerTourGuide: GuideDefinition = {
       tooltipPosition: 'bottom',
       title: 'Add Your Friends',
       message:
-        "Once you're in, use this button to add your friends. Your friends help you find matches and vice versa!",
-      primaryButtonText: 'Next',
+        "Friends can suggest and validate matches for you. If you help others, you'll receive more frequent matches.",
+      primaryButtonText: 'Great',
     },
     {
       id: 'matches_tab',
@@ -58,8 +56,8 @@ export const beginnerTourGuide: GuideDefinition = {
       tooltipPosition: 'top',
       title: 'Your Matches',
       message:
-        "Click here to see people the community has picked for you. Tap the Matches icon to continue.",
-      primaryButtonText: 'Next',
+        "Here you'll see matches verified by your friends and the Bridge community.",
+      primaryButtonText: 'Fantastic',
       interactive: true,
     },
     {
@@ -71,7 +69,7 @@ export const beginnerTourGuide: GuideDefinition = {
       tooltipPosition: 'top',
       title: 'Your Profile',
       message:
-        "And finally, your profile. Keep it updated to get better matches! Tap the Profile icon to finish the tour.",
+        "You can vote anytime, but to receive matches you'll need 100% profile strength.",
       primaryButtonText: 'Finish',
       interactive: true,
     },

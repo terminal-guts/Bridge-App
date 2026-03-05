@@ -199,6 +199,16 @@ export const GuideProvider: React.FC<GuideProviderProps> = ({ children }) => {
    */
   const registerTarget = useCallback((id: string, layout: LayoutRectangle) => {
     setTargetLayouts((prev) => {
+      const existing = prev.get(id);
+      if (
+        existing &&
+        existing.x === layout.x &&
+        existing.y === layout.y &&
+        existing.width === layout.width &&
+        existing.height === layout.height
+      ) {
+        return prev; // No change — skip re-render
+      }
       const updated = new Map(prev);
       updated.set(id, layout);
       return updated;

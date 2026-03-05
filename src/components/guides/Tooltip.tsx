@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useMemo } from 'react';
-import { View, TouchableOpacity, Dimensions, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Dimensions, StyleSheet, Image, ImageSourcePropType } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -44,6 +44,9 @@ interface TooltipProps {
 
   /** Preferred tooltip position */
   preferredPosition: TooltipPosition;
+
+  /** Optional image to display between message and button */
+  image?: ImageSourcePropType;
 }
 
 const StyledView = styled(View);
@@ -63,6 +66,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
   onSecondary,
   targetDimensions,
   preferredPosition,
+  image,
 }) => {
   const insets = useSafeAreaInsets();
 
@@ -78,7 +82,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
     if (!targetDimensions || preferredPosition === 'center') {
       return {
         x: (SCREEN_WIDTH - TOOLTIP_MAX_WIDTH) / 2,
-        y: SCREEN_HEIGHT / 2 - 150, // Approximate center
+        y: image ? SCREEN_HEIGHT / 2 - 300 : SCREEN_HEIGHT / 2 - 150,
         position: 'center',
         width: TOOLTIP_MAX_WIDTH,
       };
@@ -115,7 +119,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
           PADDING_FROM_EDGE,
           Math.min(x + width / 2 - TOOLTIP_MAX_WIDTH / 2, SCREEN_WIDTH - TOOLTIP_MAX_WIDTH - PADDING_FROM_EDGE)
         );
-        tooltipY = y - 200 - ARROW_SIZE - 8;
+        tooltipY = y - 220 - ARROW_SIZE - 8;
         break;
 
       case 'bottom':
@@ -212,6 +216,15 @@ export const Tooltip: React.FC<TooltipProps> = ({
         {/* Message */}
         <Body className="text-white/90 leading-6 mb-4">{message}</Body>
 
+        {/* Optional image */}
+        {image && (
+          <Image
+            source={image}
+            style={{ width: '100%', height: 240, borderRadius: 12, marginBottom: 16 }}
+            resizeMode="cover"
+          />
+        )}
+
         {/* Buttons */}
         <StyledView className="flex-row gap-2">
           {secondaryButtonText && (
@@ -238,20 +251,22 @@ export const Tooltip: React.FC<TooltipProps> = ({
         </StyledView>
       </StyledView>
 
-      {/* Arrow (CSS border triangle) */}
+      {/* Arrow (CSS border triangle) — points toward target center */}
       {tooltipPosition.position === 'bottom' && (
         <View
           style={[
             styles.arrow,
             {
               top: -ARROW_SIZE + 2,
-              left: tooltipPosition.width / 2 - ARROW_SIZE,
+              left: targetDimensions
+                ? Math.max(16, Math.min(targetDimensions.x + targetDimensions.width / 2 - tooltipPosition.x - ARROW_SIZE, tooltipPosition.width - ARROW_SIZE * 2 - 16))
+                : tooltipPosition.width / 2 - ARROW_SIZE,
               borderLeftWidth: ARROW_SIZE,
               borderRightWidth: ARROW_SIZE,
               borderBottomWidth: ARROW_SIZE,
               borderLeftColor: 'transparent',
               borderRightColor: 'transparent',
-              borderBottomColor: '#437FFF', // primary blue for better visibility
+              borderBottomColor: '#437FFF',
             },
           ]}
         />
@@ -263,13 +278,15 @@ export const Tooltip: React.FC<TooltipProps> = ({
             styles.arrow,
             {
               bottom: -ARROW_SIZE + 2,
-              left: tooltipPosition.width / 2 - ARROW_SIZE,
+              left: targetDimensions
+                ? Math.max(16, Math.min(targetDimensions.x + targetDimensions.width / 2 - tooltipPosition.x - ARROW_SIZE, tooltipPosition.width - ARROW_SIZE * 2 - 16))
+                : tooltipPosition.width / 2 - ARROW_SIZE,
               borderLeftWidth: ARROW_SIZE,
               borderRightWidth: ARROW_SIZE,
               borderTopWidth: ARROW_SIZE,
               borderLeftColor: 'transparent',
               borderRightColor: 'transparent',
-              borderTopColor: '#437FFF', // primary blue for better visibility
+              borderTopColor: '#437FFF',
             },
           ]}
         />

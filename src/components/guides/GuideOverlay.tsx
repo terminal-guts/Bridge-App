@@ -11,7 +11,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGuideContext } from '../../contexts/GuideContext';
 import { Spotlight } from './Spotlight';
 import { Tooltip } from './Tooltip';
-import { ProgressIndicator } from './ProgressIndicator';
 import { SpotlightDimensions } from '../../types/guides';
 import { createLogger } from '../../utils/secureLogger';
 
@@ -26,8 +25,6 @@ export const GuideOverlay: React.FC = () => {
     isPlaying,
     targetLayouts,
     nextStep,
-    previousStep,
-    skipGuide,
   } = useGuideContext();
 
   const insets = useSafeAreaInsets();
@@ -45,7 +42,6 @@ export const GuideOverlay: React.FC = () => {
    */
   const targetLayout = useMemo(() => {
     if (!step?.targetElement) {
-      logger.info('[GuideOverlay] No targetElement for step:', step?.id);
       return null;
     }
     const layout = targetLayouts.get(step.targetElement) || null;
@@ -196,15 +192,10 @@ export const GuideOverlay: React.FC = () => {
               : targetLayout || undefined
           }
           preferredPosition={step.tooltipPosition}
+          image={step.image}
         />
 
-        {/* Progress indicator */}
-        <ProgressIndicator
-          current={currentStep}
-          total={activeGuide.steps.length}
-          onSkip={skipGuide}
-          onBack={currentStep > 0 ? previousStep : undefined}
-        />
+        {/* Progress indicator removed — cleaner tour UX */}
         </View>
       </TouchableWithoutFeedback>
     </View>

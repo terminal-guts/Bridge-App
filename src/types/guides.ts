@@ -86,6 +86,9 @@ export interface GuideStep {
   /** Optional icon name (Ionicons) */
   icon?: string;
 
+  /** Optional image to display between message and button (require() asset) */
+  image?: any;
+
   /** Primary button text (e.g., "Next", "Got It") */
   primaryButtonText: string;
 

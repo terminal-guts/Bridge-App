@@ -40,13 +40,11 @@ export const GuideTarget: React.FC<GuideTargetProps> = ({ id, children, disabled
     }
 
     viewRef.current.measureInWindow((x, y, width, height) => {
-      logger.info('[GuideTarget] Measured:', id, { x, y, width, height });
       // Only register if we got valid measurements
       if (width > 0 && height > 0) {
         registerTarget(id, { x, y, width, height });
-        logger.info('[GuideTarget] Registered:', id);
       } else {
-        logger.info('[GuideTarget] Invalid measurements for:', id);
+        logger.warn('[GuideTarget] Invalid measurements for:', id);
       }
     });
   }, [id, disabled, registerTarget]);
