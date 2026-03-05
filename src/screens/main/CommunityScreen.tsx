@@ -5,6 +5,7 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
 import { styled } from 'nativewind';
 import { UserRow } from '../../components/community/UserRow';
 import { ProposalReviewView } from '../../components/community/ProposalReviewView';
+import { GuideTarget } from '../../components/guides';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { MainTabParamList } from '../../types';
@@ -15,6 +16,8 @@ import { FriendWithGridStatus } from '../../types/community';
 import { getUserProfile } from '../../services/profileService';
 import { UserProfile } from '../../types';
 import { ProfileCompletionBanner } from '../../components/ProfileCompletionBanner';
+import { useGuide } from '../../hooks/useGuide';
+import { beginnerTourGuide } from '../../config/guides';
 
 // ── Match reset countdown timer ───────────────────────────────────────────────
 //
@@ -108,6 +111,7 @@ interface CommunityScreenProps {
 const StyledSafeAreaView = styled(SafeAreaView);
 
 export function CommunityScreen({ navigation }: CommunityScreenProps) {
+  const { startGuideIfNeeded } = useGuide();
   const [usersToMatch, setUsersToMatch] = useState<FriendWithGridStatus[]>([]);
   const [alreadyHelped, setAlreadyHelped] = useState<FriendWithGridStatus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -197,6 +201,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   useEffect(() => {
     initialize();
+    // Start the beginner tour if needed
+    startGuideIfNeeded(beginnerTourGuide);
+
     // Reload whenever the dev state toggle changes mock state
     return communityService.onStateChange(() => {
       initializedRef.current = true; // prevent useFocusEffect double-load
@@ -264,23 +271,25 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <MatchResetTimer />
-            <TouchableOpacity
-              onPress={() => (navigation as any).navigate('FriendCode')}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              activeOpacity={0.7}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 17,
-                backgroundColor: '#F4F7FF',
-                borderWidth: 1,
-                borderColor: '#D1DEFF',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Ionicons name="add" size={20} color="#2B65F9" />
-            </TouchableOpacity>
+            <GuideTarget id="add-friend-button">
+              <TouchableOpacity
+                onPress={() => (navigation as any).navigate('FriendCode')}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                activeOpacity={0.7}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 17,
+                  backgroundColor: '#F4F7FF',
+                  borderWidth: 1,
+                  borderColor: '#D1DEFF',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="add" size={20} color="#2B65F9" />
+              </TouchableOpacity>
+            </GuideTarget>
           </View>
         </View>
       </View>

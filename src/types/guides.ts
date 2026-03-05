@@ -15,7 +15,8 @@ export type GuideId =
   | 'daily_grid_explained'
   | 'proposals_explained'
   | 'friends_area_explained'
-  | 'profile_completion';
+  | 'profile_completion'
+  | 'beginner_tour';
 
 /**
  * Tooltip position relative to the highlighted element
@@ -96,6 +97,12 @@ export interface GuideStep {
 
   /** Optional callback when secondary button pressed */
   onSecondary?: () => void;
+
+  /**
+   * If true, touches pass through the spotlight to the underlying UI.
+   * Useful for "Click this button to continue" steps.
+   */
+  interactive?: boolean;
 }
 
 /**
