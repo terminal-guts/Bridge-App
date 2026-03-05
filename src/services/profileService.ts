@@ -574,6 +574,14 @@ export const updateUserProfile = async (
             logger.warn('[ProfileService] Failed to set profile_completed:', completeError.message);
           } else {
             logger.info('[ProfileService] Profile strength reached 100% — profile_completed set to true');
+            // Trigger proposal generation immediately (don't wait for 7PM cron)
+            try {
+              const { generateProposalForUser } = await import('./proposalApiService');
+              await generateProposalForUser();
+              logger.info('[ProfileService] Proposal generation triggered on profile completion');
+            } catch (proposalErr: any) {
+              logger.warn('[ProfileService] Proposal generation failed (non-blocking):', proposalErr.message);
+            }
           }
         }
       }
