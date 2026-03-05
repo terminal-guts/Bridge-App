@@ -34,7 +34,7 @@ def fetch_eligible_users(supabase) -> List[Dict]:
               datetime.timedelta(days=INACTIVITY_THRESHOLD_DAYS)).isoformat()
 
     try:
-        result = supabase.table("profiles").select("*") \
+        result = supabase.table("user_profiles").select("*") \
             .eq("profile_completed", True) \
             .eq("is_paused", False) \
             .gte("last_active_at", cutoff) \
@@ -44,7 +44,7 @@ def fetch_eligible_users(supabase) -> List[Dict]:
         # Fallback: fetch without last_active_at filter (column may not exist yet)
         print(f"[PROPOSALS] Warning fetching with activity filter: {e}")
         try:
-            result = supabase.table("profiles").select("*") \
+            result = supabase.table("user_profiles").select("*") \
                 .eq("profile_completed", True) \
                 .eq("is_paused", False) \
                 .execute()
@@ -159,14 +159,14 @@ def generate_candidate_pairs(
             a = users[i]
             b = users[j]
 
-            pair_key = frozenset({a["id"], b["id"]})
+            pair_key = frozenset({a["user_id"], b["user_id"]})
 
             # Skip if already proposed or rejected
             if pair_key in existing_pairs or pair_key in rejected_pairs:
                 continue
 
-            prefs_a = prefs_map.get(a["id"], {})
-            prefs_b = prefs_map.get(b["id"], {})
+            prefs_a = prefs_map.get(a["user_id"], {})
+            prefs_b = prefs_map.get(b["user_id"], {})
 
             # Quick gender/age filter
             if passes_basic_filter(a, prefs_a, b, prefs_b):
@@ -189,8 +189,8 @@ def score_and_rank_pairs(
 
         if result["total_score"] >= MIN_COMPATIBILITY_SCORE:
             scored.append({
-                "user_a_id": profile_a["id"],
-                "user_b_id": profile_b["id"],
+                "user_a_id": profile_a["user_id"],
+                "user_b_id": profile_b["user_id"],
                 "compatibility_score": result["total_score"],
                 "category_scores": result["category_scores"],
                 "weighted_scores": result["weighted_scores"],
@@ -279,7 +279,7 @@ def assign_pool_voters(
         # Eligible pool voters: not user_a, not user_b, not friends of either
         eligible = [
             u for u in all_users
-            if u["id"] != ua and u["id"] != ub and u["id"] not in all_friends
+            if u["user_id"] != ua and u["user_id"] != ub and u["user_id"] not in all_friends
         ]
 
         # Check who already has an assignment for this proposal
@@ -301,7 +301,7 @@ def assign_pool_voters(
         for voter in to_assign:
             assignments.append({
                 "proposal_id": p_id,
-                "voter_id": voter["id"],
+                "voter_id": voter["user_id"],
                 "assignment_date": today,
                 "has_voted": False,
             })
@@ -345,7 +345,7 @@ def run_proposal_generation(supabase, max_proposals: int = MAX_PROPOSALS_PER_RUN
         }
 
     # 2. Preferences
-    user_ids = [u["id"] for u in users]
+    user_ids = [u["user_id"] for u in users]
     prefs_map = fetch_user_preferences(supabase, user_ids)
     print(f"[PROPOSALS] Loaded preferences for {len(prefs_map)} users")
 

@@ -9,7 +9,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '../lib/supabase';
 import { Photo, ApiResponse } from '../types';
-import { requireAuth } from '../utils/auth';
+import { getAuthenticatedUserId, requireAuth } from '../utils/auth';
 import {
   checkRateLimit,
   recordRateLimitAttempt,
@@ -415,11 +415,19 @@ export const getPhotoSignedUrl = async (
   expiresIn: number = 3600
 ): Promise<ApiResponse<string>> => {
   try {
+    // If we're using mock Supabase, createSignedUrl won't work normally with real auth.
+    // However, real Supabase requires an authenticated session for signed URLs on private buckets.
+    const userId = await getAuthenticatedUserId();
+    if (!userId) {
+      logger.warn('[PhotoService] Attempting to get signed URL without user identity');
+    }
+
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
       .createSignedUrl(storagePath, expiresIn);
 
     if (error || !data?.signedUrl) {
+      logger.error('[PhotoService] createSignedUrl failed for:', storagePath, error?.message);
       return createErrorResponse(
         'SIGNED_URL_FAILED',
         error?.message || 'Failed to generate signed URL'

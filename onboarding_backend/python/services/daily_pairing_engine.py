@@ -21,7 +21,7 @@ def _fetch_eligible_users(supabase) -> List[Dict]:
     cutoff = (datetime.datetime.now(datetime.timezone.utc) -
               datetime.timedelta(days=14)).isoformat()
     try:
-        result = supabase.table("profiles").select("*") \
+        result = supabase.table("user_profiles").select("*") \
             .eq("profile_completed", True) \
             .eq("is_paused", False) \
             .gte("last_active_at", cutoff) \
@@ -30,7 +30,7 @@ def _fetch_eligible_users(supabase) -> List[Dict]:
     except Exception as e:
         print(f"[DAILY_PAIRING] Warning with activity filter: {e}")
         try:
-            result = supabase.table("profiles").select("*") \
+            result = supabase.table("user_profiles").select("*") \
                 .eq("profile_completed", True) \
                 .eq("is_paused", False) \
                 .execute()
@@ -158,18 +158,18 @@ def _build_scored_edges(
         for j in range(i + 1, n):
             a = users[i]
             b = users[j]
-            pair_key = frozenset({a["id"], b["id"]})
+            pair_key = frozenset({a["user_id"], b["user_id"]})
 
             if pair_key in active_match_pairs or pair_key in rejected_pairs or pair_key in blocked_pairs:
                 continue
 
-            prefs_a = prefs_map.get(a["id"], {})
-            prefs_b = prefs_map.get(b["id"], {})
+            prefs_a = prefs_map.get(a["user_id"], {})
+            prefs_b = prefs_map.get(b["user_id"], {})
 
             result = _score_pair(
                 a, prefs_a, b, prefs_b,
-                deep_questions_a=dq_map.get(a["id"], []),
-                deep_questions_b=dq_map.get(b["id"], []),
+                deep_questions_a=dq_map.get(a["user_id"], []),
+                deep_questions_b=dq_map.get(b["user_id"], []),
             )
             if result is None:
                 continue
@@ -180,7 +180,7 @@ def _build_scored_edges(
                 score -= 15.0
 
             if score > 0:
-                edges.append((a["id"], b["id"], score, result))
+                edges.append((a["user_id"], b["user_id"], score, result))
 
     edges.sort(key=lambda e: e[2], reverse=True)
 
@@ -282,7 +282,7 @@ def run_daily_pairing(supabase) -> Dict[str, Any]:
         }
 
     already_paired = _fetch_existing_today_pairings(supabase, today)
-    users = [u for u in users if u["id"] not in already_paired]
+    users = [u for u in users if u["user_id"] not in already_paired]
     print(f"[DAILY_PAIRING] {len(users)} users need pairing ({len(already_paired)} already paired)")
 
     if len(users) < 2:
@@ -294,7 +294,7 @@ def run_daily_pairing(supabase) -> Dict[str, Any]:
             "pairings_created": 0,
         }
 
-    user_ids = [u["id"] for u in users]
+    user_ids = [u["user_id"] for u in users]
     prefs_map = _fetch_preferences(supabase, user_ids)
     dq_map = _fetch_deep_questions(supabase, user_ids)
     recent_pairs = _fetch_recent_pairings(supabase)
@@ -320,7 +320,7 @@ def run_daily_pairing(supabase) -> Dict[str, Any]:
             "pairings_created": 0,
         }
 
-    user_id_set = {u["id"] for u in users}
+    user_id_set = {u["user_id"] for u in users}
     pairings = _greedy_maximum_matching(edges, user_id_set)
     print(f"[DAILY_PAIRING] Matched {len(pairings)} pairs "
           f"({len(pairings) * 2}/{len(users)} users)")
@@ -372,11 +372,11 @@ def get_user_daily_pairing(supabase, user_id: str, date: Optional[str] = None) -
                 .execute()
             pairing["seen"] = True
 
-        partner_result = supabase.table("profiles") \
-            .select("id, first_name, age, gender, location, interests, values, "
+        partner_result = supabase.table("user_profiles") \
+            .select("id, user_id, first_name, age, gender, location, interests, values, "
                     "bio, height_inches, ethnicity, religion, political_leaning, "
                     "education_level, current_job") \
-            .eq("id", pairing["partner_id"]) \
+            .eq("user_id", pairing["partner_id"]) \
             .maybe_single() \
             .execute()
 

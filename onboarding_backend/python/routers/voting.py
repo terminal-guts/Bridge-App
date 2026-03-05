@@ -116,7 +116,7 @@ async def get_daily_grid(user_id: str):
     try:
         # 1. Check existing grid
         existing_grid = supabase.table("daily_grids")\
-            .select("candidate_id, profiles(*)")\
+            .select("candidate_id, user_profiles(*)")\
             .eq("user_id", user_id)\
             .eq("assignment_date", today_str)\
             .execute()
@@ -125,8 +125,8 @@ async def get_daily_grid(user_id: str):
             # Flatten the response to return profile data
             candidates = []
             for entry in existing_grid.data:
-                if entry.get("profiles"):
-                    candidates.append(entry["profiles"])
+                if entry.get("user_profiles"):
+                    candidates.append(entry["user_profiles"])
             return {"date": today_str, "candidates": candidates}
             
         # 2. Generate new grid
@@ -141,9 +141,9 @@ async def get_daily_grid(user_id: str):
         # Fetch potential candidates (LIMIT 50, then random pick)
         # Note: In real app, perform filtering in DB. Here we fetch some and filter.
         # This is a naive implementation for small scale.
-        all_profiles = supabase.table("profiles").select("*").limit(100).execute()
+        all_profiles = supabase.table("user_profiles").select("*").limit(100).execute()
         
-        potential = [p for p in all_profiles.data if p["id"] not in voted_ids]
+        potential = [p for p in all_profiles.data if p["user_id"] not in voted_ids]
         
         # Pick random 6
         selected = random.sample(potential, min(len(potential), 6))
@@ -153,7 +153,7 @@ async def get_daily_grid(user_id: str):
         for cand in selected:
             grid_entries.append({
                 "user_id": user_id,
-                "candidate_id": cand["id"],
+                "candidate_id": cand["user_id"],
                 "assignment_date": today_str
             })
             
