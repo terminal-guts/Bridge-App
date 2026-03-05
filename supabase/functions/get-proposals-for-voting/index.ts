@@ -133,10 +133,10 @@ Deno.serve(async (req: Request) => {
           height_min: prefs.preferred_height_min_inches,
           height_max: prefs.preferred_height_max_inches,
           partner_lifestyle_preferences: {
-            drinking: prefs.partner_drinking,
-            cannabis: prefs.partner_cannabis,
-            tobacco: prefs.partner_tobacco,
-            otherDrugs: prefs.partner_other_drugs,
+            drinking: prefs.partner_drinking?.length ? prefs.partner_drinking : undefined,
+            cannabis: prefs.partner_cannabis?.length ? prefs.partner_cannabis : undefined,
+            tobacco: prefs.partner_tobacco?.length ? prefs.partner_tobacco : undefined,
+            otherDrugs: prefs.partner_other_drugs?.length ? prefs.partner_other_drugs : undefined,
           },
           preferred_ethnicities: prefs.preferred_ethnicities,
         };

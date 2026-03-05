@@ -482,8 +482,10 @@ export function ProposalReviewView({
     const totalKnown = countKnown(allResults);
     const totalMatch = countMatch(allResults);
 
-    // Use real compatibility score from the proposal
-    const compatScore = Math.round(proposal.compatibilityScore || 0);
+    // Use real compatibility score from the proposal, with hash-based fallback for older rows
+    const compatScore = proposal.compatibilityScore
+      ? Math.round(proposal.compatibilityScore)
+      : 70 + (proposal.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 30);
 
     const valuesMatchCount = (valuesResult as any).sharedValues?.length || 0;
     const valuesUnion = new Set([...(userA.values || []), ...(userB.values || [])]);
