@@ -349,9 +349,15 @@ export function matchLifestyleAttribute(
   const aPreferenceArray = Array.isArray(aPreferences) ? aPreferences : [aPreferences];
   const bPreferenceArray = Array.isArray(bPreferences) ? bPreferences : [bPreferences];
 
-  // Step 2: Check for "don't care"
-  const aDontCare = aPreferenceArray.includes("don't care");
-  const bDontCare = bPreferenceArray.includes("don't care");
+  // Step 2: Check for "don't care" or "irrelevant" (case-insensitive)
+  const isBypass = (val: any) => {
+    if (typeof val !== 'string') return false;
+    const v = val.toLowerCase();
+    return v === "don't care" || v === "irrelevant";
+  };
+
+  const aDontCare = aPreferenceArray.some(isBypass);
+  const bDontCare = bPreferenceArray.some(isBypass);
 
   if (aDontCare && bDontCare) {
     return {
@@ -364,8 +370,8 @@ export function matchLifestyleAttribute(
 
   // Step 3: Match routine with preference array
   // Person A is happy if Person B's routine is in Person A's preference list OR Person A doesn't care
-  const aHappy = aDontCare || aPreferenceArray.includes(bRoutine);
-  const bHappy = bDontCare || bPreferenceArray.includes(aRoutine);
+  const aHappy = aDontCare || aPreferenceArray.some(p => typeof p === 'string' && p.toLowerCase() === bRoutine.toLowerCase());
+  const bHappy = bDontCare || bPreferenceArray.some(p => typeof p === 'string' && p.toLowerCase() === aRoutine.toLowerCase());
 
   let status: MatchStatus;
   if (aHappy && bHappy) {

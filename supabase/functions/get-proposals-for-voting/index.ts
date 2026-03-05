@@ -110,7 +110,7 @@ Deno.serve(async (req: Request) => {
       const [profilesResult, preferencesResult] = await Promise.all([
         supabase
           .from('user_profiles')
-          .select('user_id, first_name, last_name, age, gender, pronouns, height, ethnicity, religion, political_leaning, location, interests, values, bio, photos, drinking_frequency, cannabis_frequency, tobacco_frequency, other_drugs_frequency, education_level, school, profile_completed')
+          .select('user_id, first_name, last_name, age, gender, pronouns, height_inches, ethnicity, religion, political_leaning, location, interests, values, bio, photos, drinking_frequency, cannabis_frequency, tobacco_frequency, other_drugs_frequency, lifestyle, education_level, school, profile_completed')
           .in('user_id', profileIds),
         supabase
           .from('user_preferences')
@@ -133,10 +133,10 @@ Deno.serve(async (req: Request) => {
           height_min: prefs.preferred_height_min_inches,
           height_max: prefs.preferred_height_max_inches,
           partner_lifestyle_preferences: {
-            drinking: prefs.partner_drinking?.length ? prefs.partner_drinking : undefined,
-            cannabis: prefs.partner_cannabis?.length ? prefs.partner_cannabis : undefined,
-            tobacco: prefs.partner_tobacco?.length ? prefs.partner_tobacco : undefined,
-            otherDrugs: prefs.partner_other_drugs?.length ? prefs.partner_other_drugs : undefined,
+            drinking: prefs.partner_drinking?.length ? (prefs.partner_drinking.length === 1 ? prefs.partner_drinking[0] : prefs.partner_drinking) : undefined,
+            cannabis: prefs.partner_cannabis?.length ? (prefs.partner_cannabis.length === 1 ? prefs.partner_cannabis[0] : prefs.partner_cannabis) : undefined,
+            tobacco: prefs.partner_tobacco?.length ? (prefs.partner_tobacco.length === 1 ? prefs.partner_tobacco[0] : prefs.partner_tobacco) : undefined,
+            otherDrugs: prefs.partner_other_drugs?.length ? (prefs.partner_other_drugs.length === 1 ? prefs.partner_other_drugs[0] : prefs.partner_other_drugs) : undefined,
           },
           preferred_ethnicities: prefs.preferred_ethnicities,
         };
