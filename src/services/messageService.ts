@@ -227,8 +227,8 @@ export const sendMessage = async (
       };
     }
 
-    // Content moderation for text messages
-    if (type === 'text') {
+    // Content moderation for text messages (skip for date proposals — system-generated)
+    if (type === 'text' && !content.startsWith('📅 Date Proposal:')) {
       const moderationResult = await contentModerationService.analyzeText(content);
       if (!moderationResult.isSafe) {
         logger.warn('[MESSAGE SERVICE] Blocked by content filter:', moderationResult.reason);
@@ -663,8 +663,8 @@ export const sendFriendMessage = async (
       return { ok: false, error: { code: 'AUTH_ERROR', message: 'User not authenticated' } };
     }
 
-    // Content moderation for text messages
-    if (type === 'text') {
+    // Content moderation for text messages (skip for date proposals — system-generated)
+    if (type === 'text' && !content.startsWith('📅 Date Proposal:')) {
       const moderationResult = await contentModerationService.analyzeText(content);
       if (!moderationResult.isSafe) {
         logger.warn('[MESSAGE SERVICE] Friend message blocked by content filter:', moderationResult.reason);

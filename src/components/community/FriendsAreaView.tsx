@@ -203,6 +203,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
     navigation.navigate('Chat', {
       matchId: activeMatch.matchId,
       recipientName: activeMatch.partnerProfile?.firstName || 'Match',
+      recipientPhoto: activeMatch.partnerProfile?.photos?.[0]?.url,
     });
   };
 
@@ -236,6 +237,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
       friendshipId: friend.friendshipId,
       recipientId: friend.friendId,
       recipientName: friend.friend.firstName,
+      recipientPhoto: friend.friend.photos?.[0]?.url,
       isFriendChat: true, // Distinguish from match chat
     });
   }, [friends, navigation]);

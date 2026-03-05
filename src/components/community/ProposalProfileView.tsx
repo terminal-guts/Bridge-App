@@ -3,6 +3,7 @@ import { View, Text, Image, ScrollView, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 import { UserProfile } from '../../types/community';
+import { valueEmoji, interestEmoji } from '../../utils/emojiMaps';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -217,7 +218,7 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                                 }}
                             >
                                 <StyledText style={{ fontSize: 13, color: '#1E40AF', fontWeight: '500' }}>
-                                    {interest}
+                                    {interestEmoji(interest)} {interest}
                                 </StyledText>
                             </StyledView>
                         ))}
@@ -244,7 +245,7 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                                 }}
                             >
                                 <StyledText style={{ fontSize: 13, color: '#065F46', fontWeight: '500' }}>
-                                    {value}
+                                    {valueEmoji(value)} {value}
                                 </StyledText>
                             </StyledView>
                         ))}

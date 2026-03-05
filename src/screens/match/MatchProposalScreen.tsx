@@ -47,6 +47,7 @@ import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile, DeepQuestionAnswer, Match } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import { lightHaptic, mediumHaptic, successHaptic, warningHaptic } from '../../utils/haptics';
+import { valueEmoji, interestEmoji } from '../../utils/emojiMaps';
 import { TIER_CONFIG } from '../../utils/questionTiers';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getFriends } from '../../services/friendService';
@@ -373,7 +374,7 @@ const WhyThisMatch: React.FC<{ mutualInterests: string[]; mutualValues: string[]
             {mutualInterests.map((interest) => (
               <StyledView key={interest} className="rounded-full px-3.5 py-2 mr-2 mb-2 flex-row items-center" style={{ backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: COLORS.primaryBorder }}>
                 <Ionicons name="checkmark-circle" size={12} color={COLORS.primary500} />
-                <Body className="text-sm font-medium ml-1.5" style={{ color: '#1D4ED8' }}>{interest}</Body>
+                <Body className="text-sm font-medium ml-1.5" style={{ color: '#1D4ED8' }}>{interestEmoji(interest)} {interest}</Body>
               </StyledView>
             ))}
           </StyledView>
@@ -390,7 +391,7 @@ const WhyThisMatch: React.FC<{ mutualInterests: string[]; mutualValues: string[]
             {mutualValues.map((value) => (
               <StyledView key={value} className="rounded-full px-3.5 py-2 mr-2 mb-2 flex-row items-center" style={{ backgroundColor: COLORS.successBg, borderWidth: 1, borderColor: COLORS.successBorder }}>
                 <Ionicons name="checkmark-circle" size={12} color={COLORS.success} />
-                <Body className="text-sm font-medium ml-1.5" style={{ color: '#059669' }}>{value}</Body>
+                <Body className="text-sm font-medium ml-1.5" style={{ color: '#059669' }}>{valueEmoji(value)} {value}</Body>
               </StyledView>
             ))}
           </StyledView>
@@ -875,7 +876,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   const handleRecommendToFriend = useCallback((friendId: string) => {
     setShowRecommendModal(false);
     setIsPassing(true);
-    Alert.alert('Recommendation Sent!', 'Your friend will see this match in their recommendations.', [{ text: 'OK', onPress: () => { setIsPassing(false); navigation.navigate('MainTabs', { screen: 'Love', params: { variant: 'post_pass' } }); } }]);
+    Alert.alert('Recommendation Sent!', 'Your friend will see this match in their recommendations.', [{ text: 'OK', onPress: () => { setIsPassing(false); navigation.navigate('MainTabs', { screen: 'Matches' }); } }]);
   }, [navigation]);
 
   const handleSkipRecommend = useCallback(async () => {
@@ -885,7 +886,10 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
     // Record pass in community service
     if (route.params?.proposalId) {
       try {
-        await communityService.respondToMatchProposal(route.params.proposalId, false);
+        await communityService.respondToMatchProposal(route.params.proposalId, false, {
+          name: profile?.firstName || 'Unknown',
+          photoUrl: profile?.photos?.[0]?.url,
+        });
         logger.info('[MatchProposalScreen] Proposal passed:', route.params.proposalId);
       } catch (error) {
         logger.error('[MatchProposalScreen] Error passing proposal:', error);
@@ -899,10 +903,10 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
     }
     navigationTimerRef.current = setTimeout(() => {
       setIsPassing(false);
-      navigation.navigate('MainTabs', { screen: 'Love', params: { variant: 'post_pass' } });
+      navigation.navigate('MainTabs', { screen: 'Matches' });
       navigationTimerRef.current = null;
     }, 500);
-  }, [navigation, route.params]);
+  }, [navigation, route.params, profile]);
 
   const handleOptionsMenu = useCallback(() => {
     lightHaptic();
@@ -1032,8 +1036,8 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
           <CommunityScore score={communityScore} endorsement={endorsement} />
           <WhyThisMatch mutualInterests={mutualInterests} mutualValues={mutualValues} compatibilityHighlights={compatibilityHighlights} />
           {basicInfoPills.length > 0 && <StyledView className="flex-row flex-wrap mb-6">{basicInfoPills.map((pill) => <InfoPill key={`${pill.icon}-${pill.text}`} icon={pill.icon} text={pill.text} />)}</StyledView>}
-          {profile.interests?.length > 0 && <Section title="Interests" icon="heart-outline" delay={50}><StyledView className="flex-row flex-wrap">{profile.interests.map((interest) => <Tag key={interest} label={interest} variant="primary" isMutual={mutualInterests.includes(interest)} />)}</StyledView></Section>}
-          {profile.values?.length > 0 && <Section title="Values" icon="diamond-outline" delay={100}><StyledView className="flex-row flex-wrap">{profile.values.map((value) => <Tag key={value} label={value} variant="success" isMutual={mutualValues.includes(value)} />)}</StyledView></Section>}
+          {profile.interests?.length > 0 && <Section title="Interests" icon="heart-outline" delay={50}><StyledView className="flex-row flex-wrap">{profile.interests.map((interest) => <Tag key={interest} label={`${interestEmoji(interest)} ${interest}`} variant="primary" isMutual={mutualInterests.includes(interest)} />)}</StyledView></Section>}
+          {profile.values?.length > 0 && <Section title="Values" icon="diamond-outline" delay={100}><StyledView className="flex-row flex-wrap">{profile.values.map((value) => <Tag key={value} label={`${valueEmoji(value)} ${value}`} variant="success" isMutual={mutualValues.includes(value)} />)}</StyledView></Section>}
           {(profile.hasChildren || profile.familyPlans) && (
             <Section title="Family" icon="people-outline" delay={150}>
               <StyledView className="rounded-2xl p-4" style={{ backgroundColor: COLORS.neutral50 }}>

@@ -22,7 +22,6 @@ import { H3, Body, BodySmall } from '../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList, Message, Match } from '../types';
 import { getCurrentUser } from '../services/authService';
-import { getUserMatches } from '../services/matchService';
 import {
   getMatchMessages,
   sendMessage as sendMessageAPI,
@@ -36,15 +35,17 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { AudioPlayer } from '../components/chat/AudioPlayer';
 import { AudioRecorder } from '../components/chat/AudioRecorder';
+import { communityService } from '../services/communityServiceIndex';
 import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('ChatScreen');
 
 const END_MATCH_REASONS = [
-  'We\'re not compatible',
-  'Not interested anymore',
-  'We decided to meet in person',
-  'Inappropriate behaviour',
+  'Conversation fizzled',
+  'No connection',
+  'Not on same page',
+  'Felt uncomfortable',
+  'Bad timing',
   'Other',
 ];
 
@@ -96,7 +97,7 @@ const StyledImage = styled(Image);
 const FLAT_LIST_CONTENT_STYLE = { padding: 16, paddingBottom: 8, flexGrow: 1 } as const;
 
 export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => {
-  const { matchId, friendshipId, recipientName, recipientId, isFriendChat } = route.params;
+  const { matchId, friendshipId, recipientName, recipientId, recipientPhoto, isFriendChat } = route.params;
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -221,33 +222,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
         return;
       }
 
-      // Match chat - existing functionality
-      // Load match details
-      const matchesResult = await getUserMatches();
-      let foundMatch = matchesResult.data?.find(m => m.id === matchId);
-
-      // Fallback for development/testing: If match not found, use a mock one
-      if (!foundMatch && matchId) {
-        logger.info(`[CHAT] Match ${matchId} not found, using fallback for development`);
-        const { mockProfiles, currentUserProfile } = await import('../services/mockData');
-        foundMatch = {
+      // Match chat — build a minimal match object from route params + current user
+      // (avoids the broken PostgREST join in getUserMatches)
+      if (matchId) {
+        const minimalMatch: Match = {
           id: matchId,
-          user1Id: currentUserProfile.userId,
-          user2Id: 'fallback-user',
-          user1Profile: currentUserProfile,
-          user2Profile: mockProfiles[0],
-          status: 'accepted',
-          communityScore: 95,
+          user1Id: userResult.data.id,
+          user2Id: recipientId || '',
+          status: 'active',
+          communityScore: 0,
           matchedAt: new Date().toISOString(),
           expiresAt: new Date(Date.now() + 86400000).toISOString(),
-          currentUserId: currentUserProfile.userId,
+          currentUserId: userResult.data.id,
         };
-      }
-
-      if (foundMatch) {
-        setMatch(foundMatch);
-      } else {
-        setError('Match not found');
+        setMatch(minimalMatch);
       }
 
       // Load messages
@@ -316,7 +304,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
         return [...prev, sentMsg];
       });
     } catch (error: any) {
-      Alert.alert('Send Failed', error.message || 'Failed to send message');
+      const msg = error.message || 'Failed to send message';
+      const isRestricted = msg.toLowerCase().includes('restricted');
+      Alert.alert(
+        'Send Failed',
+        isRestricted
+          ? 'This message contains restricted phrases. Use the "Propose a Date" button in the menu to ask them out!'
+          : msg,
+      );
       setNewMessage(messageText); // Restore message on failure
     } finally {
       setSendingMessage(false);
@@ -377,14 +372,25 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     setTimeout(() => setProposeDateModalVisible(true), 150);
   };
 
-  const handleEndMatchConfirm = () => {
-    if (!endMatchReason) return;
-    setEndMatchModalVisible(false);
-    setEndMatchReason('');
-    setEndMatchCustomReason('');
-    Alert.alert('Match Ended', 'Your match has been ended.', [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
+  const [endMatchSubmitting, setEndMatchSubmitting] = useState(false);
+
+  const handleEndMatchConfirm = async () => {
+    if (!endMatchReason || endMatchSubmitting) return;
+    const reason = endMatchReason === 'Other' ? endMatchCustomReason.trim() || 'Other' : endMatchReason;
+    setEndMatchSubmitting(true);
+    try {
+      if (matchId) {
+        await communityService.endActiveMatch(matchId, reason);
+      }
+      setEndMatchModalVisible(false);
+      setEndMatchReason('');
+      setEndMatchCustomReason('');
+      navigation.goBack();
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Could not end match. Try again.');
+    } finally {
+      setEndMatchSubmitting(false);
+    }
   };
 
   const handleReportConfirm = () => {
@@ -397,20 +403,34 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
 
   const handleProposeDateConfirm = async () => {
     const text = dateProposalText.trim();
-    if (!text || !currentUserId || !match || sendingMessage) return;
+    if (!text || !currentUserId || sendingMessage) return;
     setProposeDateModalVisible(false);
     setDateProposalText('');
 
-    if (!matchId) return;
-    const recipId = match.currentUserId === match.user1Id ? match.user2Id : match.user1Id;
+    const targetRecipientId = isFriend
+      ? recipientId!
+      : (match ? (match.currentUserId === match.user1Id ? match.user2Id : match.user1Id) : recipientId!);
+
+    if (!targetRecipientId) return;
+
+    const messageText = `📅 Date Proposal: ${text}`;
     setSendingMessage(true);
     try {
-      const result = await sendMessageAPI(matchId, recipId, `📅 Date Proposal: ${text}`);
-      if (!result.ok || !result.data) throw new Error(result.error?.message || 'Failed to send');
+      let result;
+      if (isFriend && friendshipId) {
+        result = await sendFriendMessage(friendshipId, targetRecipientId, messageText);
+      } else if (matchId) {
+        result = await sendMessageAPI(matchId, targetRecipientId, messageText);
+      } else {
+        return;
+      }
+      if (!result.ok || !result.data) {
+        throw new Error(result.error?.message || 'Failed to send');
+      }
       const sentMsg = result.data;
       setMessages(prev => prev.some(m => m.id === sentMsg.id) ? prev : [...prev, sentMsg]);
     } catch (e: any) {
-      Alert.alert('Failed', 'Could not send date proposal. Please try again.');
+      Alert.alert('Failed', e.message || 'Could not send date proposal. Please try again.');
     } finally {
       setSendingMessage(false);
     }
@@ -436,30 +456,43 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     const showDateSeparator = index === 0 ||
       (index > 0 && formatMessageDate(new Date(messages[index - 1].sentAt)) !== formatMessageDate(messageDate));
 
+    const isDateProposal = item.type === 'text' && item.content.startsWith('📅 Date Proposal:');
+    const dateProposalBody = isDateProposal ? item.content.replace('📅 Date Proposal: ', '') : '';
+
     return (
       <>
         {showDateSeparator && renderDateSeparator(formatMessageDate(messageDate))}
         <StyledView
           className={`mb-3 ${isOwnMessage ? 'items-end' : 'items-start'}`}
         >
-          <StyledView
-            className={`max-w-[80%] px-4 py-2 rounded-2xl ${isOwnMessage
-              ? 'bg-primary-500 rounded-br-sm'
-              : 'bg-neutral-100 rounded-bl-sm'
-              }`}
-          >
-            {item.type === 'audio' ? (
-              <AudioPlayer
-                uri={item.content}
-                duration={item.duration}
-                isOwnMessage={isOwnMessage}
-              />
-            ) : (
-              <Body className={isOwnMessage ? 'text-white' : 'text-neutral-900'}>
-                {item.content}
-              </Body>
-            )}
-          </StyledView>
+          {isDateProposal ? (
+            <View style={dateProposalStyles.card}>
+              <View style={dateProposalStyles.header}>
+                <Ionicons name="calendar" size={18} color="#437FFF" />
+                <Text style={dateProposalStyles.headerText}>Date Proposal</Text>
+              </View>
+              <Text style={dateProposalStyles.body}>{dateProposalBody}</Text>
+            </View>
+          ) : (
+            <StyledView
+              className={`max-w-[80%] px-4 py-2 rounded-2xl ${isOwnMessage
+                ? 'bg-primary-500 rounded-br-sm'
+                : 'bg-neutral-100 rounded-bl-sm'
+                }`}
+            >
+              {item.type === 'audio' ? (
+                <AudioPlayer
+                  uri={item.content}
+                  duration={item.duration}
+                  isOwnMessage={isOwnMessage}
+                />
+              ) : (
+                <Body className={isOwnMessage ? 'text-white' : 'text-neutral-900'}>
+                  {item.content}
+                </Body>
+              )}
+            </StyledView>
+          )}
           <StyledView className="flex-row items-center mt-1 px-1">
             <BodySmall className="text-neutral-500">{timeString}</BodySmall>
             {isOwnMessage && item.readAt && (
@@ -544,21 +577,24 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
           <StyledTouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color="#101828" />
           </StyledTouchableOpacity>
-          {(recipientProfile?.photos?.find(p => p.isMain) || recipientProfile?.photos?.[0])?.url && (
-            <StyledTouchableOpacity
-              onPress={() => navigation.navigate('ProfileView', {
-                userId: recipientId || '',
-                profile: recipientProfile,
-                showActions: false,
-              })}
-              className="ml-3 mr-3"
-            >
-              <StyledImage
-                source={{ uri: (recipientProfile.photos.find(p => p.isMain) || recipientProfile.photos[0]).url }}
-                className="w-10 h-10 rounded-full"
-              />
-            </StyledTouchableOpacity>
-          )}
+          {(() => {
+            const photoUrl = (recipientProfile?.photos?.find(p => p.isMain) || recipientProfile?.photos?.[0])?.url || recipientPhoto;
+            return photoUrl ? (
+              <StyledTouchableOpacity
+                onPress={() => navigation.navigate('ProfileView', {
+                  userId: recipientId || '',
+                  profile: recipientProfile || (recipientId ? { userId: recipientId, firstName: recipientName } as any : undefined),
+                  showActions: false,
+                })}
+                className="ml-3 mr-3"
+              >
+                <StyledImage
+                  source={{ uri: photoUrl }}
+                  className="w-10 h-10 rounded-full"
+                />
+              </StyledTouchableOpacity>
+            ) : null;
+          })()}
           <StyledView className="flex-1">
             <H3>{recipientName}</H3>
             {isFriend && <BodySmall className="text-neutral-500">Friend</BodySmall>}
@@ -668,15 +704,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
               <Ionicons name="close-circle-outline" size={18} color="#101828" />
               <Text style={cs.menuItemText}>End Match</Text>
             </TouchableOpacity>
-
-            <View style={cs.menuDivider} />
-
-            <TouchableOpacity style={cs.menuItem} onPress={openReportModal}>
-              <Ionicons name="flag-outline" size={18} color="#EF4444" />
-              <Text style={[cs.menuItemText, { color: '#EF4444' }]}>
-                Report {recipientName}
-              </Text>
-            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -685,14 +712,22 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       <Modal
         visible={endMatchModalVisible}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setEndMatchModalVisible(false)}
       >
-        <View style={cs.modalOverlay}>
-          <View style={cs.modalCard}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={cs.centeredModalOverlay}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={cs.centeredModalOverlay}
+            onPress={() => { setEndMatchModalVisible(false); setEndMatchReason(''); setEndMatchCustomReason(''); }}
+          >
+          <TouchableOpacity activeOpacity={1} style={cs.centeredModalCard}>
             <Text style={cs.modalTitle}>End this match?</Text>
             <Text style={cs.modalSubtitle}>
-              Help us improve — let us know why
+              You'll re-enter the matchmaking pool.{'\n'}Your reason will be shared with them.
             </Text>
 
             <View style={cs.reasonList}>
@@ -733,15 +768,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
                 <Text style={cs.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[cs.destructiveBtn, !endMatchReason && cs.btnDisabled]}
+                style={[cs.destructiveBtn, (!endMatchReason || endMatchSubmitting) && cs.btnDisabled]}
                 onPress={handleEndMatchConfirm}
-                disabled={!endMatchReason}
+                disabled={!endMatchReason || endMatchSubmitting}
               >
-                <Text style={cs.destructiveBtnText}>End Match</Text>
+                <Text style={cs.destructiveBtnText}>{endMatchSubmitting ? 'Ending...' : 'End Match'}</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── Report Modal ───────────────────────────────────────────────── */}
@@ -809,11 +845,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       <Modal
         visible={proposeDateModalVisible}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setProposeDateModalVisible(false)}
       >
-        <View style={cs.modalOverlay}>
-          <View style={cs.modalCard}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={cs.dateModalOverlay}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={{ flex: 1 }}
+            onPress={() => { setProposeDateModalVisible(false); setDateProposalText(''); }}
+          />
+          <View style={cs.dateModalCard}>
             <View style={cs.dateIconWrap}>
               <Ionicons name="calendar" size={28} color="#437FFF" />
             </View>
@@ -852,7 +896,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
     </StyledSafeAreaView>
@@ -860,6 +904,36 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
 };
 
 export default ChatScreen;
+
+// ── Date proposal message card ───────────────────────────────────────────────
+const dateProposalStyles = StyleSheet.create({
+  card: {
+    maxWidth: '85%',
+    borderWidth: 1.5,
+    borderColor: '#D0DBFF',
+    backgroundColor: '#F0F4FF',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  headerText: {
+    fontFamily: 'Outfit_600SemiBold',
+    fontSize: 14,
+    color: '#437FFF',
+  },
+  body: {
+    fontFamily: 'Outfit_400Regular',
+    fontSize: 15,
+    color: '#101828',
+    lineHeight: 22,
+  },
+});
 
 // ── Styles for menus & modals ──────────────────────────────────────────────
 const cs = StyleSheet.create({
@@ -913,6 +987,37 @@ const cs = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 40,
   },
+  // Centered modal (End Match)
+  centeredModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  centeredModalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 24,
+    width: '100%',
+  },
+  // Date proposal modal — anchored to top so keyboard doesn't cover it
+  dateModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-start',
+  },
+  dateModalCard: {
+    backgroundColor: '#FFFFFF',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 24,
+    marginTop: 0,
+  },
   modalTitle: {
     fontFamily: 'Outfit_600SemiBold',
     fontSize: 20,
@@ -942,12 +1047,12 @@ const cs = StyleSheet.create({
   reasonList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
     marginBottom: 16,
   },
   reasonPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 999,
     borderWidth: 1.5,
     borderColor: '#E4E7EC',
@@ -959,7 +1064,7 @@ const cs = StyleSheet.create({
   },
   reasonText: {
     fontFamily: 'Outfit_400Regular',
-    fontSize: 14,
+    fontSize: 12,
     color: '#667085',
   },
   reasonTextActive: {

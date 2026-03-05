@@ -10,57 +10,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { communityService } from '../../services/communityServiceIndex';
 import { getUserProfile, getFullUserProfileById } from '../../services/profileService';
 import { KarmaInfoModal } from '../../components/community/KarmaInfoModal';
+import { VALUES_EMOJI, INTERESTS_EMOJI, getEmoji } from '../../utils/emojiMaps';
+import { showToast } from '../../utils/toast';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 const PROFILE_CONTENT_STYLE = { paddingBottom: 150 } as const;
-
-const VALUES_EMOJI: Record<string, string> = {
-    // Personal
-    'Honesty': '💛', 'Integrity': '💎', 'Trust': '🔒',
-    'Respect': '🌟', 'Authenticity': '🪞', 'Kindness': '💗', 'Empathy': '🧡',
-    // Relationship
-    'Communication': '💬', 'Commitment': '💍',
-    'Independence': '🦅', 'Romance': '🌹',
-    // Life
-    'Family': '👨‍👩‍👧', 'Career': '💼', 'Ambition': '🎯',
-    'Work-Life Balance': '⚖️', 'Adventure': '🌍', 'Stability': '🏡',
-    'Growth Mindset': '🌱', 'Creativity': '🎨',
-    // Social
-    'Community': '🏘️', 'Social Justice': '✊', 'Environmentalism': '🌿',
-    'Diversity': '🌈',
-    // Personal Growth
-    'Spirituality': '🙏', 'Health': '💪',
-};
-
-const INTERESTS_EMOJI: Record<string, string> = {
-    // Activities
-    'Tennis': '🎾', 'Golf': '⛳', 'Running': '🏃', 'Yoga': '🧘',
-    'Hiking': '🥾', 'Skiing': '⛷️',
-    'Basketball': '🏀', 'Lifting': '🏋️', 'Live Sports': '🏟️', 'Watching Sports': '📺',
-    // Culture & Entertainment
-    'Museums': '🏛️', 'Theater': '🎭',
-    'Live Music': '🎵', 'Comedy Shows': '😂',
-    'Film': '🎬', 'Reading': '📖', 'Photography': '📷',
-    // Food & Drink
-    'Cooking': '🍳', 'Coffee': '☕', 'Cocktails': '🍸',
-    'Fine Dining': '🍽️', 'Brunch': '🥞',
-    // Travel & Adventure
-    'Travel': '✈️', 'Camping': '⛺',
-    // Lifestyle
-    'Startups': '🚀', 'Investing': '📈', 'Real Estate': '🏠',
-    'Fashion': '👗', 'Meditation': '🧘', 'Podcasts': '🎙️',
-    // Social
-    'Dinner Parties': '🥂', 'Game Nights': '🎲', 'Dancing': '💃',
-    'Trivia Nights': '🧠', 'Poker': '🃏', 'Video Games': '🎮',
-};
-
-function getEmoji(text: string, map: Record<string, string>): string {
-    const key = Object.keys(map).find(
-        k => k.toLowerCase() === text.toLowerCase()
-    );
-    return key ? map[key] : '•';
-}
 
 export default function ProfileMatchScreen() {
     const navigation = useNavigation<any>();
@@ -79,20 +34,31 @@ export default function ProfileMatchScreen() {
     const [profileData, setProfileData] = useState<any>(params.partnerProfile || params.profile || null);
     const [loading, setLoading] = useState(isPreview);
     const [showKarmaModal, setShowKarmaModal] = useState(false);
+    const isMountedRef = React.useRef(true);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => { isMountedRef.current = false; };
+    }, []);
 
     useEffect(() => {
         if (isPreview) {
             getUserProfile().then(result => {
-                if (result.ok && result.data) setProfileData(result.data);
-            }).finally(() => setLoading(false));
+                if (isMountedRef.current && result.ok && result.data) setProfileData(result.data);
+            }).finally(() => { if (isMountedRef.current) setLoading(false); });
         } else if (!isProposal && params.profile?.userId) {
             // isView — profile passed from friends list lacks deep questions; re-fetch full profile
             setLoading(true);
             getFullUserProfileById(params.profile.userId).then(full => {
-                if (full) setProfileData(full);
-            }).finally(() => setLoading(false));
+                if (isMountedRef.current && full) setProfileData(full);
+            }).catch(() => { /* show whatever profile data was passed */ }).finally(() => { if (isMountedRef.current) setLoading(false); });
+        } else if (isProposal && params.partnerProfile?.userId) {
+            // isProposal — background re-fetch to populate karma + deep questions without blocking UI
+            getFullUserProfileById(params.partnerProfile.userId).then(full => {
+                if (isMountedRef.current && full) setProfileData(full);
+            }).catch(() => { /* profile already visible from params — silently ignore */ });
         }
-    }, [isPreview, isProposal, params.profile?.userId]);
+    }, [isPreview, isProposal, params.profile?.userId, params.partnerProfile?.userId]);
 
     const partnerProfile = profileData;
     const communityScore: number = params.communityScore ?? 0;
@@ -135,9 +101,15 @@ export default function ProfileMatchScreen() {
         if (submitting) return;
         setSubmitting(true);
         try {
-            if (canRespond) await communityService.respondToMatchProposal(proposalId, false);
-        } catch { /* silent */ }
-        navigation.goBack();
+            if (canRespond) await communityService.respondToMatchProposal(proposalId, false, {
+                name: partnerProfile?.firstName || 'Unknown',
+                photoUrl: partnerProfile?.photos?.[0]?.url,
+            });
+            navigation.goBack();
+        } catch {
+            setSubmitting(false);
+            showToast.error('Could not submit response', 'Check your connection and try again.');
+        }
     }, [submitting, canRespond, proposalId, navigation]);
 
     const handleAccept = useCallback(async () => {
@@ -145,8 +117,11 @@ export default function ProfileMatchScreen() {
         setSubmitting(true);
         try {
             await communityService.respondToMatchProposal(proposalId, true);
-        } catch { /* silent */ }
-        navigation.goBack();
+            navigation.goBack();
+        } catch {
+            setSubmitting(false);
+            showToast.error('Could not submit response', 'Check your connection and try again.');
+        }
     }, [submitting, canRespond, proposalId, navigation]);
 
     // Must be before early return — hooks cannot be called after a conditional return

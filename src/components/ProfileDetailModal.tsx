@@ -10,6 +10,7 @@ import {
 import { styled } from 'nativewind';
 import { H1, H2, H3, Body, Card, Avatar } from './ui';
 import { UserProfile } from '../types';
+import { valueEmoji, interestEmoji } from '../utils/emojiMaps';
 import { Ionicons } from '@expo/vector-icons';
 
 const StyledView = styled(View);
@@ -120,7 +121,7 @@ export const ProfileDetailModal: React.FC<ProfileDetailModalProps> = ({
                   {profile.interests.map((interest, index) => (
                     <StyledView key={index} className="px-1 mb-2">
                       <StyledView className="bg-primary-100 px-3 py-2 rounded-full">
-                        <Body className="text-primary-700 text-sm">{interest}</Body>
+                        <Body className="text-primary-700 text-sm">{interestEmoji(interest)} {interest}</Body>
                       </StyledView>
                     </StyledView>
                   ))}
@@ -136,7 +137,7 @@ export const ProfileDetailModal: React.FC<ProfileDetailModalProps> = ({
                   {profile.values.map((value, index) => (
                     <StyledView key={index} className="px-1 mb-2">
                       <StyledView className="bg-purple-100 px-3 py-2 rounded-full">
-                        <Body className="text-purple-700 text-sm">{value}</Body>
+                        <Body className="text-purple-700 text-sm">{valueEmoji(value)} {value}</Body>
                       </StyledView>
                     </StyledView>
                   ))}

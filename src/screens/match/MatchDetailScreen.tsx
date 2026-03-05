@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, SafeAreaView, StatusBar, ScrollView, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, H2, H3, Body, Button, Card, Chip } from '../../components/ui';
+import { valueEmoji, interestEmoji } from '../../utils/emojiMaps';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList, Match } from '../../types';
 import { getCurrentUser } from '../../services/authService';
@@ -265,6 +266,7 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
     navigation.navigate('Chat', {
       matchId: match.id,
       recipientName: profile.firstName,
+      recipientPhoto: profile.photos?.[0]?.url,
     });
   };
 
@@ -400,7 +402,7 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
             <StyledView className="flex-row flex-wrap -mx-1">
               {profile.interests.map((interest, index) => (
                 <StyledView key={index} className="px-1 mb-2">
-                  <Chip label={interest} />
+                  <Chip label={`${interestEmoji(interest)} ${interest}`} />
                 </StyledView>
               ))}
             </StyledView>
@@ -412,7 +414,7 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
             <StyledView className="flex-row flex-wrap -mx-1">
               {profile.values.map((value, index) => (
                 <StyledView key={index} className="px-1 mb-2">
-                  <Chip label={value} />
+                  <Chip label={`${valueEmoji(value)} ${value}`} />
                 </StyledView>
               ))}
             </StyledView>

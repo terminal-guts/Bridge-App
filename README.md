@@ -14,7 +14,8 @@
 
 This repository contains both the frontend and backend:
 - **Frontend** (current directory): React Native/Expo app
-- **Bridge-Version1** (subdirectory): Supabase backend integration
+- **supabase/** (subdirectory): Supabase edge functions and migrations
+- **scripts/** (subdirectory): Database management and testing utilities
 
 ---
 
@@ -108,8 +109,8 @@ Bridge-App/
 │   ├── types/              # TypeScript type definitions
 │   └── utils/              # Utility functions
 ├── assets/                 # Images, fonts, icons
-├── Bridge-Version1/        # Full app with Supabase backend
-│   └── scripts/           # Database management scripts
+├── supabase/               # Supabase edge functions and migrations
+├── scripts/                # Database management and testing utilities
 ├── App.tsx                 # App entry point
 ├── package.json            # Dependencies
 ├── .nvmrc                  # Node.js version
@@ -124,7 +125,7 @@ Bridge-App/
 ### This Repository (Production App)
 - **Status**: Production codebase — deploying to App Store
 - **Frontend**: React Native/Expo (this directory)
-- **Backend**: Supabase (Bridge-Version1 subdirectory)
+- **Backend**: Supabase (`supabase/` subdirectory)
 - **Database**: PostgreSQL via Supabase
 - **Authentication**: Supabase Auth
 - **Scripts**: TypeScript utilities for database management
@@ -160,7 +161,7 @@ Bridge-App/
 
 2. **Test backend connection**:
    ```bash
-   npx tsx Bridge-Version1/scripts/test-backend-connection.ts
+   npx tsx scripts/test-backend-connection.ts
    ```
 
 3. **See [GETTING_STARTED.md](./GETTING_STARTED.md)** for complete setup
@@ -222,9 +223,9 @@ npm run lint           # Run ESLint
 npm start -- --clear   # Clear Metro bundler cache
 
 # Backend Scripts (requires Supabase access)
-npx tsx Bridge-Version1/scripts/test-backend-connection.ts
-npx tsx Bridge-Version1/scripts/seed-test-users.ts
-npx tsx Bridge-Version1/scripts/create-dev-user.ts
+npx tsx scripts/test-backend-connection.ts
+npx tsx scripts/seed-test-users.ts
+npx tsx scripts/create-dev-user.ts
 ```
 
 ---
@@ -283,7 +284,7 @@ cd ios && pod install && cd ..
 **Can't connect to backend?**
 - Check `.env` file exists with correct credentials
 - Verify Supabase project is accessible
-- Run `npx tsx Bridge-Version1/scripts/test-backend-connection.ts`
+- Run `npx tsx scripts/test-backend-connection.ts`
 
 See [GETTING_STARTED.md](./GETTING_STARTED.md) for comprehensive troubleshooting.
 

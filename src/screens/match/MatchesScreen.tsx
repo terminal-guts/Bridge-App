@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, SafeAreaView, ActivityIndicator, TouchableOpacity, StyleSheet, StatusBar, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, ActivityIndicator, TouchableOpacity, StyleSheet, StatusBar, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback, RefreshControl } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MatchCard } from '../../components/matches/MatchCard';
@@ -12,6 +12,7 @@ import { ClockIcon } from '../../components/icons/Icons';
 import { getUserProfile } from '../../services/profileService';
 import { UserProfile } from '../../types';
 import { ProfileCompletionBanner } from '../../components/ProfileCompletionBanner';
+import { showToast } from '../../utils/toast';
 
 // Pre-register the illustration asset at module load time so it is available
 // before the screen mounts (avoids a first-render blank on fresh installs).
@@ -25,7 +26,14 @@ type ScreenState =
     | 'neither_voted'   // Proposal exists, no one has voted yet
     | 'empty';          // Nothing at all
 
-const END_MATCH_MIN_CHARS = 50;
+const END_MATCH_REASONS = [
+    'Conversation fizzled',
+    'No connection',
+    'Not on same page',
+    'Felt uncomfortable',
+    'Bad timing',
+    'Other',
+];
 
 function timerColor(hoursLeft: number): string {
     if (hoursLeft >= 24) return '#34C759';
@@ -75,9 +83,9 @@ function EndedMatchPopupContent({ event }: { event: MatchEndedEvent }) {
             body: "Not every connection clicks, and that's okay. Your community is still working to find your person.",
         },
         match_ended: {
-            icon: '🔚',
-            headline: 'Match ended',
-            body: 'This match has been moved to your Past Matches.',
+            icon: '🌱',
+            headline: 'A Fresh Start',
+            body: "You're back in the matching pool. Your community is still here to help you find your next great connection.",
         },
     };
 
@@ -85,13 +93,6 @@ function EndedMatchPopupContent({ event }: { event: MatchEndedEvent }) {
 
     return (
         <View style={popupStyles.content}>
-            {partnerPhotoUrl ? (
-                <Image source={{ uri: partnerPhotoUrl }} style={popupStyles.avatar} contentFit="cover" transition={200} cachePolicy="disk" />
-            ) : (
-                <View style={[popupStyles.avatar, popupStyles.avatarFallback]}>
-                    <Text style={popupStyles.avatarFallbackText}>{partnerName.charAt(0)}</Text>
-                </View>
-            )}
             <Text style={popupStyles.icon}>{icon}</Text>
             <Text style={popupStyles.headline}>{headline}</Text>
             {type === 'match_ended' && endReason ? (
@@ -106,10 +107,21 @@ function EndedMatchPopupContent({ event }: { event: MatchEndedEvent }) {
 }
 
 const popupStyles = StyleSheet.create({
-    content: { alignItems: 'center', paddingBottom: 24 },
-    avatar: { width: 72, height: 72, borderRadius: 36, marginBottom: 12 },
-    avatarFallback: { backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
-    avatarFallbackText: { fontSize: 28, fontWeight: '700', color: '#6B7280' },
+    overlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    card: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        paddingHorizontal: 28,
+        paddingTop: 28,
+        paddingBottom: 22,
+        marginHorizontal: 32,
+    },
+    content: { alignItems: 'center' },
     icon: { fontSize: 32, marginBottom: 10 },
     headline: {
         fontFamily: 'Outfit_700Bold',
@@ -149,6 +161,18 @@ const popupStyles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: 20,
         paddingHorizontal: 8,
+        marginBottom: 20,
+    },
+    continueBtn: {
+        backgroundColor: '#2B65F9',
+        borderRadius: 12,
+        paddingVertical: 14,
+        alignItems: 'center',
+    },
+    continueBtnText: {
+        fontFamily: 'Outfit_600SemiBold',
+        fontSize: 16,
+        color: '#FFFFFF',
     },
 });
 
@@ -188,8 +212,11 @@ export function MatchesScreen() {
     }, []);
     const [now, setNow] = useState(Date.now());
     const [endMatchModalVisible, setEndMatchModalVisible] = useState(false);
+    const [timerInfoVisible, setTimerInfoVisible] = useState(false);
     const [endMatchReason, setEndMatchReason] = useState('');
+    const [endMatchSubmitting, setEndMatchSubmitting] = useState(false);
     const [popupEvent, setPopupEvent] = useState<MatchEndedEvent | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
     const navigation = useNavigation<any>();
     const { height: windowHeight } = useWindowDimensions();
     const insets = useSafeAreaInsets();
@@ -224,9 +251,26 @@ export function MatchesScreen() {
         });
     }, []);
 
+    const handleRefresh = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            const [, profileResult] = await Promise.all([
+                loadMatches(),
+                getUserProfile(),
+            ]);
+            if (isMountedRef.current && profileResult.ok && profileResult.data) {
+                setProfile(profileResult.data);
+            }
+        } finally {
+            if (isMountedRef.current) setRefreshing(false);
+        }
+    }, []);
+
     // Check for a pending ended-match event each time the tab is focused
     useFocusEffect(
         useCallback(() => {
+            // Reload match data on every focus (e.g. returning from decision screen)
+            loadMatches();
             // Refresh profile on each tab focus so the completion banner stays current
             getUserProfile().then(result => {
                 if (isMountedRef.current && result.ok && result.data) setProfile(result.data);
@@ -250,16 +294,34 @@ export function MatchesScreen() {
         setPopupEvent(null);
     }, [popupEvent]);
 
-    const handleEndMatchConfirm = useCallback(() => {
-        if (endMatchReason.trim().length < END_MATCH_MIN_CHARS) return;
-        Keyboard.dismiss();
-        setEndMatchModalVisible(false);
-        setEndMatchReason('');
-        const matchId = activeMatch?.matchId ?? activeMatch?.id ?? '';
-        communityService.endActiveMatch(matchId, endMatchReason.trim());
-    }, [endMatchReason, activeMatch]);
+    const [endMatchCustomReason, setEndMatchCustomReason] = useState('');
 
-    if (loading) {
+    const handleEndMatchConfirm = useCallback(async () => {
+        if (!endMatchReason || endMatchSubmitting) return;
+        const reason = endMatchReason === 'Other' ? endMatchCustomReason.trim() || 'Other' : endMatchReason;
+        Keyboard.dismiss();
+        setEndMatchSubmitting(true);
+        const matchId = activeMatch?.matchId ?? activeMatch?.id ?? '';
+        try {
+            const partner = activeMatch?.partnerProfile;
+            await communityService.endActiveMatch(matchId, reason, {
+                name: partner?.firstName || 'Unknown',
+                photoUrl: partner?.photos?.[0]?.url,
+            });
+            setEndMatchModalVisible(false);
+            setEndMatchReason('');
+            setEndMatchCustomReason('');
+            // Show the ended-match popup immediately (useFocusEffect won't re-fire since we're already on this tab)
+            const event = communityService.getEndedMatchEvent();
+            if (event) setPopupEvent(event);
+        } catch (error) {
+            showToast.error('Could not end match', 'Check your connection and try again.');
+        } finally {
+            setEndMatchSubmitting(false);
+        }
+    }, [endMatchReason, endMatchCustomReason, endMatchSubmitting, activeMatch]);
+
+    if (loading && !popupEvent) {
         return (
             <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }}>
                 <ActivityIndicator size="large" color="#2B65F9" />
@@ -299,7 +361,12 @@ export function MatchesScreen() {
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Match</Text>
                 </View>
-                <View style={styles.emptyContainer}>
+                <ScrollView
+                    contentContainerStyle={styles.emptyContainer}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#2B65F9" />
+                    }
+                >
                     <Text style={styles.tagline}>Real connections take a little time</Text>
                     <IllustrationImage />
                     <Text style={styles.subtitle}>
@@ -312,7 +379,7 @@ export function MatchesScreen() {
                     >
                         <Text style={styles.ctaText}>Help Others Find a Match</Text>
                     </TouchableOpacity>
-                </View>
+                </ScrollView>
             </SafeAreaView>
         );
     }
@@ -377,11 +444,12 @@ export function MatchesScreen() {
                 matchId: match.matchId ?? match.id,
                 recipientName: partnerName,
                 recipientId: partner?.userId ?? partner?.id,
+                recipientPhoto: partnerPhoto,
             });
         } else {
             navigation.navigate('ProposalProfile', {
                 partnerProfile: currentProposal!.partnerProfile,
-                communityScore: currentProposal!.communityScore,
+                communityScore: currentProposal!.compatibilityScore || currentProposal!.communityScore,
                 endorsers: currentProposal!.endorsers ?? [],
                 screenState,
                 proposalId: currentProposal!.proposalId,
@@ -400,14 +468,21 @@ export function MatchesScreen() {
             <View style={[styles.headerRow, { paddingTop: insets.top + 16 }]}>
                 <Text style={styles.headerTitle}>Match</Text>
                 {timerLabel && (
-                    <View style={[styles.timerBadge, { backgroundColor: timerBg, borderColor: timerBdrClr }]}>
-                        <ClockIcon size={13} color={timerClr} />
-                        <Text style={[styles.timerText, { color: timerClr }]}>{timerLabel}</Text>
-                    </View>
+                    <TouchableOpacity activeOpacity={0.7} onPress={() => setTimerInfoVisible(true)}>
+                        <View style={[styles.timerBadge, { backgroundColor: timerBg, borderColor: timerBdrClr }]}>
+                            <ClockIcon size={13} color={timerClr} />
+                            <Text style={[styles.timerText, { color: timerClr }]}>{timerLabel}</Text>
+                        </View>
+                    </TouchableOpacity>
                 )}
             </View>
 
-            <ScrollView style={{ flex: 1, paddingHorizontal: 16, marginTop: 20 }}>
+            <ScrollView
+                style={{ flex: 1, paddingHorizontal: 16, marginTop: 20 }}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#2B65F9" />
+                }
+            >
                 <View style={{ marginBottom: 56, height: activeCardHeight }}>
                     {screenState === 'active_match' && (
                         <MatchCard
@@ -467,11 +542,11 @@ export function MatchesScreen() {
                 animationType="fade"
                 onRequestClose={handlePopupContinue}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalCard}>
+                <View style={popupStyles.overlay}>
+                    <View style={popupStyles.card}>
                         {popupEvent && <EndedMatchPopupContent event={popupEvent} />}
-                        <TouchableOpacity style={styles.continueBtn} onPress={handlePopupContinue} activeOpacity={0.85}>
-                            <Text style={styles.continueBtnText}>Continue</Text>
+                        <TouchableOpacity style={popupStyles.continueBtn} onPress={handlePopupContinue} activeOpacity={0.85}>
+                            <Text style={popupStyles.continueBtnText}>Continue</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -482,54 +557,82 @@ export function MatchesScreen() {
                 visible={endMatchModalVisible}
                 transparent
                 animationType="fade"
-                onRequestClose={() => { setEndMatchModalVisible(false); setEndMatchReason(''); }}
+                onRequestClose={() => { setEndMatchModalVisible(false); setEndMatchReason(''); setEndMatchCustomReason(''); }}
             >
-                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                    <View style={styles.modalOverlay}>
-                        <TouchableWithoutFeedback>
-                            <View style={styles.modalCard}>
-                                <Text style={styles.modalTitle}>End this match?</Text>
-                                <Text style={styles.modalSubtitle}>
-                                    Help us improve — tell us why
-                                </Text>
+                <TouchableOpacity
+                    activeOpacity={1}
+                    style={styles.centeredModalOverlay}
+                    onPress={() => { setEndMatchModalVisible(false); setEndMatchReason(''); setEndMatchCustomReason(''); }}
+                >
+                    <TouchableOpacity activeOpacity={1} style={styles.centeredModalCard}>
+                        <Text style={styles.modalTitle}>End this match?</Text>
+                        <Text style={styles.modalSubtitle}>
+                            You'll re-enter the matchmaking pool.{'\n'}Your reason will be shared with them.
+                        </Text>
 
-                                <TextInput
-                                    style={styles.textArea}
-                                    placeholder="Let us know why you'd like to end this match..."
-                                    placeholderTextColor="#98A2B3"
-                                    value={endMatchReason}
-                                    onChangeText={setEndMatchReason}
-                                    multiline
-                                    maxLength={500}
-                                    autoFocus
-                                />
-                                <Text style={styles.charCount}>
-                                    {endMatchReason.trim().length} / {END_MATCH_MIN_CHARS} min
-                                </Text>
+                        <View style={styles.reasonList}>
+                            {END_MATCH_REASONS.map(reason => (
+                                <TouchableOpacity
+                                    key={reason}
+                                    style={[styles.reasonPill, endMatchReason === reason && styles.reasonPillActive]}
+                                    onPress={() => setEndMatchReason(reason)}
+                                >
+                                    <Text style={[styles.reasonText, endMatchReason === reason && styles.reasonTextActive]}>
+                                        {reason}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
 
-                                <View style={styles.modalActions}>
-                                    <TouchableOpacity
-                                        style={styles.cancelBtn}
-                                        onPress={() => {
-                                            Keyboard.dismiss();
-                                            setEndMatchModalVisible(false);
-                                            setEndMatchReason('');
-                                        }}
-                                    >
-                                        <Text style={styles.cancelBtnText}>Cancel</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.destructiveBtn, endMatchReason.trim().length < END_MATCH_MIN_CHARS && styles.btnDisabled]}
-                                        onPress={handleEndMatchConfirm}
-                                        disabled={endMatchReason.trim().length < END_MATCH_MIN_CHARS}
-                                    >
-                                        <Text style={styles.destructiveBtnText}>End Match</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        </TouchableWithoutFeedback>
+                        {endMatchReason === 'Other' && (
+                            <TextInput
+                                style={styles.textArea}
+                                placeholder="Tell us a bit more..."
+                                placeholderTextColor="#98A2B3"
+                                value={endMatchCustomReason}
+                                onChangeText={setEndMatchCustomReason}
+                                multiline
+                                maxLength={300}
+                            />
+                        )}
+
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity
+                                style={styles.cancelBtn}
+                                onPress={() => {
+                                    Keyboard.dismiss();
+                                    setEndMatchModalVisible(false);
+                                    setEndMatchReason('');
+                                    setEndMatchCustomReason('');
+                                }}
+                            >
+                                <Text style={styles.cancelBtnText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.destructiveBtn, (!endMatchReason || endMatchSubmitting) && styles.btnDisabled]}
+                                onPress={handleEndMatchConfirm}
+                                disabled={!endMatchReason || endMatchSubmitting}
+                            >
+                                <Text style={styles.destructiveBtnText}>{endMatchSubmitting ? 'Ending...' : 'End Match'}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </TouchableOpacity>
+                </TouchableOpacity>
+            </Modal>
+
+            {/* ── Timer Info Modal ─────────────────────────────────────────── */}
+            <Modal visible={timerInfoVisible} transparent animationType="fade" onRequestClose={() => setTimerInfoVisible(false)}>
+                <TouchableOpacity style={styles.timerInfoOverlay} activeOpacity={1} onPress={() => setTimerInfoVisible(false)}>
+                    <View style={styles.timerInfoCard}>
+                        <Text style={styles.timerInfoTitle}>Time to Decide</Text>
+                        <Text style={styles.timerInfoBody}>
+                            This is how long you and your match have to accept or pass. If the timer runs out before both of you decide, the match expires. Don't wait too long!
+                        </Text>
+                        <TouchableOpacity style={styles.timerInfoBtn} onPress={() => setTimerInfoVisible(false)} activeOpacity={0.85}>
+                            <Text style={styles.timerInfoBtnText}>Got it</Text>
+                        </TouchableOpacity>
                     </View>
-                </TouchableWithoutFeedback>
+                </TouchableOpacity>
             </Modal>
         </View>
     );
@@ -559,7 +662,7 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
     },
-    emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+    emptyContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
     tagline: { fontFamily: 'Outfit_600SemiBold', fontSize: 20, lineHeight: 26, color: '#0B1226', textAlign: 'center', marginBottom: 12 },
     illustration: { width: 300, height: 300, marginBottom: 32 },
     subtitle: { fontFamily: 'Outfit_500Medium', fontSize: 14, lineHeight: 17, color: '#6B7280', textAlign: 'center', marginBottom: 16 },
@@ -658,6 +761,48 @@ const styles = StyleSheet.create({
     btnDisabled: {
         opacity: 0.4,
     },
+    centeredModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+    },
+    centeredModalCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        paddingHorizontal: 24,
+        paddingTop: 24,
+        paddingBottom: 24,
+        width: '100%' as any,
+    },
+    reasonList: {
+        flexDirection: 'row' as const,
+        flexWrap: 'wrap' as const,
+        gap: 6,
+        marginBottom: 16,
+    },
+    reasonPill: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 999,
+        borderWidth: 1.5,
+        borderColor: '#E4E7EC',
+        backgroundColor: '#FFFFFF',
+    },
+    reasonPillActive: {
+        borderColor: '#437FFF',
+        backgroundColor: '#EEF3FF',
+    },
+    reasonText: {
+        fontFamily: 'Outfit_400Regular',
+        fontSize: 12,
+        color: '#667085',
+    },
+    reasonTextActive: {
+        fontFamily: 'Outfit_600SemiBold',
+        color: '#437FFF',
+    },
     continueBtn: {
         backgroundColor: '#437FFF',
         borderRadius: 12,
@@ -667,6 +812,49 @@ const styles = StyleSheet.create({
     continueBtnText: {
         fontFamily: 'Outfit_600SemiBold',
         fontSize: 16,
+        color: '#FFFFFF',
+    },
+
+    // Timer info modal
+    timerInfoOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    timerInfoCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        paddingHorizontal: 28,
+        paddingTop: 28,
+        paddingBottom: 22,
+        marginHorizontal: 32,
+        alignItems: 'center',
+    },
+    timerInfoTitle: {
+        fontFamily: 'Outfit_700Bold',
+        fontSize: 18,
+        color: '#101828',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    timerInfoBody: {
+        fontFamily: 'Outfit_400Regular',
+        fontSize: 14,
+        color: '#667085',
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: 20,
+    },
+    timerInfoBtn: {
+        backgroundColor: '#2B65F9',
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 32,
+    },
+    timerInfoBtnText: {
+        fontFamily: 'Outfit_600SemiBold',
+        fontSize: 15,
         color: '#FFFFFF',
     },
 });

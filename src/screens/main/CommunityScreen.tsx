@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useReducer } from 'react';
-import { View, Text, ScrollView, SafeAreaView, StatusBar, ActivityIndicator, TouchableOpacity, StyleSheet, Dimensions, Share, Alert, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, StatusBar, ActivityIndicator, TouchableOpacity, StyleSheet, Dimensions, Share, Alert, RefreshControl, Modal } from 'react-native';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 import { styled } from 'nativewind';
@@ -26,6 +26,7 @@ function MatchResetTimer() {
   const targetRef = useRef(Number(communityService.getNextResetAt()));
   // Incrementing counter just to force a re-render every second
   const [, tick] = useReducer((n: number) => n + 1, 0);
+  const [infoVisible, setInfoVisible] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -84,22 +85,84 @@ function MatchResetTimer() {
   }
 
   return (
-    <View style={{
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: bgColor,
-      borderWidth: 1,
-      borderColor,
-      borderRadius: 10,
-      paddingHorizontal: 9,
-      height: 34,
-      gap: 5,
-    }}>
-      <Ionicons name="time-outline" size={13} color={color} />
-      <Text style={{ fontSize: 13, fontWeight: '600', color }}>{label}</Text>
-    </View>
+    <>
+      <TouchableOpacity activeOpacity={0.7} onPress={() => setInfoVisible(true)}>
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: bgColor,
+          borderWidth: 1,
+          borderColor,
+          borderRadius: 10,
+          paddingHorizontal: 9,
+          height: 34,
+          gap: 5,
+        }}>
+          <Ionicons name="time-outline" size={13} color={color} />
+          <Text style={{ fontSize: 13, fontWeight: '600', color }}>{label}</Text>
+        </View>
+      </TouchableOpacity>
+
+      <Modal visible={infoVisible} transparent animationType="fade" onRequestClose={() => setInfoVisible(false)}>
+        <TouchableOpacity style={timerInfoStyles.overlay} activeOpacity={1} onPress={() => setInfoVisible(false)}>
+          <View style={timerInfoStyles.card}>
+            <Text style={timerInfoStyles.title}>Daily Reset</Text>
+            <Text style={timerInfoStyles.body}>
+              New proposals drop every day at 7 PM. Come back to vote for your friends and help them find their match!
+            </Text>
+            <TouchableOpacity style={timerInfoStyles.btn} onPress={() => setInfoVisible(false)} activeOpacity={0.85}>
+              <Text style={timerInfoStyles.btnText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </>
   );
 }
+
+const timerInfoStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingHorizontal: 28,
+    paddingTop: 28,
+    paddingBottom: 22,
+    marginHorizontal: 32,
+    alignItems: 'center',
+  },
+  title: {
+    fontFamily: 'Outfit_700Bold',
+    fontSize: 18,
+    color: '#101828',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  body: {
+    fontFamily: 'Outfit_400Regular',
+    fontSize: 14,
+    color: '#667085',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  btn: {
+    backgroundColor: '#2B65F9',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+  },
+  btnText: {
+    fontFamily: 'Outfit_600SemiBold',
+    fontSize: 15,
+    color: '#FFFFFF',
+  },
+});
 
 interface CommunityScreenProps {
   navigation: NavigationProp<MainTabParamList, 'Community'>;
@@ -354,6 +417,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                   friendshipId: user.friendshipId,
                   recipientId: user.friendId,
                   recipientName: user.friend.firstName,
+                  recipientPhoto: user.friend.photos?.[0]?.url,
                   isFriendChat: true,
                 })}
               />
@@ -380,6 +444,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                   friendshipId: user.friendshipId,
                   recipientId: user.friendId,
                   recipientName: user.friend.firstName,
+                  recipientPhoto: user.friend.photos?.[0]?.url,
                   isFriendChat: true,
                 })}
               />

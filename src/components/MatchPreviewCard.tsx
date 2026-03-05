@@ -16,6 +16,7 @@ import { H1, H2, H3, Body, Button, Card, Avatar } from './ui';
 import { UserProfile, Match } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { Chip } from './ui';
+import { valueEmoji, interestEmoji } from '../utils/emojiMaps';
 
 const StyledView = styled(View);
 const StyledImage = styled(Image);
@@ -198,7 +199,7 @@ export const MatchPreviewCard: React.FC<MatchPreviewCardProps> = ({
             <StyledView className="flex-row flex-wrap -m-1">
               {previewInterests.map((interest, i) => (
                 <StyledView key={i} className="m-1">
-                  <Chip label={interest} size="sm" />
+                  <Chip label={`${interestEmoji(interest)} ${interest}`} size="sm" />
                 </StyledView>
               ))}
             </StyledView>
@@ -214,7 +215,7 @@ export const MatchPreviewCard: React.FC<MatchPreviewCardProps> = ({
             <StyledView className="flex-row flex-wrap -m-1">
               {previewValues.map((value, i) => (
                 <StyledView key={i} className="m-1">
-                  <Chip label={value} size="sm" variant="partner" />
+                  <Chip label={`${valueEmoji(value)} ${value}`} size="sm" variant="partner" />
                 </StyledView>
               ))}
             </StyledView>

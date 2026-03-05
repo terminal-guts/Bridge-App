@@ -434,7 +434,7 @@ export const FRIEND_VOTE_WEIGHT = 1.25;         // Friend votes weighted 1.25x i
 export const CONFIRMATION_MIN_POOL_VOTES = 6;   // Min pool votes to confirm
 export const CONFIRMATION_MIN_TOTAL_VOTES = 12; // Min total votes to confirm
 export const CONFIRMATION_MIN_YES_VOTES = 8;    // Min YES votes to confirm
-export const ACTIVE_MATCH_MINIMUM_DAYS = 3;
+export const ACTIVE_MATCH_MINIMUM_DAYS = 0;
 export const CANDIDATE_COOLDOWN_DAYS = 7;
 
 // Threshold relaxation schedule (5-day window)

@@ -593,7 +593,11 @@ class CommunityBackendService {
           matchedUser: partnerProfile,
           status: myDecision === 'pending' ? 'pending' : 'decided',
           communityScore,
-          compatibilityScore: raw.compatibility_score || 0,
+          compatibilityScore: (() => {
+            const s = raw.compatibility_score || 0;
+            // Normalize: old proposals stored 0–1 decimal, new ones store 70–99 integer
+            return s > 0 && s < 1 ? Math.round(s * 100) : Math.round(s);
+          })(),
           endorsers: [],
           expiresAt: raw.decision_deadline_at || new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
           approvedAt: raw.confirmed_at || raw.sent_to_users_at || raw.created_at,
@@ -605,6 +609,63 @@ class CommunityBackendService {
       });
 
       await resolveProfilePhotos(profilesToResolve);
+
+      // Fetch yes-voter profiles to populate endorsers (photo avatars shown on proposal card)
+      const proposalIds = proposals.map((p: any) => p.proposalId);
+      if (proposalIds.length > 0) {
+        const { data: yesVotes } = await supabase
+          .from('proposal_votes')
+          .select('proposal_id, voter_user_id')
+          .in('proposal_id', proposalIds)
+          .eq('vote_type', 'YES');
+
+        if (yesVotes && yesVotes.length > 0) {
+          const uniqueVoterIds = [...new Set(yesVotes.map((v: any) => v.voter_user_id))];
+          const [{ data: voterRows }, { data: voterPhotos }] = await Promise.all([
+            supabase.from('user_profiles').select('*').in('user_id', uniqueVoterIds),
+            supabase.from('user_photos').select('user_id, storage_path, is_main').in('user_id', uniqueVoterIds).eq('is_main', true),
+          ]);
+
+          if (voterRows && voterRows.length > 0) {
+            const voterProfiles = voterRows.map(mapProfileRow);
+
+            // Inject main photo from user_photos table (real users store photos there, not in user_profiles.photos)
+            if (voterPhotos && voterPhotos.length > 0) {
+              const mainPhotoByUser = new Map<string, string>();
+              for (const p of voterPhotos) {
+                if (!mainPhotoByUser.has(p.user_id)) mainPhotoByUser.set(p.user_id, p.storage_path);
+              }
+              for (const profile of voterProfiles) {
+                if (profile.photos.length === 0 && mainPhotoByUser.has(profile.userId)) {
+                  const path = mainPhotoByUser.get(profile.userId)!;
+                  profile.photos = [{ id: path, url: path, isMain: true, order: 0 }];
+                }
+              }
+            }
+
+            await resolveProfilePhotos(voterProfiles);
+            const voterMap = new Map(voterProfiles.map(p => [p.userId, p]));
+
+            // Group yes-voter IDs by proposal
+            const votesByProposal = new Map<string, string[]>();
+            for (const vote of yesVotes) {
+              const list = votesByProposal.get(vote.proposal_id) ?? [];
+              list.push(vote.voter_user_id);
+              votesByProposal.set(vote.proposal_id, list);
+            }
+
+            // Assign first 3 endorsers to each proposal
+            for (const proposal of proposals) {
+              const voterIds = votesByProposal.get(proposal.proposalId) ?? [];
+              proposal.endorsers = voterIds
+                .slice(0, 3)
+                .map((vid: string) => ({ endorserProfile: voterMap.get(vid) }))
+                .filter((e: any) => e.endorserProfile);
+            }
+          }
+        }
+      }
+
       return proposals;
     } catch (error: any) {
       logger.error('Failed to fetch pending decisions', error.message);
@@ -612,10 +673,20 @@ class CommunityBackendService {
     }
   }
 
-  async respondToMatchProposal(proposalId: string, accept: boolean): Promise<void> {
+  async respondToMatchProposal(proposalId: string, accept: boolean, partnerInfo?: { name: string; photoUrl?: string }): Promise<void> {
     const userId = await getCurrentUserId();
     const decision = accept ? 'accepted' : 'declined';
     await decideOnProposal(proposalId, userId, decision);
+
+    // Set ended event so MatchesScreen shows the "You passed" popup
+    if (!accept && partnerInfo) {
+      this.pendingEndedEvent = {
+        type: 'you_rejected',
+        eventId: `pass-${proposalId}-${Date.now()}`,
+        partnerName: partnerInfo.name,
+        partnerPhotoUrl: partnerInfo.photoUrl,
+      };
+    }
   }
 
   // ========================================================================
@@ -641,7 +712,14 @@ class CommunityBackendService {
       .maybeSingle();
 
     const match = matchA || matchB;
-    if (!match) return null;
+    if (!match) {
+      // No active match — check if a match was recently ended by the OTHER user
+      // so we can show the "match ended" popup
+      if (!this.pendingEndedEvent) {
+        await this.detectEndedMatchEvent(userId);
+      }
+      return null;
+    }
 
     const partnerId = match.user_id_1 === userId ? match.user_id_2 : match.user_id_1;
 
@@ -684,7 +762,7 @@ class CommunityBackendService {
     };
   }
 
-  async endActiveMatch(matchId: string, reason: string): Promise<void> {
+  async endActiveMatch(matchId: string, reason: string, partnerInfo?: { name: string; photoUrl?: string }): Promise<void> {
     const userId = await getCurrentUserId();
 
     // Get match details for exit record
@@ -723,6 +801,16 @@ class CommunityBackendService {
       .from('matches')
       .update({ status: 'ended', updated_at: new Date().toISOString() })
       .eq('id', matchId);
+
+    // Set ended event so MatchesScreen shows the "A Fresh Start" popup
+    if (partnerInfo) {
+      this.pendingEndedEvent = {
+        type: 'match_ended',
+        eventId: `end-match-${matchId}-${Date.now()}`,
+        partnerName: partnerInfo.name,
+        partnerPhotoUrl: partnerInfo.photoUrl,
+      };
+    }
   }
 
   // ========================================================================
@@ -842,6 +930,74 @@ class CommunityBackendService {
 
   clearEndedMatchEvent(): void {
     this.pendingEndedEvent = null;
+  }
+
+  /**
+   * Check if a match was recently ended by the OTHER user.
+   * If so, set pendingEndedEvent so MatchesScreen can show the popup.
+   * Uses AsyncStorage to avoid showing the same event twice.
+   */
+  private async detectEndedMatchEvent(userId: string): Promise<void> {
+    try {
+      // Find recently ended matches involving this user where someone ELSE exited
+      const { data: recentExits } = await supabase
+        .from('match_exits')
+        .select(`
+          id,
+          match_id,
+          exiting_user_id,
+          exit_reason,
+          created_at,
+          matches:match_id (
+            user_id_1,
+            user_id_2,
+            status
+          )
+        `)
+        .neq('exiting_user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (!recentExits || recentExits.length === 0) return;
+
+      // Find one where this user was the OTHER person in the match
+      for (const exit of recentExits) {
+        const match = exit.matches as any;
+        if (!match || match.status !== 'ended') continue;
+        if (match.user_id_1 !== userId && match.user_id_2 !== userId) continue;
+
+        const eventId = `end-match-${exit.match_id}`;
+        const alreadySeen = await AsyncStorage.getItem(`match_popup_seen_${eventId}`);
+        if (alreadySeen) continue;
+
+        // Fetch the partner (exiting user) profile for the popup
+        const { data: partnerRow } = await supabase
+          .from('user_profiles')
+          .select('first_name, profile_photo_path')
+          .eq('user_id', exit.exiting_user_id)
+          .maybeSingle();
+
+        let photoUrl: string | undefined;
+        if (partnerRow?.profile_photo_path) {
+          const { data: signedData } = await supabase.storage
+            .from('photos')
+            .createSignedUrl(partnerRow.profile_photo_path, 3600);
+          photoUrl = signedData?.signedUrl;
+        }
+
+        this.pendingEndedEvent = {
+          type: 'match_ended',
+          eventId,
+          partnerName: partnerRow?.first_name || 'Your match',
+          partnerPhotoUrl: photoUrl,
+          endReason: exit.exit_reason || undefined,
+        };
+        return; // Show one at a time
+      }
+    } catch (error) {
+      // Silent fail — popup is non-critical
+      console.warn('detectEndedMatchEvent failed:', error);
+    }
   }
 
   // ========================================================================

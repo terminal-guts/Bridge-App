@@ -14,6 +14,7 @@ import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 import { UserProfile } from '../../types';
 import { ProfileView } from '../profile/ProfileView';
+import { valueEmoji, interestEmoji } from '../../utils/emojiMaps';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -150,7 +151,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
                     }}
                   >
                     <StyledText style={{ fontSize: 10, color: '#7C3AED', fontWeight: '600' }}>
-                      {value}
+                      {valueEmoji(value)} {value}
                     </StyledText>
                   </StyledView>
                 ))}
@@ -176,7 +177,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
                     }}
                   >
                     <StyledText style={{ fontSize: 10, color: '#D97706', fontWeight: '600' }}>
-                      {interest}
+                      {interestEmoji(interest)} {interest}
                     </StyledText>
                   </StyledView>
                 ))}

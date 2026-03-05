@@ -1222,7 +1222,7 @@ class CommunityService {
   /**
    * Accept or decline a match proposal
    */
-  async respondToMatchProposal(proposalId: string, accept: boolean): Promise<void> {
+  async respondToMatchProposal(proposalId: string, accept: boolean, partnerInfo?: { name: string; photoUrl?: string }): Promise<void> {
     await this.delay(300);
 
     logger.info('[Mock] Responding to proposal:', proposalId, accept ? 'ACCEPT' : 'DECLINE');
@@ -1272,6 +1272,16 @@ class CommunityService {
       // Only user decided, waiting for partner
       decision.status = 'partial_accepted';
       logger.info('[Mock] Waiting for partner to respond...');
+    }
+
+    // Set ended event for the popup when user declines
+    if (!accept && partnerInfo) {
+      mockState.pendingEndedEvent = {
+        type: 'you_rejected',
+        eventId: `pass-${proposalId}-${Date.now()}`,
+        partnerName: partnerInfo.name,
+        partnerPhotoUrl: partnerInfo.photoUrl,
+      };
     }
 
     logger.info('[Mock] Proposal status:', decision.status);
@@ -1802,7 +1812,7 @@ class CommunityService {
    * From the perspective of this user, no popup appears — they initiated it.
    * The partner's session would show a 'match_ended' popup (not modelled in mock).
    */
-  endActiveMatch(matchId: string, reason: string): void {
+  endActiveMatch(matchId: string, reason: string, partnerInfo?: { name: string; photoUrl?: string }): void {
     // Archive current active match as a past match
     const partnerProfile = MOCK_ACTIVE_MATCH_PARTNER;
     const pastMatch: Match = {
@@ -1822,7 +1832,12 @@ class CommunityService {
     };
     mockState.runtimePastMatches = [pastMatch, ...mockState.runtimePastMatches];
     mockState.matchState = 'empty';
-    mockState.pendingEndedEvent = null;
+    mockState.pendingEndedEvent = {
+      type: 'match_ended',
+      eventId: `end-match-${Date.now()}`,
+      partnerName: partnerInfo?.name || partnerProfile.firstName,
+      partnerPhotoUrl: partnerInfo?.photoUrl || partnerProfile.photos?.[0]?.url,
+    };
     this.notifyStateChange();
     logger.info('[Mock] Active match ended and archived to past matches.');
   }

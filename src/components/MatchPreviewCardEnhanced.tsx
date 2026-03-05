@@ -17,6 +17,7 @@ import { CommunityScoreBadge } from './CommunityScoreBadge';
 import { UserProfile, Match } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { Chip } from './ui';
+import { valueEmoji, interestEmoji } from '../utils/emojiMaps';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const StyledView = styled(View);
@@ -349,7 +350,7 @@ export const MatchPreviewCardEnhanced: React.FC<MatchPreviewCardEnhancedProps> =
               <StyledView className="flex-row flex-wrap -m-1">
                 {previewInterests.map((interest, i) => (
                   <StyledView key={i} className="m-1">
-                    <Chip label={interest} size="sm" />
+                    <Chip label={`${interestEmoji(interest)} ${interest}`} size="sm" />
                   </StyledView>
                 ))}
               </StyledView>
@@ -365,7 +366,7 @@ export const MatchPreviewCardEnhanced: React.FC<MatchPreviewCardEnhancedProps> =
               <StyledView className="flex-row flex-wrap -m-1">
                 {previewValues.map((value, i) => (
                   <StyledView key={i} className="m-1">
-                    <Chip label={value} size="sm" variant="partner" />
+                    <Chip label={`${valueEmoji(value)} ${value}`} size="sm" variant="partner" />
                   </StyledView>
                 ))}
               </StyledView>

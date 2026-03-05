@@ -10,6 +10,7 @@ import { styled } from 'nativewind';
 import { H2, H3, Body, Card, CollapsibleCard, Chip } from '../../components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { UserProfile, Match } from '../../types';
+import { valueEmoji, interestEmoji } from '../../utils/emojiMaps';
 
 const StyledView = styled(View);
 const StyledImage = styled(Image);
@@ -244,7 +245,7 @@ export const InterestsSection: React.FC<InterestsSectionProps> = ({ interests })
       <StyledView className="flex-row flex-wrap -mx-1">
         {interests.map((interest, index) => (
           <StyledView key={index} className="px-1 mb-2">
-            <Chip label={interest} variant="interest" />
+            <Chip label={`${interestEmoji(interest)} ${interest}`} variant="interest" />
           </StyledView>
         ))}
       </StyledView>
@@ -272,7 +273,7 @@ export const ValuesSection: React.FC<ValuesSectionProps> = ({ values }) => {
       <StyledView className="flex-row flex-wrap -mx-1">
         {values.map((value, index) => (
           <StyledView key={index} className="px-1 mb-2">
-            <Chip label={value} variant="value" />
+            <Chip label={`${valueEmoji(value)} ${value}`} variant="value" />
           </StyledView>
         ))}
       </StyledView>

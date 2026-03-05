@@ -361,6 +361,7 @@ export type RootStackParamList = {
     friendshipId?: string;
     recipientName: string;
     recipientId?: string;
+    recipientPhoto?: string;
     isFriendChat?: boolean
   };
   ProfileEdit: undefined;

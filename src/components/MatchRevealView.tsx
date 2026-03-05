@@ -19,6 +19,7 @@ import { H1, Body } from './ui';
 import { Match, UserProfile } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { lightHaptic, successHaptic } from '../utils/haptics';
+import { valueEmoji, interestEmoji } from '../utils/emojiMaps';
 
 // ============================================================================
 // Styled Components
@@ -486,8 +487,8 @@ export const MatchRevealView: React.FC<MatchRevealViewProps> = ({ match, profile
           <StyledView className="mb-6 mx-1">
             <Body className="text-xs uppercase mb-2 px-1" style={{ color: COLORS.neutral400, fontWeight: '500', letterSpacing: 0.5 }}>What you have in common</Body>
             <StyledView className="flex-row flex-wrap">
-              {previewInterests.map((interest) => <Chip key={`interest-${interest}`} label={interest} variant="interest" />)}
-              {previewValues.map((value) => <Chip key={`value-${value}`} label={value} variant="value" />)}
+              {previewInterests.map((interest) => <Chip key={`interest-${interest}`} label={`${interestEmoji(interest)} ${interest}`} variant="interest" />)}
+              {previewValues.map((value) => <Chip key={`value-${value}`} label={`${valueEmoji(value)} ${value}`} variant="value" />)}
             </StyledView>
           </StyledView>
         </Animated.View>
