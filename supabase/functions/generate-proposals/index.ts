@@ -18,13 +18,22 @@ Deno.serve(async (req: Request) => {
     const maxProposals = body.max_proposals || MAX_PROPOSALS_PER_RUN;
     const supabase = createAdminClient();
 
-    // 1. Fetch eligible users (not paused, have preferences = completed onboarding)
+    // 1. Fetch eligible users (not paused, profile completed)
     const { data: profiles, error: profilesErr } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('is_paused', false);
+      .eq('is_paused', false)
+      .eq('profile_completed', true);
 
     if (profilesErr) throw profilesErr;
+
+    // Fetch ALL active profiles for voter eligibility (even those without completed profiles)
+    const { data: allActiveProfiles, error: activeErr } = await supabase
+      .from('user_profiles')
+      .select('user_id')
+      .eq('is_paused', false);
+
+    if (activeErr) throw activeErr;
     if (!profiles || profiles.length < 2) {
       return Response.json({
         status: 'insufficient_users',
@@ -304,7 +313,8 @@ Deno.serve(async (req: Request) => {
       // - not user_a, not user_b
       // - not friends of either
       // - hasn't already been assigned this proposal
-      const eligible = eligibleProfiles.filter((u: any) =>
+      // - must be an active profile (from allActiveProfiles)
+      const eligible = (allActiveProfiles || []).filter((u: any) =>
         u.user_id !== ua &&
         u.user_id !== ub &&
         !allFriends.has(u.user_id) &&

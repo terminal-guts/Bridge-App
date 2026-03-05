@@ -88,14 +88,14 @@ export const calculateProfileCompleteness = (
   // NOTE: Company, education, school, and hometown are OPTIONAL and NOT scored
   // Photos are now MANDATORY
 
-  // Photos (10 points) - At least 3 photos required
+  // Photos (10 points) - At least 1 photo required
   const photoCount = profile.photos?.length || 0;
-  if (photoCount >= 3) {
+  if (photoCount >= 1) {
     score += FIELD_WEIGHTS.photos;
   } else {
     missingFields.push({
       field: 'photos',
-      label: `Add at least 3 photos (${photoCount}/3)`,
+      label: `Add at least 1 photo (${photoCount}/1)`,
       weight: FIELD_WEIGHTS.photos,
       category: 'essential',
     });
@@ -746,15 +746,10 @@ export const calculateProfileStrengthBreakdown = (
   const matchPrefsCompletion = calculateMatchPreferencesCompleteness(profile);
   const preferencesScore = Math.round((matchPrefsCompletion.percentage / 100) * 25);
 
-  // 3. PHOTOS SECTION (max 25 points) - 3 photos = 100%
+  // 3. PHOTOS SECTION (max 25 points) - 1 photo = 100%
   const photoCount = profile.photos?.length || 0;
-  let photosScore = 0;
-  if (photoCount >= 3) {
-    photosScore = 25;
-  } else if (photoCount > 0) {
-    photosScore = Math.round((photoCount / 3) * 25);
-  }
-  const photosPercentage = Math.min(Math.round((photoCount / 3) * 100), 100);
+  const photosScore = photoCount >= 1 ? 25 : 0;
+  const photosPercentage = photoCount >= 1 ? 100 : 0;
 
   // 4. DEEP QUESTIONS SECTION (max 25 points) - 3 displayed questions = 100%
   const displayedCount = profile.displayedQuestions?.length || 0;

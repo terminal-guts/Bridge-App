@@ -69,11 +69,21 @@ Deno.serve(async (req: Request) => {
         const myProfile = profileRes.data;
         const myPrefs = prefsRes.data;
 
-        // Fetch all other eligible profiles (not paused, have preferences)
+        // Early return if my profile is not completed
+        if (!myProfile.profile_completed) {
+          return Response.json({
+            status: 'profile_incomplete',
+            proposal_created: false,
+            message: 'Profile must be completed before entering matchmaking pool',
+          }, { headers: corsHeaders });
+        }
+
+        // Fetch all other eligible profiles (not paused, profile completed)
         const { data: allProfiles } = await supabase
           .from('user_profiles')
           .select('*')
           .eq('is_paused', false)
+          .eq('profile_completed', true)
           .neq('user_id', userId);
 
         const otherIds = (allProfiles || []).map((p: any) => p.user_id).filter(Boolean);
