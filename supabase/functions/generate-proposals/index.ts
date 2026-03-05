@@ -236,14 +236,13 @@ Deno.serve(async (req: Request) => {
     const createdProposals: any[] = [];
 
     for (const pair of topPairs) {
-      const displayScore = Math.floor(Math.random() * 30) + 70; // Random 70-99
       const { data: created, error: insertErr } = await supabase
         .from('proposals')
         .insert({
           user_a_id: pair.user_a_id,
           user_b_id: pair.user_b_id,
           status: 'pending',
-          compatibility_score: displayScore,
+          compatibility_score: pair.compatibility_score,
           category_scores: pair.category_scores,
           pool_yes_votes: 0,
           pool_no_votes: 0,

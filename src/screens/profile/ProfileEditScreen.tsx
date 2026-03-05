@@ -11,6 +11,7 @@ import { getUserProfile, updateUserProfile } from '../../services/profileService
 import { uploadPhoto } from '../../services/photoService';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { OfflineBanner } from '../../components/OfflineBanner';
+import { PhotoCompletionBanner } from '../../components/PhotoCompletionBanner';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { calculateEditProfileCompleteness } from '../../utils/profileCompleteness';
@@ -52,9 +53,9 @@ const PRONOUN_OPTIONS = [
 
 const MAX_PRONOUNS = 4;
 const MIN_INTERESTS = 3;
-const MAX_INTERESTS = 5;
+const MAX_INTERESTS = 8;
 const MIN_VALUES = 3;
-const MAX_VALUES = 5;
+const MAX_VALUES = 8;
 
 const GENDER_OPTIONS = [
   { value: 'male', label: 'Man' },
@@ -142,43 +143,48 @@ const EDUCATION_LEVELS = [
 
 const AVAILABLE_INTERESTS = [
   // Activities
-  'Tennis', 'Golf', 'Running', 'Yoga', 'Hiking', 'Skiing',
-  'Basketball', 'Lifting', 'Live Sports', 'Watching Sports',
+  'Tennis', 'Golf', 'Running', 'Yoga', 'Pilates', 'CrossFit', 'Hiking', 'Skiing',
+  'Cycling', 'Swimming', 'Basketball', 'Soccer', 'Climbing',
 
   // Culture & Entertainment
-  'Museums', 'Theater', 'Live Music', 'Comedy Shows',
-  'Film', 'Reading', 'Photography',
+  'Museums', 'Art Galleries', 'Theater', 'Live Music', 'Concerts', 'Comedy Shows',
+  'Film', 'Documentaries', 'Reading', 'Writing', 'Photography',
 
   // Food & Drink
-  'Cooking', 'Coffee', 'Cocktails', 'Fine Dining', 'Brunch',
+  'Cooking', 'Baking', 'Wine Tasting', 'Craft Beer', 'Coffee', 'Cocktails',
+  'Fine Dining', 'Food Markets', 'Brunch',
 
   // Travel & Adventure
-  'Travel', 'Camping',
+  'Travel', 'Weekend Trips', 'International Travel', 'Road Trips', 'Camping',
 
   // Lifestyle
-  'Startups', 'Investing', 'Real Estate', 'Fashion', 'Meditation', 'Podcasts',
+  'Startups', 'Investing', 'Real Estate', 'Fashion', 'Interior Design',
+  'Meditation', 'Wellness', 'Volunteering', 'Podcasts',
 
   // Social
-  'Dinner Parties', 'Game Nights', 'Dancing', 'Trivia Nights',
-  'Poker', 'Video Games',
+  'Dinner Parties', 'Game Nights', 'Dancing', 'Karaoke', 'Trivia Nights',
 ];
 
 const AVAILABLE_VALUES = [
-  // Personal
-  'Honesty', 'Integrity', 'Trust', 'Respect', 'Authenticity', 'Kindness', 'Empathy',
+  // Personal Values
+  'Honesty', 'Integrity', 'Loyalty', 'Trust', 'Respect', 'Authenticity',
+  'Kindness', 'Compassion', 'Empathy', 'Generosity',
 
-  // Relationship
-  'Communication', 'Commitment', 'Independence', 'Romance',
+  // Relationship Values
+  'Communication', 'Commitment', 'Partnership', 'Independence', 'Interdependence',
+  'Romance', 'Intimacy', 'Friendship First',
 
-  // Life
-  'Family', 'Career', 'Ambition', 'Work-Life Balance',
-  'Adventure', 'Stability', 'Growth Mindset', 'Creativity',
+  // Life Values
+  'Family', 'Career', 'Ambition', 'Success', 'Work-Life Balance',
+  'Adventure', 'Stability', 'Growth Mindset', 'Learning', 'Creativity',
 
-  // Social
-  'Community', 'Social Justice', 'Environmentalism', 'Diversity',
+  // Social Values
+  'Community', 'Social Justice', 'Environmentalism', 'Equality', 'Diversity',
+  'Tradition', 'Innovation', 'Service', 'Leadership',
 
   // Personal Growth
-  'Spirituality', 'Health',
+  'Self-Improvement', 'Mindfulness', 'Spirituality', 'Health', 'Fitness',
+  'Mental Health', 'Emotional Intelligence',
 ];
 
 export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation }) => {
@@ -223,10 +229,10 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
         return { ...prev, values: currentValues.filter(v => v !== value) };
       } else {
         // Check if limit reached
-        if (currentValues.length >= 5) {
+        if (currentValues.length >= 8) {
           Alert.alert(
             'Maximum Values Reached',
-            'You can only select up to 5 values. Please deselect one before adding another.',
+            'You can only select up to 8 values. Please deselect one before adding another.',
             [{ text: 'OK' }]
           );
           return prev;
@@ -248,10 +254,10 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
         return { ...prev, interests: currentInterests.filter(i => i !== interest) };
       } else {
         // Check if limit reached
-        if (currentInterests.length >= 5) {
+        if (currentInterests.length >= 8) {
           Alert.alert(
             'Maximum Interests Reached',
-            'You can only select up to 5 interests. Please deselect one before adding another.',
+            'You can only select up to 8 interests. Please deselect one before adding another.',
             [{ text: 'OK' }]
           );
           return prev;
@@ -665,8 +671,8 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
       return;
     }
 
-    // Calculate how many more photos can be added (max 3)
-    const remainingSlots = Math.max(0, 3 - (profile?.photos.length || 0));
+    // Calculate how many more photos can be added (max 6)
+    const remainingSlots = Math.max(0, 6 - (profile?.photos.length || 0));
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -704,8 +710,8 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
         order: currentPhotosCount + index,
       }));
 
-      // Limit to 3 total photos
-      const maxNewPhotos = Math.min(newPhotos.length, 3 - currentPhotosCount);
+      // Limit to 6 total photos
+      const maxNewPhotos = Math.min(newPhotos.length, 6 - currentPhotosCount);
       const photosToAdd = newPhotos.slice(0, maxNewPhotos);
 
       if (photosToAdd.length > 0) {
@@ -719,7 +725,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
       if (newPhotos.length > maxNewPhotos) {
         Alert.alert(
           'Photo Limit Reached',
-          `Only ${maxNewPhotos} photo${maxNewPhotos !== 1 ? 's were' : ' was'} added. Maximum is 3 photos.`
+          `Only ${maxNewPhotos} photo${maxNewPhotos !== 1 ? 's were' : ' was'} added. Maximum is 6 photos.`
         );
       }
     }
@@ -1006,6 +1012,13 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
         )}
       </StyledView>
 
+      <PhotoCompletionBanner
+        profile={profile}
+        onPress={() => {
+          // Scroll to photos section
+          // Note: You may need to implement scrolling to the photos section if needed
+        }}
+      />
 
       <StyledScrollView
         className="flex-1"
@@ -1031,14 +1044,14 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               <StyledView className="flex-row items-center">
                 <H3>Photos <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
               </StyledView>
-              <Body className={`text-sm font-semibold ${profile.photos.length === 0 ? 'text-error' : 'text-neutral-400'}`}>
+              <Body className={`text-sm font-semibold ${profile.photos.length >= 3 ? 'text-success' : 'text-error'}`}>
                 {profile.photos.length}/3
               </Body>
             </StyledView>
             <Body className="text-neutral-600 text-sm mb-4">
-              {profile.photos.length === 0
-                ? 'Add at least one photo.'
-                : 'Use ⭐ to set your main photo.'}
+              {profile.photos.length < 3
+                ? `Upload ${3 - profile.photos.length} more photo${3 - profile.photos.length > 1 ? 's' : ''} for a complete profile.`
+                : 'Great! You have a complete photo set. Use ⭐ to set your main photo.'}
             </Body>
 
             <StyledView className="flex-row flex-wrap -mx-2">
@@ -1106,7 +1119,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                 </StyledView>
               ))}
 
-              {profile.photos.length < 3 && (
+              {profile.photos.length < 6 && (
                 <StyledView className="w-1/3 px-2 mb-4">
                   <StyledTouchableOpacity
                     onPress={handleAddPhoto}
@@ -1116,7 +1129,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                     <Body className="text-primary-500 text-xs mt-2 text-center px-1">
                       {profile.photos.length === 0
                         ? 'Add Photos'
-                        : `+ ${3 - profile.photos.length} more`}
+                        : `+ ${6 - profile.photos.length} more`}
                     </Body>
                   </StyledTouchableOpacity>
                 </StyledView>

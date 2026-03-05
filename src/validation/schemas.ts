@@ -164,7 +164,7 @@ export const photoSchema = z.object({
 
 export const photosArraySchema = z.array(photoSchema)
   .min(1, 'At least one photo is required')
-  .max(3, 'Maximum 3 photos allowed');
+  .max(6, 'Maximum 6 photos allowed');
 
 // ============================================================================
 // DEEP QUESTIONS SCHEMA
@@ -178,6 +178,19 @@ export const deepQuestionAnswerSchema = z.object({
 
 export const deepQuestionsArraySchema = z.array(deepQuestionAnswerSchema)
   .max(10, 'Maximum 10 deep questions allowed');
+
+// ============================================================================
+// NON-NEGOTIABLES SCHEMA
+// ============================================================================
+
+export const nonNegotiableSchema = z.object({
+  id: z.string().max(100),
+  label: z.string().max(200),
+  selected: z.boolean(),
+});
+
+export const nonNegotiablesArraySchema = z.array(nonNegotiableSchema)
+  .max(20, 'Maximum 20 non-negotiables allowed');
 
 // ============================================================================
 // ONBOARDING DATA SCHEMA (COMPREHENSIVE USER PROFILE)
@@ -221,7 +234,8 @@ export const onboardingDataSchema = z.object({
   photos: photosArraySchema.optional(),
   deepQuestions: deepQuestionsArraySchema.optional(),
 
-  // Preferences
+  // Non-Negotiables & Preferences
+  nonNegotiables: nonNegotiablesArraySchema.optional(),
   preferences: preferencesSchema,
 });
 
@@ -414,5 +428,6 @@ export type Preferences = z.infer<typeof preferencesSchema>;
 export type Lifestyle = z.infer<typeof lifestyleSchema>;
 export type Photo = z.infer<typeof photoSchema>;
 export type DeepQuestionAnswer = z.infer<typeof deepQuestionAnswerSchema>;
+export type NonNegotiable = z.infer<typeof nonNegotiableSchema>;
 export type SurveyRanking = z.infer<typeof surveyRankingSchema>;
 export type UserSettings = z.infer<typeof userSettingsSchema>;

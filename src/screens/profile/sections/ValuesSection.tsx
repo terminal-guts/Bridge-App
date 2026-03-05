@@ -11,24 +11,28 @@ const StyledView = styled(View);
 const StyledText = styled(Text);
 
 const MIN_VALUES = 3;
-const MAX_VALUES = 5;
+const MAX_VALUES = 8;
 
 const AVAILABLE_VALUES = [
-  // Personal
-  'Honesty', 'Integrity', 'Trust', 'Respect', 'Authenticity', 'Kindness', 'Empathy',
+  // Personal Values
+  'Honesty', 'Integrity', 'Loyalty', 'Trust', 'Respect', 'Authenticity',
+  'Kindness', 'Compassion', 'Empathy', 'Generosity',
 
-  // Relationship
-  'Communication', 'Commitment', 'Independence', 'Romance',
+  // Relationship Values
+  'Communication', 'Commitment', 'Partnership', 'Independence', 'Interdependence',
+  'Romance', 'Intimacy', 'Friendship First',
 
-  // Life
-  'Family', 'Career', 'Ambition', 'Work-Life Balance',
-  'Adventure', 'Stability', 'Growth Mindset', 'Creativity',
+  // Life Values
+  'Family', 'Career', 'Ambition', 'Success', 'Work-Life Balance',
+  'Adventure', 'Stability', 'Growth Mindset', 'Learning', 'Creativity',
 
-  // Social
-  'Community', 'Social Justice', 'Environmentalism', 'Diversity',
+  // Social Values
+  'Community', 'Social Justice', 'Environmentalism', 'Equality', 'Diversity',
+  'Tradition', 'Innovation', 'Service', 'Leadership',
 
   // Personal Growth
-  'Spirituality', 'Health',
+  'Self-Improvement', 'Mindfulness', 'Spirituality', 'Health', 'Fitness',
+  'Mental Health', 'Emotional Intelligence',
 ];
 
 // Convert to Set for O(1) lookup instead of O(n)

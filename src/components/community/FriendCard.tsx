@@ -172,8 +172,8 @@ export const FriendCard = React.memo<FriendCardProps>(({ friend, variant, onHelp
             marginTop: 3,
           }}
         >
-          {/* Streak (show for all, including 0) */}
-          {friend.streakDays >= 0 && (
+          {/* Streak (only show if > 0) */}
+          {friend.streakDays > 0 && (
             <>
               <StyledText style={{ fontSize: 13 }}>
                 {streakDisplay.emoji}
@@ -184,10 +184,10 @@ export const FriendCard = React.memo<FriendCardProps>(({ friend, variant, onHelp
                   fontWeight: '600',
                   color: '#475569',
                   marginLeft: 3,
-                  marginRight: 2,
+                  marginRight: 6,
                 }}
               >
-                {friend.streakDays} days
+                {friend.streakDays}
               </StyledText>
               {streakDisplay.suffix && (
                 <StyledText

@@ -1,14 +1,15 @@
 /**
  * Bridge Matching Algorithm — Scoring Engine (Deno/TypeScript)
  *
- * 10-category mutual percentage-based scoring. All categories sum to 100%.
- * Distance, Career, and Education removed for Rice University beta.
+ * Direct port of onboarding_backend/python/services/scoring.py.
+ * 13-category mutual percentage-based scoring. All categories sum to 100%.
  *
  * Category Weights:
- *   Age Range:    18%    Interests:     15%    Lifestyle:     11%
- *   Height:       11%    Ethnicity:     11%    Politics:       9%
- *   Values:        7%    Family:         6%    Religion:       6%
- *   Deep Questions: 6%
+ *   Age Range:    18%    Distance:      15%    Lifestyle:     12%
+ *   Values:        8%    Interests:      8%    Family:         8%
+ *   Religion:      6%    Politics:       6%    Height:         5%
+ *   Ethnicity:     5%    Deep Questions: 5%    Education:      3%
+ *   Career:        1%
  */
 
 import type { CompatibilityResult } from './types.ts';
@@ -19,15 +20,18 @@ type Dict = Record<string, any>;
 
 const WEIGHTS: Record<string, number> = {
   age_range: 0.18,
-  interests: 0.15,
-  lifestyle_substances: 0.11,
-  height: 0.11,
-  ethnicity: 0.11,
-  politics: 0.09,
-  values: 0.07,
-  family: 0.06,
+  distance: 0.15,
+  lifestyle_substances: 0.12,
+  values: 0.08,
+  interests: 0.08,
+  family: 0.08,
   religion: 0.06,
-  deep_questions: 0.06,
+  politics: 0.06,
+  height: 0.05,
+  ethnicity: 0.05,
+  deep_questions: 0.05,
+  education: 0.03,
+  career: 0.01,
 };
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -302,6 +306,29 @@ function defaultChildrenScore(aChildren: string | null, bChildren: string | null
 function scoreHasChildren(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
   const aChildren = _get(profileA, 'has_children');
   const bChildren = _get(profileB, 'has_children');
+  const aNonNeg: any[] = _getPref(profileA, prefsA, 'non_negotiables', []) || [];
+  const bNonNeg: any[] = _getPref(profileB, prefsB, 'non_negotiables', []) || [];
+
+  function oneDirection(theirChildren: string | null, myNonNeg: any[]): number | null {
+    if (myNonNeg.includes('has_children')) {
+      if (theirChildren === 'yes' || theirChildren === 'has_children') return 0.0;
+      return 1.0;
+    }
+    return null;
+  }
+
+  let aToB = oneDirection(bChildren, aNonNeg);
+  let bToA = oneDirection(aChildren, bNonNeg);
+
+  if (aToB != null && bToA != null) return (aToB + bToA) / 2;
+  if (aToB != null) {
+    bToA = defaultChildrenScore(aChildren, bChildren);
+    return (aToB + bToA) / 2;
+  }
+  if (bToA != null) {
+    aToB = defaultChildrenScore(bChildren, aChildren);
+    return (aToB + bToA) / 2;
+  }
   return defaultChildrenScore(aChildren, bChildren);
 }
 
@@ -352,15 +379,22 @@ function scoreReligion(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dic
 
   if (!aReligion || !bReligion) return 0.5;
 
-  function oneDirection(theirReligion: string, myReligion: string): number {
+  const aNonNeg: any[] = _getPref(profileA, prefsA, 'non_negotiables', []) || [];
+  const bNonNeg: any[] = _getPref(profileB, prefsB, 'non_negotiables', []) || [];
+
+  function oneDirection(theirReligion: string, myReligion: string, myNonNeg: any[]): number {
+    if (myNonNeg.includes('different_religion')) {
+      if (theirReligion.toLowerCase() === myReligion.toLowerCase()) return 1.0;
+      return 0.0;
+    }
     if (theirReligion.toLowerCase() === myReligion.toLowerCase()) return 1.0;
     if (areSimilarReligions(theirReligion, myReligion)) return 0.75;
     if (areOpposingReligions(theirReligion, myReligion)) return 0.25;
     return 0.50;
   }
 
-  const aToB = oneDirection(bReligion, aReligion);
-  const bToA = oneDirection(aReligion, bReligion);
+  const aToB = oneDirection(bReligion, aReligion, aNonNeg);
+  const bToA = oneDirection(aReligion, bReligion, bNonNeg);
   return (aToB + bToA) / 2;
 }
 
@@ -606,8 +640,8 @@ function scoreDeepQuestions(deepA: Dict[], deepB: Dict[]): number {
   const lengthScore = scoreAnswerLengthSimilarity(deepA, deepB);
   const keywordScore = scoreKeywordOverlap(deepA, deepB);
 
-  // Question overlap weighted heavily — choosing the same questions signals alignment
-  return questionScore * 0.55 + keywordScore * 0.30 + lengthScore * 0.15;
+  // Keyword fallback weights (no OpenAI embeddings)
+  return questionScore * 0.35 + keywordScore * 0.45 + lengthScore * 0.20;
 }
 
 // ── Main API ────────────────────────────────────────────────────────────────
@@ -623,15 +657,18 @@ export function calculateCompatibility(
 ): CompatibilityResult {
   const raw: Record<string, number> = {
     age_range: scoreAge(profileA, prefsA, profileB, prefsB),
+    distance: scoreDistance(profileA, prefsA, profileB, prefsB, actualDistance),
     lifestyle_substances: scoreLifestyle(profileA, prefsA, profileB, prefsB),
-    interests: scoreInterests(profileA, profileB),
     values: scoreValues(profileA, profileB),
+    interests: scoreInterests(profileA, profileB),
     family: scoreFamily(profileA, prefsA, profileB, prefsB),
-    height: scoreHeight(profileA, prefsA, profileB, prefsB),
-    ethnicity: scoreEthnicity(profileA, prefsA, profileB, prefsB),
     religion: scoreReligion(profileA, prefsA, profileB, prefsB),
     politics: scorePolitics(profileA, prefsA, profileB, prefsB),
+    height: scoreHeight(profileA, prefsA, profileB, prefsB),
+    ethnicity: scoreEthnicity(profileA, prefsA, profileB, prefsB),
     deep_questions: scoreDeepQuestions(deepQuestionsA, deepQuestionsB),
+    education: scoreEducation(profileA, profileB),
+    career: scoreCareer(profileA, profileB),
   };
 
   const weighted: Record<string, number> = {};

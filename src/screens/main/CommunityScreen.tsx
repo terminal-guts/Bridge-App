@@ -218,9 +218,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   }, [hasCompletedVoting, loadFriendsData]));
 
   const handleVotesComplete = useCallback(async () => {
-    // Brief delay to allow the last vote to commit to the database
-    // before querying hasCompletedGrid (which checks proposal_votes)
-    await new Promise(resolve => setTimeout(resolve, 800));
     await loadFriendsData();
     setHasCompletedVoting(true);
     navigation.navigate('Community');
@@ -305,7 +302,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                 <View style={styles.codeButtonRow}>
                   <TouchableOpacity
                     style={styles.shareIconButton}
-                    onPress={() => Share.share({ message: `Add me on Bridge! My friend code is:\n\n${friendCode}\n\nDownload Bridge and enter my code to connect!` })}
+                    onPress={() => Share.share({ message: `Add me on Bridge! My friend code is: ${friendCode}` })}
                   >
                     <Ionicons name="share-outline" size={20} color="#FFFFFF" />
                     <Text style={styles.shareIconButtonText}>Share Code</Text>
@@ -342,7 +339,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                 key={user.friendId}
                 item={user}
                 index={index}
-                onViewProfile={() => (navigation as any).navigate('ProfileView', { profile: user.friend })}
                 onMatch={() => (navigation as any).navigate('FriendProposal', {
                   friendId: user.friendId,
                   friendName: user.friend.firstName,
@@ -364,7 +360,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           {alreadyHelped.length > 0 && (
             <View style={{ marginTop: 20, marginBottom: 4, paddingHorizontal: 24 }}>
               <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 15, color: '#9CA3AF' }}>
-                Sitting tight
+                Already helped
               </Text>
             </View>
           )}
@@ -375,7 +371,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                 key={user.friendId}
                 item={user}
                 index={index}
-                onViewProfile={() => (navigation as any).navigate('ProfileView', { profile: user.friend })}
                 onChat={() => (navigation as any).navigate('Chat', {
                   friendshipId: user.friendshipId,
                   recipientId: user.friendId,

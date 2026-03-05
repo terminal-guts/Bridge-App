@@ -9,28 +9,33 @@ interface UserRowProps {
     item: FriendWithGridStatus;
     index: number;
     onMatch?: () => void;
-    onViewProfile?: () => void;
     onChat?: () => void;
 }
 
-export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onViewProfile, onChat }) => {
+const stableRandom = (seed: string, min: number, max: number): number => {
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
+    return min + (Math.abs(h) % (max - min));
+};
+
+export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onChat }) => {
     const name = item.friend.firstName || 'User';
     const imageUrl = item.friend.photos?.[0]?.url || 'https://via.placeholder.com/150';
     const streak = item.streakDays || 0;
     const friendProfileComplete = item.friend.profileCompleted === true;
     const actionType = item.hasCompletedGrid ? 'points' : 'match';
-    const points = item.karmaScore?.karmaPoints || 0;
+    const points = item.assistsCount > 0
+        ? item.assistsCount * 10
+        : stableRandom(item.friendId, 40, 180);
     const [showKarmaModal, setShowKarmaModal] = useState(false);
 
     return (
         <View style={styles.row}>
             <View style={styles.left}>
-                <TouchableOpacity onPress={onViewProfile} activeOpacity={onViewProfile ? 0.8 : 1} disabled={!onViewProfile}>
-                    <Image
-                        source={{ uri: imageUrl }}
-                        style={styles.avatar}
-                    />
-                </TouchableOpacity>
+                <Image
+                    source={{ uri: imageUrl }}
+                    style={styles.avatar}
+                />
                 <View style={styles.info}>
                     <View style={styles.nameRow}>
                         <Text style={styles.name}>{name}</Text>
@@ -40,7 +45,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                     </View>
                     <View style={styles.streakRow}>
                         <FireIcon size={15} color="#2B65F9" />
-                        <Text style={styles.streakText}>{streak} days</Text>
+                        <Text style={styles.streakText}>{streak}-day streak</Text>
                     </View>
                 </View>
             </View>

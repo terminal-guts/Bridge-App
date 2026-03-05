@@ -344,17 +344,14 @@ Deno.serve(async (req: Request) => {
       .eq('proposal_id', proposal_id)
       .eq('voter_id', voterId);
 
-    // 10. If friend vote, update friend streak for each friendship
-    // Voter may be friends with both user_a and user_b — update both streaks
+    // 10. If friend vote, update friend streak (handles both if both are friends)
     if (isFriendVote) {
-      const streakUpdates: Promise<any>[] = [];
       if (isFriendOfA) {
-        streakUpdates.push(supabase.rpc('update_friend_streak', { p_user_id: voterId, p_friend_id: proposal.user_a_id }));
+        await supabase.rpc('update_friend_streak', { p_user_id: voterId, p_friend_id: proposal.user_a_id });
       }
       if (isFriendOfB) {
-        streakUpdates.push(supabase.rpc('update_friend_streak', { p_user_id: voterId, p_friend_id: proposal.user_b_id }));
+        await supabase.rpc('update_friend_streak', { p_user_id: voterId, p_friend_id: proposal.user_b_id });
       }
-      await Promise.all(streakUpdates);
     }
 
     return Response.json({

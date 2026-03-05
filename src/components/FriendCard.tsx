@@ -147,10 +147,10 @@ export const FriendCard: React.FC<FriendCardProps> = React.memo(({ friend, onPre
             {/* Streak Pill & Matchmaker Badge */}
             <StyledView className="flex-row items-center" style={{ gap: 6 }}>
               {/* Light Purple Streak Pill */}
-              {friend.streak !== undefined && (
+              {friend.streak !== undefined && friend.streak > 0 && (
                 <StyledView className="bg-purple-100 rounded-full px-2.5 py-0.5">
                   <Caption className="text-purple-700 text-xs font-medium">
-                    🔥 {friend.streak} days
+                    🔥 {friend.streak} day{friend.streak !== 1 ? 's' : ''}
                   </Caption>
                 </StyledView>
               )}

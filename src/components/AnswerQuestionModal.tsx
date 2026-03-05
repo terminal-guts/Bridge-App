@@ -81,6 +81,16 @@ export const AnswerQuestionModal: React.FC<AnswerQuestionModalProps> = ({
       return;
     }
 
+    // UPDATED: Changed minimum from 25 to 10 characters
+    if (answer.length < 10) {
+      Alert.alert(
+        'Answer Too Short',
+        'Please write at least 10 characters to create a meaningful answer. Quality responses help you make better connections!',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     successHaptic();
     onSave(answer.trim());
     // Note: Don't call onClose() here - let the parent component decide when to close
@@ -186,7 +196,7 @@ export const AnswerQuestionModal: React.FC<AnswerQuestionModalProps> = ({
             <StyledView className="absolute bottom-3 right-3 bg-white/90 px-2 py-1 rounded-full">
               <Body
                 className="text-xs font-semibold"
-                style={{ color: answer.length === 0 ? '#EF4444' : '#98A2B3' }}
+                style={{ color: answer.length < 10 ? '#EF4444' : '#98A2B3' }}
               >
                 {answer.length}/500
               </Body>

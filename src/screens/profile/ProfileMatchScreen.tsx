@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Check, Star, Heart, X, Sparkles, Users } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { communityService } from '../../services/communityServiceIndex';
-import { getUserProfile, getFullUserProfileById } from '../../services/profileService';
+import { getUserProfile } from '../../services/profileService';
 import { KarmaInfoModal } from '../../components/community/KarmaInfoModal';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -16,43 +16,53 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const PROFILE_CONTENT_STYLE = { paddingBottom: 150 } as const;
 
 const VALUES_EMOJI: Record<string, string> = {
-    // Personal
-    'Honesty': '💛', 'Integrity': '💎', 'Trust': '🔒',
-    'Respect': '🌟', 'Authenticity': '🪞', 'Kindness': '💗', 'Empathy': '🧡',
-    // Relationship
-    'Communication': '💬', 'Commitment': '💍',
-    'Independence': '🦅', 'Romance': '🌹',
-    // Life
-    'Family': '👨‍👩‍👧', 'Career': '💼', 'Ambition': '🎯',
+    // Personal Values
+    'Honesty': '💛', 'Integrity': '💎', 'Loyalty': '🤝', 'Trust': '🔒',
+    'Respect': '🌟', 'Authenticity': '🪞', 'Kindness': '💗', 'Compassion': '🫶',
+    'Empathy': '🧡', 'Generosity': '🎁',
+    // Relationship Values
+    'Communication': '💬', 'Commitment': '💍', 'Partnership': '🤝',
+    'Independence': '🦅', 'Interdependence': '🔗', 'Romance': '🌹',
+    'Intimacy': '💞', 'Friendship First': '👫',
+    // Life Values
+    'Family': '👨‍👩‍👧', 'Career': '💼', 'Ambition': '🎯', 'Success': '🏆',
     'Work-Life Balance': '⚖️', 'Adventure': '🌍', 'Stability': '🏡',
-    'Growth Mindset': '🌱', 'Creativity': '🎨',
-    // Social
+    'Growth Mindset': '🌱', 'Learning': '📚', 'Creativity': '🎨',
+    // Social Values
     'Community': '🏘️', 'Social Justice': '✊', 'Environmentalism': '🌿',
-    'Diversity': '🌈',
+    'Equality': '🟰', 'Diversity': '🌈', 'Tradition': '🏛️',
+    'Innovation': '💡', 'Service': '🙌', 'Leadership': '👑',
     // Personal Growth
-    'Spirituality': '🙏', 'Health': '💪',
+    'Self-Improvement': '📈', 'Mindfulness': '🧘', 'Spirituality': '🙏',
+    'Health': '💪', 'Fitness': '🏋️', 'Mental Health': '🧠',
+    'Emotional Intelligence': '💭',
 };
 
 const INTERESTS_EMOJI: Record<string, string> = {
     // Activities
     'Tennis': '🎾', 'Golf': '⛳', 'Running': '🏃', 'Yoga': '🧘',
-    'Hiking': '🥾', 'Skiing': '⛷️',
-    'Basketball': '🏀', 'Lifting': '🏋️', 'Live Sports': '🏟️', 'Watching Sports': '📺',
+    'Pilates': '🤸', 'CrossFit': '🏋️', 'Hiking': '🥾', 'Skiing': '⛷️',
+    'Cycling': '🚴', 'Swimming': '🏊', 'Basketball': '🏀', 'Soccer': '⚽',
+    'Climbing': '🧗', 'Lifting': '🏋️', 'Live Sports': '🏟️', 'Watching Sports': '📺',
     // Culture & Entertainment
-    'Museums': '🏛️', 'Theater': '🎭',
-    'Live Music': '🎵', 'Comedy Shows': '😂',
-    'Film': '🎬', 'Reading': '📖', 'Photography': '📷',
+    'Museums': '🏛️', 'Art Galleries': '🖼️', 'Theater': '🎭',
+    'Live Music': '🎵', 'Concerts': '🎤', 'Comedy Shows': '😂',
+    'Film': '🎬', 'Documentaries': '🎥', 'Reading': '📖',
+    'Writing': '✍️', 'Photography': '📷',
     // Food & Drink
-    'Cooking': '🍳', 'Coffee': '☕', 'Cocktails': '🍸',
-    'Fine Dining': '🍽️', 'Brunch': '🥞',
+    'Cooking': '🍳', 'Baking': '🥐', 'Wine Tasting': '🍷',
+    'Craft Beer': '🍺', 'Coffee': '☕', 'Cocktails': '🍸',
+    'Fine Dining': '🍽️', 'Food Markets': '🛒', 'Brunch': '🥞',
     // Travel & Adventure
-    'Travel': '✈️', 'Camping': '⛺',
+    'Travel': '✈️', 'Weekend Trips': '🗺️', 'International Travel': '🌍',
+    'Road Trips': '🚗', 'Camping': '⛺',
     // Lifestyle
     'Startups': '🚀', 'Investing': '📈', 'Real Estate': '🏠',
-    'Fashion': '👗', 'Meditation': '🧘', 'Podcasts': '🎙️',
+    'Fashion': '👗', 'Interior Design': '🛋️', 'Meditation': '🧘',
+    'Wellness': '🌿', 'Volunteering': '🤝', 'Podcasts': '🎙️',
     // Social
     'Dinner Parties': '🥂', 'Game Nights': '🎲', 'Dancing': '💃',
-    'Trivia Nights': '🧠', 'Poker': '🃏', 'Video Games': '🎮',
+    'Karaoke': '🎤', 'Trivia Nights': '🧠', 'Poker': '🃏', 'Video Games': '🎮',
 };
 
 function getEmoji(text: string, map: Record<string, string>): string {
@@ -85,14 +95,8 @@ export default function ProfileMatchScreen() {
             getUserProfile().then(result => {
                 if (result.ok && result.data) setProfileData(result.data);
             }).finally(() => setLoading(false));
-        } else if (!isProposal && params.profile?.userId) {
-            // isView — profile passed from friends list lacks deep questions; re-fetch full profile
-            setLoading(true);
-            getFullUserProfileById(params.profile.userId).then(full => {
-                if (full) setProfileData(full);
-            }).finally(() => setLoading(false));
         }
-    }, [isPreview, isProposal, params.profile?.userId]);
+    }, [isPreview]);
 
     const partnerProfile = profileData;
     const communityScore: number = params.communityScore ?? 0;
@@ -109,27 +113,17 @@ export default function ProfileMatchScreen() {
         [endorsers]
     );
 
-    const deepQuestions = useMemo<{ question: string; answer: string }[]>(() => {
-        const allAnswered = ((partnerProfile as any)?.deepQuestions ?? [])
-            .filter((q: any) => q.answer)
-            .map((q: any) => ({ question: q.question, answer: q.answer }));
-
-        const displayedIds: number[] = (partnerProfile as any)?.displayedQuestions ?? [];
-        if (displayedIds.length === 0) return allAnswered;
-
-        const fromDisplayed = displayedIds
+    const deepQuestions = useMemo<{ question: string; answer: string }[]>(() =>
+        ((partnerProfile as any)?.displayedQuestions ?? [])
             .map((id: number) =>
                 ((partnerProfile as any)?.deepQuestions ?? []).find(
                     (q: any) => q.questionId === id
                 )
             )
             .filter(Boolean)
-            .map((q: any) => ({ question: q.question, answer: q.answer }));
-
-        // If the displayedIds didn't match anything, fall back to all answered
-        const result = fromDisplayed.length > 0 ? fromDisplayed : allAnswered;
-        return result.filter(q => q.question && q.answer);
-    }, [partnerProfile]);
+            .map((q: any) => ({ question: q.question, answer: q.answer })),
+        [partnerProfile]
+    );
 
     const handlePass = useCallback(async () => {
         if (submitting) return;
@@ -156,9 +150,9 @@ export default function ProfileMatchScreen() {
         onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 && Math.abs(g.dy) < 40,
         onPanResponderRelease: (_, g) => {
             if (g.dx < -40) {
-                setCurrentPhotoIndex(i => (i + 1) % photoCount);
+                setCurrentPhotoIndex(i => Math.min(i + 1, photoCount - 1));
             } else if (g.dx > 40) {
-                setCurrentPhotoIndex(i => (i - 1 + photoCount) % photoCount);
+                setCurrentPhotoIndex(i => Math.max(i - 1, 0));
             }
         },
     }), [photoCount]);
@@ -173,7 +167,7 @@ export default function ProfileMatchScreen() {
 
     const photos = partnerProfile.photos || [];
     const photoUrl = photos[currentPhotoIndex]?.url || '';
-    const karmaPts = partnerProfile.karma?.karmaPoints ?? 0;
+    const karmaPts = partnerProfile.karma?.totalAssists ?? 0;
 
     return (
         <View style={styles.container}>
@@ -193,10 +187,10 @@ export default function ProfileMatchScreen() {
                         {/* Left / right tap zones for photo navigation */}
                         {photos.length > 1 && (
                             <>
-                                <TouchableWithoutFeedback onPress={() => setCurrentPhotoIndex(i => (i - 1 + photos.length) % photos.length)}>
+                                <TouchableWithoutFeedback onPress={() => currentPhotoIndex > 0 && setCurrentPhotoIndex(i => i - 1)}>
                                     <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: SCREEN_WIDTH * 0.35 }} />
                                 </TouchableWithoutFeedback>
-                                <TouchableWithoutFeedback onPress={() => setCurrentPhotoIndex(i => (i + 1) % photos.length)}>
+                                <TouchableWithoutFeedback onPress={() => currentPhotoIndex < photos.length - 1 && setCurrentPhotoIndex(i => i + 1)}>
                                     <View style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: SCREEN_WIDTH * 0.35 }} />
                                 </TouchableWithoutFeedback>
                             </>
@@ -304,7 +298,7 @@ export default function ProfileMatchScreen() {
                     <View style={styles.section}>
                         <Text style={styles.sectionHeading}>Deep questions</Text>
                         {deepQuestions.map((q, i) => (
-                            <View key={i} style={styles.questionBox}>
+                            <View key={q.question} style={styles.questionBox}>
                                 <Text style={styles.questionTitle}>{i + 1}. {q.question}</Text>
                                 <Text style={styles.answerText}>{q.answer}</Text>
                             </View>

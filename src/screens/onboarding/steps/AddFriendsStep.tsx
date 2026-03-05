@@ -69,7 +69,7 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
     if (!myCode) return;
     try {
       await Share.share({
-        message: `Add me on Bridge! My friend code is:\n\n${myCode}\n\nDownload Bridge and enter my code to connect!`,
+        message: `Add me on Bridge! My friend code is: ${myCode}\n\nBridge - The first community-driven dating experience`,
       });
     } catch (err) {
       logger.error('Share failed:', err);

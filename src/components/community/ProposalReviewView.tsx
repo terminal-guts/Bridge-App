@@ -50,6 +50,7 @@ import {
 } from '../../utils/proposalMatching';
 import { communityService } from '../../services/communityServiceIndex';
 import { createLogger } from '../../utils/secureLogger';
+import { clampDisplayScore } from '../../utils/compatibilityHelpers';
 
 const logger = createLogger('ProposalReviewView');
 
@@ -486,9 +487,15 @@ export function ProposalReviewView({
     const totalKnown = countKnown(allResults);
     const totalMatch = countMatch(allResults);
 
-    // Compatibility score: random 70-99 display value, seeded by proposal ID for stability.
-    const idHash = proposal.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    const compatScore = 70 + (idHash % 30);
+    // Compatibility score: use real vote data when available (yesVotes/totalVotes),
+    // fall back to preference-based score when no votes have been cast yet.
+    const hasVotes = (proposal.totalVotes ?? 0) > 0;
+    const rawScore = hasVotes
+      ? Math.round(((proposal.yesVotes ?? 0) / (proposal.totalVotes ?? 1)) * 100)
+      : totalKnown > 0
+        ? Math.round((totalMatch / totalKnown) * 100)
+        : 0;
+    const compatScore = clampDisplayScore(rawScore);
 
     const valuesMatchCount = (valuesResult as any).sharedValues?.length || 0;
     const valuesTotal = Math.max((userA.values || []).length, (userB.values || []).length, 1);

@@ -164,22 +164,22 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
 
             <FAQItem
               question="How does Bridge matchmaking work?"
-              answer="Each day, you vote on proposals for other users. Vote on 3 community proposals to unlock the Friends Area, where you can vote on your friends' specific proposals."
+              answer="Bridge uses a unique community-driven approach. Each day at 8 PM, you'll participate in surveys where you help match others. The community then independently ranks compatibility, and matches are generated based on collective input."
             />
 
             <FAQItem
               question="When do I get charged?"
-              answer="Bridge is completely free! There are no charges, subscriptions, or hidden fees during our beta period."
+              answer="You're only charged when both you and your match accept the connection. Prices are dynamic and vary based on market conditions during trading hours (9:30 AM - 4:00 PM ET)."
             />
 
             <FAQItem
               question="What are Deep Questions?"
-              answer="Deep Questions help potential matches understand you on a meaningful level. Answering them makes your profile more engaging and contributes to your profile completion score."
+              answer="Deep Questions help potential matches understand you on a meaningful level. They're organized in 3 tiers and answering them makes your profile more engaging and helps the algorithm find better matches."
             />
 
             <FAQItem
               question="How long do I have to accept a match?"
-              answer="When a proposal passes community voting, both users get 48 hours to decide. If both accept, you're matched and can start chatting!"
+              answer="You have 48 hours to decide on a match. After that, the match expires and you'll receive new matches through the daily survey process."
             />
 
             <FAQItem

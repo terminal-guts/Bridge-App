@@ -85,20 +85,12 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({
     return (
       <StyledView className="flex-row justify-center items-center py-4">
         {photos.map((_, index) => (
-          <StyledTouchableOpacity
+          <StyledView
             key={index}
-            onPress={() => {
-              flatListRef.current?.scrollToIndex({ index, animated: true });
-              setCurrentIndex(index);
-            }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <StyledView
-              className={`h-2 rounded-full mx-1 ${
-                index === currentIndex ? 'w-8 bg-white' : 'w-2 bg-white/40'
-              }`}
-            />
-          </StyledTouchableOpacity>
+            className={`h-2 rounded-full mx-1 ${
+              index === currentIndex ? 'w-8 bg-white' : 'w-2 bg-white/40'
+            }`}
+          />
         ))}
       </StyledView>
     );

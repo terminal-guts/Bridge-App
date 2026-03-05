@@ -80,7 +80,7 @@ export function mapProfileRow(row: any): UserProfile {
     drinkingFrequency: row.drinking_frequency || '',
     cannabisFrequency: row.cannabis_frequency || '',
     tobaccoFrequency: row.tobacco_frequency || '',
-    nonNegotiables: [],
+    nonNegotiables: row.non_negotiables || [],
     preferences: row.preferences || {},
     profileCompleted: row.profile_completed || false,
     createdAt: row.created_at || new Date().toISOString(),
@@ -307,11 +307,11 @@ class CommunityBackendService {
       getBlockedUserIds(userId),
       supabase
         .from('friends')
-        .select('id, user_id, friend_id, added_at, streak_days, last_mutual_date, streak_frozen')
+        .select('id, user_id, friend_id, added_at, streak_days, last_mutual_date')
         .eq('user_id', userId),
       supabase
         .from('friends')
-        .select('id, user_id, friend_id, added_at, streak_days, last_mutual_date, streak_frozen')
+        .select('id, user_id, friend_id, added_at, streak_days, last_mutual_date')
         .eq('friend_id', userId),
     ]);
 
@@ -401,15 +401,6 @@ class CommunityBackendService {
       friendProposalMap.set(p.user_b_id, p.id);
     }
 
-    // Friends whose proposal involves the current user — can't vote on your own proposal
-    const friendsProposedWithMe = new Set<string>();
-    for (const p of (friendProposalsA || [])) {
-      if (p.user_b_id === userId) friendsProposedWithMe.add(p.user_a_id);
-    }
-    for (const p of (friendProposalsB || [])) {
-      if (p.user_a_id === userId) friendsProposedWithMe.add(p.user_b_id);
-    }
-
     // Build set of friends with active matches
     const friendsWithMatch = new Set<string>();
     for (const m of (matchesA || [])) {
@@ -442,9 +433,6 @@ class CommunityBackendService {
       if (!proposalId) {
         // No active proposal → already helped (nothing to vote on)
         alreadyHelped.add(friendId);
-      } else if (friendsProposedWithMe.has(friendId)) {
-        // Friend is proposed with current user → can't vote on your own proposal
-        alreadyHelped.add(friendId);
       } else if (friendsWithMatch.has(friendId)) {
         // Has active match → already helped
         alreadyHelped.add(friendId);
@@ -465,13 +453,11 @@ class CommunityBackendService {
         const friendId = f.user_id === userId ? f.friend_id : f.user_id;
         const profile = profileMap.get(friendId);
 
-        // Determine streak: if frozen, preserve DB value; otherwise check staleness
+        // Determine streak: if last_mutual_date is stale (before yesterday), streak broke
         let streakDays = f.streak_days || 0;
-        if (!f.streak_frozen) {
-          const lastMutual = f.last_mutual_date;
-          if (lastMutual && lastMutual < yesterday) {
-            streakDays = 0;
-          }
+        const lastMutual = f.last_mutual_date;
+        if (lastMutual && lastMutual < yesterday) {
+          streakDays = 0;
         }
 
         const friendKarma = karmaMap.get(friendId);
@@ -479,21 +465,7 @@ class CommunityBackendService {
           friendshipId: f.id,
           userId,
           friendId,
-          friend: (() => {
-            const p = profile ? mapProfileRow(profile) : { id: friendId, firstName: 'Friend' } as UserProfile;
-            if (friendKarma) {
-              (p as any).karma = {
-                userId: friendId,
-                karmaPoints: friendKarma.karma_points || 0,
-                totalAssists: friendKarma.total_assists || 0,
-                totalProposals: friendKarma.total_proposals || 0,
-                badgeTier: friendKarma.badge_tier || 'new',
-                proposalSuccessRate: friendKarma.proposal_success_rate || 0,
-                votingAccuracyRate: friendKarma.voting_accuracy_rate || 0,
-              };
-            }
-            return p;
-          })(),
+          friend: profile ? mapProfileRow(profile) : { id: friendId, firstName: 'Friend' } as UserProfile,
           isAnchorToday: true,
           hasCompletedGrid: alreadyHelped.has(friendId),
           addedAt: f.added_at || new Date().toISOString(),

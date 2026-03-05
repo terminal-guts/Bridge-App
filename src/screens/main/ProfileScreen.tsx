@@ -7,7 +7,7 @@ import { styled } from 'nativewind';
 import { H2, H3, Body, Card, Button, ProfileSkeleton } from '../../components/ui';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { MainTabParamList, UserProfile, DeepQuestionAnswer } from '../../types';
-import { signOut } from '../../services/authService';
+import { getCurrentUser, signOut } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { getFriendCount } from '../../services/friendService';
 import { Ionicons } from '@expo/vector-icons';
@@ -232,7 +232,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
     try {
       logger.info('[ProfileScreen] loadProfile called');
 
-      // getUserProfile() gets userId from auth session automatically
+      // Ensure user is authenticated, create anonymous session if needed
+      const userResult = await getCurrentUser();
+      if (!userResult.ok || !userResult.data) {
+        Alert.alert('Error', 'Failed to authenticate');
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
+        return;
+      }
+
+      // SECURITY FIX: getUserProfile() now gets userId from auth session automatically
       const profileResult = await getUserProfile();
       if (!profileResult.ok || !profileResult.data) {
         // Don't show error if offline - keep existing data
@@ -534,7 +544,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
   };
 
   const renderAboutTab = () => {
-
+    const photoCount = profile?.photos?.length || 0;
 
     return (
       <StyledView className="px-4 py-6">
@@ -565,6 +575,66 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
             </GuideTarget>
           )}
 
+          {/* Photo Upload Encouragement Card - Show if < 6 photos */}
+          {photoCount < 6 && (
+            <GuideTarget id="photos-section">
+              <StyledTouchableOpacity
+                onPress={() => {
+                  lightHaptic();
+                  navigation.navigate('ProfileEdit');
+                }}
+                className="mb-4"
+                activeOpacity={0.7}
+              >
+                <Card
+                  elevation={2}
+                  variant="default"
+                  className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200/60"
+                  style={{
+                    shadowColor: '#7C3AED',  // Rich purple shadow to match theme
+                    shadowOffset: { width: 0, height: 3 },
+                    shadowOpacity: 0.16,
+                    shadowRadius: 8,
+                    elevation: 4,
+                  }}
+                >
+                  <StyledView className="flex-row items-center">
+                    <StyledView
+                      className="w-14 h-14 bg-purple-500 rounded-xl items-center justify-center mr-3"
+                      style={{
+                        shadowColor: '#6D28D9',  // Deep purple shadow for icon
+                        shadowOffset: { width: 0, height: 3 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 6,
+                        elevation: 5,
+                      }}
+                    >
+                      <Ionicons name="images" size={28} color="white" />
+                    </StyledView>
+                    <StyledView className="flex-1">
+                      <Body className="text-neutral-900 font-bold text-base mb-1">
+                        {photoCount === 0 ? 'Add Photos' : 'Complete Your Photos'}
+                      </Body>
+                      {photoCount === 0 ? (
+                        <Body className="text-neutral-600 text-sm leading-5">
+                          Upload 6 photos for a complete profile
+                        </Body>
+                      ) : (
+                        <Body className="text-neutral-600 text-sm leading-5">
+                          Add {6 - photoCount} more photo{6 - photoCount > 1 ? 's' : ''} for a complete profile{' '}
+                          <Body className="text-error font-bold text-sm">
+                            ({photoCount}/6)
+                          </Body>
+                        </Body>
+                      )}
+                    </StyledView>
+                    <Ionicons name="chevron-forward" size={20} color="#7C3AED" />
+                  </StyledView>
+                </Card>
+              </StyledTouchableOpacity>
+            </GuideTarget>
+          )}
+
           {/* About Me Summary Card */}
           {profile && <AboutMeSummary
             profile={profile}
@@ -576,6 +646,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
             <MatchPreferencesSummary
               preferences={profile.preferences}
               preferredPolitics={profile.preferredPolitics}
+              nonNegotiablesCount={profile.nonNegotiables?.length || 0}
               preferredEthnicitiesCount={profile.preferredEthnicities?.length || 0}
               interestsCount={profile.interests?.length || 0}
               valuesCount={profile.values?.length || 0}

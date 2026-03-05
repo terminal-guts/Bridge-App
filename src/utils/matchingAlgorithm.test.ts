@@ -76,6 +76,10 @@ function printScore(name: string, score: MatchScore) {
   console.log(`Total Score: ${score.total.toFixed(1)}%`);
   console.log(`Mutual Compatibility: ${score.mutualCompatibility}`);
 
+  if (score.nonNegotiableViolations.length > 0) {
+    console.log(`Non-negotiable Violations: ${score.nonNegotiableViolations.join(', ')}`);
+  }
+
   console.log('\nBreakdown:');
   for (const cat of score.breakdown) {
     const bar = '█'.repeat(Math.floor(cat.rawScore / 10)) + '░'.repeat(10 - Math.floor(cat.rawScore / 10));

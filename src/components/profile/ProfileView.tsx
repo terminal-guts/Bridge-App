@@ -52,11 +52,9 @@ export function ProfileView({
   actionButton,
 }: ProfileViewProps) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
+  const flatListRef = useRef<FlatList>(null);
 
   if (!profile) return null;
-
-  const photos = profile.photos?.slice(0, 3) ?? [];
 
   // Helper to capitalize
   const capitalize = (str: string | undefined): string => {
@@ -117,73 +115,54 @@ export function ProfileView({
         )}
 
         {/* Photo Carousel */}
-        {photos.length > 0 && (
+        {profile.photos && profile.photos.length > 0 && (
           <StyledView style={{ paddingHorizontal: 20, marginBottom: 20 }}>
-            {photos.length === 1 ? (
-              <StyledImage
-                source={{ uri: photos[0].url }}
-                style={{ width: '100%', height: 280, borderRadius: 16 }}
-                resizeMode="cover"
-              />
-            ) : (
-              <>
-                {/* Loop data: [clone_last, ...photos, clone_first] */}
-                <ScrollView
-                  ref={scrollRef}
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  contentOffset={{ x: SCREEN_WIDTH - 40, y: 0 }}
-                  onMomentumScrollEnd={(event) => {
-                    const itemWidth = SCREEN_WIDTH - 40;
-                    const rawIndex = Math.round(event.nativeEvent.contentOffset.x / itemWidth);
-                    if (rawIndex === 0) {
-                      // Hit clone of last — jump to real last
-                      scrollRef.current?.scrollTo({ x: itemWidth * photos.length, animated: false });
-                      setCurrentPhotoIndex(photos.length - 1);
-                    } else if (rawIndex === photos.length + 1) {
-                      // Hit clone of first — jump to real first
-                      scrollRef.current?.scrollTo({ x: itemWidth, animated: false });
-                      setCurrentPhotoIndex(0);
-                    } else {
-                      setCurrentPhotoIndex(rawIndex - 1);
-                    }
-                  }}
-                >
-                  {[photos[photos.length - 1], ...photos, photos[0]].map((photo, index) => (
-                    <StyledView key={`loop-${index}`} style={{ width: SCREEN_WIDTH - 40 }}>
-                      <StyledImage
-                        source={{ uri: photo.url }}
-                        style={{ width: '100%', height: 280, borderRadius: 16 }}
-                        resizeMode="cover"
-                      />
-                    </StyledView>
-                  ))}
-                </ScrollView>
-
-                {/* Pagination Dots */}
-                <StyledView style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 12, gap: 6 }}>
-                  {photos.map((_, index) => (
-                    <StyledTouchableOpacity
-                      key={index}
-                      onPress={() => {
-                        scrollRef.current?.scrollTo({ x: (index + 1) * (SCREEN_WIDTH - 40), animated: true });
-                        setCurrentPhotoIndex(index);
-                      }}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <StyledView
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: 4,
-                          backgroundColor: index === currentPhotoIndex ? '#7C3AED' : '#D1D5DB',
-                        }}
-                      />
-                    </StyledTouchableOpacity>
-                  ))}
+            <FlatList
+              ref={flatListRef}
+              data={profile.photos.slice(0, 6)}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(event) => {
+                const index = Math.round(event.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 40));
+                setCurrentPhotoIndex(index);
+              }}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <StyledView style={{ width: SCREEN_WIDTH - 40 }}>
+                  <StyledImage
+                    source={{ uri: item.url }}
+                    style={{
+                      width: '100%',
+                      height: 280,
+                      borderRadius: 16,
+                    }}
+                    resizeMode="cover"
+                  />
                 </StyledView>
-              </>
+              )}
+            />
+
+            {/* Pagination Dots */}
+            {profile.photos.length > 1 && (
+              <StyledView style={{
+                flexDirection: 'row',
+                justifyContent: 'center',
+                marginTop: 12,
+                gap: 6,
+              }}>
+                {profile.photos.slice(0, 6).map((_, index) => (
+                  <StyledView
+                    key={index}
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: index === currentPhotoIndex ? '#7C3AED' : '#D1D5DB',
+                    }}
+                  />
+                ))}
+              </StyledView>
             )}
           </StyledView>
         )}

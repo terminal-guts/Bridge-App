@@ -46,48 +46,52 @@ const LIFESTYLE_FREQUENCY_OPTIONS = [
 ];
 
 const COMMON_VALUES = [
-  // Personal
-  'Honesty', 'Integrity', 'Trust', 'Respect', 'Authenticity', 'Kindness', 'Empathy',
+  // Personal Values
+  'Honesty', 'Integrity', 'Loyalty', 'Trust', 'Respect', 'Authenticity',
+  'Kindness', 'Compassion', 'Empathy', 'Generosity',
 
-  // Relationship
-  'Communication', 'Commitment', 'Independence', 'Romance',
+  // Relationship Values
+  'Communication', 'Commitment', 'Partnership', 'Independence', 'Interdependence',
+  'Romance', 'Intimacy', 'Friendship First',
 
-  // Life
-  'Family', 'Career', 'Ambition', 'Work-Life Balance',
-  'Adventure', 'Stability', 'Growth Mindset', 'Creativity',
+  // Life Values
+  'Family', 'Career', 'Ambition', 'Success', 'Work-Life Balance',
+  'Adventure', 'Stability', 'Growth Mindset', 'Learning', 'Creativity',
 
-  // Social
-  'Community', 'Social Justice', 'Environmentalism', 'Diversity',
+  // Social Values
+  'Community', 'Social Justice', 'Environmentalism', 'Equality', 'Diversity',
+  'Tradition', 'Innovation', 'Service', 'Leadership',
 
   // Personal Growth
-  'Spirituality', 'Health',
+  'Self-Improvement', 'Mindfulness', 'Spirituality', 'Health', 'Fitness',
+  'Mental Health', 'Emotional Intelligence',
 ];
 
 const COMMON_INTERESTS = [
   // Activities
-  'Tennis', 'Golf', 'Running', 'Yoga', 'Hiking', 'Skiing',
-  'Basketball', 'Lifting', 'Live Sports', 'Watching Sports',
+  'Tennis', 'Golf', 'Running', 'Yoga', 'Pilates', 'CrossFit', 'Hiking', 'Skiing',
+  'Cycling', 'Swimming', 'Basketball', 'Soccer', 'Climbing',
 
   // Culture & Entertainment
-  'Museums', 'Theater', 'Live Music', 'Comedy Shows',
-  'Film', 'Reading', 'Photography',
+  'Museums', 'Art Galleries', 'Theater', 'Live Music', 'Concerts', 'Comedy Shows',
+  'Film', 'Documentaries', 'Reading', 'Writing', 'Photography',
 
   // Food & Drink
-  'Cooking', 'Coffee', 'Cocktails', 'Fine Dining', 'Brunch',
+  'Cooking', 'Baking', 'Wine Tasting', 'Craft Beer', 'Coffee', 'Cocktails',
+  'Fine Dining', 'Food Markets', 'Brunch',
 
   // Travel & Adventure
-  'Travel', 'Camping',
+  'Travel', 'Weekend Trips', 'International Travel', 'Road Trips', 'Camping',
 
   // Lifestyle
-  'Startups', 'Investing', 'Real Estate', 'Fashion', 'Meditation', 'Podcasts',
+  'Startups', 'Investing', 'Real Estate', 'Fashion', 'Interior Design',
+  'Meditation', 'Wellness', 'Volunteering', 'Podcasts',
 
   // Social
-  'Dinner Parties', 'Game Nights', 'Dancing', 'Trivia Nights',
-  'Poker', 'Video Games',
+  'Dinner Parties', 'Game Nights', 'Dancing', 'Karaoke', 'Trivia Nights',
 ];
 
 const ETHNICITY_OPTIONS = [
-  'No Preference',
   'Asian',
   'Black / African Descent',
   'Hispanic',
@@ -102,16 +106,36 @@ const ETHNICITY_OPTIONS = [
   'Central Asian',
   'North African',
   'Sub-Saharan African',
+  'No Preference',
 ];
 
 const POLITICAL_OPTIONS = [
-  { value: 'no_preference', label: 'No Preference' },
-  { value: 'very_liberal', label: 'Very Liberal' },
-  { value: 'liberal', label: 'Liberal' },
-  { value: 'moderate', label: 'Moderate' },
-  { value: 'conservative', label: 'Conservative' },
-  { value: 'very_conservative', label: 'Very Conservative' },
-  { value: 'not_political', label: 'Not Political' },
+  'No Preference',
+  'very_liberal',
+  'liberal',
+  'moderate',
+  'conservative',
+  'very_conservative',
+  'not_political',
+];
+
+function formatPoliticalLabel(value: string): string {
+  if (value === 'No Preference') return 'No Preference';
+  return value.replace(/_/g, ' ').split(' ').map(word =>
+    word.charAt(0).toUpperCase() + word.slice(1)
+  ).join(' ');
+}
+
+const NON_NEGOTIABLES_LIST = [
+  { id: 'outside_age_range', label: 'Outside of Age Range' },
+  { id: 'outside_height_range', label: 'Outside of Height Range' },
+  { id: 'different_politics', label: 'Different Politics' },
+  { id: 'different_religion', label: 'Different Religion' },
+  { id: 'heavy_drinking', label: 'Heavy Drinking' },
+  { id: 'smoking', label: 'Tobacco/Vaping Use' },
+  { id: 'drugs', label: 'Drug Use' },
+  { id: 'has_children', label: 'Has Children' },
+  { id: 'no_children', label: "Doesn't Want Children" },
 ];
 
 export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ navigation }) => {
@@ -133,6 +157,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   const [preferredEthnicities, setPreferredEthnicities] = useState<string[]>([]);
   const [interestedInGenders, setInterestedInGenders] = useState<string[]>([]);
   const [preferredPolitics, setPreferredPolitics] = useState<string[]>([]);
+  const [nonNegotiables, setNonNegotiables] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
@@ -141,10 +166,14 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
   // "Other" custom input modal state
   const [showCustomModal, setShowCustomModal] = useState(false);
-  const [customModalType, setCustomModalType] = useState<'gender' | 'values' | 'interests' | 'ethnicity'>('gender');
+  const [customModalType, setCustomModalType] = useState<'gender' | 'values' | 'interests' | 'ethnicity' | 'non_negotiable'>('non_negotiable');
   const [customInputValue, setCustomInputValue] = useState('');
   const customModalAnim = useRef(new Animated.Value(0)).current;
 
+  // Legacy non-negotiable modal state (kept for backwards compatibility)
+  const [showCustomNonNegotiableModal, setShowCustomNonNegotiableModal] = useState(false);
+  const [customNonNegotiableValue, setCustomNonNegotiableValue] = useState('');
+  const customNonNegotiableModalAnim = useRef(new Animated.Value(0)).current;
 
   // Helper function to convert inches to feet and inches
   const formatHeight = (inches: number): string => {
@@ -156,6 +185,15 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   useEffect(() => {
     loadProfile();
   }, []);
+
+  useEffect(() => {
+    Animated.spring(customNonNegotiableModalAnim, {
+      toValue: showCustomNonNegotiableModal ? 1 : 0,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11,
+    }).start();
+  }, [showCustomNonNegotiableModal]);
 
   // Animation for the reusable custom modal
   useEffect(() => {
@@ -260,6 +298,10 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         // Load preferred politics
         setPreferredPolitics(profileResult.data.preferredPolitics || []);
 
+        // Extract dealbreaker IDs from dealbreakers array
+        const nonNegotiableIds = (profileResult.data.nonNegotiables || []).map(d => d.type);
+        setNonNegotiables(nonNegotiableIds);
+
         // Store original data for change detection
         const originalPrefs: { drinking?: string | string[]; cannabis?: string | string[]; tobacco?: string | string[]; otherDrugs?: string | string[] } = profileResult.data.partnerLifestylePreferences ?? {};
         originalDataRef.current = JSON.stringify({
@@ -280,6 +322,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
           preferredEthnicities: profileResult.data.preferredEthnicities || [],
           interestedInGenders: profileResult.data.interestedInGenders || [],
           preferredPolitics: profileResult.data.preferredPolitics || [],
+          nonNegotiables: nonNegotiableIds,
         });
       }
     } catch (error) {
@@ -296,10 +339,11 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         preferredEthnicities,
         interestedInGenders,
         preferredPolitics,
+        nonNegotiables,
       });
       setHasUnsavedChanges(currentData !== originalDataRef.current);
     }
-  }, [preferences, partnerPreferences, preferredEthnicities, interestedInGenders, preferredPolitics]);
+  }, [preferences, partnerPreferences, preferredEthnicities, interestedInGenders, preferredPolitics, nonNegotiables]);
 
   const handleClose = () => {
     if (hasUnsavedChanges) {
@@ -356,6 +400,13 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
     setSaving(true);
     try {
+      // Convert dealbreaker IDs to Dealbreaker objects
+      const nonNegotiableObjects = nonNegotiables.map(id => ({
+        id,
+        type: id,
+        value: true,
+      }));
+
       // Auto-derive preferred_gender from interestedInGenders for backward compatibility
       // Values are already in database format (male/female, not man/woman)
       let derivedPreferredGender: 'male' | 'female' | 'both' = 'both';
@@ -376,6 +427,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
           gender: derivedPreferredGender, // Auto-derived from interestedInGenders
           lookingFor: 'relationship' as const, // Bridge only supports relationships
         },
+        nonNegotiables: nonNegotiableObjects,
         interestedInGenders: interestedInGenders,
         preferredPolitics: preferredPolitics,
         // Partner preferences
@@ -401,6 +453,18 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
     } finally {
       setSaving(false);
     }
+  };
+
+  const toggleNonNegotiable = (id: string) => {
+    setNonNegotiables(prev => {
+      if (prev.includes(id)) {
+        // Deselecting - always allow
+        return [];
+      } else {
+        // Only allow one selection - replace any previous selection
+        return [id];
+      }
+    });
   };
 
   // Calculate match preferences completion for current editing state
@@ -676,10 +740,8 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                       lightHaptic();
                       if (isSelected) {
                         setPreferredEthnicities(prev => prev.filter(e => e !== ethnicity));
-                      } else if (ethnicity === 'No Preference') {
-                        setPreferredEthnicities(['No Preference']);
                       } else {
-                        setPreferredEthnicities(prev => [...prev.filter(e => e !== 'No Preference'), ethnicity]);
+                        setPreferredEthnicities(prev => [...prev, ethnicity]);
                       }
                     }}
                     className={`px-3 py-2 rounded-full border ${
@@ -727,20 +789,18 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
               Select the political views you're open to matching with
             </Body>
             <StyledView className="flex-row flex-wrap gap-2">
-              {POLITICAL_OPTIONS.map(option => {
-                const isSelected = preferredPolitics.includes(option.value);
+              {POLITICAL_OPTIONS.map(politics => {
+                const isSelected = preferredPolitics.includes(politics);
                 return (
                   <StyledTouchableOpacity
-                    key={option.value}
+                    key={politics}
                     activeOpacity={1}
                     onPress={() => {
                       lightHaptic();
                       if (isSelected) {
-                        setPreferredPolitics(prev => prev.filter(p => p !== option.value));
-                      } else if (option.value === 'no_preference') {
-                        setPreferredPolitics(['no_preference']);
+                        setPreferredPolitics(prev => prev.filter(p => p !== politics));
                       } else {
-                        setPreferredPolitics(prev => [...prev.filter(p => p !== 'no_preference'), option.value]);
+                        setPreferredPolitics(prev => [...prev, politics]);
                       }
                     }}
                     className={`px-3 py-2 rounded-full border ${
@@ -751,10 +811,26 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                   >
                     <Body className={`text-sm ${
                       isSelected ? 'text-purple-700 font-medium' : 'text-neutral-700'
-                    }`}>{option.label}</Body>
+                    }`}>{formatPoliticalLabel(politics)}</Body>
                   </StyledTouchableOpacity>
                 );
               })}
+              {/* Custom politics (not in predefined list) */}
+              {preferredPolitics
+                .filter(p => !POLITICAL_OPTIONS.includes(p))
+                .map((customPolitics) => (
+                  <StyledTouchableOpacity
+                    key={customPolitics}
+                    activeOpacity={1}
+                    onPress={() => {
+                      lightHaptic();
+                      setPreferredPolitics(prev => prev.filter(p => p !== customPolitics));
+                    }}
+                    className="px-3 py-2 rounded-full border bg-purple-100 border-purple-500"
+                  >
+                    <Body className="text-sm text-purple-700 font-medium">{formatPoliticalLabel(customPolitics)}</Body>
+                  </StyledTouchableOpacity>
+                ))}
             </StyledView>
           </Card>
 
@@ -930,8 +1006,174 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             </StyledView>
           </Card>
 
+          {/* Non-Negotiables */}
+          <Card className="mb-8">
+            <StyledView className="flex-row items-center mb-2">
+              <H3>Non-Negotiables</H3>
+              <Body className="text-neutral-400 text-sm ml-2">(optional)</Body>
+            </StyledView>
+            <Body className="text-neutral-600 text-sm mb-4">
+              Select one characteristic that is a no-go for you
+            </Body>
+            <StyledView className="space-y-3">
+              {NON_NEGOTIABLES_LIST.map(option => {
+                const isSelected = nonNegotiables.includes(option.id);
+                return (
+                  <StyledTouchableOpacity
+                    key={option.id}
+                    onPress={() => {
+                      lightHaptic();
+                      toggleNonNegotiable(option.id);
+                    }}
+                    className={`flex-row items-center p-3 rounded-lg border ${
+                      isSelected
+                        ? 'bg-error/5 border-error'
+                        : 'bg-white border-neutral-300'
+                    }`}
+                  >
+                    <Body className={`flex-1 font-medium ${isSelected ? 'text-error' : 'text-neutral-900'}`}>
+                      {option.label}
+                    </Body>
+                    <StyledView className={`w-5 h-5 rounded border ${
+                      isSelected ? 'bg-error border-error' : 'border-neutral-300'
+                    } items-center justify-center`}>
+                      {isSelected && (
+                        <Ionicons name="checkmark" size={14} color="white" />
+                      )}
+                    </StyledView>
+                  </StyledTouchableOpacity>
+                );
+              })}
+
+              {/* Custom non-negotiables (not in predefined list) */}
+              {nonNegotiables.filter(db => !NON_NEGOTIABLES_LIST.some(opt => opt.id === db)).map((customNonNegotiable) => (
+                <StyledTouchableOpacity
+                  key={customNonNegotiable}
+                  onPress={() => {
+                    lightHaptic();
+                    toggleNonNegotiable(customNonNegotiable);
+                  }}
+                  className="flex-row items-center p-3 rounded-lg border bg-error/5 border-error"
+                >
+                  <Body className="flex-1 font-medium text-error">{customNonNegotiable}</Body>
+                  <StyledView className="w-5 h-5 rounded border bg-error border-error items-center justify-center">
+                    <Ionicons name="checkmark" size={14} color="white" />
+                  </StyledView>
+                </StyledTouchableOpacity>
+              ))}
+
+            </StyledView>
+          </Card>
         </StyledView>
       </StyledScrollView>
+
+      {/* Custom Non-Negotiable "Other" Modal */}
+      <Modal
+        visible={showCustomNonNegotiableModal}
+        animationType="none"
+        transparent
+        onRequestClose={() => setShowCustomNonNegotiableModal(false)}
+      >
+        <StyledAnimatedView
+          className="flex-1 bg-black/50 justify-start items-center px-6 pt-24"
+          style={{
+            opacity: customNonNegotiableModalAnim,
+          }}
+        >
+          <StyledTouchableOpacity
+            activeOpacity={1}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowCustomNonNegotiableModal(false);
+              setCustomNonNegotiableValue('');
+            }}
+            className="absolute inset-0"
+          />
+
+          <StyledAnimatedView
+            className="bg-white rounded-2xl w-full max-w-md"
+            style={{
+              transform: [{
+                scale: customNonNegotiableModalAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.9, 1],
+                }),
+              }],
+            }}
+          >
+            {/* Header */}
+            <StyledView className="px-6 pt-6 pb-4 border-b border-neutral-100">
+              <H3 className="mb-2">Add Custom Non-Negotiable</H3>
+              <Body className="text-neutral-600 text-sm">
+                Enter a characteristic that's a non-negotiable for you
+              </Body>
+            </StyledView>
+
+            {/* Input Field */}
+            <StyledView className="px-6 py-5">
+              <StyledTextInput
+                value={customNonNegotiableValue}
+                onChangeText={setCustomNonNegotiableValue}
+                placeholder="Type your dealbreaker"
+                className="bg-neutral-50 border border-neutral-200 rounded-lg px-4 py-3 text-base text-neutral-900"
+                placeholderTextColor="#9CA3AF"
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  if (customNonNegotiableValue.trim()) {
+                    setNonNegotiables([...nonNegotiables, customNonNegotiableValue.trim()]);
+                    mediumHaptic();
+                    setCustomNonNegotiableValue('');
+                    setShowCustomNonNegotiableModal(false);
+                    Keyboard.dismiss();
+                  }
+                }}
+              />
+            </StyledView>
+
+            {/* Action Buttons */}
+            <StyledView className="px-6 pb-6 flex-row gap-3">
+              <StyledTouchableOpacity
+                onPress={() => {
+                  lightHaptic();
+                  setShowCustomNonNegotiableModal(false);
+                  setCustomNonNegotiableValue('');
+                  Keyboard.dismiss();
+                }}
+                className="flex-1 bg-neutral-100 rounded-lg py-3 items-center"
+              >
+                <Body className="text-neutral-700 font-semibold">Cancel</Body>
+              </StyledTouchableOpacity>
+
+              <StyledTouchableOpacity
+                onPress={() => {
+                  if (customNonNegotiableValue.trim()) {
+                    setNonNegotiables([...nonNegotiables, customNonNegotiableValue.trim()]);
+                    mediumHaptic();
+                    setCustomNonNegotiableValue('');
+                    setShowCustomNonNegotiableModal(false);
+                    Keyboard.dismiss();
+                  }
+                }}
+                className={`flex-1 rounded-lg py-3 items-center ${
+                  customNonNegotiableValue.trim()
+                    ? 'bg-error'
+                    : 'bg-neutral-200'
+                }`}
+                disabled={!customNonNegotiableValue.trim()}
+              >
+                <Body className={`font-semibold ${
+                  customNonNegotiableValue.trim()
+                    ? 'text-white'
+                    : 'text-neutral-400'
+                }`}>
+                  Add
+                </Body>
+              </StyledTouchableOpacity>
+            </StyledView>
+          </StyledAnimatedView>
+        </StyledAnimatedView>
+      </Modal>
 
       {/* Reusable Custom Input Modal */}
       <Modal

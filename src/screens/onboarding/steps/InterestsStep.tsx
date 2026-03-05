@@ -18,24 +18,27 @@ const StyledView = styled(View);
 
 const AVAILABLE_INTERESTS = [
   // Activities
-  'Tennis', 'Golf', 'Running', 'Yoga', 'Hiking', 'Skiing',
-  'Basketball', 'Lifting', 'Live Sports', 'Watching Sports',
+  'Tennis', 'Golf', 'Running', 'Yoga', 'Pilates', 'CrossFit', 'Hiking', 'Skiing',
+  'Cycling', 'Swimming', 'Basketball', 'Soccer', 'Climbing', 'Lifting',
+  'Live Sports', 'Watching Sports',
 
   // Culture & Entertainment
-  'Museums', 'Theater', 'Live Music', 'Comedy Shows',
-  'Film', 'Reading', 'Photography',
+  'Museums', 'Art Galleries', 'Theater', 'Live Music', 'Concerts', 'Comedy Shows',
+  'Film', 'Documentaries', 'Reading', 'Writing', 'Photography',
 
   // Food & Drink
-  'Cooking', 'Coffee', 'Cocktails', 'Fine Dining', 'Brunch',
+  'Cooking', 'Baking', 'Wine Tasting', 'Craft Beer', 'Coffee', 'Cocktails',
+  'Fine Dining', 'Food Markets', 'Brunch',
 
   // Travel & Adventure
-  'Travel', 'Camping',
+  'Travel', 'Weekend Trips', 'International Travel', 'Road Trips', 'Camping',
 
   // Lifestyle
-  'Startups', 'Investing', 'Real Estate', 'Fashion', 'Meditation', 'Podcasts',
+  'Startups', 'Investing', 'Real Estate', 'Fashion', 'Interior Design',
+  'Meditation', 'Wellness', 'Volunteering', 'Podcasts',
 
   // Social
-  'Dinner Parties', 'Game Nights', 'Dancing', 'Trivia Nights',
+  'Dinner Parties', 'Game Nights', 'Dancing', 'Karaoke', 'Trivia Nights',
   'Poker', 'Video Games',
 ];
 
@@ -57,8 +60,8 @@ export const InterestsStep: React.FC<InterestsStepProps> = ({
     if (myInterests.includes(interest)) {
       setMyInterests(myInterests.filter(i => i !== interest));
     } else {
-      if (totalMyInterests >= 5) {
-        setError('You can select up to 5 interests');
+      if (totalMyInterests >= 8) {
+        setError('You can select up to 8 interests');
         return;
       }
       setMyInterests([...myInterests, interest]);
@@ -72,8 +75,8 @@ export const InterestsStep: React.FC<InterestsStepProps> = ({
       return;
     }
 
-    if (totalMyInterests > 5) {
-      setError('You can select up to 5 interests');
+    if (totalMyInterests > 8) {
+      setError('You can select up to 8 interests');
       return;
     }
 
@@ -98,7 +101,7 @@ export const InterestsStep: React.FC<InterestsStepProps> = ({
         Select at least 3 - add custom interests later.
       </Body>
       <Body className="text-primary-500 font-semibold mb-6">
-        {totalMyInterests} of 5 selected
+        {totalMyInterests} of 8 selected
       </Body>
 
       {/* Interest Categories */}

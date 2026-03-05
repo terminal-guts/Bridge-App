@@ -128,7 +128,7 @@ function mapBackendToUserProfile(data: any): UserProfile {
       otherDrugs: data.preferences?.partner_other_drugs || [],
     } : (data.partner_lifestyle_preferences || data.preferences?.partner_lifestyle_preferences || undefined),
     lifestyle: data.lifestyle || {},
-    nonNegotiables: [],
+    nonNegotiables: data.non_negotiables || [],
     deepQuestions: (() => {
       const dqRow = Array.isArray(data.deep_questions) ? data.deep_questions[0] : null;
       const answersMap: Record<string, string> = dqRow?.answers || {};
@@ -309,7 +309,7 @@ export const createUserProfile = async (
       email: data.email,
       interested_in_genders: data.interestedInGenders,
       photos: photoData,
-      non_negotiables: [],
+      non_negotiables: data.nonNegotiables || [],
     };
 
     // Remove undefined values so they don't overwrite existing data
@@ -768,7 +768,7 @@ function mapToLegacyProfile(up: UserProfile): Profile {
     age: up.age,
     image: up.photos?.[0]?.url || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800',
     isVerified: up.isVerified ?? false,
-    karmaPoints: up.karma?.karmaPoints ?? 0,
+    karmaPoints: up.karma?.totalAssists ?? 0,
     matchPercentage: 75,
     matchedBy: [
       'https://i.pravatar.cc/32?u=1',
@@ -881,47 +881,6 @@ export const getProfileById = async (id: string): Promise<Profile | null> => {
     }
 
     return mapToLegacyProfile(up);
-  } catch {
-    return null;
-  }
-};
-
-/**
- * Fetch any user's full UserProfile including deep question answers.
- * Used when a profile is passed without deep questions (e.g. from friends list).
- */
-export const getFullUserProfileById = async (userId: string): Promise<UserProfile | null> => {
-  try {
-    const [profileResult, prefsResult, dqResult, karmaResult] = await Promise.all([
-      supabase.from('user_profiles').select('*').eq('user_id', userId).single(),
-      supabase.from('user_preferences').select('*').eq('user_id', userId).single(),
-      supabase.from('deep_question_answers').select('*').eq('user_id', userId),
-      supabase.from('karma_scores').select('*').eq('user_id', userId).maybeSingle(),
-    ]);
-
-    if (profileResult.error || !profileResult.data) return null;
-
-    const combinedData = {
-      ...profileResult.data,
-      preferences: prefsResult.data || {},
-      deep_questions: dqResult.data || [],
-      karma_score: karmaResult.data || null,
-    };
-
-    const up = mapBackendToUserProfile(combinedData);
-
-    if (up.photos && up.photos.length > 0) {
-      up.photos = up.photos.filter(p => p.url && !p.url.startsWith('file://'));
-      const storagePaths = up.photos.map(p => p.url).filter(url => url && !url.startsWith('http'));
-      if (storagePaths.length > 0) {
-        const urlMapRes = await getMultiplePhotoSignedUrls(storagePaths, 86400);
-        if (urlMapRes.ok && urlMapRes.data) {
-          up.photos = up.photos.map(p => ({ ...p, url: urlMapRes.data![p.url] || p.url }));
-        }
-      }
-    }
-
-    return up;
   } catch {
     return null;
   }

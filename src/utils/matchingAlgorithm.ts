@@ -17,6 +17,7 @@ import { calculateDistance, heightToInches } from './proposalMatching';
 export interface MatchScore {
   total: number;                    // 0-100 final score
   breakdown: CategoryScore[];       // Per-category scores
+  nonNegotiableViolations: string[]; // Which non-negotiables were violated
   mutualCompatibility: boolean;     // Both users pass basic filters
 }
 
@@ -62,6 +63,11 @@ export function calculateMatchScore(
   distanceMiles?: number
 ): MatchScore {
   const breakdown: CategoryScore[] = [];
+  const nonNegotiableViolations: string[] = [];
+
+  // Check non-negotiables first
+  const nnViolations = checkNonNegotiables(userA, userB);
+  nonNegotiableViolations.push(...nnViolations);
 
   // Calculate each category
   breakdown.push(scoreAge(userA, userB));
@@ -70,7 +76,7 @@ export function calculateMatchScore(
   breakdown.push(scoreValues(userA, userB));
   breakdown.push(scoreInterests(userA, userB));
   breakdown.push(scoreFamily(userA, userB));
-  breakdown.push(scoreReligion(userA, userB));
+  breakdown.push(scoreReligion(userA, userB, nonNegotiableViolations));
   breakdown.push(scorePolitics(userA, userB));
   breakdown.push(scoreHeight(userA, userB));
   breakdown.push(scoreEthnicity(userA, userB));
@@ -87,8 +93,37 @@ export function calculateMatchScore(
   return {
     total: Math.round(total * 100) / 100,
     breakdown,
+    nonNegotiableViolations,
     mutualCompatibility,
   };
+}
+
+// ============================================================================
+// Non-Negotiables Check
+// ============================================================================
+
+function checkNonNegotiables(userA: UserProfile, userB: UserProfile): string[] {
+  const violations: string[] = [];
+
+  for (const nn of userA.nonNegotiables || []) {
+    if (nn.type === 'has_children' && userB.hasChildren === 'yes') {
+      violations.push('A: has_children');
+    }
+    if (nn.type === 'different_religion' && userA.religion !== userB.religion) {
+      violations.push('A: different_religion');
+    }
+  }
+
+  for (const nn of userB.nonNegotiables || []) {
+    if (nn.type === 'has_children' && userA.hasChildren === 'yes') {
+      violations.push('B: has_children');
+    }
+    if (nn.type === 'different_religion' && userB.religion !== userA.religion) {
+      violations.push('B: different_religion');
+    }
+  }
+
+  return violations;
 }
 
 // ============================================================================
@@ -448,9 +483,21 @@ function normalizeKey(plan: string): string {
 function scoreReligion(
   userA: UserProfile,
   userB: UserProfile,
+  violations: string[]
 ): CategoryScore {
   const aRel = userA.religion?.toLowerCase() || '';
   const bRel = userB.religion?.toLowerCase() || '';
+
+  // Non-negotiable violation = 0%
+  if (violations.some(v => v.includes('different_religion'))) {
+    return {
+      category: 'religion',
+      weight: WEIGHTS.religion,
+      rawScore: 0,
+      weightedScore: 0,
+      details: 'Non-negotiable violated',
+    };
+  }
 
   if (!aRel || !bRel) {
     return {

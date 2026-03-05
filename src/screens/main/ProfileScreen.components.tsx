@@ -720,6 +720,7 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
 interface MatchPreferencesSummaryProps {
   preferences: UserProfile['preferences'];
   preferredPolitics?: string[];
+  nonNegotiablesCount?: number;
   preferredEthnicitiesCount?: number;
   interestsCount?: number;
   valuesCount?: number;
@@ -729,6 +730,7 @@ interface MatchPreferencesSummaryProps {
 export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = ({
   preferences,
   preferredPolitics,
+  nonNegotiablesCount = 0,
   preferredEthnicitiesCount = 0,
   interestsCount = 0,
   valuesCount = 0,

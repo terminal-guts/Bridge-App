@@ -39,16 +39,15 @@ const HOMETOWNS = [
 
 const INTERESTS = [
   'Photography', 'Hiking', 'Cooking', 'Travel', 'Reading', 'Yoga',
-  'Running', 'Coffee', 'Cocktails', 'Dancing', 'Video Games',
-  'Meditation', 'Film', 'Live Music', 'Theater',
-  'Podcasts', 'Lifting', 'Tennis', 'Golf', 'Brunch',
+  'Music', 'Art', 'Running', 'Coffee', 'Wine', 'Dancing', 'Gaming',
+  'Cycling', 'Swimming', 'Meditation', 'Movies', 'Concerts', 'Theater',
+  'Podcasts', 'Fitness', 'Volunteering', 'Writing', 'Painting',
 ];
 
 const VALUES = [
-  'Authenticity', 'Family', 'Adventure', 'Kindness',
-  'Ambition', 'Creativity', 'Honesty', 'Trust',
-  'Empathy', 'Growth Mindset', 'Health', 'Integrity',
-  'Communication', 'Respect', 'Career',
+  'Authenticity', 'Family', 'Adventure', 'Growth', 'Kindness',
+  'Ambition', 'Creativity', 'Honesty', 'Humor', 'Intelligence',
+  'Compassion', 'Balance', 'Curiosity', 'Loyalty', 'Open-mindedness',
 ];
 
 const ETHNICITIES = [
@@ -196,34 +195,34 @@ export const generateRandomOnboardingData = (): Partial<OnboardingData> => {
       {
         questionId: 1,
         tier: 1,
-        question: 'Given the choice of anyone alive or dead, whom would you want as a dinner guest?',
+        question: 'What makes you feel most alive?',
         answer: randomItem([
-          'My grandmother — I have so many questions I never got to ask her',
-          'Leonardo da Vinci. The ultimate polymath and creative mind',
-          'Obama. I want to know what the hardest decision really felt like',
-          'Anthony Bourdain. Best dinner conversation guaranteed',
+          'Exploring new places and trying new things',
+          'Deep conversations with people I care about',
+          'Creating something meaningful',
+          'Helping others and making a difference',
         ]),
       },
       {
-        questionId: 9,
-        tier: 2,
-        question: "When you're overwhelmed or stressed, what actually helps you feel supported?",
+        questionId: 2,
+        tier: 1,
+        question: 'What are you most passionate about?',
         answer: randomItem([
-          'Honestly just someone sitting with me without trying to fix it',
-          'A long phone call with my best friend back home',
-          'Going for a run and then talking it out after',
-          'Cooking something from scratch — it forces me to slow down',
+          'Building my career and growing professionally',
+          'My relationships and spending time with loved ones',
+          'Personal growth and self-discovery',
+          'Making an impact on the world',
         ]),
       },
       {
-        questionId: 14,
-        tier: 3,
-        question: "Is there something you've dreamed of doing for a long time? Why haven't you done it?",
+        questionId: 3,
+        tier: 1,
+        question: 'What do you value most in a relationship?',
         answer: randomItem([
-          'Traveling solo through Southeast Asia. School keeps pushing it back',
-          'Writing a screenplay. I have the ideas but never carve out the time',
-          'Learning to surf. I keep saying next summer',
-          'Starting a nonprofit. Still building the skills and network for it',
+          'Honesty and open communication',
+          'Shared values and life goals',
+          'Chemistry and physical connection',
+          'Mutual respect and support',
         ]),
       },
     ],
