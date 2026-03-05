@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Platform } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/OnboardingLayout';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import Slider from '@react-native-community/slider';
+import RangeSlider from 'rn-range-slider';
 
 interface BirthdayStepProps {
   data: Partial<OnboardingData>;
@@ -20,6 +20,25 @@ const StyledView = styled(View);
 
 const MIN_AGE = 18;
 const MAX_AGE = 80;
+
+// Stable components for RangeSlider to prevent re-mounting during interaction
+const Thumb = () => (
+  <StyledView
+    className="w-6 h-6 rounded-full border-2 border-white shadow-md"
+    style={{ backgroundColor: '#437FFF' }}
+  />
+);
+
+const Rail = () => (
+  <StyledView className="flex-1 h-1 rounded-full bg-neutral-200" />
+);
+
+const RailSelected = () => (
+  <StyledView
+    className="h-1 rounded-full"
+    style={{ backgroundColor: '#437FFF' }}
+  />
+);
 
 export const BirthdayStep: React.FC<BirthdayStepProps> = ({
   data,
@@ -96,23 +115,14 @@ export const BirthdayStep: React.FC<BirthdayStepProps> = ({
     }
   };
 
-  const handleMinAgeChange = (value: number) => {
-    const newMin = Math.round(value);
-    setAgeMin(newMin);
-    if (newMin >= ageMax) {
-      setAgeMax(Math.min(MAX_AGE, newMin + 1));
-    }
+  const renderThumb = useCallback(() => <Thumb />, []);
+  const renderRail = useCallback(() => <Rail />, []);
+  const renderRailSelected = useCallback(() => <RailSelected />, []);
+  const handleValueChanged = useCallback((low: number, high: number) => {
+    setAgeMin(low);
+    setAgeMax(high);
     setError('');
-  };
-
-  const handleMaxAgeChange = (value: number) => {
-    const newMax = Math.round(value);
-    setAgeMax(newMax);
-    if (newMax <= ageMin) {
-      setAgeMin(Math.max(MIN_AGE, newMax - 1));
-    }
-    setError('');
-  };
+  }, []);
 
   return (
     <OnboardingLayout
@@ -165,37 +175,25 @@ export const BirthdayStep: React.FC<BirthdayStepProps> = ({
             </StyledView>
           </StyledView>
 
-          {/* Range Sliders */}
-          <StyledView>
-            {/* Min Slider */}
-            <StyledView className="mb-4">
-              <Body className="text-xs text-neutral-500 mb-1.5">Minimum Age</Body>
-              <Slider
-                value={ageMin}
-                onValueChange={handleMinAgeChange}
-                minimumValue={MIN_AGE}
-                maximumValue={MAX_AGE}
-                step={1}
-                minimumTrackTintColor="#437FFF"
-                maximumTrackTintColor="#E5E7EB"
-                thumbTintColor="#437FFF"
-              />
-            </StyledView>
-
-            {/* Max Slider */}
-            <StyledView>
-              <Body className="text-xs text-neutral-500 mb-1.5">Maximum Age</Body>
-              <Slider
-                value={ageMax}
-                onValueChange={handleMaxAgeChange}
-                minimumValue={MIN_AGE}
-                maximumValue={MAX_AGE}
-                step={1}
-                minimumTrackTintColor="#437FFF"
-                maximumTrackTintColor="#E5E7EB"
-                thumbTintColor="#437FFF"
-              />
-            </StyledView>
+          {/* Range Slider */}
+          <StyledView className="px-2">
+            <RangeSlider
+              style={{ width: '100%', height: 40 }}
+              min={MIN_AGE}
+              max={MAX_AGE}
+              step={1}
+              low={ageMin}
+              high={ageMax}
+              minRange={1}
+              floatingLabel={false}
+              renderThumb={renderThumb}
+              renderRail={renderRail}
+              renderRailSelected={renderRailSelected}
+              onValueChanged={handleValueChanged}
+            />
+            <Body className="text-neutral-500 text-xs mt-2 text-center">
+              Drag the handles to set your preferred age range.
+            </Body>
           </StyledView>
         </StyledView>
 
