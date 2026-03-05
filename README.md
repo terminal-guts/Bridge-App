@@ -10,7 +10,7 @@
 
 **Bridge** is a mobile dating application that uses community-driven matching instead of traditional swiping. Friends help friends find meaningful connections.
 
-**This is the production codebase for Bridge** — the app being deployed to the App Store.
+**This is the production codebase for Bridge** -- the app being deployed to the App Store.
 
 This repository contains both the frontend and backend:
 - **Frontend** (current directory): React Native/Expo app
@@ -37,29 +37,12 @@ npm start
 npm run ios
 ```
 
-See **[GETTING_STARTED.md](./GETTING_STARTED.md)** for complete setup instructions, troubleshooting, and backend configuration.
-
 ---
 
 ## Documentation
 
-### Setup & Development
-- **[GETTING_STARTED.md](./GETTING_STARTED.md)** - **Complete developer guide** (start here!)
-  - All dependencies and prerequisites
-  - Frontend & backend setup
-  - Troubleshooting
-  - Development workflow
-
-### Project Information
-- **[BRIDGE_VISION.md](./BRIDGE_VISION.md)** - Product vision and roadmap
-- **[ACTUAL_ONBOARDING_FLOW.md](./ACTUAL_ONBOARDING_FLOW.md)** - User onboarding flow
-- **[MANDATORY_FIELDS_FINAL.md](./MANDATORY_FIELDS_FINAL.md)** - Required profile fields
-- **[FIELD_AUDIT_REPORT.md](./FIELD_AUDIT_REPORT.md)** - Database field documentation
-
-### Technical Documentation
-- **[CONSOLE_LOG_MIGRATION.md](./CONSOLE_LOG_MIGRATION.md)** - Logging migration strategy
-- **[BANNER_FIX_TEST_REPORT.md](./BANNER_FIX_TEST_REPORT.md)** - Profile banner fix testing
-- **[BANNER_TEST_SCENARIOS.md](./BANNER_TEST_SCENARIOS.md)** - Banner test scenarios
+- **[BRIDGE_VISION.md](./BRIDGE_VISION.md)** - Product vision, matching system, karma/streaks, and roadmap
+- **[CLAUDE.md](./CLAUDE.md)** - Claude Code instructions (locked values, production rules)
 
 ---
 
@@ -79,6 +62,7 @@ See **[GETTING_STARTED.md](./GETTING_STARTED.md)** for complete setup instructio
 - **Authentication**: Supabase Auth (email/phone)
 - **Real-time**: Supabase Realtime (WebSockets)
 - **Storage**: Supabase Storage (user photos)
+- **Edge Functions**: Deno-based serverless functions
 - **Client**: @supabase/supabase-js v2.81.1
 
 ### Development
@@ -96,39 +80,66 @@ Bridge-App/
 ├── src/
 │   ├── components/          # Reusable UI components
 │   │   ├── ui/             # Base UI components (buttons, inputs, etc.)
-│   │   ├── ProfileCompletionBanner.tsx
-│   │   └── ProfileStrengthDashboard.tsx
+│   │   ├── community/      # Community voting & friends area components
+│   │   ├── matches/        # Match card components
+│   │   ├── chat/           # Chat components (audio player/recorder)
+│   │   ├── icons/          # Eva Icons integration
+│   │   └── profile/        # Profile view components
 │   ├── screens/            # App screens
 │   │   ├── main/           # Main app screens (Profile, Community, etc.)
 │   │   ├── match/          # Matching flow screens
 │   │   ├── onboarding/     # Onboarding steps
-│   │   └── profile/        # Profile management screens
+│   │   ├── profile/        # Profile management screens
+│   │   └── friends/        # Friend code & friend list screens
 │   ├── navigation/         # Navigation configuration
 │   ├── contexts/           # React Context providers
-│   ├── services/           # Mock API services
+│   ├── hooks/              # Custom React hooks
+│   ├── services/           # API services (Supabase backend + mock fallback)
+│   ├── config/             # App configuration (guides, onboarding mapping)
 │   ├── types/              # TypeScript type definitions
 │   └── utils/              # Utility functions
-├── assets/                 # Images, fonts, icons
-├── supabase/               # Supabase edge functions and migrations
+├── supabase/
+│   ├── functions/          # Edge functions (process-vote, proposal-lifecycle, etc.)
+│   └── migrations/         # Database migrations
 ├── scripts/                # Database management and testing utilities
+├── assets/                 # Images, fonts, icons
 ├── App.tsx                 # App entry point
 ├── package.json            # Dependencies
 ├── .nvmrc                  # Node.js version
-├── .env.example            # Environment variables template
-└── Documentation files
+└── .env.example            # Environment variables template
 ```
 
 ---
 
-## Current Status
+## Key Features
 
-### This Repository (Production App)
-- **Status**: Production codebase — deploying to App Store
-- **Frontend**: React Native/Expo (this directory)
-- **Backend**: Supabase (`supabase/` subdirectory)
-- **Database**: PostgreSQL via Supabase
-- **Authentication**: Supabase Auth
-- **Scripts**: TypeScript utilities for database management
+### Community Matching System
+- Single-proposal model: one candidate pairing per user at a time
+- 5-day voting window with relaxing approval thresholds
+- Friends vote on each other's proposals
+- 48-hour acceptance window after community approval
+
+### Karma & Streaks
+- Karma points for voting participation and accuracy
+- Friend streaks for consecutive days of mutual voting
+- Backend-weighted voting (higher karma = slightly stronger vote)
+
+### Profile System
+- Multi-step onboarding
+- Photo management
+- Deep questions (3 tiers)
+- Profile strength tracking
+
+### Match Flow
+- Community-approved proposals
+- Accept/decline decision phase
+- In-match chat (text + voice notes)
+- Match ending with reason collection
+
+### Friends Area
+- Friend connections via secure codes
+- "Help Your Friends" / "Already Helped" split
+- Friend chat messaging
 
 ---
 
@@ -163,46 +174,6 @@ Bridge-App/
    ```bash
    npx tsx scripts/test-backend-connection.ts
    ```
-
-3. **See [GETTING_STARTED.md](./GETTING_STARTED.md)** for complete setup
-
----
-
-## Key Features
-
-### Community Matching System
-- Friends vote on potential matches
-- Daily curated match grids
-- Match progression tracking
-- Community involvement rewards
-
-### Profile System
-- Multi-step onboarding
-- Photo verification
-- Compatibility questions
-- Profile strength tracking
-
-### Match Flow
-- Match proposals
-- 3-day voting periods
-- Match acceptance/rejection
-- Chat initiation
-
-### Friends Area
-- Friend connections
-- Friend matching suggestions
-- Community participation
-
----
-
-## Development Workflow
-
-### Adding New Features
-1. Create components in `src/components/`
-2. Add screens in `src/screens/`
-3. Update navigation in `src/navigation/`
-4. Update services in `src/services/`
-5. Test on iOS simulator
 
 ---
 
@@ -246,18 +217,9 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key  # For scripts only
 
 | Platform | Status | Notes |
 |----------|--------|-------|
-| iOS | ✅ Primary | Main development platform |
-| Android | ✅ Supported | Tested but secondary |
-| Web | ⚠️ Limited | Basic support via Expo |
-
----
-
-## Contributing
-
-1. Create a feature branch
-2. Make your changes
-3. Test on iOS simulator
-4. Submit a pull request
+| iOS | Primary | Main development platform |
+| Android | Supported | Tested but secondary |
+| Web | Limited | Basic support via Expo |
 
 ---
 
@@ -286,8 +248,6 @@ cd ios && pod install && cd ..
 - Verify Supabase project is accessible
 - Run `npx tsx scripts/test-backend-connection.ts`
 
-See [GETTING_STARTED.md](./GETTING_STARTED.md) for comprehensive troubleshooting.
-
 ---
 
 ## Resources
@@ -303,15 +263,3 @@ See [GETTING_STARTED.md](./GETTING_STARTED.md) for comprehensive troubleshooting
 ## License
 
 MIT
-
----
-
-## Support
-
-For questions or issues:
-1. Check the documentation files
-2. Review troubleshooting section
-3. Contact the development team
-
----
-

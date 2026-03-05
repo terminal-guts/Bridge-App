@@ -42,9 +42,9 @@ import { EvaIcon } from '@/components/icons';
 Use these color names for consistent theming:
 
 ### Primary Colors
-- `primary` - `#5B8FFF` - Main brand blue
+- `primary` - `#437FFF` - Main brand blue (used across the app)
 - `primary-light` - `#7BA8FF` - Lighter blue
-- `primary-dark` - `#3D72E8` - Darker blue
+- `primary-dark` - `#2B65F9` - Darker blue (buttons, badges)
 
 ### Text Colors
 - `text` - `#2A1F1A` - Primary text (warm dark)

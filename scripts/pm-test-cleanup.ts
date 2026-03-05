@@ -38,6 +38,13 @@ async function main() {
 
   console.log(`Cleaning up proposal ${proposalId}...`);
 
+  // Collect voter IDs from the votes before deleting them
+  const { data: votes } = await supabase
+    .from('proposal_votes')
+    .select('voter_user_id')
+    .eq('proposal_id', proposalId);
+  const voterIds = [...new Set((votes || []).map((v: any) => v.voter_user_id))];
+
   await supabase.from('proposal_votes').delete().eq('proposal_id', proposalId);
   console.log('  proposal_votes: deleted');
 
@@ -50,6 +57,16 @@ async function main() {
   const { error } = await supabase.from('proposals').delete().eq('id', proposalId);
   if (error) console.error('  proposals:', error.message);
   else console.log('  proposals: deleted');
+
+  // Reset test voter profiles (remove photos/names added by test setup)
+  if (voterIds.length > 0) {
+    const { error: resetErr } = await supabase
+      .from('user_profiles')
+      .update({ first_name: '', photos: [] })
+      .in('user_id', voterIds);
+    if (resetErr) console.error('  voter profiles reset:', resetErr.message);
+    else console.log(`  voter profiles reset: ${voterIds.length} voter(s) cleared`);
+  }
 
   fs.unlinkSync(STATE_FILE);
   console.log('  pm-test-state.json: deleted');

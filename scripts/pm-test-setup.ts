@@ -114,11 +114,48 @@ async function main() {
   }
 
   // Build voter pool from remaining Rice users (exclude user_1 and user_2)
-  const voters = allUsers
+  // Prioritize voters who already have profile photos so endorser avatars render
+  const voterCandidates = allUsers
     .filter(u => u.id !== myId && u.id !== user2.id)
     .map(u => ({ id: u.id, email: u.email }));
 
-  console.log(`Voters available: ${voters.length} (other Rice users)`);
+  const { data: voterProfiles } = await supabase
+    .from('user_profiles')
+    .select('user_id, photos')
+    .in('user_id', voterCandidates.map(v => v.id));
+
+  const hasPhotos = new Set(
+    (voterProfiles || [])
+      .filter(p => Array.isArray(p.photos) && p.photos.length > 0)
+      .map(p => p.user_id)
+  );
+
+  // Sort: voters with photos first so the first YES votes (= endorser avatars) have images
+  const voters = voterCandidates.sort((a, b) => {
+    const aHas = hasPhotos.has(a.id) ? 0 : 1;
+    const bHas = hasPhotos.has(b.id) ? 0 : 1;
+    return aHas - bHas;
+  });
+
+  console.log(`Voters available: ${voters.length} (${hasPhotos.size} with photos, sorted first)`);
+
+  // Ensure voters without photos get a borrowed photo from users who have them
+  // so endorser avatars always render during testing
+  const usersWithPhotosList = (voterProfiles || []).filter(
+    p => Array.isArray(p.photos) && p.photos.length > 0
+  );
+  for (const v of voters) {
+    if (!hasPhotos.has(v.id) && usersWithPhotosList.length > 0) {
+      const donor = usersWithPhotosList[Math.floor(Math.random() * usersWithPhotosList.length)];
+      const borrowedPhoto = donor.photos[0];
+      await supabase.from('user_profiles').upsert({
+        user_id: v.id,
+        first_name: (v.email || '').split('@')[0],
+        photos: [borrowedPhoto],
+      }, { onConflict: 'user_id' });
+    }
+  }
+  console.log('Voter profiles ensured (borrowed photos for voters without them)');
 
   // Create pool_vote_assignments for all voters
   for (const v of voters) {

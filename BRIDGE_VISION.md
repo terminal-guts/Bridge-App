@@ -234,7 +234,7 @@ A user in an active match is **removed** from proposal generation (cannot appear
 ### **Daily Grid — REMOVED**
 The 3-candidate grid model has been fully removed from the product (March 2026). There is no grid logic anywhere in the system. Each user receives one proposal at a time — a single candidate pairing.
 
-**Archived UI Component:** `src/components/_archived/DailyGridView.tsx` for historical reference only.
+All grid-era UI components have been deleted from the codebase.
 
 ---
 
@@ -304,7 +304,7 @@ When a user is in an active match:
 After a match ends, they re-enter the matching pool.
 
 If Anchor A and Candidate B are ever proposed together:
-- They never appear together in a grid again
+- They are never proposed together again
 
 ---
 
@@ -317,7 +317,7 @@ If Anchor A and Candidate B are ever proposed together:
    - **3-day minimum commitment:** Neither user can end the match for the first 3 days
    - After 3 days, either user can end the match at any time
    - Active matches can last forever if both parties want to continue
-   - During active match, both users are completely removed from all grids
+   - During active match, both users are completely removed from proposal generation
 5. **Chat availability:** Users can only message during an active match (not during the 48-hour proposal window)
 
 ---
@@ -327,7 +327,7 @@ If Anchor A and Candidate B are ever proposed together:
 ### How It Works
 The algorithm generates **one proposal per eligible user** daily at 7PM Central:
 - Each proposal is a single pairing: Person A + Person B
-- Based on compatibility scoring (see `MATCHING_ALGORITHM.md`)
+- Based on compatibility scoring (see algorithm weights below)
 - Users with active proposals, active matches, or paused accounts are skipped
 - Rejected/declined pairs are **permanently blocked** from being re-proposed
 - Expired pairs (ran out of time without enough votes) can be retried
@@ -426,8 +426,8 @@ Day 5: auto-send (bypass threshold — proposal passes regardless)
 
 **Resolution Rules (checked after every vote AND at 7PM cron):**
 - **Immediate cancel:** If the first 6 pool votes are ALL "no" → instantly rejected
-- **Rejection floor:** If ≥12 pool votes AND pool yes-rate < 35% → rejected. Also if ≥12 total votes AND combined yes-rate < 35% → rejected
-- **Confirmation:** If ≥6 pool votes AND ≥12 total votes AND ≥8 yes votes AND weighted yes% ≥ day threshold → `deciding` (sent to both users)
+- **Rejection floor:** If ≥8 pool votes AND pool yes-rate < 35% → rejected. Also if ≥8 total votes AND combined yes-rate < 35% → rejected
+- **Confirmation:** If ≥3 pool votes AND ≥3 total votes AND ≥3 yes votes AND weighted yes% ≥ day threshold → `deciding` (sent to both users)
 - **Day 5 auto-send:** Bypasses threshold — proposal passes regardless of percentage
 - **Pool eligibility:** Proposal stays in the community queue if pool yes-rate ≥ 35% OR (≥6 friend votes with ≥70% friend yes-rate)
 - Vote tallies **persist across days** (carryover proposals keep all accumulated votes)
@@ -437,7 +437,7 @@ Day 5: auto-send (bypass threshold — proposal passes regardless)
 - Every vote is weighted by the voter's karma tier: New=1.0x, Solid=1.1x, Trusted=1.2x, Elite=1.3x
 - Friend votes get an additional 1.25x multiplier on top of their tier weight
 - Weighted yes/no totals (not raw counts) are what get compared against threshold percentages
-- Vote recounting happens from scratch after every vote (source of truth = `proposal_votes` table)
+- Vote tallies are updated incrementally after every vote (subtract old weight, add new weight). The `proposal_votes` table is the source of truth if a full recount is ever needed.
 
 **After Voting → Deciding Phase (48h):**
 - Both users see each other's full profile
@@ -565,7 +565,7 @@ A streak tracks **consecutive days that you and a specific friend have voted on 
 
 2. **User opens app → Community tab**: Must vote on 3 community pool proposals to unlock Friends Area. Each vote calls `process-vote` edge function.
 
-3. **`process-vote`**: Records vote → +1 karma → full recount of all votes with karma-tier weighting → inline lifecycle cascade (expiry → immediate cancel → rejection floor → confirmation → pool eligibility). Proposals can transition status instantly after any vote without waiting for cron.
+3. **`process-vote`**: Records vote → +1 karma → incremental tally update with karma-tier weighting → inline lifecycle cascade (expiry → immediate cancel → rejection floor → confirmation → pool eligibility). Proposals can transition status instantly after any vote without waiting for cron.
 
 4. **Friends Area (after 3 votes)**: "Help Your Friends" shows friends with active proposals you haven't voted on. Voting on a friend's proposal also calls `process-vote` + triggers `update_friend_streak()`.
 
@@ -592,17 +592,14 @@ You can message only:
 
 **No messaging:**
 - Strangers
-- Candidates from grids
+- Candidates from proposals
 - People tied to proposals
 - Matches that failed
 
 ### Friend Chat Logs
 Friend chats contain:
 - Normal text messages
-- System event cards, such as:
-  - "You matched Maya with Ben today."
-  - "Saul accepted your suggestion about this type."
-  - "Your proposal created a match — you earned an assist."
+- Voice notes (audio messages)
 
 **Friends cannot see:**
 - Vote results
