@@ -313,9 +313,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
         );
       });
 
-      // Clear banner dismissal on app start (for development/testing)
-      // Remove this in production if you want dismissal to persist
-      AsyncStorage.removeItem('@profile_completion_banner_dismissed').catch(console.error);
     }, [loadProfile, loadFriendCount])
   );
 
