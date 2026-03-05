@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity, Alert, Modal, Animated, Keyboard, TextInput, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { H3, Body, Card, Button } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
-import Slider from '@react-native-community/slider';
+import RangeSlider from 'rn-range-slider';
 import NetInfo from '@react-native-community/netinfo';
 import { getCurrentUser } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
@@ -113,6 +113,13 @@ const POLITICAL_OPTIONS = [
   { value: 'very_conservative', label: 'Very Conservative' },
   { value: 'not_political', label: 'Not Political' },
 ];
+
+// Stable sub-components for RangeSlider (prevent re-mounting on each render)
+const Thumb = () => (
+  <StyledView className="w-6 h-6 rounded-full border-2 border-white shadow-md" style={{ backgroundColor: '#437FFF' }} />
+);
+const Rail = () => <StyledView className="flex-1 h-1 rounded-full bg-neutral-200" />;
+const RailSelected = () => <StyledView className="h-1 rounded-full" style={{ backgroundColor: '#437FFF' }} />;
 
 export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ navigation }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -319,6 +326,16 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
       navigation.goBack();
     }
   };
+
+  const renderThumb = useCallback(() => <Thumb />, []);
+  const renderRail = useCallback(() => <Rail />, []);
+  const renderRailSelected = useCallback(() => <RailSelected />, []);
+  const handleAgeValueChanged = useCallback((low: number, high: number) => {
+    setPreferences((prev) => ({ ...prev, ageMin: low, ageMax: high }));
+  }, []);
+  const handleHeightValueChanged = useCallback((low: number, high: number) => {
+    setPreferences((prev) => ({ ...prev, heightMin: low, heightMax: high }));
+  }, []);
 
   const handleSave = async () => {
     if (!profile) return;
@@ -570,43 +587,24 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
           {/* Age Range */}
           <Card className="mb-6">
             <H3 className="mb-4">Age Range <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
-            <StyledView className="mb-4">
-              <StyledView className="flex-row justify-between mb-2">
-                <Body className="text-neutral-600">Minimum Age</Body>
-                <Body className="text-neutral-900 font-semibold">{preferences.ageMin}</Body>
-              </StyledView>
-              <Slider
-                key="age-min-slider"
-                value={preferences.ageMin}
-                onValueChange={(value) =>
-                  setPreferences((prev) => ({ ...prev, ageMin: Math.round(value) }))
-                }
-                minimumValue={18}
-                maximumValue={preferences.ageMax ?? 80}
-                step={1}
-                minimumTrackTintColor="#437FFF"
-                maximumTrackTintColor="#D0D5DD"
-                thumbTintColor="#437FFF"
-              />
+            <StyledView className="flex-row justify-between mb-3">
+              <Body className="text-neutral-600">Min: <Body className="text-neutral-900 font-semibold">{preferences.ageMin}</Body></Body>
+              <Body className="text-neutral-600">Max: <Body className="text-neutral-900 font-semibold">{preferences.ageMax}</Body></Body>
             </StyledView>
-
-            <StyledView>
-              <StyledView className="flex-row justify-between mb-2">
-                <Body className="text-neutral-600">Maximum Age</Body>
-                <Body className="text-neutral-900 font-semibold">{preferences.ageMax}</Body>
-              </StyledView>
-              <Slider
-                key="age-max-slider"
-                value={preferences.ageMax}
-                onValueChange={(value) =>
-                  setPreferences((prev) => ({ ...prev, ageMax: Math.round(value) }))
-                }
-                minimumValue={preferences.ageMin ?? 18}
-                maximumValue={80}
+            <StyledView className="px-2">
+              <RangeSlider
+                style={{ width: '100%', height: 40 }}
+                min={18}
+                max={80}
                 step={1}
-                minimumTrackTintColor="#437FFF"
-                maximumTrackTintColor="#D0D5DD"
-                thumbTintColor="#437FFF"
+                low={preferences.ageMin}
+                high={preferences.ageMax}
+                minRange={1}
+                floatingLabel={false}
+                renderThumb={renderThumb}
+                renderRail={renderRail}
+                renderRailSelected={renderRailSelected}
+                onValueChanged={handleAgeValueChanged}
               />
             </StyledView>
           </Card>
@@ -618,43 +616,24 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
               Set your height preferences for potential matches
             </Body>
 
-            <StyledView className="mb-4">
-              <StyledView className="flex-row justify-between mb-2">
-                <Body className="text-neutral-600">Minimum Height</Body>
-                <Body className="text-neutral-900 font-semibold">{formatHeight(preferences.heightMin || 60)}</Body>
-              </StyledView>
-              <Slider
-                key="height-min-slider"
-                value={preferences.heightMin || 60}
-                onValueChange={(value) =>
-                  setPreferences((prev) => ({ ...prev, heightMin: Math.round(value) }))
-                }
-                minimumValue={48} // 4'0"
-                maximumValue={preferences.heightMax || 84}
-                step={1}
-                minimumTrackTintColor="#437FFF"
-                maximumTrackTintColor="#D0D5DD"
-                thumbTintColor="#437FFF"
-              />
+            <StyledView className="flex-row justify-between mb-3">
+              <Body className="text-neutral-600">Min: <Body className="text-neutral-900 font-semibold">{formatHeight(preferences.heightMin || 60)}</Body></Body>
+              <Body className="text-neutral-600">Max: <Body className="text-neutral-900 font-semibold">{formatHeight(preferences.heightMax || 84)}</Body></Body>
             </StyledView>
-
-            <StyledView>
-              <StyledView className="flex-row justify-between mb-2">
-                <Body className="text-neutral-600">Maximum Height</Body>
-                <Body className="text-neutral-900 font-semibold">{formatHeight(preferences.heightMax || 84)}</Body>
-              </StyledView>
-              <Slider
-                key="height-max-slider"
-                value={preferences.heightMax || 84}
-                onValueChange={(value) =>
-                  setPreferences((prev) => ({ ...prev, heightMax: Math.round(value) }))
-                }
-                minimumValue={preferences.heightMin || 60}
-                maximumValue={84} // 7'0"
+            <StyledView className="px-2">
+              <RangeSlider
+                style={{ width: '100%', height: 40 }}
+                min={48}
+                max={84}
                 step={1}
-                minimumTrackTintColor="#437FFF"
-                maximumTrackTintColor="#D0D5DD"
-                thumbTintColor="#437FFF"
+                low={preferences.heightMin || 60}
+                high={preferences.heightMax || 84}
+                minRange={1}
+                floatingLabel={false}
+                renderThumb={renderThumb}
+                renderRail={renderRail}
+                renderRailSelected={renderRailSelected}
+                onValueChanged={handleHeightValueChanged}
               />
             </StyledView>
           </Card>
