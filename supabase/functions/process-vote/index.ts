@@ -1,3 +1,18 @@
+/**
+ * INVESTIGATION FINDINGS (Voting Edge Cases):
+ * 1. Double voting: Upsert allows re-voting, but karma was double-counted (+1 on every hit).
+ *    Weighted tallies worked due to recount logic but will be changed to incremental.
+ *    Streaks only updated for one friend even if both were friends.
+ * 2. Both friends in proposal: hasCompletedGrid correctly marks both as helped in UI
+ *    because they share the proposal ID. Streak logic only updated one friend in backend.
+ * 3. Friend in 3-vote gate: Correctly marked helped after completion.
+ * 4. Two friends in gate: Correctly marked both helped.
+ * 5. Vote in gate, then friend area: Correctly excluded from "Help" list via alreadyVotedIds.
+ * 6. Vote change tallies: Handled by recount, now implementing subtract-old/add-new.
+ * 7. Pool assignments: has_voted set to true correctly; re-votes are harmless.
+ * 8. Other: markFriendAsHelped in frontend is redundant (server handles streaks).
+ */
+
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { createAdminClient } from '../_shared/supabase-client.ts';
@@ -88,6 +103,16 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createAdminClient();
 
+    // 0. Check if a vote already exists for this proposal/voter pair
+    const { data: existingVote } = await supabase
+      .from('proposal_votes')
+      .select('vote_type, is_friend_vote, voter_user_id')
+      .eq('proposal_id', proposal_id)
+      .eq('voter_user_id', voterId)
+      .maybeSingle();
+
+    const isNewVote = !existingVote;
+
     // 1. Fetch the proposal
     const { data: proposal, error: propErr } = await supabase
       .from('proposals')
@@ -133,6 +158,8 @@ Deno.serve(async (req: Request) => {
         voter_user_id: voterId,
         vote_type,
         is_friend_vote: isFriendVote,
+        // Note: friend_of records only one friend even if both are friends.
+        // This is acceptable as streaks and grid status are handled independently.
         friend_of: friendOf,
         recommend_to_id: recommend_to_id || null,
         created_at: new Date().toISOString(),
@@ -143,71 +170,72 @@ Deno.serve(async (req: Request) => {
       return Response.json({ error: 'Failed to record vote' }, { status: 500, headers: corsHeaders });
     }
 
-    // 5. Update voter karma & stats
-    await supabase.rpc('increment_karma_for_vote', { p_user_id: voterId });
-
-    // 6. Recount all votes for this proposal (source of truth)
-    // Now including weighted totals based on voter's badge_tier
-    const { data: allVotes } = await supabase
-      .from('proposal_votes')
-      .select('vote_type, is_friend_vote, voter_user_id')
-      .eq('proposal_id', proposal_id);
-
-    // Fetch voter tiers for weighting
-    const voterIds = (allVotes || []).map(v => v.voter_user_id);
-    const { data: karmaScores } = await supabase
-      .from('karma_scores')
-      .select('user_id, badge_tier')
-      .in('user_id', voterIds);
-
-    const tierMap: Record<string, string> = {};
-    for (const ks of (karmaScores || [])) {
-      tierMap[ks.user_id] = ks.badge_tier;
+    // 5. Update voter karma (only for new votes)
+    if (isNewVote) {
+      await supabase.rpc('increment_karma_for_vote', { p_user_id: voterId });
     }
 
-    let poolYes = 0, poolNo = 0, friendYes = 0, friendNo = 0;
-    let weightedYes = 0, weightedNo = 0;
+    // 6. Incremental tally logic
+    // We update proposal tallies incrementally for efficiency.
+    // Recounting all votes is technically safer but incremental is requested.
+    const { data: voterKarma } = await supabase
+      .from('karma_scores')
+      .select('badge_tier')
+      .eq('user_id', voterId)
+      .maybeSingle();
 
-    for (const v of (allVotes || [])) {
-      const tier = tierMap[v.voter_user_id] || 'new';
-      const weightMultiplier = KARMA_WEIGHTS[tier] || 1.0;
+    const voterTier = voterKarma?.badge_tier || 'new';
+    const weightMultiplier = KARMA_WEIGHTS[voterTier] || 1.0;
 
-      if (v.is_friend_vote) {
-        const friendWeight = weightMultiplier * FRIEND_VOTE_WEIGHT;
-        if (v.vote_type === 'YES') {
-          friendYes++;
-          weightedYes += friendWeight;
-        } else if (v.vote_type === 'NO') {
-          friendNo++;
-          weightedNo += friendWeight;
-        }
+    let poolYes = proposal.pool_yes_votes || 0;
+    let poolNo = proposal.pool_no_votes || 0;
+    let friendYes = proposal.friend_yes_votes || 0;
+    let friendNo = proposal.friend_no_votes || 0;
+    let weightedYes = proposal.weighted_yes || 0;
+    let weightedNo = proposal.weighted_no || 0;
+
+    // A. Subtract old vote weight if it was a different vote type
+    if (existingVote && existingVote.vote_type !== vote_type) {
+      // Note: We use current weight for subtraction; if tier changed since old vote,
+      // tallies may deviate from absolute source of truth until a full recount.
+      if (existingVote.is_friend_vote) {
+        const oldFriendWeight = weightMultiplier * FRIEND_VOTE_WEIGHT;
+        if (existingVote.vote_type === 'YES') { friendYes--; weightedYes -= oldFriendWeight; }
+        else if (existingVote.vote_type === 'NO') { friendNo--; weightedNo -= oldFriendWeight; }
       } else {
-        if (v.vote_type === 'YES') {
-          poolYes++;
-          weightedYes += weightMultiplier;
-        } else if (v.vote_type === 'NO') {
-          poolNo++;
-          weightedNo += weightMultiplier;
-        }
+        if (existingVote.vote_type === 'YES') { poolYes--; weightedYes -= weightMultiplier; }
+        else if (existingVote.vote_type === 'NO') { poolNo--; weightedNo -= weightMultiplier; }
       }
     }
 
-    // 7. Update vote tallies & weighted totals on the proposal
-    const { error: tallyErr } = await supabase
-      .from('proposals')
-      .update({
-        pool_yes_votes: poolYes,
-        pool_no_votes: poolNo,
-        friend_yes_votes: friendYes,
-        friend_no_votes: friendNo,
-        weighted_yes: weightedYes,
-        weighted_no: weightedNo,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', proposal_id);
+    // B. Add new vote weight if it's new or the type changed
+    if (isNewVote || (existingVote && existingVote.vote_type !== vote_type)) {
+      if (isFriendVote) {
+        const friendWeight = weightMultiplier * FRIEND_VOTE_WEIGHT;
+        if (vote_type === 'YES') { friendYes++; weightedYes += friendWeight; }
+        else if (vote_type === 'NO') { friendNo++; weightedNo += friendWeight; }
+      } else {
+        if (vote_type === 'YES') { poolYes++; weightedYes += weightMultiplier; }
+        else if (vote_type === 'NO') { poolNo++; weightedNo += weightMultiplier; }
+      }
 
-    if (tallyErr) {
-      console.error('Tally update error:', tallyErr);
+      // 7. Update vote tallies & weighted totals on the proposal
+      const { error: tallyErr } = await supabase
+        .from('proposals')
+        .update({
+          pool_yes_votes: poolYes,
+          pool_no_votes: poolNo,
+          friend_yes_votes: friendYes,
+          friend_no_votes: friendNo,
+          weighted_yes: weightedYes,
+          weighted_no: weightedNo,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', proposal_id);
+
+      if (tallyErr) {
+        console.error('Tally update error:', tallyErr);
+      }
     }
 
     // 8. Inline lifecycle evaluation
@@ -316,11 +344,13 @@ Deno.serve(async (req: Request) => {
       .eq('proposal_id', proposal_id)
       .eq('voter_id', voterId);
 
-    // 10. If friend vote, update friend streak
+    // 10. If friend vote, update friend streak (handles both if both are friends)
     if (isFriendVote) {
-      const friendId = friendOf; // This is the ID of the friend the voter is connected to
-      if (friendId) {
-        await supabase.rpc('update_friend_streak', { p_user_id: voterId, p_friend_id: friendId });
+      if (isFriendOfA) {
+        await supabase.rpc('update_friend_streak', { p_user_id: voterId, p_friend_id: proposal.user_a_id });
+      }
+      if (isFriendOfB) {
+        await supabase.rpc('update_friend_streak', { p_user_id: voterId, p_friend_id: proposal.user_b_id });
       }
     }
 

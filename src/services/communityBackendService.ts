@@ -784,9 +784,9 @@ class CommunityBackendService {
   /**
    * Mark a friend as helped (i.e., the current user voted on their proposal).
    */
-  async markFriendAsHelped(friendId: string): Promise<void> {
-    const userId = await getCurrentUserId();
-    await supabase.rpc('update_friend_streak', { p_user_id: userId, p_friend_id: friendId });
+  async markFriendAsHelped(_friendId: string): Promise<void> {
+    // No-op: streak updates are handled server-side in process-vote edge function.
+    // hasCompletedGrid uses proposal_votes directly, not this function.
   }
 
   // ========================================================================
