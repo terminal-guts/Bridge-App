@@ -30,7 +30,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
 
       <StyledScrollView className="flex-1 px-4 py-4">
         <Body className="text-neutral-500 text-sm mb-4">
-          Last Updated: November 14, 2024
+          Last Updated: March 4, 2026
         </Body>
 
         <H2 className="mb-3">1. Information We Collect</H2>
@@ -39,7 +39,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
           {'\n'}• Profile information (name, age, photos, occupation)
           {'\n'}• Preferences and interests
           {'\n'}• Deep question responses
-          {'\n'}• Survey responses and matchmaking activity
+          {'\n'}• Proposal voting activity and community participation
           {'\n'}• Messages between matched users
           {'\n'}• Location data (with your permission)
           {'\n'}• Device information and usage data
@@ -50,8 +50,8 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
           We use the information we collect to:
           {'\n'}• Provide and improve our matchmaking services
           {'\n'}• Generate compatible matches using our algorithm
-          {'\n'}• Facilitate community-driven matchmaking through surveys
-          {'\n'}• Process payments for successful matches
+          {'\n'}• Facilitate community-driven matchmaking through proposal voting
+          {'\n'}• Improve proposal generation and matching quality
           {'\n'}• Communicate with you about your account and matches
           {'\n'}• Ensure safety and prevent fraud
           {'\n'}• Comply with legal obligations
@@ -71,9 +71,9 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
         <H2 className="mb-3">4. Community Matchmaking</H2>
         <Body className="text-neutral-700 mb-6 leading-6">
           Bridge's unique community-driven approach means:
-          {'\n'}• Your profile may appear in daily surveys for other users
+          {'\n'}• Your profile may appear as a proposal for other users to vote on
           {'\n'}• Other users help determine your compatibility matches
-          {'\n'}• Your survey responses contribute to matching others
+          {'\n'}• Your votes on proposals contribute to matching others
           {'\n'}• Partial profiles are shown during the match reveal process
         </Body>
 
@@ -108,14 +108,13 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
           Your information may be transferred to and processed in countries other than your country of residence. These countries may have data protection laws different from your country. We take appropriate safeguards to ensure your information remains protected.
         </Body>
 
-        <H2 className="mb-3">10. Cookies and Tracking</H2>
+        <H2 className="mb-3">10. Analytics and Tracking</H2>
         <Body className="text-neutral-700 mb-6 leading-6">
-          We use cookies and similar tracking technologies to:
-          {'\n'}• Remember your preferences
-          {'\n'}• Understand usage patterns
-          {'\n'}• Improve app performance
-          {'\n'}• Provide personalized experiences
-          {'\n\n'}You can control cookie preferences through your device settings.
+          Bridge is a mobile app and does not use browser cookies. We may use mobile analytics tools to:
+          {'\n'}• Understand how features are used
+          {'\n'}• Improve app performance and stability
+          {'\n'}• Diagnose crashes and technical issues
+          {'\n\n'}You can limit analytics data collection through your device's privacy settings (iOS: Settings → Privacy → Tracking).
         </Body>
 
         <H2 className="mb-3">11. Third-Party Services</H2>
@@ -138,7 +137,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
           If you have questions about this Privacy Policy or our data practices, please contact us at:
           {'\n\n'}Bridge Privacy Team
           {'\n'}Email: bridge.date.app@gmail.com
-          {'\n'}Address: New York, NY 10001
+          {'\n'}Address: Houston, TX
           {'\n\n'}For data protection inquiries or to exercise your rights, email: bridge.date.app@gmail.com
         </Body>
       </StyledScrollView>

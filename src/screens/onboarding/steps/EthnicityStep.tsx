@@ -108,7 +108,7 @@ export const EthnicityStep: React.FC<EthnicityStepProps> = ({
       <StyledView className="mt-8">
         <H1 className="mb-3">Ethnicity</H1>
         <Body className="text-neutral-600 mb-6">
-          Select all that apply.
+          What's your ethnicity? Select all that apply.
         </Body>
 
         <StyledView>

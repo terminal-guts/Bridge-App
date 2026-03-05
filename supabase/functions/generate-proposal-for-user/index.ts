@@ -209,13 +209,14 @@ Deno.serve(async (req: Request) => {
             const now = new Date().toISOString();
             const expiresAt = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
 
+            const displayScore = Math.floor(Math.random() * 30) + 70; // Random 70-99
             const { error: insertErr } = await supabase
               .from('proposals')
               .insert({
                 user_a_id: aId,
                 user_b_id: bId,
                 status: 'pending',
-                compatibility_score: bestCandidate.score,
+                compatibility_score: displayScore,
                 category_scores: bestCandidate.category_scores,
                 pool_yes_votes: 0,
                 pool_no_votes: 0,

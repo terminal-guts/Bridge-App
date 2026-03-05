@@ -257,7 +257,7 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
   },
 
   // REMOVED FROM ONBOARDING: Deep Questions (still available in profile edit)
-  // REMOVED FROM ONBOARDING: Non-Negotiables (still available in profile edit)
+  // Non-Negotiables: SCRAPPED from product entirely
 
   // Step 22: Preferences (Commitment Level)
   preferences: {

@@ -1,8 +1,12 @@
 /**
  * Deep Questions for Profile
  *
- * 21 questions users can answer to display on their profile and inform matching.
+ * 15 curated questions — a mix of lighthearted, relationship, and reflective.
  * Users select any 3 to display publicly, but can answer more to improve match quality.
+ *
+ * IDs are stable (existing answers in DB reference them). Removed questions (3, 4, 7, 8,
+ * 11, 17, 18, 19, 20) are simply absent — old answers with those IDs still render via
+ * getQuestionById fallback but won't appear in the selection UI.
  */
 
 export interface DeepQuestion {
@@ -11,6 +15,7 @@ export interface DeepQuestion {
 }
 
 export const DEEP_QUESTIONS: DeepQuestion[] = [
+  // ── Tier 1: Lighthearted ──────────────────────────────────────────────────
   {
     id: 1,
     question: "Given the choice of anyone alive or dead, whom would you want as a dinner guest?",
@@ -18,14 +23,6 @@ export const DEEP_QUESTIONS: DeepQuestion[] = [
   {
     id: 2,
     question: "Would you like to be famous? Why?",
-  },
-  {
-    id: 3,
-    question: "Before making a telephone call, do you ever rehearse what you are going to say? Why?",
-  },
-  {
-    id: 4,
-    question: "When did you last sing to yourself? To someone else?",
   },
   {
     id: 5,
@@ -36,13 +33,10 @@ export const DEEP_QUESTIONS: DeepQuestion[] = [
     question: "Your house catches fire. What one item would you save?",
   },
   {
-    id: 7,
-    question: "What would constitute a perfect day for you?",
+    id: 22,
+    question: "What's the best trip or adventure you've ever been on?",
   },
-  {
-    id: 8,
-    question: "You are going to live until 90. Would you rather have the mind or body of your thirty year old self for the last 60 years of your life?",
-  },
+  // ── Tier 2: Relationship ──────────────────────────────────────────────────
   {
     id: 9,
     question: "When you're overwhelmed or stressed, what actually helps you feel supported?",
@@ -52,10 +46,6 @@ export const DEEP_QUESTIONS: DeepQuestion[] = [
     question: "What are three qualities you value most in your closest friendships?",
   },
   {
-    id: 11,
-    question: "What are you most grateful for?",
-  },
-  {
     id: 12,
     question: "What do you notice first when you're attracted to someone?",
   },
@@ -63,6 +53,11 @@ export const DEEP_QUESTIONS: DeepQuestion[] = [
     id: 13,
     question: "What's something you're actively trying to improve about yourself right now?",
   },
+  {
+    id: 23,
+    question: "What's something you could talk about for hours without getting bored?",
+  },
+  // ── Tier 3: Reflective ────────────────────────────────────────────────────
   {
     id: 14,
     question: "Is there something you've dreamed of doing for a long time? Why haven't you done it?",
@@ -76,28 +71,16 @@ export const DEEP_QUESTIONS: DeepQuestion[] = [
     question: "If a crystal ball could tell you the truth about anything, what would you want to know?",
   },
   {
-    id: 17,
-    question: "What are three things you hope to have in common with your future partner?",
-  },
-  {
-    id: 18,
-    question: "What qualities do you find most attractive in a potential partner, and why?",
-  },
-  {
-    id: 19,
-    question: "What would be important for someone to know about you if they were going to become a close friend or partner?",
-  },
-  {
-    id: 20,
-    question: "Complete this sentence: \"I wish I had someone with whom I could share...\"",
-  },
-  {
     id: 21,
     question: "Share an embarrassing moment that taught you something about yourself.",
   },
+  {
+    id: 24,
+    question: "What's a belief or opinion you've changed your mind about recently?",
+  },
 ];
 
-export const TOTAL_QUESTIONS = 21;
+export const TOTAL_QUESTIONS = 15;
 export const MAX_DISPLAYED_QUESTIONS = 3;
 
 /**
