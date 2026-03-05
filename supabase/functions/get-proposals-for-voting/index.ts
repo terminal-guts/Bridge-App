@@ -102,16 +102,44 @@ Deno.serve(async (req: Request) => {
       profileUserIds.add(p.user_b_id);
     }
 
-    // 6. Fetch profiles for enrichment
+    // 6. Fetch profiles and preferences for enrichment
     let profilesMap: Record<string, any> = {};
     if (profileUserIds.size > 0) {
-      const { data: profiles } = await supabase
-        .from('user_profiles')
-        .select('user_id, first_name, age, gender, location, interests, values, bio, photos')
-        .in('user_id', [...profileUserIds]);
+      const profileIds = [...profileUserIds];
 
-      for (const p of (profiles || [])) {
-        profilesMap[p.user_id] = p;
+      const [profilesResult, preferencesResult] = await Promise.all([
+        supabase
+          .from('user_profiles')
+          .select('user_id, first_name, last_name, age, gender, pronouns, height, ethnicity, religion, political_leaning, location, interests, values, bio, photos, drinking_frequency, cannabis_frequency, tobacco_frequency, other_drugs_frequency, education_level, school, profile_completed')
+          .in('user_id', profileIds),
+        supabase
+          .from('user_preferences')
+          .select('user_id, age_min, age_max, preferred_height_min_inches, preferred_height_max_inches, partner_drinking, partner_cannabis, partner_tobacco, partner_other_drugs, preferred_ethnicities')
+          .in('user_id', profileIds)
+      ]);
+
+      const preferencesMap: Record<string, any> = {};
+      for (const pref of (preferencesResult.data || [])) {
+        preferencesMap[pref.user_id] = pref;
+      }
+
+      for (const p of (profilesResult.data || [])) {
+        const prefs = preferencesMap[p.user_id] || {};
+        profilesMap[p.user_id] = {
+          ...p,
+          // Merge preference fields into the profile row so mapProfileRow can pick them up
+          age_min: prefs.age_min,
+          age_max: prefs.age_max,
+          height_min: prefs.preferred_height_min_inches,
+          height_max: prefs.preferred_height_max_inches,
+          partner_lifestyle_preferences: {
+            drinking: prefs.partner_drinking,
+            cannabis: prefs.partner_cannabis,
+            tobacco: prefs.partner_tobacco,
+            otherDrugs: prefs.partner_other_drugs,
+          },
+          preferred_ethnicities: prefs.preferred_ethnicities,
+        };
       }
     }
 
