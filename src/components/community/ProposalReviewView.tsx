@@ -152,7 +152,7 @@ const SectionCard = React.memo(function SectionCard({
       marginBottom: 16,
     }}>
       {/* Section header */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+      <View style={{ alignItems: 'flex-start', marginBottom: 12, gap: 4 }}>
         <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 16, color: BLUE }}>{title}</Text>
         <MatchBadge matched={matched} total={total} />
       </View>
@@ -229,17 +229,24 @@ function EthnicityComparisonRow({ result }: { result: MatchResult }) {
   );
 }
 
-// ─── Helper: tag cloud section (Left label + tags, Right label + tags) ──────────
-function TagCloudSection({ leftTags, rightTags }: { leftTags: string[]; rightTags: string[] }) {
+// ─── Helper: tag cloud section (Names + tags in two columns) ──────────
+function TagCloudSection({ leftTags, rightTags, leftName, rightName }: { leftTags: string[]; rightTags: string[]; leftName: string; rightName: string }) {
   return (
-    <View style={{ gap: 8 }}>
-      <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#010101', opacity: 0.6 }}>Left</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-        {leftTags.map((t) => <TagPill key={t} label={t} />)}
+    <View style={{ flexDirection: 'row', gap: 12 }}>
+      {/* Left Column */}
+      <View style={{ flex: 1, gap: 8 }}>
+        <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#010101', opacity: 0.6 }}>{leftName}</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+          {leftTags.map((t) => <TagPill key={t} label={t} />)}
+        </View>
       </View>
-      <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#010101', opacity: 0.6 }}>Right</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-        {rightTags.map((t) => <TagPill key={t} label={t} />)}
+
+      {/* Right Column */}
+      <View style={{ flex: 1, gap: 8 }}>
+        <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#010101', opacity: 0.6 }}>{rightName}</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+          {rightTags.map((t) => <TagPill key={t} label={t} />)}
+        </View>
       </View>
     </View>
   );
@@ -815,6 +822,8 @@ export function ProposalReviewView({
             <TagCloudSection
               leftTags={userA.values || []}
               rightTags={userB.values || []}
+              leftName={userA.firstName}
+              rightName={userB.firstName}
             />
           </SectionCard>
         )}
@@ -829,6 +838,8 @@ export function ProposalReviewView({
             <TagCloudSection
               leftTags={userA.interests || []}
               rightTags={userB.interests || []}
+              leftName={userA.firstName}
+              rightName={userB.firstName}
             />
           </SectionCard>
         )}
