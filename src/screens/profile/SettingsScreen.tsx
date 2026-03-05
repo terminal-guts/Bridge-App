@@ -7,6 +7,7 @@ import { RootStackParamList } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import { signOut } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
+import { resetGuide } from '../../services/guideService';
 import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('SettingsScreen');
@@ -23,6 +24,7 @@ const StyledSwitch = styled(Switch);
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [tutorialEnabled, setTutorialEnabled] = useState(false);
 
   useEffect(() => {
     loadCurrentUser();
@@ -155,6 +157,28 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               title="Privacy Policy"
               onPress={() => navigation.navigate('PrivacyPolicy')}
             />
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="school-outline" size={20} color="#94A3B8" />
+                </View>
+                <View>
+                  <Body style={{ fontWeight: '600', color: '#1E293B' }}>Tutorial</Body>
+                  <Body style={{ fontSize: 12, color: '#94A3B8' }}>Replay the app walkthrough</Body>
+                </View>
+              </View>
+              <Switch
+                value={tutorialEnabled}
+                onValueChange={async (value) => {
+                  setTutorialEnabled(value);
+                  if (value) {
+                    await resetGuide('beginner_tour' as any);
+                  }
+                }}
+                trackColor={{ false: '#E2E8F0', true: '#437FFF' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
           </Card>
 
           {/* Danger Zone */}

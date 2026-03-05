@@ -78,9 +78,9 @@ function EndedMatchPopupContent({ event }: { event: MatchEndedEvent }) {
             body: "That's totally okay — trust your instincts. Keep at it, the right fit is worth waiting for. Every pass brings you closer to someone great.",
         },
         they_rejected: {
-            icon: '💔',
-            headline: "They passed",
-            body: "Not every connection clicks, and that's okay. Your community is still working to find your person.",
+            icon: '💙',
+            headline: "It didn't work out this time",
+            body: "They decided to go a different direction. Your friends are still out there finding the right match for you.",
         },
         match_ended: {
             icon: '🌱',
@@ -236,6 +236,17 @@ export function MatchesScreen() {
             if (!isMountedRef.current) return;
             setActiveMatch(data.activeMatch);
             setPendingProposals(data.pendingProposals || []);
+
+            // Check for ended-match event after data load (detection runs inside getFriendsAreaData)
+            const event = communityService.getEndedMatchEvent();
+            if (event) {
+                const seen = await AsyncStorage.getItem(`match_popup_seen_${event.eventId}`);
+                if (!seen) {
+                    setPopupEvent(event);
+                } else {
+                    communityService.clearEndedMatchEvent();
+                }
+            }
         } catch (error) {
             console.error('Failed to load match data', error);
         } finally {
@@ -266,23 +277,12 @@ export function MatchesScreen() {
         }
     }, []);
 
-    // Check for a pending ended-match event each time the tab is focused
+    // Reload match data + check for ended-match events on each tab focus
     useFocusEffect(
         useCallback(() => {
-            // Reload match data on every focus (e.g. returning from decision screen)
             loadMatches();
-            // Refresh profile on each tab focus so the completion banner stays current
             getUserProfile().then(result => {
                 if (isMountedRef.current && result.ok && result.data) setProfile(result.data);
-            });
-            const event = communityService.getEndedMatchEvent();
-            if (!event) return;
-            AsyncStorage.getItem(`match_popup_seen_${event.eventId}`).then(seen => {
-                if (!seen) {
-                    setPopupEvent(event);
-                } else {
-                    communityService.clearEndedMatchEvent();
-                }
             });
         }, []),
     );
@@ -380,6 +380,23 @@ export function MatchesScreen() {
                         <Text style={styles.ctaText}>Help Others Find a Match</Text>
                     </TouchableOpacity>
                 </ScrollView>
+
+                {/* Ended Match Popup — must render here so it persists over empty state */}
+                <Modal
+                    visible={!!popupEvent}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={handlePopupContinue}
+                >
+                    <View style={popupStyles.overlay}>
+                        <View style={popupStyles.card}>
+                            {popupEvent && <EndedMatchPopupContent event={popupEvent} />}
+                            <TouchableOpacity style={popupStyles.continueBtn} onPress={handlePopupContinue} activeOpacity={0.85}>
+                                <Text style={popupStyles.continueBtnText}>Continue</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
             </SafeAreaView>
         );
     }
@@ -626,7 +643,7 @@ export function MatchesScreen() {
                     <View style={styles.timerInfoCard}>
                         <Text style={styles.timerInfoTitle}>Time to Decide</Text>
                         <Text style={styles.timerInfoBody}>
-                            This is how long you and your match have to accept or pass. If the timer runs out before both of you decide, the match expires. Don't wait too long!
+                            Accept or pass before time runs out — otherwise the match expires.
                         </Text>
                         <TouchableOpacity style={styles.timerInfoBtn} onPress={() => setTimerInfoVisible(false)} activeOpacity={0.85}>
                             <Text style={styles.timerInfoBtnText}>Got it</Text>

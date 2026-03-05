@@ -156,8 +156,6 @@ const calculateStrength = (profile: UserProfile): {
     displayPercentage: breakdown.sections.deepQuestions.percentage,
   });
 
-  logger.info('DASHBOARD using centralized calculation:', breakdown.overall + '%');
-
   return { overall: breakdown.overall, sections };
 };
 

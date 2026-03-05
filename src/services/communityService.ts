@@ -1117,16 +1117,13 @@ class CommunityService {
    * The `recommendToId` parameter is used when a user recommends one of the
    * candidates to a specific friend.
    */
-  async submitProposalVote(proposalId: string, vote: 'yes' | 'no' | 'skip', recommendToId?: string): Promise<void> {
+  async submitProposalVote(proposalId: string, vote: 'yes' | 'no' | 'skip'): Promise<void> {
     await this.delay(300);
 
-    // Mock logic: recommendations always use a weight of 1.0 for simplicity in mock
-    const karmaWeight = recommendToId !== undefined
-      ? 1.0
-      : getKarmaWeight(mockState.currentKarmaAssists);
+    const karmaWeight = getKarmaWeight(mockState.currentKarmaAssists);
 
     logger.info('[Mock] Voting on proposal:', proposalId, '-', vote,
-      `(recommendToId: ${recommendToId || 'none'}, assists: ${mockState.currentKarmaAssists})`);
+      `(assists: ${mockState.currentKarmaAssists})`);
 
     // Count all explicit votes (yes, no, skip/not-sure) toward task progress.
     // 'skip' corresponds to "Not Sure" — a deliberate vote choice that should count.
@@ -1156,6 +1153,11 @@ class CommunityService {
 
     // Check if daily tasks are now complete
     this.checkDailyTasksComplete();
+  }
+
+  async submitRecommendation(recommendedPersonId: string, recommendedToFriendId: string, sourceProposalId?: string): Promise<void> {
+    await this.delay(200);
+    logger.info('[Mock] Friend recommendation:', { recommendedPersonId, recommendedToFriendId, sourceProposalId });
   }
 
   /**

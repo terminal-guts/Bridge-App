@@ -152,7 +152,7 @@ const SectionCard = React.memo(function SectionCard({
       marginBottom: 16,
     }}>
       {/* Section header */}
-      <View style={{ alignItems: 'flex-start', marginBottom: 12, gap: 4 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 16, color: BLUE }}>{title}</Text>
         <MatchBadge matched={matched} total={total} />
       </View>
@@ -202,8 +202,7 @@ function TagPill({ label }: { label: string }) {
       borderRadius: 40,
       paddingHorizontal: 10,
       paddingVertical: 6,
-      marginRight: 8,
-      marginBottom: 8,
+      alignSelf: 'flex-start',
     }}>
       <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.85 }}>{label}</Text>
     </View>
@@ -229,24 +228,21 @@ function EthnicityComparisonRow({ result }: { result: MatchResult }) {
   );
 }
 
-// ─── Helper: tag cloud section (Names + tags in two columns) ──────────
-function TagCloudSection({ leftTags, rightTags, leftName, rightName }: { leftTags: string[]; rightTags: string[]; leftName: string; rightName: string }) {
+// ─── Helper: tag cloud section (two columns with vertical stacking + divider) ──
+function TagCloudSection({ leftTags, rightTags }: { leftTags: string[]; rightTags: string[] }) {
   return (
-    <View style={{ flexDirection: 'row', gap: 12 }}>
+    <View style={{ flexDirection: 'row', gap: 0 }}>
       {/* Left Column */}
-      <View style={{ flex: 1, gap: 8 }}>
-        <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#010101', opacity: 0.6 }}>{leftName}</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-          {leftTags.map((t) => <TagPill key={t} label={t} />)}
-        </View>
+      <View style={{ flex: 1, gap: 6 }}>
+        {leftTags.map((t) => <TagPill key={t} label={t} />)}
       </View>
 
+      {/* Divider */}
+      <View style={{ width: 1, backgroundColor: '#E2E8F0', marginHorizontal: 10 }} />
+
       {/* Right Column */}
-      <View style={{ flex: 1, gap: 8 }}>
-        <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#010101', opacity: 0.6 }}>{rightName}</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-          {rightTags.map((t) => <TagPill key={t} label={t} />)}
-        </View>
+      <View style={{ flex: 1, gap: 6 }}>
+        {rightTags.map((t) => <TagPill key={t} label={t} />)}
       </View>
     </View>
   );
@@ -422,48 +418,22 @@ export function ProposalReviewView({
     if (current) {
       const recommendedPersonId = selectedPersonSide === 'userA' ? current.userA.id : current.userB.id;
 
-      // Derive karma weight from the selected friend's assist count.
-      // Higher-karma friends have stronger rec weight in the matching algorithm.
-      // Tiers: new=1.0, solid=1.15, trusted=1.35, elite=1.60
-      const selectedFriend = friendsList.find((f: any) => f.friendId === selectedFriendId);
-      const friendAssists: number =
-        selectedFriend?.assistsCount ?? selectedFriend?.karmaScore?.totalAssists ?? 0;
-      let friendKarmaWeight = 1.0;
-      if (friendAssists >= 25) friendKarmaWeight = 1.60;
-      else if (friendAssists >= 10) friendKarmaWeight = 1.35;
-      else if (friendAssists >= 3) friendKarmaWeight = 1.15;
-
       logger.info('[ProposalReviewView] Friend recommendation submitted:', {
         proposalId: current.id,
         recommendedPersonId,
         toFriendId: selectedFriendId,
-        friendAssists,
-        friendKarmaWeight,
       });
 
-      // Submit a 'yes' vote with the friend's ID as recommendToId.
-      communityService.submitProposalVote(current.id, 'yes', selectedFriendId).catch((err: any) => {
-        logger.error('[ProposalReviewView] Friend rec vote submission error:', err);
+      // Submit recommendation (does NOT count as a vote on this proposal)
+      communityService.submitRecommendation(recommendedPersonId, selectedFriendId, current.id).catch((err: any) => {
+        logger.error('[ProposalReviewView] Friend recommendation error:', err);
       });
-
-      // Optimistically update local vote counts so compatScore recomputes immediately
-      setProposals(prev => prev.map((p, i) => {
-        if (i !== currentIndex) return p;
-        return {
-          ...p,
-          yesVotes: (p.yesVotes ?? 0) + 1,
-          totalVotes: (p.totalVotes ?? 0) + 1,
-        };
-      }));
     }
     setShowForFriendModal(false);
-    setVoting(true);
     // Haptics for recommendation confirmation
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
-    // Advance without double-counting — the karma-weighted 'yes' above already counts
-    // toward the voting gate (votesSubmitted++), so we advance UI-only here.
-    advanceProposal();
-  }, [selectedFriendId, friendsList, proposals, currentIndex, selectedPersonSide, advanceProposal]);
+    // Do NOT advance the proposal — user still needs to vote yes/no on this one
+  }, [selectedFriendId, proposals, currentIndex, selectedPersonSide]);
 
   // ── Match computations (memoized) ────────────────────────────────────────
   const matchData = useMemo(() => {
@@ -483,25 +453,23 @@ export function ProposalReviewView({
     const otherSubstancesResult = matchOtherSubstances(userA, userB);
     const valuesResult = matchValues(userA, userB);
     const interestsResult = matchInterests(userA, userB);
-    const basicResults = [heightResult];
+    const aboutResults = [heightResult, ethnicityResult];
     const beliefsResults = [politicsResult, religionResult];
     const lifestyleResults = [drinkResult, weedResult, tobaccoResult, otherSubstancesResult];
     const allResults = [heightResult, ethnicityResult, politicsResult, religionResult, drinkResult, weedResult, tobaccoResult, otherSubstancesResult];
     const totalKnown = countKnown(allResults);
     const totalMatch = countMatch(allResults);
 
-    // Use real compatibility score from the proposal, with hash-based fallback for older rows
-    const compatScore = proposal.compatibilityScore
-      ? Math.round(proposal.compatibilityScore)
-      : 70 + (proposal.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 30);
+    // Compatibility score: display-only value, seeded by proposal ID for render stability.
+    // This is intentionally decorative and has no connection to the matchmaking algorithm.
+    const idHash = proposal.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const compatScore = 70 + (idHash % 30);
 
     const valuesMatchCount = (valuesResult as any).sharedValues?.length || 0;
-    const valuesUnion = new Set([...(userA.values || []), ...(userB.values || [])]);
-    const valuesTotal = Math.max(valuesUnion.size, 1);
+    const valuesTotal = Math.max((userA.values || []).length, (userB.values || []).length, 1);
 
     const interestsMatchCount = (interestsResult as any).sharedInterests?.length || 0;
-    const interestsUnion = new Set([...(userA.interests || []), ...(userB.interests || [])]);
-    const interestsTotal = Math.max(interestsUnion.size, 1);
+    const interestsTotal = Math.max((userA.interests || []).length, (userB.interests || []).length, 1);
 
     // x/4 tracker: 4 core compatibility dimensions — age, religion, politics, lifestyle(drinking)
     const coreResults = [
@@ -521,7 +489,7 @@ export function ProposalReviewView({
       proposal, userA, userB, photoA, photoB,
       heightResult, ethnicityResult, politicsResult, religionResult,
       drinkResult, weedResult, tobaccoResult, otherSubstancesResult,
-      basicResults, beliefsResults, lifestyleResults,
+      aboutResults, beliefsResults, lifestyleResults,
       compatScore, valuesMatchCount, valuesTotal, interestsMatchCount, interestsTotal,
       userATrackerCount, userBTrackerCount,
     };
@@ -572,7 +540,7 @@ export function ProposalReviewView({
     proposal, userA, userB, photoA, photoB,
     heightResult, ethnicityResult, politicsResult, religionResult,
     drinkResult, weedResult, tobaccoResult, otherSubstancesResult,
-    basicResults, beliefsResults, lifestyleResults,
+    aboutResults, beliefsResults, lifestyleResults,
     compatScore, valuesMatchCount, valuesTotal, interestsMatchCount, interestsTotal,
     userATrackerCount, userBTrackerCount,
   } = matchData;
@@ -744,27 +712,19 @@ export function ProposalReviewView({
           </Text>
         </View>
 
-        {/* ── Basic ──────────────────────────────────────────────────── */}
+        {/* ── About (Height + Ethnicity) ─────────────────────────────── */}
         <SectionCard
-          title="Basic"
-          matched={countMatch(basicResults.filter(r => r.status !== 'unknown'))}
-          total={countKnown(basicResults)}
+          title="About"
+          matched={countMatch(aboutResults.filter(r => r.status !== 'unknown'))}
+          total={countKnown(aboutResults)}
         >
           {heightResult.status !== 'unknown' && (
             <ComparisonValueRow result={heightResult} label="Height" />
           )}
-        </SectionCard>
-
-        {/* ── Ethnicity ──────────────────────────────────────────────── */}
-        {ethnicityResult.status !== 'unknown' && (
-          <SectionCard
-            title="Ethnicity"
-            matched={ethnicityResult.status === 'both_happy' ? 1 : 0}
-            total={1}
-          >
+          {ethnicityResult.status !== 'unknown' && (
             <EthnicityComparisonRow result={ethnicityResult} />
-          </SectionCard>
-        )}
+          )}
+        </SectionCard>
 
         {/* ── Beliefs ────────────────────────────────────────────────── */}
         <SectionCard
@@ -822,8 +782,6 @@ export function ProposalReviewView({
             <TagCloudSection
               leftTags={userA.values || []}
               rightTags={userB.values || []}
-              leftName={userA.firstName}
-              rightName={userB.firstName}
             />
           </SectionCard>
         )}
@@ -838,8 +796,6 @@ export function ProposalReviewView({
             <TagCloudSection
               leftTags={userA.interests || []}
               rightTags={userB.interests || []}
-              leftName={userA.firstName}
-              rightName={userB.firstName}
             />
           </SectionCard>
         )}

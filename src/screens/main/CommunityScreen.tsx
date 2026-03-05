@@ -111,7 +111,7 @@ function MatchResetTimer() {
           <View style={timerInfoStyles.card}>
             <Text style={timerInfoStyles.title}>Daily Reset</Text>
             <Text style={timerInfoStyles.body}>
-              New proposals drop every day at 7 PM. Come back to vote for your friends and help them find their match!
+              New proposals drop every day at 7 PM. Come back to vote on new matches and maybe get a match yourself!
             </Text>
             <TouchableOpacity style={timerInfoStyles.btn} onPress={() => setInfoVisible(false)} activeOpacity={0.85}>
               <Text style={timerInfoStyles.btnText}>Got it</Text>
@@ -264,8 +264,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   useEffect(() => {
     initialize();
-    // Start the beginner tour if needed
-    startGuideIfNeeded(beginnerTourGuide);
 
     // Reload whenever the dev state toggle changes mock state
     return communityService.onStateChange(() => {
@@ -274,6 +272,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     });
   }, [initialize]);
   useFocusEffect(useCallback(() => {
+    // Check if beginner tour should play (first visit or re-enabled from Settings)
+    startGuideIfNeeded(beginnerTourGuide);
+
     if (!initializedRef.current) {
       initializedRef.current = true;
       return; // skip first focus (handled by the init useEffect)
@@ -285,7 +286,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     if (hasCompletedVoting) {
       loadFriendsData();
     }
-  }, [hasCompletedVoting, loadFriendsData]));
+  }, [hasCompletedVoting, loadFriendsData, startGuideIfNeeded]));
 
   const handleVotesComplete = useCallback(async () => {
     // Brief delay to allow the last vote to commit to the database

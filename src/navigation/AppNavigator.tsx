@@ -123,9 +123,8 @@ const CustomTabBar = ({ state, navigation }: any) => {
         };
 
         return (
-          <GuideTarget id={TAB_TARGET_IDS[index]} style={{ flex: 1 }}>
+          <GuideTarget key={route.key} id={TAB_TARGET_IDS[index]} style={{ flex: 1 }}>
             <TouchableOpacity
-              key={route.key}
               style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-start', paddingTop: iconPaddingTop }}
               onPress={onPress}
               activeOpacity={0.7}

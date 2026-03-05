@@ -770,14 +770,6 @@ export const calculateProfileStrengthBreakdown = (
   const maxTotal = 93; // 18 + 25 + 25 + 25
   const finalPercentage = Math.round((totalScore / maxTotal) * 100);
 
-  console.log('📊 Profile Strength Breakdown (MASTER):', {
-    aboutMe: `${aboutScore}/18 (${aboutMePercentage}%)`,
-    matchPreferences: `${preferencesScore}/25 (${matchPrefsCompletion.percentage}%)`,
-    photos: `${photosScore}/25 (${photosPercentage}%)`,
-    deepQuestions: `${questionsScore}/25 (${questionsPercentage}%)`,
-    total: `${totalScore}/93 (${finalPercentage}%)`,
-  });
-
   return {
     overall: finalPercentage,
     sections: {

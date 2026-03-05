@@ -800,9 +800,10 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
           </StyledView>
           <Body className="text-neutral-900 font-semibold text-sm" numberOfLines={1}>
             {(() => {
+              const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
               if (!preferredPolitics || preferredPolitics.length === 0) return '-';
-              if (preferredPolitics.length === 1) return preferredPolitics[0];
-              return `${preferredPolitics[0]} +${preferredPolitics.length - 1}`;
+              if (preferredPolitics.length === 1) return cap(preferredPolitics[0]);
+              return `${cap(preferredPolitics[0])} +${preferredPolitics.length - 1}`;
             })()}
           </Body>
         </StyledView>

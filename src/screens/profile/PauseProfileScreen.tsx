@@ -99,7 +99,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
       // Pausing profile
       Alert.alert(
         'Pause Profile',
-        'You won\'t receive new matches or surveys while paused. Your existing matches will remain available.',
+        'You\'ll be removed from the matchmaking pool while paused. You can still vote on others\' proposals, and your existing matches will remain available.',
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -189,7 +189,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
                   <Ionicons name="close" size={12} color="#EF4444" />
                 </StyledView>
                 <Body className="flex-1 text-neutral-700 text-sm">
-                  You won't appear in daily surveys
+                  You're removed from the matchmaking pool
                 </Body>
               </StyledView>
 
@@ -198,7 +198,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
                   <Ionicons name="close" size={12} color="#EF4444" />
                 </StyledView>
                 <Body className="flex-1 text-neutral-700 text-sm">
-                  You won't receive new matches
+                  You won't receive new proposals or matches
                 </Body>
               </StyledView>
 
@@ -207,16 +207,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
                   <Ionicons name="close" size={12} color="#EF4444" />
                 </StyledView>
                 <Body className="flex-1 text-neutral-700 text-sm">
-                  You won't participate in matchmaking surveys
-                </Body>
-              </StyledView>
-
-              <StyledView className="flex-row items-start">
-                <StyledView className="w-5 h-5 bg-error/20 rounded-full items-center justify-center mr-3 mt-0.5">
-                  <Ionicons name="close" size={12} color="#EF4444" />
-                </StyledView>
-                <Body className="flex-1 text-neutral-700 text-sm">
-                  Your profile is hidden from the community
+                  You won't appear as a candidate for others
                 </Body>
               </StyledView>
             </StyledView>
@@ -226,6 +217,15 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
           <Card className="mb-6">
             <H3 className="mb-4">What Stays Active</H3>
             <StyledView className="space-y-3">
+              <StyledView className="flex-row items-start">
+                <StyledView className="w-5 h-5 bg-success/20 rounded-full items-center justify-center mr-3 mt-0.5">
+                  <Ionicons name="checkmark" size={12} color="#12B981" />
+                </StyledView>
+                <Body className="flex-1 text-neutral-700 text-sm">
+                  You can still vote on others' proposals
+                </Body>
+              </StyledView>
+
               <StyledView className="flex-row items-start">
                 <StyledView className="w-5 h-5 bg-success/20 rounded-full items-center justify-center mr-3 mt-0.5">
                   <Ionicons name="checkmark" size={12} color="#12B981" />
