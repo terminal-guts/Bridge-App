@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { UsersTabIcon, HandshakeTabIcon, ProfileTabIcon } from '../components/icons/Icons';
 import { ActivityIndicator, View, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GuideTarget, useGuideContext } from '../components/guides';
 import { supabase } from '../lib/supabase';
 import { FEATURES } from '../config/features';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -73,10 +74,12 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 // ── Custom Tab Bar ───────────────────────────────────────────────────────────
 const TAB_ICONS = [UsersTabIcon, HandshakeTabIcon, ProfileTabIcon];
+const TAB_TARGET_IDS = ['tab-community', 'tab-matches', 'tab-profile'];
 
 const CustomTabBar = ({ state, navigation }: any) => {
   const { height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const { activeGuide, currentStep, nextStep } = useGuideContext();
   // Content height (above home indicator) scales with device
   const contentHeight = Math.round(screenHeight * 0.057);
   // Icon size and vertical offset are both proportional to content height
@@ -107,18 +110,26 @@ const CustomTabBar = ({ state, navigation }: any) => {
             target: route.key,
             canPreventDefault: true,
           });
+
           if (!focused && !event.defaultPrevented) {
             navigation.navigate(route.name);
+
+            // Advance guide if it's waiting for this tab press
+            const currentGuideStep = activeGuide?.steps[currentStep];
+            if (currentGuideStep?.interactive && currentGuideStep?.targetElement === TAB_TARGET_IDS[index]) {
+              nextStep();
+            }
           }
         };
 
         return (
-          <TouchableOpacity
-            key={route.key}
-            style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-start', paddingTop: iconPaddingTop }}
-            onPress={onPress}
-            activeOpacity={0.7}
-          >
+          <GuideTarget id={TAB_TARGET_IDS[index]} style={{ flex: 1 }}>
+            <TouchableOpacity
+              key={route.key}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-start', paddingTop: iconPaddingTop }}
+              onPress={onPress}
+              activeOpacity={0.7}
+            >
             {/* Indicator sits flush at the very top of the touchable area */}
             {focused && (
               <View style={{
@@ -131,8 +142,9 @@ const CustomTabBar = ({ state, navigation }: any) => {
                 borderBottomRightRadius: 2,
               }} />
             )}
-            <Icon size={iconSize} color={focused ? '#437FFF' : '#667085'} />
-          </TouchableOpacity>
+              <Icon size={iconSize} color={focused ? '#437FFF' : '#667085'} />
+            </TouchableOpacity>
+          </GuideTarget>
         );
       })}
     </View>

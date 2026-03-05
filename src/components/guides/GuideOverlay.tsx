@@ -6,7 +6,8 @@
  */
 
 import React, { useMemo } from 'react';
-import { Modal, View, TouchableWithoutFeedback, StatusBar, Dimensions } from 'react-native';
+import { View, TouchableWithoutFeedback, StatusBar, Dimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGuideContext } from '../../contexts/GuideContext';
 import { Spotlight } from './Spotlight';
 import { Tooltip } from './Tooltip';
@@ -28,6 +29,8 @@ export const GuideOverlay: React.FC = () => {
     previousStep,
     skipGuide,
   } = useGuideContext();
+
+  const insets = useSafeAreaInsets();
 
   /**
    * Get current step configuration
@@ -125,15 +128,28 @@ export const GuideOverlay: React.FC = () => {
   }
 
   return (
-    <Modal visible={isPlaying} transparent animationType="fade" statusBarTranslucent>
+    <View
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999,
+      }}
+      pointerEvents="box-none"
+    >
       <StatusBar barStyle="light-content" />
 
-      {/* Full-screen container - tap to skip */}
-      <TouchableWithoutFeedback onPress={nextStep}>
+      {/* Full-screen container - tap to skip (disabled for interactive steps) */}
+      <TouchableWithoutFeedback onPress={step.interactive ? undefined : nextStep}>
         <View style={{ flex: 1 }} pointerEvents="box-none">
           {/* Spotlight overlay (if highlighting an element) */}
           {spotlightDimensions && step.highlightType === 'spotlight' && (
-            <Spotlight dimensions={spotlightDimensions} shape={step.spotlightShape || 'rounded-rect'} />
+            <Spotlight
+              dimensions={spotlightDimensions}
+              shape={step.spotlightShape || 'rounded-rect'}
+            />
           )}
 
           {/* Dark overlay for modal-style steps (no highlight) */}
@@ -150,6 +166,21 @@ export const GuideOverlay: React.FC = () => {
               pointerEvents="none"
             />
           )}
+
+        {/* Hole to allow interactive clicks (transparent view with pointerEvents none) */}
+        {step.interactive && spotlightDimensions && (
+          <View
+            style={{
+              position: 'absolute',
+              top: spotlightDimensions.y,
+              left: spotlightDimensions.x,
+              width: spotlightDimensions.width,
+              height: spotlightDimensions.height,
+              backgroundColor: 'transparent',
+            }}
+            pointerEvents="none"
+          />
+        )}
 
         {/* Tooltip */}
         <Tooltip
@@ -176,6 +207,6 @@ export const GuideOverlay: React.FC = () => {
         />
         </View>
       </TouchableWithoutFeedback>
-    </Modal>
+    </View>
   );
 };

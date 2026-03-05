@@ -1,5 +1,6 @@
 import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { View } from 'react-native';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import Toast from 'react-native-toast-message';
 import { toastConfig } from './src/components/ToastConfig';
@@ -39,8 +40,10 @@ export default function App() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <GuideProvider>
-          <AppNavigator />
-          <GuideOverlay />
+          <View style={{ flex: 1 }}>
+            <AppNavigator />
+            <GuideOverlay />
+          </View>
           <Toast config={toastConfig} />
         </GuideProvider>
       </SafeAreaProvider>

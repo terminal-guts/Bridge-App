@@ -28,6 +28,7 @@ import { Image, ImageBackground } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
+import { GuideTarget } from '../guides';
 import { UserProfile } from '../../types';
 import { Proposal, CommunityTask } from '../../types/community';
 import { MatchResult, MatchStatus } from '../../utils/proposalMatching';
@@ -607,7 +608,11 @@ export function ProposalReviewView({
         }}>
           <View style={{ width: 40 }} />
           <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-            {progressDots}
+            <GuideTarget id="matching-gates">
+              <View style={{ flexDirection: 'row' }}>
+                {progressDots}
+              </View>
+            </GuideTarget>
           </View>
           <View style={{ width: 40 }} />
         </View>
