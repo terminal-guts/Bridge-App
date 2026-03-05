@@ -1,6 +1,8 @@
-import React from 'react';
-import { View, Text, Image, ImageBackground, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Image, ImageBackground } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { CheckmarkIcon, HourglassIcon, ChatIcon, HeartsIcon, ArrowRightIcon, QuestionIcon } from '../icons/Icons';
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -73,14 +75,16 @@ export const MatchCard: React.FC<MatchCardProps> = ({
     const topBadge = TOP_BADGE_CONFIG[status];
     const bottomPills = BOTTOM_PILLS[status];
     const isActiveMatch = status === 'active_match';
+    const optimizedImageUrl = useMemo(() => getOptimizedImageUrl(imageUrl, 400), [imageUrl]);
 
     return (
         <View style={styles.card}>
             <ImageBackground
-                source={{ uri: imageUrl }}
+                source={{ uri: optimizedImageUrl }}
                 style={StyleSheet.absoluteFillObject}
-                imageStyle={styles.cardImage}
-                resizeMode="cover"
+                contentFit="cover"
+                transition={200}
+                cachePolicy="disk"
             >
                 <LinearGradient
                     colors={[
@@ -127,13 +131,19 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                                 <HeartsIcon size={18} color="#00C8B3" />
                                 <Text style={styles.matchedByText}>Matched by :</Text>
                                 <View style={styles.avatarRow}>
-                                    {matchedByAvatars.slice(0, 3).map((url, i) => (
-                                        <Image
-                                            key={i}
-                                            source={{ uri: url }}
-                                            style={[styles.avatarCircle, { marginLeft: i === 0 ? 0 : -8 }]}
-                                        />
-                                    ))}
+                                    {matchedByAvatars.slice(0, 3).map((url, i) => {
+                                        const optimizedAvatarUrl = getOptimizedImageUrl(url, 26);
+                                        return (
+                                            <Image
+                                                key={i}
+                                                source={{ uri: optimizedAvatarUrl }}
+                                                style={[styles.avatarCircle, { marginLeft: i === 0 ? 0 : -8 }]}
+                                                contentFit="cover"
+                                                transition={200}
+                                                cachePolicy="disk"
+                                            />
+                                        );
+                                    })}
                                 </View>
                             </View>
                         )}

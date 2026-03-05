@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { View, Image, ImageStyle, ViewStyle } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View } from 'react-native';
+import { Image } from 'expo-image';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 import { createLogger } from '../../utils/secureLogger';
+import { getOptimizedImageUrl } from '../../utils/imageUtils';
 
 const logger = createLogger('Avatar');
 
@@ -25,6 +27,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   blurRadius,
 }) => {
   const [hasError, setHasError] = useState(false);
+  const optimizedUri = useMemo(() => getOptimizedImageUrl(uri, size), [uri, size]);
 
   const roundedClass = {
     full: 'rounded-full',
@@ -46,14 +49,16 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   return (
     <StyledImage
-      source={{ uri }}
+      source={{ uri: optimizedUri }}
       className={`${roundedClass} ${className}`}
       style={{ width: size, height: size }}
       blurRadius={blurRadius}
-      defaultSource={undefined}
+      contentFit="cover"
+      transition={200}
+      cachePolicy="disk"
       onError={(e) => {
         logger.warn('Failed to load image:', uri);
-        setHasError(true); // Show placeholder on error
+        setHasError(true);
       }}
     />
   );

@@ -222,6 +222,9 @@ class CommunityBackendService {
   private sessionVoteCount = 0;
   // Track which proposal IDs were voted on this session to prevent double-counting re-votes
   private sessionVotedProposals = new Set<string>();
+  // Short-lived cache for friends area data (60s TTL)
+  private friendsAreaCache: { data: FriendWithGridStatus[]; ts: number } | null = null;
+  private static readonly FRIENDS_CACHE_TTL_MS = 60_000;
 
   // ========================================================================
   // Proposals (via Edge Functions)
@@ -287,6 +290,7 @@ class CommunityBackendService {
     const voteType = vote === 'yes' ? 'YES' : 'NO';
 
     await castProposalVote(proposalId, userId, voteType as any, recommendToId);
+    this.invalidateFriendsCache();
     if (!this.sessionVotedProposals.has(proposalId)) {
       this.sessionVotedProposals.add(proposalId);
       this.sessionVoteCount++;
@@ -298,7 +302,15 @@ class CommunityBackendService {
   // Friends (Supabase)
   // ========================================================================
 
-  async getFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
+  invalidateFriendsCache(): void {
+    this.friendsAreaCache = null;
+  }
+
+  async getFriendsAsAnchors(forceRefresh = false): Promise<FriendWithGridStatus[]> {
+    if (!forceRefresh && this.friendsAreaCache && Date.now() - this.friendsAreaCache.ts < CommunityBackendService.FRIENDS_CACHE_TTL_MS) {
+      return this.friendsAreaCache.data;
+    }
+
     const userId = await getCurrentUserId();
     const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 
@@ -534,6 +546,7 @@ class CommunityBackendService {
     // Resolve all photos
     await resolveProfilePhotos(friends.map(f => f.friend));
 
+    this.friendsAreaCache = { data: friends, ts: Date.now() };
     return friends;
   }
 

@@ -12,7 +12,6 @@
 import React, { useState, useRef } from 'react';
 import {
   View,
-  Image,
   Modal,
   TouchableOpacity,
   Dimensions,
@@ -20,6 +19,7 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 import { Body } from './ui';
@@ -74,7 +74,8 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({
       <StyledImage
         source={{ uri: item.url }}
         style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
-        resizeMode="contain"
+        contentFit="contain"
+        cachePolicy="disk"
       />
     </StyledView>
   );
@@ -207,7 +208,9 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
             source={{ uri: photo.url }}
             className="rounded-lg bg-neutral-200"
             style={{ width: photoSize, height: photoSize }}
-            resizeMode="cover"
+            contentFit="cover"
+            transition={200}
+            cachePolicy="disk"
           />
 
           {/* Photo number badge */}

@@ -23,6 +23,17 @@ import { calculateProfileStrengthBreakdown } from '../utils/profileCompleteness'
 const logger = createLogger('ProfileService');
 
 // ============================================================================
+// IN-MEMORY CACHE
+// ============================================================================
+
+const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let profileCache: { data: UserProfile; ts: number } | null = null;
+
+export function invalidateProfileCache(): void {
+  profileCache = null;
+}
+
+// ============================================================================
 // HELPERS
 // ============================================================================
 
@@ -387,6 +398,11 @@ export const createUserProfile = async (
  * Get the current user's profile directly from Supabase tables.
  */
 export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
+  // Return cached profile if still fresh
+  if (profileCache && Date.now() - profileCache.ts < PROFILE_CACHE_TTL_MS) {
+    return { ok: true, data: profileCache.data };
+  }
+
   try {
     const userId = await getCurrentUserId();
     logger.info('[ProfileService] getUserProfile:', userId);
@@ -439,6 +455,7 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
       }
     }
 
+    profileCache = { data: profile, ts: Date.now() };
     return { ok: true, data: profile };
   } catch (error: any) {
     logger.error('[ProfileService] getUserProfile error:', error);
@@ -590,6 +607,7 @@ export const updateUserProfile = async (
       logger.warn('[ProfileService] Profile completion check failed (non-blocking):', err.message);
     }
 
+    invalidateProfileCache();
     return { ok: true };
   } catch (error: any) {
     logger.error('[ProfileService] updateUserProfile error:', error);

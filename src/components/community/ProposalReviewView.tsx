@@ -17,8 +17,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Image,
-  ImageBackground,
   ScrollView,
   Platform,
   UIManager,
@@ -26,6 +24,7 @@ import {
   Modal,
   ActivityIndicator,
 } from 'react-native';
+import { Image, ImageBackground } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
@@ -642,7 +641,9 @@ export function ProposalReviewView({
                 <Image
                   source={{ uri: photoA?.url || 'https://via.placeholder.com/200' }}
                   style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderTopLeftRadius: PHOTO_RADIUS, borderBottomLeftRadius: PHOTO_RADIUS }}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  transition={200}
+                  cachePolicy="disk"
                 />
                 <LinearGradient
                   colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.92)']}
@@ -675,7 +676,9 @@ export function ProposalReviewView({
                 <Image
                   source={{ uri: photoB?.url || 'https://via.placeholder.com/200' }}
                   style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderTopRightRadius: PHOTO_RADIUS, borderBottomRightRadius: PHOTO_RADIUS }}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  transition={200}
+                  cachePolicy="disk"
                 />
                 <LinearGradient
                   colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.92)']}
@@ -980,7 +983,9 @@ export function ProposalReviewView({
                     <Image
                       source={{ uri: photoA?.url || 'https://via.placeholder.com/200' }}
                       style={{ width: '100%', height: '100%' }}
-                      resizeMode="cover"
+                      contentFit="cover"
+                      transition={200}
+                      cachePolicy="disk"
                     />
                     <LinearGradient
                       colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.82)']}
@@ -1007,7 +1012,9 @@ export function ProposalReviewView({
                     <Image
                       source={{ uri: photoB?.url || 'https://via.placeholder.com/200' }}
                       style={{ width: '100%', height: '100%' }}
-                      resizeMode="cover"
+                      contentFit="cover"
+                      transition={200}
+                      cachePolicy="disk"
                     />
                     <LinearGradient
                       colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.82)']}
@@ -1079,7 +1086,9 @@ export function ProposalReviewView({
                           <Image
                             source={{ uri: friendPhoto || 'https://via.placeholder.com/50' }}
                             style={{ width: 46, height: 46, borderRadius: 23, marginRight: 12 }}
-                            resizeMode="cover"
+                            contentFit="cover"
+                            transition={200}
+                            cachePolicy="disk"
                           />
                           <View style={{ flex: 1 }}>
                             <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 15, color: '#010101' }}>

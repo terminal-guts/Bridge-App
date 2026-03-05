@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { View, SafeAreaView, StatusBar, ScrollView, FlatList, Image, TouchableOpacity, Alert, RefreshControl, Modal, Switch, Animated, Platform } from 'react-native';
+import { View, SafeAreaView, StatusBar, ScrollView, FlatList, TouchableOpacity, Alert, RefreshControl, Modal, Switch, Animated, Platform } from 'react-native';
+import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PROFILE_CACHE_DURATION, NAVIGATION_DELAY, AVATAR_SIZE_XL } from '../../constants';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -1038,9 +1039,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                   shadowRadius: 10,
                   elevation: 6,
                 } as any}
-                resizeMode="cover"
+                contentFit="cover"
+                transition={200}
+                cachePolicy="disk"
                 onError={(e) => {
-                  logger.warn('Failed to load profile photo:', e.nativeEvent.error);
+                  logger.warn('Failed to load profile photo:', e.error);
                 }}
               />
             ) : (

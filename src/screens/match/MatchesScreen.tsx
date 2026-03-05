@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, SafeAreaView, ActivityIndicator, Image, TouchableOpacity, StyleSheet, StatusBar, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, ActivityIndicator, TouchableOpacity, StyleSheet, StatusBar, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MatchCard } from '../../components/matches/MatchCard';
 import { communityService } from '../../services/communityServiceIndex';
@@ -85,7 +86,7 @@ function EndedMatchPopupContent({ event }: { event: MatchEndedEvent }) {
     return (
         <View style={popupStyles.content}>
             {partnerPhotoUrl ? (
-                <Image source={{ uri: partnerPhotoUrl }} style={popupStyles.avatar} />
+                <Image source={{ uri: partnerPhotoUrl }} style={popupStyles.avatar} contentFit="cover" transition={200} cachePolicy="disk" />
             ) : (
                 <View style={[popupStyles.avatar, popupStyles.avatarFallback]}>
                     <Text style={popupStyles.avatarFallbackText}>{partnerName.charAt(0)}</Text>
@@ -159,7 +160,9 @@ function IllustrationImage() {
             key={key}
             source={NO_MATCH_ILLUSTRATION}
             style={styles.illustration}
-            resizeMode="contain"
+            contentFit="contain"
+            transition={200}
+            cachePolicy="disk"
             onError={() => setKey(k => k + 1)}
         />
     );

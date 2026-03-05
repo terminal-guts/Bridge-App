@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { FriendWithGridStatus } from '../../types/community';
 import { FireIcon, StarIcon } from '../icons/Icons';
 import { KarmaInfoModal } from './KarmaInfoModal';
@@ -15,7 +17,8 @@ interface UserRowProps {
 
 export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onViewProfile, onChat }) => {
     const name = item.friend.firstName || 'User';
-    const imageUrl = item.friend.photos?.[0]?.url || 'https://via.placeholder.com/150';
+    const rawImageUrl = item.friend.photos?.[0]?.url || 'https://via.placeholder.com/150';
+    const imageUrl = useMemo(() => getOptimizedImageUrl(rawImageUrl, 68), [rawImageUrl]);
     const streak = item.streakDays || 0;
     const friendProfileComplete = item.friend.profileCompleted === true;
     const actionType = item.hasCompletedGrid ? 'points' : 'match';
@@ -29,6 +32,9 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                     <Image
                         source={{ uri: imageUrl }}
                         style={styles.avatar}
+                        contentFit="cover"
+                        transition={200}
+                        cachePolicy="disk"
                     />
                 </TouchableOpacity>
                 <View style={styles.info}>

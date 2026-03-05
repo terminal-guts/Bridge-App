@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useReducer } from 'react';
-import { View, Text, ScrollView, SafeAreaView, StatusBar, ActivityIndicator, Image, TouchableOpacity, StyleSheet, Dimensions, Share, Alert, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, StatusBar, ActivityIndicator, TouchableOpacity, StyleSheet, Dimensions, Share, Alert, RefreshControl } from 'react-native';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 import { styled } from 'nativewind';
