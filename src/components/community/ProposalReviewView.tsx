@@ -229,15 +229,15 @@ function EthnicityComparisonRow({ result }: { result: MatchResult }) {
   );
 }
 
-// ─── Helper: tag cloud section (Left label + tags, Right label + tags) ──────────
-function TagCloudSection({ leftTags, rightTags }: { leftTags: string[]; rightTags: string[] }) {
+// ─── Helper: tag cloud section (Names + tags) ──────────
+function TagCloudSection({ leftTags, rightTags, leftName, rightName }: { leftTags: string[]; rightTags: string[]; leftName: string; rightName: string }) {
   return (
     <View style={{ gap: 8 }}>
-      <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#010101', opacity: 0.6 }}>Left</Text>
+      <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#010101', opacity: 0.6 }}>{leftName}</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         {leftTags.map((t) => <TagPill key={t} label={t} />)}
       </View>
-      <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#010101', opacity: 0.6 }}>Right</Text>
+      <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 14, color: '#010101', opacity: 0.6 }}>{rightName}</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         {rightTags.map((t) => <TagPill key={t} label={t} />)}
       </View>
@@ -822,6 +822,8 @@ export function ProposalReviewView({
             <TagCloudSection
               leftTags={userA.values || []}
               rightTags={userB.values || []}
+              leftName={userA.firstName}
+              rightName={userB.firstName}
             />
           </SectionCard>
         )}
@@ -836,6 +838,8 @@ export function ProposalReviewView({
             <TagCloudSection
               leftTags={userA.interests || []}
               rightTags={userB.interests || []}
+              leftName={userA.firstName}
+              rightName={userB.firstName}
             />
           </SectionCard>
         )}
