@@ -143,7 +143,6 @@ Deno.serve(async (req: Request) => {
           user_id_2: u2,
           status: 'active',
           proposal_id: proposal.id,
-          compatibility_score: proposal.compatibility_score,
           matched_at: nowIso,
           created_at: nowIso,
           updated_at: nowIso,

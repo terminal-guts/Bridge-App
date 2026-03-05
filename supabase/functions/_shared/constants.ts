@@ -33,3 +33,7 @@ export const POOL_ELIGIBILITY_FRIEND_MIN_VOTES = 6;
 export const POOL_ELIGIBILITY_FRIEND_YES_RATE = 0.70;
 
 export const MAX_POOL_VOTES = 30;
+
+// Friend recommendation scoring boost (added per recommendation, capped)
+export const RECOMMENDATION_BOOST_PER = 5.0;   // +5 points per unique recommendation
+export const RECOMMENDATION_BOOST_CAP = 15.0;  // max +15 total boost

@@ -26,6 +26,7 @@ import {
   getPendingDecisions,
   decideOnProposal,
   transformBackendProposal,
+  submitFriendRecommendation,
 } from './proposalApiService';
 import { getBlockedUserIds } from './blockService';
 import { createLogger } from '../utils/secureLogger';
@@ -58,7 +59,7 @@ export function mapProfileRow(row: any): UserProfile {
     age: row.age || 0,
     gender: row.gender || [],
     pronouns: row.pronouns || '',
-    height: row.height || '',
+    height: row.height_inches ? String(row.height_inches) : (row.height || ''),
     ethnicity: row.ethnicity || '',
     religion: row.religion || '',
     politicalLeaning: row.political_leaning || '',
@@ -81,8 +82,25 @@ export function mapProfileRow(row: any): UserProfile {
     cannabisFrequency: row.cannabis_frequency || '',
     tobaccoFrequency: row.tobacco_frequency || '',
     otherDrugsFrequency: row.other_drugs_frequency || '',
-    partnerLifestylePreferences: row.partner_lifestyle_preferences || undefined,
+    partnerLifestylePreferences: (() => {
+      // Check raw fields first (most reliable — not affected by JSON serialization)
+      if (row.partner_drinking || row.partner_cannabis || row.partner_tobacco || row.partner_other_drugs) {
+        return {
+          drinking: row.partner_drinking?.length ? row.partner_drinking : undefined,
+          cannabis: row.partner_cannabis?.length ? row.partner_cannabis : undefined,
+          tobacco: row.partner_tobacco?.length ? row.partner_tobacco : undefined,
+          otherDrugs: row.partner_other_drugs?.length ? row.partner_other_drugs : undefined,
+        };
+      }
+      // Fall back to nested object if it has actual content
+      const plp = row.partner_lifestyle_preferences;
+      if (plp && (plp.drinking || plp.cannabis || plp.tobacco || plp.otherDrugs)) {
+        return plp;
+      }
+      return undefined;
+    })(),
     preferredEthnicities: row.preferred_ethnicities || [],
+    preferredPolitics: row.preferred_politics || [],
     nonNegotiables: [],
     preferences: {
       ageMin: row.age_min ?? undefined,
@@ -260,13 +278,29 @@ class CommunityBackendService {
       const transformedProposals = filteredProposals.map((raw: any) => {
         const transformed = transformBackendProposal(raw);
 
+        // DEBUG: log raw profile data from edge function
+        console.warn('LIFESTYLE_DEBUG_RAW_A', JSON.stringify({
+          has_profile: !!raw.user_a_profile,
+          partner_lifestyle_preferences: raw.user_a_profile?.partner_lifestyle_preferences,
+          partner_drinking: raw.user_a_profile?.partner_drinking,
+          partner_cannabis: raw.user_a_profile?.partner_cannabis,
+          drinking_frequency: raw.user_a_profile?.drinking_frequency,
+        }));
+
         const userA: UserProfile = raw.user_a_profile
           ? mapProfileRow(raw.user_a_profile)
           : { id: raw.user_a_id, firstName: 'User A', photos: [] } as any;
 
+        // DEBUG: log mapped profile
+        console.warn('LIFESTYLE_DEBUG_MAPPED_A', JSON.stringify({
+          drinkingFrequency: userA.drinkingFrequency,
+          partnerLifestylePreferences: userA.partnerLifestylePreferences,
+        }));
+
         const userB: UserProfile = raw.user_b_profile
           ? mapProfileRow(raw.user_b_profile)
           : { id: raw.user_b_id, firstName: 'User B', photos: [] } as any;
+
 
         profilesToResolve.push(userA, userB);
 
@@ -292,19 +326,23 @@ class CommunityBackendService {
     }
   }
 
-  async submitProposalVote(proposalId: string, vote: 'yes' | 'no' | 'skip', recommendToId?: string): Promise<void> {
+  async submitProposalVote(proposalId: string, vote: 'yes' | 'no' | 'skip'): Promise<void> {
     if (vote === 'skip') return;
 
     const userId = await getCurrentUserId();
     const voteType = vote === 'yes' ? 'YES' : 'NO';
 
-    await castProposalVote(proposalId, userId, voteType as any, recommendToId);
+    await castProposalVote(proposalId, userId, voteType as any);
     this.invalidateFriendsCache();
     if (!this.sessionVotedProposals.has(proposalId)) {
       this.sessionVotedProposals.add(proposalId);
       this.sessionVoteCount++;
       AsyncStorage.setItem(STORAGE_KEY_VOTES, String(this.sessionVoteCount)).catch(() => {});
     }
+  }
+
+  async submitRecommendation(recommendedPersonId: string, recommendedToFriendId: string, sourceProposalId?: string): Promise<void> {
+    await submitFriendRecommendation(recommendedPersonId, recommendedToFriendId, sourceProposalId);
   }
 
   // ========================================================================
@@ -912,7 +950,66 @@ class CommunityBackendService {
       this.getActiveMatch(),
     ]);
 
+    // Detect if the other person declined a proposal you accepted
+    if (!activeMatch && pendingProposals.length === 0 && !this.pendingEndedEvent) {
+      await this.detectPartnerDeclinedProposal();
+    }
+
     return { friends, pendingProposals, activeMatch };
+  }
+
+  /**
+   * Check for recently declined proposals where you accepted but the partner
+   * declined. Sets pendingEndedEvent so MatchesScreen shows the popup.
+   */
+  private async detectPartnerDeclinedProposal(): Promise<void> {
+    try {
+      const userId = await getCurrentUserId();
+
+      // Find proposals declined in the last 24h where this user accepted but partner declined
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: declined, error: qErr } = await supabase
+        .from('proposals')
+        .select('id, user_a_id, user_b_id, user_a_decision, user_b_decision, declined_at')
+        .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`)
+        .eq('status', 'declined')
+        .gte('declined_at', cutoff)
+        .order('declined_at', { ascending: false })
+        .limit(1);
+
+      if (qErr || !declined || declined.length === 0) return;
+
+      const prop = declined[0];
+      const isUserA = prop.user_a_id === userId;
+      const myDecision = isUserA ? prop.user_a_decision : prop.user_b_decision;
+      const theirDecision = isUserA ? prop.user_b_decision : prop.user_a_decision;
+
+      // Fire if they declined (regardless of whether I voted or not)
+      if (theirDecision !== 'declined') return;
+      // Don't fire if I was the one who declined (that's the you_rejected path)
+      if (myDecision === 'declined') return;
+
+      const eventId = `they-declined-${prop.id}-${prop.declined_at}`;
+      const alreadySeen = await AsyncStorage.getItem(`match_popup_seen_${eventId}`);
+      if (alreadySeen) return;
+
+      // Fetch partner name for the popup
+      const partnerId = isUserA ? prop.user_b_id : prop.user_a_id;
+      const { data: partnerRow } = await supabase
+        .from('user_profiles')
+        .select('first_name, profile_photo_path')
+        .eq('user_id', partnerId)
+        .maybeSingle();
+
+      this.pendingEndedEvent = {
+        type: 'they_rejected',
+        eventId,
+        partnerName: partnerRow?.first_name || 'Your match',
+        partnerPhotoUrl: partnerRow?.profile_photo_path || undefined,
+      };
+    } catch {
+      // Silent — don't break the main data load
+    }
   }
 
   // ========================================================================

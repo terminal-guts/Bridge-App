@@ -462,7 +462,9 @@ function scoreEthnicity(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Di
   const bPrefEth: string[] = _getPref(profileB, prefsB, 'preferred_ethnicities', []) || [];
 
   function oneDirection(theirEthnicity: string, myPrefEthnicities: string[]): number {
-    if (!myPrefEthnicities.length || myPrefEthnicities.includes('no_preference')) return 1.0;
+    if (!myPrefEthnicities.length) return 1.0;
+    const prefLowerCheck = myPrefEthnicities.map(e => e.toLowerCase().replace(/\s+/g, '_'));
+    if (prefLowerCheck.includes('no_preference')) return 1.0;
 
     const prefLower = myPrefEthnicities.map(e => e.toLowerCase());
     if (prefLower.includes(theirEthnicity.toLowerCase())) return 1.0;

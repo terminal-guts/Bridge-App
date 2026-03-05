@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { calculateCompatibility, passesBasicFilter } from '../_shared/scoring.ts';
 import { corsHeaders } from '../_shared/cors.ts';
-import { MAX_POOL_VOTES } from '../_shared/constants.ts';
+import { MAX_POOL_VOTES, RECOMMENDATION_BOOST_PER, RECOMMENDATION_BOOST_CAP } from '../_shared/constants.ts';
 
 const MIN_COMPATIBILITY_SCORE = 25.0;
 const MAX_PROPOSALS_PER_RUN = 50;
@@ -145,6 +145,18 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // 4b. Fetch friend recommendations for scoring boost
+    const { data: recommendations } = await supabase
+      .from('friend_recommendations')
+      .select('recommended_person_id, recommended_to_friend_id');
+
+    // Build a map: sorted pair key -> recommendation count
+    const recBoostMap = new Map<string, number>();
+    for (const rec of (recommendations || [])) {
+      const key = [rec.recommended_person_id, rec.recommended_to_friend_id].sort().join('|');
+      recBoostMap.set(key, (recBoostMap.get(key) || 0) + 1);
+    }
+
     // 5. Generate candidate pairs with pre-filtering
     const candidates: Array<{
       profileA: any; prefsA: any; profileB: any; prefsB: any;
@@ -201,6 +213,12 @@ Deno.serve(async (req: Request) => {
       const deepB = deepMap[profileB.user_id] || [];
 
       const result = calculateCompatibility(profileA, prefsA, profileB, prefsB, null, deepA, deepB);
+
+      // Apply friend recommendation boost
+      const pairKeyForRec = [profileA.user_id, profileB.user_id].sort().join('|');
+      const recCount = recBoostMap.get(pairKeyForRec) || 0;
+      const recBoost = Math.min(recCount * RECOMMENDATION_BOOST_PER, RECOMMENDATION_BOOST_CAP);
+      result.total_score += recBoost;
 
       if (result.total_score >= MIN_COMPATIBILITY_SCORE) {
         // Enforce user_a_id < user_b_id

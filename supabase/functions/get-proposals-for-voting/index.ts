@@ -110,11 +110,11 @@ Deno.serve(async (req: Request) => {
       const [profilesResult, preferencesResult] = await Promise.all([
         supabase
           .from('user_profiles')
-          .select('user_id, first_name, last_name, age, gender, pronouns, height, ethnicity, religion, political_leaning, location, interests, values, bio, photos, drinking_frequency, cannabis_frequency, tobacco_frequency, other_drugs_frequency, education_level, school, profile_completed')
+          .select('user_id, first_name, last_name, age, gender, pronouns, height_inches, ethnicity, religion, political_leaning, location, interests, values, bio, photos, drinking_frequency, cannabis_frequency, tobacco_frequency, other_drugs_frequency, profile_completed')
           .in('user_id', profileIds),
         supabase
           .from('user_preferences')
-          .select('user_id, age_min, age_max, preferred_height_min_inches, preferred_height_max_inches, partner_drinking, partner_cannabis, partner_tobacco, partner_other_drugs, preferred_ethnicities')
+          .select('user_id, age_min, age_max, preferred_height_min_inches, preferred_height_max_inches, partner_drinking, partner_cannabis, partner_tobacco, partner_other_drugs, preferred_ethnicities, preferred_politics')
           .in('user_id', profileIds)
       ]);
 
@@ -133,12 +133,18 @@ Deno.serve(async (req: Request) => {
           height_min: prefs.preferred_height_min_inches,
           height_max: prefs.preferred_height_max_inches,
           partner_lifestyle_preferences: {
-            drinking: prefs.partner_drinking?.length ? prefs.partner_drinking : undefined,
-            cannabis: prefs.partner_cannabis?.length ? prefs.partner_cannabis : undefined,
-            tobacco: prefs.partner_tobacco?.length ? prefs.partner_tobacco : undefined,
-            otherDrugs: prefs.partner_other_drugs?.length ? prefs.partner_other_drugs : undefined,
+            drinking: prefs.partner_drinking?.length ? prefs.partner_drinking : null,
+            cannabis: prefs.partner_cannabis?.length ? prefs.partner_cannabis : null,
+            tobacco: prefs.partner_tobacco?.length ? prefs.partner_tobacco : null,
+            otherDrugs: prefs.partner_other_drugs?.length ? prefs.partner_other_drugs : null,
           },
+          // Also put raw fields directly so mapProfileRow fallback can find them
+          partner_drinking: prefs.partner_drinking || null,
+          partner_cannabis: prefs.partner_cannabis || null,
+          partner_tobacco: prefs.partner_tobacco || null,
+          partner_other_drugs: prefs.partner_other_drugs || null,
           preferred_ethnicities: prefs.preferred_ethnicities,
+          preferred_politics: prefs.preferred_politics,
         };
       }
     }

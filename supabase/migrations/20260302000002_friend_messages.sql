@@ -29,29 +29,25 @@ CREATE INDEX IF NOT EXISTS idx_friend_messages_sent_at ON friend_messages(friend
 ALTER TABLE friend_messages ENABLE ROW LEVEL SECURITY;
 
 -- Users can view messages in their friendships
-CREATE POLICY "Users can view their friend messages"
-    ON friend_messages FOR SELECT
-    USING (
-        auth.uid() = sender_id OR auth.uid() = receiver_id
-    );
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view their friend messages' AND tablename = 'friend_messages') THEN
+    CREATE POLICY "Users can view their friend messages" ON friend_messages FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+  END IF;
+END $$;
 
 -- Users can send messages to their friends
-CREATE POLICY "Users can send friend messages"
-    ON friend_messages FOR INSERT
-    WITH CHECK (
-        auth.uid() = sender_id
-        AND EXISTS (
-            SELECT 1 FROM friends
-            WHERE id = friendship_id
-            AND (user_id = auth.uid() OR friend_id = auth.uid())
-        )
-    );
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can send friend messages' AND tablename = 'friend_messages') THEN
+    CREATE POLICY "Users can send friend messages" ON friend_messages FOR INSERT WITH CHECK (auth.uid() = sender_id AND EXISTS (SELECT 1 FROM friends WHERE id = friendship_id AND (user_id = auth.uid() OR friend_id = auth.uid())));
+  END IF;
+END $$;
 
 -- Users can mark received messages as read
-CREATE POLICY "Users can mark friend messages as read"
-    ON friend_messages FOR UPDATE
-    USING (auth.uid() = receiver_id)
-    WITH CHECK (auth.uid() = receiver_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can mark friend messages as read' AND tablename = 'friend_messages') THEN
+    CREATE POLICY "Users can mark friend messages as read" ON friend_messages FOR UPDATE USING (auth.uid() = receiver_id) WITH CHECK (auth.uid() = receiver_id);
+  END IF;
+END $$;
 
 -- ============================================
 -- Helper Functions
@@ -93,4 +89,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================
 -- Enable Realtime
 -- ============================================
-ALTER PUBLICATION supabase_realtime ADD TABLE friend_messages;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE friend_messages;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;

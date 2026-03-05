@@ -238,9 +238,11 @@ export function matchEthnicity(userA: UserProfile, userB: UserProfile): MatchRes
   const aPreferredEthnicities = userA.preferredEthnicities || [];
   const bPreferredEthnicities = userB.preferredEthnicities || [];
 
-  // Empty preference list means open to all
-  const aHappy = aPreferredEthnicities.length === 0 || aPreferredEthnicities.includes(bEthnicity);
-  const bHappy = bPreferredEthnicities.length === 0 || bPreferredEthnicities.includes(aEthnicity);
+  // Empty preference list or "No Preference" means open to all
+  const aOpenToAll = aPreferredEthnicities.length === 0 || aPreferredEthnicities.includes('No Preference');
+  const bOpenToAll = bPreferredEthnicities.length === 0 || bPreferredEthnicities.includes('No Preference');
+  const aHappy = aOpenToAll || aPreferredEthnicities.includes(bEthnicity);
+  const bHappy = bOpenToAll || bPreferredEthnicities.includes(aEthnicity);
 
   let status: MatchStatus;
   if (aHappy && bHappy) {
@@ -276,7 +278,25 @@ export function matchPolitics(userA: UserProfile, userB: UserProfile): MatchResu
     };
   }
 
-  const status = aPolitics === bPolitics ? 'both_happy' : 'neither_happy';
+  const aPrefPolitics = userA.preferredPolitics || [];
+  const bPrefPolitics = userB.preferredPolitics || [];
+
+  const aOpenToAll = aPrefPolitics.length === 0 || aPrefPolitics.includes('No Preference');
+  const bOpenToAll = bPrefPolitics.length === 0 || bPrefPolitics.includes('No Preference');
+
+  const aHappy = aOpenToAll || aPrefPolitics.includes(bPolitics);
+  const bHappy = bOpenToAll || bPrefPolitics.includes(aPolitics);
+
+  let status: MatchStatus;
+  if (aHappy && bHappy) {
+    status = 'both_happy';
+  } else if (aHappy && !bHappy) {
+    status = 'left_happy';
+  } else if (!aHappy && bHappy) {
+    status = 'right_happy';
+  } else {
+    status = 'neither_happy';
+  }
 
   return {
     status,
@@ -349,9 +369,9 @@ export function matchLifestyleAttribute(
   const aPreferenceArray = Array.isArray(aPreferences) ? aPreferences : [aPreferences];
   const bPreferenceArray = Array.isArray(bPreferences) ? bPreferences : [bPreferences];
 
-  // Step 2: Check for "don't care"
-  const aDontCare = aPreferenceArray.includes("don't care");
-  const bDontCare = bPreferenceArray.includes("don't care");
+  // Step 2: Check for "don't care" (DB stores "dont_care", UI may use "don't care")
+  const aDontCare = aPreferenceArray.includes("don't care") || aPreferenceArray.includes("dont_care");
+  const bDontCare = bPreferenceArray.includes("don't care") || bPreferenceArray.includes("dont_care");
 
   if (aDontCare && bDontCare) {
     return {

@@ -48,17 +48,35 @@ export async function castProposalVote(
   proposalId: string,
   _voterId: string,
   voteType: ProposalVoteType,
-  recommendToId?: string,
 ): Promise<VoteResult> {
   // Edge Function extracts voter ID from JWT — no need to pass voterId
   const { data, error } = await supabase.functions.invoke('process-vote', {
     body: {
       proposal_id: proposalId,
       vote_type: voteType,
-      recommend_to_id: recommendToId,
     },
   });
   if (error) throw new Error(`Cast vote failed: ${error.message}`);
+  return data;
+}
+
+// ============================================================================
+// Friend Recommendations
+// ============================================================================
+
+export async function submitFriendRecommendation(
+  recommendedPersonId: string,
+  recommendedToFriendId: string,
+  sourceProposalId?: string,
+): Promise<{ status: string }> {
+  const { data, error } = await supabase.functions.invoke('submit-recommendation', {
+    body: {
+      recommended_person_id: recommendedPersonId,
+      recommended_to_friend_id: recommendedToFriendId,
+      source_proposal_id: sourceProposalId || null,
+    },
+  });
+  if (error) throw new Error(`Recommendation failed: ${error.message}`);
   return data;
 }
 
