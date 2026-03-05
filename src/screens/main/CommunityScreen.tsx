@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useReducer } from 'react';
-import { View, Text, ScrollView, SafeAreaView, StatusBar, ActivityIndicator, Image, TouchableOpacity, StyleSheet, Dimensions, Share, Alert } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, StatusBar, ActivityIndicator, Image, TouchableOpacity, StyleSheet, Dimensions, Share, Alert, RefreshControl } from 'react-native';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 import { styled } from 'nativewind';
@@ -115,6 +115,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [hasCompletedVoting, setHasCompletedVoting] = useState<boolean | null>(null);
   const [friendCode, setFriendCode] = useState<string>('');
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     getUserProfile().then(result => {
@@ -144,6 +145,22 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       Alert.alert('Error', 'Failed to load community data. Pull down to refresh.');
     }
   }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        loadFriendsData(),
+        getUserProfile().then(result => {
+          if (result.ok && result.data) setProfile(result.data);
+        }),
+      ]);
+    } catch (error) {
+      console.error('Pull-to-refresh failed:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadFriendsData]);
 
   const initialize = useCallback(async () => {
     setLoading(true);
@@ -266,36 +283,50 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       </View>
 
       {usersToMatch.length === 0 && alreadyHelped.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.subtitle}>
-            Share your friend code to connect with people you know. Once you're friends, you can vote on each other's matches.
-          </Text>
+        <ScrollView
+          contentContainerStyle={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2B65F9" />
+          }
+        >
+          <View style={styles.emptyContainer}>
+            <Text style={styles.subtitle}>
+              Share your friend code to connect with people you know. Once you're friends, you can vote on each other's matches.
+            </Text>
 
-          {friendCode ? (
-            <View style={styles.codeContainer}>
-              <Text style={styles.codeLabel}>YOUR FRIEND CODE</Text>
-              <Text style={styles.codeValue}>{friendCode}</Text>
-              <View style={styles.codeButtonRow}>
-                <TouchableOpacity
-                  style={styles.shareIconButton}
-                  onPress={() => Share.share({ message: `Add me on Bridge! My friend code is: ${friendCode}` })}
-                >
-                  <Ionicons name="share-outline" size={20} color="#FFFFFF" />
-                  <Text style={styles.shareIconButtonText}>Share Code</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.enterCodeButton}
-                  activeOpacity={0.85}
-                  onPress={() => (navigation as any).navigate('FriendCode')}
-                >
-                  <Text style={styles.enterCodeButtonText}>Enter Code</Text>
-                </TouchableOpacity>
+            {friendCode ? (
+              <View style={styles.codeContainer}>
+                <Text style={styles.codeLabel}>YOUR FRIEND CODE</Text>
+                <Text style={styles.codeValue}>{friendCode}</Text>
+                <View style={styles.codeButtonRow}>
+                  <TouchableOpacity
+                    style={styles.shareIconButton}
+                    onPress={() => Share.share({ message: `Add me on Bridge! My friend code is: ${friendCode}` })}
+                  >
+                    <Ionicons name="share-outline" size={20} color="#FFFFFF" />
+                    <Text style={styles.shareIconButtonText}>Share Code</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.enterCodeButton}
+                    activeOpacity={0.85}
+                    onPress={() => (navigation as any).navigate('FriendCode')}
+                  >
+                    <Text style={styles.enterCodeButtonText}>Enter Code</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          ) : null}
-        </View>
+            ) : null}
+          </View>
+        </ScrollView>
       ) : (
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2B65F9" />
+          }
+        >
           {usersToMatch.length > 0 && (
             <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 15, color: '#9CA3AF', marginTop: SCREEN_HEIGHT * 0.055, marginBottom: 4, paddingHorizontal: 24 }}>
               Help your friends
