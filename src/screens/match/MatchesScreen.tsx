@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, SafeAreaView, ActivityIndicator, TouchableOpacity, StyleSheet, StatusBar, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, StyleSheet, StatusBar, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback, RefreshControl } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MatchCard } from '../../components/matches/MatchCard';
@@ -13,6 +13,7 @@ import { getUserProfile } from '../../services/profileService';
 import { UserProfile } from '../../types';
 import { ProfileCompletionBanner } from '../../components/ProfileCompletionBanner';
 import { showToast } from '../../utils/toast';
+import { MatchesSkeleton } from '../../components/ui/SkeletonLoader';
 
 // Pre-register the illustration asset at module load time so it is available
 // before the screen mounts (avoids a first-render blank on fresh installs).
@@ -205,11 +206,6 @@ export function MatchesScreen() {
         return () => { isMountedRef.current = false; };
     }, []);
 
-    useEffect(() => {
-        getUserProfile().then(result => {
-            if (isMountedRef.current && result.ok && result.data) setProfile(result.data);
-        });
-    }, []);
     const [now, setNow] = useState(Date.now());
     const [endMatchModalVisible, setEndMatchModalVisible] = useState(false);
     const [timerInfoVisible, setTimerInfoVisible] = useState(false);
@@ -232,7 +228,13 @@ export function MatchesScreen() {
 
     const loadMatches = async () => {
         try {
-            const data = await communityService.getFriendsAreaData();
+            // Fetch match data and profile in parallel
+            const [data] = await Promise.all([
+                communityService.getFriendsAreaData(),
+                getUserProfile().then(result => {
+                    if (isMountedRef.current && result.ok && result.data) setProfile(result.data);
+                }),
+            ]);
             if (!isMountedRef.current) return;
             setActiveMatch(data.activeMatch);
             setPendingProposals(data.pendingProposals || []);
@@ -265,25 +267,16 @@ export function MatchesScreen() {
     const handleRefresh = useCallback(async () => {
         setRefreshing(true);
         try {
-            const [, profileResult] = await Promise.all([
-                loadMatches(),
-                getUserProfile(),
-            ]);
-            if (isMountedRef.current && profileResult.ok && profileResult.data) {
-                setProfile(profileResult.data);
-            }
+            await loadMatches();
         } finally {
             if (isMountedRef.current) setRefreshing(false);
         }
     }, []);
 
-    // Reload match data + check for ended-match events on each tab focus
+    // Reload match data + profile on each tab focus
     useFocusEffect(
         useCallback(() => {
             loadMatches();
-            getUserProfile().then(result => {
-                if (isMountedRef.current && result.ok && result.data) setProfile(result.data);
-            });
         }, []),
     );
 
@@ -323,8 +316,9 @@ export function MatchesScreen() {
 
     if (loading && !popupEvent) {
         return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#2B65F9" />
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+                <StatusBar barStyle="dark-content" />
+                <MatchesSkeleton />
             </SafeAreaView>
         );
     }

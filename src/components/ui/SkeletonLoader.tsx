@@ -214,6 +214,76 @@ export const SurveySkeleton: React.FC<DashboardSkeletonProps> = ({ className = '
   );
 };
 
+/**
+ * CommunitySkeleton — matches the Community screen layout:
+ * header row + section label + 3 friend rows (avatar + name + streak + button)
+ */
+export const CommunitySkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
+  return (
+    <StyledView className={`flex-1 bg-white ${className}`}>
+      {/* Header */}
+      <StyledView className="px-6 pt-4 mb-5">
+        <StyledView className="flex-row items-center justify-between">
+          <SkeletonLoader height={32} width={160} borderRadius="rounded" />
+          <StyledView className="flex-row" style={{ gap: 8 }}>
+            <SkeletonLoader height={28} width={60} borderRadius="rounded-lg" />
+            <SkeletonLoader height={34} width={34} borderRadius="rounded-full" />
+          </StyledView>
+        </StyledView>
+      </StyledView>
+
+      {/* Section label */}
+      <StyledView className="px-6 mb-3">
+        <SkeletonLoader height={18} width={140} borderRadius="rounded" />
+      </StyledView>
+
+      {/* Friend rows */}
+      <StyledView className="px-6">
+        {[1, 2, 3].map(i => (
+          <StyledView key={i} className="flex-row items-center mb-4">
+            <SkeletonLoader height={52} width={52} borderRadius="rounded-full" className="mr-3" />
+            <StyledView className="flex-1">
+              <SkeletonLoader height={16} width={90} borderRadius="rounded" className="mb-2" />
+              <SkeletonLoader height={12} width={60} borderRadius="rounded" />
+            </StyledView>
+            <SkeletonLoader height={36} width={72} borderRadius="rounded-lg" />
+          </StyledView>
+        ))}
+      </StyledView>
+    </StyledView>
+  );
+};
+
+/**
+ * MatchesSkeleton — matches the Matches screen layout:
+ * header + large match card placeholder
+ */
+export const MatchesSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
+  return (
+    <StyledView className={`flex-1 bg-white ${className}`}>
+      {/* Header */}
+      <StyledView className="px-6 pt-4 mb-6">
+        <SkeletonLoader height={32} width={130} borderRadius="rounded" />
+      </StyledView>
+
+      {/* Match card placeholder */}
+      <StyledView className="px-6">
+        <StyledView className="rounded-2xl overflow-hidden" style={{ backgroundColor: '#F2F4F7' }}>
+          {/* Photo area */}
+          <SkeletonLoader height={280} width="100%" borderRadius="rounded-none" />
+          {/* Info area */}
+          <StyledView className="p-4">
+            <SkeletonLoader height={22} width={140} borderRadius="rounded" className="mb-3" />
+            <SkeletonLoader height={14} width={200} borderRadius="rounded" className="mb-2" />
+            <SkeletonLoader height={14} width={160} borderRadius="rounded" className="mb-4" />
+            <SkeletonLoader height={44} width="100%" borderRadius="rounded-xl" />
+          </StyledView>
+        </StyledView>
+      </StyledView>
+    </StyledView>
+  );
+};
+
 export const ProfileSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
   return (
     <StyledView className={`flex-1 bg-neutral-50 ${className}`}>

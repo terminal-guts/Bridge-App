@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useReducer } from 'react';
-import { View, Text, ScrollView, SafeAreaView, StatusBar, ActivityIndicator, TouchableOpacity, StyleSheet, Dimensions, Share, Alert, RefreshControl, Modal } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, StatusBar, TouchableOpacity, StyleSheet, Dimensions, Share, Alert, RefreshControl, Modal } from 'react-native';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 import { styled } from 'nativewind';
@@ -18,6 +18,7 @@ import { UserProfile } from '../../types';
 import { ProfileCompletionBanner } from '../../components/ProfileCompletionBanner';
 import { useGuide } from '../../hooks/useGuide';
 import { beginnerTourGuide } from '../../config/guides';
+import { CommunitySkeleton } from '../../components/ui/SkeletonLoader';
 
 // ── Match reset countdown timer ───────────────────────────────────────────────
 //
@@ -302,8 +303,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   if (loading || hasCompletedVoting === null) {
     return (
-      <StyledSafeAreaView className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator size="large" color="#2B65F9" />
+      <StyledSafeAreaView className="flex-1 bg-white">
+        <StatusBar barStyle="dark-content" />
+        <CommunitySkeleton />
       </StyledSafeAreaView>
     );
   }

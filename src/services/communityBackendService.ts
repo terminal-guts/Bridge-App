@@ -388,7 +388,7 @@ class CommunityBackendService {
     ] = await Promise.all([
       supabase
         .from('user_profiles')
-        .select('*')
+        .select('user_id, first_name, last_name, age, gender, pronouns, height_inches, height, ethnicity, religion, political_leaning, location, where_live_now, current_job, company_position, education_level, school, photos, interests, values, bio, lifestyle, drinking_frequency, cannabis_frequency, tobacco_frequency, other_drugs_frequency, partner_drinking, partner_cannabis, partner_tobacco, partner_other_drugs, partner_lifestyle_preferences, preferred_ethnicities, preferred_politics, age_min, age_max, height_min, height_max, preferences, profile_completed, profile_photo_path, created_at, updated_at')
         .in('user_id', friendIds),
       // Proposals where friend is user_a
       supabase
@@ -423,7 +423,7 @@ class CommunityBackendService {
       // Friend karma scores
       supabase
         .from('karma_scores')
-        .select('*')
+        .select('user_id, karma_points, total_assists, total_proposals, badge_tier, proposal_success_rate, voting_accuracy_rate')
         .in('user_id', friendIds),
     ]);
 
@@ -848,7 +848,7 @@ class CommunityBackendService {
 
     const { data: karma } = await supabase
       .from('karma_scores')
-      .select('*')
+      .select('user_id, karma_points, total_assists, total_proposals, badge_tier, proposal_success_rate, voting_accuracy_rate')
       .eq('user_id', userId)
       .maybeSingle();
 
