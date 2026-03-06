@@ -14,6 +14,7 @@
 
 import { ApiResponse, Message } from '../types';
 import { supabase, isRealSupabase } from '../lib/supabase';
+import { getAuthenticatedUserId } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('MessageService');
@@ -89,9 +90,9 @@ async function getCurrentUserId(): Promise<string> {
   if (!USE_REAL_BACKEND) {
     return '00000000-0000-0000-0000-000000000001';
   }
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.id) throw new Error('Not authenticated');
-  return user.id;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) throw new Error('Not authenticated');
+  return userId;
 }
 
 // ============================================================================

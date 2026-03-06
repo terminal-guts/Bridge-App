@@ -8,6 +8,7 @@
 
 import { supabase } from '../lib/supabase';
 import { ApiResponse, UserProfile } from '../types';
+import { getAuthenticatedUserId } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('BlockService');
@@ -16,9 +17,9 @@ const logger = createLogger('BlockService');
  * Determine the current user ID from Supabase auth.
  */
 async function getCurrentUserId(): Promise<string> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.id) throw new Error('Not authenticated');
-  return user.id;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) throw new Error('Not authenticated');
+  return userId;
 }
 
 // ============================================================================

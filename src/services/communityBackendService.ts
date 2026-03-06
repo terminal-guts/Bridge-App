@@ -29,6 +29,7 @@ import {
   submitFriendRecommendation,
 } from './proposalApiService';
 import { getBlockedUserIds } from './blockService';
+import { getAuthenticatedUserId } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('CommunityBackend');
@@ -38,9 +39,9 @@ const logger = createLogger('CommunityBackend');
 // ============================================================================
 
 async function getCurrentUserId(): Promise<string> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.id) throw new Error('Not authenticated');
-  return user.id;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) throw new Error('Not authenticated');
+  return userId;
 }
 
 export function mapProfileRow(row: any): UserProfile {
@@ -278,24 +279,9 @@ class CommunityBackendService {
       const transformedProposals = filteredProposals.map((raw: any) => {
         const transformed = transformBackendProposal(raw);
 
-        // DEBUG: log raw profile data from edge function
-        console.warn('LIFESTYLE_DEBUG_RAW_A', JSON.stringify({
-          has_profile: !!raw.user_a_profile,
-          partner_lifestyle_preferences: raw.user_a_profile?.partner_lifestyle_preferences,
-          partner_drinking: raw.user_a_profile?.partner_drinking,
-          partner_cannabis: raw.user_a_profile?.partner_cannabis,
-          drinking_frequency: raw.user_a_profile?.drinking_frequency,
-        }));
-
         const userA: UserProfile = raw.user_a_profile
           ? mapProfileRow(raw.user_a_profile)
           : { id: raw.user_a_id, firstName: 'User A', photos: [] } as any;
-
-        // DEBUG: log mapped profile
-        console.warn('LIFESTYLE_DEBUG_MAPPED_A', JSON.stringify({
-          drinkingFrequency: userA.drinkingFrequency,
-          partnerLifestylePreferences: userA.partnerLifestylePreferences,
-        }));
 
         const userB: UserProfile = raw.user_b_profile
           ? mapProfileRow(raw.user_b_profile)

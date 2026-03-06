@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 import { createDevelopmentData, cleanupDevelopmentData } from './developmentDataService';
 import { currentUserProfile } from './mockData';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAuthenticatedUserId } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('DeveloperService');
@@ -19,9 +20,9 @@ const logger = createLogger('DeveloperService');
  * Get current user ID
  */
 export async function getCurrentUserId(): Promise<string> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.id) throw new Error('Not authenticated');
-  return user.id;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) throw new Error('Not authenticated');
+  return userId;
 }
 
 /**

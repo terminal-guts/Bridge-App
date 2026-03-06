@@ -12,6 +12,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { fetchAndSetUserProfile } from '../services/profileService';
 import { isIntentionalSignOut, resetIntentionalSignOut } from '../services/authService';
 import { notificationService } from '../services/notificationService';
+import { setCachedUserId, clearCachedUserId } from '../utils/auth';
 import { showToast } from '../utils/toast';
 
 // Auth Screens
@@ -187,17 +188,21 @@ export const AppNavigator = () => {
           await supabase.auth.signOut();
         }
 
-        // Validate session with Supabase server (not just local cache)
-        const { data: { user }, error } = await supabase.auth.getUser();
+        // Read cached session from AsyncStorage (no network call) for fast startup.
+        // The onAuthStateChange listener handles expired sessions automatically.
+        const { data: { session }, error } = await supabase.auth.getSession();
 
         if (!isMountedRef.current) return;
 
-        if (error) {
-          logger.info('Auth verification failed:', error.message);
-          await supabase.auth.signOut();
-          if (!isMountedRef.current) return;
+        if (error || !session?.user) {
+          if (error) {
+            logger.info('Auth session check failed:', error.message);
+          }
+          clearCachedUserId();
           setIsAuthenticated(false);
-        } else if (user) {
+        } else {
+          const user = session.user;
+          setCachedUserId(user.id);
           logger.info('[AppNavigator] Authenticated user:', user.id);
           const profileResult = await fetchAndSetUserProfile(user.id);
           if (!profileResult.ok && profileResult.error?.code !== 'PROFILE_NOT_FOUND') {
@@ -205,8 +210,6 @@ export const AppNavigator = () => {
           }
           if (!isMountedRef.current) return;
           setIsAuthenticated(true);
-        } else {
-          setIsAuthenticated(false);
         }
       } catch (err) {
         logger.error('Error initializing auth:', err);
@@ -238,11 +241,13 @@ export const AppNavigator = () => {
       setIsAuthenticated(!!session);
 
       if (event === 'SIGNED_IN' && session?.user) {
+        setCachedUserId(session.user.id);
         setupNotifications();
         if (FEATURES.DEVELOPMENT_CREATE_MOCK_DATA) {
           createDevelopmentData(session.user.id);
         }
       } else if (event === 'SIGNED_OUT' && wasAuthenticated) {
+        clearCachedUserId();
         if (isIntentionalSignOut()) {
           resetIntentionalSignOut();
           logger.info('[AppNavigator] Intentional sign-out');

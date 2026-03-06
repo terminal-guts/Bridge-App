@@ -6,6 +6,7 @@
 
 import { ApiResponse } from '../types';
 import { supabase } from '../lib/supabase';
+import { getAuthenticatedUserId } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('SettingsService');
@@ -59,9 +60,9 @@ const createErrorResponse = (code: string, message: string): ApiResponse<any> =>
 };
 
 async function getCurrentUserId(): Promise<string> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.id) throw new Error('Not authenticated');
-  return user.id;
+  const userId = await getAuthenticatedUserId();
+  if (!userId) throw new Error('Not authenticated');
+  return userId;
 }
 
 /**

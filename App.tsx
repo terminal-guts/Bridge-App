@@ -12,22 +12,14 @@ import { notificationService } from './src/services/notificationService';
 
 export default function App() {
   React.useEffect(() => {
-    // Initialize push notifications
-    const setupNotifications = async () => {
-      await notificationService.registerForPushNotifications();
-    };
-
-    setupNotifications();
-
-    // Listen for incoming notifications while app is open
+    // Push notification registration is handled in AppNavigator on SIGNED_IN.
+    // Here we only set up listeners for incoming notifications while the app is open.
     const subscription = notificationService.addNotificationListener(notification => {
       console.log('[NOTIFICATION] Received:', notification.request.content.title);
     });
 
-    // Listen for notification taps
     const responseSubscription = notificationService.addNotificationResponseListener(response => {
       console.log('[NOTIFICATION] Tapped:', response.notification.request.content.title);
-      // Handle navigation or deep linking here
     });
 
     return () => {

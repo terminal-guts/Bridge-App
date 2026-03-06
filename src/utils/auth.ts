@@ -9,23 +9,45 @@
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// In-memory userId cache — set after first successful auth, cleared on sign-out.
+// Eliminates redundant supabase.auth.getUser() network calls from every service method.
+let cachedUserId: string | null = null;
+
+export function setCachedUserId(id: string): void {
+  cachedUserId = id;
+}
+
+export function clearCachedUserId(): void {
+  cachedUserId = null;
+}
+
 /**
  * Get the currently authenticated user's ID from the session.
  * Returns null if no user is authenticated.
  */
 export async function getAuthenticatedUserId(): Promise<string | null> {
+  // Fast path: return cached value (no async, no network)
+  if (cachedUserId) return cachedUserId;
+
   try {
     // Priority 1: Custom auth storage (required by architecture)
     const storedUserJson = await AsyncStorage.getItem('bridge_auth_user');
     if (storedUserJson) {
       const userData = JSON.parse(storedUserJson);
-      if (userData?.id) return userData.id;
+      if (userData?.id) {
+        cachedUserId = userData.id;
+        return userData.id;
+      }
     }
 
-    // Priority 2: Fallback to Supabase session (standard)
-    // Note: In this custom architecture, getUser() may return null even if logged in.
-    const { data: { user } } = await supabase.auth.getUser();
-    return user?.id || null;
+    // Priority 2: Fallback to Supabase session (no network call)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) {
+      cachedUserId = session.user.id;
+      return session.user.id;
+    }
+
+    return null;
   } catch (error) {
     console.error('Error getting authenticated user:', error);
     return null;
@@ -52,11 +74,17 @@ export async function requireAuth(): Promise<string> {
  */
 export async function requireAuthWithPhone(): Promise<{ userId: string; phone: string }> {
   try {
+    // Fast path: cached userId (phone not always needed, fallback to '')
+    if (cachedUserId) {
+      return { userId: cachedUserId, phone: '' };
+    }
+
     // Priority 1: Custom auth storage
     const storedUserJson = await AsyncStorage.getItem('bridge_auth_user');
     if (storedUserJson) {
       const userData = JSON.parse(storedUserJson);
       if (userData?.id) {
+        cachedUserId = userData.id;
         return {
           userId: userData.id,
           phone: userData.phone || '',
@@ -64,12 +92,13 @@ export async function requireAuthWithPhone(): Promise<{ userId: string; phone: s
       }
     }
 
-    // Priority 2: Fallback to Supabase
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+    // Priority 2: Fallback to Supabase session (no network call)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      cachedUserId = session.user.id;
       return {
-        userId: user.id,
-        phone: user.phone || '',
+        userId: session.user.id,
+        phone: session.user.phone || '',
       };
     }
   } catch (error) {
