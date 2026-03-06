@@ -388,7 +388,7 @@ class CommunityBackendService {
     ] = await Promise.all([
       supabase
         .from('user_profiles')
-        .select('user_id, first_name, last_name, age, gender, pronouns, height_inches, height, ethnicity, religion, political_leaning, location, where_live_now, current_job, company_position, education_level, school, photos, interests, values, bio, lifestyle, drinking_frequency, cannabis_frequency, tobacco_frequency, other_drugs_frequency, partner_drinking, partner_cannabis, partner_tobacco, partner_other_drugs, partner_lifestyle_preferences, preferred_ethnicities, preferred_politics, age_min, age_max, height_min, height_max, preferences, profile_completed, profile_photo_path, created_at, updated_at')
+        .select('user_id, first_name, last_name, age, gender, pronouns, height_inches, ethnicity, religion, political_leaning, location, current_job, company_position, education_level, school, photos, interests, values, bio, drinking_frequency, cannabis_frequency, tobacco_frequency, other_drugs_frequency, non_negotiables, profile_photo_path, created_at, updated_at')
         .in('user_id', friendIds),
       // Proposals where friend is user_a
       supabase
