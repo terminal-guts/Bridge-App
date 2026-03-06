@@ -151,6 +151,11 @@ Deno.serve(async (req: Request) => {
     const friendOf = isFriendOfA ? proposal.user_a_id : (isFriendOfB ? proposal.user_b_id : null);
 
     // 4. Upsert the vote (one vote per voter per proposal — unique constraint)
+    // Calculate effective vote weight for storage
+    const effectiveVoteWeight = isFriendVote
+      ? weightMultiplier * FRIEND_VOTE_WEIGHT
+      : weightMultiplier;
+
     const { error: voteErr } = await supabase
       .from('proposal_votes')
       .upsert({
@@ -158,6 +163,7 @@ Deno.serve(async (req: Request) => {
         voter_user_id: voterId,
         vote_type,
         is_friend_vote: isFriendVote,
+        vote_weight: effectiveVoteWeight,
         // Note: friend_of records only one friend even if both are friends.
         // This is acceptable as streaks and grid status are handled independently.
         friend_of: friendOf,
@@ -196,15 +202,14 @@ Deno.serve(async (req: Request) => {
 
     // A. Subtract old vote weight if it was a different vote type
     if (existingVote && existingVote.vote_type !== vote_type) {
-      // Note: We use current weight for subtraction; if tier changed since old vote,
-      // tallies may deviate from absolute source of truth until a full recount.
+      // Use stored vote_weight for accurate subtraction (avoids tier-drift)
+      const oldWeight = existingVote.vote_weight || (existingVote.is_friend_vote ? weightMultiplier * FRIEND_VOTE_WEIGHT : weightMultiplier);
       if (existingVote.is_friend_vote) {
-        const oldFriendWeight = weightMultiplier * FRIEND_VOTE_WEIGHT;
-        if (existingVote.vote_type === 'YES') { friendYes--; weightedYes -= oldFriendWeight; }
-        else if (existingVote.vote_type === 'NO') { friendNo--; weightedNo -= oldFriendWeight; }
+        if (existingVote.vote_type === 'YES') { friendYes--; weightedYes -= oldWeight; }
+        else if (existingVote.vote_type === 'NO') { friendNo--; weightedNo -= oldWeight; }
       } else {
-        if (existingVote.vote_type === 'YES') { poolYes--; weightedYes -= weightMultiplier; }
-        else if (existingVote.vote_type === 'NO') { poolNo--; weightedNo -= weightMultiplier; }
+        if (existingVote.vote_type === 'YES') { poolYes--; weightedYes -= oldWeight; }
+        else if (existingVote.vote_type === 'NO') { poolNo--; weightedNo -= oldWeight; }
       }
     }
 

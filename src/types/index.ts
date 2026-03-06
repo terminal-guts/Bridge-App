@@ -129,7 +129,7 @@ export interface UserProfile {
     otherDrugs: string | string[];
   };
   // Community Matching System
-  karma?: any; // KarmaScore from community.ts (optional, imported separately to avoid circular deps)
+  karma?: { karma_points: number; badge_tier: string; total_assists: number };
   bio?: string; // User bio/about me
 
   // Guide completion tracking (frontend-only for now)

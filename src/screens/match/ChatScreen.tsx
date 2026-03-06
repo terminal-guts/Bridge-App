@@ -97,7 +97,7 @@ const StyledImage = styled(Image);
 const FLAT_LIST_CONTENT_STYLE = { padding: 16, paddingBottom: 8, flexGrow: 1 } as const;
 
 export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => {
-  const { matchId, friendshipId, recipientName, recipientId, recipientPhoto, isFriendChat } = route.params;
+  const { matchId, friendshipId, recipientName = 'Match', recipientId, recipientPhoto = null, isFriendChat } = route.params;
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);

@@ -70,6 +70,8 @@ export const Input: React.FC<InputProps> = ({
       )}
       <StyledTextInput
         ref={inputRef}
+        accessibilityLabel={props.accessibilityLabel || label || props.placeholder}
+        accessibilityRole="none"
         {...props}
         autoFocus={false}
         onFocus={handleFocus}

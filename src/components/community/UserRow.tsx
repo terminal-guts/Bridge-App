@@ -28,7 +28,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
     return (
         <View style={styles.row}>
             <View style={styles.left}>
-                <TouchableOpacity onPress={onViewProfile} activeOpacity={onViewProfile ? 0.8 : 1} disabled={!onViewProfile}>
+                <TouchableOpacity onPress={onViewProfile} activeOpacity={onViewProfile ? 0.8 : 1} disabled={!onViewProfile} accessibilityLabel={`View ${name}'s profile`} accessibilityRole="button">
                     <Image
                         source={{ uri: imageUrl }}
                         style={styles.avatar}
@@ -56,6 +56,8 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                     onPress={onChat}
                     style={styles.chatBtn}
                     activeOpacity={0.7}
+                    accessibilityLabel={`Chat with ${name}`}
+                    accessibilityRole="button"
                 >
                     <Ionicons name="chatbubble-outline" size={20} color="#437FFF" />
                 </TouchableOpacity>
@@ -66,11 +68,14 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                     onPress={friendProfileComplete ? onMatch : undefined}
                     style={[styles.matchBtn, !friendProfileComplete && styles.matchBtnDisabled]}
                     activeOpacity={friendProfileComplete ? 0.75 : 1}
+                    accessibilityLabel={`Match ${name}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: !friendProfileComplete }}
                 >
                     <Text style={[styles.matchBtnText, !friendProfileComplete && styles.matchBtnTextDisabled]}>Match</Text>
                 </TouchableOpacity>
             ) : (
-                <TouchableOpacity style={styles.pointsBtn} activeOpacity={0.75} onPress={() => setShowKarmaModal(true)}>
+                <TouchableOpacity style={styles.pointsBtn} activeOpacity={0.75} onPress={() => setShowKarmaModal(true)} accessibilityLabel={`${name}'s karma: ${points} points`} accessibilityRole="button">
                     <StarIcon size={15} color="#3ECC62" />
                     <Text style={styles.pointsBtnText}>{points} pts</Text>
                 </TouchableOpacity>

@@ -23,6 +23,8 @@ import { lightHaptic, mediumHaptic, successHaptic } from '../../utils/haptics';
 import { createLogger } from '../../utils/secureLogger';
 import { DEEP_QUESTIONS, getQuestionById } from '../../utils/deepQuestions';
 import { getQuestionTier, QUESTIONS_PER_TIER } from '../../utils/questionTiers';
+import { COLORS } from '../../theme/colors';
+import { showToast } from '../../utils/toast';
 
 const logger = createLogger('DeepQuestionsScreen');
 
@@ -135,10 +137,10 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
       });
 
       if (!result.ok) {
-        Alert.alert('Error', 'Failed to save answers. Please try again.');
+        showToast.error('Save failed', 'Failed to save answers. Please try again.');
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
+      showToast.error('Error', 'An unexpected error occurred');
     } finally {
       setSaving(false);
     }
@@ -158,13 +160,13 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
         // Update local profile state to keep in sync
         setProfile(updatedProfile);
       } else {
-        Alert.alert('Error', 'Failed to update starred questions. Please try again.');
+        showToast.error('Save failed', 'Failed to update starred questions. Please try again.');
         // Revert the local state if save failed
         setDisplayedQuestions(profile.displayedQuestions || []);
       }
     } catch (error) {
       logger.error('Failed to save displayed questions:', error);
-      Alert.alert('Error', 'An unexpected error occurred');
+      showToast.error('Error', 'An unexpected error occurred');
       // Revert the local state if save failed
       setDisplayedQuestions(profile.displayedQuestions || []);
     }
@@ -272,11 +274,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
 
     // Check max limit (3 questions total, one from each tier)
     if (displayedQuestions.length >= 3) {
-      Alert.alert(
-        'Maximum Reached',
-        'You can only display 3 questions to other users (one from each tier). Please unstar another question to select this one.',
-        [{ text: 'OK' }]
-      );
+      showToast.info('Maximum Reached', 'You can display 3 questions (one per tier). Unstar one to select this.');
       return;
     }
 
@@ -394,21 +392,21 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
     const getCardStyle = () => {
       if (isDisplayed) {
         return {
-          backgroundColor: '#EFF6FF',
-          borderColor: '#93C5FD',
+          backgroundColor: COLORS.tier1.lightBg,
+          borderColor: COLORS.borderBlueBright,
           borderWidth: 2,
         };
       }
       if (answer) {
         return {
-          backgroundColor: '#FFFFFF',
-          borderColor: '#BFDBFE',
+          backgroundColor: COLORS.card,
+          borderColor: COLORS.borderBlue,
           borderWidth: 1,
         };
       }
       return {
-        backgroundColor: '#F9FAFB',
-        borderColor: '#D1D5DB',
+        backgroundColor: COLORS.backgroundSubtle,
+        borderColor: COLORS.borderGray,
         borderWidth: 1,
         borderStyle: 'dashed' as const,
       };
@@ -421,7 +419,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
             <StyledView className="flex-1 mr-2">
               {isDisplayed && (
                 <StyledView className="flex-row items-center mb-2">
-                  <Ionicons name="star" size={14} color="#FDB022" />
+                  <Ionicons name="star" size={14} color={COLORS.starGold} />
                   <Body className="text-xs text-warning ml-1 font-semibold uppercase tracking-wider">
                     Shown to matches
                   </Body>
@@ -443,7 +441,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
                   <Ionicons
                     name={isDisplayed ? "star" : "star-outline"}
                     size={16}
-                    color={isDisplayed ? "#FDB022" : "#98A2B3"}
+                    color={isDisplayed ? COLORS.starGold : COLORS.text.placeholder}
                   />
                 </StyledTouchableOpacity>
                 <StyledTouchableOpacity
@@ -453,7 +451,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
                   }}
                   className="w-8 h-8 items-center justify-center rounded-full bg-primary-50 border border-primary-200"
                 >
-                  <Ionicons name="pencil" size={14} color="#437FFF" />
+                  <Ionicons name="pencil" size={14} color={COLORS.primaryAccent} />
                 </StyledTouchableOpacity>
                 <StyledTouchableOpacity
                   onPress={() => {
@@ -462,7 +460,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
                   }}
                   className="w-8 h-8 items-center justify-center rounded-full bg-error/10 border border-error/20"
                 >
-                  <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                  <Ionicons name="trash-outline" size={14} color={COLORS.error} />
                 </StyledTouchableOpacity>
               </StyledView>
             )}
@@ -482,7 +480,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
               </StyledTouchableOpacity>
               {savingQuestionId === question.id && (
                 <StyledView className="mt-2 flex-row items-center">
-                  <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                  <Ionicons name="checkmark-circle" size={14} color={COLORS.emerald} />
                   <Body className="text-success text-xs font-semibold ml-1">Saved successfully</Body>
                 </StyledView>
               )}
@@ -494,10 +492,10 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
                   lightHaptic();
                   openAnswerModal(question.id, tier, question.question);
                 }}
-                style={{ backgroundColor: '#EFF6FF', borderColor: '#93C5FD' }}
+                style={{ backgroundColor: COLORS.tier1.lightBg, borderColor: COLORS.borderBlueBright }}
                 className="border-2 border-dashed rounded-xl p-4 items-center"
               >
-                <Ionicons name="add-circle-outline" size={24} color="#437FFF" />
+                <Ionicons name="add-circle-outline" size={24} color={COLORS.primaryAccent} />
                 <Body className="text-primary-600 text-sm font-semibold mt-2">
                   Tap to share your answer
                 </Body>
@@ -519,25 +517,25 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
       1: {
         name: 'Getting to Know You',
         icon: 'chatbubbles' as const,
-        bgColor: '#DBEAFE',
-        borderColor: '#93C5FD',
-        iconBg: '#3B82F6',
+        bgColor: COLORS.tier1.bg,
+        borderColor: COLORS.tier1.border,
+        iconBg: COLORS.tier1.icon,
         emoji: '👋',
       },
       2: {
         name: 'Going Deeper',
         icon: 'heart-half' as const,
-        bgColor: '#E0E7FF',
-        borderColor: '#A5B4FC',
-        iconBg: '#6366F1',
+        bgColor: COLORS.tier2.bg,
+        borderColor: COLORS.tier2.border,
+        iconBg: COLORS.tier2.icon,
         emoji: '💭',
       },
       3: {
         name: 'Building Connection',
         icon: 'heart' as const,
-        bgColor: '#EDE9FE',
-        borderColor: '#C4B5FD',
-        iconBg: '#A855F7',
+        bgColor: COLORS.tier3.bg,
+        borderColor: COLORS.tier3.border,
+        iconBg: COLORS.tier3.icon,
         emoji: '💙',
       },
     };
@@ -566,7 +564,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
                 </StyledView>
                 {answeredCount === questions.length && (
                   <StyledView style={{ backgroundColor: 'rgba(16, 185, 129, 0.2)', borderColor: 'rgba(16, 185, 129, 0.4)' }} className="px-2 py-0.5 rounded-full border">
-                    <Body style={{ color: '#10B981' }} className="text-xs font-bold">✓ Complete</Body>
+                    <Body style={{ color: COLORS.emerald }} className="text-xs font-bold">✓ Complete</Body>
                   </StyledView>
                 )}
               </StyledView>
@@ -576,17 +574,17 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
               </Body>
               <StyledView style={{ backgroundColor: 'rgba(255, 255, 255, 0.6)', borderColor: 'rgba(147, 197, 253, 0.5)' }} className="mt-2.5 rounded-full h-2.5 border overflow-hidden">
                 <StyledView
-                  style={{ backgroundColor: '#437FFF', width: `${progressPercent}%` }}
+                  style={{ backgroundColor: COLORS.primaryAccent, width: `${progressPercent}%` }}
                   className="h-2.5 rounded-full"
                 />
               </StyledView>
             </StyledView>
           </StyledView>
-          <StyledView style={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', borderColor: '#BFDBFE' }} className="ml-3 w-10 h-10 rounded-full items-center justify-center border">
+          <StyledView style={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', borderColor: COLORS.borderBlue }} className="ml-3 w-10 h-10 rounded-full items-center justify-center border">
             <Ionicons
               name={isExpanded ? 'chevron-up' : 'chevron-down'}
               size={22}
-              color="#437FFF"
+              color={COLORS.primaryAccent}
             />
           </StyledView>
         </StyledTouchableOpacity>
@@ -609,7 +607,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
         <StatusBar barStyle="light-content" />
 
         {/* Header */}
-        <StyledView style={{ backgroundColor: '#437FFF' }} className="px-4 py-4 shadow-lg">
+        <StyledView style={{ backgroundColor: COLORS.primaryAccent }} className="px-4 py-4 shadow-lg">
           <StyledView className="flex-row items-center justify-between">
             <StyledTouchableOpacity
               onPress={() => {
@@ -631,29 +629,29 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
         <StyledScrollView className="flex-1" showsVerticalScrollIndicator={false}>
           <StyledView className="px-4 py-4">
             {/* Progress Overview with Instructions */}
-            <Card style={{ backgroundColor: '#F0F7FF', borderColor: '#BFDBFE' }} className="mb-6 border-2 shadow-sm">
+            <Card style={{ backgroundColor: COLORS.backgroundInfoBlue, borderColor: COLORS.borderBlue }} className="mb-6 border-2 shadow-sm">
               <StyledView className="flex-row items-center mb-3">
                 <StyledView className="w-16 h-16 bg-white rounded-2xl items-center justify-center mr-4 shadow-sm">
-                  <Body style={{ color: '#437FFF' }} className="text-xl font-bold">{displayedQuestions.length}</Body>
-                  <Body style={{ color: '#437FFF' }} className="text-sm font-semibold">/3</Body>
+                  <Body style={{ color: COLORS.primaryAccent }} className="text-xl font-bold">{displayedQuestions.length}</Body>
+                  <Body style={{ color: COLORS.primaryAccent }} className="text-sm font-semibold">/3</Body>
                 </StyledView>
                 <StyledView className="flex-1">
-                  <Body style={{ color: '#64748B' }} className="text-xs uppercase tracking-wider mb-1">
+                  <Body style={{ color: COLORS.text.secondary }} className="text-xs uppercase tracking-wider mb-1">
                     Required to Match
                   </Body>
-                  <Body style={{ color: '#1E293B' }} className="font-bold text-xl mb-1">
+                  <Body style={{ color: COLORS.text.heading }} className="font-bold text-xl mb-1">
                     {displayedQuestions.length >= 3 ? '✓ Ready to Match!' : `${displayedQuestions.length} of 3 starred`}
                   </Body>
-                  <StyledView style={{ backgroundColor: '#E0E7FF' }} className="rounded-full h-2 overflow-hidden">
+                  <StyledView style={{ backgroundColor: COLORS.tier2.bg }} className="rounded-full h-2 overflow-hidden">
                     <StyledView
                       className="h-2 rounded-full"
-                      style={{ width: `${(displayedQuestions.length / 3) * 100}%`, backgroundColor: '#437FFF' }}
+                      style={{ width: `${(displayedQuestions.length / 3) * 100}%`, backgroundColor: COLORS.primaryAccent }}
                     />
                   </StyledView>
                 </StyledView>
               </StyledView>
-              <StyledView style={{ backgroundColor: '#E0F2FE' }} className="rounded-lg p-3">
-                <Body style={{ color: '#475569' }} className="text-xs leading-5">
+              <StyledView style={{ backgroundColor: COLORS.backgroundInfoCyan }} className="rounded-lg p-3">
+                <Body style={{ color: COLORS.text.muted }} className="text-xs leading-5">
                   Star 3 questions to match • Answering more improves match quality
                 </Body>
               </StyledView>
@@ -665,9 +663,9 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
               if (!recommendation) return null;
 
               const tierColors = {
-                1: { bg: '#EFF6FF', border: '#3B82F6', text: '#1E40AF' },
-                2: { bg: '#EEF2FF', border: '#6366F1', text: '#4338CA' },
-                3: { bg: '#FAF5FF', border: '#A855F7', text: '#7E22CE' },
+                1: { bg: COLORS.tier1.lightBg, border: COLORS.tier1.icon, text: COLORS.tier1.text },
+                2: { bg: COLORS.tier2.lightBg, border: COLORS.tier2.icon, text: COLORS.tier2.text },
+                3: { bg: COLORS.tier3.lightBg, border: COLORS.tier3.icon, text: COLORS.tier3.text },
               };
               const colors = tierColors[recommendation.tier];
 

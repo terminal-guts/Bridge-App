@@ -7,6 +7,9 @@
 
 import { supabase } from '../lib/supabase';
 import { ApiResponse } from '../types';
+import { createLogger } from './secureLogger';
+
+const logger = createLogger('RateLimiter');
 
 /**
  * Rate limit check result
@@ -66,7 +69,7 @@ export const checkRateLimit = async (
     });
 
     if (error) {
-      console.error('Rate limit check error:', error);
+      logger.error('Rate limit check error:', error);
       return {
         ok: false,
         error: {
@@ -142,7 +145,7 @@ export const recordRateLimitAttempt = async (
     });
 
     if (error) {
-      console.error('Record rate limit attempt error:', error);
+      logger.error('Record rate limit attempt error:', error);
       return {
         ok: false,
         error: {

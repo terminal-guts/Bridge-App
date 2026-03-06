@@ -309,7 +309,7 @@ export interface PendingMatchProposal {
   id: string;
   proposalId: string;
   matchedUser: UserProfile;
-  endorsers: any[];
+  endorsers: Endorsement[];
   compatibilityScore: number;
   receivedAt: string;
   expiresAt: string;
@@ -331,7 +331,7 @@ export interface ActiveMatch {
   canEndMatch?: boolean; // True after 3 days
   daysUntilCanEnd: number; // Days remaining in 3-day minimum
   chatId?: string;
-  endorsers?: any[];
+  endorsers?: Endorsement[];
   messagesExchanged?: number;
 }
 

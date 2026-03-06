@@ -495,16 +495,6 @@ export const getMultiplePhotoSignedUrls = async (
 };
 
 /**
- * DEPRECATED: Get public URL for a photo
- * @deprecated Use getPhotoSignedUrl instead - photos are now private
- */
-export const getPhotoUrl = (storagePath: string): string => {
-  logger.warn('getPhotoUrl is deprecated. Use getPhotoSignedUrl for private bucket access.');
-  const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath);
-  return data.publicUrl;
-};
-
-/**
  * Reorder photos by updating their order property
  * Returns updated photos array
  */

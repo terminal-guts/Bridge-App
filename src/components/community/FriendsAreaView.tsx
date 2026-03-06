@@ -41,6 +41,7 @@ import { friendsAreaGuide } from '../../config/guides';
 import { SEPARATOR } from '../../constants/friendsArea';
 import { UNIVERSAL_PROPOSAL_RELEASE_HOUR } from '../../constants/timings';
 import { createLogger } from '../../utils/secureLogger';
+import { showToast } from '../../utils/toast';
 
 const logger = createLogger('FriendsAreaView');
 
@@ -224,7 +225,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
     } catch (error) {
       logger.error('[FriendsAreaView] Error ending match:', error);
       // Modal stays open so user can retry or cancel
-      // TODO: Show error message to user
+      showToast.error('Could not end match', 'Check your connection and try again.');
     }
   };
 

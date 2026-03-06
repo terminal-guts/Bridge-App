@@ -7,19 +7,22 @@ import { toastConfig } from './src/components/ui/ToastConfig';
 import { GuideProvider } from './src/contexts/GuideContext';
 import { GuideOverlay } from './src/components/guides/GuideOverlay';
 import { ErrorBoundary } from './src/components/ui/ErrorBoundary';
+import { createLogger } from './src/utils/secureLogger';
 
 import { notificationService } from './src/services/notificationService';
+
+const logger = createLogger('App');
 
 export default function App() {
   React.useEffect(() => {
     // Push notification registration is handled in AppNavigator on SIGNED_IN.
     // Here we only set up listeners for incoming notifications while the app is open.
     const subscription = notificationService.addNotificationListener(notification => {
-      console.log('[NOTIFICATION] Received:', notification.request.content.title);
+      logger.info('[NOTIFICATION] Received:', notification.request.content.title);
     });
 
     const responseSubscription = notificationService.addNotificationResponseListener(response => {
-      console.log('[NOTIFICATION] Tapped:', response.notification.request.content.title);
+      logger.info('[NOTIFICATION] Tapped:', response.notification.request.content.title);
     });
 
     return () => {

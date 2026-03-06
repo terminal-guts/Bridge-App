@@ -27,7 +27,7 @@ export const uuidSchema = z.string().uuid('Invalid UUID format');
 // Friend code validation (BRIDGE-XXXX-XXXX format)
 export const friendCodeSchema = z.string()
   .regex(/^BRIDGE-[A-Z0-9]{4}-[A-Z0-9]{4}$/, 'Invalid friend code format')
-  .length(17, 'Friend code must be exactly 17 characters');
+  .length(16, 'Friend code must be exactly 16 characters');
 
 // Name validation (letters, spaces, hyphens, apostrophes only)
 const nameRegex = /^[a-zA-Z\s'-]+$/;

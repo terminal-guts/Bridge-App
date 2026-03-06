@@ -7,6 +7,9 @@
 
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('Supabase');
 
 // Get Supabase credentials from environment
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -20,10 +23,10 @@ const hasRealCredentials = supabaseUrl && supabaseAnonKey &&
 
 // Log the connection mode
 if (hasRealCredentials) {
-  console.log('[SUPABASE] Connecting to real Supabase instance:', supabaseUrl);
+  logger.info('Connecting to real Supabase instance');
 } else {
-  console.log('[SUPABASE] Using mock Supabase client - no valid credentials found');
-  console.log('[SUPABASE] Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY for real database');
+  logger.info('Using mock Supabase client - no valid credentials found');
+  logger.info('Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY for real database');
 }
 
 /**
@@ -125,7 +128,7 @@ const createMockClient = () => {
         error: null,
       }),
       onAuthStateChange: (callback: (event: string, session: any) => void) => {
-        console.log('[MOCK SUPABASE] onAuthStateChange called - returning mock subscription');
+        logger.debug('Mock onAuthStateChange called - returning mock subscription');
         setTimeout(() => {
           callback('SIGNED_IN', {
             user: {
@@ -141,7 +144,7 @@ const createMockClient = () => {
           data: {
             subscription: {
               unsubscribe: () => {
-                console.log('[MOCK SUPABASE] Auth subscription unsubscribed');
+                logger.debug('Mock auth subscription unsubscribed');
               },
             },
           },
@@ -178,7 +181,7 @@ const createMockClient = () => {
           if (statusCallback) statusCallback('SUBSCRIBED');
           return {
             unsubscribe: () => {
-              console.log('[MOCK SUPABASE] Channel unsubscribed:', name);
+              logger.debug('Mock channel unsubscribed:', name);
             },
           };
         },

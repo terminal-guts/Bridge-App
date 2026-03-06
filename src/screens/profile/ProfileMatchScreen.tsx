@@ -12,6 +12,7 @@ import { getUserProfile, getFullUserProfileById } from '../../services/profileSe
 import { KarmaInfoModal } from '../../components/community/karma/KarmaInfoModal';
 import { VALUES_EMOJI, INTERESTS_EMOJI, getEmoji } from '../../utils/emojiMaps';
 import { showToast } from '../../utils/toast';
+import { COLORS } from '../../theme/colors';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -141,7 +142,7 @@ export default function ProfileMatchScreen() {
     if (loading || !partnerProfile) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#2563EB" />
+                <ActivityIndicator size="large" color={COLORS.primary} />
             </View>
         );
     }
@@ -213,7 +214,7 @@ export default function ProfileMatchScreen() {
                                             </View>
                                         ))
                                         : [0, 1, 2].map((_, i) => (
-                                            <View key={i} style={[styles.stackAvatarContainer, { marginLeft: i === 0 ? 0 : -8, backgroundColor: '#D9D9D9' }]} />
+                                            <View key={i} style={[styles.stackAvatarContainer, { marginLeft: i === 0 ? 0 : -8, backgroundColor: COLORS.paginationInactive }]} />
                                         ))
                                     }
                                 </View>
@@ -324,7 +325,7 @@ export default function ProfileMatchScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
     },
     waitingBadge: {
         alignSelf: 'center',
@@ -341,13 +342,13 @@ const styles = StyleSheet.create({
     waitingText: {
         fontFamily: 'Outfit_500Medium',
         fontSize: 14,
-        color: '#D4AA01',
+        color: COLORS.waitingAmber,
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
     },
     heroContainer: {
         width: '100%',
@@ -391,12 +392,12 @@ const styles = StyleSheet.create({
     paginationDot: {
         width: 16,
         height: 4,
-        backgroundColor: '#D9D9D9',
+        backgroundColor: COLORS.paginationInactive,
         opacity: 0.2,
         borderRadius: 20,
     },
     dotActive: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         opacity: 1,
     },
     heroOverlayName: {
@@ -431,7 +432,7 @@ const styles = StyleSheet.create({
     verifyBadge: {
         width: 20,
         height: 20,
-        backgroundColor: '#2563EB',
+        backgroundColor: COLORS.primary,
         borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
@@ -451,7 +452,7 @@ const styles = StyleSheet.create({
         height: 24,
         borderRadius: 12,
         borderWidth: 2,
-        borderColor: '#FFFFFF',
+        borderColor: COLORS.card,
         overflow: 'hidden',
     },
     stackAvatar: {
@@ -473,14 +474,14 @@ const styles = StyleSheet.create({
     karmaText: {
         fontFamily: 'PlusJakartaSans_500Medium',
         fontSize: 13,
-        color: '#F9FAFB',
+        color: COLORS.backgroundSubtle,
     },
     content: {
         paddingHorizontal: 13,
         paddingTop: 13,
     },
     validationCard: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         borderRadius: 24,
         padding: 18,
         shadowColor: 'rgba(15, 23, 42, 0.08)',
@@ -503,7 +504,7 @@ const styles = StyleSheet.create({
     iconCircle: {
         width: 32,
         height: 32,
-        backgroundColor: '#E8F0FF',
+        backgroundColor: COLORS.backgroundIconBlue,
         borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
@@ -511,13 +512,13 @@ const styles = StyleSheet.create({
     cardTitle: {
         fontFamily: 'PlusJakartaSans_600SemiBold',
         fontSize: 15,
-        color: '#0F1724',
+        color: COLORS.cardTitleDark,
     },
     scoreValue: {
         fontFamily: 'PlusJakartaSans_700Bold',
         fontSize: 36,
         lineHeight: 36,
-        color: '#2B6BE6',
+        color: COLORS.scoreBlue,
         marginBottom: 8,
     },
     progressContainer: {
@@ -526,16 +527,16 @@ const styles = StyleSheet.create({
     progressBackground: {
         width: '100%',
         height: 8,
-        backgroundColor: '#F2F4F7',
+        backgroundColor: COLORS.backgroundProgressTrack,
         borderRadius: 9999,
     },
     progressFill: {
         height: '100%',
-        backgroundColor: '#2B6BE6',
+        backgroundColor: COLORS.scoreBlue,
         borderRadius: 9999,
     },
     sectionCard: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         borderRadius: 12,
         borderWidth: 1,
         borderColor: 'rgba(1, 1, 1, 0.1)',
@@ -554,7 +555,7 @@ const styles = StyleSheet.create({
         fontFamily: 'Outfit_500Medium',
         fontSize: 16,
         lineHeight: 20,
-        color: '#2563EB',
+        color: COLORS.primary,
         marginBottom: 12,
     },
     tagGrid: {
@@ -575,11 +576,11 @@ const styles = StyleSheet.create({
     tagText: {
         fontFamily: 'Outfit_400Regular',
         fontSize: 14,
-        color: '#010101',
+        color: COLORS.text.black,
         opacity: 0.8,
     },
     questionBox: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         borderRadius: 12,
         borderWidth: 1,
         borderColor: 'rgba(1, 1, 1, 0.1)',
@@ -595,14 +596,14 @@ const styles = StyleSheet.create({
         fontFamily: 'Outfit_500Medium',
         fontSize: 16,
         lineHeight: 22,
-        color: '#010101',
+        color: COLORS.text.black,
         marginBottom: 4,
     },
     answerText: {
         fontFamily: 'Outfit_400Regular',
         fontSize: 15,
         lineHeight: 24,
-        color: '#010101',
+        color: COLORS.text.black,
         opacity: 0.5,
     },
     floatingActions: {
@@ -617,7 +618,7 @@ const styles = StyleSheet.create({
         width: 62,
         height: 62,
         borderRadius: 31,
-        backgroundColor: '#565164',
+        backgroundColor: COLORS.passButton,
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: 'rgba(0, 0, 0, 0.28)',
@@ -630,7 +631,7 @@ const styles = StyleSheet.create({
         width: 62,
         height: 62,
         borderRadius: 31,
-        backgroundColor: '#2563EB',
+        backgroundColor: COLORS.primary,
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: 'rgba(0, 0, 0, 0.28)',

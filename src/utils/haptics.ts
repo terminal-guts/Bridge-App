@@ -6,6 +6,9 @@
 
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
+import { createLogger } from './secureLogger';
+
+const logger = createLogger('Haptics');
 
 /**
  * Light haptic feedback for subtle interactions
@@ -17,7 +20,7 @@ export const lightHaptic = async () => {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (error) {
       // Haptics might not be supported on all devices
-      console.log('Haptic feedback not supported');
+      logger.debug('Haptic feedback not supported');
     }
   }
 };
@@ -31,7 +34,7 @@ export const mediumHaptic = async () => {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (error) {
-      console.log('Haptic feedback not supported');
+      logger.debug('Haptic feedback not supported');
     }
   }
 };
@@ -45,7 +48,7 @@ export const heavyHaptic = async () => {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     } catch (error) {
-      console.log('Haptic feedback not supported');
+      logger.debug('Haptic feedback not supported');
     }
   }
 };
@@ -59,7 +62,7 @@ export const successHaptic = async () => {
     try {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
-      console.log('Haptic feedback not supported');
+      logger.debug('Haptic feedback not supported');
     }
   }
 };
@@ -73,7 +76,7 @@ export const warningHaptic = async () => {
     try {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     } catch (error) {
-      console.log('Haptic feedback not supported');
+      logger.debug('Haptic feedback not supported');
     }
   }
 };
@@ -87,7 +90,7 @@ export const errorHaptic = async () => {
     try {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } catch (error) {
-      console.log('Haptic feedback not supported');
+      logger.debug('Haptic feedback not supported');
     }
   }
 };
@@ -101,7 +104,7 @@ export const selectionHaptic = async () => {
     try {
       await Haptics.selectionAsync();
     } catch (error) {
-      console.log('Haptic feedback not supported');
+      logger.debug('Haptic feedback not supported');
     }
   }
 };

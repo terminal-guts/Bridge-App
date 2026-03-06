@@ -8,6 +8,9 @@
 
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createLogger } from './secureLogger';
+
+const logger = createLogger('Auth');
 
 // In-memory userId cache — set after first successful auth, cleared on sign-out.
 // Eliminates redundant supabase.auth.getUser() network calls from every service method.
@@ -49,7 +52,7 @@ export async function getAuthenticatedUserId(): Promise<string | null> {
 
     return null;
   } catch (error) {
-    console.error('Error getting authenticated user:', error);
+    logger.error('Error getting authenticated user:', error);
     return null;
   }
 }
@@ -102,7 +105,7 @@ export async function requireAuthWithPhone(): Promise<{ userId: string; phone: s
       };
     }
   } catch (error) {
-    console.error('Error in requireAuthWithPhone:', error);
+    logger.error('Error in requireAuthWithPhone:', error);
   }
 
   throw new Error('Authentication required. Please sign in to continue.');

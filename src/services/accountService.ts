@@ -55,7 +55,7 @@ export const deleteUserAccount = async (userId?: string): Promise<ApiResponse<De
   try {
     // Call the Edge Function to handle account deletion
     // The Edge Function will verify authentication and perform all deletion operations
-    const { data, error } = await (supabase.functions as any).invoke('delete_account', {
+    const { data, error } = await supabase.functions.invoke('delete-account', {
       body: {},
     });
 
@@ -101,9 +101,24 @@ export const requestAccountDeletion = async (
     // SECURITY: Get user ID from authenticated session
     const userId = await requireAuth();
 
-    // TODO: Implement deletion request table and email confirmation
-    // For now, we'll just log the request
-    logger.info(`Account deletion requested for user ${userId}. Reason: ${reason || 'None provided'}`);
+    // Initiate soft-delete via edge function
+    const { data, error } = await supabase.functions.invoke('delete-account', {
+      body: { reason: reason || undefined },
+    });
+
+    if (error) {
+      logger.error('Request account deletion function error:', error);
+      return createErrorResponse('DELETE_REQUEST_FAILED', error.message);
+    }
+
+    if (!data?.ok) {
+      return createErrorResponse(
+        data?.error?.code || 'DELETE_REQUEST_FAILED',
+        data?.error?.message || 'Failed to request account deletion',
+      );
+    }
+
+    logger.info('Account deletion requested successfully');
 
     return {
       ok: true,
@@ -123,15 +138,24 @@ export const requestAccountDeletion = async (
  */
 export const cancelAccountDeletion = async (): Promise<ApiResponse<void>> => {
   try {
-    // SECURITY: Get user ID from authenticated session
-    const userId = await requireAuth();
+    const { data, error } = await supabase.functions.invoke('cancel-account-deletion', {
+      body: {},
+    });
 
-    // TODO: Implement deletion request cancellation
-    logger.info(`Account deletion cancelled for user ${userId}`);
+    if (error) {
+      logger.error('Cancel account deletion function error:', error);
+      return createErrorResponse('CANCEL_FAILED', error.message);
+    }
 
-    return {
-      ok: true,
-    };
+    if (!data?.ok) {
+      return createErrorResponse(
+        data?.error?.code || 'CANCEL_FAILED',
+        data?.error?.message || 'Failed to cancel account deletion',
+      );
+    }
+
+    logger.info('Account deletion cancelled successfully');
+    return { ok: true };
   } catch (error: any) {
     logger.error('Cancel account deletion error:', error);
     return createErrorResponse(

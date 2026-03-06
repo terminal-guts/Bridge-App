@@ -195,34 +195,6 @@ export const getBlockedUsers = async (): Promise<ApiResponse<BlockedUser[]>> => 
 };
 
 /**
- * Check if the current user has blocked a specific user.
- */
-export const isUserBlocked = async (
-  targetUserId: string,
-): Promise<ApiResponse<boolean>> => {
-  try {
-    if (!targetUserId) {
-      return createErrorResponse('INVALID_INPUT', 'Target user ID is required');
-    }
-
-    const currentUserId = await getCurrentUserId();
-
-    const { data, error } = await supabase
-      .from('blocked_users')
-      .select('id')
-      .eq('user_id', currentUserId)
-      .eq('blocked_user_id', targetUserId)
-      .maybeSingle();
-
-    if (error) throw error;
-    return { ok: true, data: !!data };
-  } catch (error: any) {
-    logger.error('isUserBlocked error:', error);
-    return createErrorResponse('CHECK_BLOCKED_ERROR', error.message || 'Failed to check block status');
-  }
-};
-
-/**
  * Check if either user has blocked the other (bidirectional check).
  */
 export const isUserPairBlocked = async (
