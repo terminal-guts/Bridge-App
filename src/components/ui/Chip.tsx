@@ -71,6 +71,8 @@ const ChipComponent: React.FC<ChipProps> = ({
       <StyledTouchableOpacity
         disabled
         className={`${baseStyles} ${variantStyles} ${className}`}
+        accessibilityRole="text"
+        accessibilityLabel={label}
       >
         <StyledText className={`${TEXT_SIZE_STYLES[size]} ${textStyles}`}>
           {label}
@@ -85,6 +87,9 @@ const ChipComponent: React.FC<ChipProps> = ({
       activeOpacity={1}
       delayPressIn={0}
       className={`${baseStyles} ${variantStyles} ${className}`}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
     >
       <StyledText className={`${TEXT_SIZE_STYLES[size]} ${textStyles}`}>
         {label}

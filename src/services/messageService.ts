@@ -247,6 +247,25 @@ export const sendMessage = async (
       };
     }
 
+    // Match status check — prevent messaging on ended/expired matches
+    if (matchId && USE_REAL_BACKEND) {
+      const { data: match } = await supabase
+        .from('matches')
+        .select('status')
+        .eq('id', matchId)
+        .maybeSingle();
+
+      if (!match || match.status !== 'active') {
+        return {
+          ok: false,
+          error: {
+            code: 'MATCH_ENDED',
+            message: 'This match is no longer active',
+          },
+        };
+      }
+    }
+
     // Block check — prevent messaging if either user has blocked the other
     if (receiverId && USE_REAL_BACKEND) {
       const { data: blockRows } = await supabase

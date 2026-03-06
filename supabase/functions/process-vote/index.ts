@@ -96,18 +96,28 @@ Deno.serve(async (req: Request) => {
       return Response.json({ error: 'Missing proposal_id or vote_type' }, { status: 400, headers: corsHeaders });
     }
 
-    // SKIP = "Not Sure" action — records vote row without affecting tallies
-    const validVoteTypes = ['YES', 'NO', 'UNSURE', 'RECOMMEND', 'SKIP'];
+    const validVoteTypes = ['YES', 'NO', 'UNSURE', 'RECOMMEND'];
     if (!validVoteTypes.includes(vote_type)) {
       return Response.json({ error: `Invalid vote_type. Must be one of: ${validVoteTypes.join(', ')}` }, { status: 400, headers: corsHeaders });
     }
 
     const supabase = createAdminClient();
 
-    // 0. Check if a vote already exists for this proposal/voter pair
+    // 0a. Daily vote cap — safety net against abuse (generous limit; real users won't hit this)
+    const { count: todayVotes } = await supabase
+      .from('proposal_votes')
+      .select('*', { count: 'exact', head: true })
+      .eq('voter_user_id', voterId)
+      .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
+
+    if ((todayVotes ?? 0) >= 50) {
+      return Response.json({ error: 'Daily vote limit reached. Try again tomorrow.' }, { status: 429, headers: corsHeaders });
+    }
+
+    // 0b. Check if a vote already exists for this proposal/voter pair
     const { data: existingVote } = await supabase
       .from('proposal_votes')
-      .select('vote_type, is_friend_vote, voter_user_id')
+      .select('vote_type, is_friend_vote, voter_user_id, vote_weight')
       .eq('proposal_id', proposal_id)
       .eq('voter_user_id', voterId)
       .maybeSingle();
@@ -215,7 +225,8 @@ Deno.serve(async (req: Request) => {
     let weightedNo = proposal.weighted_no || 0;
 
     // A. Subtract old vote weight if it was a different vote type
-    if (existingVote && existingVote.vote_type !== vote_type) {
+    //    Only YES/NO ever touched tallies — UNSURE/RECOMMEND never added anything, so skip subtraction.
+    if (existingVote && existingVote.vote_type !== vote_type && (existingVote.vote_type === 'YES' || existingVote.vote_type === 'NO')) {
       // Use stored vote_weight for accurate subtraction (avoids tier-drift)
       const oldWeight = existingVote.vote_weight || (existingVote.is_friend_vote ? weightMultiplier * FRIEND_VOTE_WEIGHT : weightMultiplier);
       if (existingVote.is_friend_vote) {

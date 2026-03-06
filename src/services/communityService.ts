@@ -337,11 +337,8 @@ function recordProposedPairing(userAId: string, userBId: string): void {
  * specific friend. Community-level actions (votes, daily grid proposal) are
  * NOT per-friendship and must not call this function.
  *
- * TODO (Production): Replace with a Supabase query against a
- * `friend_participation` table that records (user_id, friend_id, date) for
- * each user. A mutual streak day exists when BOTH directions have a row for
- * the same date. The streak count is the length of the longest consecutive
- * sequence of such mutual days ending today.
+ * Note: Real streak logic is handled by the `update_friend_streak` RPC
+ * in the backend. This mock version is for local development only.
  */
 const friendStreaks: Map<string, { lastParticipationDate: string; streakDays: number }> = new Map();
 
@@ -426,7 +423,7 @@ interface MockState {
   dailyTasksCompleted: boolean;
   gridProposalSubmitted: boolean;
   votesSubmitted: number;
-  votedProposals: Record<string, 'yes' | 'no' | 'skip'>;
+  votedProposals: Record<string, 'yes' | 'no' | 'unsure'>;
   friendsAreaUnlocked: boolean;
   mockDataEnabled: true;
   timeRestrictionDisabled: boolean;
@@ -1117,7 +1114,7 @@ class CommunityService {
    * The `recommendToId` parameter is used when a user recommends one of the
    * candidates to a specific friend.
    */
-  async submitProposalVote(proposalId: string, vote: 'yes' | 'no' | 'skip'): Promise<void> {
+  async submitProposalVote(proposalId: string, vote: 'yes' | 'no' | 'unsure'): Promise<void> {
     await this.delay(300);
 
     const karmaWeight = getKarmaWeight(mockState.currentKarmaAssists);
@@ -1125,8 +1122,7 @@ class CommunityService {
     logger.info('[Mock] Voting on proposal:', proposalId, '-', vote,
       `(assists: ${mockState.currentKarmaAssists})`);
 
-    // Count all explicit votes (yes, no, skip/not-sure) toward task progress.
-    // 'skip' corresponds to "Not Sure" — a deliberate vote choice that should count.
+    // Count all explicit votes (yes, no, unsure) toward task progress.
     // The only case that should NOT count is a cancel (which never calls this function).
     // Re-voting on the same proposal updates the preference but does NOT add to the count.
     const prevVote = mockState.votedProposals[proposalId]; // undefined if new

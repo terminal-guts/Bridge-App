@@ -4,6 +4,7 @@ import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 import { H2, Body, Button } from '.';
 import { createLogger } from '../../utils/secureLogger';
+import { Sentry } from '../../lib/sentry';
 
 const logger = createLogger('ErrorBoundary');
 
@@ -59,10 +60,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     // Call optional error handler
     this.props.onError?.(error, errorInfo);
 
-    // TODO: Send to error reporting service (Sentry, Bugsnag, etc.)
-    // if (__DEV__) {
-    //   console.error('Error Stack:', errorInfo.componentStack);
-    // }
+    Sentry.captureException(error, {
+      contexts: { react: { componentStack: errorInfo.componentStack } },
+    });
   }
 
   resetError = () => {
@@ -179,6 +179,9 @@ export class CardErrorBoundary extends Component<ErrorBoundaryProps, ErrorBounda
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     logger.error('Card Error Boundary caught an error:', error, errorInfo);
     this.props.onError?.(error, errorInfo);
+    Sentry.captureException(error, {
+      contexts: { react: { componentStack: errorInfo.componentStack } },
+    });
   }
 
   resetError = () => {

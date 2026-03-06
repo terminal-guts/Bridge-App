@@ -23,6 +23,9 @@ export const OptionButton: React.FC<OptionButtonProps> = ({
         ? 'bg-primary-500 border-primary-500'
         : 'bg-white border-neutral-300'
     }`}
+    accessibilityRole="button"
+    accessibilityLabel={label}
+    accessibilityState={{ selected }}
   >
     <Body className={selected ? 'text-white font-medium' : 'text-neutral-700'}>
       {label}

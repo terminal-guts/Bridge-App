@@ -9,7 +9,5 @@ export * from './profileService';
 export * from './photoService';
 export * from './blockService';
 export * from './settingsService';
-export * from './accountService';
-export * from './surveyService';
 export * from './matchService';
 export * from './messageService';

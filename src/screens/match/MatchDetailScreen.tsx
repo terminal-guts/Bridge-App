@@ -7,7 +7,6 @@ import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList, Match } from '../../types';
 import { getCurrentUser } from '../../services/authService';
 import { getUserMatches, acceptMatch, rejectMatch } from '../../services/matchService';
-import { getFriends } from '../../services/friendService';
 import { Ionicons } from '@expo/vector-icons';
 import { createLogger } from '../../utils/secureLogger';
 
@@ -57,74 +56,6 @@ const showRejectConfirmAlert = (onConfirm: () => void) => {
       onPress: onConfirm,
     },
   ]);
-};
-
-/**
- * Show alert asking if user wants to recommend to friend
- */
-const showRecommendPrompt = (profileName: string, onYes: () => void, onNo: () => void) => {
-  Alert.alert(
-    'Recommend to a Friend?',
-    `Think ${profileName} might be a good match for one of your friends?`,
-    [
-      {
-        text: 'No Thanks',
-        style: 'cancel',
-        onPress: onNo,
-      },
-      {
-        text: 'Yes, Recommend',
-        onPress: onYes,
-      },
-    ]
-  );
-};
-
-/**
- * Show alert when user has no friends
- */
-const showNoFriendsAlert = (onAddFriends: () => void, onCancel: () => void) => {
-  Alert.alert('No Friends Yet', 'Add friends first to share match recommendations', [
-    {
-      text: 'Add Friends',
-      onPress: onAddFriends,
-    },
-    {
-      text: 'Cancel',
-      style: 'cancel',
-      onPress: onCancel,
-    },
-  ]);
-};
-
-/**
- * Show alert for selecting a friend
- */
-const showSelectFriendAlert = (
-  friends: Array<{ text: string; onPress: () => void }>,
-  onCancel: () => void
-) => {
-  const buttons = [...friends.slice(0, 5), { text: 'Cancel', onPress: onCancel }];
-  Alert.alert('Select Friend', 'Choose a friend to recommend this match to:', buttons);
-};
-
-/**
- * Show recommendation result alert
- */
-const showRecommendationResult = (success: boolean, onDismiss: () => void) => {
-  if (success) {
-    Alert.alert(
-      'Recommendation Sent!',
-      'Your friend will see this match in their recommendations',
-      [{ text: 'OK', onPress: onDismiss }]
-    );
-  } else {
-    Alert.alert(
-      'Failed to Send',
-      'Could not send recommendation. Please try again later.',
-      [{ text: 'OK', onPress: onDismiss }]
-    );
-  }
 };
 
 export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
@@ -207,59 +138,13 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
       return;
     }
 
-    // After successful rejection, ask about friend recommendation
-    promptFriendRecommendation();
+    navigation.goBack();
   };
 
   const handleReject = async () => {
     showRejectConfirmAlert(handleRejectConfirmed);
   };
 
-  const promptFriendRecommendation = async () => {
-    if (!match || !profile) return;
-
-    showRecommendPrompt(
-      profile.firstName,
-      () => showFriendsList(),
-      () => navigation.goBack()
-    );
-  };
-
-  const navigateToAddFriends = () => {
-    navigation.goBack();
-    navigation.navigate('ContactInvite');
-  };
-
-  const showFriendsList = async () => {
-    try {
-      const friendsResult = await getFriends();
-
-      if (!friendsResult.ok || !friendsResult.data || friendsResult.data.length === 0) {
-        showNoFriendsAlert(navigateToAddFriends, () => navigation.goBack());
-        return;
-      }
-
-      // Create buttons for each friend
-      const friendButtons = friendsResult.data.map((friend) => ({
-        text: friend.profile.firstName,
-        onPress: () => handleRecommendToFriend(friend.friendId),
-      }));
-
-      showSelectFriendAlert(friendButtons, () => navigation.goBack());
-    } catch (error) {
-      logger.error('Failed to load friends:', error);
-      navigation.goBack();
-    }
-  };
-
-  const handleRecommendToFriend = async (friendUserId: string) => {
-    if (!match || !profile) return;
-
-    // TODO: Implement recommendToFriend functionality in friendService
-    logger.info('Recommend to friend:', { profileId: profile.userId, friendId: friendUserId });
-    Alert.alert('Coming Soon', 'Recommend to friend feature is not yet implemented.');
-    navigation.goBack();
-  };
 
   const handleStartChat = () => {
     if (!match || !profile) return;

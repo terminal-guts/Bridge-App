@@ -337,7 +337,7 @@ export function ProposalReviewView({
     }, 300);
   }, [currentIndex, proposals.length, onVoteComplete, onBack, onVotesComplete]);
 
-  const handleVote = useCallback((vote: 'yes' | 'no' | 'skip') => {
+  const handleVote = useCallback((vote: 'yes' | 'no' | 'unsure') => {
     if (voting || currentIndex >= proposals.length) return;
     const current = proposals[currentIndex];
     if (!current) return;
@@ -887,7 +887,7 @@ export function ProposalReviewView({
 
           {/* Not Sure */}
           <TouchableOpacity
-            onPress={() => handleVote('skip')}
+            onPress={() => handleVote('unsure')}
             disabled={voting}
             activeOpacity={0.8}
             style={{

@@ -8,8 +8,11 @@ import { GuideProvider } from './src/contexts/GuideContext';
 import { GuideOverlay } from './src/components/guides/GuideOverlay';
 import { ErrorBoundary } from './src/components/ui/ErrorBoundary';
 import { createLogger } from './src/utils/secureLogger';
+import { initSentry } from './src/lib/sentry';
 
 import { notificationService } from './src/services/notificationService';
+
+initSentry();
 
 const logger = createLogger('App');
 

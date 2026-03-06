@@ -7,6 +7,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
+import { Sentry } from '../lib/sentry';
 import { getNext7PMCentral, getLast7PMCentral } from '../utils/centralTime';
 import { getMultiplePhotoSignedUrls } from './photoService';
 import {
@@ -351,12 +352,12 @@ class CommunityBackendService {
     }
   }
 
-  async submitProposalVote(proposalId: string, vote: 'yes' | 'no' | 'skip'): Promise<void> {
+  async submitProposalVote(proposalId: string, vote: 'yes' | 'no' | 'unsure'): Promise<void> {
     const userId = await getCurrentUserId();
 
-    if (vote === 'skip') {
+    if (vote === 'unsure') {
       // UNSURE counts as a completed action — insert directly (no tally impact)
-      const { error: skipErr } = await supabase
+      const { error: unsureErr } = await supabase
         .from('proposal_votes')
         .upsert({
           proposal_id: proposalId,
@@ -366,13 +367,13 @@ class CommunityBackendService {
           vote_weight: 1.0,
           created_at: new Date().toISOString(),
         }, { onConflict: 'proposal_id,voter_user_id' });
-      if (skipErr) {
-        console.error('[SKIP VOTE] upsert failed:', skipErr.message, skipErr.details, skipErr.code);
-        throw new Error(`Skip vote failed: ${skipErr.message}`);
+      if (unsureErr) {
+        console.error('[UNSURE VOTE] upsert failed:', unsureErr.message, unsureErr.details, unsureErr.code);
+        throw new Error(`Unsure vote failed: ${unsureErr.message}`);
       }
       // +1 karma and mark assignment as voted (fire-and-forget, non-blocking)
-      supabase.rpc('increment_karma_for_vote', { p_user_id: userId }).catch(() => {});
-      supabase.from('pool_vote_assignments').update({ has_voted: true }).match({ proposal_id: proposalId, voter_id: userId }).catch(() => {});
+      supabase.rpc('increment_karma_for_vote', { p_user_id: userId }).then(null, (e: any) => Sentry.captureException(e));
+      supabase.from('pool_vote_assignments').update({ has_voted: true }).match({ proposal_id: proposalId, voter_id: userId }).then(null, (e: any) => Sentry.captureException(e));
       this.invalidateFriendsCache();
       if (!this.sessionVotedProposals.has(proposalId)) {
         this.sessionVotedProposals.add(proposalId);
@@ -397,9 +398,9 @@ class CommunityBackendService {
     const userId = await getCurrentUserId();
     await submitFriendRecommendation(recommendedPersonId, recommendedToFriendId, sourceProposalId);
     // +1 karma and mark assignment as voted (fire-and-forget, non-blocking)
-    supabase.rpc('increment_karma_for_vote', { p_user_id: userId }).catch(() => {});
+    supabase.rpc('increment_karma_for_vote', { p_user_id: userId }).then(null, (e: any) => Sentry.captureException(e));
     if (sourceProposalId) {
-      supabase.from('pool_vote_assignments').update({ has_voted: true }).match({ proposal_id: sourceProposalId, voter_id: userId }).catch(() => {});
+      supabase.from('pool_vote_assignments').update({ has_voted: true }).match({ proposal_id: sourceProposalId, voter_id: userId }).then(null, (e: any) => Sentry.captureException(e));
     }
     this.invalidateFriendsCache();
     if (sourceProposalId && !this.sessionVotedProposals.has(sourceProposalId)) {

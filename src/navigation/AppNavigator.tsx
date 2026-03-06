@@ -10,6 +10,7 @@ import { GuideTarget, useGuideContext } from '../components/guides';
 import { supabase } from '../lib/supabase';
 import { FEATURES } from '../config/features';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
+import { Sentry } from '../lib/sentry';
 import { fetchAndSetUserProfile } from '../services/profileService';
 import { isIntentionalSignOut, resetIntentionalSignOut } from '../services/authService';
 import { notificationService } from '../services/notificationService';
@@ -34,34 +35,47 @@ import { FriendProposalScreen } from '../screens/community/FriendProposalScreen'
 // Onboarding
 import { OnboardingScreen } from '../screens/onboarding/OnboardingScreen';
 
-// Match Screens
-import { MatchRevealScreen } from '../screens/match/MatchRevealScreen';
-import { MatchDetailScreen } from '../screens/match/MatchDetailScreen';
-import { MatchProposalScreen } from '../screens/match/MatchProposalScreen';
+// Match Screens (eagerly loaded — part of main tab flow)
 import { MatchesScreen } from '../screens/match/MatchesScreen';
-
-// Chat
 import ChatScreen from '../screens/match/ChatScreen';
 
-// Profile Screens
+// Profile Screens (eagerly loaded)
 import { SettingsScreen } from '../screens/profile/SettingsScreen';
-import { ProfileEditScreen } from '../screens/profile/ProfileEditScreen';
-import { MatchPreferencesScreen } from '../screens/profile/MatchPreferencesScreen';
-import { BlockedUsersScreen } from '../screens/profile/BlockedUsersScreen';
-import { PauseProfileScreen } from '../screens/profile/PauseProfileScreen';
+
+// ── Lazy-loaded screens (only evaluated when navigated to) ──────────────────
+const LazyFallback = () => <ActivityIndicator style={{ flex: 1 }} color="#437FFF" />;
+
+function withSuspense<P extends object>(LazyComponent: React.LazyExoticComponent<React.ComponentType<P>>) {
+  return function SuspenseWrapped(props: P) {
+    return (
+      <React.Suspense fallback={<LazyFallback />}>
+        <LazyComponent {...props} />
+      </React.Suspense>
+    );
+  };
+}
+
+// Match sub-screens
+const MatchRevealScreen = withSuspense(React.lazy(() => import('../screens/match/MatchRevealScreen').then(m => ({ default: m.MatchRevealScreen }))));
+const MatchDetailScreen = withSuspense(React.lazy(() => import('../screens/match/MatchDetailScreen').then(m => ({ default: m.MatchDetailScreen }))));
+const MatchProposalScreen = withSuspense(React.lazy(() => import('../screens/match/MatchProposalScreen').then(m => ({ default: m.MatchProposalScreen }))));
+
+// Profile sub-screens
+const ProfileEditScreen = withSuspense(React.lazy(() => import('../screens/profile/ProfileEditScreen').then(m => ({ default: m.ProfileEditScreen }))));
+const MatchPreferencesScreen = withSuspense(React.lazy(() => import('../screens/profile/MatchPreferencesScreen').then(m => ({ default: m.MatchPreferencesScreen }))));
+const BlockedUsersScreen = withSuspense(React.lazy(() => import('../screens/profile/BlockedUsersScreen').then(m => ({ default: m.BlockedUsersScreen }))));
+const PauseProfileScreen = withSuspense(React.lazy(() => import('../screens/profile/PauseProfileScreen').then(m => ({ default: m.PauseProfileScreen }))));
+const ProfileMatchScreen = withSuspense(React.lazy(() => import('../screens/profile/ProfileMatchScreen')));
+
+// Legal & Support
+const TermsOfService = withSuspense(React.lazy(() => import('../screens/legal/TermsOfService').then(m => ({ default: m.TermsOfService }))));
+const PrivacyPolicy = withSuspense(React.lazy(() => import('../screens/legal/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy }))));
+const HelpSupportScreen = withSuspense(React.lazy(() => import('../screens/support/HelpSupportScreen').then(m => ({ default: m.HelpSupportScreen }))));
+
+// Friends sub-screens
+const FriendListScreen = withSuspense(React.lazy(() => import('../screens/friends/FriendListScreen').then(m => ({ default: m.FriendListScreen }))));
+const ContactInviteScreen = withSuspense(React.lazy(() => import('../screens/friends/ContactInviteScreen').then(m => ({ default: m.ContactInviteScreen }))));
 // ChangePhoneNumberScreen removed — email-only auth
-import ProfileMatchScreen from '../screens/profile/ProfileMatchScreen';
-
-// Legal Screens
-import { TermsOfService } from '../screens/legal/TermsOfService';
-import { PrivacyPolicy } from '../screens/legal/PrivacyPolicy';
-
-// Support Screens
-import { HelpSupportScreen } from '../screens/support/HelpSupportScreen';
-
-// Friend Screens
-import { FriendListScreen } from '../screens/friends/FriendListScreen';
-import { ContactInviteScreen } from '../screens/friends/ContactInviteScreen';
 
 // Types
 import { RootStackParamList, MainTabParamList } from '../types';
@@ -323,7 +337,9 @@ export const AppNavigator = () => {
       <ErrorBoundary
         onError={(error, errorInfo) => {
           logger.error('[App Error Boundary]', error, errorInfo);
-          // TODO: Send to error reporting service (Sentry, Bugsnag, etc.)
+          Sentry.captureException(error, {
+            contexts: { react: { componentStack: errorInfo.componentStack } },
+          });
         }}
       >
         <Stack.Navigator

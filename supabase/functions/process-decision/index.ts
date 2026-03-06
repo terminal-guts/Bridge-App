@@ -174,7 +174,12 @@ Deno.serve(async (req: Request) => {
 
       if (matchErr) {
         console.error('Match creation error:', matchErr);
-        // Don't fail the whole request — the proposal is already updated
+        // Rollback: revert proposal so we don't have a phantom "matched" status with no match row
+        await supabase
+          .from('proposals')
+          .update({ status: proposal.status, confirmed_at: null, updated_at: nowIso })
+          .eq('id', proposal_id);
+        return Response.json({ error: 'Failed to create match' }, { status: 500, headers: corsHeaders });
       }
 
       // Apply karma for successful match

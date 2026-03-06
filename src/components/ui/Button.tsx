@@ -12,6 +12,7 @@ interface ButtonProps {
   disabled?: boolean;
   fullWidth?: boolean;
   className?: string;
+  accessibilityLabel?: string;
 }
 
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -27,7 +28,9 @@ export const Button: React.FC<ButtonProps> = ({
   disabled = false,
   fullWidth = false,
   className = '',
+  accessibilityLabel,
 }) => {
+  const label = accessibilityLabel || (typeof children === 'string' ? children : undefined);
   const baseStyles = `rounded-xl items-center justify-center active:scale-[0.98] ${
     fullWidth ? 'w-full' : ''
   }`;
@@ -69,6 +72,9 @@ export const Button: React.FC<ButtonProps> = ({
       disabled={disabled || loading}
       className={`${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={loading ? 'Loading' : label}
+      accessibilityState={{ disabled: disabled || loading }}
     >
       {loading ? (
         <ActivityIndicator
