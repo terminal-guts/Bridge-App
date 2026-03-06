@@ -471,10 +471,12 @@ export function MatchesScreen() {
     return (
         <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
             <OfflineBanner />
-            <ProfileCompletionBanner
-                profile={profile}
-                onPress={() => navigation.navigate('Profile')}
-            />
+            {screenState !== 'active_match' && (
+                <ProfileCompletionBanner
+                    profile={profile}
+                    onPress={() => navigation.navigate('Profile')}
+                />
+            )}
             {/* Header row: title left, countdown timer right */}
             <View style={[styles.headerRow, { paddingTop: insets.top + 16 }]}>
                 <Text style={styles.headerTitle}>Match</Text>
