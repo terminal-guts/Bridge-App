@@ -96,7 +96,8 @@ Deno.serve(async (req: Request) => {
       return Response.json({ error: 'Missing proposal_id or vote_type' }, { status: 400, headers: corsHeaders });
     }
 
-    const validVoteTypes = ['YES', 'NO', 'UNSURE', 'RECOMMEND'];
+    // SKIP = "Not Sure" action — records vote row without affecting tallies
+    const validVoteTypes = ['YES', 'NO', 'UNSURE', 'RECOMMEND', 'SKIP'];
     if (!validVoteTypes.includes(vote_type)) {
       return Response.json({ error: `Invalid vote_type. Must be one of: ${validVoteTypes.join(', ')}` }, { status: 400, headers: corsHeaders });
     }
@@ -133,6 +134,22 @@ Deno.serve(async (req: Request) => {
       return Response.json({ error: 'You cannot vote on your own proposal' }, { status: 403, headers: corsHeaders });
     }
 
+    // 2b. Block check — voter must not have blocked either participant (or vice versa)
+    const { data: blockRows } = await supabase
+      .from('blocked_users')
+      .select('id')
+      .or(
+        `and(user_id.eq.${voterId},blocked_user_id.eq.${proposal.user_a_id}),` +
+        `and(user_id.eq.${voterId},blocked_user_id.eq.${proposal.user_b_id}),` +
+        `and(user_id.eq.${proposal.user_a_id},blocked_user_id.eq.${voterId}),` +
+        `and(user_id.eq.${proposal.user_b_id},blocked_user_id.eq.${voterId})`,
+      )
+      .limit(1);
+
+    if (blockRows && blockRows.length > 0) {
+      return Response.json({ error: 'You cannot vote on this proposal' }, { status: 403, headers: corsHeaders });
+    }
+
     // 3. Determine if this is a friend vote
     const { data: friendRows } = await supabase
       .from('friends')
@@ -150,8 +167,17 @@ Deno.serve(async (req: Request) => {
     const isFriendVote = isFriendOfA || isFriendOfB;
     const friendOf = isFriendOfA ? proposal.user_a_id : (isFriendOfB ? proposal.user_b_id : null);
 
-    // 4. Upsert the vote (one vote per voter per proposal — unique constraint)
-    // Calculate effective vote weight for storage
+    // 4. Get voter karma tier for vote weighting
+    const { data: voterKarma } = await supabase
+      .from('karma_scores')
+      .select('badge_tier')
+      .eq('user_id', voterId)
+      .maybeSingle();
+
+    const voterTier = voterKarma?.badge_tier || 'new';
+    const weightMultiplier = KARMA_WEIGHTS[voterTier] || 1.0;
+
+    // 5. Upsert the vote (one vote per voter per proposal — unique constraint)
     const effectiveVoteWeight = isFriendVote
       ? weightMultiplier * FRIEND_VOTE_WEIGHT
       : weightMultiplier;
@@ -164,8 +190,6 @@ Deno.serve(async (req: Request) => {
         vote_type,
         is_friend_vote: isFriendVote,
         vote_weight: effectiveVoteWeight,
-        // Note: friend_of records only one friend even if both are friends.
-        // This is acceptable as streaks and grid status are handled independently.
         friend_of: friendOf,
         recommend_to_id: recommend_to_id || null,
         created_at: new Date().toISOString(),
@@ -176,22 +200,12 @@ Deno.serve(async (req: Request) => {
       return Response.json({ error: 'Failed to record vote' }, { status: 500, headers: corsHeaders });
     }
 
-    // 5. Update voter karma (only for new votes)
+    // 6. Update voter karma (only for new votes)
     if (isNewVote) {
       await supabase.rpc('increment_karma_for_vote', { p_user_id: voterId });
     }
 
-    // 6. Incremental tally logic
-    // We update proposal tallies incrementally for efficiency.
-    // Recounting all votes is technically safer but incremental is requested.
-    const { data: voterKarma } = await supabase
-      .from('karma_scores')
-      .select('badge_tier')
-      .eq('user_id', voterId)
-      .maybeSingle();
-
-    const voterTier = voterKarma?.badge_tier || 'new';
-    const weightMultiplier = KARMA_WEIGHTS[voterTier] || 1.0;
+    // 7. Incremental tally logic
 
     let poolYes = proposal.pool_yes_votes || 0;
     let poolNo = proposal.pool_no_votes || 0;

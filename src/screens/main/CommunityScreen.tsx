@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useReducer } from 'react';
-import { View, Text, ScrollView, SafeAreaView, StatusBar, TouchableOpacity, StyleSheet, Dimensions, Share, Alert, RefreshControl, Modal } from 'react-native';
+import { View, Text, TextInput, ScrollView, SafeAreaView, StatusBar, TouchableOpacity, StyleSheet, Dimensions, Share, Alert, RefreshControl, Modal } from 'react-native';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 import { styled } from 'nativewind';
@@ -11,7 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { MainTabParamList } from '../../types';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { communityService } from '../../services/communityServiceIndex';
-import { getUserFriendCode } from '../../services/friendService';
+import { getUserFriendCode, addFriendByCode } from '../../services/friendService';
+import { buildInviteMessage } from '../../services/contactsService';
 import { FriendWithGridStatus } from '../../types/community';
 import { getUserProfile } from '../../services/profileService';
 import { UserProfile } from '../../types';
@@ -64,7 +65,7 @@ function MatchResetTimer() {
 
   let label: string;
   if (hours > 0) {
-    label = `${hours}h ${minutes}m ${seconds}s`;
+    label = `${hours}h ${minutes}m`;
   } else if (minutes > 0) {
     label = `${minutes}m ${seconds}s`;
   } else {
@@ -185,6 +186,34 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [friendCode, setFriendCode] = useState<string>('');
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showEnterCode, setShowEnterCode] = useState(false);
+  const [enterCodeValue, setEnterCodeValue] = useState('');
+  const [enterCodeError, setEnterCodeError] = useState('');
+  const [addingCode, setAddingCode] = useState(false);
+
+  const handleEnterCode = useCallback(async () => {
+    const code = enterCodeValue.trim().toUpperCase();
+    if (!code) { setEnterCodeError('Enter a friend code'); return; }
+    if (!/^BRIDGE-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)) { setEnterCodeError('Format: BRIDGE-XXXX-XXXX'); return; }
+    if (code === friendCode) { setEnterCodeError("That's your own code"); return; }
+    setAddingCode(true);
+    setEnterCodeError('');
+    try {
+      const result = await addFriendByCode(code);
+      if (result.ok) {
+        setEnterCodeValue('');
+        setShowEnterCode(false);
+        Alert.alert('Friend Added!', `${result.data?.friendProfile?.firstName || 'Friend'} is now your friend`);
+      } else {
+        const msg = result.error?.message || 'Failed';
+        setEnterCodeError(msg.includes('already friends') ? 'Already friends' : msg.includes('not found') ? 'Invalid code' : msg);
+      }
+    } catch {
+      setEnterCodeError('Something went wrong');
+    } finally {
+      setAddingCode(false);
+    }
+  }, [enterCodeValue, friendCode]);
 
   const loadFriendsData = useCallback(async () => {
     try {
@@ -200,7 +229,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       const toMatch = data.friends.filter((f: FriendWithGridStatus) => !f.hasCompletedGrid);
       const helped = data.friends
         .filter((f: FriendWithGridStatus) => f.hasCompletedGrid)
-        .sort((a: FriendWithGridStatus, b: FriendWithGridStatus) => b.assistsCount - a.assistsCount);
+        .sort((a: FriendWithGridStatus, b: FriendWithGridStatus) => (b.karmaScore?.karmaPoints ?? 0) - (a.karmaScore?.karmaPoints ?? 0));
       setUsersToMatch(toMatch);
       setAlreadyHelped(helped);
     } catch (error) {
@@ -251,6 +280,17 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
         getUserProfile().then(result => {
           if (result.ok && result.data) setProfile(result.data);
         }),
+        // Re-check voting gate in background to self-correct if vote was removed
+        (async () => {
+          const task = await communityService.getCommunityTaskProgress();
+          let votingDone = task.hasVotedOnProposals;
+          if (!votingDone) {
+            const available = await communityService.getProposalsToVote();
+            if (available.length === 0) votingDone = true;
+          }
+          communityService.cacheVotingComplete(votingDone, cycleId).catch(() => {});
+          if (!votingDone) setHasCompletedVoting(false);
+        })(),
       ]).catch(() => {});
       return;
     }
@@ -302,6 +342,21 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       initialize();
     });
   }, [initialize]);
+  // Invalidate friends cache + reload when returning from stack screens (e.g. ContactInvite)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (!initializedRef.current) return;
+      if ('invalidateFriendsCache' in communityService) {
+        (communityService as any).invalidateFriendsCache();
+      }
+      getUserProfile().then(result => {
+        if (result.ok && result.data) setProfile(result.data);
+      });
+      loadFriendsData();
+    });
+    return unsubscribe;
+  }, [navigation, loadFriendsData]);
+
   useFocusEffect(useCallback(() => {
     // Check if beginner tour should play (first visit or re-enabled from Settings)
     startGuideIfNeeded(beginnerTourGuide);
@@ -314,9 +369,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     getUserProfile().then(result => {
       if (result.ok && result.data) setProfile(result.data);
     });
-    if (hasCompletedVoting) {
-      loadFriendsData();
-    }
+    // Refresh friends data on every focus — covers return from FriendProposalScreen,
+    // tab switches, and any background changes (recommendations, votes).
+    loadFriendsData();
   }, [hasCompletedVoting, loadFriendsData, startGuideIfNeeded]));
 
   const handleVotesComplete = useCallback(async () => {
@@ -372,7 +427,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             <MatchResetTimer />
             <GuideTarget id="add-friend-button">
               <TouchableOpacity
-                onPress={() => (navigation as any).navigate('FriendCode')}
+                onPress={() => (navigation as any).navigate('ContactInvite')}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 activeOpacity={0.7}
                 style={{
@@ -386,7 +441,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                   justifyContent: 'center',
                 }}
               >
-                <Ionicons name="add" size={20} color="#2B65F9" />
+                <Ionicons name="person-add-outline" size={18} color="#2B65F9" />
               </TouchableOpacity>
             </GuideTarget>
           </View>
@@ -407,26 +462,60 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             </Text>
 
             {friendCode ? (
-              <View style={styles.codeContainer}>
-                <Text style={styles.codeLabel}>YOUR FRIEND CODE</Text>
-                <Text style={styles.codeValue}>{friendCode}</Text>
-                <View style={styles.codeButtonRow}>
-                  <TouchableOpacity
-                    style={styles.shareIconButton}
-                    onPress={() => Share.share({ message: `Add me on Bridge! My friend code is:\n\n${friendCode}\n\nDownload Bridge and enter my code to connect!` })}
-                  >
-                    <Ionicons name="share-outline" size={20} color="#FFFFFF" />
-                    <Text style={styles.shareIconButtonText}>Share Code</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.enterCodeButton}
-                    activeOpacity={0.85}
-                    onPress={() => (navigation as any).navigate('FriendCode')}
-                  >
-                    <Text style={styles.enterCodeButtonText}>Enter Code</Text>
-                  </TouchableOpacity>
+              <>
+                <View style={styles.codeContainer}>
+                  <Text style={styles.codeLabel}>YOUR FRIEND CODE</Text>
+                  <Text style={styles.codeValue}>{friendCode}</Text>
+                  <View style={styles.codeButtonRow}>
+                    <TouchableOpacity
+                      style={styles.enterCodeButton}
+                      onPress={async () => { const msg = await buildInviteMessage(friendCode, profile?.firstName); Share.share({ message: msg }); }}
+                    >
+                      <Ionicons name="share-outline" size={18} color="#2B65F9" style={{ marginRight: 6 }} />
+                      <Text style={styles.enterCodeButtonText}>Share Code</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.enterCodeButton}
+                      activeOpacity={0.85}
+                      onPress={() => { setShowEnterCode(!showEnterCode); setEnterCodeError(''); }}
+                    >
+                      <Text style={styles.enterCodeButtonText}>Enter Code</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {showEnterCode && (
+                    <View style={styles.enterCodeRow}>
+                      <TextInput
+                        style={styles.enterCodeInput}
+                        placeholder="BRIDGE-XXXX-XXXX"
+                        placeholderTextColor="#9CA3AF"
+                        value={enterCodeValue}
+                        onChangeText={(t) => { setEnterCodeValue(t); setEnterCodeError(''); }}
+                        autoCapitalize="characters"
+                        autoCorrect={false}
+                        autoFocus
+                      />
+                      <TouchableOpacity
+                        style={[styles.enterCodeAddBtn, addingCode && { opacity: 0.5 }]}
+                        onPress={handleEnterCode}
+                        disabled={addingCode}
+                      >
+                        <Text style={styles.enterCodeAddBtnText}>{addingCode ? '...' : 'Add'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  {enterCodeError ? (
+                    <Text style={styles.enterCodeErrorText}>{enterCodeError}</Text>
+                  ) : null}
                 </View>
-              </View>
+                <TouchableOpacity
+                  style={styles.inviteContactsButton}
+                  activeOpacity={0.85}
+                  onPress={() => (navigation as any).navigate('ContactInvite')}
+                >
+                  <Ionicons name="people-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.inviteContactsButtonText}>Invite from Contacts</Text>
+                </TouchableOpacity>
+              </>
             ) : null}
           </View>
         </ScrollView>
@@ -438,6 +527,23 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2B65F9" />
           }
         >
+          {/* Invite nudge banner — show when user has fewer than 5 friends */}
+          {(usersToMatch.length + alreadyHelped.length) < 5 && (
+            <TouchableOpacity
+              style={styles.inviteNudgeBanner}
+              activeOpacity={0.85}
+              onPress={() => (navigation as any).navigate('ContactInvite')}
+            >
+              <View style={styles.inviteNudgeLeft}>
+                <Ionicons name="people" size={20} color="#2B65F9" />
+                <Text style={styles.inviteNudgeText}>
+                  Invite {5 - (usersToMatch.length + alreadyHelped.length)} more friend{5 - (usersToMatch.length + alreadyHelped.length) === 1 ? '' : 's'} for better matches
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#2B65F9" />
+            </TouchableOpacity>
+          )}
+
           {usersToMatch.length > 0 && (
             <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 15, color: '#9CA3AF', marginTop: SCREEN_HEIGHT * 0.055, marginBottom: 4, paddingHorizontal: 24 }}>
               Help your friends
@@ -548,26 +654,12 @@ const styles = StyleSheet.create({
     gap: 10,
     width: '100%',
   },
-  shareIconButton: {
-    flex: 1,
-    backgroundColor: '#2B65F9',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  shareIconButtonText: {
-    fontFamily: 'Outfit_600SemiBold',
-    fontSize: 14,
-    color: '#FFFFFF',
-  },
   enterCodeButton: {
     flex: 1,
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
     borderColor: '#2B65F9',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
@@ -577,6 +669,82 @@ const styles = StyleSheet.create({
     fontFamily: 'Outfit_600SemiBold',
     fontSize: 14,
     color: '#2B65F9',
+  },
+  enterCodeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    width: '100%',
+  },
+  enterCodeInput: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 14,
+    color: '#010101',
+    marginRight: 8,
+  },
+  enterCodeAddBtn: {
+    backgroundColor: '#2B65F9',
+    borderRadius: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  enterCodeAddBtnText: {
+    fontFamily: 'Outfit_600SemiBold',
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
+  enterCodeErrorText: {
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 12,
+    color: '#EF4444',
+    marginTop: 4,
+    width: '100%',
+  },
+  inviteNudgeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#EEF3FF',
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D1DEFF',
+  },
+  inviteNudgeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  inviteNudgeText: {
+    fontFamily: 'Outfit_600SemiBold',
+    fontSize: 13,
+    color: '#2B65F9',
+    marginLeft: 10,
+    flex: 1,
+  },
+  inviteContactsButton: {
+    backgroundColor: '#2B65F9',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    width: '100%',
+    marginBottom: 24,
+  },
+  inviteContactsButtonText: {
+    fontFamily: 'Outfit_600SemiBold',
+    fontSize: 15,
+    color: '#FFFFFF',
   },
 });
 

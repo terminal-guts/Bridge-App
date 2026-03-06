@@ -3,6 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 
+const GATE_SIZE = 3;
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -28,21 +30,31 @@ Deno.serve(async (req: Request) => {
     const userId = user.id;
     const supabase = createAdminClient();
 
-    // 1. Get pool vote assignments for this user
-    const { data: assignments } = await supabase
-      .from('pool_vote_assignments')
-      .select('proposal_id, has_voted')
-      .eq('voter_id', userId);
+    // ── Parallel: fetch everything we need ──────────────────────────────────
+    const [
+      { data: blockedOutgoing },
+      { data: blockedIncoming },
+      { data: friendRows },
+      { data: existingVotes },
+      { data: existingRecs },
+      { data: pendingProposals },
+      { data: allAssignments },
+    ] = await Promise.all([
+      supabase.from('blocked_users').select('blocked_user_id').eq('user_id', userId),
+      supabase.from('blocked_users').select('user_id').eq('blocked_user_id', userId),
+      supabase.from('friends').select('user_id, friend_id').or(`user_id.eq.${userId},friend_id.eq.${userId}`),
+      supabase.from('proposal_votes').select('proposal_id').eq('voter_user_id', userId),
+      supabase.from('friend_recommendations').select('source_proposal_id').eq('recommender_id', userId),
+      supabase.from('proposals').select('*').eq('status', 'pending'),
+      // Fetch ALL pool_vote_assignments so we can count votes per proposal
+      supabase.from('pool_vote_assignments').select('proposal_id, voter_id, has_voted'),
+    ]);
 
-    const assignedProposalIds = (assignments || [])
-      .filter((a: any) => !a.has_voted)
-      .map((a: any) => a.proposal_id);
-
-    // 2. Get user's friends
-    const { data: friendRows } = await supabase
-      .from('friends')
-      .select('user_id, friend_id')
-      .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
+    // ── Build lookup sets ───────────────────────────────────────────────────
+    const blockedIds = new Set<string>([
+      ...(blockedOutgoing || []).map((r: any) => r.blocked_user_id),
+      ...(blockedIncoming || []).map((r: any) => r.user_id),
+    ]);
 
     const friendIds = new Set<string>();
     for (const row of (friendRows || [])) {
@@ -50,59 +62,76 @@ Deno.serve(async (req: Request) => {
       if (row.friend_id === userId) friendIds.add(row.user_id);
     }
 
-    // 3. Get existing votes by this user (to exclude already-voted proposals)
-    const { data: existingVotes } = await supabase
-      .from('proposal_votes')
-      .select('proposal_id')
-      .eq('voter_user_id', userId);
+    const alreadyActedIds = new Set([
+      ...(existingVotes || []).map((v: any) => v.proposal_id),
+      ...(existingRecs || []).filter((r: any) => r.source_proposal_id).map((r: any) => r.source_proposal_id),
+    ]);
 
-    const alreadyVotedIds = new Set((existingVotes || []).map((v: any) => v.proposal_id));
+    // Count how many voters are assigned to each proposal (for even distribution)
+    const assignmentCounts = new Map<string, number>();
+    const userAssignedIds = new Set<string>();
+    for (const a of (allAssignments || [])) {
+      assignmentCounts.set(a.proposal_id, (assignmentCounts.get(a.proposal_id) || 0) + 1);
+      if (a.voter_id === userId) userAssignedIds.add(a.proposal_id);
+    }
 
-    // 4. Fetch all pending proposals
-    const { data: pendingProposals } = await supabase
-      .from('proposals')
-      .select('*')
-      .eq('status', 'pending');
-
-    const poolProposals: any[] = [];
-    const friendProposals: any[] = [];
-    const allProposalIds = new Set<string>();
+    // ── Filter eligible proposals for the gate ──────────────────────────────
+    // Gate = non-friend proposals only. Friend proposals are voted on via
+    // the Match button in the friends area, not in the gate.
+    const eligible: any[] = [];
 
     for (const p of (pendingProposals || [])) {
       // Skip proposals the user is part of
       if (p.user_a_id === userId || p.user_b_id === userId) continue;
-      // Skip already voted
-      if (alreadyVotedIds.has(p.id)) continue;
+      // Skip already acted on (voted or recommended)
+      if (alreadyActedIds.has(p.id)) continue;
+      // Skip proposals involving blocked users
+      if (blockedIds.has(p.user_a_id) || blockedIds.has(p.user_b_id)) continue;
+      // Skip friend proposals — those are handled in friends area
+      if (friendIds.has(p.user_a_id) || friendIds.has(p.user_b_id)) continue;
 
-      allProposalIds.add(p.id);
-
-      // Check if this is a friend proposal (user_a or user_b is a friend)
-      const isFriendProposal = friendIds.has(p.user_a_id) || friendIds.has(p.user_b_id);
-
-      if (isFriendProposal) {
-        friendProposals.push({
-          ...p,
-          vote_context: 'friend',
-          is_friend_vote: true,
-          friend_of: friendIds.has(p.user_a_id) ? p.user_a_id : p.user_b_id,
-        });
-      } else if (assignedProposalIds.includes(p.id)) {
-        poolProposals.push({
-          ...p,
-          vote_context: 'pool',
-          is_friend_vote: false,
-        });
-      }
+      eligible.push(p);
     }
 
-    // 5. Collect all user IDs we need profiles for
+    // ── Pick up to GATE_SIZE proposals, fewest assignments first ─────────
+    // This ensures even vote distribution across all proposals.
+    eligible.sort((a, b) => {
+      const countA = assignmentCounts.get(a.id) || 0;
+      const countB = assignmentCounts.get(b.id) || 0;
+      return countA - countB;
+    });
+
+    const selected = eligible.slice(0, GATE_SIZE);
+
+    // ── Create pool_vote_assignments for any newly assigned proposals ────
+    const newAssignments = selected.filter(p => !userAssignedIds.has(p.id));
+    if (newAssignments.length > 0) {
+      await supabase
+        .from('pool_vote_assignments')
+        .upsert(
+          newAssignments.map(p => ({
+            proposal_id: p.id,
+            voter_id: userId,
+            has_voted: false,
+          })),
+          { onConflict: 'proposal_id,voter_id' }
+        );
+    }
+
+    // Tag selected proposals as pool votes
+    const gateProposals = selected.map(p => ({
+      ...p,
+      vote_context: 'pool',
+      is_friend_vote: false,
+    }));
+
+    // ── Enrich with profiles ────────────────────────────────────────────────
     const profileUserIds = new Set<string>();
-    for (const p of [...poolProposals, ...friendProposals]) {
+    for (const p of gateProposals) {
       profileUserIds.add(p.user_a_id);
       profileUserIds.add(p.user_b_id);
     }
 
-    // 6. Fetch profiles and preferences for enrichment
     let profilesMap: Record<string, any> = {};
     if (profileUserIds.size > 0) {
       const profileIds = [...profileUserIds];
@@ -115,7 +144,7 @@ Deno.serve(async (req: Request) => {
         supabase
           .from('user_preferences')
           .select('user_id, age_min, age_max, preferred_height_min_inches, preferred_height_max_inches, partner_drinking, partner_cannabis, partner_tobacco, partner_other_drugs, preferred_ethnicities, preferred_politics')
-          .in('user_id', profileIds)
+          .in('user_id', profileIds),
       ]);
 
       const preferencesMap: Record<string, any> = {};
@@ -127,7 +156,6 @@ Deno.serve(async (req: Request) => {
         const prefs = preferencesMap[p.user_id] || {};
         profilesMap[p.user_id] = {
           ...p,
-          // Merge preference fields into the profile row so mapProfileRow can pick them up
           age_min: prefs.age_min,
           age_max: prefs.age_max,
           height_min: prefs.preferred_height_min_inches,
@@ -138,7 +166,6 @@ Deno.serve(async (req: Request) => {
             tobacco: prefs.partner_tobacco?.length ? prefs.partner_tobacco : null,
             otherDrugs: prefs.partner_other_drugs?.length ? prefs.partner_other_drugs : null,
           },
-          // Also put raw fields directly so mapProfileRow fallback can find them
           partner_drinking: prefs.partner_drinking || null,
           partner_cannabis: prefs.partner_cannabis || null,
           partner_tobacco: prefs.partner_tobacco || null,
@@ -149,23 +176,16 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 7. Enrich proposals with profile data
-    function enrichProposal(p: any) {
-      return {
-        ...p,
-        user_a_profile: profilesMap[p.user_a_id] || null,
-        user_b_profile: profilesMap[p.user_b_id] || null,
-      };
-    }
-
-    const enrichedPool = poolProposals.map(enrichProposal);
-    const enrichedFriend = friendProposals.map(enrichProposal);
-    const allProposals = [...enrichedFriend, ...enrichedPool];
+    const enriched = gateProposals.map(p => ({
+      ...p,
+      user_a_profile: profilesMap[p.user_a_id] || null,
+      user_b_profile: profilesMap[p.user_b_id] || null,
+    }));
 
     return Response.json({
-      proposals: allProposals,
-      pool_count: enrichedPool.length,
-      friend_count: enrichedFriend.length,
+      proposals: enriched,
+      pool_count: enriched.length,
+      friend_count: 0,
     }, { headers: corsHeaders });
 
   } catch (err: any) {

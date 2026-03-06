@@ -134,6 +134,8 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
   const handleVoteComplete = useCallback(() => {
     // Vote is already recorded via ProposalReviewView → submitProposalVote
     communityService.markFriendAsHelped(friendId).catch(() => {});
+    // Invalidate friends cache so the friends area refreshes on return
+    communityService.invalidateFriendsCache();
     navigation.goBack();
   }, [friendId, navigation]);
 

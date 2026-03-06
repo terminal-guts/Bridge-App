@@ -352,9 +352,36 @@ class CommunityBackendService {
   }
 
   async submitProposalVote(proposalId: string, vote: 'yes' | 'no' | 'skip'): Promise<void> {
-    if (vote === 'skip') return;
-
     const userId = await getCurrentUserId();
+
+    if (vote === 'skip') {
+      // UNSURE counts as a completed action — insert directly (no tally impact)
+      const { error: skipErr } = await supabase
+        .from('proposal_votes')
+        .upsert({
+          proposal_id: proposalId,
+          voter_user_id: userId,
+          vote_type: 'UNSURE',
+          is_friend_vote: false,
+          vote_weight: 1.0,
+          created_at: new Date().toISOString(),
+        }, { onConflict: 'proposal_id,voter_user_id' });
+      if (skipErr) {
+        console.error('[SKIP VOTE] upsert failed:', skipErr.message, skipErr.details, skipErr.code);
+        throw new Error(`Skip vote failed: ${skipErr.message}`);
+      }
+      // +1 karma and mark assignment as voted (fire-and-forget, non-blocking)
+      supabase.rpc('increment_karma_for_vote', { p_user_id: userId }).catch(() => {});
+      supabase.from('pool_vote_assignments').update({ has_voted: true }).match({ proposal_id: proposalId, voter_id: userId }).catch(() => {});
+      this.invalidateFriendsCache();
+      if (!this.sessionVotedProposals.has(proposalId)) {
+        this.sessionVotedProposals.add(proposalId);
+        this.sessionVoteCount++;
+        AsyncStorage.setItem(STORAGE_KEY_VOTES, String(this.sessionVoteCount)).catch(() => {});
+      }
+      return;
+    }
+
     const voteType = vote === 'yes' ? 'YES' : 'NO';
 
     await castProposalVote(proposalId, userId, voteType as any);
@@ -367,7 +394,22 @@ class CommunityBackendService {
   }
 
   async submitRecommendation(recommendedPersonId: string, recommendedToFriendId: string, sourceProposalId?: string): Promise<void> {
+    const userId = await getCurrentUserId();
     await submitFriendRecommendation(recommendedPersonId, recommendedToFriendId, sourceProposalId);
+    // +1 karma and mark assignment as voted (fire-and-forget, non-blocking)
+    supabase.rpc('increment_karma_for_vote', { p_user_id: userId }).catch(() => {});
+    if (sourceProposalId) {
+      supabase.from('pool_vote_assignments').update({ has_voted: true }).match({ proposal_id: sourceProposalId, voter_id: userId }).catch(() => {});
+    }
+    this.invalidateFriendsCache();
+    if (sourceProposalId && !this.sessionVotedProposals.has(sourceProposalId)) {
+      this.sessionVotedProposals.add(sourceProposalId);
+      this.sessionVoteCount++;
+      AsyncStorage.setItem(STORAGE_KEY_VOTES, String(this.sessionVoteCount)).catch(() => {});
+    } else if (!sourceProposalId) {
+      this.sessionVoteCount++;
+      AsyncStorage.setItem(STORAGE_KEY_VOTES, String(this.sessionVoteCount)).catch(() => {});
+    }
   }
 
   // ========================================================================
@@ -428,7 +470,7 @@ class CommunityBackendService {
     ] = await Promise.all([
       supabase
         .from('user_profiles')
-        .select('user_id, first_name, last_name, age, gender, pronouns, height_inches, ethnicity, religion, political_leaning, location, current_job, company_position, education_level, school, photos, interests, values, bio, drinking_frequency, cannabis_frequency, tobacco_frequency, other_drugs_frequency, non_negotiables, profile_photo_path, created_at, updated_at')
+        .select('user_id, first_name, last_name, age, gender, pronouns, height_inches, ethnicity, religion, political_leaning, location, current_job, company_position, education_level, school, photos, interests, values, bio, drinking_frequency, cannabis_frequency, tobacco_frequency, other_drugs_frequency, non_negotiables, profile_photo_path, profile_completed, created_at, updated_at')
         .in('user_id', friendIds),
       // Proposals where friend is user_a
       supabase
@@ -509,17 +551,30 @@ class CommunityBackendService {
     let votedProposalIds = new Set<string>();
 
     if (activeProposalIds.length > 0) {
-      const { data: userVotes } = await supabase
-        .from('proposal_votes')
-        .select('proposal_id')
-        .eq('voter_user_id', userId)
-        .in('proposal_id', activeProposalIds);
+      const [{ data: userVotes }, { data: userRecs }] = await Promise.all([
+        supabase
+          .from('proposal_votes')
+          .select('proposal_id')
+          .eq('voter_user_id', userId)
+          .in('proposal_id', activeProposalIds),
+        supabase
+          .from('friend_recommendations')
+          .select('source_proposal_id')
+          .eq('recommender_id', userId)
+          .in('source_proposal_id', activeProposalIds),
+      ]);
 
       votedProposalIds = new Set((userVotes || []).map((v: any) => v.proposal_id));
+      const recommendedProposalIds = new Set((userRecs || []).map((r: any) => r.source_proposal_id));
+
+      // Merge: recommendation on a proposal also counts as "helped"
+      for (const id of recommendedProposalIds) {
+        votedProposalIds.add(id);
+      }
     }
 
     // Determine hasCompletedGrid for each friend:
-    // false (Help) = friend has active proposal user has NEVER voted on
+    // false (Help) = friend has active proposal user has NEVER voted on or recommended from
     // true (Already Helped) = everything else
     const alreadyHelped = new Set<string>();
     for (const friendId of friendIds) {
@@ -534,10 +589,10 @@ class CommunityBackendService {
         // Has active match → already helped
         alreadyHelped.add(friendId);
       } else if (votedProposalIds.has(proposalId)) {
-        // User already voted on this proposal → already helped
+        // User already voted or recommended from this proposal → already helped
         alreadyHelped.add(friendId);
       }
-      // Otherwise: friend has active proposal user hasn't voted on → Help
+      // Otherwise: friend has active proposal user hasn't acted on → Help
     }
 
     // Build friend list and filter blocked
@@ -929,16 +984,26 @@ class CommunityBackendService {
     const lastReset = getLast7PMCentral();
     const today = new Date().toISOString().split('T')[0];
 
-    // Count votes from the proposal_votes table since the last 7PM Central reset
-    const { count: voteCount } = await supabase
-      .from('proposal_votes')
-      .select('id', { count: 'exact', head: true })
-      .eq('voter_user_id', userId)
-      .gte('created_at', new Date(lastReset).toISOString());
+    // Count votes + recommendations since the last 7PM Central reset
+    const resetISO = new Date(lastReset).toISOString();
+    const [{ count: voteCount }, { count: recCount }] = await Promise.all([
+      supabase
+        .from('proposal_votes')
+        .select('id', { count: 'exact', head: true })
+        .eq('voter_user_id', userId)
+        .gte('created_at', resetISO),
+      supabase
+        .from('friend_recommendations')
+        .select('id', { count: 'exact', head: true })
+        .eq('recommender_id', userId)
+        .gte('created_at', resetISO),
+    ]);
 
-    // Reconciliation: use whichever is higher (DB or local session tracker)
-    // to ensure immediate feedback while avoiding double-counting persisted votes.
-    const votesCompleted = Math.max(voteCount || 0, this.sessionVoteCount);
+    const dbActions = (voteCount || 0) + (recCount || 0);
+    // DB is source of truth. Session count is only used as a floor for votes
+    // cast THIS session that may not have propagated to DB yet.
+    const pendingSessionVotes = this.sessionVotedProposals.size;
+    const votesCompleted = Math.max(dbActions, pendingSessionVotes);
     const hasVoted = votesCompleted >= 3;
 
     return {

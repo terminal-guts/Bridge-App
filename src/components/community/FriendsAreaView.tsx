@@ -457,13 +457,10 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
               </StyledView>
             </StyledView>
 
-            {/* Friends FlatList */}
+            {/* Friends List (plain map — no virtualization cap inside ScrollView) */}
             <GuideTarget id="help-friends-section">
-              <StyledFlatList
-                data={combinedFriends}
-                keyExtractor={(item: any) => item.friendshipId}
-                renderItem={({ item, index }: { item: any; index: number }) => {
-                  const friendItem = item as FriendWithVariant;
+              <StyledView style={{ backgroundColor: '#FFFFFF' }}>
+                {combinedFriends.map((friendItem, index) => {
                   const friendCard = (
                     <FriendCard
                       friend={friendItem}
@@ -474,88 +471,74 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                     />
                   );
 
-                  // Wrap first pending friend with GuideTarget
-                  if (index === 0 && friendItem.variant === 'pending') {
-                    return (
-                      <GuideTarget key={friendItem.friendshipId} id="friend-row-0">
-                        {friendCard}
-                      </GuideTarget>
-                    );
-                  }
+                  // Check if we need to insert the "Already Helped" separator before this item
+                  const prevItem = index > 0 ? combinedFriends[index - 1] : null;
+                  const showSeparator = prevItem?.variant === 'pending' && friendItem.variant === 'completed';
 
-                  return friendCard;
-                }}
-                ItemSeparatorComponent={({ leadingItem }: { leadingItem: any }) => {
-                  // Show separator after last pending friend
-                  if (!leadingItem) return null;
-                  const currentIndex = combinedFriends.findIndex(f => f.friendshipId === leadingItem.friendshipId);
-                  const nextItem = combinedFriends[currentIndex + 1];
-                  const isLastPending = leadingItem.variant === 'pending' && nextItem?.variant === 'completed';
-
-                  if (isLastPending) {
-                    return (
-                      <StyledView
-                        style={{
-                          height: 56,
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          backgroundColor: '#F9FAFB',
-                          paddingVertical: 16,
-                        }}
-                      >
-                        <StyledView style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, width: '100%' }}>
-                          <StyledView style={{
-                            flex: 1,
-                            height: 1.5,
-                            backgroundColor: '#E5E7EB',
-                            opacity: 0.6,
-                          }} />
-                          <StyledView style={{
-                            backgroundColor: '#F3F4F6',
-                            paddingHorizontal: 14,
-                            paddingVertical: 6,
-                            borderRadius: 12,
-                            marginHorizontal: 12,
-                            borderWidth: 1,
-                            borderColor: '#E5E7EB',
-                          }}>
-                            <StyledText
-                              style={{
-                                fontSize: 11,
-                                color: '#6B7280',
-                                fontWeight: '700',
-                                letterSpacing: 0.8,
-                                textTransform: 'uppercase',
-                              }}
-                            >
-                              Already Helped
-                            </StyledText>
+                  return (
+                    <React.Fragment key={friendItem.friendshipId}>
+                      {showSeparator && (
+                        <StyledView
+                          style={{
+                            height: 56,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            backgroundColor: '#F9FAFB',
+                            paddingVertical: 16,
+                          }}
+                        >
+                          <StyledView style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, width: '100%' }}>
+                            <StyledView style={{
+                              flex: 1,
+                              height: 1.5,
+                              backgroundColor: '#E5E7EB',
+                              opacity: 0.6,
+                            }} />
+                            <StyledView style={{
+                              backgroundColor: '#F3F4F6',
+                              paddingHorizontal: 14,
+                              paddingVertical: 6,
+                              borderRadius: 12,
+                              marginHorizontal: 12,
+                              borderWidth: 1,
+                              borderColor: '#E5E7EB',
+                            }}>
+                              <StyledText
+                                style={{
+                                  fontSize: 11,
+                                  color: '#6B7280',
+                                  fontWeight: '700',
+                                  letterSpacing: 0.8,
+                                  textTransform: 'uppercase',
+                                }}
+                              >
+                                Already Helped
+                              </StyledText>
+                            </StyledView>
+                            <StyledView style={{
+                              flex: 1,
+                              height: 1.5,
+                              backgroundColor: '#E5E7EB',
+                              opacity: 0.6,
+                            }} />
                           </StyledView>
-                          <StyledView style={{
-                            flex: 1,
-                            height: 1.5,
-                            backgroundColor: '#E5E7EB',
-                            opacity: 0.6,
-                          }} />
                         </StyledView>
-                      </StyledView>
-                    );
-                  }
-                  return null;
-                }}
-                ListFooterComponent={() => {
-                  // Show celebration banner if all friends helped
-                  if (friendsNeedingHelp.length === 0 && friends.length > 0) {
-                    return <CelebrationBanner />;
-                  }
-                  return null;
-                }}
-                scrollEnabled={false}
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  borderRadius: 0,
-                }}
-              />
+                      )}
+                      {index === 0 && friendItem.variant === 'pending' ? (
+                        <GuideTarget id="friend-row-0">
+                          {friendCard}
+                        </GuideTarget>
+                      ) : (
+                        friendCard
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+                {/* Celebration banner if all friends helped */}
+                {friendsNeedingHelp.length === 0 && friends.length > 0 && (
+                  <CelebrationBanner />
+                )}
+              </StyledView>
             </GuideTarget>
           </StyledView>
         ) : (
@@ -563,9 +546,15 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
           <StyledView className="px-4 pt-4 pb-4">
             <StyledView className="bg-blue-50 rounded-2xl p-6 items-center">
               <StyledText className="text-3xl mb-2">👋</StyledText>
-              <StyledText className="text-base font-medium text-neutral-700 text-center">
+              <StyledText className="text-base font-medium text-neutral-700 text-center mb-4">
                 Add friends to help them find matches
               </StyledText>
+              <StyledTouchable
+                className="bg-primary-500 px-5 py-2.5 rounded-xl"
+                onPress={() => navigation.navigate('ContactInvite')}
+              >
+                <StyledText className="text-white font-semibold text-sm">Invite from Contacts</StyledText>
+              </StyledTouchable>
             </StyledView>
           </StyledView>
         )}

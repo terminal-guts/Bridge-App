@@ -412,7 +412,7 @@ export function ProposalReviewView({
     setSelectedFriendId(null);
   }, []);
 
-  const handleForFriendConfirm = useCallback(() => {
+  const handleForFriendConfirm = useCallback(async () => {
     if (!selectedFriendId) return;
     const current = proposals[currentIndex];
     if (current) {
@@ -424,16 +424,19 @@ export function ProposalReviewView({
         toFriendId: selectedFriendId,
       });
 
-      // Submit recommendation (does NOT count as a vote on this proposal)
-      communityService.submitRecommendation(recommendedPersonId, selectedFriendId, current.id).catch((err: any) => {
+      // Await recommendation so DB row exists before friends area queries
+      try {
+        await communityService.submitRecommendation(recommendedPersonId, selectedFriendId, current.id);
+      } catch (err: any) {
         logger.error('[ProposalReviewView] Friend recommendation error:', err);
-      });
+      }
     }
     setShowForFriendModal(false);
     // Haptics for recommendation confirmation
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
-    // Do NOT advance the proposal — user still needs to vote yes/no on this one
-  }, [selectedFriendId, proposals, currentIndex, selectedPersonSide]);
+    // Advance to next proposal — recommendation counts as a completed action
+    advanceProposal();
+  }, [selectedFriendId, proposals, currentIndex, selectedPersonSide, advanceProposal]);
 
   // ── Match computations (memoized) ────────────────────────────────────────
   const matchData = useMemo(() => {
@@ -595,6 +598,7 @@ export function ProposalReviewView({
 
       {/* Scrollable content */}
       <ScrollView
+        key={proposal.id}
         style={{ flex: 1 }}
         contentContainerStyle={SCROLL_CONTENT_STYLE}
         showsVerticalScrollIndicator={false}
@@ -625,6 +629,7 @@ export function ProposalReviewView({
                   contentFit="cover"
                   transition={200}
                   cachePolicy="disk"
+                  recyclingKey={`${proposal.id}-a`}
                 />
                 <LinearGradient
                   colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.92)']}
@@ -657,6 +662,7 @@ export function ProposalReviewView({
                   contentFit="cover"
                   transition={200}
                   cachePolicy="disk"
+                  recyclingKey={`${proposal.id}-b`}
                 />
                 <LinearGradient
                   colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.92)']}
@@ -946,6 +952,7 @@ export function ProposalReviewView({
                       contentFit="cover"
                       transition={200}
                       cachePolicy="disk"
+                      recyclingKey={`${proposal.id}-modal-a`}
                     />
                     <LinearGradient
                       colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.82)']}
@@ -975,6 +982,7 @@ export function ProposalReviewView({
                       contentFit="cover"
                       transition={200}
                       cachePolicy="disk"
+                      recyclingKey={`${proposal.id}-modal-b`}
                     />
                     <LinearGradient
                       colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.82)']}
@@ -1023,7 +1031,11 @@ export function ProposalReviewView({
                     contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 12, paddingBottom: 8 }}
                     showsVerticalScrollIndicator={false}
                   >
-                    {friendsList.map(item => {
+                    {friendsList.filter(item => {
+                      // Don't show the recommended person in the friend list (can't recommend someone to themselves)
+                      const recPersonId = selectedPersonSide === 'userA' ? proposal.userA.id : proposal.userB.id;
+                      return item.friendId !== recPersonId;
+                    }).map(item => {
                       const isSelected = selectedFriendId === item.friendId;
                       const friendPhoto = item.friend?.photos?.[0]?.url;
                       return (

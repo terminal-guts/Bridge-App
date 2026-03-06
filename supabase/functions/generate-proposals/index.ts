@@ -145,12 +145,14 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 4b. Fetch friend recommendations for scoring boost
+    // 4b. Fetch friend recommendations for scoring boost (only for eligible users)
     const { data: recommendations } = await supabase
       .from('friend_recommendations')
-      .select('recommended_person_id, recommended_to_friend_id');
+      .select('recommended_person_id, recommended_to_friend_id')
+      .in('recommended_to_friend_id', userIds);
 
-    // Build a map: sorted pair key -> recommendation count
+    // Build a map: recommended_person + recommended_to_friend -> count
+    // The boost applies when the recommended person is paired with the friend they were recommended to
     const recBoostMap = new Map<string, number>();
     for (const rec of (recommendations || [])) {
       const key = [rec.recommended_person_id, rec.recommended_to_friend_id].sort().join('|');
