@@ -184,12 +184,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    getUserProfile().then(result => {
-      if (result.ok && result.data) setProfile(result.data);
-    });
-  }, []);
-
   const loadFriendsData = useCallback(async () => {
     try {
       const [data, codeRes] = await Promise.all([
@@ -232,6 +226,12 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const initialize = useCallback(async () => {
     setLoading(true);
     try {
+      // Fetch profile in parallel with the voting-gate check.
+      // This eliminates the duplicate profile fetch that was in a separate useEffect.
+      const profilePromise = getUserProfile().then(result => {
+        if (result.ok && result.data) setProfile(result.data);
+      });
+
       // Wait for AsyncStorage state to load before reading voting progress.
       await communityService.ready;
       const task = await communityService.getCommunityTaskProgress();
@@ -251,6 +251,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       if (votingDone) {
         await loadFriendsData();
       }
+
+      // Ensure profile fetch completes before removing the loading state
+      await profilePromise;
     } catch (error) {
       console.error("Failed to check task progress:", error);
       setHasCompletedVoting(false);

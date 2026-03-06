@@ -729,22 +729,15 @@ class CommunityBackendService {
   async getActiveMatch(): Promise<ActiveMatch | null> {
     const userId = await getCurrentUserId();
 
-    // Query matches where this user is involved and status is active
-    const { data: matchA } = await supabase
+    // Single query for both directions using .or()
+    const { data: matches } = await supabase
       .from('matches')
       .select('*')
-      .eq('user_id_1', userId)
+      .or(`user_id_1.eq.${userId},user_id_2.eq.${userId}`)
       .in('status', ['active', 'accepted'])
-      .maybeSingle();
+      .limit(1);
 
-    const { data: matchB } = await supabase
-      .from('matches')
-      .select('*')
-      .eq('user_id_2', userId)
-      .in('status', ['active', 'accepted'])
-      .maybeSingle();
-
-    const match = matchA || matchB;
+    const match = matches?.[0] || null;
     if (!match) {
       // No active match — check if a match was recently ended by the OTHER user
       // so we can show the "match ended" popup
