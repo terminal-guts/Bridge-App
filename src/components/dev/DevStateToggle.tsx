@@ -8,7 +8,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { communityService, MockMatchState, MockFriendsState } from '../services/communityService';
+import { communityService, MockMatchState, MockFriendsState } from '../../services/communityService';
 
 const MATCH_OPTIONS: { label: string; value: MockMatchState }[] = [
   { label: 'Empty',          value: 'empty' },

@@ -10,12 +10,12 @@ import { View, TouchableOpacity, Animated } from 'react-native';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Body } from './ui';
+import { Body } from '../ui';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { UserProfile } from '../types';
-import { lightHaptic } from '../utils/haptics';
-import { calculateOverallProfileStrength } from '../utils/profileCompleteness';
-import { createLogger } from '../utils/secureLogger';
+import { UserProfile } from '../../types';
+import { lightHaptic } from '../../utils/haptics';
+import { calculateOverallProfileStrength } from '../../utils/profileCompleteness';
+import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('ProfileCompletionBanner');
 

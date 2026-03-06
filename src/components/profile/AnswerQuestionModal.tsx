@@ -10,9 +10,9 @@ import {
   Alert,
 } from 'react-native';
 import { styled } from 'nativewind';
-import { Body, H3 } from './ui';
+import { Body, H3 } from '../ui';
 import { Ionicons } from '@expo/vector-icons';
-import { lightHaptic, mediumHaptic, successHaptic } from '../utils/haptics';
+import { lightHaptic, mediumHaptic, successHaptic } from '../../utils/haptics';
 
 interface AnswerQuestionModalProps {
   visible: boolean;

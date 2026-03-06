@@ -2,8 +2,8 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
-import { H2, Body, Button } from './ui';
-import { createLogger } from '../utils/secureLogger';
+import { H2, Body, Button } from '.';
+import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('ErrorBoundary');
 

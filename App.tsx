@@ -3,10 +3,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View } from 'react-native';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import Toast from 'react-native-toast-message';
-import { toastConfig } from './src/components/ToastConfig';
+import { toastConfig } from './src/components/ui/ToastConfig';
 import { GuideProvider } from './src/contexts/GuideContext';
 import { GuideOverlay } from './src/components/guides/GuideOverlay';
-import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { ErrorBoundary } from './src/components/ui/ErrorBoundary';
 
 import { notificationService } from './src/services/notificationService';
 

@@ -9,8 +9,8 @@ import React from 'react';
 import { View, Animated } from 'react-native';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
-import { Body } from './ui';
-import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { Body } from '.';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 
 const StyledView = styled(View);
 const StyledAnimatedView = styled(Animated.View);
