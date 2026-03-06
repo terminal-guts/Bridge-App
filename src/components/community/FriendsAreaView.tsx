@@ -55,8 +55,6 @@ interface FriendsAreaViewProps {
   isActive?: boolean; // Whether this page is currently visible
 }
 
-type DevTestState = 'active-match' | 'awaiting-response' | 'pending-proposal' | 'empty';
-
 export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaViewProps) {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
@@ -69,7 +67,6 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
   const [showEndMatchModal, setShowEndMatchModal] = useState(false);
 
   // DEV: Test state control (disabled for real user testing)
-  const [devTestState, setDevTestState] = useState<DevTestState>('active-match');
   const [timeRemaining, setTimeRemaining] = useState('');
 
   // Guide system
@@ -321,68 +318,6 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
           </GuideTarget>
         )}
 
-        {/* SECTION 2A: Awaiting Response (HIGHEST PRIORITY - replaces pending when user accepted) */}
-        {false && !filteredData.activeMatch && filteredData.awaitingResponse.length === 0 && (
-          <GuideTarget id="match-status-section">
-            <StyledView className="px-4 pt-6 pb-4">
-              <StyledView
-                className="rounded-2xl shadow-lg border-2"
-                style={{
-                  backgroundColor: '#FFFBEB', // Warm amber background
-                  borderColor: '#FEF3C7',
-                  shadowColor: '#F59E0B',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 12,
-                  elevation: 8,
-                  padding: 16, // Standardized padding
-                }}
-              >
-                {/* Icon with glow effect */}
-                <StyledView className="flex-row items-start mb-3">
-                  <StyledView className="relative mr-3">
-                    <StyledView
-                      className="w-16 h-16 rounded-full items-center justify-center"
-                      style={{
-                        backgroundColor: '#FEF3C7',
-                        shadowColor: '#F59E0B',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 4,
-                        elevation: 4,
-                      }}
-                    >
-                      <EvaIcon name="hourglass" variant="outline" color="warning" size={28} />
-                    </StyledView>
-                  </StyledView>
-
-                  {/* Right Side: Header + Info */}
-                  <StyledView className="flex-1">
-                    <StyledText className="text-sm font-bold text-amber-900 mb-2">
-                      Awaiting Response
-                    </StyledText>
-                    <StyledText className="text-base font-semibold text-amber-900 mb-1">
-                      They're reviewing now
-                    </StyledText>
-                    <StyledText className="text-xs text-amber-700">
-                      You accepted a proposal
-                    </StyledText>
-                  </StyledView>
-                </StyledView>
-
-                {/* Encouraging banner */}
-                <StyledView
-                  className="bg-amber-100 rounded-xl border border-amber-200"
-                  style={{ padding: 12 }}
-                >
-                  <StyledText className="text-sm font-semibold text-amber-900 text-center">
-                    ✨ Fingers crossed! Check back soon.
-                  </StyledText>
-                </StyledView>
-              </StyledView>
-            </StyledView>
-          </GuideTarget>
-        )}
         {!filteredData.activeMatch && filteredData.awaitingResponse.length > 0 && (
           <GuideTarget id="match-status-section">
             <StyledView className="px-4 py-4 bg-amber-50">
