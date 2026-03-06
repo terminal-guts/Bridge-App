@@ -23,7 +23,7 @@ const StyledTextInput = styled(TextInput);
 
 export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigation }) => {
   const [blockedUsers, setBlockedUsers] = useState<BlockedUserType[]>([]);
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [emailInput, setEmailInput] = useState('');
   const [showAddBlock, setShowAddBlock] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -102,42 +102,39 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
     );
   };
 
-  const handleBlockByPhone = async () => {
+  const handleBlockByEmail = async () => {
     if (!currentUserId) {
       Alert.alert('Error', 'User not logged in');
       return;
     }
 
-    if (!phoneNumber.trim()) {
-      Alert.alert('Error', 'Please enter a phone number');
+    const trimmed = emailInput.trim().toLowerCase();
+    if (!trimmed) {
+      Alert.alert('Error', 'Please enter an email address');
       return;
     }
 
-    // Validate and normalize phone number (US format)
-    const cleaned = phoneNumber.replace(/\D/g, '');
-    let normalizedPhone: string;
-
-    if (cleaned.length === 10) {
-      // 10-digit US number
-      normalizedPhone = cleaned;
-    } else if (cleaned.length === 11 && cleaned[0] === '1') {
-      // 11-digit with country code
-      normalizedPhone = cleaned.substring(1);
-    } else {
-      Alert.alert('Error', 'Please enter a valid 10-digit phone number (e.g., 555-123-4567)');
+    // Basic email validation
+    if (!trimmed.includes('@') || !trimmed.includes('.')) {
+      Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
 
     try {
-      // Find user by normalized phone number
+      // Find user by email
       const { data: profile, error: findError } = await supabase
         .from('user_profiles')
         .select('user_id, first_name, last_name')
-        .eq('phone_number', normalizedPhone)
+        .eq('email', trimmed)
         .single();
 
       if (findError || !profile) {
-        Alert.alert('Not Found', 'No Bridge account found with this phone number');
+        Alert.alert('Not Found', 'No Bridge account found with this email');
+        return;
+      }
+
+      if (profile.user_id === currentUserId) {
+        Alert.alert('Error', 'You cannot block yourself');
         return;
       }
 
@@ -154,10 +151,9 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
             onPress: async () => {
               const result = await blockUser(profile.user_id);
               if (result.ok) {
-                setPhoneNumber('');
+                setEmailInput('');
                 setShowAddBlock(false);
                 Alert.alert('Success', `${userName} has been blocked`);
-                // Reload blocked users list
                 loadBlockedUsers();
               } else {
                 Alert.alert('Error', result.error?.message || 'Failed to block user');
@@ -167,7 +163,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
         ]
       );
     } catch (error) {
-      logger.error('Failed to block by phone:', error);
+      logger.error('Failed to block by email:', error);
       Alert.alert('Error', 'Failed to block user');
     }
   };
@@ -212,39 +208,41 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
               <StyledView className="flex-row items-start">
                 <StyledView className="w-1.5 h-1.5 bg-primary-700 rounded-full mt-1.5 mr-2" />
                 <Body className="flex-1 text-primary-700 text-sm">
-                  Blocked users can't message you
+                  Any active proposal or match between you is cancelled
                 </Body>
               </StyledView>
               <StyledView className="flex-row items-start">
                 <StyledView className="w-1.5 h-1.5 bg-primary-700 rounded-full mt-1.5 mr-2" />
                 <Body className="flex-1 text-primary-700 text-sm">
-                  You won't appear in each other's grids
+                  You'll never appear in each other's proposals
                 </Body>
               </StyledView>
               <StyledView className="flex-row items-start">
                 <StyledView className="w-1.5 h-1.5 bg-primary-700 rounded-full mt-1.5 mr-2" />
                 <Body className="flex-1 text-primary-700 text-sm">
-                  You cannot match and cannot be friends
+                  Your friendship is removed and you can't message each other
                 </Body>
               </StyledView>
             </StyledView>
           </Card>
 
-          {/* Add Block by Phone */}
+          {/* Add Block by Email */}
           {showAddBlock && (
             <Card className="mb-6">
-              <H3 className="mb-3">Block by Phone Number</H3>
+              <H3 className="mb-3">Block by Email</H3>
               <Body className="text-neutral-600 text-sm mb-4">
-                Enter a phone number to block that user from Bridge
+                Enter an email address to block that user from Bridge
               </Body>
               <StyledTextInput
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                placeholder="(555) 123-4567"
-                keyboardType="phone-pad"
+                value={emailInput}
+                onChangeText={setEmailInput}
+                placeholder="user@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
                 className="bg-white border border-neutral-300 rounded-lg px-4 py-3 text-neutral-900 mb-3"
               />
-              <Button onPress={handleBlockByPhone} variant="primary" fullWidth>
+              <Button onPress={handleBlockByEmail} variant="primary" fullWidth>
                 Block User
               </Button>
             </Card>

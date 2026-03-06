@@ -96,12 +96,43 @@ export const blockUser = async (
       .insert({
         user_id: currentUserId,
         blocked_user_id: blockedUserId,
-        reason: reason ?? null,
       });
 
     if (error) throw error;
 
-    logger.info(`[Supabase] User ${currentUserId} blocked ${blockedUserId}`);
+    // Side-effects: cancel active proposals, end matches, remove friendship
+    const nowIso = new Date().toISOString();
+    const [u1, u2] = [currentUserId, blockedUserId].sort();
+
+    // Cancel any active proposals between the pair
+    await supabase
+      .from('proposals')
+      .update({ status: 'rejected', rejected_at: nowIso, updated_at: nowIso })
+      .in('status', ['pending', 'deciding'])
+      .or(
+        `and(user_a_id.eq.${currentUserId},user_b_id.eq.${blockedUserId}),` +
+        `and(user_a_id.eq.${blockedUserId},user_b_id.eq.${currentUserId})`,
+      );
+
+    // End any active matches between the pair
+    await supabase
+      .from('matches')
+      .update({ status: 'ended', updated_at: nowIso })
+      .in('status', ['pending', 'accepted', 'active'])
+      .or(
+        `and(user_id_1.eq.${u1},user_id_2.eq.${u2})`,
+      );
+
+    // Remove friendship in both directions
+    await supabase
+      .from('friends')
+      .delete()
+      .or(
+        `and(user_id.eq.${currentUserId},friend_id.eq.${blockedUserId}),` +
+        `and(user_id.eq.${blockedUserId},friend_id.eq.${currentUserId})`,
+      );
+
+    logger.info(`[Supabase] User ${currentUserId} blocked ${blockedUserId} (proposals cancelled, matches ended, friendship removed)`);
     return { ok: true };
   } catch (error: any) {
     logger.error('blockUser error:', error);

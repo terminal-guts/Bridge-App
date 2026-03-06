@@ -228,6 +228,28 @@ export const sendMessage = async (
       };
     }
 
+    // Block check — prevent messaging if either user has blocked the other
+    if (receiverId && USE_REAL_BACKEND) {
+      const { data: blockRows } = await supabase
+        .from('blocked_users')
+        .select('id')
+        .or(
+          `and(user_id.eq.${senderId},blocked_user_id.eq.${receiverId}),` +
+          `and(user_id.eq.${receiverId},blocked_user_id.eq.${senderId})`,
+        )
+        .limit(1);
+
+      if (blockRows && blockRows.length > 0) {
+        return {
+          ok: false,
+          error: {
+            code: 'BLOCKED',
+            message: 'Unable to send message',
+          },
+        };
+      }
+    }
+
     // Content moderation for text messages (skip for date proposals — system-generated)
     if (type === 'text' && !content.startsWith('📅 Date Proposal:')) {
       const moderationResult = await contentModerationService.analyzeText(content);

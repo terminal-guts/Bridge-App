@@ -77,7 +77,31 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 3. Determine which user this is
+    // 3. Check if either user has blocked the other
+    const { data: blockCheck } = await supabase
+      .from('blocked_users')
+      .select('id')
+      .or(
+        `and(user_id.eq.${proposal.user_a_id},blocked_user_id.eq.${proposal.user_b_id}),` +
+        `and(user_id.eq.${proposal.user_b_id},blocked_user_id.eq.${proposal.user_a_id})`,
+      )
+      .limit(1);
+
+    if (blockCheck && blockCheck.length > 0) {
+      // Silently cancel the proposal — don't reveal who blocked whom
+      await supabase
+        .from('proposals')
+        .update({ status: 'rejected', rejected_at: nowIso, updated_at: nowIso })
+        .eq('id', proposal_id);
+
+      return Response.json({
+        status: 'cancelled',
+        proposal_status: 'rejected',
+        message: 'This proposal is no longer available',
+      }, { headers: corsHeaders });
+    }
+
+    // 4. Determine which user this is
     const isUserA = userId === proposal.user_a_id;
     const isUserB = userId === proposal.user_b_id;
 

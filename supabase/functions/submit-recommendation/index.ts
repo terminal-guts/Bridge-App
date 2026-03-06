@@ -44,7 +44,29 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Cannot recommend someone to themselves
+    if (recommended_person_id === recommended_to_friend_id) {
+      return Response.json(
+        { error: 'Cannot recommend a person to themselves' },
+        { status: 400, headers: corsHeaders },
+      );
+    }
+
     const supabase = createAdminClient();
+
+    // Block check: reject if recommended person and target friend have blocked each other
+    const { data: blockRow } = await supabase
+      .from('blocked_users')
+      .select('id')
+      .or(`and(user_id.eq.${recommended_person_id},blocked_user_id.eq.${recommended_to_friend_id}),and(user_id.eq.${recommended_to_friend_id},blocked_user_id.eq.${recommended_person_id})`)
+      .limit(1);
+
+    if (blockRow && blockRow.length > 0) {
+      return Response.json(
+        { error: 'Unable to make this recommendation' },
+        { status: 403, headers: corsHeaders },
+      );
+    }
 
     // Verify recommender is actually friends with the recommended_to person
     const { data: friendship } = await supabase
