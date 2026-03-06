@@ -2,7 +2,7 @@
 -- Cron Scheduling for Daily Edge Functions
 -- ============================================
 -- Uses pg_cron + pg_net to trigger Edge Functions on a schedule.
--- All times are in UTC. 7PM Central ≈ 01:00 UTC (CDT) / 00:00 UTC (CST).
+-- All times are in UTC. 7PM Central ≈ 00:00 UTC (CDT) / 01:00 UTC (CST).
 --
 -- BEFORE RUNNING THIS MIGRATION:
 -- 1. Go to Supabase Dashboard → Settings → API → Copy your service_role key
@@ -15,8 +15,8 @@
 --   00:05 AM UTC — generate-proposals     (create new proposals for eligible users)
 --   00:10 AM UTC — generate-daily-pairings (daily pairing suggestions)
 --
--- DST note: 00:00 UTC = 7PM CST (Nov-Mar) / 7PM CDT would be 01:00 UTC (Mar-Nov).
--- Using 00:00 UTC means the cycle runs at 6PM CDT during summer. This is acceptable
+-- DST note: 00:00 UTC = 7PM CDT (Mar-Nov) / 6PM CST (Nov-Mar).
+-- Using 00:00 UTC means the cycle runs at 6PM CST during winter. This is acceptable
 -- since it's before the 7PM target, not after.
 --
 -- Note: generate-daily-surveys has been REMOVED (old 3-candidate grid model).
@@ -76,22 +76,7 @@ SELECT cron.schedule(
 );
 
 -- ============================================
--- 3. Generate Daily Pairings — 00:10 UTC daily
+-- 3. Generate Daily Pairings — REMOVED (not yet implemented)
 -- ============================================
 SELECT cron.unschedule('generate-daily-pairings')
 WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'generate-daily-pairings');
-
-SELECT cron.schedule(
-  'generate-daily-pairings',
-  '10 0 * * *',
-  $$
-  SELECT net.http_post(
-    url := 'https://ikyiwnydgedwbmcdzgbe.supabase.co/functions/v1/generate-daily-pairings',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
-    ),
-    body := '{}'::jsonb
-  );
-  $$
-);
