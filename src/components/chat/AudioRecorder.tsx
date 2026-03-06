@@ -1,82 +1,72 @@
-import React, { useState, useRef } from 'react';
-import { View, TouchableOpacity, Animated, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, TouchableOpacity, Animated, Alert, Text, StyleSheet } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
-import { styled } from 'nativewind';
 import * as Haptics from 'expo-haptics';
 import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('AudioRecorder');
 
-const StyledView = styled(View);
-const StyledTouchableOpacity = styled(TouchableOpacity);
+const WAVEFORM_BAR_COUNT = 30;
+const METERING_POLL_MS = 80;
+const MIN_DURATION_MS = 500;
+const MAX_DURATION_MS = 120_000; // 2 minutes
+
+// Use proven preset + metering
+const RECORDING_OPTIONS: Audio.RecordingOptions = {
+    ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+    isMeteringEnabled: true,
+};
 
 interface AudioRecorderProps {
     onRecordingComplete: (uri: string, durationMillis: number) => void;
+    onRecordingStateChange?: (isRecording: boolean) => void;
     disabled?: boolean;
 }
 
-export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, disabled }) => {
+export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, onRecordingStateChange, disabled }) => {
     const [isRecording, setIsRecording] = useState(false);
-    const [isPreparing, setIsPreparing] = useState(false);
+    const [elapsed, setElapsed] = useState(0);
+    const [waveformBars, setWaveformBars] = useState<number[]>(new Array(WAVEFORM_BAR_COUNT).fill(3));
+
     const recordingRef = useRef<Audio.Recording | null>(null);
-    const isButtonPressed = useRef(false); // Track if user is currently holding the button
+    const startedAtRef = useRef(0);
+    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const meteringRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const waveformDataRef = useRef<number[]>(new Array(WAVEFORM_BAR_COUNT).fill(3));
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
-    // Cleanup on unmount
-    React.useEffect(() => {
+    useEffect(() => {
         return () => {
+            clearTimers();
             if (recordingRef.current) {
-                logger.info('[DEBUG] Unmounting, cleaning up recording...');
-                recordingRef.current.stopAndUnloadAsync().catch(e => logger.error('Cleanup failed', e));
+                recordingRef.current.stopAndUnloadAsync().catch(() => {});
                 recordingRef.current = null;
             }
         };
     }, []);
 
-    const startPulse = () => {
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(pulseAnim, {
-                    toValue: 1.2,
-                    duration: 500,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(pulseAnim, {
-                    toValue: 1,
-                    duration: 500,
-                    useNativeDriver: true,
-                }),
-            ])
-        ).start();
+    const clearTimers = () => {
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        if (meteringRef.current) { clearInterval(meteringRef.current); meteringRef.current = null; }
     };
 
-    const stopPulse = () => {
-        pulseAnim.stopAnimation();
-        pulseAnim.setValue(1);
+    const formatElapsed = (ms: number): string => {
+        const totalSeconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
     };
 
-    async function startRecording() {
-        if (isRecording || isPreparing) return;
-
-        isButtonPressed.current = true;
+    // === START ===
+    const startRecording = async () => {
+        if (recordingRef.current) return;
 
         try {
-            logger.info('[DEBUG] 1. Starting preparation...');
-            setIsPreparing(true);
-            const permission = await Audio.requestPermissionsAsync();
-
-            if (permission.status !== 'granted') {
-                Alert.alert('Microphone Access', 'Please enable microphone access to send voice notes.');
-                setIsPreparing(false);
-                isButtonPressed.current = false;
+            const perm = await Audio.requestPermissionsAsync();
+            if (perm.status !== 'granted') {
+                Alert.alert('Microphone Access', 'Please enable microphone access in Settings to send voice notes.');
                 return;
-            }
-
-            // Ensure previous is cleaned up just in case
-            if (recordingRef.current) {
-                await recordingRef.current.stopAndUnloadAsync().catch(() => { });
-                recordingRef.current = null;
             }
 
             await Audio.setAudioModeAsync({
@@ -84,118 +74,193 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
                 playsInSilentModeIOS: true,
             });
 
-            logger.info('[DEBUG] 2. Creating recording object...');
-            const { recording } = await Audio.Recording.createAsync(
-                Audio.RecordingOptionsPresets.HIGH_QUALITY
-            );
+            const { recording } = await Audio.Recording.createAsync(RECORDING_OPTIONS);
 
-            // CRITICAL: If the user already released the button while we were creating the object
-            if (!isButtonPressed.current) {
-                logger.info('[DEBUG] 3a. User already released, cleaning up immediately...');
-                await recording.stopAndUnloadAsync();
-                await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-                setIsPreparing(false);
-                return;
-            }
-
-            logger.info('[DEBUG] 3b. Recording started successfully');
             recordingRef.current = recording;
+            startedAtRef.current = Date.now();
             setIsRecording(true);
-            setIsPreparing(false);
-            startPulse();
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        } catch (err) {
-            logger.error('Failed to start recording', err);
-            Alert.alert('Error', 'Could not start microphone');
-            setIsPreparing(false);
-            setIsRecording(false);
-        }
-    }
+            setElapsed(0);
+            waveformDataRef.current = new Array(WAVEFORM_BAR_COUNT).fill(3);
+            setWaveformBars(new Array(WAVEFORM_BAR_COUNT).fill(3));
+            onRecordingStateChange?.(true);
 
-    async function stopRecording() {
-        const stopTime = Date.now();
-        logger.info('[DEBUG] stopRecording triggered at:', stopTime);
-        isButtonPressed.current = false;
+            // Start timer
+            timerRef.current = setInterval(() => {
+                const ms = Date.now() - startedAtRef.current;
+                setElapsed(ms);
+                if (ms >= MAX_DURATION_MS) sendRecording();
+            }, 100);
 
-        if (isPreparing && !isRecording) {
-            logger.info('[DEBUG] Released while still preparing. Button state cleared.');
-            setIsPreparing(false);
-            return;
-        }
+            // Start metering
+            meteringRef.current = setInterval(async () => {
+                if (!recordingRef.current) return;
+                try {
+                    const status = await recordingRef.current.getStatusAsync();
+                    if (status.isRecording && status.metering != null) {
+                        const normalized = Math.max(0, Math.min(1, (status.metering + 60) / 60));
+                        const barHeight = 3 + normalized * 29;
+                        const newBars = [...waveformDataRef.current.slice(1), barHeight];
+                        waveformDataRef.current = newBars;
+                        setWaveformBars([...newBars]);
+                    }
+                } catch {}
+            }, METERING_POLL_MS);
 
-        if (!recordingRef.current) {
-            logger.info('[DEBUG] No active recording object found during stop.');
-            setIsRecording(false);
-            setIsPreparing(false);
-            return;
+            // Pulse animation
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, { toValue: 1.3, duration: 800, useNativeDriver: true }),
+                    Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+                ])
+            ).start();
+
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+            logger.info('[AudioRecorder] Recording started');
+        } catch (err: any) {
+            logger.error('[AudioRecorder] Start error:', err);
+            Alert.alert('Error', 'Could not start microphone.');
         }
+    };
+
+    // === SEND ===
+    const sendRecording = async () => {
+        const recording = recordingRef.current;
+        if (!recording) return;
+        recordingRef.current = null;
+
+        clearTimers();
+        pulseAnim.stopAnimation();
+        pulseAnim.setValue(1);
+        setIsRecording(false);
+        onRecordingStateChange?.(false);
 
         try {
-            const recording = recordingRef.current;
-            recordingRef.current = null;
+            // Get duration BEFORE stopping (iOS bug: stopAndUnloadAsync returns 0)
+            const preStatus = await recording.getStatusAsync();
+            const duration = preStatus.durationMillis || 0;
 
-            setIsRecording(false);
-            stopPulse();
-
-            logger.info('[DEBUG] 4. Calling stopAndUnloadAsync...');
-            const status = await recording.stopAndUnloadAsync();
+            await recording.stopAndUnloadAsync();
             await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-
             const uri = recording.getURI();
-            logger.info('[DEBUG] 5. Recording stopped.', {
-                uri,
-                duration: status.durationMillis,
-                canRecord: status.canRecord
-            });
 
-            if (uri && status.durationMillis && status.durationMillis > 200) {
-                logger.info('[DEBUG] 6. Success! Sending to parent.');
-                onRecordingComplete(uri, status.durationMillis);
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            logger.info('[AudioRecorder] Stopped', { uri, duration });
+
+            if (uri && duration > MIN_DURATION_MS) {
+                onRecordingComplete(uri, duration);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
             } else {
-                logger.warn('[DEBUG] 6. Recording rejected:', {
-                    hasUri: !!uri,
-                    duration: status.durationMillis,
-                    threshold: 200
-                });
-                Alert.alert('Hold to Talk', 'Press and hold to record. Make sure the button turns red before releasing.');
+                Alert.alert('Too Short', 'Record for at least 1 second to send a voice note.');
             }
-        } catch (err) {
-            logger.error('[DEBUG] ERROR in stopRecording:', err);
+        } catch (err: any) {
+            logger.error('[AudioRecorder] Stop error:', err);
             Alert.alert('Error', 'Something went wrong while saving the audio.');
-            setIsRecording(false);
-            recordingRef.current = null;
         }
+    };
+
+    // === CANCEL ===
+    const cancelRecording = async () => {
+        const recording = recordingRef.current;
+        if (!recording) return;
+        recordingRef.current = null;
+
+        clearTimers();
+        pulseAnim.stopAnimation();
+        pulseAnim.setValue(1);
+        setIsRecording(false);
+        onRecordingStateChange?.(false);
+
+        try {
+            await recording.stopAndUnloadAsync();
+            await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            logger.info('[AudioRecorder] Recording cancelled');
+        } catch (err: any) {
+            logger.error('[AudioRecorder] Cancel error:', err);
+        }
+    };
+
+    // === RENDER: idle ===
+    if (!isRecording) {
+        return (
+            <TouchableOpacity
+                onPress={startRecording}
+                disabled={disabled}
+                activeOpacity={0.7}
+                style={[styles.micButton, disabled && styles.micButtonDisabled]}
+            >
+                <Ionicons name="mic-outline" size={24} color="white" />
+            </TouchableOpacity>
+        );
     }
 
+    // === RENDER: recording bar ===
     return (
-        <StyledView className="items-center justify-center">
-            {isRecording && (
-                <Animated.View
-                    style={{
-                        transform: [{ scale: pulseAnim }],
-                        position: 'absolute',
-                        width: 50,
-                        height: 50,
-                        borderRadius: 25,
-                        backgroundColor: 'rgba(244, 63, 94, 0.2)',
-                    }}
-                />
-            )}
-            <StyledTouchableOpacity
-                onPressIn={startRecording}
-                onPressOut={stopRecording}
-                disabled={disabled}
-                className={`w-12 h-12 rounded-full items-center justify-center ${isRecording ? 'bg-rose-500' : 'bg-primary-500'
-                    } ${disabled ? 'opacity-50' : ''}`}
-            >
-                <Ionicons
-                    name={isRecording ? 'mic' : 'mic-outline'}
-                    size={24}
-                    color="white"
-                    style={{ opacity: isPreparing ? 0.3 : 1 }}
-                />
-            </StyledTouchableOpacity>
-        </StyledView>
+        <View style={styles.recordingBar}>
+            {/* Cancel */}
+            <TouchableOpacity onPress={cancelRecording} activeOpacity={0.7} style={styles.cancelButton}>
+                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+            </TouchableOpacity>
+
+            {/* Waveform + Timer */}
+            <View style={styles.waveformContainer}>
+                <Animated.View style={[styles.recordingDot, { transform: [{ scale: pulseAnim }] }]} />
+                <Text style={styles.timerText}>{formatElapsed(elapsed)}</Text>
+                <View style={styles.waveformBars}>
+                    {waveformBars.map((height, i) => (
+                        <View
+                            key={i}
+                            style={[styles.waveformBar, {
+                                height: Math.max(3, height),
+                                opacity: 0.4 + (i / WAVEFORM_BAR_COUNT) * 0.6,
+                            }]}
+                        />
+                    ))}
+                </View>
+            </View>
+
+            {/* Send */}
+            <TouchableOpacity onPress={sendRecording} activeOpacity={0.7} style={styles.sendButton}>
+                <Ionicons name="arrow-up" size={20} color="white" />
+            </TouchableOpacity>
+        </View>
     );
 };
+
+const styles = StyleSheet.create({
+    micButton: {
+        width: 42, height: 42, borderRadius: 21,
+        backgroundColor: '#437FFF', alignItems: 'center', justifyContent: 'center',
+    },
+    micButtonDisabled: { opacity: 0.5 },
+    recordingBar: {
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: '#FEF2F2', borderRadius: 24,
+        borderWidth: 1, borderColor: '#FECACA',
+        height: 48, paddingHorizontal: 6, flex: 1,
+    },
+    cancelButton: {
+        width: 36, height: 36, borderRadius: 18,
+        backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center',
+    },
+    waveformContainer: {
+        flex: 1, flexDirection: 'row', alignItems: 'center',
+        marginHorizontal: 10, height: 36,
+    },
+    recordingDot: {
+        width: 8, height: 8, borderRadius: 4,
+        backgroundColor: '#EF4444', marginRight: 8,
+    },
+    timerText: {
+        fontSize: 14, fontWeight: '600', color: '#B91C1C',
+        marginRight: 10, minWidth: 36, fontVariant: ['tabular-nums'],
+    },
+    waveformBars: {
+        flex: 1, flexDirection: 'row', alignItems: 'center',
+        justifyContent: 'space-between', height: 32,
+    },
+    waveformBar: { width: 3, borderRadius: 1.5, backgroundColor: '#EF4444' },
+    sendButton: {
+        width: 36, height: 36, borderRadius: 18,
+        backgroundColor: '#437FFF', alignItems: 'center', justifyContent: 'center',
+    },
+});

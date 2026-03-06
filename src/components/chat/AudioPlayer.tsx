@@ -3,6 +3,7 @@ import { View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { styled } from 'nativewind';
+import * as FileSystem from 'expo-file-system/legacy';
 import { BodySmall } from '../ui/Typography';
 import { createLogger } from '../../utils/secureLogger';
 
@@ -49,8 +50,24 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ uri, duration, isOwnMe
         try {
             if (sound === null) {
                 setIsLoading(true);
+                // Ensure audio mode is set for playback (recording mode blocks playback on iOS)
+                await Audio.setAudioModeAsync({
+                    allowsRecordingIOS: false,
+                    playsInSilentModeIOS: true,
+                });
+
+                // Download remote files locally first — iOS AVPlayer can't stream all formats
+                let playbackUri = uri;
+                if (uri.startsWith('http')) {
+                    const ext = uri.match(/\.(\w+?)(\?|$)/)?.[1] || 'm4a';
+                    const localPath = `${FileSystem.cacheDirectory}audio_${Date.now()}.${ext}`;
+                    const download = await FileSystem.downloadAsync(uri, localPath);
+                    logger.info('Downloaded audio to:', download.uri);
+                    playbackUri = download.uri;
+                }
+
                 const { sound: newSound } = await Audio.Sound.createAsync(
-                    { uri },
+                    { uri: playbackUri },
                     { shouldPlay: true },
                     onPlaybackStatusUpdate
                 );

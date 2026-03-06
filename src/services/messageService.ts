@@ -22,6 +22,8 @@ import { FEATURES } from '../config/features';
 import { contentModerationService } from './contentModerationService';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { Buffer } from 'buffer';
+import * as FileSystem from 'expo-file-system/legacy';
+import { decode as base64Decode } from 'base64-arraybuffer';
 
 // ============================================================================
 // Configuration
@@ -115,23 +117,30 @@ const uploadAudioFile = async (
   }
 
   try {
-    // Generate unique filename
+    // Generate unique filename with correct extension
     const timestamp = Date.now();
-    const filename = `${matchId}/${senderId}/${timestamp}.mp4`;
+    const uriExt = localUri.match(/\.(\w+)$/)?.[1] || 'm4a';
+    const ext = ['m4a', 'mp4', 'webm', 'aac', 'mpeg'].includes(uriExt) ? uriExt : 'm4a';
+    const contentTypeMap: Record<string, string> = {
+      m4a: 'audio/mp4',
+      mp4: 'audio/mp4',
+      webm: 'audio/webm',
+      aac: 'audio/aac',
+      mpeg: 'audio/mpeg',
+    };
+    const filename = `${matchId}/${senderId}/${timestamp}.${ext}`;
+    const contentType = contentTypeMap[ext] || 'audio/mp4';
 
-    // Read the file as blob via fetch (expo-file-system readAsStringAsync is deprecated in SDK 54)
-    const response = await fetch(localUri);
-    const blob = await response.blob();
+    // Read the file as base64 and decode to ArrayBuffer (avoids RN blob corruption)
+    const base64 = await FileSystem.readAsStringAsync(localUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    const arrayBuffer = base64Decode(base64);
 
-    // Convert blob to ArrayBuffer
-    const arrayBuffer = await blob.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-
-    // Upload to Supabase Storage
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(filename, bytes.buffer, {
-        contentType: 'audio/mp4',
+      .upload(filename, arrayBuffer, {
+        contentType,
         upsert: false,
       });
 
@@ -140,13 +149,23 @@ const uploadAudioFile = async (
       return { url: '', error: error.message };
     }
 
-    // Get public URL
-    const { data: urlData } = supabase.storage
+    // Get signed URL (more reliable than public URL for iOS AVPlayer)
+    const { data: signedData, error: signError } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .getPublicUrl(filename);
+      .createSignedUrl(filename, 60 * 60 * 24 * 365); // 1 year expiry
 
-    logger.info('[MESSAGE SERVICE] Audio uploaded:', urlData.publicUrl);
-    return { url: urlData.publicUrl, error: null };
+    if (signError || !signedData?.signedUrl) {
+      logger.error('[MESSAGE SERVICE] Signed URL error:', signError);
+      // Fallback to public URL
+      const { data: urlData } = supabase.storage
+        .from(STORAGE_BUCKET)
+        .getPublicUrl(filename);
+      logger.info('[MESSAGE SERVICE] Audio uploaded (public):', urlData.publicUrl);
+      return { url: urlData.publicUrl, error: null };
+    }
+
+    logger.info('[MESSAGE SERVICE] Audio uploaded (signed):', signedData.signedUrl);
+    return { url: signedData.signedUrl, error: null };
   } catch (error: any) {
     logger.error('[MESSAGE SERVICE] Audio upload exception:', error);
     return { url: '', error: error.message || 'Failed to upload audio' };

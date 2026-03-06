@@ -103,6 +103,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [audioRecording, setAudioRecording] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [match, setMatch] = useState<Match | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -639,38 +640,43 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
           <StyledView className="flex-row items-end">
             <AudioRecorder
               onRecordingComplete={handleAudioRecordingComplete}
+              onRecordingStateChange={setAudioRecording}
               disabled={sendingMessage}
             />
-            <StyledView className="flex-1 bg-neutral-50 rounded-2xl px-4 py-2 mx-2">
-              <StyledTextInput
-                value={newMessage}
-                onChangeText={setNewMessage}
-                placeholder="Type a message..."
-                multiline
-                maxLength={1000}
-                className="text-neutral-900 text-base max-h-24"
-                placeholderTextColor="#98A2B3"
-                editable={!sendingMessage && !newMessage.startsWith('file://')}
-              />
-            </StyledView>
-            {newMessage.trim() || sendingMessage ? (
-              <StyledTouchableOpacity
-                onPress={sendMessage}
-                disabled={!newMessage.trim() || sendingMessage}
-                className={`w-10 h-10 rounded-full items-center justify-center ${newMessage.trim() && !sendingMessage ? 'bg-primary-500' : 'bg-neutral-200'
-                  }`}
-              >
-                {sendingMessage ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <Ionicons
-                    name="send"
-                    size={20}
-                    color={newMessage.trim() ? 'white' : '#98A2B3'}
+            {!audioRecording && (
+              <>
+                <StyledView className="flex-1 bg-neutral-50 rounded-2xl px-4 py-2 mx-2">
+                  <StyledTextInput
+                    value={newMessage}
+                    onChangeText={setNewMessage}
+                    placeholder="Type a message..."
+                    multiline
+                    maxLength={1000}
+                    className="text-neutral-900 text-base max-h-24"
+                    placeholderTextColor="#98A2B3"
+                    editable={!sendingMessage && !newMessage.startsWith('file://')}
                   />
-                )}
-              </StyledTouchableOpacity>
-            ) : null}
+                </StyledView>
+                {newMessage.trim() || sendingMessage ? (
+                  <StyledTouchableOpacity
+                    onPress={sendMessage}
+                    disabled={!newMessage.trim() || sendingMessage}
+                    className={`w-10 h-10 rounded-full items-center justify-center ${newMessage.trim() && !sendingMessage ? 'bg-primary-500' : 'bg-neutral-200'
+                      }`}
+                  >
+                    {sendingMessage ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <Ionicons
+                        name="send"
+                        size={20}
+                        color={newMessage.trim() ? 'white' : '#98A2B3'}
+                      />
+                    )}
+                  </StyledTouchableOpacity>
+                ) : null}
+              </>
+            )}
           </StyledView>
           {newMessage.length > 900 && (
             <BodySmall className="text-neutral-500 mt-1 text-right">
