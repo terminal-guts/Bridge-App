@@ -319,22 +319,22 @@ export function ProposalReviewView({
   // Used by both handleVote and handleForFriendConfirm.
   const advanceProposal = useCallback(() => {
     if (voteTimeoutRef.current) clearTimeout(voteTimeoutRef.current);
-    voteTimeoutRef.current = setTimeout(() => {
-      if (!isMountedRef.current) return;
-      setVoting(false);
-      if (currentIndex >= proposals.length - 1) {
-        // Single-proposal (friend) mode: go back; otherwise complete voting gate
-        if (onVoteComplete) {
-          onVoteComplete();
-        } else if (onBack) {
-          onBack();
-        } else {
-          setTimeout(() => onVotesComplete?.(), 500);
-        }
+
+    // Process without artificial delay for snappier UI
+    if (!isMountedRef.current) return;
+    setVoting(false);
+    if (currentIndex >= proposals.length - 1) {
+      // Single-proposal (friend) mode: go back; otherwise complete voting gate
+      if (onVoteComplete) {
+        onVoteComplete();
+      } else if (onBack) {
+        onBack();
       } else {
-        setCurrentIndex(prev => prev + 1);
+        onVotesComplete?.();
       }
-    }, 300);
+    } else {
+      setCurrentIndex(prev => prev + 1);
+    }
   }, [currentIndex, proposals.length, onVoteComplete, onBack, onVotesComplete]);
 
   const handleVote = useCallback((vote: 'yes' | 'no' | 'skip') => {

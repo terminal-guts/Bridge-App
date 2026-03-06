@@ -320,9 +320,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   }, [hasCompletedVoting, loadFriendsData, startGuideIfNeeded]));
 
   const handleVotesComplete = useCallback(async () => {
-    // Brief delay to allow the last vote to commit to the database
-    // before querying hasCompletedGrid (which checks proposal_votes)
-    await new Promise(resolve => setTimeout(resolve, 800));
+    // Rely on optimistic updates and local session tracking instead of delaying
     await loadFriendsData();
     setHasCompletedVoting(true);
     // Cache so next cold open skips the voting gate

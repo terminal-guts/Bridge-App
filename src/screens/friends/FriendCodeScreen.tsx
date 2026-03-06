@@ -107,24 +107,30 @@ export const FriendCodeScreen: React.FC<FriendCodeScreenProps> = ({ navigation }
     return () => { isMountedRef.current = false; };
   }, []);
 
-  // Load current user and friend code in a single sequential effect
+  // Load current user and friend code concurrently
   useEffect(() => {
     const init = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const [userResponse, codeResult] = await Promise.all([
+          supabase.auth.getUser(),
+          getUserFriendCode()
+        ]);
+
         if (!isMountedRef.current) return;
+
+        const user = userResponse.data.user;
         if (!user) {
           Alert.alert('Error', 'You must be logged in to view this page');
           navigation.goBack();
           return;
         }
+
         setCurrentUserId(user.id);
-        const result = await getUserFriendCode();
-        if (!isMountedRef.current) return;
-        if (result.ok && result.data) {
-          setMyFriendCode(result.data.code);
+
+        if (codeResult.ok && codeResult.data) {
+          setMyFriendCode(codeResult.data.code);
         } else {
-          logger.error('Failed to load friend code:', result.error);
+          logger.error('Failed to load friend code:', codeResult.error);
           Alert.alert('Error', 'Failed to load your friend code');
         }
       } catch (error) {
