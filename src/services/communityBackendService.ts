@@ -78,10 +78,10 @@ export function mapProfileRow(row: any): UserProfile {
     values: row.values || [],
     bio: row.bio || '',
     lifestyle: row.lifestyle || {},
-    drinkingFrequency: row.drinking_frequency || '',
-    cannabisFrequency: row.cannabis_frequency || '',
-    tobaccoFrequency: row.tobacco_frequency || '',
-    otherDrugsFrequency: row.other_drugs_frequency || '',
+    drinkingFrequency: row.drinking_frequency || undefined,
+    cannabisFrequency: row.cannabis_frequency || undefined,
+    tobaccoFrequency: row.tobacco_frequency || undefined,
+    otherDrugsFrequency: row.other_drugs_frequency || undefined,
     partnerLifestylePreferences: (() => {
       // Check raw fields first (most reliable — not affected by JSON serialization)
       if (row.partner_drinking || row.partner_cannabis || row.partner_tobacco || row.partner_other_drugs) {

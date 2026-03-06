@@ -356,8 +356,8 @@ export function matchLifestyleAttribute(
     };
   }
 
-  // Handle missing data
-  if (!aRoutine || !bRoutine || !aPreferences || !bPreferences) {
+  // Handle missing routine data — can't compare if we don't know what they do
+  if (!aRoutine || !bRoutine) {
     return {
       status: 'unknown',
       leftValue: aRoutine || '—',
@@ -365,9 +365,13 @@ export function matchLifestyleAttribute(
     };
   }
 
-  // Normalize preferences to arrays
-  const aPreferenceArray = Array.isArray(aPreferences) ? aPreferences : [aPreferences];
-  const bPreferenceArray = Array.isArray(bPreferences) ? bPreferences : [bPreferences];
+  // Normalize preferences to arrays; treat missing/empty preferences as "don't care"
+  const aPreferenceArray = !aPreferences || (Array.isArray(aPreferences) && aPreferences.length === 0)
+    ? ['dont_care']
+    : Array.isArray(aPreferences) ? aPreferences : [aPreferences];
+  const bPreferenceArray = !bPreferences || (Array.isArray(bPreferences) && bPreferences.length === 0)
+    ? ['dont_care']
+    : Array.isArray(bPreferences) ? bPreferences : [bPreferences];
 
   // Step 2: Check for "don't care" (DB stores "dont_care", UI may use "don't care")
   const aDontCare = aPreferenceArray.includes("don't care") || aPreferenceArray.includes("dont_care");
