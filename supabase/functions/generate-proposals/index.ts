@@ -309,15 +309,27 @@ Deno.serve(async (req: Request) => {
     let totalAssigned = 0;
     const todayStr = new Date().toISOString().split('T')[0];
 
-    for (const proposal of allToAssign) {
-      // 1. Check how many pool voters already assigned/voted
-      const { data: assignments } = await supabase
-        .from('pool_vote_assignments')
-        .select('voter_id')
-        .eq('proposal_id', proposal.id);
+    // Batch fetch all assignments for these proposals to avoid N+1 queries
+    const proposalIds = allToAssign.map(p => p.id);
+    const { data: allAssignments } = await supabase
+      .from('pool_vote_assignments')
+      .select('proposal_id, voter_id')
+      .in('proposal_id', proposalIds);
 
-      const alreadyAssignedCount = (assignments || []).length;
-      const alreadyAssignedIds = new Set((assignments || []).map(a => a.voter_id));
+    // Group assignments by proposal_id for O(1) lookup
+    const assignmentsMap = new Map<string, string[]>();
+    for (const row of (allAssignments || [])) {
+      if (!assignmentsMap.has(row.proposal_id)) {
+        assignmentsMap.set(row.proposal_id, []);
+      }
+      assignmentsMap.get(row.proposal_id)!.push(row.voter_id);
+    }
+
+    for (const proposal of allToAssign) {
+      // 1. Get pool voters already assigned/voted from our pre-fetched map
+      const assignments = assignmentsMap.get(proposal.id) || [];
+      const alreadyAssignedCount = assignments.length;
+      const alreadyAssignedIds = new Set(assignments);
 
       // Don't exceed MAX_POOL_VOTES
       if (alreadyAssignedCount >= MAX_POOL_VOTES) continue;
