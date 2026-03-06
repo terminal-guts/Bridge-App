@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import * as Linking from 'expo-linking';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { UsersTabIcon, HandshakeTabIcon, ProfileTabIcon } from '../components/icons/Icons';
@@ -59,8 +60,8 @@ import { PrivacyPolicy } from '../screens/legal/PrivacyPolicy';
 import { HelpSupportScreen } from '../screens/support/HelpSupportScreen';
 
 // Friend Screens
-import { FriendCodeScreen } from '../screens/friends/FriendCodeScreen';
 import { FriendListScreen } from '../screens/friends/FriendListScreen';
+import { ContactInviteScreen } from '../screens/friends/ContactInviteScreen';
 
 // Types
 import { RootStackParamList, MainTabParamList } from '../types';
@@ -172,6 +173,46 @@ export const AppNavigator = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const navigationRef = React.useRef<any>(null);
   const authStateRef = React.useRef<boolean | null>(null);
+  const pendingInviteCode = useRef<string | null>(null);
+
+  // Handle deep links: bridge://invite/BRIDGE-XXXX-XXXX
+  const handleDeepLink = useCallback((url: string) => {
+    const parsed = Linking.parse(url);
+    if (parsed.path?.startsWith('invite/')) {
+      const code = parsed.path.replace('invite/', '').toUpperCase();
+      if (/^BRIDGE-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)) {
+        if (authStateRef.current && navigationRef.current) {
+          // App is ready — navigate and auto-add
+          navigationRef.current.navigate('ContactInvite', { autoAddCode: code });
+        } else {
+          // App not ready yet — save for later
+          pendingInviteCode.current = code;
+        }
+      }
+    }
+  }, []);
+
+  // Listen for deep links while app is open
+  useEffect(() => {
+    const subscription = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
+    // Check if app was opened via deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink(url);
+    });
+    return () => subscription.remove();
+  }, [handleDeepLink]);
+
+  // Process pending invite code once authenticated
+  useEffect(() => {
+    if (isAuthenticated && pendingInviteCode.current && navigationRef.current) {
+      const code = pendingInviteCode.current;
+      pendingInviteCode.current = null;
+      // Small delay to ensure navigation is ready
+      setTimeout(() => {
+        navigationRef.current?.navigate('ContactInvite', { autoAddCode: code });
+      }, 500);
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     authStateRef.current = isAuthenticated;
@@ -332,8 +373,8 @@ export const AppNavigator = () => {
           <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
 
           {/* Friends */}
-          <Stack.Screen name="FriendCode" component={FriendCodeScreen} />
           <Stack.Screen name="FriendList" component={FriendListScreen} />
+          <Stack.Screen name="ContactInvite" component={ContactInviteScreen} />
 
           {/* Additional Screens - To be implemented */}
           {/*

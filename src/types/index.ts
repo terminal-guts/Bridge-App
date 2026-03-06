@@ -383,6 +383,7 @@ export type RootStackParamList = {
   StrikeWarning: { strike: Strike };
   Compatibility: undefined;
   EmailVerification: { email: string };
+  ContactInvite: { autoAddCode?: string } | undefined;
 };
 
 export type MainTabParamList = {

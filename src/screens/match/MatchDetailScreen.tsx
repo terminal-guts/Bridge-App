@@ -227,7 +227,7 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
 
   const navigateToAddFriends = () => {
     navigation.goBack();
-    navigation.navigate('FriendCode');
+    navigation.navigate('ContactInvite');
   };
 
   const showFriendsList = async () => {

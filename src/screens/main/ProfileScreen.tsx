@@ -1102,7 +1102,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                 </Body>
               </StyledTouchableOpacity>
               <StyledTouchableOpacity
-                onPress={() => navigation.navigate('FriendCode')}
+                onPress={() => navigation.navigate('ContactInvite')}
                 className="bg-primary-500 px-4 py-2 rounded-full flex-row items-center"
                 style={{
                   shadowColor: '#2952CC',

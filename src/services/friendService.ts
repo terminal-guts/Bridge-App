@@ -328,6 +328,34 @@ export const addFriendByCode = async (
 };
 
 /**
+ * Bulk-add multiple friends by their friend codes in parallel.
+ * Skips rate limiting and profile fetching for speed.
+ * Returns the set of codes that were successfully added.
+ */
+export const bulkAddFriendsByCodes = async (
+  codes: string[]
+): Promise<Set<string>> => {
+  const added = new Set<string>();
+  if (codes.length === 0) return added;
+
+  const results = await Promise.allSettled(
+    codes.map(async (code) => {
+      const { data, error } = await supabase
+        .rpc('add_friend_by_code', { friend_code: code.toUpperCase() });
+      const row = data?.[0];
+      if (!error && row?.success) return code;
+      if (row?.message?.includes('already friends')) return code;
+      return null;
+    })
+  );
+
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value) added.add(r.value);
+  }
+  return added;
+};
+
+/**
  * Get list of friends with their profiles
  * SECURITY FIX: Gets userId from authenticated session, not from client
  */

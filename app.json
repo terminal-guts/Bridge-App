@@ -24,7 +24,8 @@
         "NSPhotoLibraryUsageDescription": "Bridge needs photo library access to upload profile photos.",
         "NSPhotoLibraryAddUsageDescription": "Bridge needs permission to save photos.",
         "NSMicrophoneUsageDescription": "Bridge needs microphone access for voice features.",
-        "NSLocationWhenInUseUsageDescription": "Bridge uses your location to show nearby matches."
+        "NSLocationWhenInUseUsageDescription": "Bridge uses your location to show nearby matches.",
+        "NSContactsUsageDescription": "Bridge uses your contacts to help you invite friends via SMS."
       },
       "runtimeVersion": "1.0.0"
     },
@@ -44,6 +45,7 @@
         "policy": "appVersion"
       }
     },
+    "scheme": "bridge",
     "web": {
       "favicon": "./assets/favicon.png"
     },
@@ -62,6 +64,12 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "Bridge uses your location to show nearby matches."
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Bridge uses your contacts to help you invite friends via SMS."
         }
       ]
     ],

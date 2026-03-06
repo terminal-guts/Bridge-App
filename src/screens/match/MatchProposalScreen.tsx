@@ -607,7 +607,7 @@ const RecommendToFriendModal: React.FC<{ visible: boolean; profileName: string; 
           <StyledView className="w-14 h-14 rounded-full items-center justify-center mb-4" style={{ backgroundColor: COLORS.neutral50 }}><Ionicons name="people-outline" size={24} color={COLORS.neutral300} /></StyledView>
           <Body className="mb-2" style={{ fontSize: 16, fontWeight: '600', color: COLORS.neutral700 }}>No friends yet</Body>
           <Body className="text-center mb-5" style={{ fontSize: 14, color: COLORS.neutral500, lineHeight: 20, paddingHorizontal: 16 }}>Add friends to share match recommendations</Body>
-          <StyledTouchableOpacity onPress={() => { onClose(); navigation.navigate('FriendCode'); }} style={{ backgroundColor: COLORS.primary500, borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24 }} activeOpacity={0.8}>
+          <StyledTouchableOpacity onPress={() => { onClose(); navigation.navigate('ContactInvite'); }} style={{ backgroundColor: COLORS.primary500, borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24 }} activeOpacity={0.8}>
             <Body style={{ fontSize: 16, fontWeight: '600', color: COLORS.white }}>Add Friends</Body>
           </StyledTouchableOpacity>
         </StyledView>

@@ -5,6 +5,8 @@ import { H1, H2, Body, Input } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
+import { RootStackParamList } from '../../../types';
 import { getUserFriendCode, addFriendByCode } from '../../../services/friendService';
 import * as Clipboard from 'expo-clipboard';
 import { showToast } from '../../../utils/toast';
@@ -32,6 +34,7 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
   onNext,
   onBack,
 }) => {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [myCode, setMyCode] = useState('');
   const [friendCode, setFriendCode] = useState('');
   const [error, setError] = useState('');
@@ -206,6 +209,15 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
           ))}
         </StyledView>
       )}
+
+      {/* Invite from Contacts */}
+      <StyledTouchableOpacity
+        onPress={() => navigation.navigate('ContactInvite')}
+        className="flex-row items-center justify-center py-3 mb-1"
+      >
+        <Ionicons name="people-outline" size={18} color="#437FFF" />
+        <Body className="text-primary-500 font-semibold ml-2">Invite from Contacts</Body>
+      </StyledTouchableOpacity>
 
       {/* Skip button */}
       <StyledTouchableOpacity onPress={handleSkip} className="items-center py-3">
