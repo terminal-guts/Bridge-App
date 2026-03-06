@@ -13,8 +13,8 @@ import { getUserProfile, updateUserProfile } from '../../services/profileService
 import { getFriendCount } from '../../services/friendService';
 import { Ionicons } from '@expo/vector-icons';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
-import { OfflineBanner } from '../../components/OfflineBanner';
-import { ProfileCompletionBanner } from '../../components/ProfileCompletionBanner';
+import { OfflineBanner } from '../../components/ui/OfflineBanner';
+import { ProfileCompletionBanner } from '../../components/profile/ProfileCompletionBanner';
 import {
   BasicInfoSection,
   InterestsSection,
@@ -25,16 +25,16 @@ import {
   AboutMeSummary,
   MatchPreferencesSummary,
 } from './ProfileScreen.components';
-import { ProfileStrengthDashboard } from '../../components/ProfileStrengthDashboard';
-import { PhotoCarousel } from '../../components/PhotoCarousel';
-import { KarmaInfoModal } from '../../components/community/KarmaInfoModal';
+import { ProfileStrengthDashboard } from '../../components/profile/ProfileStrengthDashboard';
+import { PhotoCarousel } from '../../components/profile/PhotoCarousel';
+import { KarmaInfoModal } from '../../components/community/karma/KarmaInfoModal';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { showToast } from '../../utils/toast';
 import { DEEP_QUESTIONS, getUnansweredQuestions } from '../../utils/deepQuestions';
 import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('ProfileScreen');
-import { AnswerQuestionModal } from '../../components/AnswerQuestionModal';
+import { AnswerQuestionModal } from '../../components/profile/AnswerQuestionModal';
 import { GuideTarget } from '../../components/guides';
 import { useGuide } from '../../hooks/useGuide';
 import { profileGuide } from '../../config/guides';

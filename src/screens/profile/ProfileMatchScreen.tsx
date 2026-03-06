@@ -9,7 +9,7 @@ import { ArrowLeft, Check, Star, Heart, X, Sparkles, Users } from 'lucide-react-
 import { Ionicons } from '@expo/vector-icons';
 import { communityService } from '../../services/communityServiceIndex';
 import { getUserProfile, getFullUserProfileById } from '../../services/profileService';
-import { KarmaInfoModal } from '../../components/community/KarmaInfoModal';
+import { KarmaInfoModal } from '../../components/community/karma/KarmaInfoModal';
 import { VALUES_EMOJI, INTERESTS_EMOJI, getEmoji } from '../../utils/emojiMaps';
 import { showToast } from '../../utils/toast';
 

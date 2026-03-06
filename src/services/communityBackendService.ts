@@ -31,6 +31,15 @@ import {
 import { getBlockedUserIds } from './blockService';
 import { getAuthenticatedUserId } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
+import {
+  getCachedPhotoUrls,
+  mergeCachedPhotoUrls,
+  getCachedFriendsData,
+  setCachedFriendsData,
+  invalidateCachedFriendsData,
+  getCachedVotingGate,
+  setCachedVotingGate,
+} from './communityCache';
 
 const logger = createLogger('CommunityBackend');
 
@@ -154,10 +163,40 @@ export async function resolveProfilePhotos(profiles: UserProfile[]): Promise<voi
 
   if (pathsToSign.size === 0) return;
 
-  const paths = Array.from(pathsToSign);
-  const res = await getMultiplePhotoSignedUrls(paths, 86400);
+  // Check photo URL cache first — avoid re-signing URLs that are still valid
+  const cachedUrls = await getCachedPhotoUrls();
+  const alreadyCached: Record<string, string> = {};
+  const needsSigning: string[] = [];
+
+  for (const path of pathsToSign) {
+    if (cachedUrls[path]) {
+      alreadyCached[path] = cachedUrls[path];
+    } else {
+      needsSigning.push(path);
+    }
+  }
+
+  // Apply cached URLs immediately
+  if (Object.keys(alreadyCached).length > 0) {
+    for (const p of profiles) {
+      if (p.photos) {
+        p.photos = p.photos.map(photo => ({
+          ...photo,
+          url: alreadyCached[photo.url] || photo.url,
+        }));
+      }
+    }
+  }
+
+  // Sign only the uncached paths
+  if (needsSigning.length === 0) return;
+
+  const res = await getMultiplePhotoSignedUrls(needsSigning, 86400);
 
   if (res.ok && res.data) {
+    // Persist newly signed URLs to cache
+    mergeCachedPhotoUrls(res.data).catch(() => {});
+
     for (const p of profiles) {
       if (p.photos) {
         p.photos = p.photos.map(photo => ({
@@ -337,6 +376,7 @@ class CommunityBackendService {
 
   invalidateFriendsCache(): void {
     this.friendsAreaCache = null;
+    invalidateCachedFriendsData().catch(() => {});
   }
 
   async getFriendsAsAnchors(forceRefresh = false): Promise<FriendWithGridStatus[]> {
@@ -580,6 +620,8 @@ class CommunityBackendService {
     await resolveProfilePhotos(friends.map(f => f.friend));
 
     this.friendsAreaCache = { data: friends, ts: Date.now() };
+    // Persist to AsyncStorage for stale-while-revalidate on next cold open
+    setCachedFriendsData(friends).catch(() => {});
     return friends;
   }
 
@@ -912,6 +954,30 @@ class CommunityBackendService {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+  }
+
+  // ========================================================================
+  // Cached Friends Area (stale-while-revalidate for cold opens)
+  // ========================================================================
+
+  /**
+   * Returns cached friends data from AsyncStorage if available.
+   * Used by CommunityScreen to render instantly on cold open.
+   */
+  async getCachedFriendsArea(): Promise<FriendWithGridStatus[] | null> {
+    return getCachedFriendsData();
+  }
+
+  // ========================================================================
+  // Voting Gate Cache
+  // ========================================================================
+
+  async getCachedVotingComplete(cycleId: string): Promise<boolean | null> {
+    return getCachedVotingGate(cycleId);
+  }
+
+  async cacheVotingComplete(completed: boolean, cycleId: string): Promise<void> {
+    await setCachedVotingGate(completed, cycleId);
   }
 
   // ========================================================================

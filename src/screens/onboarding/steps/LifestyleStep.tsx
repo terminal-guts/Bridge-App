@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 import { H1, H3, Body, Card } from '../../../components/ui';
 import { OnboardingData, LifestylePreferences } from '../../../types';
-import { OnboardingLayout } from '../../../components/OnboardingLayout';
+import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 
 interface LifestyleStepProps {
   data: Partial<OnboardingData>;

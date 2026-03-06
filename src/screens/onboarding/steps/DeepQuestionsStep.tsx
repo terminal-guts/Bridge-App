@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H1, H2, H3, Body } from '../../../components/ui';
 import { OnboardingData, DeepQuestionAnswer } from '../../../types';
 import { Ionicons } from '@expo/vector-icons';
-import { OnboardingLayout } from '../../../components/OnboardingLayout';
+import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 
 interface DeepQuestionsStepProps {
   data: Partial<OnboardingData>;

@@ -13,7 +13,7 @@ import { NavigationProp, RouteProp } from '@react-navigation/native';
 
 import { RootStackParamList } from '../../types';
 import { Proposal, UserProfile } from '../../types/community';
-import { ProposalReviewView } from '../../components/community/ProposalReviewView';
+import { ProposalReviewView } from '../../components/community/proposal/ProposalReviewView';
 import { communityService } from '../../services/communityServiceIndex';
 import { supabase } from '../../lib/supabase';
 import { transformBackendProposal } from '../../services/proposalApiService';

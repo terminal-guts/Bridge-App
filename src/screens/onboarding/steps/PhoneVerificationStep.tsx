@@ -3,7 +3,7 @@ import { View, TextInput, Pressable } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
-import { OnboardingLayout } from '../../../components/OnboardingLayout';
+import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import { signInWithPassword } from '../../../services/authService';
 // Phone auth removed — this file is unused (email-only signup)
 const sendOtpToPhone = async (_phone: string) => ({ ok: false as const, error: { code: 'REMOVED', message: 'Phone auth removed' } });

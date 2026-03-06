@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, Body, Chip } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
-import { OnboardingLayout } from '../../../components/OnboardingLayout';
+import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 
 interface InterestsStepProps {
   data: Partial<OnboardingData>;

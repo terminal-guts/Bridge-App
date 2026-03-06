@@ -7,11 +7,11 @@ import { communityService } from '../../services/communityServiceIndex';
 import { ActiveMatch, MatchProposal, MatchEndedEvent } from '../../types/community';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { OfflineBanner } from '../../components/OfflineBanner';
+import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { ClockIcon } from '../../components/icons/Icons';
 import { getUserProfile } from '../../services/profileService';
 import { UserProfile } from '../../types';
-import { ProfileCompletionBanner } from '../../components/ProfileCompletionBanner';
+import { ProfileCompletionBanner } from '../../components/profile/ProfileCompletionBanner';
 import { showToast } from '../../utils/toast';
 import { MatchesSkeleton } from '../../components/ui/SkeletonLoader';
 

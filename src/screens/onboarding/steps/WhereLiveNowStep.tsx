@@ -8,7 +8,7 @@ const PROVIDER_GOOGLE = Platform.OS !== 'web' ? require('react-native-maps').PRO
 import * as Location from 'expo-location';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
-import { OnboardingLayout } from '../../../components/OnboardingLayout';
+import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import { createLogger } from '../../../utils/secureLogger';
 
 const logger = createLogger('WhereLiveNowStep');

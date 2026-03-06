@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { styled } from 'nativewind';
 import { H2, H3, Body, Card, Button } from '../../components/ui';
-import { AnswerQuestionModal } from '../../components/AnswerQuestionModal';
+import { AnswerQuestionModal } from '../../components/profile/AnswerQuestionModal';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList, DeepQuestionAnswer, UserProfile } from '../../types';
 import { Ionicons } from '@expo/vector-icons';

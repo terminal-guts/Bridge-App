@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { FriendWithGridStatus } from '../../types/community';
 import { FireIcon, StarIcon } from '../icons/Icons';
-import { KarmaInfoModal } from './KarmaInfoModal';
+import { KarmaInfoModal } from './karma/KarmaInfoModal';
 
 interface UserRowProps {
     item: FriendWithGridStatus;

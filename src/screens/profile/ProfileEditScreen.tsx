@@ -10,7 +10,7 @@ import { getCurrentUser, signOut } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { uploadPhoto } from '../../services/photoService';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
-import { OfflineBanner } from '../../components/OfflineBanner';
+import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { calculateEditProfileCompleteness } from '../../utils/profileCompleteness';

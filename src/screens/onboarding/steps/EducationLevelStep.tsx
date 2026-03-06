@@ -3,7 +3,7 @@ import { View, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
-import { OnboardingLayout } from '../../../components/OnboardingLayout';
+import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 
 interface EducationLevelStepProps {
   data: Partial<OnboardingData>;

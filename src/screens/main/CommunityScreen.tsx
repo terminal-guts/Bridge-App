@@ -4,21 +4,22 @@ import { View, Text, ScrollView, SafeAreaView, StatusBar, TouchableOpacity, Styl
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 import { styled } from 'nativewind';
 import { UserRow } from '../../components/community/UserRow';
-import { ProposalReviewView } from '../../components/community/ProposalReviewView';
+import { ProposalReviewView } from '../../components/community/proposal/ProposalReviewView';
 import { GuideTarget } from '../../components/guides';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { MainTabParamList } from '../../types';
-import { OfflineBanner } from '../../components/OfflineBanner';
+import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { communityService } from '../../services/communityServiceIndex';
 import { getUserFriendCode } from '../../services/friendService';
 import { FriendWithGridStatus } from '../../types/community';
 import { getUserProfile } from '../../services/profileService';
 import { UserProfile } from '../../types';
-import { ProfileCompletionBanner } from '../../components/ProfileCompletionBanner';
+import { ProfileCompletionBanner } from '../../components/profile/ProfileCompletionBanner';
 import { useGuide } from '../../hooks/useGuide';
 import { beginnerTourGuide } from '../../config/guides';
 import { CommunitySkeleton } from '../../components/ui/SkeletonLoader';
+import { getLast7PMCentral } from '../../utils/centralTime';
 
 // ── Match reset countdown timer ───────────────────────────────────────────────
 //
@@ -225,22 +226,46 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   }, [loadFriendsData]);
 
   const initialize = useCallback(async () => {
+    const cycleId = String(getLast7PMCentral());
+
+    // ── Fast path: try to render from cache instantly ──────────────────────
+    const [cachedVoting, cachedFriends] = await Promise.all([
+      communityService.getCachedVotingComplete(cycleId),
+      communityService.getCachedFriendsArea(),
+    ]);
+
+    // If we have a cached "voting done" and cached friends, render immediately
+    if (cachedVoting === true && cachedFriends) {
+      const toMatch = cachedFriends.filter((f: FriendWithGridStatus) => !f.hasCompletedGrid);
+      const helped = cachedFriends
+        .filter((f: FriendWithGridStatus) => f.hasCompletedGrid)
+        .sort((a: FriendWithGridStatus, b: FriendWithGridStatus) => b.assistsCount - a.assistsCount);
+      setUsersToMatch(toMatch);
+      setAlreadyHelped(helped);
+      setHasCompletedVoting(true);
+      setLoading(false);
+
+      // Background revalidate — update state silently if data changed
+      Promise.all([
+        loadFriendsData(),
+        getUserProfile().then(result => {
+          if (result.ok && result.data) setProfile(result.data);
+        }),
+      ]).catch(() => {});
+      return;
+    }
+
+    // ── Slow path: no cache, full network init ────────────────────────────
     setLoading(true);
     try {
-      // Fetch profile in parallel with the voting-gate check.
-      // This eliminates the duplicate profile fetch that was in a separate useEffect.
       const profilePromise = getUserProfile().then(result => {
         if (result.ok && result.data) setProfile(result.data);
       });
 
-      // Wait for AsyncStorage state to load before reading voting progress.
       await communityService.ready;
       const task = await communityService.getCommunityTaskProgress();
       let votingDone = task.hasVotedOnProposals;
 
-      // If the user hasn't voted yet, check whether any proposals exist.
-      // If none are available, skip the gate — no point showing "All Caught Up"
-      // to a new user who has nothing to vote on.
       if (!votingDone) {
         const available = await communityService.getProposalsToVote();
         if (available.length === 0) {
@@ -248,12 +273,14 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
         }
       }
 
+      // Cache the voting gate result for next cold open
+      communityService.cacheVotingComplete(votingDone, cycleId).catch(() => {});
+
       setHasCompletedVoting(votingDone);
       if (votingDone) {
         await loadFriendsData();
       }
 
-      // Ensure profile fetch completes before removing the loading state
       await profilePromise;
     } catch (error) {
       console.error("Failed to check task progress:", error);
@@ -298,6 +325,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     await new Promise(resolve => setTimeout(resolve, 800));
     await loadFriendsData();
     setHasCompletedVoting(true);
+    // Cache so next cold open skips the voting gate
+    const cycleId = String(getLast7PMCentral());
+    communityService.cacheVotingComplete(true, cycleId).catch(() => {});
     navigation.navigate('Community');
   }, [loadFriendsData, navigation]);
 

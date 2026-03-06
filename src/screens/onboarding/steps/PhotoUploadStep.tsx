@@ -5,7 +5,7 @@ import { H1, Body } from '../../../components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { OnboardingData, Photo } from '../../../types';
-import { OnboardingLayout } from '../../../components/OnboardingLayout';
+import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 
 interface PhotoUploadStepProps {
   data: Partial<OnboardingData>;

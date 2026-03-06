@@ -1864,6 +1864,11 @@ class CommunityService {
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
+
+  // Cache stubs — mock service doesn't persist, but the interface must match
+  async getCachedFriendsArea(): Promise<any | null> { return null; }
+  async getCachedVotingComplete(_cycleId: string): Promise<boolean | null> { return null; }
+  async cacheVotingComplete(_completed: boolean, _cycleId: string): Promise<void> {}
 }
 
 // Export singleton instance

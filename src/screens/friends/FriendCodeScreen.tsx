@@ -9,7 +9,7 @@ import * as Clipboard from 'expo-clipboard';
 import { getUserFriendCode, addFriendByCode } from '../../services/friendService';
 import { supabase } from '../../lib/supabase';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
-import { OfflineBanner } from '../../components/OfflineBanner';
+import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { createLogger } from '../../utils/secureLogger';
 import { showToast } from '../../utils/toast';
 

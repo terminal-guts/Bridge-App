@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H1, Body, Input } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { OnboardingLayout } from '../../components/OnboardingLayout';
+import { OnboardingLayout } from '../../components/onboarding/OnboardingLayout';
 import { Ionicons } from '@expo/vector-icons';
 import { sendOtpToEmail, isAllowedEmailDomain } from '../../services/authService';
 import { createLogger } from '../../utils/secureLogger';

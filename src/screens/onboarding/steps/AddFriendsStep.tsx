@@ -3,7 +3,7 @@ import { View, TouchableOpacity, Share, Alert, ActivityIndicator } from 'react-n
 import { styled } from 'nativewind';
 import { H1, H2, Body, Input } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
-import { OnboardingLayout } from '../../../components/OnboardingLayout';
+import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import { Ionicons } from '@expo/vector-icons';
 import { getUserFriendCode, addFriendByCode } from '../../../services/friendService';
 import * as Clipboard from 'expo-clipboard';

@@ -3,7 +3,7 @@ import { View, Image } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, H3, Body, Card } from '../../../components/ui';
 import { Ionicons } from '@expo/vector-icons';
-import { OnboardingLayout } from '../../../components/OnboardingLayout';
+import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 
 interface WelcomeToBridgeStepProps {
   onNext: () => void;

@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GuideTarget, useGuideContext } from '../components/guides';
 import { supabase } from '../lib/supabase';
 import { FEATURES } from '../config/features';
-import { ErrorBoundary } from '../components/ErrorBoundary';
+import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { fetchAndSetUserProfile } from '../services/profileService';
 import { isIntentionalSignOut, resetIntentionalSignOut } from '../services/authService';
 import { notificationService } from '../services/notificationService';
@@ -40,7 +40,7 @@ import { MatchProposalScreen } from '../screens/match/MatchProposalScreen';
 import { MatchesScreen } from '../screens/match/MatchesScreen';
 
 // Chat
-import ChatScreen from '../screens/ChatScreen';
+import ChatScreen from '../screens/match/ChatScreen';
 
 // Profile Screens
 import { SettingsScreen } from '../screens/profile/SettingsScreen';
@@ -65,7 +65,7 @@ import { FriendListScreen } from '../screens/friends/FriendListScreen';
 // Types
 import { RootStackParamList, MainTabParamList } from '../types';
 import { createDevelopmentData } from '../services/developmentDataService';
-import { DevStateToggle } from '../components/DevStateToggle';
+import { DevStateToggle } from '../components/dev/DevStateToggle';
 import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('AppNavigator');
