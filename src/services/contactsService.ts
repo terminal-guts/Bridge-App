@@ -19,6 +19,7 @@ export interface NormalizedContact {
   id: string;
   name: string;
   phoneNumber: string;
+  imageUri?: string;
   isOnBridge: boolean;
   bridgeUserId?: string;
   isAlreadyFriend: boolean;
@@ -109,7 +110,7 @@ export const markMultipleAsInvited = async (phoneNumbers: string[]): Promise<voi
  */
 export const fetchAndNormalizeContacts = async (): Promise<NormalizedContact[]> => {
   const { data } = await Contacts.getContactsAsync({
-    fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name],
+    fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name, Contacts.Fields.Image],
     sort: Contacts.SortTypes.FirstName,
   });
 
@@ -137,6 +138,7 @@ export const fetchAndNormalizeContacts = async (): Promise<NormalizedContact[]> 
       id: contact.id ?? normalized,
       name,
       phoneNumber: phone,
+      imageUri: contact.image?.uri || undefined,
       isOnBridge: false,
       isAlreadyFriend: false,
       isInvited: invitedAt !== undefined,
@@ -236,6 +238,11 @@ export const groupContactsAlphabetically = (contacts: NormalizedContact[]): Cont
     groups[key].push(contact);
   }
 
+  // Sort each group: uninvited first, invited last
+  for (const key of Object.keys(groups)) {
+    groups[key].sort((a, b) => (a.isInvited ? 1 : 0) - (b.isInvited ? 1 : 0));
+  }
+
   return Object.keys(groups)
     .sort()
     .map((letter) => ({ title: letter, data: groups[letter] }));
@@ -247,26 +254,26 @@ export const groupContactsAlphabetically = (contacts: NormalizedContact[]): Cont
  * (multiple phone numbers = close contact), plus On Bridge users.
  */
 export const getSuggestedContacts = (contacts: NormalizedContact[]): NormalizedContact[] => {
-  // On Bridge contacts are always suggested
-  const onBridge = contacts.filter((c) => c.isOnBridge);
-
-  // Count how many times each first name appears — common first names among
-  // your contacts suggest a social circle (e.g. 3 "Sarahs" means you know lots of Sarahs).
-  // But what we really want is contacts with short, personalized names (not businesses).
-  // Heuristic: names with 2-3 words (first + last) and not all-caps (businesses) are real people.
-  const realPeople = contacts.filter((c) => {
+  // Filter to real people (not businesses, not already invited/on Bridge)
+  const candidates = contacts.filter((c) => {
     const words = c.name.split(/\s+/);
-    if (words.length < 2 || words.length > 4) return false;
+    if (words.length < 2 || words.length > 4) return false; // skip single-word or very long names
     if (c.name === c.name.toUpperCase()) return false; // skip "DOMINOS PIZZA"
-    if (c.isOnBridge) return false; // already in onBridge list
+    if (c.isOnBridge) return false; // shown in On Bridge section
     if (c.isInvited) return false; // already invited
     return true;
   });
 
-  // Take the first 10 real-people contacts (OS sorts by recency/frequency on iOS)
-  const suggested = realPeople.slice(0, 10);
+  // Score contacts: prefer those with photos (closer contact) and shorter names
+  // Contacts with photos are people you've interacted with more on your device
+  const scored = candidates.map((c) => ({
+    contact: c,
+    score: (c.imageUri ? 10 : 0) + (c.name.split(/\s+/).length <= 3 ? 2 : 0),
+  }));
 
-  return [...onBridge, ...suggested];
+  scored.sort((a, b) => b.score - a.score);
+
+  return scored.slice(0, 10).map((s) => s.contact);
 };
 
 /**

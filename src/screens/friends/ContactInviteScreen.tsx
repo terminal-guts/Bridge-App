@@ -12,6 +12,7 @@ import {
   Platform,
   Share,
   Alert,
+  Image,
 } from 'react-native';
 import { styled } from 'nativewind';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
@@ -35,6 +36,7 @@ import {
   getBridgeUserCount,
   markAsInvited,
   markMultipleAsInvited,
+  getSuggestedContacts,
 } from '../../services/contactsService';
 import { createLogger } from '../../utils/secureLogger';
 import { showToast } from '../../utils/toast';
@@ -53,6 +55,7 @@ const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledTextInput = styled(TextInput);
 
 const ON_BRIDGE_SECTION = 'On Bridge';
+const SUGGESTED_SECTION = 'Suggested';
 
 // ── Contact Row ──────────────────────────────────────────────────────────────
 
@@ -61,22 +64,39 @@ const REMIND_AFTER_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 interface ContactRowProps {
   contact: NormalizedContact;
   isSelected: boolean;
+  isAdding: boolean;
   onToggleSelect: (c: NormalizedContact) => void;
   onAddFriend: (c: NormalizedContact) => void;
   onInviteSingle: (c: NormalizedContact) => void;
 }
 
-const ContactRow = React.memo(({ contact, isSelected, onToggleSelect, onAddFriend, onInviteSingle }: ContactRowProps) => {
+const AVATAR_SIZE = 40;
+
+const ContactAvatar = React.memo(({ contact, bgColor, textColor }: { contact: NormalizedContact; bgColor: string; textColor: string }) => {
+  if (contact.imageUri) {
+    return (
+      <Image
+        source={{ uri: contact.imageUri }}
+        style={{ width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2, marginRight: 12 }}
+      />
+    );
+  }
+  return (
+    <StyledView className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${bgColor}`}>
+      <StyledText className={`font-semibold text-base ${textColor}`}>
+        {contact.name[0]?.toUpperCase()}
+      </StyledText>
+    </StyledView>
+  );
+});
+
+const ContactRow = React.memo(({ contact, isSelected, isAdding, onToggleSelect, onAddFriend, onInviteSingle }: ContactRowProps) => {
   // On Bridge contacts — "Add Friend" or "Added" if already friends
   if (contact.isOnBridge) {
     const alreadyAdded = contact.isAlreadyFriend;
     return (
       <StyledView className="flex-row items-center px-4 py-3 bg-white">
-        <StyledView className="w-10 h-10 rounded-full bg-green-100 items-center justify-center mr-3">
-          <StyledText className="text-green-600 font-semibold text-base">
-            {contact.name[0]?.toUpperCase()}
-          </StyledText>
-        </StyledView>
+        <ContactAvatar contact={contact} bgColor="bg-green-100" textColor="text-green-600" />
         <StyledView className="flex-1 mr-3">
           <StyledText className="text-neutral-900 font-medium text-sm" numberOfLines={1}>
             {contact.name}
@@ -89,10 +109,15 @@ const ContactRow = React.memo(({ contact, isSelected, onToggleSelect, onAddFrien
           </StyledView>
         ) : (
           <StyledTouchableOpacity
-            className="bg-green-500 px-4 py-2 rounded-full"
+            className={`px-4 py-2 rounded-full ${isAdding ? 'bg-green-300' : 'bg-green-500'}`}
             onPress={() => onAddFriend(contact)}
+            disabled={isAdding}
           >
-            <StyledText className="text-white text-xs font-semibold">Add Friend</StyledText>
+            {isAdding ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <StyledText className="text-white text-xs font-semibold">Add Friend</StyledText>
+            )}
           </StyledTouchableOpacity>
         )}
       </StyledView>
@@ -111,19 +136,17 @@ const ContactRow = React.memo(({ contact, isSelected, onToggleSelect, onAddFrien
       disabled={contact.isInvited && !canRemind}
     >
       {/* Avatar / checkbox */}
-      <StyledView className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${
-        isSelected ? 'bg-primary-500' : contact.isInvited ? 'bg-neutral-200' : 'bg-primary-100'
-      }`}>
-        {isSelected ? (
+      {isSelected ? (
+        <StyledView className="w-10 h-10 rounded-full items-center justify-center mr-3 bg-primary-500">
           <EvaIcon name="checkmark" variant="outline" color="white" size={20} />
-        ) : (
-          <StyledText className={`font-semibold text-base ${
-            contact.isInvited ? 'text-neutral-400' : 'text-primary-500'
-          }`}>
-            {contact.name[0]?.toUpperCase()}
-          </StyledText>
-        )}
-      </StyledView>
+        </StyledView>
+      ) : (
+        <ContactAvatar
+          contact={contact}
+          bgColor={contact.isInvited ? 'bg-neutral-200' : 'bg-primary-100'}
+          textColor={contact.isInvited ? 'text-neutral-400' : 'text-primary-500'}
+        />
+      )}
 
       {/* Name + phone */}
       <StyledView className="flex-1 mr-3">
@@ -171,8 +194,11 @@ interface SectionHeaderProps {
 
 const SectionHeader = React.memo(({ title, onAddAll, addAllDisabled, addAllLabel }: SectionHeaderProps) => {
   const isOnBridge = title === ON_BRIDGE_SECTION;
+  const isSuggested = title === SUGGESTED_SECTION;
+  const bgClass = isOnBridge ? 'bg-green-50' : isSuggested ? 'bg-primary-50' : 'bg-neutral-100';
+  const textClass = isOnBridge ? 'text-green-700' : isSuggested ? 'text-primary-600' : 'text-neutral-500';
   return (
-    <StyledView className={`px-4 py-2 ${isOnBridge ? 'bg-green-50' : 'bg-neutral-100'}`}>
+    <StyledView className={`px-4 py-2 ${bgClass}`}>
       <StyledView className="flex-row items-center justify-between">
         <StyledView className="flex-row items-center">
           {isOnBridge && (
@@ -180,9 +206,12 @@ const SectionHeader = React.memo(({ title, onAddAll, addAllDisabled, addAllLabel
               <EvaIcon name="checkmark-circle-2" variant="fill" color="success" size={14} />
             </StyledView>
           )}
-          <StyledText className={`text-xs font-bold ${
-            isOnBridge ? 'text-green-700' : 'text-neutral-500'
-          }`}>
+          {isSuggested && (
+            <StyledView className="mr-1.5">
+              <EvaIcon name="star" variant="fill" color="primary" size={14} />
+            </StyledView>
+          )}
+          <StyledText className={`text-xs font-bold ${textClass}`}>
             {title}
           </StyledText>
         </StyledView>
@@ -218,6 +247,7 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
   const [enterCodeError, setEnterCodeError] = useState('');
   const [addingCode, setAddingCode] = useState(false);
   const [celebrationCount, setCelebrationCount] = useState(0);
+  const [addingFriendId, setAddingFriendId] = useState<string | null>(null);
 
   // Load friend code + sender name on mount
   useEffect(() => {
@@ -311,12 +341,12 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
 
     if (contact.isAlreadyFriend) return;
 
+    setAddingFriendId(contact.id);
     try {
       // Optimistic UI update — mark as added immediately
       setContacts((prev) => prev.map((c) => c.id === contact.id ? { ...c, isAlreadyFriend: true } : c));
 
       const { supabase } = await import('../../lib/supabase');
-      // Single query: lookup code + add friend via RPC in parallel
       const { data: codeRow } = await supabase
         .from('friend_codes')
         .select('code')
@@ -329,7 +359,6 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
         return;
       }
 
-      // Direct RPC — skip rate limiting and profile fetch
       const { data, error } = await supabase
         .rpc('add_friend_by_code', { friend_code: codeRow.code });
 
@@ -345,6 +374,8 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
       logger.error('Add friend failed:', err);
       setContacts((prev) => prev.map((c) => c.id === contact.id ? { ...c, isAlreadyFriend: false } : c));
       showToast.error('Error', 'Something went wrong');
+    } finally {
+      setAddingFriendId(null);
     }
   }, []);
 
@@ -494,22 +525,32 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   }, []);
 
-  // Build sections: "On Bridge" at top, then A-Z for everyone else
+  // Build sections: "On Bridge" at top, then "Suggested", then A-Z
   const filteredSections = useMemo((): ContactSection[] => {
     let filtered = contacts;
-    if (searchQuery.trim()) {
+    const isSearching = searchQuery.trim().length > 0;
+    if (isSearching) {
       const q = searchQuery.trim().toLowerCase();
       filtered = contacts.filter((c) => c.name.toLowerCase().includes(q));
     }
 
     const onBridge = filtered.filter((c) => c.isOnBridge);
     const notOnBridge = filtered.filter((c) => !c.isOnBridge);
-    const alphabetical = groupContactsAlphabetically(notOnBridge);
 
     const sections: ContactSection[] = [];
     if (onBridge.length > 0) {
       sections.push({ title: ON_BRIDGE_SECTION, data: onBridge });
     }
+
+    // Only show Suggested when not searching
+    if (!isSearching) {
+      const suggested = getSuggestedContacts(notOnBridge);
+      if (suggested.length > 0) {
+        sections.push({ title: SUGGESTED_SECTION, data: suggested });
+      }
+    }
+
+    const alphabetical = groupContactsAlphabetically(notOnBridge);
     sections.push(...alphabetical);
 
     return sections;
@@ -520,12 +561,13 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
       <ContactRow
         contact={item}
         isSelected={selectedIds.has(item.id)}
+        isAdding={addingFriendId === item.id}
         onToggleSelect={handleToggleSelect}
         onAddFriend={handleAddFriend}
         onInviteSingle={handleInviteSingle}
       />
     ),
-    [selectedIds, handleToggleSelect, handleAddFriend, handleInviteSingle]
+    [selectedIds, addingFriendId, handleToggleSelect, handleAddFriend, handleInviteSingle]
   );
 
   const renderSectionHeader = useCallback(

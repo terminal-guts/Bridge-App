@@ -9,6 +9,7 @@ import { signOut } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
 import { resetGuide } from '../../services/guideService';
 import { createLogger } from '../../utils/secureLogger';
+import { deleteAccount } from '../../services/accountService';
 
 const logger = createLogger('SettingsScreen');
 
@@ -25,6 +26,7 @@ const StyledSwitch = styled(Switch);
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [tutorialEnabled, setTutorialEnabled] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadCurrentUser();
@@ -213,6 +215,51 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
                 );
               }}
             />
+            <SettingRow
+              icon="trash-outline"
+              title="Delete Account"
+              subtitle="Permanently delete your account and data"
+              onPress={() => {
+                Alert.alert(
+                  'Delete Account',
+                  'This will permanently delete your account, profile, matches, and all associated data. This action cannot be undone.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete Account',
+                      style: 'destructive',
+                      onPress: () => {
+                        // Second confirmation
+                        Alert.alert(
+                          'Are you absolutely sure?',
+                          'All your data will be permanently removed. You will not be able to recover your account.',
+                          [
+                            { text: 'Go Back', style: 'cancel' },
+                            {
+                              text: 'Yes, Delete Everything',
+                              style: 'destructive',
+                              onPress: async () => {
+                                setIsDeleting(true);
+                                const result = await deleteAccount();
+                                setIsDeleting(false);
+                                if (result.ok) {
+                                  navigation.navigate('Welcome');
+                                } else {
+                                  Alert.alert('Error', result.error?.message || 'Failed to delete account. Please contact support.');
+                                }
+                              },
+                            },
+                          ]
+                        );
+                      },
+                    },
+                  ]
+                );
+              }}
+            />
+            {isDeleting && (
+              <Body className="text-neutral-500 text-sm text-center mt-2">Deleting your account...</Body>
+            )}
           </Card>
         </StyledView>
       </StyledScrollView>

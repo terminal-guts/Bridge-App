@@ -29,6 +29,8 @@ const logger = createLogger('ProfileService');
 const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 let profileCache: { data: UserProfile; ts: number } | null = null;
 
+let pendingProfileFetch: Promise<ApiResponse<UserProfile>> | null = null;
+
 export function invalidateProfileCache(): void {
   profileCache = null;
 }
@@ -403,6 +405,16 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
     return { ok: true, data: profileCache.data };
   }
 
+  // Deduplicate in-flight requests — if a fetch is already running, reuse its promise
+  if (pendingProfileFetch) {
+    return pendingProfileFetch;
+  }
+
+  pendingProfileFetch = _fetchUserProfile();
+  return pendingProfileFetch.finally(() => { pendingProfileFetch = null; });
+};
+
+const _fetchUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
   try {
     const userId = await getCurrentUserId();
     logger.info('[ProfileService] getUserProfile:', userId);

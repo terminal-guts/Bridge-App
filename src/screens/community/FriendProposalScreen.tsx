@@ -44,21 +44,21 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
         setError(null);
 
         // Find the friend's active proposal (they could be user_a or user_b)
-        const { data: proposalA } = await supabase
-          .from('proposals')
-          .select('*')
-          .eq('user_a_id', friendId)
-          .eq('status', 'pending')
-          .maybeSingle();
-
-        const { data: proposalB } = !proposalA
-          ? await supabase
-              .from('proposals')
-              .select('*')
-              .eq('user_b_id', friendId)
-              .eq('status', 'pending')
-              .maybeSingle()
-          : { data: null };
+        // Fire both queries in parallel to avoid sequential waterfall
+        const [{ data: proposalA }, { data: proposalB }] = await Promise.all([
+          supabase
+            .from('proposals')
+            .select('*')
+            .eq('user_a_id', friendId)
+            .eq('status', 'pending')
+            .maybeSingle(),
+          supabase
+            .from('proposals')
+            .select('*')
+            .eq('user_b_id', friendId)
+            .eq('status', 'pending')
+            .maybeSingle(),
+        ]);
 
         const rawProposal = proposalA || proposalB;
 

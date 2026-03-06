@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { Button, H2, Body } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { verifyEmail, sendOtpToEmail, signInWithPassword } from '../../services/authService';
+import { verifyEmail, sendOtpToEmail, signInWithPassword, isReviewerBypassEmail } from '../../services/authService';
 import { fetchAndSetUserProfile } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
 
@@ -87,7 +87,7 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
     const otpCode = code.join('');
 
     // App Store Reviewer Bypass
-    if (email === 'reviewer@bridgedate.app' && otpCode === '123456' && (__DEV__ || process.env.EXPO_PUBLIC_ENABLE_REVIEWER_BYPASS === 'true')) {
+    if (isReviewerBypassEmail(email) && otpCode === '123456') {
       logger.info('[AUTH] App Store Reviewer bypass detected');
       const reviewerPassword = process.env.EXPO_PUBLIC_REVIEWER_PASSWORD || 'AppReview2024!';
       const bypassResult = await signInWithPassword('reviewer@bridgedate.app', reviewerPassword);

@@ -132,7 +132,17 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
                 </StyledView>
               </StyledView>
 
-              <StyledView className="flex-row items-start">
+              <StyledTouchableOpacity
+                className="flex-row items-start"
+                onPress={() => {
+                  const subject = encodeURIComponent('Bridge Safety Report');
+                  const body = encodeURIComponent('I would like to report the following safety concern:\n\nType of issue: [harassment / fake profile / inappropriate content / other]\n\nDetails:\n\n');
+                  const url = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+                  Linking.openURL(url).catch(() => {
+                    Alert.alert('Email Not Available', `Please email your report to ${SUPPORT_EMAIL}`);
+                  });
+                }}
+              >
                 <StyledView className="w-10 h-10 bg-warning/10 rounded-lg items-center justify-center mr-3">
                   <Ionicons name="flag" size={20} color="#F59E0B" />
                 </StyledView>
@@ -142,7 +152,8 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
                     Report inappropriate behavior or content
                   </Body>
                 </StyledView>
-              </StyledView>
+                <Ionicons name="chevron-forward" size={16} color="#98A2B3" style={{ marginTop: 4 }} />
+              </StyledTouchableOpacity>
 
               <StyledView className="flex-row items-start">
                 <StyledView className="w-10 h-10 bg-primary-100 rounded-lg items-center justify-center mr-3">

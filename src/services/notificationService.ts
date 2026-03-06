@@ -250,10 +250,9 @@ export const notificationService = {
                     event: 'INSERT',
                     schema: 'public',
                     table: 'messages',
+                    filter: `receiver_id=eq.${userId}`,
                 } as any,
                 async (payload: any) => {
-                    // Only notify if the message is TO us, not FROM us
-                    if (payload.new.sender_id === userId) return;
 
                     const { data: sender } = await supabase
                         .from('user_profiles')

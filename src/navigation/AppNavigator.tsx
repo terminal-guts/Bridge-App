@@ -11,7 +11,7 @@ import { supabase } from '../lib/supabase';
 import { FEATURES } from '../config/features';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { Sentry } from '../lib/sentry';
-import { fetchAndSetUserProfile } from '../services/profileService';
+import { fetchAndSetUserProfile, invalidateProfileCache } from '../services/profileService';
 import { isIntentionalSignOut, resetIntentionalSignOut } from '../services/authService';
 import { notificationService } from '../services/notificationService';
 import { setCachedUserId, clearCachedUserId } from '../utils/auth';
@@ -296,6 +296,7 @@ export const AppNavigator = () => {
       setIsAuthenticated(!!session);
 
       if (event === 'SIGNED_IN' && session?.user) {
+        invalidateProfileCache();
         setCachedUserId(session.user.id);
         setupNotifications();
         if (FEATURES.DEVELOPMENT_CREATE_MOCK_DATA) {
@@ -303,6 +304,7 @@ export const AppNavigator = () => {
         }
       } else if (event === 'SIGNED_OUT' && wasAuthenticated) {
         clearCachedUserId();
+        invalidateProfileCache();
         if (isIntentionalSignOut()) {
           resetIntentionalSignOut();
           logger.info('[AppNavigator] Intentional sign-out');

@@ -32,16 +32,13 @@ export const beginnerTourGuide: GuideDefinition = {
       title: 'Unlock Friends',
       message:
         'Before helping your friends, help others on Bridge. Takes about 2 minutes!',
-      image: require('../../../assets/guide-voting-example.png'),
+      image: require('../../../assets/guide-voting-example.jpg'),
       primaryButtonText: 'Got it',
     },
     {
       id: 'add_friend',
-      targetElement: 'add-friend-button',
-      highlightType: 'spotlight',
-      spotlightShape: 'circle',
-      spotlightPadding: 8,
-      tooltipPosition: 'bottom',
+      highlightType: 'none',
+      tooltipPosition: 'center',
       title: 'Add Your Friends',
       message:
         "Friends can suggest and validate matches for you. If you help others, you'll receive more frequent matches.",

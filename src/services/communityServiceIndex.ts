@@ -17,10 +17,7 @@ import { createLogger } from '../utils/secureLogger';
 const logger = createLogger('CommunityServiceIndex');
 
 /**
- * Determine which service to use based on feature flags
- *
- * If FEATURES.COMMUNITY_BACKEND_ENABLED is true, use real backend.
- * Otherwise, use mock service for development/testing.
+ * Determine which service to use based on feature flags.
  */
 const useMockService = !FEATURES.COMMUNITY_BACKEND_ENABLED;
 
@@ -32,11 +29,6 @@ logger.info('[CommunityService] Using:', useMockService ? 'MOCK SERVICE' : 'REAL
  * Export the appropriate service implementation
  */
 export const communityService = useMockService ? mockService : realService;
-
-/**
- * Export both services for direct access if needed
- */
-export { mockService, realService };
 
 /**
  * Default export

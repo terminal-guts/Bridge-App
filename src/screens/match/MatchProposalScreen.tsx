@@ -911,14 +911,12 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   const handleOptionsMenu = useCallback(() => {
     lightHaptic();
     if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions({ options: ['Cancel', 'Report User', 'Block User'], destructiveButtonIndex: 2, cancelButtonIndex: 0 }, (i) => {
-        if (i === 1) Alert.alert('Report User', 'Are you sure you want to report this user?', [{ text: 'Cancel', style: 'cancel' }, { text: 'Report', style: 'destructive' }]);
-        else if (i === 2) Alert.alert('Block User', 'Are you sure? You will not see this user again.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Block', style: 'destructive', onPress: () => navigation.goBack() }]);
+      ActionSheetIOS.showActionSheetWithOptions({ options: ['Cancel', 'Block User'], destructiveButtonIndex: 1, cancelButtonIndex: 0 }, (i) => {
+        if (i === 1) Alert.alert('Block User', 'Are you sure? You will not see this user again.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Block', style: 'destructive', onPress: () => navigation.goBack() }]);
       });
     } else {
       Alert.alert('Options', '', [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Report User', onPress: () => Alert.alert('Report User', 'Are you sure you want to report this user?', [{ text: 'Cancel', style: 'cancel' }, { text: 'Report', style: 'destructive' }]) },
         { text: 'Block User', style: 'destructive', onPress: () => Alert.alert('Block User', 'Are you sure? You will not see this user again.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Block', style: 'destructive', onPress: () => navigation.goBack() }]) }
       ]);
     }

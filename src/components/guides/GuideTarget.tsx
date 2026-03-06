@@ -6,7 +6,7 @@
  */
 
 import React, { useRef, useEffect, useCallback } from 'react';
-import { View, LayoutChangeEvent, ViewStyle } from 'react-native';
+import { View, LayoutChangeEvent, ViewStyle, InteractionManager } from 'react-native';
 import { useGuideContext } from '../../contexts/GuideContext';
 import { createLogger } from '../../utils/secureLogger';
 
@@ -27,7 +27,7 @@ interface GuideTargetProps {
 }
 
 export const GuideTarget: React.FC<GuideTargetProps> = ({ id, children, disabled = false, style }) => {
-  const { registerTarget, unregisterTarget } = useGuideContext();
+  const { registerTarget, unregisterTarget, isPlaying, currentStep } = useGuideContext();
   const viewRef = useRef<View>(null);
 
   /**
@@ -81,6 +81,17 @@ export const GuideTarget: React.FC<GuideTargetProps> = ({ id, children, disabled
       unregisterTarget(id);
     }
   }, [disabled, id, measurePosition, unregisterTarget]);
+
+  /**
+   * Re-measure when guide step changes (ensures targets are fresh for spotlight)
+   */
+  useEffect(() => {
+    if (isPlaying && !disabled) {
+      InteractionManager.runAfterInteractions(() => {
+        measurePosition();
+      });
+    }
+  }, [isPlaying, currentStep, disabled, measurePosition]);
 
   return (
     <View

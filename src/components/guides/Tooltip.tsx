@@ -81,8 +81,8 @@ export const Tooltip: React.FC<TooltipProps> = ({
     // Center modal if no target
     if (!targetDimensions || preferredPosition === 'center') {
       return {
-        x: (SCREEN_WIDTH - TOOLTIP_MAX_WIDTH) / 2,
-        y: image ? SCREEN_HEIGHT / 2 - 300 : SCREEN_HEIGHT / 2 - 150,
+        x: 0,
+        y: 0,
         position: 'center',
         width: TOOLTIP_MAX_WIDTH,
       };
@@ -199,12 +199,9 @@ export const Tooltip: React.FC<TooltipProps> = ({
   return (
     <Animated.View
       style={[
-        styles.container,
-        {
-          left: tooltipPosition.x,
-          top: tooltipPosition.y,
-          width: tooltipPosition.width,
-        },
+        tooltipPosition.position === 'center'
+          ? styles.centerContainer
+          : [styles.container, { left: tooltipPosition.x, top: tooltipPosition.y, width: tooltipPosition.width }],
         animatedStyle,
       ]}
     >
@@ -298,6 +295,15 @@ export const Tooltip: React.FC<TooltipProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
+    zIndex: 1000,
+  },
+  centerContainer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: (SCREEN_WIDTH - TOOLTIP_MAX_WIDTH) / 2,
+    width: TOOLTIP_MAX_WIDTH,
+    justifyContent: 'center',
     zIndex: 1000,
   },
   arrow: {

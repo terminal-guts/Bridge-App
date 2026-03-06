@@ -7,19 +7,35 @@
 
 import { ApiResponse } from '../types';
 import { cleanupSubscriptions } from './messageService';
+import { invalidateProfileCache } from './profileService';
 import { supabase } from '../lib/supabase';
 import { createLogger } from '../utils/secureLogger';
+
+declare const __DEV__: boolean;
 
 const logger = createLogger('AuthService');
 
 const ALLOWED_EMAIL_DOMAIN = 'rice.edu';
 
+/** Email used by the App Store reviewer bypass account */
+const REVIEWER_EMAIL = 'reviewer@bridgedate.app';
+
 /**
  * Check if an email belongs to an allowed domain (@rice.edu).
+ * Also allows the App Store reviewer email when bypass is enabled.
  */
 export const isAllowedEmailDomain = (email: string): boolean => {
+  if (isReviewerBypassEmail(email)) return true;
   const domain = email.split('@')[1]?.toLowerCase();
   return domain === ALLOWED_EMAIL_DOMAIN || domain?.endsWith(`.${ALLOWED_EMAIL_DOMAIN}`);
+};
+
+/**
+ * Check if this is the App Store reviewer bypass email and bypass is enabled.
+ */
+export const isReviewerBypassEmail = (email: string): boolean => {
+  return email.toLowerCase() === REVIEWER_EMAIL &&
+    (__DEV__ || process.env.EXPO_PUBLIC_ENABLE_REVIEWER_BYPASS === 'true');
 };
 
 // Flag set before intentional sign-outs so AppNavigator doesn't show a "Session Expired" toast
@@ -103,6 +119,12 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
       };
     }
 
+    // Reviewer bypass — skip actual OTP send; the verification screen handles login via password
+    if (isReviewerBypassEmail(email)) {
+      logger.info('[EMAIL] Reviewer bypass — skipping OTP send');
+      return { ok: true };
+    }
+
     logger.info('[EMAIL] Sending OTP via Supabase to:', email);
 
     const { error } = await supabase.auth.signInWithOtp({ email });
@@ -140,8 +162,9 @@ export const signOut = async (): Promise<ApiResponse<void>> => {
     logger.info('[AUTH] Signing out user');
     _intentionalSignOut = true;
 
-    // Clean up message subscriptions
+    // Clean up message subscriptions and cached profile data
     cleanupSubscriptions();
+    invalidateProfileCache();
 
     // Sign out from Supabase (clears session from AsyncStorage automatically)
     await supabase.auth.signOut();
