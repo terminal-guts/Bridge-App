@@ -118,6 +118,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
   const [reportDetails, setReportDetails] = useState('');
   const [proposeDateModalVisible, setProposeDateModalVisible] = useState(false);
   const [dateProposalText, setDateProposalText] = useState('');
+  const [audioRecording, setAudioRecording] = useState(false);
 
   // Determine if this is a friend chat or match chat
   // Priority: isFriendChat flag takes precedence, then check if matchId is present
@@ -167,7 +168,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     return () => {
       subscription?.unsubscribe();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId, recipientId, isFriend]);
 
   useEffect(() => {
@@ -603,40 +604,45 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
           <StyledView className="flex-row items-end">
             <AudioRecorder
               onRecordingComplete={handleAudioRecordingComplete}
+              onRecordingStateChange={setAudioRecording}
               disabled={sendingMessage}
             />
-            <StyledView className="flex-1 bg-neutral-50 rounded-2xl px-4 py-2 mx-2">
-              <StyledTextInput
-                value={newMessage}
-                onChangeText={setNewMessage}
-                placeholder="Type a message..."
-                multiline
-                maxLength={1000}
-                className="text-neutral-900 text-base max-h-24"
-                placeholderTextColor="#98A2B3"
-                editable={!sendingMessage && !newMessage.startsWith('file://')}
-              />
-            </StyledView>
-            {newMessage.trim() || sendingMessage ? (
-              <StyledTouchableOpacity
-                onPress={sendMessage}
-                disabled={!newMessage.trim() || sendingMessage}
-                className={`w-10 h-10 rounded-full items-center justify-center ${newMessage.trim() && !sendingMessage ? 'bg-primary-500' : 'bg-neutral-200'
-                  }`}
-              >
-                {sendingMessage ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <Ionicons
-                    name="send"
-                    size={20}
-                    color={newMessage.trim() ? 'white' : '#98A2B3'}
+            {!audioRecording && (
+              <>
+                <StyledView className="flex-1 bg-neutral-50 rounded-2xl px-4 py-2 mx-2">
+                  <StyledTextInput
+                    value={newMessage}
+                    onChangeText={setNewMessage}
+                    placeholder="Type a message..."
+                    multiline
+                    maxLength={1000}
+                    className="text-neutral-900 text-base max-h-24"
+                    placeholderTextColor="#98A2B3"
+                    editable={!sendingMessage && !newMessage.startsWith('file://')}
                   />
-                )}
-              </StyledTouchableOpacity>
-            ) : null}
+                </StyledView>
+                {newMessage.trim() || sendingMessage ? (
+                  <StyledTouchableOpacity
+                    onPress={sendMessage}
+                    disabled={!newMessage.trim() || sendingMessage}
+                    className={`w-10 h-10 rounded-full items-center justify-center ${newMessage.trim() && !sendingMessage ? 'bg-primary-500' : 'bg-neutral-200'
+                      }`}
+                  >
+                    {sendingMessage ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <Ionicons
+                        name="send"
+                        size={20}
+                        color={newMessage.trim() ? 'white' : '#98A2B3'}
+                      />
+                    )}
+                  </StyledTouchableOpacity>
+                ) : null}
+              </>
+            )}
           </StyledView>
-          {newMessage.length > 900 && (
+          {!audioRecording && newMessage.length > 900 && (
             <BodySmall className="text-neutral-500 mt-1 text-right">
               {1000 - newMessage.length} characters remaining
             </BodySmall>

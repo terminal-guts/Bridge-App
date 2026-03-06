@@ -116,7 +116,18 @@ const uploadAudioFile = async (
   try {
     // Generate unique filename
     const timestamp = Date.now();
-    const filename = `${matchId}/${senderId}/${timestamp}.mp4`;
+    // Determine extension from the URI, default to .m4a
+    const uriExt = localUri.match(/\.(\w+)$/)?.[1] || 'm4a';
+    const ext = ['m4a', 'mp4', 'webm', 'aac', 'mpeg'].includes(uriExt) ? uriExt : 'm4a';
+    const contentTypeMap: Record<string, string> = {
+      m4a: 'audio/mp4',
+      mp4: 'audio/mp4',
+      webm: 'audio/webm',
+      aac: 'audio/aac',
+      mpeg: 'audio/mpeg',
+    };
+    const filename = `${matchId}/${senderId}/${timestamp}.${ext}`;
+    const contentType = contentTypeMap[ext] || 'audio/mp4';
 
     // Read the file as blob via fetch (expo-file-system readAsStringAsync is deprecated in SDK 54)
     const response = await fetch(localUri);
@@ -130,7 +141,7 @@ const uploadAudioFile = async (
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(filename, bytes.buffer, {
-        contentType: 'audio/mp4',
+        contentType,
         upsert: false,
       });
 
