@@ -155,13 +155,25 @@ export const notificationService = {
     },
 
     /**
-     * Notify about a pending proposal decision
+     * Notify about a pending proposal decision (generic)
      */
     notifyPendingDecision: async () => {
         await notificationService.scheduleLocalNotification(
             'Community Approved a Match!',
             'A proposal has been approved by the community. Accept or decline now!',
-            { type: 'pending_decision', screen: 'Community' },
+            { type: 'pending_decision', screen: 'Matches' },
+        );
+    },
+
+    /**
+     * Notify that a specific proposal has moved to "deciding" —
+     * the community approved it and now the user gets to choose.
+     */
+    notifyProposalDeciding: async (partnerName: string, proposalId?: string) => {
+        await notificationService.scheduleLocalNotification(
+            'Your Community Has Spoken! 🎉',
+            `Time to decide — do you want to connect with ${partnerName}?`,
+            { type: 'proposal_deciding', screen: 'Matches', proposalId },
         );
     },
 
@@ -198,7 +210,7 @@ export const notificationService = {
     subscribeToRealtimeNotifications: async () => {
         const { data: userData } = await supabase.auth.getUser();
         const userId = userData?.user?.id;
-        if (!userId) return () => {};
+        if (!userId) return () => { };
 
         // Subscribe to new matches
         const matchChannel = supabase
@@ -268,10 +280,76 @@ export const notificationService = {
             )
             .subscribe();
 
+        // Subscribe to proposals moving to "deciding" status
+        // Fires when a proposal the user is part of gets community approval
+        const proposalChannelA = supabase
+            .channel('proposal-deciding-user-a')
+            .on(
+                'postgres_changes' as any,
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'proposals',
+                    filter: `user_a_id=eq.${userId}`,
+                } as any,
+                async (payload: any) => {
+                    // Only notify when status just changed to 'deciding'
+                    if (payload.new.status !== 'deciding') return;
+                    if (payload.old?.status === 'deciding') return; // already deciding
+
+                    const partnerId = payload.new.user_b_id;
+                    const { data: partner } = await supabase
+                        .from('user_profiles')
+                        .select('first_name')
+                        .eq('user_id', partnerId)
+                        .maybeSingle();
+
+                    logger.info('[NotificationService] Proposal moved to deciding (user_a):', payload.new.id);
+                    notificationService.notifyProposalDeciding(
+                        partner?.first_name || 'someone special',
+                        payload.new.id
+                    );
+                }
+            )
+            .subscribe();
+
+        const proposalChannelB = supabase
+            .channel('proposal-deciding-user-b')
+            .on(
+                'postgres_changes' as any,
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'proposals',
+                    filter: `user_b_id=eq.${userId}`,
+                } as any,
+                async (payload: any) => {
+                    // Only notify when status just changed to 'deciding'
+                    if (payload.new.status !== 'deciding') return;
+                    if (payload.old?.status === 'deciding') return;
+
+                    const partnerId = payload.new.user_a_id;
+                    const { data: partner } = await supabase
+                        .from('user_profiles')
+                        .select('first_name')
+                        .eq('user_id', partnerId)
+                        .maybeSingle();
+
+                    logger.info('[NotificationService] Proposal moved to deciding (user_b):', payload.new.id);
+                    notificationService.notifyProposalDeciding(
+                        partner?.first_name || 'someone special',
+                        payload.new.id
+                    );
+                }
+            )
+            .subscribe();
+
         // Return cleanup function
         return () => {
             supabase.removeChannel(matchChannel);
             supabase.removeChannel(messageChannel);
+            supabase.removeChannel(proposalChannelA);
+            supabase.removeChannel(proposalChannelB);
         };
     },
 
