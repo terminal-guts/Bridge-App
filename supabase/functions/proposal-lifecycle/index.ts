@@ -12,9 +12,6 @@ import {
   REJECTION_FLOOR_YES_RATE,
   REJECTION_FLOOR_MIN_VOTES,
   IMMEDIATE_CANCEL_POOL_VOTES,
-  POOL_ELIGIBILITY_POOL_YES_RATE,
-  POOL_ELIGIBILITY_FRIEND_MIN_VOTES,
-  POOL_ELIGIBILITY_FRIEND_YES_RATE,
 } from '../_shared/constants.ts';
 
 function getProposalDay(proposal: any): number {
@@ -67,8 +64,6 @@ Deno.serve(async (req: Request) => {
 
     let confirmedCount = 0;
     let rejectedCount = 0;
-    let expiredCount = 0;
-    let poolStoppedCount = 0;
 
     for (const proposal of (proposals || [])) {
       const poolYes = proposal.pool_yes_votes || 0;
@@ -81,13 +76,13 @@ Deno.serve(async (req: Request) => {
       let newStatus = 'pending';
       const updateData: Record<string, any> = {};
 
-      // Check expiry (5-day hard cutoff)
+      // Check expiry (5-day hard cutoff) — auto-promote to deciding
       if (getProposalDay(proposal) > MAX_PROPOSAL_DAYS) {
-        newStatus = 'expired';
+        newStatus = 'deciding';
         const deadline = new Date(Date.now() + DECISION_DEADLINE_HOURS * 60 * 60 * 1000).toISOString();
         Object.assign(updateData, {
-          status: 'expired',
-          expired_at: nowIso,
+          status: 'deciding',
+          community_decided_at: nowIso,
           passed_to_users_at: nowIso,
           decision_deadline_at: deadline,
           updated_at: nowIso,
@@ -156,16 +151,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Check pool eligibility
-      if (newStatus === 'pending') {
-        const eligible = poolYesRate(poolYes, poolNo) >= POOL_ELIGIBILITY_POOL_YES_RATE ||
-          (friendYes + friendNo >= POOL_ELIGIBILITY_FRIEND_MIN_VOTES && friendYesRate(friendYes, friendNo) >= POOL_ELIGIBILITY_FRIEND_YES_RATE);
-
-        if (eligible !== proposal.pool_eligible) {
-          Object.assign(updateData, { pool_eligible: eligible, updated_at: nowIso });
-          if (!eligible) poolStoppedCount++;
-        }
-      }
+      // Pool eligibility removed — pending proposals stay visible until rejected
 
       // Apply update
       if (Object.keys(updateData).length > 0) {
@@ -183,9 +169,6 @@ Deno.serve(async (req: Request) => {
             p_proposal_id: proposal.id,
             p_outcome: 'rejected',
           });
-        } else if (newStatus === 'expired') {
-          expiredCount++;
-          // Expired proposals do NOT penalize voters
         }
       }
     }
@@ -197,11 +180,11 @@ Deno.serve(async (req: Request) => {
     // (b) Kill dead streaks where friend HAD a proposal, user did NOT vote, and wasn't already frozen
     await supabase.rpc('kill_dead_streaks');
 
-    // 3. Check decision deadlines on 'deciding' and 'expired' proposals
+    // 3. Check decision deadlines on 'deciding' proposals
     const { data: decidingProposals } = await supabase
       .from('proposals')
       .select('*')
-      .in('status', ['deciding', 'expired'])
+      .eq('status', 'deciding')
       .lt('decision_deadline_at', nowIso);
 
     let autoDeclinedCount = 0;
@@ -227,8 +210,6 @@ Deno.serve(async (req: Request) => {
       proposals_checked: (proposals || []).length,
       confirmed: confirmedCount,
       rejected: rejectedCount,
-      expired: expiredCount,
-      pool_stopped: poolStoppedCount,
       auto_declined: autoDeclinedCount,
     }, { headers: corsHeaders });
 

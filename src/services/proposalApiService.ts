@@ -196,7 +196,6 @@ export function transformBackendProposal(raw: any): Partial<Proposal> {
     totalVotes:
       (raw.pool_yes_votes || 0) + (raw.pool_no_votes || 0) +
       (raw.friend_yes_votes || 0) + (raw.friend_no_votes || 0),
-    poolEligible: raw.pool_eligible ?? true,
     compatibilityScore: raw.compatibility_score || 0,
     categoryScores: raw.category_scores,
     votingStartedAt: raw.voting_started_at,

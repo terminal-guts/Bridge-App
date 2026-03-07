@@ -51,8 +51,8 @@ Deno.serve(async (req: Request) => {
       return Response.json({ error: 'Proposal not found' }, { status: 404, headers: corsHeaders });
     }
 
-    // Must be in 'deciding' or 'expired' status
-    if (proposal.status !== 'deciding' && proposal.status !== 'expired') {
+    // Must be in 'deciding' status
+    if (proposal.status !== 'deciding') {
       return Response.json(
         { error: `Proposal is in '${proposal.status}' status, cannot decide` },
         { status: 400, headers: corsHeaders },
@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
           .eq('id', proposal_id);
 
         return Response.json({
-          status: 'expired',
+          status: 'deadline_passed',
           message: 'Decision deadline has passed',
           proposal_status: 'declined',
         }, { headers: corsHeaders });

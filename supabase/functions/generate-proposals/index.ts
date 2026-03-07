@@ -70,18 +70,18 @@ Deno.serve(async (req: Request) => {
 
     // 3. Fetch exclusion sets in parallel (including friendships — friends should not be matched)
     const [existingRes, activeProposalRes, blockedRes, matchesRes, friendshipsRes] = await Promise.all([
-      // Permanently blocked pairs: all proposals except expired (rejected/declined = permanent block)
+      // Permanently blocked pairs: all non-pending/deciding proposals (rejected/declined = permanent block)
       supabase.from('proposals').select('user_a_id, user_b_id, status')
-        .not('status', 'eq', 'expired'),
-      // Users who already have an active proposal or are in the deciding window (one at a time)
+        .in('status', ['rejected', 'declined', 'passed_to_match']),
+      // Users who already have an active proposal (one at a time)
       supabase.from('proposals').select('user_a_id, user_b_id')
-        .in('status', ['pending', 'deciding', 'expired']),
+        .in('status', ['pending', 'deciding']),
       supabase.from('blocked_users').select('user_id, blocked_user_id'),
       supabase.from('matches').select('user_id_1, user_id_2').in('status', ['pending', 'accepted', 'active']),
       supabase.from('friends').select('user_id, friend_id'),
     ]);
 
-    // Pairs that can never be re-proposed (all non-expired proposals)
+    // Pairs that can never be re-proposed (rejected/declined/matched)
     const existingPairs = new Set<string>();
     for (const row of (existingRes.data || [])) {
       const key = [row.user_a_id, row.user_b_id].sort().join('|');
@@ -269,7 +269,6 @@ Deno.serve(async (req: Request) => {
           pool_no_votes: 0,
           friend_yes_votes: 0,
           friend_no_votes: 0,
-          pool_eligible: true,
           user_a_decision: 'pending',
           user_b_decision: 'pending',
           voting_started_at: now,

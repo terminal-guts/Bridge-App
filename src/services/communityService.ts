@@ -682,7 +682,6 @@ function generateMockProposals(): Proposal[] {
     poolNoVotes: noVotes,
     friendYesVotes: 0,
     friendNoVotes: 0,
-    poolEligible: true,
     compatibilityScore: Math.round((yesVotes / (yesVotes + noVotes)) * 100),
     votingThreshold: 15,
     baseThreshold: 20,

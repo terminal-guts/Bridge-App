@@ -385,6 +385,11 @@ export const createUserProfile = async (
       }
     }
 
+    // Invalidate cached profile so the next getUserProfile() fetches fresh data.
+    // AddFriendsStep calls getUserProfile() during onboarding (before profile creation),
+    // which caches an incomplete profile. Without this, ProfileScreen gets stale data.
+    invalidateProfileCache();
+
     return { ok: true };
   } catch (error: any) {
     logger.error('[ProfileService] createUserProfile error:', error);

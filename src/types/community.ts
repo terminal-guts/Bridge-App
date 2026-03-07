@@ -77,9 +77,6 @@ export interface Proposal {
   noVotes: number;        // poolNo + friendNo
   totalVotes: number;     // all counted votes
 
-  // Pool eligibility
-  poolEligible: boolean;
-
   // Compatibility
   compatibilityScore: number;  // 0-100
   categoryScores?: Record<string, number>;

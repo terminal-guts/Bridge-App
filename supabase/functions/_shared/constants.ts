@@ -28,10 +28,6 @@ export const REJECTION_FLOOR_MIN_VOTES = 8;
 
 export const IMMEDIATE_CANCEL_POOL_VOTES = 6;
 
-export const POOL_ELIGIBILITY_POOL_YES_RATE = 0.35;
-export const POOL_ELIGIBILITY_FRIEND_MIN_VOTES = 6;
-export const POOL_ELIGIBILITY_FRIEND_YES_RATE = 0.70;
-
 export const MAX_POOL_VOTES = 30;
 
 // Friend recommendation scoring boost (added per recommendation, capped)

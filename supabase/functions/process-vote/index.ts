@@ -28,9 +28,6 @@ import {
   REJECTION_FLOOR_YES_RATE,
   REJECTION_FLOOR_MIN_VOTES,
   IMMEDIATE_CANCEL_POOL_VOTES,
-  POOL_ELIGIBILITY_POOL_YES_RATE,
-  POOL_ELIGIBILITY_FRIEND_MIN_VOTES,
-  POOL_ELIGIBILITY_FRIEND_YES_RATE,
   KARMA_WEIGHTS,
 } from '../_shared/constants.ts';
 
@@ -274,13 +271,13 @@ Deno.serve(async (req: Request) => {
     let newStatus = 'pending';
     const lifecycleUpdate: Record<string, any> = {};
 
-    // Check expiry
+    // Check expiry (5-day hard cutoff) — auto-promote to deciding
     if (getProposalDay(updatedProposal) > MAX_PROPOSAL_DAYS) {
-      newStatus = 'expired';
+      newStatus = 'deciding';
       const deadline = new Date(Date.now() + DECISION_DEADLINE_HOURS * 60 * 60 * 1000).toISOString();
       Object.assign(lifecycleUpdate, {
-        status: 'expired',
-        expired_at: nowIso,
+        status: 'deciding',
+        community_decided_at: nowIso,
         passed_to_users_at: nowIso,
         decision_deadline_at: deadline,
         updated_at: nowIso,
@@ -349,15 +346,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Check pool eligibility
-    if (newStatus === 'pending') {
-      const eligible = poolYesRate(poolYes, poolNo) >= POOL_ELIGIBILITY_POOL_YES_RATE ||
-        (friendYes + friendNo >= POOL_ELIGIBILITY_FRIEND_MIN_VOTES && friendYesRate(friendYes, friendNo) >= POOL_ELIGIBILITY_FRIEND_YES_RATE);
-
-      if (eligible !== proposal.pool_eligible) {
-        Object.assign(lifecycleUpdate, { pool_eligible: eligible, updated_at: nowIso });
-      }
-    }
+    // Pool eligibility removed — pending proposals stay visible until rejected
 
     // Apply lifecycle update if any
     if (Object.keys(lifecycleUpdate).length > 0) {

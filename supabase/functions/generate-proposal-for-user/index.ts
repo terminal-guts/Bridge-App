@@ -113,8 +113,8 @@ Deno.serve(async (req: Request) => {
         if (eligibleOthers.length > 0) {
           // Build exclusion sets (same pattern as generate-proposals)
           const [existingRes, activeProposalRes, blockedRes, matchesRes, friendshipsRes] = await Promise.all([
-            supabase.from('proposals').select('user_a_id, user_b_id, status').not('status', 'eq', 'expired'),
-            supabase.from('proposals').select('user_a_id, user_b_id').in('status', ['pending', 'deciding', 'expired']),
+            supabase.from('proposals').select('user_a_id, user_b_id, status').in('status', ['rejected', 'declined', 'passed_to_match']),
+            supabase.from('proposals').select('user_a_id, user_b_id').in('status', ['pending', 'deciding']),
             supabase.from('blocked_users').select('user_id, blocked_user_id'),
             supabase.from('matches').select('user_id_1, user_id_2').in('status', ['pending', 'accepted', 'active']),
             supabase.from('friends').select('user_id, friend_id'),
@@ -248,7 +248,6 @@ Deno.serve(async (req: Request) => {
                 pool_no_votes: 0,
                 friend_yes_votes: 0,
                 friend_no_votes: 0,
-                pool_eligible: true,
                 user_a_decision: 'pending',
                 user_b_decision: 'pending',
                 voting_started_at: now,
