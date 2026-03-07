@@ -30,3 +30,6 @@ venv/
 
 # Post-match flow test state (contains test credentials)
 pm-test-state.json
+
+# Supabase query helper (contains service role key)
+scripts/supabase-query.sh

@@ -25,7 +25,8 @@
         "NSPhotoLibraryAddUsageDescription": "Bridge needs permission to save photos.",
         "NSMicrophoneUsageDescription": "Bridge needs microphone access for voice features.",
         "NSLocationWhenInUseUsageDescription": "Bridge uses your location to show nearby matches.",
-        "NSContactsUsageDescription": "Bridge uses your contacts to help you invite friends via SMS."
+        "NSContactsUsageDescription": "Bridge uses your contacts to help you invite friends via SMS.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "runtimeVersion": "1.0.0"
     },
@@ -39,7 +40,9 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS"
       ],
       "runtimeVersion": {
         "policy": "appVersion"
