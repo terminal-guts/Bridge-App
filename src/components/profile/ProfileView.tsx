@@ -389,6 +389,23 @@ export function ProfileView({
                 </StyledText>
               </StyledView>
             )}
+
+            {/* Joined Date */}
+            {profile.createdAt && (
+              <StyledView style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#F3F4F6',
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 20,
+              }}>
+                <Ionicons name="time-outline" size={16} color="#4B5563" style={{ marginRight: 6 }} />
+                <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500' }}>
+                  Joined {new Date(profile.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                </StyledText>
+              </StyledView>
+            )}
           </StyledView>
 
           {/* Interests */}
