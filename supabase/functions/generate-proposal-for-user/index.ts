@@ -78,6 +78,15 @@ Deno.serve(async (req: Request) => {
           }, { headers: corsHeaders });
         }
 
+        // Early return if user opted to only match others
+        if (myProfile.matchmaking_only) {
+          return Response.json({
+            status: 'matchmaking_only',
+            proposal_created: false,
+            message: 'User opted to match others only — not entering matching pool',
+          }, { headers: corsHeaders });
+        }
+
         // Early return if user is paused — they can still vote but shouldn't enter matchmaking
         if (myProfile.is_paused) {
           return Response.json({

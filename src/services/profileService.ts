@@ -166,6 +166,7 @@ function mapBackendToUserProfile(data: any): UserProfile {
     isPaused: data.is_paused || false,
     isVerified: data.is_verified || false,
     profileCompleted: data.profile_completed || false,
+    matchmakingOnly: data.matchmaking_only || false,
     createdAt: data.created_at || new Date().toISOString(),
     updatedAt: data.updated_at || new Date().toISOString(),
     karma: data.karma_score ? {
@@ -324,6 +325,7 @@ export const createUserProfile = async (
       interested_in_genders: data.interestedInGenders,
       photos: photoData,
       non_negotiables: [],
+      matchmaking_only: data.matchmakingOnly ?? false,
     };
 
     // Remove undefined values so they don't overwrite existing data

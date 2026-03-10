@@ -35,6 +35,7 @@ import { PhotoUploadStep } from './steps/PhotoUploadStep';
 import { PreferencesStep } from './steps/PreferencesStep';
 import { AddFriendsStep } from './steps/AddFriendsStep';
 import { WelcomeToBridgeStep } from './steps/WelcomeToBridgeStep';
+import { MatchmakingModeStep } from './steps/MatchmakingModeStep';
 
 interface OnboardingScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Onboarding'>;
@@ -68,6 +69,7 @@ const PROFILE_STEPS: StepDefinition[] = [
   { component: PhotoUploadStep, title: 'Photos', hasTextInput: false, mappingKey: 'photos' },
   { component: PreferencesStep, title: 'Commitment Level', hasTextInput: false, mappingKey: 'preferences' },
   { component: AddFriendsStep, title: 'Add Friends', hasTextInput: false },
+  { component: MatchmakingModeStep, title: 'Mode', hasTextInput: false },
   { component: WelcomeToBridgeStep, title: 'Welcome', hasTextInput: false, mappingKey: 'welcome' },
 ];
 

@@ -18,12 +18,13 @@ Deno.serve(async (req: Request) => {
     const maxProposals = body.max_proposals || MAX_PROPOSALS_PER_RUN;
     const supabase = createAdminClient();
 
-    // 1. Fetch eligible users (not paused, profile completed)
+    // 1. Fetch eligible users (not paused, profile completed, wants to be matched)
     const { data: profiles, error: profilesErr } = await supabase
       .from('user_profiles')
       .select('*')
       .eq('is_paused', false)
-      .eq('profile_completed', true);
+      .eq('profile_completed', true)
+      .or('matchmaking_only.is.null,matchmaking_only.eq.false');
 
     if (profilesErr) throw profilesErr;
 
