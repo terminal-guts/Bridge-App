@@ -10,6 +10,8 @@ import { supabase } from '../../lib/supabase';
 import { resetGuide } from '../../services/guideService';
 import { createLogger } from '../../utils/secureLogger';
 import { deleteAccount } from '../../services/accountService';
+import { notificationPreferencesService } from '../../services/notificationPreferencesService';
+import { notificationService } from '../../services/notificationService';
 
 const logger = createLogger('SettingsScreen');
 
@@ -28,9 +30,36 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
   const [tutorialEnabled, setTutorialEnabled] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Notification Preferences
+  const [matchesEnabled, setMatchesEnabled] = useState(true);
+  const [messagesEnabled, setMessagesEnabled] = useState(true);
+  const [nudgesEnabled, setNudgesEnabled] = useState(true);
+
   useEffect(() => {
     loadCurrentUser();
+    loadPreferences();
   }, []);
+
+  const loadPreferences = async () => {
+    const prefs = await notificationPreferencesService.getPreferences();
+    setMatchesEnabled(prefs.matchesEnabled);
+    setMessagesEnabled(prefs.messagesEnabled);
+    setNudgesEnabled(prefs.nudgesEnabled);
+  };
+
+  const updatePreference = async (key: 'matchesEnabled' | 'messagesEnabled' | 'nudgesEnabled', value: boolean) => {
+    // Optimistic UI update
+    if (key === 'matchesEnabled') setMatchesEnabled(value);
+    if (key === 'messagesEnabled') setMessagesEnabled(value);
+    if (key === 'nudgesEnabled') setNudgesEnabled(value);
+
+    await notificationPreferencesService.updatePreferences({ [key]: value });
+
+    // Re-evaluate the 7 PM match nudge if matches preference changed
+    if (key === 'matchesEnabled') {
+      await notificationService.setupDailyMatchNudge();
+    }
+  };
 
   const loadCurrentUser = async () => {
     try {
@@ -137,6 +166,38 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               title="Blocked Users"
               subtitle="Manage blocked profiles"
               onPress={() => navigation.navigate('BlockedUsers')}
+            />
+          </Card>
+
+          {/* Notifications */}
+          <Card className="mb-6">
+            <H3 className="mb-4">Notifications</H3>
+            <SettingRow
+              icon="heart-outline"
+              title="Matches & Proposals"
+              subtitle="New matches, voting, and 7 PM reveals"
+              toggle
+              toggleValue={matchesEnabled}
+              onToggle={() => updatePreference('matchesEnabled', !matchesEnabled)}
+              showArrow={false}
+            />
+            <SettingRow
+              icon="chatbubbles-outline"
+              title="Messages"
+              subtitle="New messages and ghosting alerts"
+              toggle
+              toggleValue={messagesEnabled}
+              onToggle={() => updatePreference('messagesEnabled', !messagesEnabled)}
+              showArrow={false}
+            />
+            <SettingRow
+              icon="notifications-outline"
+              title="App Reminders"
+              subtitle="Profile completion and inactivity nudges"
+              toggle
+              toggleValue={nudgesEnabled}
+              onToggle={() => updatePreference('nudgesEnabled', !nudgesEnabled)}
+              showArrow={false}
             />
           </Card>
 

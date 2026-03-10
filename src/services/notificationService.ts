@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { showToast } from '../utils/toast';
 import { createLogger } from '../utils/secureLogger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { notificationPreferencesService } from './notificationPreferencesService';
 
 const logger = createLogger('NotificationService');
 
@@ -135,6 +136,8 @@ export const notificationService = {
      * Notify about a new proposal ready for voting
      */
     notifyNewProposal: async () => {
+        const prefs = await notificationPreferencesService.getPreferences();
+        if (!prefs.matchesEnabled) return;
         await notificationService.scheduleLocalNotification(
             'New Proposals Ready',
             'You have new proposals to vote on. Help your community find matches!',
@@ -146,6 +149,8 @@ export const notificationService = {
      * Notify about a new match
      */
     notifyMatchNotice: async (name: string) => {
+        const prefs = await notificationPreferencesService.getPreferences();
+        if (!prefs.matchesEnabled) return;
         await notificationService.scheduleLocalNotification(
             "It's a Match!",
             `You and ${name} have matched! Start the conversation now.`,
@@ -157,6 +162,8 @@ export const notificationService = {
      * Notify about a new message
      */
     notifyNewMessage: async (senderName: string, preview: string) => {
+        const prefs = await notificationPreferencesService.getPreferences();
+        if (!prefs.messagesEnabled) return;
         await notificationService.scheduleLocalNotification(
             senderName,
             preview.length > 100 ? preview.substring(0, 100) + '...' : preview,
@@ -168,6 +175,8 @@ export const notificationService = {
      * Notify about a pending proposal decision (generic)
      */
     notifyPendingDecision: async () => {
+        const prefs = await notificationPreferencesService.getPreferences();
+        if (!prefs.matchesEnabled) return;
         await notificationService.scheduleLocalNotification(
             'Community Approved a Match!',
             'A proposal has been approved by the community. Accept or decline now!',
@@ -180,6 +189,8 @@ export const notificationService = {
      * the community approved it and now the user gets to choose.
      */
     notifyProposalDeciding: async (partnerName: string, proposalId?: string) => {
+        const prefs = await notificationPreferencesService.getPreferences();
+        if (!prefs.matchesEnabled) return;
         await notificationService.scheduleLocalNotification(
             'Your Community Has Spoken! 🎉',
             `Time to decide — do you want to connect with ${partnerName}?`,
@@ -191,6 +202,8 @@ export const notificationService = {
      * Notify about days of inactivity
      */
     notifyInactivity: async (days: number) => {
+        const prefs = await notificationPreferencesService.getPreferences();
+        if (!prefs.nudgesEnabled) return;
         await notificationService.scheduleLocalNotification(
             "We Miss You!",
             `It's been ${days} days since your last visit. Come back and see what's new!`,
@@ -202,6 +215,8 @@ export const notificationService = {
      * Notify about a potential ghosting situation
      */
     notifyGhosting: async (name: string) => {
+        const prefs = await notificationPreferencesService.getPreferences();
+        if (!prefs.messagesEnabled) return;
         await notificationService.scheduleLocalNotification(
             "Don't let it go cold!",
             `${name} is still waiting for your reply. Keep the conversation going!`,
@@ -213,6 +228,8 @@ export const notificationService = {
      * Notify about incomplete profile
      */
     notifyProfileIncomplete: async (missingItems: string[]) => {
+        const prefs = await notificationPreferencesService.getPreferences();
+        if (!prefs.nudgesEnabled) return;
         const itemText = missingItems.length === 1
             ? missingItems[0]
             : missingItems.slice(0, 2).join(' and ');
@@ -229,6 +246,44 @@ export const notificationService = {
     // ========================================================================
 
     /**
+     * Setup 7 PM daily matches notification
+     */
+    setupDailyMatchNudge: async () => {
+        try {
+            const prefs = await notificationPreferencesService.getPreferences();
+            const DAILY_NUDGE_ID = 'daily_match_nudge_7pm';
+
+            // Clear existing first
+            const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+            for (const notif of scheduled) {
+                if (notif.identifier === DAILY_NUDGE_ID) {
+                    await Notifications.cancelScheduledNotificationAsync(DAILY_NUDGE_ID);
+                }
+            }
+
+            if (!prefs.matchesEnabled) return;
+
+            // Schedule daily at 19:00 local time
+            await Notifications.scheduleNotificationAsync({
+                identifier: DAILY_NUDGE_ID,
+                content: {
+                    title: 'New Matches Are Out!',
+                    body: 'Check out the new matches that your community has prepared for you.',
+                    data: { screen: 'Matches' },
+                },
+                trigger: {
+                    hour: 19,
+                    minute: 0,
+                    repeats: true,
+                } as any,
+            });
+            logger.info('Scheduled daily 7pm match nudge');
+        } catch (e: any) {
+            logger.error('Failed to schedule daily match nudge', e.message);
+        }
+    },
+
+    /**
      * Master entry point — run all "app open" notification checks.
      * Called once when the user signs in or the app comes to foreground.
      */
@@ -237,6 +292,7 @@ export const notificationService = {
             await Promise.allSettled([
                 notificationService.checkAndScheduleInactivityNudge(),
                 notificationService.checkAndScheduleProfileReminder(),
+                notificationService.setupDailyMatchNudge(),
             ]);
         } catch (err) {
             logger.error('[NotificationService] Error in app-open checks', err);
