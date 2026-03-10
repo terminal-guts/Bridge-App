@@ -69,7 +69,6 @@ const PROFILE_STEPS: StepDefinition[] = [
   { component: PhotoUploadStep, title: 'Photos', hasTextInput: false, mappingKey: 'photos' },
   { component: PreferencesStep, title: 'Commitment Level', hasTextInput: false, mappingKey: 'preferences' },
   { component: AddFriendsStep, title: 'Add Friends', hasTextInput: false },
-  { component: MatchmakingModeStep, title: 'Mode', hasTextInput: false },
   { component: WelcomeToBridgeStep, title: 'Welcome', hasTextInput: false, mappingKey: 'welcome' },
 ];
 
@@ -128,6 +127,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   // Build steps array — email-only signup
   const steps = useMemo((): StepDefinition[] => {
     return [
+      { component: MatchmakingModeStep, title: 'Mode', hasTextInput: false },
       { component: EmailSignUpStep, title: 'Email', hasTextInput: true },
       { component: EmailSignUpVerificationStep, title: 'Verify Email', hasTextInput: true },
       ...PROFILE_STEPS,
