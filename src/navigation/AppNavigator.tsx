@@ -4,7 +4,7 @@ import * as Linking from 'expo-linking';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { UsersTabIcon, HandshakeTabIcon, ProfileTabIcon } from '../components/icons/Icons';
-import { ActivityIndicator, View, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, AppState, View, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GuideTarget, useGuideContext } from '../components/guides';
 import { supabase } from '../lib/supabase';
@@ -145,18 +145,18 @@ const CustomTabBar = ({ state, navigation }: any) => {
               onPress={onPress}
               activeOpacity={0.7}
             >
-            {/* Indicator sits flush at the very top of the touchable area */}
-            {focused && (
-              <View style={{
-                position: 'absolute',
-                top: 0,
-                width: 40,
-                height: 3,
-                backgroundColor: '#437FFF',
-                borderBottomLeftRadius: 2,
-                borderBottomRightRadius: 2,
-              }} />
-            )}
+              {/* Indicator sits flush at the very top of the touchable area */}
+              {focused && (
+                <View style={{
+                  position: 'absolute',
+                  top: 0,
+                  width: 40,
+                  height: 3,
+                  backgroundColor: '#437FFF',
+                  borderBottomLeftRadius: 2,
+                  borderBottomRightRadius: 2,
+                }} />
+              )}
               <Icon size={iconSize} color={focused ? '#437FFF' : '#667085'} />
             </TouchableOpacity>
           </GuideTarget>
@@ -278,11 +278,22 @@ export const AppNavigator = () => {
 
     // Register push notifications
     let cleanupNotifications: (() => void) | undefined;
+    let appStateSubscription: any;
 
     const setupNotifications = async () => {
       try {
         await notificationService.registerForPushNotifications();
         cleanupNotifications = await notificationService.subscribeToRealtimeNotifications();
+
+        // Run inactivity + profile completion checks on sign-in
+        notificationService.scheduleAppOpenChecks();
+
+        // Also run checks when app comes back to foreground
+        appStateSubscription = AppState.addEventListener('change', (nextState) => {
+          if (nextState === 'active') {
+            notificationService.scheduleAppOpenChecks();
+          }
+        });
       } catch (err) {
         // Non-critical - app works without notifications
       }
@@ -322,6 +333,7 @@ export const AppNavigator = () => {
       isMountedRef.current = false;
       subscription.unsubscribe();
       cleanupNotifications?.();
+      appStateSubscription?.remove();
     };
   }, []);
 
