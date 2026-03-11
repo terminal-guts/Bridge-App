@@ -180,6 +180,15 @@ Deno.serve(async (req: Request) => {
     // (b) Kill dead streaks where friend HAD a proposal, user did NOT vote, and wasn't already frozen
     await supabase.rpc('kill_dead_streaks');
 
+    // (c) Weekly Karma Snapshot: Runs idempotently on every daily cycle.
+    // The RPC itself handles the logic of only inserting if it's a new week_start.
+    const { data: snapshotData, error: snapshotErr } = await supabase.rpc('snapshot_weekly_karma_rpc');
+    if (snapshotErr) {
+      console.error('Weekly karma snapshot failed:', snapshotErr);
+    } else {
+      console.log('Weekly karma snapshot status:', snapshotData);
+    }
+
     // 3. Check decision deadlines on 'deciding' proposals
     const { data: decidingProposals } = await supabase
       .from('proposals')
