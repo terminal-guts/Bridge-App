@@ -1,0 +1,156 @@
+-- ============================================
+-- RLS Tier 1: Most Sensitive Tables
+-- ============================================
+-- Migration: 20260310_rls_tier1_sensitive.sql
+-- Deploy FIRST. Test thoroughly before deploying Tier 2.
+--
+-- Tables: messages, matches, user_profiles, user_photos, user_settings
+--
+-- CONTEXT: All tables had RLS enabled in their original migrations but it was
+-- globally disabled by 20260226000001_production_fixes.sql for beta launch.
+-- The original policies still exist in the database. This migration re-enables
+-- RLS so those policies take effect, with one targeted adjustment (matches INSERT).
+--
+-- ============================================
+-- TABLE AUDIT
+-- ============================================
+--
+-- 1. messages (20260126_messages.sql)
+--    Columns: id, match_id, sender_id, receiver_id, type, content, duration,
+--             sent_at, read_at, created_at
+--    Realtime: YES
+--    Existing policies (dormant):
+--      SELECT: "Users can view their own messages" — sender_id OR receiver_id = auth.uid()
+--      INSERT: "Users can send messages" — sender_id = auth.uid()
+--      UPDATE: "Users can mark received messages as read" — receiver_id = auth.uid()
+--    Frontend queries hitting this table:
+--      messageService.ts:193       INSERT (sender_id = current user)
+--      messageService.ts:355,424   SELECT by match_id
+--      messageService.ts:562       SELECT by match_id (unread count)
+--      communityBackendService.ts:868,910 SELECT by match_id
+--      RPCs: mark_messages_as_read, get_unread_count (both SECURITY DEFINER — bypass RLS)
+--
+-- 2. matches (20260214000006_matches.sql)
+--    Columns: id, user_id_1, user_id_2, status, community_score, algorithm_score,
+--             user_1_decision, user_2_decision, proposed_at, matched_at, expires_at,
+--             created_at, updated_at
+--    Realtime: YES
+--    Existing policies (dormant):
+--      SELECT: "Users can view their own matches" — user_id_1 OR user_id_2 = auth.uid()
+--      INSERT: "Authenticated users can create matches" — WITH CHECK (TRUE) ← DROPPING
+--      UPDATE: "Users can update their own matches" — user_id_1 OR user_id_2 = auth.uid()
+--      DELETE: "Users can delete their own matches" — user_id_1 OR user_id_2 = auth.uid()
+--    Frontend queries hitting this table:
+--      matchService.ts:72          SELECT (user_id_1/user_id_2 filter)
+--      messageService.ts:253       SELECT by id
+--      communityBackendService.ts:490,496,832,894,925 SELECT by participant
+--      blockService.ts:118         UPDATE status to 'ended'
+--      developerService.ts:58      INSERT ← WILL BREAK (dev-only, acceptable)
+--      developerService.ts:176     SELECT
+--
+-- 3. user_profiles (20260214000012_user_profiles.sql)
+--    Columns: id, user_id, first_name, last_name, age, gender[], pronouns, ...
+--             (40+ columns — see migration for full list)
+--    Existing policies (dormant):
+--      SELECT: "Authenticated users can read all profiles" — auth.role() = 'authenticated'
+--      INSERT: "Users can create their own profile" — auth.uid() = user_id
+--      UPDATE: "Users can update their own profile" — auth.uid() = user_id
+--      DELETE: "Users can delete their own profile" — auth.uid() = user_id
+--    Frontend queries: 20+ queries across profileService, communityBackendService,
+--      contactsService, friendService, developerService, notificationService.
+--      All compatible with existing policies.
+--
+-- 4. user_photos (20260214000010_user_photos.sql)
+--    Columns: id, user_id, storage_path, is_main, display_order, created_at
+--    Existing policies (dormant):
+--      SELECT: "Authenticated users can read all photos" — auth.role() = 'authenticated'
+--      INSERT: "Users can insert their own photos" — auth.uid() = user_id
+--      UPDATE: "Users can update their own photos" — auth.uid() = user_id
+--      DELETE: "Users can delete their own photos" — auth.uid() = user_id
+--    Frontend queries:
+--      communityBackendService.ts:502,757 SELECT by user_id (read-all)
+--
+-- 5. user_settings (20260214000013_user_settings.sql + 20260310_support_chat.sql)
+--    Columns: id, user_id, notifications_enabled, email_notifications,
+--             push_notifications, push_token, created_at, updated_at
+--    Existing policies (dormant):
+--      SELECT: "Users can read their own settings" — auth.uid() = user_id
+--      INSERT: "Users can create their own settings" — auth.uid() = user_id
+--      UPDATE: "Users can update their own settings" — auth.uid() = user_id
+--    Frontend queries:
+--      settingsService.ts:77,124   SELECT eq('user_id', userId)
+--      settingsService.ts:146      UPSERT onConflict('user_id')
+--      notificationService.ts:64   UPSERT push_token
+--
+-- ============================================
+
+-- -----------------------------------------------
+-- 1. messages — re-enable RLS
+-- -----------------------------------------------
+-- Existing SELECT/INSERT/UPDATE policies are correct and sufficient.
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+-- -----------------------------------------------
+-- 2. matches — re-enable RLS + tighten INSERT
+-- -----------------------------------------------
+ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
+
+-- Drop overly-permissive INSERT policy.
+-- Matches must only be created by edge functions (exit-match, reject-match,
+-- process-decision) which use service role and bypass RLS.
+DROP POLICY IF EXISTS "Authenticated users can create matches" ON matches;
+
+-- -----------------------------------------------
+-- 3. user_profiles — re-enable RLS
+-- -----------------------------------------------
+-- Existing SELECT/INSERT/UPDATE/DELETE policies are correct.
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+
+-- -----------------------------------------------
+-- 4. user_photos — re-enable RLS
+-- -----------------------------------------------
+-- Existing SELECT/INSERT/UPDATE/DELETE policies are correct.
+ALTER TABLE user_photos ENABLE ROW LEVEL SECURITY;
+
+-- -----------------------------------------------
+-- 5. user_settings — re-enable RLS
+-- -----------------------------------------------
+-- Existing SELECT/INSERT/UPDATE policies are correct.
+ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+
+
+-- ============================================
+-- FRONTEND IMPACT REPORT — TIER 1
+-- ============================================
+--
+-- messages:
+--   ✅ messageService.ts:193       INSERT → sender_id = auth.uid() ✓
+--   ✅ messageService.ts:355,424   SELECT by match_id → sender/receiver passes ✓
+--   ✅ messageService.ts:562       SELECT unread by match_id → same ✓
+--   ✅ communityBackendService.ts:868,910 SELECT by match_id → same ✓
+--   ✅ Realtime subscription (messages) → filtered by sender/receiver ✓
+--   ✅ RPCs mark_messages_as_read, get_unread_count → SECURITY DEFINER ✓
+--
+-- matches:
+--   ✅ matchService.ts:72          SELECT → participant filter matches policy ✓
+--   ✅ messageService.ts:253       SELECT by id → participant check ✓
+--   ✅ communityBackendService.ts  SELECT various → participant filter ✓
+--   ✅ blockService.ts:118         UPDATE → user is a participant ✓
+--   ⚠️  developerService.ts:58     INSERT → WILL FAIL (no INSERT policy)
+--       FOLLOW-UP: Dev service needs edge function or service role for mock matches.
+--   ✅ Realtime subscription (matches) → filtered by participant ✓
+--
+-- user_profiles:
+--   ✅ All SELECT queries → authenticated read-all ✓
+--   ✅ profileService.ts UPDATE → eq('user_id') matches own-update policy ✓
+--   ✅ contactsService.ts:162 SELECT all → authenticated read-all ✓
+--   ✅ developerService.ts UPSERT → eq('user_id') ✓
+--
+-- user_photos:
+--   ✅ All SELECT queries → authenticated read-all ✓
+--   ✅ Storage policies (profile-photos bucket) are separate and unchanged ✓
+--
+-- user_settings:
+--   ✅ settingsService.ts SELECT/UPSERT → eq('user_id') matches policy ✓
+--   ✅ notificationService.ts UPSERT push_token → eq('user_id') ✓
+--
