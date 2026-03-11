@@ -203,12 +203,12 @@ const SectionHeader = React.memo(({ title, onAddAll, addAllDisabled, addAllLabel
         <StyledView className="flex-row items-center">
           {isOnBridge && (
             <StyledView className="mr-1.5">
-              <EvaIcon name="checkmark-circle-2" variant="fill" color="success" size={14} />
+              <EvaIcon name="checkmark-circle-2" variant="outline" color="success" size={14} />
             </StyledView>
           )}
           {isSuggested && (
             <StyledView className="mr-1.5">
-              <EvaIcon name="star" variant="fill" color="primary" size={14} />
+              <EvaIcon name="star" variant="outline" color="primary" size={14} />
             </StyledView>
           )}
           <StyledText className={`text-xs font-bold ${textClass}`}>

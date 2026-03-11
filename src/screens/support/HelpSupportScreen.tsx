@@ -47,7 +47,7 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
     <StyledView className="mb-4">
       <StyledView className="flex-row items-start mb-2">
         <StyledView className="w-5 h-5 bg-primary-100 rounded-full items-center justify-center mr-2 mt-0.5">
-          <Body className="text-primary-600 text-xs font-bold">Q</Body>
+          <Ionicons name="help-circle-outline" size={14} color="#437FFF" />
         </StyledView>
         <Body className="flex-1 text-neutral-900 font-semibold text-sm">{question}</Body>
       </StyledView>

@@ -36,6 +36,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AudioPlayer } from '../../components/chat/AudioPlayer';
 import { AudioRecorder } from '../../components/chat/AudioRecorder';
 import { communityService } from '../../services/communityServiceIndex';
+import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('ChatScreen');
@@ -394,12 +395,38 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     }
   };
 
-  const handleReportConfirm = () => {
-    if (!reportReason) return;
-    setReportModalVisible(false);
-    setReportReason('');
-    setReportDetails('');
-    Alert.alert('Report Submitted', 'Thank you. Our team will review this shortly.');
+  const handleReportConfirm = async () => {
+    if (!reportReason || !currentUserId) return;
+    try {
+      const { error } = await supabase.from('user_reports').insert({
+        reporter_id: currentUserId,
+        reported_user_id: recipientId,
+        reason: reportReason,
+        details: reportDetails.trim() || '',
+      });
+      if (error) throw error;
+      setReportModalVisible(false);
+      setReportReason('');
+      setReportDetails('');
+      Alert.alert('Report Submitted', 'Thank you. Our team will review this shortly.');
+
+      // Notify founder via email (fire-and-forget)
+      const { data: reporterProfile } = await supabase
+        .from('profiles')
+        .select('first_name')
+        .eq('id', currentUserId)
+        .single();
+      supabase.functions.invoke('notify-report', {
+        body: {
+          reporter_name: reporterProfile?.first_name || 'Unknown',
+          reported_name: recipientName,
+          reason: reportReason,
+          details: reportDetails.trim() || '',
+        },
+      }).catch(() => {});
+    } catch (err) {
+      Alert.alert('Error', 'Could not submit report. Please try again.');
+    }
   };
 
   const handleProposeDateConfirm = async () => {
@@ -710,141 +737,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
               <Ionicons name="close-circle-outline" size={18} color="#101828" />
               <Text style={cs.menuItemText}>End Match</Text>
             </TouchableOpacity>
+
+            <View style={cs.menuDivider} />
+
+            <TouchableOpacity style={cs.menuItem} onPress={openReportModal}>
+              <Ionicons name="flag-outline" size={18} color="#D92D20" />
+              <Text style={[cs.menuItemText, { color: '#D92D20' }]}>Report</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
-      </Modal>
-
-      {/* ── End Match Modal ────────────────────────────────────────────── */}
-      <Modal
-        visible={endMatchModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setEndMatchModalVisible(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={cs.centeredModalOverlay}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={cs.centeredModalOverlay}
-            onPress={() => { setEndMatchModalVisible(false); setEndMatchReason(''); setEndMatchCustomReason(''); }}
-          >
-          <TouchableOpacity activeOpacity={1} style={cs.centeredModalCard}>
-            <Text style={cs.modalTitle}>End this match?</Text>
-            <Text style={cs.modalSubtitle}>
-              You'll re-enter the matchmaking pool.{'\n'}Your reason will be shared with them.
-            </Text>
-
-            <View style={cs.reasonList}>
-              {END_MATCH_REASONS.map(reason => (
-                <TouchableOpacity
-                  key={reason}
-                  style={[cs.reasonPill, endMatchReason === reason && cs.reasonPillActive]}
-                  onPress={() => setEndMatchReason(reason)}
-                >
-                  <Text style={[cs.reasonText, endMatchReason === reason && cs.reasonTextActive]}>
-                    {reason}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {endMatchReason === 'Other' && (
-              <TextInput
-                style={cs.textArea}
-                placeholder="Tell us a bit more..."
-                placeholderTextColor="#98A2B3"
-                value={endMatchCustomReason}
-                onChangeText={setEndMatchCustomReason}
-                multiline
-                maxLength={300}
-              />
-            )}
-
-            <View style={cs.modalActions}>
-              <TouchableOpacity
-                style={cs.cancelBtn}
-                onPress={() => {
-                  setEndMatchModalVisible(false);
-                  setEndMatchReason('');
-                  setEndMatchCustomReason('');
-                }}
-              >
-                <Text style={cs.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[cs.destructiveBtn, (!endMatchReason || endMatchSubmitting) && cs.btnDisabled]}
-                onPress={handleEndMatchConfirm}
-                disabled={!endMatchReason || endMatchSubmitting}
-              >
-                <Text style={cs.destructiveBtnText}>{endMatchSubmitting ? 'Ending...' : 'End Match'}</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* ── Report Modal ───────────────────────────────────────────────── */}
-      <Modal
-        visible={reportModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setReportModalVisible(false)}
-      >
-        <View style={cs.modalOverlay}>
-          <View style={cs.modalCard}>
-            <Text style={cs.modalTitle}>Report {recipientName}</Text>
-            <Text style={cs.modalSubtitle}>
-              Our team reviews all reports within 24 hours
-            </Text>
-
-            <View style={cs.reasonList}>
-              {REPORT_REASONS.map(reason => (
-                <TouchableOpacity
-                  key={reason}
-                  style={[cs.reasonPill, reportReason === reason && cs.reasonPillActive]}
-                  onPress={() => setReportReason(reason)}
-                >
-                  <Text style={[cs.reasonText, reportReason === reason && cs.reasonTextActive]}>
-                    {reason}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <TextInput
-              style={cs.textArea}
-              placeholder="Additional details (optional)"
-              placeholderTextColor="#98A2B3"
-              value={reportDetails}
-              onChangeText={setReportDetails}
-              multiline
-              maxLength={500}
-            />
-
-            <View style={cs.modalActions}>
-              <TouchableOpacity
-                style={cs.cancelBtn}
-                onPress={() => {
-                  setReportModalVisible(false);
-                  setReportReason('');
-                  setReportDetails('');
-                }}
-              >
-                <Text style={cs.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[cs.primaryBtn, !reportReason && cs.btnDisabled]}
-                onPress={handleReportConfirm}
-                disabled={!reportReason}
-              >
-                <Text style={cs.primaryBtnText}>Submit Report</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
       </Modal>
 
       {/* ── Propose a Date Modal ───────────────────────────────────────── */}
@@ -852,28 +753,29 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
         visible={proposeDateModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setProposeDateModalVisible(false)}
+        onRequestClose={() => { setProposeDateModalVisible(false); setDateProposalText(''); }}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={cs.dateModalOverlay}
+          style={ts.overlay}
         >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={{ flex: 1 }}
-            onPress={() => { setProposeDateModalVisible(false); setDateProposalText(''); }}
-          />
-          <View style={cs.dateModalCard}>
-            <View style={cs.dateIconWrap}>
-              <Ionicons name="calendar" size={28} color="#437FFF" />
+          <View style={ts.card}>
+            <TouchableOpacity
+              style={ts.closeBtn}
+              onPress={() => { setProposeDateModalVisible(false); setDateProposalText(''); }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Ionicons name="close" size={22} color="#667085" />
+            </TouchableOpacity>
+
+            <View style={[ts.iconWrap, { backgroundColor: '#EEF3FF' }]}>
+              <Ionicons name="calendar" size={26} color="#437FFF" />
             </View>
-            <Text style={cs.modalTitle}>Propose a Date</Text>
-            <Text style={cs.modalSubtitle}>
-              Suggest something fun with {recipientName}
-            </Text>
+            <Text style={ts.title}>Propose a Date</Text>
+            <Text style={ts.subtitle}>Suggest something fun with {recipientName}</Text>
 
             <TextInput
-              style={[cs.textArea, { minHeight: 80 }]}
+              style={[ts.textArea, { minHeight: 80 }]}
               placeholder={`e.g. Coffee at Blue Bottle on Saturday at 2pm?`}
               placeholderTextColor="#98A2B3"
               value={dateProposalText}
@@ -883,25 +785,154 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
               autoFocus
             />
 
-            <View style={cs.modalActions}>
-              <TouchableOpacity
-                style={cs.cancelBtn}
-                onPress={() => {
-                  setProposeDateModalVisible(false);
-                  setDateProposalText('');
-                }}
-              >
-                <Text style={cs.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[cs.primaryBtn, !dateProposalText.trim() && cs.btnDisabled]}
-                onPress={handleProposeDateConfirm}
-                disabled={!dateProposalText.trim()}
-              >
-                <Text style={cs.primaryBtnText}>Send Proposal</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={[ts.submitBtn, !dateProposalText.trim() && ts.submitBtnDisabled]}
+              onPress={handleProposeDateConfirm}
+              disabled={!dateProposalText.trim()}
+            >
+              <Text style={ts.submitBtnText}>Send Proposal</Text>
+            </TouchableOpacity>
           </View>
+
+          <TouchableOpacity
+            activeOpacity={1}
+            style={{ flex: 1 }}
+            onPress={() => { setProposeDateModalVisible(false); setDateProposalText(''); }}
+          />
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── End Match Modal ────────────────────────────────────────────── */}
+      <Modal
+        visible={endMatchModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { setEndMatchModalVisible(false); setEndMatchReason(''); setEndMatchCustomReason(''); }}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={ts.overlay}
+        >
+          <View style={ts.card}>
+            <TouchableOpacity
+              style={ts.closeBtn}
+              onPress={() => { setEndMatchModalVisible(false); setEndMatchReason(''); setEndMatchCustomReason(''); }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Ionicons name="close" size={22} color="#667085" />
+            </TouchableOpacity>
+
+            <View style={[ts.iconWrap, { backgroundColor: '#FFF4ED' }]}>
+              <Ionicons name="heart-dislike" size={26} color="#F97316" />
+            </View>
+            <Text style={ts.title}>End this match?</Text>
+            <Text style={ts.subtitle}>You'll re-enter the matchmaking pool.{'\n'}Your reason will be shared with them.</Text>
+
+            <View style={ts.pillRow}>
+              {END_MATCH_REASONS.map(reason => (
+                <TouchableOpacity
+                  key={reason}
+                  style={[ts.pill, endMatchReason === reason && ts.pillActive]}
+                  onPress={() => setEndMatchReason(reason)}
+                >
+                  <Text style={[ts.pillText, endMatchReason === reason && ts.pillTextActive]}>
+                    {reason}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TextInput
+              style={ts.textArea}
+              placeholder={endMatchReason === 'Other' ? 'Tell us a bit more...' : 'Additional details (optional)'}
+              placeholderTextColor="#98A2B3"
+              value={endMatchCustomReason}
+              onChangeText={setEndMatchCustomReason}
+              multiline
+              maxLength={300}
+            />
+
+            <TouchableOpacity
+              style={[ts.submitBtn, (!endMatchReason || endMatchSubmitting) && ts.submitBtnDisabled]}
+              onPress={handleEndMatchConfirm}
+              disabled={!endMatchReason || endMatchSubmitting}
+            >
+              <Text style={ts.submitBtnText}>{endMatchSubmitting ? 'Ending...' : 'End Match'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            activeOpacity={1}
+            style={{ flex: 1 }}
+            onPress={() => { setEndMatchModalVisible(false); setEndMatchReason(''); setEndMatchCustomReason(''); }}
+          />
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Report Modal ───────────────────────────────────────────────── */}
+      <Modal
+        visible={reportModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { setReportModalVisible(false); setReportReason(''); setReportDetails(''); }}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={ts.overlay}
+        >
+          <View style={ts.card}>
+            <TouchableOpacity
+              style={ts.closeBtn}
+              onPress={() => { setReportModalVisible(false); setReportReason(''); setReportDetails(''); }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Ionicons name="close" size={22} color="#667085" />
+            </TouchableOpacity>
+
+            <View style={[ts.iconWrap, { backgroundColor: '#FEF3F2' }]}>
+              <Ionicons name="flag" size={26} color="#D92D20" />
+            </View>
+            <Text style={ts.title}>Report {recipientName}</Text>
+            <Text style={ts.subtitle}>Our team reviews all reports within 24 hours</Text>
+
+            <View style={ts.pillRow}>
+              {REPORT_REASONS.map(reason => (
+                <TouchableOpacity
+                  key={reason}
+                  style={[ts.pill, reportReason === reason && ts.pillActive]}
+                  onPress={() => setReportReason(reason)}
+                >
+                  <Text style={[ts.pillText, reportReason === reason && ts.pillTextActive]}>
+                    {reason}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TextInput
+              style={ts.textArea}
+              placeholder="Additional details (optional)"
+              placeholderTextColor="#98A2B3"
+              value={reportDetails}
+              onChangeText={setReportDetails}
+              multiline
+              maxLength={500}
+            />
+
+            <TouchableOpacity
+              style={[ts.submitBtn, !reportReason && ts.submitBtnDisabled]}
+              onPress={handleReportConfirm}
+              disabled={!reportReason}
+            >
+              <Text style={ts.submitBtnText}>Submit Report</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            activeOpacity={1}
+            style={{ flex: 1 }}
+            onPress={() => { setReportModalVisible(false); setReportReason(''); setReportDetails(''); }}
+          />
         </KeyboardAvoidingView>
       </Modal>
 
@@ -978,164 +1009,117 @@ const cs = StyleSheet.create({
     backgroundColor: '#F2F4F7',
     marginHorizontal: 16,
   },
+});
 
-  // Modal shared
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 40,
-  },
-  // Centered modal (End Match)
-  centeredModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  centeredModalCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 24,
-    width: '100%',
-  },
-  // Date proposal modal — anchored to top so keyboard doesn't cover it
-  dateModalOverlay: {
+// ── Top-sheet modal styles ─────────────────────────────────────────────────
+const ts = StyleSheet.create({
+  overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'flex-start',
   },
-  dateModalCard: {
+  card: {
     backgroundColor: '#FFFFFF',
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 24,
-    marginTop: 0,
+    paddingTop: 56,
+    paddingBottom: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 12,
   },
-  modalTitle: {
+  closeBtn: {
+    position: 'absolute',
+    top: 58,
+    left: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F2F4F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  iconWrap: {
+    alignSelf: 'center',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  title: {
     fontFamily: 'Outfit_600SemiBold',
     fontSize: 20,
     color: '#101828',
-    marginBottom: 6,
     textAlign: 'center',
+    marginBottom: 6,
   },
-  modalSubtitle: {
+  subtitle: {
     fontFamily: 'Outfit_400Regular',
     fontSize: 14,
     color: '#667085',
     textAlign: 'center',
     marginBottom: 20,
+    lineHeight: 20,
   },
-  dateIconWrap: {
-    alignSelf: 'center',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#EEF3FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-
-  // Reason pills
-  reasonList: {
+  pillRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 8,
     marginBottom: 16,
   },
-  reasonPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  pill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1.5,
     borderColor: '#E4E7EC',
     backgroundColor: '#FFFFFF',
   },
-  reasonPillActive: {
+  pillActive: {
     borderColor: '#437FFF',
     backgroundColor: '#EEF3FF',
   },
-  reasonText: {
-    fontFamily: 'Outfit_400Regular',
-    fontSize: 12,
+  pillText: {
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 13,
     color: '#667085',
   },
-  reasonTextActive: {
+  pillTextActive: {
     fontFamily: 'Outfit_600SemiBold',
     color: '#437FFF',
   },
-
-  // Text area
   textArea: {
     borderWidth: 1.5,
     borderColor: '#E4E7EC',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontFamily: 'Outfit_400Regular',
-    fontSize: 14,
+    fontSize: 15,
     color: '#101828',
-    minHeight: 60,
+    minHeight: 64,
     textAlignVertical: 'top',
     marginBottom: 20,
+    backgroundColor: '#FAFBFC',
   },
-
-  // Action row
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#E4E7EC',
-    alignItems: 'center',
-  },
-  cancelBtnText: {
-    fontFamily: 'Outfit_600SemiBold',
-    fontSize: 15,
-    color: '#344054',
-  },
-  primaryBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
+  submitBtn: {
+    paddingVertical: 16,
+    borderRadius: 14,
     backgroundColor: '#437FFF',
     alignItems: 'center',
   },
-  primaryBtnText: {
+  submitBtnDisabled: {
+    opacity: 0.35,
+  },
+  submitBtnText: {
     fontFamily: 'Outfit_600SemiBold',
-    fontSize: 15,
+    fontSize: 16,
     color: '#FFFFFF',
-  },
-  destructiveBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: '#EF4444',
-    alignItems: 'center',
-  },
-  destructiveBtnText: {
-    fontFamily: 'Outfit_600SemiBold',
-    fontSize: 15,
-    color: '#FFFFFF',
-  },
-  btnDisabled: {
-    opacity: 0.4,
   },
 });

@@ -371,7 +371,6 @@ export type RootStackParamList = {
   DeepQuestions: { userId?: string; editable?: boolean; tier?: 1 | 2 | 3 };
   Settings: undefined;
   FriendCode: { returnTo?: string; matchId?: string } | undefined;
-  FriendList: undefined;
   FriendProposal: { friendId: string; friendName: string; friendPhotoUrl?: string; friendAge?: number; friendJob?: string };
   MatchPreferences: undefined;
   BlockedUsers: undefined;
@@ -379,6 +378,8 @@ export type RootStackParamList = {
   TermsOfService: undefined;
   PrivacyPolicy: undefined;
   HelpSupport: undefined;
+  SupportChat: undefined;
+  Leaderboard: undefined;
   ShareCandidate: { candidateId: string };
   ReportUser: { userId: string };
   StrikeWarning: { strike: Strike };

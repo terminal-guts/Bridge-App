@@ -8,17 +8,19 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { SafeAreaView, StatusBar, ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { styled } from 'nativewind';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 
 import { RootStackParamList } from '../../types';
 import { Proposal, UserProfile } from '../../types/community';
-import { ProposalReviewView } from '../../components/community/proposal/ProposalReviewView';
+import { ProposalReviewView, DeepQuestionData } from '../../components/community/proposal/ProposalReviewView';
 import { communityService } from '../../services/communityServiceIndex';
 import { supabase } from '../../lib/supabase';
 import { transformBackendProposal } from '../../services/proposalApiService';
 import { mapProfileRow, resolveProfilePhotos } from '../../services/communityBackendService';
 import { createLogger } from '../../utils/secureLogger';
+import { getQuestionById } from '../../utils/deepQuestions';
 
 const logger = createLogger('FriendProposalScreen');
 const StyledSafeAreaView = styled(SafeAreaView);
@@ -31,6 +33,7 @@ interface FriendProposalScreenProps {
 export function FriendProposalScreen({ navigation, route }: FriendProposalScreenProps) {
   const { friendId, friendName } = route.params;
   const [proposal, setProposal] = useState<Proposal | null>(null);
+  const [deepQuestions, setDeepQuestions] = useState<DeepQuestionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -96,10 +99,57 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
           ? mapProfileRow(profileB)
           : { id: rawProposal.user_b_id, firstName: 'User B', photos: [] } as any;
 
-        // Resolve photos
-        await resolveProfilePhotos([userA, userB]);
+        // Resolve photos + fetch deep questions in parallel
+        const [, dqAResult, dqBResult] = await Promise.all([
+          resolveProfilePhotos([userA, userB]),
+          supabase
+            .from('deep_question_answers')
+            .select('user_id, answers, displayed_question_ids')
+            .eq('user_id', rawProposal.user_a_id)
+            .maybeSingle(),
+          supabase
+            .from('deep_question_answers')
+            .select('user_id, answers, displayed_question_ids')
+            .eq('user_id', rawProposal.user_b_id)
+            .maybeSingle(),
+        ]);
 
         if (cancelled) return;
+
+        // Build deep questions data — find questions both users answered
+        const dqA = dqAResult.data;
+        const dqB = dqBResult.data;
+        const sharedQuestions: DeepQuestionData[] = [];
+        if (dqA?.answers && dqB?.answers) {
+          const answersA = dqA.answers as Record<string, string>;
+          const answersB = dqB.answers as Record<string, string>;
+          const displayedA = new Set((dqA.displayed_question_ids || []).map(String));
+          const displayedB = new Set((dqB.displayed_question_ids || []).map(String));
+
+          const allAIds = Object.keys(answersA);
+          const allBIds = new Set(Object.keys(answersB));
+          const sharedIds = allAIds.filter(id => allBIds.has(id) && answersA[id] && answersB[id]);
+
+          // Sort: displayed by both first, then displayed by one, then others
+          sharedIds.sort((a, b) => {
+            const aScore = (displayedA.has(a) ? 2 : 0) + (displayedB.has(a) ? 2 : 0);
+            const bScore = (displayedA.has(b) ? 2 : 0) + (displayedB.has(b) ? 2 : 0);
+            return bScore - aScore;
+          });
+
+          for (const qId of sharedIds.slice(0, 3)) {
+            const questionDef = getQuestionById(Number(qId));
+            if (questionDef) {
+              sharedQuestions.push({
+                questionId: Number(qId),
+                questionText: questionDef.question,
+                userAAnswer: answersA[qId],
+                userBAnswer: answersB[qId],
+              });
+            }
+          }
+        }
+        setDeepQuestions(sharedQuestions);
 
         const fullProposal: Proposal = {
           ...transformed,
@@ -181,6 +231,7 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
         showBackButton={true}
         onBack={handleBack}
         onVoteComplete={handleVoteComplete}
+        deepQuestions={deepQuestions}
       />
     </StyledSafeAreaView>
   );

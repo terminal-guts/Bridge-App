@@ -137,24 +137,29 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
 
       <StyledScrollView className="flex-1">
         <StyledView className="px-4 py-4">
-          {/* Account Settings */}
+          {/* Account */}
           <Card className="mb-6">
             <StyledView className="flex-row items-center justify-between mb-4">
               <H3>Account</H3>
               <Body className="text-neutral-500 text-xs">v1.0.0</Body>
             </StyledView>
             <SettingRow
-              icon="person-outline"
-              title="Edit Profile"
-              subtitle="Update your photos and information"
-              onPress={() => navigation.navigate('ProfileEdit')}
+              icon="chatbubble-ellipses-outline"
+              title="Feedback"
+              subtitle="Improve the app to win $50!"
+              onPress={() => navigation.navigate('SupportChat')}
             />
             <SettingRow
-              icon="heart-outline"
-              title="Match Preferences"
-              subtitle="Age, distance, and more"
-              onPress={() => navigation.navigate('MatchPreferences')}
+              icon="trophy-outline"
+              title="Leaderboard"
+              subtitle="Best matchmaker wins $50!"
+              onPress={() => navigation.navigate('Leaderboard')}
             />
+          </Card>
+
+          {/* Preferences */}
+          <Card className="mb-6">
+            <H3 className="mb-4">Preferences</H3>
             <SettingRow
               icon="pause-circle-outline"
               title="Pause Profile"
@@ -167,6 +172,28 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               subtitle="Manage blocked profiles"
               onPress={() => navigation.navigate('BlockedUsers')}
             />
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="school-outline" size={20} color="#94A3B8" />
+                </View>
+                <View>
+                  <Body style={{ color: '#1E293B' }}>Tutorial</Body>
+                  <Body style={{ fontSize: 12, color: '#94A3B8' }}>Replay the app walkthrough</Body>
+                </View>
+              </View>
+              <Switch
+                value={tutorialEnabled}
+                onValueChange={async (value) => {
+                  setTutorialEnabled(value);
+                  if (value) {
+                    await resetGuide('beginner_tour' as any);
+                  }
+                }}
+                trackColor={{ false: '#E2E8F0', true: '#437FFF' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
           </Card>
 
           {/* Notifications */}
@@ -201,9 +228,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
             />
           </Card>
 
-          {/* Support */}
+          {/* Legal & Support */}
           <Card className="mb-6">
-            <H3 className="mb-4">Support & Legal</H3>
+            <H3 className="mb-4">Legal & Support</H3>
             <SettingRow
               icon="mail-outline"
               title="Help & Support"
@@ -220,28 +247,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               title="Privacy Policy"
               onPress={() => navigation.navigate('PrivacyPolicy')}
             />
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="school-outline" size={20} color="#94A3B8" />
-                </View>
-                <View>
-                  <Body style={{ fontWeight: '600', color: '#1E293B' }}>Tutorial</Body>
-                  <Body style={{ fontSize: 12, color: '#94A3B8' }}>Replay the app walkthrough</Body>
-                </View>
-              </View>
-              <Switch
-                value={tutorialEnabled}
-                onValueChange={async (value) => {
-                  setTutorialEnabled(value);
-                  if (value) {
-                    await resetGuide('beginner_tour' as any);
-                  }
-                }}
-                trackColor={{ false: '#E2E8F0', true: '#437FFF' }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
           </Card>
 
           {/* Danger Zone */}

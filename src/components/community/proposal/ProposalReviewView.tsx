@@ -7,9 +7,13 @@
  * - Shows ONE proposal per screen (sequential flow)
  * - Progress indicator (1 of 3, 2 of 3, 3 of 3)
  * - Split photo header with compatibility badge
- * - Section cards: Basic, Ethnicity, Beliefs, Lifestyle, Values, Interests
+ * - Live vote bar with animated counts
+ * - Deep Questions section with card-reveal mechanic
+ * - Smart pill matching for Interests & Values
+ * - Section cards: Questions, Interests, Values, Lifestyle, Beliefs
  * - Vote buttons: Yes (primary) + No / For Friend / Not Sure (secondary)
  * - Auto-advances after each vote, navigates to Friends Area after 3rd vote
+ * - +1 Karma popup on vote
  */
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
@@ -23,6 +27,7 @@ import {
   Dimensions,
   Modal,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { Image, ImageBackground } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -49,6 +54,7 @@ import {
 } from '../../../utils/proposalMatching';
 import { communityService } from '../../../services/communityServiceIndex';
 import { createLogger } from '../../../utils/secureLogger';
+import { getQuestionById } from '../../../utils/deepQuestions';
 
 const logger = createLogger('ProposalReviewView');
 
@@ -81,6 +87,146 @@ const BOX_BORDER = 'rgba(1, 1, 1, 0.04)';
 const CARD_BORDER = 'rgba(1, 1, 1, 0.1)';
 const SCROLL_CONTENT_STYLE = { paddingHorizontal: 16, paddingBottom: 160 } as const;
 const TAG_BG = 'rgba(1, 1, 1, 0.02)';
+const GREY_VOTE = '#9CA3AF';
+
+// ─── Similarity maps for smart pill matching ──────────────────────────────────
+const INTERESTS_SIMILARITY: Record<string, string[]> = {
+  'Baking': ['Cooking'],
+  'Cooking': ['Baking'],
+  'Lifting': ['Yoga', 'Pilates', 'Climbing', 'Swimming', 'Running', 'Cycling', 'Fitness'],
+  'Yoga': ['Lifting', 'Pilates', 'Wellness', 'Fitness'],
+  'Pilates': ['Lifting', 'Yoga', 'Wellness', 'Fitness'],
+  'Climbing': ['Lifting', 'Hiking', 'Skiing', 'Fitness'],
+  'Swimming': ['Lifting', 'Fitness'],
+  'Running': ['Lifting', 'Cycling', 'Fitness'],
+  'Cycling': ['Lifting', 'Running', 'Fitness'],
+  'Fitness': ['Lifting', 'Yoga', 'Pilates', 'Climbing', 'Swimming', 'Running', 'Cycling'],
+  'Live Sports': ['Watching Sports', 'Soccer', 'Basketball', 'Tennis', 'Golf'],
+  'Watching Sports': ['Live Sports', 'Soccer', 'Basketball', 'Tennis', 'Golf'],
+  'Soccer': ['Live Sports', 'Watching Sports', 'Basketball', 'Tennis', 'Golf'],
+  'Basketball': ['Live Sports', 'Watching Sports', 'Soccer', 'Tennis', 'Golf'],
+  'Tennis': ['Live Sports', 'Watching Sports', 'Soccer', 'Basketball', 'Golf'],
+  'Golf': ['Live Sports', 'Watching Sports', 'Soccer', 'Basketball', 'Tennis'],
+  'Coffee': ['Fine Dining', 'Dinner Parties'],
+  'Fine Dining': ['Coffee', 'Dinner Parties'],
+  'Dinner Parties': ['Coffee', 'Fine Dining'],
+  'Travel': ['International Travel', 'Weekend Trips', 'Camping', 'Hiking'],
+  'International Travel': ['Travel', 'Weekend Trips', 'Camping', 'Hiking'],
+  'Weekend Trips': ['Travel', 'International Travel', 'Camping', 'Hiking'],
+  'Camping': ['Travel', 'International Travel', 'Weekend Trips', 'Hiking'],
+  'Hiking': ['Travel', 'International Travel', 'Weekend Trips', 'Camping', 'Skiing', 'Climbing'],
+  'Karaoke': ['Live Music', 'Concerts', 'Music', 'Dancing'],
+  'Live Music': ['Karaoke', 'Concerts', 'Music', 'Dancing'],
+  'Concerts': ['Karaoke', 'Live Music', 'Music', 'Dancing'],
+  'Music': ['Karaoke', 'Live Music', 'Concerts', 'Dancing'],
+  'Dancing': ['Karaoke', 'Live Music', 'Concerts', 'Music'],
+  'Game Nights': ['Video Games', 'Poker'],
+  'Video Games': ['Game Nights', 'Poker'],
+  'Poker': ['Game Nights', 'Video Games'],
+  'Art Galleries': ['Museums', 'Photography', 'Film'],
+  'Museums': ['Art Galleries', 'Photography', 'Film'],
+  'Photography': ['Art Galleries', 'Museums', 'Film'],
+  'Film': ['Art Galleries', 'Museums', 'Photography'],
+  'Reading': ['Writing'],
+  'Writing': ['Reading'],
+  'Wellness': ['Yoga', 'Pilates'],
+  'Skiing': ['Hiking', 'Climbing'],
+};
+
+const VALUES_SIMILARITY: Record<string, string[]> = {
+  'Honesty': ['Integrity', 'Authenticity', 'Trust', 'Respect'],
+  'Integrity': ['Honesty', 'Authenticity', 'Trust', 'Respect'],
+  'Authenticity': ['Honesty', 'Integrity', 'Trust'],
+  'Trust': ['Honesty', 'Integrity', 'Authenticity', 'Loyalty'],
+  'Loyalty': ['Commitment', 'Trust', 'Friendship First'],
+  'Commitment': ['Loyalty', 'Trust', 'Stability', 'Friendship First'],
+  'Friendship First': ['Loyalty', 'Commitment', 'Community', 'Kindness'],
+  'Independence': ['Ambition', 'Career', 'Leadership'],
+  'Ambition': ['Independence', 'Career', 'Leadership', 'Growth Mindset', 'Success'],
+  'Career': ['Independence', 'Ambition', 'Leadership', 'Success'],
+  'Leadership': ['Independence', 'Ambition', 'Career'],
+  'Empathy': ['Kindness', 'Emotional Intelligence', 'Communication'],
+  'Kindness': ['Empathy', 'Emotional Intelligence', 'Communication', 'Community', 'Friendship First'],
+  'Emotional Intelligence': ['Empathy', 'Kindness', 'Communication'],
+  'Communication': ['Empathy', 'Kindness', 'Emotional Intelligence', 'Romance'],
+  'Growth Mindset': ['Self-Improvement', 'Ambition'],
+  'Self-Improvement': ['Growth Mindset', 'Ambition'],
+  'Stability': ['Work-Life Balance', 'Health', 'Commitment'],
+  'Work-Life Balance': ['Stability', 'Health'],
+  'Health': ['Stability', 'Work-Life Balance'],
+  'Community': ['Friendship First', 'Kindness'],
+  'Adventure': ['Creativity'],
+  'Creativity': ['Adventure', 'Innovation'],
+  'Romance': ['Communication'],
+  'Success': ['Ambition', 'Career'],
+  'Respect': ['Integrity', 'Honesty'],
+  'Innovation': ['Creativity'],
+};
+
+// ─── Deep Question Data interface ─────────────────────────────────────────────
+export interface DeepQuestionData {
+  questionId: number;
+  questionText: string;
+  userAAnswer: string;
+  userBAnswer: string;
+}
+
+// ─── Smart pill matching helper ───────────────────────────────────────────────
+interface SmartPillResult {
+  greenPairs: { item: string }[];
+  yellowPairs: { itemA: string; itemB: string }[];
+  greyA: string[];
+  greyB: string[];
+  percentMatch: number;
+}
+
+function computeSmartPills(
+  tagsA: string[],
+  tagsB: string[],
+  similarityMap: Record<string, string[]>,
+): SmartPillResult {
+  const setB = new Set(tagsB);
+  const setA = new Set(tagsA);
+
+  // Green: exact matches
+  const greenPairs: { item: string }[] = [];
+  const usedA = new Set<string>();
+  const usedB = new Set<string>();
+
+  for (const item of tagsA) {
+    if (setB.has(item)) {
+      greenPairs.push({ item });
+      usedA.add(item);
+      usedB.add(item);
+    }
+  }
+
+  // Yellow: similar matches (only for items not already green-matched)
+  const yellowPairs: { itemA: string; itemB: string }[] = [];
+  for (const itemA of tagsA) {
+    if (usedA.has(itemA)) continue;
+    const similars = similarityMap[itemA] || [];
+    for (const sim of similars) {
+      if (setB.has(sim) && !usedB.has(sim)) {
+        yellowPairs.push({ itemA, itemB: sim });
+        usedA.add(itemA);
+        usedB.add(sim);
+        break;
+      }
+    }
+  }
+
+  // Grey: unmatched items
+  const greyA = tagsA.filter(t => !usedA.has(t));
+  const greyB = tagsB.filter(t => !usedB.has(t));
+
+  // Percentage
+  const maxLen = Math.max(tagsA.length, tagsB.length, 1);
+  const score = (greenPairs.length * 1.0 + yellowPairs.length * 0.5) / maxLen * 100;
+  const percentMatch = Math.round(score);
+
+  return { greenPairs, yellowPairs, greyA, greyB, percentMatch };
+}
 
 // ─── Helper: icon for match status ────────────────────────────────────────────
 function MatchIcon({ status }: { status: MatchStatus }) {
@@ -125,16 +271,44 @@ const MatchBadge = React.memo(function MatchBadge({ matched, total }: { matched:
   );
 });
 
+// ─── Helper: percentage match badge ───────────────────────────────────────────
+const PercentBadge = React.memo(function PercentBadge({ percent }: { percent: number }) {
+  const allMatch = percent >= 80;
+  const noneMatch = percent === 0;
+  const bg = allMatch ? GREEN_BG : noneMatch ? RED_BG : AMBER_BG;
+  const color = allMatch ? GREEN : noneMatch ? RED : AMBER;
+
+  return (
+    <View style={{
+      backgroundColor: bg,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 6,
+    }}>
+      <Text style={{
+        fontFamily: 'Outfit_500Medium',
+        fontWeight: '500',
+        fontSize: 12,
+        color,
+      }}>
+        {percent}% Match
+      </Text>
+    </View>
+  );
+});
+
 // ─── Helper: section card wrapper ─────────────────────────────────────────────
 const SectionCard = React.memo(function SectionCard({
   title,
   matched,
   total,
+  percentBadge,
   children,
 }: {
   title: string;
-  matched: number;
-  total: number;
+  matched?: number;
+  total?: number;
+  percentBadge?: number;
   children: React.ReactNode;
 }) {
   return (
@@ -154,7 +328,11 @@ const SectionCard = React.memo(function SectionCard({
       {/* Section header */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 16, color: BLUE }}>{title}</Text>
-        <MatchBadge matched={matched} total={total} />
+        {percentBadge !== undefined ? (
+          <PercentBadge percent={percentBadge} />
+        ) : matched !== undefined && total !== undefined ? (
+          <MatchBadge matched={matched} total={total} />
+        ) : null}
       </View>
       {children}
     </View>
@@ -209,6 +387,40 @@ function TagPill({ label }: { label: string }) {
   );
 }
 
+// ─── Helper: green pill (exact match) ─────────────────────────────────────────
+function GreenPill({ label }: { label: string }) {
+  return (
+    <View style={{
+      backgroundColor: '#EDFCF2',
+      borderWidth: 1,
+      borderColor: GREEN,
+      borderRadius: 40,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      alignSelf: 'flex-start',
+    }}>
+      <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 14, color: GREEN }}>{label}</Text>
+    </View>
+  );
+}
+
+// ─── Helper: yellow pill (similar match) ──────────────────────────────────────
+function YellowPill({ label }: { label: string }) {
+  return (
+    <View style={{
+      backgroundColor: '#FFFBEB',
+      borderWidth: 1,
+      borderColor: '#F59E0B',
+      borderRadius: 40,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      alignSelf: 'flex-start',
+    }}>
+      <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 14, color: '#92400E' }}>{label}</Text>
+    </View>
+  );
+}
+
 // ─── Helper: ethnicity comparison row (tag pills + icon + tag pills) ───────────
 function EthnicityComparisonRow({ result }: { result: MatchResult }) {
   if (result.status === 'unknown') return null;
@@ -248,6 +460,329 @@ function TagCloudSection({ leftTags, rightTags }: { leftTags: string[]; rightTag
   );
 }
 
+// ─── Helper: Smart pill cloud section ─────────────────────────────────────────
+function SmartPillCloudSection({
+  pillResult,
+  userAName,
+  userBName,
+}: {
+  pillResult: SmartPillResult;
+  userAName: string;
+  userBName: string;
+}) {
+  const { greenPairs, yellowPairs, greyA, greyB } = pillResult;
+
+  return (
+    <View>
+      {/* Green pairs (exact matches) */}
+      {greenPairs.length > 0 && (
+        <View style={{ marginBottom: greenPairs.length > 0 && (yellowPairs.length > 0 || greyA.length > 0 || greyB.length > 0) ? 10 : 0 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {greenPairs.map(p => (
+              <GreenPill key={`green-${p.item}`} label={p.item} />
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Yellow pairs (similar matches) */}
+      {yellowPairs.length > 0 && (
+        <View style={{ marginBottom: yellowPairs.length > 0 && (greyA.length > 0 || greyB.length > 0) ? 10 : 0 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {yellowPairs.map(p => (
+              <YellowPill
+                key={`yellow-${p.itemA}-${p.itemB}`}
+                label={`${p.itemA} \u2194 ${p.itemB}`}
+              />
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Grey pills (unique to each person) */}
+      {(greyA.length > 0 || greyB.length > 0) && (
+        <View style={{ flexDirection: 'row', gap: 0 }}>
+          <View style={{ flex: 1, gap: 6 }}>
+            {greyA.length > 0 && (
+              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: '#9CA3AF', marginBottom: 4 }}>{userAName}</Text>
+            )}
+            {greyA.map(t => <TagPill key={`greyA-${t}`} label={t} />)}
+          </View>
+          <View style={{ width: 1, backgroundColor: '#E2E8F0', marginHorizontal: 10 }} />
+          <View style={{ flex: 1, gap: 6 }}>
+            {greyB.length > 0 && (
+              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: '#9CA3AF', marginBottom: 4 }}>{userBName}</Text>
+            )}
+            {greyB.map(t => <TagPill key={`greyB-${t}`} label={t} />)}
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ─── Helper: Deep Question Card with reveal mechanic ──────────────────────────
+function QuestionCard({
+  question,
+  userAName,
+  userBName,
+}: {
+  question: DeepQuestionData;
+  userAName: string;
+  userBName: string;
+}) {
+  const [revealedA, setRevealedA] = useState(false);
+  const [revealedB, setRevealedB] = useState(false);
+  const scaleA = useRef(new Animated.Value(0.95)).current;
+  const opacityA = useRef(new Animated.Value(0.4)).current;
+  const scaleB = useRef(new Animated.Value(0.95)).current;
+  const opacityB = useRef(new Animated.Value(0.4)).current;
+
+  const revealA = useCallback(() => {
+    if (revealedA) return;
+    setRevealedA(true);
+    Animated.parallel([
+      Animated.spring(scaleA, { toValue: 1, useNativeDriver: true }),
+      Animated.timing(opacityA, { toValue: 1, duration: 300, useNativeDriver: true }),
+    ]).start();
+  }, [revealedA, scaleA, opacityA]);
+
+  const revealB = useCallback(() => {
+    if (revealedB) return;
+    setRevealedB(true);
+    Animated.parallel([
+      Animated.spring(scaleB, { toValue: 1, useNativeDriver: true }),
+      Animated.timing(opacityB, { toValue: 1, duration: 300, useNativeDriver: true }),
+    ]).start();
+  }, [revealedB, scaleB, opacityB]);
+
+  return (
+    <View style={{
+      backgroundColor: '#F8FAFC',
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: '#E2E8F0',
+      padding: 14,
+      marginBottom: 12,
+    }}>
+      {/* Question text */}
+      <Text style={{
+        fontFamily: 'Outfit_600SemiBold',
+        fontWeight: '600',
+        fontSize: 14,
+        color: '#1E293B',
+        marginBottom: 12,
+        lineHeight: 20,
+      }}>
+        {question.questionText}
+      </Text>
+
+      {/* Two answer cards side by side */}
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        {/* User A card */}
+        <TouchableOpacity
+          onPress={revealA}
+          activeOpacity={revealedA ? 1 : 0.7}
+          style={{ flex: 1 }}
+        >
+          <Animated.View style={{
+            backgroundColor: revealedA ? '#FFFFFF' : '#E2E8F0',
+            borderRadius: 10,
+            padding: 12,
+            minHeight: 80,
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderColor: revealedA ? '#CBD5E1' : '#E2E8F0',
+            transform: [{ scale: scaleA }],
+            opacity: opacityA,
+          }}>
+            <Text style={{
+              fontFamily: 'Outfit_500Medium',
+              fontWeight: '500',
+              fontSize: 11,
+              color: BLUE,
+              marginBottom: 6,
+            }}>
+              {userAName}
+            </Text>
+            {revealedA ? (
+              <Text style={{
+                fontFamily: 'Outfit_400Regular',
+                fontSize: 13,
+                color: '#334155',
+                lineHeight: 18,
+              }}>
+                {question.userAAnswer}
+              </Text>
+            ) : (
+              <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+                <Ionicons name="eye-outline" size={20} color="#94A3B8" />
+                <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
+                  Tap to reveal
+                </Text>
+              </View>
+            )}
+          </Animated.View>
+        </TouchableOpacity>
+
+        {/* User B card */}
+        <TouchableOpacity
+          onPress={revealB}
+          activeOpacity={revealedB ? 1 : 0.7}
+          style={{ flex: 1 }}
+        >
+          <Animated.View style={{
+            backgroundColor: revealedB ? '#FFFFFF' : '#E2E8F0',
+            borderRadius: 10,
+            padding: 12,
+            minHeight: 80,
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderColor: revealedB ? '#CBD5E1' : '#E2E8F0',
+            transform: [{ scale: scaleB }],
+            opacity: opacityB,
+          }}>
+            <Text style={{
+              fontFamily: 'Outfit_500Medium',
+              fontWeight: '500',
+              fontSize: 11,
+              color: BLUE,
+              marginBottom: 6,
+            }}>
+              {userBName}
+            </Text>
+            {revealedB ? (
+              <Text style={{
+                fontFamily: 'Outfit_400Regular',
+                fontSize: 13,
+                color: '#334155',
+                lineHeight: 18,
+              }}>
+                {question.userBAnswer}
+              </Text>
+            ) : (
+              <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+                <Ionicons name="eye-outline" size={20} color="#94A3B8" />
+                <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
+                  Tap to reveal
+                </Text>
+              </View>
+            )}
+          </Animated.View>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+// ─── Helper: Live Vote Bar ────────────────────────────────────────────────────
+function LiveVoteBar({
+  yesVotes,
+  noVotes,
+  totalVotes,
+}: {
+  yesVotes: number;
+  noVotes: number;
+  totalVotes: number;
+}) {
+  const unsureVotes = Math.max(0, totalVotes - yesVotes - noVotes);
+  const total = yesVotes + noVotes + unsureVotes;
+
+  // Animated widths (JS-driven, not native driver)
+  const yesWidth = useRef(new Animated.Value(0)).current;
+  const noWidth = useRef(new Animated.Value(0)).current;
+  const unsureWidth = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (total === 0) return;
+    const yesPct = (yesVotes / total) * 100;
+    const noPct = (noVotes / total) * 100;
+    const unsurePct = (unsureVotes / total) * 100;
+
+    Animated.parallel([
+      Animated.timing(yesWidth, { toValue: yesPct, duration: 400, useNativeDriver: false }),
+      Animated.timing(noWidth, { toValue: noPct, duration: 400, useNativeDriver: false }),
+      Animated.timing(unsureWidth, { toValue: unsurePct, duration: 400, useNativeDriver: false }),
+    ]).start();
+  }, [yesVotes, noVotes, unsureVotes, total, yesWidth, noWidth, unsureWidth]);
+
+  if (total === 0) {
+    return (
+      <View style={{ marginTop: 10, marginBottom: 4, alignItems: 'center' }}>
+        <View style={{
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: '#E5E7EB',
+          width: '100%',
+          marginBottom: 6,
+        }} />
+        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#9CA3AF' }}>
+          No votes yet
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ marginTop: 10, marginBottom: 4 }}>
+      {/* Stacked bar */}
+      <View style={{
+        flexDirection: 'row',
+        height: 8,
+        borderRadius: 4,
+        overflow: 'hidden',
+        backgroundColor: '#E5E7EB',
+      }}>
+        {yesVotes > 0 && (
+          <Animated.View style={{
+            height: 8,
+            backgroundColor: GREEN,
+            width: yesWidth.interpolate({
+              inputRange: [0, 100],
+              outputRange: ['0%', '100%'],
+            }),
+          }} />
+        )}
+        {noVotes > 0 && (
+          <Animated.View style={{
+            height: 8,
+            backgroundColor: RED,
+            width: noWidth.interpolate({
+              inputRange: [0, 100],
+              outputRange: ['0%', '100%'],
+            }),
+          }} />
+        )}
+        {unsureVotes > 0 && (
+          <Animated.View style={{
+            height: 8,
+            backgroundColor: GREY_VOTE,
+            width: unsureWidth.interpolate({
+              inputRange: [0, 100],
+              outputRange: ['0%', '100%'],
+            }),
+          }} />
+        )}
+      </View>
+
+      {/* Vote counts text */}
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 6 }}>
+        <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: GREEN }}>
+          {yesVotes} Yes
+        </Text>
+        <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: '#CBD5E1' }}>&middot;</Text>
+        <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: RED }}>
+          {noVotes} No
+        </Text>
+        <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: '#CBD5E1' }}>&middot;</Text>
+        <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: GREY_VOTE }}>
+          {unsureVotes} Unsure
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface ProposalReviewViewProps {
   onVotesComplete?: () => void;
@@ -258,6 +793,7 @@ interface ProposalReviewViewProps {
   showBackButton?: boolean;
   onBack?: () => void;
   onVoteComplete?: () => void;
+  deepQuestions?: DeepQuestionData[];
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -270,11 +806,17 @@ export function ProposalReviewView({
   showBackButton = false,
   onBack,
   onVoteComplete,
+  deepQuestions,
 }: ProposalReviewViewProps) {
   const [proposals, setProposals] = useState<Proposal[]>(initialProposals ?? []);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(!initialProposals);
   const [voting, setVoting] = useState(false);
+
+  // +1 Karma popup animation
+  const karmaOpacity = useRef(new Animated.Value(0)).current;
+  const karmaTranslateY = useRef(new Animated.Value(0)).current;
+  const [showKarmaPopup, setShowKarmaPopup] = useState(false);
 
   // For Friend modal state
   const [showForFriendModal, setShowForFriendModal] = useState(false);
@@ -314,6 +856,28 @@ export function ProposalReviewView({
     };
     load();
   }, []);
+
+  // Trigger +1 Karma popup animation
+  const triggerKarmaPopup = useCallback(() => {
+    setShowKarmaPopup(true);
+    karmaOpacity.setValue(1);
+    karmaTranslateY.setValue(0);
+
+    Animated.parallel([
+      Animated.timing(karmaOpacity, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(karmaTranslateY, {
+        toValue: -40,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowKarmaPopup(false);
+    });
+  }, [karmaOpacity, karmaTranslateY]);
 
   // Advance to the next proposal or trigger completion callbacks.
   // Used by both handleVote and handleForFriendConfirm.
@@ -372,9 +936,12 @@ export function ProposalReviewView({
       };
     }));
 
+    // Trigger +1 Karma popup
+    triggerKarmaPopup();
+
     // Always advance after a short delay
     advanceProposal();
-  }, [voting, currentIndex, proposals, advanceProposal]);
+  }, [voting, currentIndex, proposals, advanceProposal, triggerKarmaPopup]);
 
   // ── For Friend handlers ───────────────────────────────────────────────────
   const handleForFriendPress = useCallback(() => {
@@ -456,7 +1023,6 @@ export function ProposalReviewView({
     const otherSubstancesResult = matchOtherSubstances(userA, userB);
     const valuesResult = matchValues(userA, userB);
     const interestsResult = matchInterests(userA, userB);
-    const aboutResults = [heightResult, ethnicityResult];
     const beliefsResults = [politicsResult, religionResult];
     const lifestyleResults = [drinkResult, weedResult, tobaccoResult, otherSubstancesResult];
     const allResults = [heightResult, ethnicityResult, politicsResult, religionResult, drinkResult, weedResult, tobaccoResult, otherSubstancesResult];
@@ -468,11 +1034,17 @@ export function ProposalReviewView({
     const idHash = proposal.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
     const compatScore = 70 + (idHash % 30);
 
-    const valuesMatchCount = (valuesResult as any).sharedValues?.length || 0;
-    const valuesTotal = Math.max((userA.values || []).length, (userB.values || []).length, 1);
-
-    const interestsMatchCount = (interestsResult as any).sharedInterests?.length || 0;
-    const interestsTotal = Math.max((userA.interests || []).length, (userB.interests || []).length, 1);
+    // Smart pill matching for values & interests
+    const valuesPillResult = computeSmartPills(
+      userA.values || [],
+      userB.values || [],
+      VALUES_SIMILARITY,
+    );
+    const interestsPillResult = computeSmartPills(
+      userA.interests || [],
+      userB.interests || [],
+      INTERESTS_SIMILARITY,
+    );
 
     // x/4 tracker: 4 core compatibility dimensions — age, religion, politics, lifestyle(drinking)
     const coreResults = [
@@ -492,8 +1064,8 @@ export function ProposalReviewView({
       proposal, userA, userB, photoA, photoB,
       heightResult, ethnicityResult, politicsResult, religionResult,
       drinkResult, weedResult, tobaccoResult, otherSubstancesResult,
-      aboutResults, beliefsResults, lifestyleResults,
-      compatScore, valuesMatchCount, valuesTotal, interestsMatchCount, interestsTotal,
+      beliefsResults, lifestyleResults,
+      compatScore, valuesPillResult, interestsPillResult,
       userATrackerCount, userBTrackerCount,
     };
   }, [currentIndex, proposals]);
@@ -543,8 +1115,8 @@ export function ProposalReviewView({
     proposal, userA, userB, photoA, photoB,
     heightResult, ethnicityResult, politicsResult, religionResult,
     drinkResult, weedResult, tobaccoResult, otherSubstancesResult,
-    aboutResults, beliefsResults, lifestyleResults,
-    compatScore, valuesMatchCount, valuesTotal, interestsMatchCount, interestsTotal,
+    beliefsResults, lifestyleResults,
+    compatScore, valuesPillResult, interestsPillResult,
     userATrackerCount, userBTrackerCount,
   } = matchData;
 
@@ -704,51 +1276,87 @@ export function ProposalReviewView({
             </View>
           </View>
 
-          {/* "Are they a match?" subtitle */}
-          <Text style={{
-            fontFamily: 'Outfit_400Regular',
-            fontWeight: '400',
-            fontSize: 15,
-            color: '#010101',
-            opacity: 0.6,
-            textAlign: 'center',
-            marginTop: 12,
-          }}>
-            Are they a match?
-          </Text>
+          {/* Live Vote Bar — replaces "Are they a match?" subtitle */}
+          <View style={{ position: 'relative' }}>
+            <LiveVoteBar
+              yesVotes={proposal.yesVotes ?? 0}
+              noVotes={proposal.noVotes ?? 0}
+              totalVotes={proposal.totalVotes ?? 0}
+            />
+
+            {/* +1 Karma popup */}
+            {showKarmaPopup && (
+              <Animated.View style={{
+                position: 'absolute',
+                top: -10,
+                alignSelf: 'center',
+                left: 0,
+                right: 0,
+                alignItems: 'center',
+                opacity: karmaOpacity,
+                transform: [{ translateY: karmaTranslateY }],
+              }}>
+                <View style={{
+                  backgroundColor: GREEN,
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                  borderRadius: 12,
+                }}>
+                  <Text style={{
+                    fontFamily: 'Outfit_600SemiBold',
+                    fontWeight: '600',
+                    fontSize: 13,
+                    color: '#FFFFFF',
+                  }}>
+                    +1 Karma
+                  </Text>
+                </View>
+              </Animated.View>
+            )}
+          </View>
         </View>
 
-        {/* ── About (Height + Ethnicity) ─────────────────────────────── */}
-        <SectionCard
-          title="About"
-          matched={countMatch(aboutResults.filter(r => r.status !== 'unknown'))}
-          total={countKnown(aboutResults)}
-        >
-          {heightResult.status !== 'unknown' && (
-            <ComparisonValueRow result={heightResult} label="Height" />
-          )}
-          {ethnicityResult.status !== 'unknown' && (
-            <EthnicityComparisonRow result={ethnicityResult} />
-          )}
-        </SectionCard>
+        {/* ── Questions (Deep Questions with card reveal) ─────────────── */}
+        {deepQuestions && deepQuestions.length > 0 && (
+          <SectionCard title="Questions" matched={undefined} total={undefined}>
+            {deepQuestions.map((q) => (
+              <QuestionCard
+                key={`dq-${q.questionId}`}
+                question={q}
+                userAName={userA.firstName}
+                userBName={userB.firstName}
+              />
+            ))}
+          </SectionCard>
+        )}
 
-        {/* ── Beliefs ────────────────────────────────────────────────── */}
-        <SectionCard
-          title="Beliefs"
-          matched={countMatch(beliefsResults.filter(r => r.status !== 'unknown'))}
-          total={countKnown(beliefsResults)}
-        >
-          {politicsResult.status !== 'unknown' && (
-            <ComparisonValueRow result={politicsResult} label="Politics" />
-          )}
-          {religionResult.status !== 'unknown' && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <ValueBox label="Religion" value={religionResult.leftValue} />
-              <MatchIcon status={religionResult.status} />
-              <ValueBox label="Religion" value={religionResult.rightValue} />
-            </View>
-          )}
-        </SectionCard>
+        {/* ── Interests (Smart Pills) ─────────────────────────────────── */}
+        {((userA.interests?.length ?? 0) > 0 || (userB.interests?.length ?? 0) > 0) && (
+          <SectionCard
+            title="Interests"
+            percentBadge={interestsPillResult.percentMatch}
+          >
+            <SmartPillCloudSection
+              pillResult={interestsPillResult}
+              userAName={userA.firstName}
+              userBName={userB.firstName}
+            />
+          </SectionCard>
+        )}
+
+        {/* ── Values (Smart Pills) ────────────────────────────────────── */}
+        {((userA.values?.length ?? 0) > 0 || (userB.values?.length ?? 0) > 0) && (
+          <SectionCard
+            title="Values"
+            percentBadge={valuesPillResult.percentMatch}
+          >
+            <SmartPillCloudSection
+              pillResult={valuesPillResult}
+              userAName={userA.firstName}
+              userBName={userB.firstName}
+            />
+          </SectionCard>
+        )}
 
         {/* ── Lifestyle ──────────────────────────────────────────────── */}
         <SectionCard
@@ -778,33 +1386,23 @@ export function ProposalReviewView({
           )}
         </SectionCard>
 
-        {/* ── Values ─────────────────────────────────────────────────── */}
-        {((userA.values?.length ?? 0) > 0 || (userB.values?.length ?? 0) > 0) && (
-          <SectionCard
-            title="Values"
-            matched={valuesMatchCount}
-            total={valuesTotal}
-          >
-            <TagCloudSection
-              leftTags={userA.values || []}
-              rightTags={userB.values || []}
-            />
-          </SectionCard>
-        )}
-
-        {/* ── Interests ──────────────────────────────────────────────── */}
-        {((userA.interests?.length ?? 0) > 0 || (userB.interests?.length ?? 0) > 0) && (
-          <SectionCard
-            title="Interests"
-            matched={interestsMatchCount}
-            total={interestsTotal}
-          >
-            <TagCloudSection
-              leftTags={userA.interests || []}
-              rightTags={userB.interests || []}
-            />
-          </SectionCard>
-        )}
+        {/* ── Beliefs ────────────────────────────────────────────────── */}
+        <SectionCard
+          title="Beliefs"
+          matched={countMatch(beliefsResults.filter(r => r.status !== 'unknown'))}
+          total={countKnown(beliefsResults)}
+        >
+          {politicsResult.status !== 'unknown' && (
+            <ComparisonValueRow result={politicsResult} label="Politics" />
+          )}
+          {religionResult.status !== 'unknown' && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <ValueBox label="Religion" value={religionResult.leftValue} />
+              <MatchIcon status={religionResult.status} />
+              <ValueBox label="Religion" value={religionResult.rightValue} />
+            </View>
+          )}
+        </SectionCard>
 
       </ScrollView>
 

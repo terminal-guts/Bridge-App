@@ -216,9 +216,15 @@ export function MatchesScreen() {
     const navigation = useNavigation<any>();
     const { height: windowHeight } = useWindowDimensions();
     const insets = useSafeAreaInsets();
-    // Header: insets.top + 16 (extra top pad) + lineHeight(38) + paddingBottom(8) + scrollMarginTop(20) = insets.top + 82
-    // Tab bar: 54 (navigator handles insets.bottom separately), card marginBottom: 56
-    const activeCardHeight = windowHeight - insets.top - 82 - 54 - 56;
+
+    // Layout values as proportions of screen height — scales across all iOS devices
+    const headerPad = Math.round(windowHeight * 0.011);    // ~10pt on 874pt screen
+    const scrollMargin = 0;                                 // no gap between header and card
+    const cardMB = Math.round(windowHeight * 0.092);        // ~80pt on 874pt screen
+    const tabBarH = Math.round(windowHeight * 0.069);       // ~60pt on 874pt screen
+
+    const headerTotal = headerPad + 38 + 8 + scrollMargin;  // headerPad + title lineHeight + paddingBottom + scrollMargin
+    const activeCardHeight = windowHeight - insets.top - headerTotal - tabBarH - cardMB;
 
     // Tick every second so the timer display stays fresh and counts down in real time
     useEffect(() => {
@@ -470,7 +476,10 @@ export function MatchesScreen() {
 
     return (
         <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-            <OfflineBanner />
+            {/* Safe area spacer so OfflineBanner sits below the status bar */}
+            <View style={{ paddingTop: insets.top, backgroundColor: '#FFFFFF' }}>
+                <OfflineBanner />
+            </View>
             {screenState !== 'active_match' && (
                 <ProfileCompletionBanner
                     profile={profile}
@@ -478,7 +487,7 @@ export function MatchesScreen() {
                 />
             )}
             {/* Header row: title left, countdown timer right */}
-            <View style={[styles.headerRow, { paddingTop: insets.top + 16 }]}>
+            <View style={[styles.headerRow, { paddingTop: headerPad }]}>
                 <Text style={styles.headerTitle}>Match</Text>
                 {timerLabel && (
                     <TouchableOpacity activeOpacity={0.7} onPress={() => setTimerInfoVisible(true)}>
@@ -491,12 +500,12 @@ export function MatchesScreen() {
             </View>
 
             <ScrollView
-                style={{ flex: 1, paddingHorizontal: 16, marginTop: 20 }}
+                style={{ flex: 1, paddingHorizontal: 16, marginTop: scrollMargin }}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#2B65F9" />
                 }
             >
-                <View style={{ marginBottom: 56, height: activeCardHeight }}>
+                <View style={{ marginBottom: cardMB, height: activeCardHeight }}>
                     {screenState === 'active_match' && (
                         <MatchCard
                             status="active_match"

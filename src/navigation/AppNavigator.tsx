@@ -71,9 +71,12 @@ const ProfileMatchScreen = withSuspense(React.lazy(() => import('../screens/prof
 const TermsOfService = withSuspense(React.lazy(() => import('../screens/legal/TermsOfService').then(m => ({ default: m.TermsOfService }))));
 const PrivacyPolicy = withSuspense(React.lazy(() => import('../screens/legal/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy }))));
 const HelpSupportScreen = withSuspense(React.lazy(() => import('../screens/support/HelpSupportScreen').then(m => ({ default: m.HelpSupportScreen }))));
+const SupportChatScreen = withSuspense(React.lazy(() => import('../screens/support/SupportChatScreen').then(m => ({ default: m.SupportChatScreen }))));
+
+// Community sub-screens
+const LeaderboardScreen = withSuspense(React.lazy(() => import('../screens/community/LeaderboardScreen').then(m => ({ default: m.LeaderboardScreen }))));
 
 // Friends sub-screens
-const FriendListScreen = withSuspense(React.lazy(() => import('../screens/friends/FriendListScreen').then(m => ({ default: m.FriendListScreen }))));
 const ContactInviteScreen = withSuspense(React.lazy(() => import('../screens/friends/ContactInviteScreen').then(m => ({ default: m.ContactInviteScreen }))));
 // ChangePhoneNumberScreen removed — email-only auth
 
@@ -401,9 +404,10 @@ export const AppNavigator = () => {
           <Stack.Screen name="TermsOfService" component={TermsOfService} />
           <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
           <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+          <Stack.Screen name="SupportChat" component={SupportChatScreen} />
+          <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
 
           {/* Friends */}
-          <Stack.Screen name="FriendList" component={FriendListScreen} />
           <Stack.Screen name="ContactInvite" component={ContactInviteScreen} />
 
           {/* Additional Screens - To be implemented */}
