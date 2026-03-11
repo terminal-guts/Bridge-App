@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" id="film-clapperboard">
+  <defs>
+    <linearGradient id="a" x1="109.02" x2="181.33" y1="209.31" y2="137.01" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#cacfdd"></stop>
+      <stop offset="1" stop-color="#eef0f1"></stop>
+    </linearGradient>
+  </defs>
+  <g style="isolation:isolate">
+    <g>
+      <rect width="337.2" height="205.64" x="80.73" y="270.36" fill="#dee1ec"></rect>
+      <rect width="226.97" height="69.34" x="135.85" y="316.6" fill="#5e6175"></rect>
+      <path fill="#e08326" d="M418.18,79.53,113.93,224.92l-20.8-43.54L397.38,36Z"></path>
+      <path fill="url(#a)" d="M158.56,203.59l-44.63,21.33-20.8-43.54,39.28-18.76A47,47,0,0,1,158.56,203.59Z" style="mix-blend-mode:multiply"></path>
+      <polygon fill="#f5f5f5" points="227.28 170.76 179.09 193.78 178.65 140.52 226.84 117.49 227.28 170.76"></polygon>
+      <polygon fill="#f5f5f5" points="335.27 119.16 287.09 142.18 286.64 88.91 334.83 65.89 335.27 119.16"></polygon>
+      <path fill="#5e6175" d="M112.52,228.92,89.13,180,398.79,32l23.39,49ZM97.13,182.8l18.22,38.12L414.18,78.12,396,40Z"></path>
+      <path fill="#e08326" d="M80.73,270.36V204.73a30.88,30.88,0,0,1,61.75,0v17.38H417.93v48.25Z"></path>
+      <polygon fill="#f5f5f5" points="175.52 270.36 228.92 270.36 206.35 222.11 152.95 222.11 175.52 270.36"></polygon>
+      <polygon fill="#f5f5f5" points="295.21 270.36 348.61 270.36 326.04 222.11 272.64 222.11 295.21 270.36"></polygon>
+      <path fill="#5e6175" d="M420.93,273.36H77.73V204.73a33.88,33.88,0,0,1,67.75,0v14.38H420.93Zm-337.2-6h331.2V225.11H139.48V204.73a27.88,27.88,0,0,0-55.75,0Z"></path>
+      <path fill="#5e6175" d="M420.93,479H77.73V267.36h343.2Zm-337.2-6h331.2V273.36H83.73Z"></path>
+      <polygon fill="#5e6175" points="420.93 270.36 414.93 270.36 414.93 225.11 142.48 225.11 142.48 219.11 420.93 219.11 420.93 270.36"></polygon>
+      <circle cx="111.15" cy="203.05" r="8.58" fill="#dee1ec"></circle>
+      <path fill="#5e6175" d="M365.82,388.94h-233V313.6h233Zm-227-6h221V319.6h-221Z"></path>
+      <rect width="401.45" height="6" x="49.09" y="473" fill="#5e6175"></rect>
+      <rect width="48.09" height="20.27" x="131.95" y="415.72" fill="#a9afc4"></rect>
+      <rect width="158.77" height="20.27" x="207.67" y="415.72" fill="#a9afc4"></rect>
+      <path fill="#5e6175" d="M452 225.41a11.7 11.7 0 1114.2 16.3A11.67 11.67 0 01452 225.41zm10.47-.49a5.7 5.7 0 105.11 8.24h0A5.71 5.71 0 00462.44 224.92zM402.42 176.69a9 9 0 1111 12.6A9 9 0 01402.42 176.69zm5.38 2.67a3 3 0 104.07-1.37A3 3 0 00407.8 179.36z"></path>
+      <rect width="6" height="22.21" x="63.85" y="146.1" fill="#5e6175" transform="rotate(-45 66.857 157.207)"></rect>
+      <rect width="22.21" height="6" x="40.85" y="180.38" fill="#5e6175"></rect>
+      <rect width="6" height="22.21" x="88.68" y="130.61" fill="#5e6175"></rect>
+      <path fill="#a9afc4" d="M61,434.6H55v-6h6Zm0-16H55v-6h6Zm0-16H55v-6h6Zm0-16H55v-6h6Zm0-16H55v-6h6Zm0-16H55v-6h6Zm0-16H55v-6h6Zm0-16H55v-6h6Z"></path>
+    </g>
+  </g>
+</svg>
