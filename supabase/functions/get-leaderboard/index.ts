@@ -69,18 +69,23 @@ Deno.serve(async (req: Request) => {
 
     const participantIdList = Array.from(participantIds);
 
-    const [photosResult, friendshipsResult] = await Promise.all([
+    const [photosResult, friendsAsUser, friendsAsFriend] = await Promise.all([
       supabase
         .from('user_photos')
         .select('user_id, storage_path')
         .in('user_id', participantIdList)
-        .or('is_main.eq.true,order.eq.0') // Corrected column name to 'order'
-        .order('order', { ascending: true }), // Corrected column name to 'order'
+        .or('is_main.eq.true,display_order.eq.0')
+        .order('display_order', { ascending: true }),
       supabase
-        .from('friendships') // Corrected table name to 'friendships'
+        .from('friends')
         .select('friend_id')
         .eq('user_id', userId)
-        .in('friend_id', participantIdList)
+        .in('friend_id', participantIdList),
+      supabase
+        .from('friends')
+        .select('user_id')
+        .eq('friend_id', userId)
+        .in('user_id', participantIdList)
     ]);
 
     const photosMap: Record<string, string> = {};
@@ -88,7 +93,10 @@ Deno.serve(async (req: Request) => {
       if (!photosMap[p.user_id]) photosMap[p.user_id] = p.storage_path;
     }
 
-    const friendIds = new Set((friendshipsResult.data || []).map(f => f.friend_id));
+    const friendIds = new Set([
+      ...(friendsAsUser.data || []).map(f => f.friend_id),
+      ...(friendsAsFriend.data || []).map(f => f.user_id),
+    ]);
 
     // Resolve Signed URLs for photos
     const storagePaths = Object.values(photosMap);
