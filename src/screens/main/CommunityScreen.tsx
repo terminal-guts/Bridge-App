@@ -288,7 +288,13 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             const available = await communityService.getProposalsToVote();
             if (available.length === 0) votingDone = true;
           }
-          communityService.cacheVotingComplete(votingDone, cycleId).catch(() => {});
+          // Only cache if user actually voted 3+ times; never cache "no proposals"
+          if (task.hasVotedOnProposals) {
+            communityService.cacheVotingComplete(true, cycleId).catch(() => {});
+          } else {
+            // Clear any stale cache so new proposals trigger the gate
+            communityService.cacheVotingComplete(false, cycleId).catch(() => {});
+          }
           if (!votingDone) setHasCompletedVoting(false);
         })(),
       ]).catch(() => {});
@@ -313,8 +319,12 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
         }
       }
 
-      // Cache the voting gate result for next cold open
-      communityService.cacheVotingComplete(votingDone, cycleId).catch(() => {});
+      // Only cache "done" if user actually voted on 3+ proposals this cycle.
+      // If votingDone is true merely because no proposals exist yet, don't cache —
+      // new proposals may appear later in the same cycle.
+      if (task.hasVotedOnProposals) {
+        communityService.cacheVotingComplete(true, cycleId).catch(() => {});
+      }
 
       setHasCompletedVoting(votingDone);
       if (votingDone) {
