@@ -16,6 +16,7 @@
  * - +1 Karma popup on vote
  */
 
+import { FONTS } from '../../../constants/typography';
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   View,
@@ -54,6 +55,7 @@ import {
 } from '../../../utils/proposalMatching';
 import { communityService } from '../../../services/communityServiceIndex';
 import { createLogger } from '../../../utils/secureLogger';
+import { OVERLAYS } from '../../../theme/shadows';
 import { getQuestionById } from '../../../utils/deepQuestions';
 
 const logger = createLogger('ProposalReviewView');
@@ -260,7 +262,7 @@ const MatchBadge = React.memo(function MatchBadge({ matched, total }: { matched:
       borderRadius: 6,
     }}>
       <Text style={{
-        fontFamily: 'Outfit_500Medium',
+        fontFamily: FONTS.medium,
         fontWeight: '500',
         fontSize: 12,
         color,
@@ -286,7 +288,7 @@ const PercentBadge = React.memo(function PercentBadge({ percent }: { percent: nu
       borderRadius: 6,
     }}>
       <Text style={{
-        fontFamily: 'Outfit_500Medium',
+        fontFamily: FONTS.medium,
         fontWeight: '500',
         fontSize: 12,
         color,
@@ -327,7 +329,7 @@ const SectionCard = React.memo(function SectionCard({
     }}>
       {/* Section header */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 16, color: BLUE }}>{title}</Text>
+        <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: 16, color: BLUE }}>{title}</Text>
         {percentBadge !== undefined ? (
           <PercentBadge percent={percentBadge} />
         ) : matched !== undefined && total !== undefined ? (
@@ -352,8 +354,8 @@ function ValueBox({ label, value }: { label: string; value: string }) {
       padding: 10,
       justifyContent: 'space-between',
     }}>
-      <Text style={{ fontFamily: 'Outfit_400Regular', fontWeight: '400', fontSize: 13, color: '#6B7280' }}>{label}</Text>
-      <Text style={{ fontFamily: 'Outfit_600SemiBold', fontWeight: '600', fontSize: 15, color: '#010101' }} numberOfLines={1}>{value || '—'}</Text>
+      <Text style={{ fontFamily: FONTS.regular, fontWeight: '400', fontSize: 13, color: '#6B7280' }}>{label}</Text>
+      <Text style={{ fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: 15, color: '#010101' }} numberOfLines={1}>{value || '—'}</Text>
     </View>
   );
 }
@@ -382,7 +384,7 @@ function TagPill({ label }: { label: string }) {
       paddingVertical: 6,
       alignSelf: 'flex-start',
     }}>
-      <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.85 }}>{label}</Text>
+      <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.85 }}>{label}</Text>
     </View>
   );
 }
@@ -399,7 +401,7 @@ function GreenPill({ label }: { label: string }) {
       paddingVertical: 6,
       alignSelf: 'flex-start',
     }}>
-      <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 14, color: GREEN }}>{label}</Text>
+      <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 14, color: GREEN }}>{label}</Text>
     </View>
   );
 }
@@ -416,7 +418,7 @@ function YellowPill({ label }: { label: string }) {
       paddingVertical: 6,
       alignSelf: 'flex-start',
     }}>
-      <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 14, color: '#92400E' }}>{label}</Text>
+      <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 14, color: '#92400E' }}>{label}</Text>
     </View>
   );
 }
@@ -504,14 +506,14 @@ function SmartPillCloudSection({
         <View style={{ flexDirection: 'row', gap: 0 }}>
           <View style={{ flex: 1, gap: 6 }}>
             {greyA.length > 0 && (
-              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: '#9CA3AF', marginBottom: 4 }}>{userAName}</Text>
+              <Text style={{ fontFamily: FONTS.regular, fontSize: 11, color: '#9CA3AF', marginBottom: 4 }}>{userAName}</Text>
             )}
             {greyA.map(t => <TagPill key={`greyA-${t}`} label={t} />)}
           </View>
           <View style={{ width: 1, backgroundColor: '#E2E8F0', marginHorizontal: 10 }} />
           <View style={{ flex: 1, gap: 6 }}>
             {greyB.length > 0 && (
-              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: '#9CA3AF', marginBottom: 4 }}>{userBName}</Text>
+              <Text style={{ fontFamily: FONTS.regular, fontSize: 11, color: '#9CA3AF', marginBottom: 4 }}>{userBName}</Text>
             )}
             {greyB.map(t => <TagPill key={`greyB-${t}`} label={t} />)}
           </View>
@@ -619,7 +621,7 @@ function ProposalPhotoCard({
         </View>
       )}
       <View style={{ position: 'absolute', bottom: 14, left: 14 }} pointerEvents="none">
-        <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 28, color: '#FFF', letterSpacing: -0.3 }}>
+        <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: 28, color: '#FFF', letterSpacing: -0.3 }}>
           {name}{age ? `, ${age}` : ''}
         </Text>
       </View>
@@ -663,11 +665,11 @@ function RevealCardInline({
         {revealed ? (
           <>
             <Text style={{
-              fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 11,
+              fontFamily: FONTS.medium, fontWeight: '500', fontSize: 11,
               color: BLUE, marginBottom: 6,
             }}>{name}</Text>
             <Text style={{
-              fontFamily: 'Outfit_400Regular', fontSize: 13,
+              fontFamily: FONTS.regular, fontSize: 13,
               color: '#334155', lineHeight: 18,
             }}>{answer}</Text>
           </>
@@ -678,11 +680,11 @@ function RevealCardInline({
               backgroundColor: 'rgba(99, 131, 255, 0.2)',
               alignItems: 'center', justifyContent: 'center',
             }}>
-              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 16, color: '#93A8FF' }}>?</Text>
+              <Text style={{ fontFamily: FONTS.bold, fontSize: 16, color: '#93A8FF' }}>?</Text>
             </View>
             <View>
-              <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 13, color: '#FFFFFF' }}>{name}</Text>
-              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Tap to reveal</Text>
+              <Text style={{ fontFamily: FONTS.medium, fontSize: 13, color: '#FFFFFF' }}>{name}</Text>
+              <Text style={{ fontFamily: FONTS.regular, fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Tap to reveal</Text>
             </View>
           </View>
         ) : (
@@ -692,9 +694,9 @@ function RevealCardInline({
               backgroundColor: 'rgba(99, 131, 255, 0.2)',
               alignItems: 'center', justifyContent: 'center', marginBottom: 8,
             }}>
-              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 18, color: '#93A8FF' }}>?</Text>
+              <Text style={{ fontFamily: FONTS.bold, fontSize: 18, color: '#93A8FF' }}>?</Text>
             </View>
-            <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>{name}</Text>
+            <Text style={{ fontFamily: FONTS.medium, fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>{name}</Text>
           </View>
         )}
       </Animated.View>
@@ -760,7 +762,7 @@ function QuestionCarousel({
             />
           ))}
           <Text style={{
-            fontFamily: 'Outfit_500Medium', fontSize: 11,
+            fontFamily: FONTS.medium, fontSize: 11,
             color: '#9CA3AF', marginLeft: 6,
           }}>
             {currentPage + 1}/{total}
@@ -822,7 +824,7 @@ function QuestionPage({
         padding: 14,
       }}>
           <Text style={{
-            fontFamily: 'Outfit_600SemiBold', fontWeight: '600',
+            fontFamily: FONTS.semiBold, fontWeight: '600',
             fontSize: 14, color: '#1E293B', marginBottom: 12, lineHeight: 20,
           }}>
             {question.questionText}
@@ -895,7 +897,7 @@ function LiveVoteBar({
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: BLUE }} />
-          <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: BLUE }}>
+          <Text style={{ fontFamily: FONTS.medium, fontSize: 12, color: BLUE }}>
             Be the first to weigh in!
           </Text>
         </View>
@@ -986,19 +988,19 @@ function LiveVoteBar({
       {/* Vote counts + sentiment */}
       <View style={{ alignItems: 'center', marginTop: 8, gap: 2 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12 }}>
-          <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: GREEN }}>
+          <Text style={{ fontFamily: FONTS.medium, fontSize: 12, color: GREEN }}>
             {yesVotes} Yes
           </Text>
-          <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: '#CBD5E1' }}>&middot;</Text>
-          <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: RED }}>
+          <Text style={{ fontFamily: FONTS.medium, fontSize: 12, color: '#CBD5E1' }}>&middot;</Text>
+          <Text style={{ fontFamily: FONTS.medium, fontSize: 12, color: RED }}>
             {noVotes} No
           </Text>
-          <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: '#CBD5E1' }}>&middot;</Text>
-          <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: GREY_VOTE }}>
+          <Text style={{ fontFamily: FONTS.medium, fontSize: 12, color: '#CBD5E1' }}>&middot;</Text>
+          <Text style={{ fontFamily: FONTS.medium, fontSize: 12, color: GREY_VOTE }}>
             {unsureVotes} Unsure
           </Text>
         </View>
-        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: '#9CA3AF' }}>
+        <Text style={{ fontFamily: FONTS.regular, fontSize: 11, color: '#9CA3AF' }}>
           {total} voted{' \u00b7 '}
           {yesVotes > noVotes + unsureVotes ? 'strong yes' :
            noVotes > yesVotes + unsureVotes ? 'strong no' :
@@ -1328,7 +1330,7 @@ export function ProposalReviewView({
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF' }}>
-        <Text style={{ fontSize: 16, color: '#78716C', fontFamily: 'Outfit_400Regular' }}>Loading proposals...</Text>
+        <Text style={{ fontSize: 16, color: '#78716C', fontFamily: FONTS.regular }}>Loading proposals...</Text>
       </View>
     );
   }
@@ -1337,10 +1339,10 @@ export function ProposalReviewView({
   if (proposals.length === 0 || currentIndex >= proposals.length) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 24 }}>
-        <Text style={{ fontSize: 24, fontFamily: 'Outfit_700Bold', color: '#010101', marginBottom: 12, textAlign: 'center' }}>
+        <Text style={{ fontSize: 24, fontFamily: FONTS.bold, color: '#010101', marginBottom: 12, textAlign: 'center' }}>
           No proposals today
         </Text>
-        <Text style={{ fontSize: 16, fontFamily: 'Outfit_400Regular', color: '#6B7280', textAlign: 'center', lineHeight: 22 }}>
+        <Text style={{ fontSize: 16, fontFamily: FONTS.regular, color: '#6B7280', textAlign: 'center', lineHeight: 22 }}>
           Check back tomorrow — your friends will propose new matches for you.
         </Text>
       </View>
@@ -1363,7 +1365,7 @@ export function ProposalReviewView({
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       {!showBackButton && !loading && proposals.length > 0 && (
         <View style={{ backgroundColor: '#F4F7FF', paddingVertical: 10, paddingHorizontal: 20, alignItems: 'center' }}>
-          <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 13, color: '#2B65F9', textAlign: 'center' }}>
+          <Text style={{ fontFamily: FONTS.semiBold, fontSize: 13, color: '#2B65F9', textAlign: 'center' }}>
             Vote on {proposals.length} proposal{proposals.length > 1 ? 's' : ''} to unlock the Friends Area
           </Text>
         </View>
@@ -1469,7 +1471,7 @@ export function ProposalReviewView({
                 borderColor: '#FFFFFF',
               }}>
                 <Ionicons name="sparkles" size={16} color="#FFFFFF" />
-                <Text style={{ fontFamily: 'Outfit_600SemiBold', fontWeight: '600', fontSize: 16, color: '#FFFFFF' }}>
+                <Text style={{ fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: 16, color: '#FFFFFF' }}>
                   {compatScore} %
                 </Text>
               </View>
@@ -1503,7 +1505,7 @@ export function ProposalReviewView({
                   borderRadius: 12,
                 }}>
                   <Text style={{
-                    fontFamily: 'Outfit_600SemiBold',
+                    fontFamily: FONTS.semiBold,
                     fontWeight: '600',
                     fontSize: 13,
                     color: '#FFFFFF',
@@ -1633,7 +1635,7 @@ export function ProposalReviewView({
           }}
         >
           <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-          <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 16, color: '#FFFFFF' }}>Yes</Text>
+          <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 16, color: '#FFFFFF' }}>Yes</Text>
         </TouchableOpacity>
 
         {/* No / For Friend / Not Sure */}
@@ -1656,7 +1658,7 @@ export function ProposalReviewView({
             }}
           >
             <Ionicons name="close-outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
-            <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>No</Text>
+            <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>No</Text>
           </TouchableOpacity>
 
           {/* Recommend */}
@@ -1677,7 +1679,7 @@ export function ProposalReviewView({
             }}
           >
             <Ionicons name="person-add-outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
-            <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>Recommend</Text>
+            <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>Recommend</Text>
           </TouchableOpacity>
 
           {/* Not Sure */}
@@ -1698,7 +1700,7 @@ export function ProposalReviewView({
             }}
           >
             <Ionicons name="information-circle-outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
-            <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>Not Sure</Text>
+            <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>Not Sure</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1712,7 +1714,7 @@ export function ProposalReviewView({
       >
         <View style={{
           flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.55)',
+          backgroundColor: OVERLAYS.medium,
           justifyContent: 'center',
           alignItems: 'center',
           paddingHorizontal: 20,
@@ -1727,10 +1729,10 @@ export function ProposalReviewView({
             {forFriendStep === 1 ? (
               /* ── Step 1: Pick which person to recommend ── */
               <View style={{ padding: 24 }}>
-                <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 20, color: '#010101', textAlign: 'center', marginBottom: 6 }}>
+                <Text style={{ fontFamily: FONTS.semiBold, fontSize: 20, color: '#010101', textAlign: 'center', marginBottom: 6 }}>
                   Recommend
                 </Text>
-                <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#010101', opacity: 0.6, textAlign: 'center', marginBottom: 20 }}>
+                <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: '#010101', opacity: 0.6, textAlign: 'center', marginBottom: 20 }}>
                   Who would you like to recommend?
                 </Text>
 
@@ -1754,11 +1756,11 @@ export function ProposalReviewView({
                       style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 90 }}
                     />
                     <View style={{ position: 'absolute', bottom: 12, left: 12 }}>
-                      <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 16, color: '#FFF' }}>
+                      <Text style={{ fontFamily: FONTS.semiBold, fontSize: 16, color: '#FFF' }}>
                         {userA.firstName}
                       </Text>
                       {userA.age ? (
-                        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#FFF', opacity: 0.85 }}>
+                        <Text style={{ fontFamily: FONTS.regular, fontSize: 12, color: '#FFF', opacity: 0.85 }}>
                           {userA.age} yrs
                         </Text>
                       ) : null}
@@ -1784,11 +1786,11 @@ export function ProposalReviewView({
                       style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 90 }}
                     />
                     <View style={{ position: 'absolute', bottom: 12, left: 12 }}>
-                      <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 16, color: '#FFF' }}>
+                      <Text style={{ fontFamily: FONTS.semiBold, fontSize: 16, color: '#FFF' }}>
                         {userB.firstName}
                       </Text>
                       {userB.age ? (
-                        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#FFF', opacity: 0.85 }}>
+                        <Text style={{ fontFamily: FONTS.regular, fontSize: 12, color: '#FFF', opacity: 0.85 }}>
                           {userB.age} yrs
                         </Text>
                       ) : null}
@@ -1800,7 +1802,7 @@ export function ProposalReviewView({
                   onPress={handleForFriendCancel}
                   style={{ marginTop: 16, alignItems: 'center', paddingVertical: 12 }}
                 >
-                  <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 15, color: '#010101', opacity: 0.45 }}>Cancel</Text>
+                  <Text style={{ fontFamily: FONTS.medium, fontSize: 15, color: '#010101', opacity: 0.45 }}>Cancel</Text>
                 </TouchableOpacity>
               </View>
 
@@ -1808,10 +1810,10 @@ export function ProposalReviewView({
               /* ── Step 2: Pick a friend ── */
               <View>
                 <View style={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 12 }}>
-                  <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 20, color: '#010101', textAlign: 'center', marginBottom: 6 }}>
+                  <Text style={{ fontFamily: FONTS.semiBold, fontSize: 20, color: '#010101', textAlign: 'center', marginBottom: 6 }}>
                     Send to a Friend
                   </Text>
-                  <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#010101', opacity: 0.6, textAlign: 'center' }}>
+                  <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: '#010101', opacity: 0.6, textAlign: 'center' }}>
                     Recommend {selectedPersonSide === 'userA' ? userA.firstName : userB.firstName} to...
                   </Text>
                 </View>
@@ -1858,11 +1860,11 @@ export function ProposalReviewView({
                             cachePolicy="disk"
                           />
                           <View style={{ flex: 1 }}>
-                            <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 15, color: '#010101' }}>
+                            <Text style={{ fontFamily: FONTS.semiBold, fontSize: 15, color: '#010101' }}>
                               {item.friend?.firstName}
                             </Text>
                             {item.friend?.currentJob ? (
-                              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 13, color: '#010101', opacity: 0.55 }} numberOfLines={1}>
+                              <Text style={{ fontFamily: FONTS.regular, fontSize: 13, color: '#010101', opacity: 0.55 }} numberOfLines={1}>
                                 {item.friend.currentJob}
                               </Text>
                             ) : null}
@@ -1910,7 +1912,7 @@ export function ProposalReviewView({
                       backgroundColor: BOX_BG,
                     }}
                   >
-                    <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 15, color: '#010101', opacity: 0.7 }}>Cancel</Text>
+                    <Text style={{ fontFamily: FONTS.medium, fontSize: 15, color: '#010101', opacity: 0.7 }}>Cancel</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -1926,7 +1928,7 @@ export function ProposalReviewView({
                       justifyContent: 'center',
                     }}
                   >
-                    <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 15, color: '#FFFFFF' }}>Confirm</Text>
+                    <Text style={{ fontFamily: FONTS.medium, fontSize: 15, color: '#FFFFFF' }}>Confirm</Text>
                   </TouchableOpacity>
                 </View>
               </View>

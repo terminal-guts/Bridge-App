@@ -11,6 +11,7 @@ import { View, Image } from 'react-native';
 import { styled } from 'nativewind';
 import { UserProfile, Photo } from '../../../types';
 import { createLogger } from '../../../utils/secureLogger';
+import { SHADOWS } from '../../../theme/shadows';
 
 const logger = createLogger('AnchorPhotoSection');
 
@@ -37,11 +38,7 @@ export function AnchorPhotoSection({ anchor }: AnchorPhotoSectionProps) {
       borderRadius: 24, // Generous rounded corners
       overflow: 'hidden',
       margin: 8,
-      shadowColor: 'rgba(139, 92, 47, 0.2)', // Warm brown shadow
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 1,
-      shadowRadius: 16,
-      elevation: 4,
+      ...SHADOWS.xl,
       borderWidth: 1,
       borderColor: 'rgba(251, 249, 246, 0.8)', // Subtle warm border for glow effect
     }}>

@@ -39,7 +39,9 @@ import { GuideTarget } from '../guides';
 import { useGuide } from '../../hooks/useGuide';
 import { friendsAreaGuide } from '../../config/guides';
 import { SEPARATOR } from '../../constants/friendsArea';
+import { FONTS } from '../../constants/typography';
 import { UNIVERSAL_PROPOSAL_RELEASE_HOUR } from '../../constants/timings';
+import { SHADOWS } from '../../theme/shadows';
 import { createLogger } from '../../utils/secureLogger';
 import { showToast } from '../../utils/toast';
 
@@ -373,11 +375,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                 style={{
                   backgroundColor: '#FFF1F2', // Same warm rose as active match
                   borderColor: '#FFE4E6',
-                  shadowColor: '#F43F5E',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 12,
-                  elevation: 8,
+                  ...SHADOWS.accentRed,
                   padding: 16, // Standardized padding
                 }}
               >
@@ -388,11 +386,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                       className="w-16 h-16 rounded-full items-center justify-center"
                       style={{
                         backgroundColor: '#FFE4E6',
-                        shadowColor: '#F43F5E',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 4,
-                        elevation: 4,
+                        ...SHADOWS.accentRed,
                       }}
                     >
                       <StyledText className="text-3xl">💫</StyledText>
@@ -437,6 +431,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                   <StyledText style={{
                     fontSize: 28,
                     fontWeight: '800',
+                    fontFamily: FONTS.extraBold,
                     color: '#0F172A',
                     letterSpacing: -0.5,
                   }}>
@@ -445,6 +440,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                   <StyledText style={{
                     fontSize: 13,
                     fontWeight: '500',
+                    fontFamily: FONTS.medium,
                     color: '#64748B',
                     marginTop: 2,
                   }}>
@@ -508,6 +504,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                                   fontSize: 11,
                                   color: '#6B7280',
                                   fontWeight: '700',
+                                  fontFamily: FONTS.bold,
                                   letterSpacing: 0.8,
                                   textTransform: 'uppercase',
                                 }}

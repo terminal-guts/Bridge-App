@@ -15,6 +15,7 @@ import { View, Text, Animated } from 'react-native';
 import { styled } from 'nativewind';
 import { TIMER_STATES } from '../../constants/friendsArea';
 import { createLogger } from '../../utils/secureLogger';
+import { FONTS } from '../../constants/typography';
 
 const logger = createLogger('TimerBadge');
 
@@ -165,13 +166,14 @@ export const TimerBadge: React.FC<TimerBadgeProps> = ({ timeRemaining }) => {
         elevation: 2,
       }}
     >
-      <StyledText style={{ fontSize: 15, marginRight: 5 }}>
+      <StyledText style={{ fontSize: 15, fontFamily: FONTS.regular, marginRight: 5 }}>
         {timerState.icon}
       </StyledText>
       <StyledText
         style={{
           fontSize: 13,
           fontWeight: '700',
+          fontFamily: FONTS.bold,
           color: timerState.color,
           letterSpacing: 0.2,
         }}

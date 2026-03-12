@@ -1,8 +1,6 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import {
   View,
-  SafeAreaView,
-  StatusBar,
   TouchableOpacity,
   FlatList,
   StyleSheet,
@@ -17,6 +15,9 @@ import { RootStackParamList } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { FONTS } from '../../constants/typography';
+import { SHADOWS } from '../../theme/shadows';
+import { ScreenWrapper } from '../../components/ui';
 import { getCentralOffsetHours } from '../../utils/centralTime';
 import {
   fetchLeaderboard,
@@ -297,59 +298,48 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
 
   if (loading) {
     return (
-      <View style={s.screenBg}>
-        <SafeAreaView style={s.flex1}>
-          <StatusBar barStyle="dark-content" />
-          {renderHeader()}
-          <View style={s.loadingWrap}>
-            <ActivityIndicator size="large" color="#437FFF" />
-          </View>
-        </SafeAreaView>
-      </View>
+      <ScreenWrapper>
+        {renderHeader()}
+        <View style={s.loadingWrap}>
+          <ActivityIndicator size="large" color="#437FFF" />
+        </View>
+      </ScreenWrapper>
     );
   }
 
   if (error) {
     return (
-      <View style={s.screenBg}>
-        <SafeAreaView style={s.flex1}>
-          <StatusBar barStyle="dark-content" />
-          {renderHeader()}
-          <View style={s.emptyState}>
-            <Ionicons name="cloud-offline-outline" size={64} color="#D0D5DD" />
-            <Text style={s.emptyTitle}>Something went wrong</Text>
-            <Text style={s.emptyBody}>{error}</Text>
-            <TouchableOpacity style={s.retryBtn} onPress={handleRetry}>
-              <Text style={s.retryBtnText}>Try Again</Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </View>
+      <ScreenWrapper>
+        {renderHeader()}
+        <View style={s.emptyState}>
+          <Ionicons name="cloud-offline-outline" size={64} color="#D0D5DD" />
+          <Text style={s.emptyTitle}>Something went wrong</Text>
+          <Text style={s.emptyBody}>{error}</Text>
+          <TouchableOpacity style={s.retryBtn} onPress={handleRetry}>
+            <Text style={s.retryBtnText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      </ScreenWrapper>
     );
   }
 
   if (data.length === 0) {
     return (
-      <View style={s.screenBg}>
-        <SafeAreaView style={s.flex1}>
-          <StatusBar barStyle="dark-content" />
-          {renderHeader()}
-          <View style={s.emptyState}>
-            <Ionicons name="trophy-outline" size={64} color="#D0D5DD" />
-            <Text style={s.emptyTitle}>No Rankings Yet</Text>
-            <Text style={s.emptyBody}>Be the first to earn karma and climb the leaderboard!</Text>
-          </View>
-        </SafeAreaView>
-      </View>
+      <ScreenWrapper>
+        {renderHeader()}
+        <View style={s.emptyState}>
+          <Ionicons name="trophy-outline" size={64} color="#D0D5DD" />
+          <Text style={s.emptyTitle}>No Rankings Yet</Text>
+          <Text style={s.emptyBody}>Be the first to earn karma and climb the leaderboard!</Text>
+        </View>
+      </ScreenWrapper>
     );
   }
 
   const showStickyBar = currentUser && currentUserRank > 3 && !userRowVisible;
 
   return (
-    <View style={s.screenBg}>
-      <SafeAreaView style={s.flex1}>
-        <StatusBar barStyle="dark-content" />
+    <ScreenWrapper>
 
         {/* Header */}
         {renderHeader(true)}
@@ -515,18 +505,13 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
             </View>
           </View>
         )}
-      </SafeAreaView>
-    </View>
+    </ScreenWrapper>
   );
 };
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  // Layer 1 — Background
-  screenBg: { flex: 1, backgroundColor: '#FFFFFF' },
-  flex1: { flex: 1 },
-
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   // Header
@@ -538,7 +523,7 @@ const s = StyleSheet.create({
     paddingVertical: 14,
   },
   headerTitle: {
-    fontFamily: 'Outfit_700Bold',
+    fontFamily: FONTS.bold,
     fontSize: 28,
     color: '#101828',
   },
@@ -547,11 +532,7 @@ const s = StyleSheet.create({
   bannerShadow: {
     paddingHorizontal: 20,
     marginBottom: 6,
-    shadowColor: '#437FFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 4,
+    ...SHADOWS.accentBlue,
   },
   banner: {
     borderRadius: 999,
@@ -562,13 +543,13 @@ const s = StyleSheet.create({
     borderColor: 'rgba(67, 127, 255, 0.12)',
   },
   bannerText: {
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: FONTS.regular,
     fontSize: 13,
     color: '#437FFF',
     textAlign: 'center',
   },
   bannerBold: {
-    fontFamily: 'Outfit_700Bold',
+    fontFamily: FONTS.bold,
   },
 
   // Countdown
@@ -580,18 +561,14 @@ const s = StyleSheet.create({
     paddingVertical: 8,
   },
   countdownText: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     fontSize: 13,
     color: '#667085',
   },
 
   // Layer 6 — Karma pill with shadow
   karmaPillShadow: {
-    shadowColor: '#34C759',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
+    ...SHADOWS.accentGreen,
   },
   karmaPillShadowLarge: {
     shadowOpacity: 0.22,
@@ -606,7 +583,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(52, 199, 89, 0.08)',
   },
   karmaPillText: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     color: '#34C759',
   },
 
@@ -624,11 +601,7 @@ const s = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFFFFF',
     zIndex: 1,
-    shadowColor: '#437FFF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 3,
+    ...SHADOWS.accentBlue,
   },
 
   // Initial avatar fallback
@@ -637,7 +610,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   initialAvatarText: {
-    fontFamily: 'Outfit_700Bold',
+    fontFamily: FONTS.bold,
     color: '#FFFFFF',
   },
 
@@ -645,11 +618,7 @@ const s = StyleSheet.create({
   podiumOuter: {
     marginHorizontal: 16,
     borderRadius: 24,
-    shadowColor: '#3B6BDF',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.16,
-    shadowRadius: 20,
-    elevation: 8,
+    ...SHADOWS.xl,
   },
   podiumGradient: {
     borderRadius: 24,
@@ -688,27 +657,15 @@ const s = StyleSheet.create({
     borderWidth: 4,
     padding: 3,
     borderColor: '#FFD700',
-    shadowColor: '#FFD700',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 8,
+    ...SHADOWS.accentGold,
   },
   avatarRingSilver: {
     borderColor: '#C0C0C0',
-    shadowColor: '#8A8A8A',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
+    ...SHADOWS.accentSilver,
   },
   avatarRingBronze: {
     borderColor: '#CD7F32',
-    shadowColor: '#CD7F32',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
+    ...SHADOWS.accentBronze,
   },
 
   avatarLarge: { width: 88, height: 88, borderRadius: 44 },
@@ -727,19 +684,15 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
+    ...SHADOWS.sm,
   },
   rankBadgeLarge: { width: 30, height: 30, borderRadius: 15 },
-  rankBadgeText: { fontFamily: 'Outfit_700Bold', fontSize: 12, color: '#FFFFFF' },
+  rankBadgeText: { fontFamily: FONTS.bold, fontSize: 12, color: '#FFFFFF' },
   rankBadgeTextLarge: { fontSize: 14 },
 
   // Podium text
   podiumName: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     fontSize: 14,
     color: '#101828',
     maxWidth: 100,
@@ -749,7 +702,7 @@ const s = StyleSheet.create({
   podiumNameFirst: {
     color: '#437FFF',
     fontSize: 16,
-    fontFamily: 'Outfit_700Bold',
+    fontFamily: FONTS.bold,
   },
 
   // Layer 4 — How to Earn (inline in podium)
@@ -765,12 +718,12 @@ const s = StyleSheet.create({
     gap: 8,
   },
   howToEarnItem: {
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: FONTS.regular,
     fontSize: 12,
     color: '#667085',
   },
   howToEarnBold: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     color: '#437FFF',
   },
   howToEarnDot: {
@@ -794,11 +747,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 16,
     backgroundColor: '#FFFFFF',
-    shadowColor: '#1B2B5E',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+    ...SHADOWS.sm,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.03)',
   },
@@ -821,14 +770,10 @@ const s = StyleSheet.create({
   },
   rankPillHighlighted: {
     backgroundColor: '#437FFF',
-    shadowColor: '#437FFF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    ...SHADOWS.accentBlue,
   },
   rankPillText: {
-    fontFamily: 'Outfit_700Bold',
+    fontFamily: FONTS.bold,
     fontSize: 13,
     color: '#667085',
   },
@@ -840,11 +785,7 @@ const s = StyleSheet.create({
   listAvatarWrap: {
     position: 'relative',
     marginRight: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    ...SHADOWS.sm,
   },
   listAvatar: {
     width: 48,
@@ -855,16 +796,16 @@ const s = StyleSheet.create({
   },
   listNameCol: { flex: 1 },
   listName: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     fontSize: 16,
     color: '#101828',
   },
   listNameHighlighted: {
     color: '#437FFF',
-    fontFamily: 'Outfit_700Bold',
+    fontFamily: FONTS.bold,
   },
   gapText: {
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: FONTS.regular,
     fontSize: 12,
     color: '#667085',
     marginTop: 2,
@@ -887,11 +828,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.06)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    ...SHADOWS.md,
   },
   stickyRankPill: {
     backgroundColor: '#437FFF',
@@ -899,14 +836,10 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     marginRight: 10,
-    shadowColor: '#437FFF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    ...SHADOWS.accentBlue,
   },
   stickyRankText: {
-    fontFamily: 'Outfit_700Bold',
+    fontFamily: FONTS.bold,
     fontSize: 13,
     color: '#FFFFFF',
   },
@@ -918,12 +851,12 @@ const s = StyleSheet.create({
   },
   stickyNameCol: { flex: 1 },
   stickyName: {
-    fontFamily: 'Outfit_700Bold',
+    fontFamily: FONTS.bold,
     fontSize: 15,
     color: '#437FFF',
   },
   stickyGapText: {
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: FONTS.regular,
     fontSize: 11,
     color: '#667085',
     marginTop: 1,
@@ -937,13 +870,13 @@ const s = StyleSheet.create({
     paddingHorizontal: 40,
   },
   emptyTitle: {
-    fontFamily: 'Outfit_700Bold',
+    fontFamily: FONTS.bold,
     fontSize: 20,
     color: '#101828',
     marginTop: 16,
   },
   emptyBody: {
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: FONTS.regular,
     fontSize: 15,
     color: '#667085',
     textAlign: 'center',
@@ -955,14 +888,10 @@ const s = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    shadowColor: '#437FFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    ...SHADOWS.accentBlue,
   },
   retryBtnText: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     fontSize: 15,
     color: '#FFFFFF',
   },
@@ -981,7 +910,7 @@ const s = StyleSheet.create({
   rankChangeUp: {},
   rankChangeDown: {},
   rankChangeText: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     fontSize: 10,
     lineHeight: 12,
   },

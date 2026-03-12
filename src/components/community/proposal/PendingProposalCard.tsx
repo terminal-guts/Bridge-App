@@ -16,6 +16,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, Animated } from 'react-native';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
+import { SHADOWS } from '../../../theme/shadows';
 import { MatchProposal } from '../../../types/community';
 import { lightHaptic } from '../../../utils/haptics';
 import {
@@ -23,6 +24,7 @@ import {
   formatRelativeTime,
   getUrgencyColor,
 } from '../../../utils/communityHelpers';
+import { FONTS } from '../../../constants/typography';
 
 const StyledView = styled(View) as typeof View;
 const StyledText = styled(Text) as typeof Text;
@@ -136,11 +138,7 @@ export function PendingProposalCard({ proposal, onViewProfile }: PendingProposal
         borderWidth: 2,
         borderColor,
         padding: 16, // Standardized padding
-        shadowColor: '#FF6B6B',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 8,
+        ...SHADOWS.accentRed,
       }}
     >
       {/* Top Row: Photo + Info + Badge */}
@@ -161,10 +159,10 @@ export function PendingProposalCard({ proposal, onViewProfile }: PendingProposal
         <StyledView className="flex-1">
           {/* Prominent Community Score */}
           <StyledView className="flex-row items-center mb-2">
-            <StyledText className="text-3xl font-bold" style={{ color: '#FF6B6B' }}>
+            <StyledText className="text-3xl font-bold" style={{ color: '#FF6B6B', fontFamily: FONTS.bold }}>
               {Math.round(proposal.communityScore)}%
             </StyledText>
-            <StyledText className="text-sm font-semibold ml-2" style={{ color: '#8B4545' }}>
+            <StyledText className="text-sm font-semibold ml-2" style={{ color: '#8B4545', fontFamily: FONTS.semiBold }}>
               match
             </StyledText>
           </StyledView>
@@ -172,7 +170,7 @@ export function PendingProposalCard({ proposal, onViewProfile }: PendingProposal
           {/* Endorser Text */}
           <StyledText
             className="text-xs font-medium"
-            style={{ color: '#8B4545' }}
+            style={{ color: '#8B4545', fontFamily: FONTS.medium }}
             numberOfLines={2}
           >
             {formatEndorsers()}
@@ -185,7 +183,7 @@ export function PendingProposalCard({ proposal, onViewProfile }: PendingProposal
             className="px-2 py-1 rounded-full"
             style={{ backgroundColor: '#FF6B6B' }}
           >
-            <StyledText className="text-[10px] text-white font-bold">
+            <StyledText className="text-[10px] text-white font-bold" style={{ fontFamily: FONTS.bold }}>
               ⏰
             </StyledText>
           </StyledView>
@@ -201,7 +199,7 @@ export function PendingProposalCard({ proposal, onViewProfile }: PendingProposal
         />
         <StyledText
           className="text-xs ml-1 font-medium"
-          style={{ color: getUrgencyColor(expirationData.urgencyLevel) }}
+          style={{ color: getUrgencyColor(expirationData.urgencyLevel), fontFamily: FONTS.medium }}
         >
           Expires in {expirationData.text}
         </StyledText>
@@ -213,15 +211,11 @@ export function PendingProposalCard({ proposal, onViewProfile }: PendingProposal
         className="rounded-xl py-2.5 items-center justify-center"
         style={{
           backgroundColor: '#FF6B6B',
-          shadowColor: '#FF6B6B',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.25,
-          shadowRadius: 4,
-          elevation: 3,
+          ...SHADOWS.accentRed,
         }}
         activeOpacity={0.85}
       >
-        <StyledText className="text-white font-bold text-sm">
+        <StyledText className="text-white font-bold text-sm" style={{ fontFamily: FONTS.bold }}>
           View Profile
         </StyledText>
       </StyledTouchable>

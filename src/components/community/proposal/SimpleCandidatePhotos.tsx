@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { UserProfile, Photo } from '../../../types';
 import { Body } from '../../ui';
 import { createLogger } from '../../../utils/secureLogger';
+import { SHADOWS } from '../../../theme/shadows';
 
 const logger = createLogger('SimpleCandidatePhotos');
 
@@ -92,10 +93,7 @@ function CandidatePhoto({ candidate, onPress, disabled = false }: CandidatePhoto
         borderRadius: 28, // Large, inviting rounded corners
         overflow: 'visible', // Changed to show badge
         backgroundColor: '#FBF9F6', // Warm cream background
-        shadowColor: 'rgba(139, 92, 47, 0.18)', // Warm brown shadow
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 1,
-        shadowRadius: 20,
+        ...SHADOWS.xl,
         elevation: 6,
         borderWidth: 2,
         borderColor: '#F5EFE7', // Subtle warm border (cream/light gold)

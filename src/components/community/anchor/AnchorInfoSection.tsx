@@ -12,9 +12,11 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
+import { SHADOWS } from '../../../theme/shadows';
 import { UserProfile } from '../../../types';
 import { ProfileView } from '../../profile/ProfileView';
 import { valueEmoji, interestEmoji } from '../../../utils/emojiMaps';
+import { FONTS } from '../../../constants/typography';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -80,34 +82,30 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
         marginLeft: 4,
         paddingHorizontal: 16,
         paddingVertical: 18,
-        shadowColor: 'rgba(139, 92, 47, 0.15)', // Warm brown shadow
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 1,
-        shadowRadius: 8,
-        elevation: 2,
+        ...SHADOWS.md,
       }}
     >
       {/* TOP HALF: Profile Information */}
       <StyledView style={{ flex: 1, marginBottom: 12 }}>
         <StyledScrollView showsVerticalScrollIndicator={false}>
           {/* Section Header */}
-          <StyledText style={{ fontSize: 13, fontWeight: '700', color: '#4A4540', marginBottom: 10 }}>
+          <StyledText style={{ fontSize: 13, fontWeight: '700', fontFamily: FONTS.bold, color: '#4A4540', marginBottom: 10 }}>
             Profile
           </StyledText>
 
           {/* Age */}
           <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-            <StyledText style={{ fontSize: 20, fontWeight: '700', color: '#4A4540', marginRight: 6 }}>
+            <StyledText style={{ fontSize: 20, fontWeight: '700', fontFamily: FONTS.bold, color: '#4A4540', marginRight: 6 }}>
               {anchor.age}
             </StyledText>
-            <StyledText style={{ fontSize: 13, color: '#78716C', fontWeight: '500' }}>years old</StyledText>
+            <StyledText style={{ fontSize: 13, color: '#78716C', fontWeight: '500', fontFamily: FONTS.medium }}>years old</StyledText>
           </StyledView>
 
           {/* Height */}
           {anchor.height && (
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
               <Ionicons name="resize-outline" size={14} color="#10B981" style={{ marginRight: 6 }} />
-              <StyledText style={{ fontSize: 12, color: '#6B5B4F', fontWeight: '500' }}>
+              <StyledText style={{ fontSize: 12, color: '#6B5B4F', fontWeight: '500', fontFamily: FONTS.medium }}>
                 {formatHeight(anchor.height)}
               </StyledText>
             </StyledView>
@@ -117,7 +115,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
           {anchor.ethnicity && (
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
               <Ionicons name="globe-outline" size={14} color="#8B5CF6" style={{ marginRight: 6 }} />
-              <StyledText style={{ fontSize: 12, color: '#6B5B4F', fontWeight: '500' }}>
+              <StyledText style={{ fontSize: 12, color: '#6B5B4F', fontWeight: '500', fontFamily: FONTS.medium }}>
                 {anchor.ethnicity}
               </StyledText>
             </StyledView>
@@ -127,7 +125,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
           {anchor.currentJob && (
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
               <Ionicons name="briefcase" size={14} color="#3B82F6" style={{ marginRight: 6 }} />
-              <StyledText style={{ fontSize: 12, color: '#6B5B4F', fontWeight: '500' }}>
+              <StyledText style={{ fontSize: 12, color: '#6B5B4F', fontWeight: '500', fontFamily: FONTS.medium }}>
                 {anchor.currentJob}
               </StyledText>
             </StyledView>
@@ -136,7 +134,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
           {/* Values */}
           {anchor.values && anchor.values.length > 0 && (
             <StyledView style={{ marginBottom: 6, marginTop: 4 }}>
-              <StyledText style={{ fontSize: 11, color: '#78716C', fontWeight: '600', marginBottom: 3 }}>
+              <StyledText style={{ fontSize: 11, color: '#78716C', fontWeight: '600', fontFamily: FONTS.semiBold, marginBottom: 3 }}>
                 Values
               </StyledText>
               <StyledView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
@@ -150,7 +148,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
                       borderRadius: 10,
                     }}
                   >
-                    <StyledText style={{ fontSize: 10, color: '#7C3AED', fontWeight: '600' }}>
+                    <StyledText style={{ fontSize: 10, color: '#7C3AED', fontWeight: '600', fontFamily: FONTS.semiBold }}>
                       {valueEmoji(value)} {value}
                     </StyledText>
                   </StyledView>
@@ -162,7 +160,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
           {/* Interests */}
           {anchor.interests && anchor.interests.length > 0 && (
             <StyledView style={{ marginBottom: 6 }}>
-              <StyledText style={{ fontSize: 11, color: '#78716C', fontWeight: '600', marginBottom: 3 }}>
+              <StyledText style={{ fontSize: 11, color: '#78716C', fontWeight: '600', fontFamily: FONTS.semiBold, marginBottom: 3 }}>
                 Interests
               </StyledText>
               <StyledView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
@@ -176,7 +174,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
                       borderRadius: 10,
                     }}
                   >
-                    <StyledText style={{ fontSize: 10, color: '#D97706', fontWeight: '600' }}>
+                    <StyledText style={{ fontSize: 10, color: '#D97706', fontWeight: '600', fontFamily: FONTS.semiBold }}>
                       {interestEmoji(interest)} {interest}
                     </StyledText>
                   </StyledView>
@@ -197,14 +195,14 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
 
       {/* BOTTOM HALF: Match Preferences */}
       <StyledView style={{ flex: 1 }}>
-        <StyledText style={{ fontSize: 13, fontWeight: '700', color: '#4A4540', marginBottom: 6 }}>
+        <StyledText style={{ fontSize: 13, fontWeight: '700', fontFamily: FONTS.bold, color: '#4A4540', marginBottom: 6 }}>
           Match Preferences
         </StyledText>
 
         {/* Age Preference */}
         <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
           <Ionicons name="calendar-outline" size={12} color="#EC4899" style={{ marginRight: 6 }} />
-          <StyledText style={{ fontSize: 11, color: '#6B5B4F', fontWeight: '500' }}>
+          <StyledText style={{ fontSize: 11, color: '#6B5B4F', fontWeight: '500', fontFamily: FONTS.medium }}>
             Ages {anchor.preferences?.ageMin || 18}-{anchor.preferences?.ageMax || 99}
           </StyledText>
         </StyledView>
@@ -212,7 +210,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
         {/* Height Preference */}
         <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
           <Ionicons name="resize-outline" size={12} color="#10B981" style={{ marginRight: 6 }} />
-          <StyledText style={{ fontSize: 11, color: '#6B5B4F', fontWeight: '500' }}>
+          <StyledText style={{ fontSize: 11, color: '#6B5B4F', fontWeight: '500', fontFamily: FONTS.medium }}>
             {formatHeightRange()}
           </StyledText>
         </StyledView>
@@ -220,7 +218,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
         {/* Preferred Ethnicities */}
         <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
           <Ionicons name="globe-outline" size={12} color="#8B5CF6" style={{ marginRight: 6 }} />
-          <StyledText style={{ fontSize: 11, color: '#6B5B4F', fontWeight: '500' }}>
+          <StyledText style={{ fontSize: 11, color: '#6B5B4F', fontWeight: '500', fontFamily: FONTS.medium }}>
             {anchor.preferredEthnicities && anchor.preferredEthnicities.length > 0
               ? anchor.preferredEthnicities.join(', ')
               : 'Open to all'}
@@ -239,7 +237,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
             marginTop: 2,
           }}
         >
-          <StyledText style={{ color: '#FFF', fontSize: 11, fontWeight: '600' }}>
+          <StyledText style={{ color: '#FFF', fontSize: 11, fontWeight: '600', fontFamily: FONTS.semiBold }}>
             View Full Profile
           </StyledText>
         </StyledTouchableOpacity>

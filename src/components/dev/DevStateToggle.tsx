@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { communityService, MockMatchState, MockFriendsState } from '../../services/communityService';
+import { FONTS } from '../../constants/typography';
+import { OVERLAYS } from '../../theme/shadows';
 
 const MATCH_OPTIONS: { label: string; value: MockMatchState }[] = [
   { label: 'Empty',          value: 'empty' },
@@ -160,7 +162,7 @@ export function DevStateToggle() {
                 }}
                 activeOpacity={0.75}
               >
-                <Text style={[styles.chipText, { color: '#437FFF', fontWeight: '700' }]}>Enter as Alex</Text>
+                <Text style={[styles.chipText, { color: '#437FFF', fontWeight: '700', fontFamily: FONTS.bold }]}>Enter as Alex</Text>
               </TouchableOpacity>
             </View>
 
@@ -194,11 +196,12 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 12,
     fontWeight: '700',
+    fontFamily: FONTS.bold,
     letterSpacing: 0.8,
   },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: OVERLAYS.medium,
     justifyContent: 'flex-end',
   },
   sheet: {
@@ -228,16 +231,19 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 17,
     fontWeight: '700',
+    fontFamily: FONTS.bold,
     color: '#010101',
   },
   closeBtn: {
     fontSize: 16,
     color: '#9CA3AF',
     fontWeight: '600',
+    fontFamily: FONTS.semiBold,
   },
   sectionLabel: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: FONTS.bold,
     color: '#9CA3AF',
     letterSpacing: 1.2,
     marginBottom: 10,
@@ -262,11 +268,13 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: FONTS.medium,
     color: '#374151',
   },
   chipTextActive: {
     color: BLUE,
     fontWeight: '700',
+    fontFamily: FONTS.bold,
   },
 });
 

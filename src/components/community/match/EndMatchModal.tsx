@@ -18,6 +18,8 @@ import { View, Text, Modal, TouchableOpacity, TextInput, ScrollView, KeyboardAvo
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 import { lightHaptic, mediumHaptic } from '../../../utils/haptics';
+import { SHADOWS, OVERLAYS } from '../../../theme/shadows';
+import { FONTS } from '../../../constants/typography';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -111,10 +113,7 @@ export function EndMatchModal({ visible, onClose, onSubmit }: EndMatchModalProps
           <StyledView
             className="bg-white rounded-3xl w-full max-w-md"
             style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.3,
-              shadowRadius: 16,
+              ...SHADOWS.xxl,
               elevation: 10,
             }}
           >
@@ -180,6 +179,7 @@ export function EndMatchModal({ visible, onClose, onSubmit }: EndMatchModalProps
                         style={{
                           color: selectedReason === reason.id ? '#8B4545' : '#4B5563',
                           fontWeight: selectedReason === reason.id ? '600' : '400',
+                          fontFamily: selectedReason === reason.id ? FONTS.semiBold : FONTS.regular,
                         }}
                       >
                         {reason.label}
@@ -246,10 +246,7 @@ export function EndMatchModal({ visible, onClose, onSubmit }: EndMatchModalProps
                   className="flex-1 py-4 rounded-2xl items-center justify-center ml-2"
                   style={{
                     backgroundColor: '#DC2626',
-                    shadowColor: '#DC2626',
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 8,
+                    ...SHADOWS.accentRed,
                     elevation: 6,
                   }}
                   activeOpacity={0.85}

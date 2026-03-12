@@ -12,6 +12,7 @@ import { View, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { MatchStatusIcon } from '../match/MatchStatusIcon';
 import { MatchResult } from '../../../utils/proposalMatching';
+import { FONTS } from '../../../constants/typography';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -29,6 +30,7 @@ export function ComparisonRow({ label, result, isLast = false }: ComparisonRowPr
       <StyledText style={{
         fontSize: 11,
         fontWeight: '600',
+        fontFamily: FONTS.semiBold,
         color: '#94A3B8',
         marginBottom: 6,
         textTransform: 'uppercase',
@@ -56,6 +58,7 @@ export function ComparisonRow({ label, result, isLast = false }: ComparisonRowPr
             fontSize: 14,
             color: '#1E293B',
             fontWeight: '500',
+            fontFamily: FONTS.medium,
             textAlign: 'center',
           }}>
             {result.leftValue}
@@ -78,6 +81,7 @@ export function ComparisonRow({ label, result, isLast = false }: ComparisonRowPr
             fontSize: 14,
             color: '#1E293B',
             fontWeight: '500',
+            fontFamily: FONTS.medium,
             textAlign: 'center',
           }}>
             {result.rightValue}
@@ -89,6 +93,7 @@ export function ComparisonRow({ label, result, isLast = false }: ComparisonRowPr
       {result.details && (
         <StyledText style={{
           fontSize: 11,
+          fontFamily: FONTS.regular,
           color: '#64748B',
           marginTop: 4,
           textAlign: 'center',

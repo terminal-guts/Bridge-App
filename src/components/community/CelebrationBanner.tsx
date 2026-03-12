@@ -14,6 +14,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
 import { CELEBRATION_BANNER } from '../../constants/friendsArea';
 import { successHaptic } from '../../utils/haptics';
+import { SHADOWS } from '../../theme/shadows';
+import { FONTS } from '../../constants/typography';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -53,17 +55,14 @@ export const CelebrationBanner: React.FC = () => {
           borderRadius: 16,
           borderWidth: 2,
           borderColor: '#FFE4E6',
-          shadowColor: '#F43F5E',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.15,
-          shadowRadius: 12,
-          elevation: 6,
+          ...SHADOWS.accentRed,
         }}
       >
         <StyledText
           style={{
             fontSize: 15,
             fontWeight: '700',
+            fontFamily: FONTS.bold,
             color: '#881337',
             textAlign: 'center',
             letterSpacing: 0.2,

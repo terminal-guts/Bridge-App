@@ -24,6 +24,8 @@ import {
   getMatchMilestone,
   getMatchMilestoneIcon,
 } from '../../../utils/communityHelpers';
+import { FONTS } from '../../../constants/typography';
+import { SHADOWS } from '../../../theme/shadows';
 
 const StyledView = styled(View) as typeof View;
 const StyledText = styled(Text) as typeof Text;
@@ -64,11 +66,7 @@ export function ActiveMatchCard({ match, onMessage, onEndMatch }: ActiveMatchCar
       style={{
         backgroundColor: '#FFF1F2', // Warm rose background
         borderColor: '#FFE4E6',
-        shadowColor: '#F43F5E',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 8,
+        ...SHADOWS.accentRed,
         padding: 16, // Standardized padding
       }}
     >
@@ -87,13 +85,7 @@ export function ActiveMatchCard({ match, onMessage, onEndMatch }: ActiveMatchCar
           {/* Heart Badge */}
           <StyledView
             className="absolute -bottom-1 -right-1 bg-rose-500 rounded-full w-6 h-6 items-center justify-center"
-            style={{
-              shadowColor: '#F43F5E',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.3,
-              shadowRadius: 4,
-              elevation: 4,
-            }}
+            style={SHADOWS.accentRed}
           >
             <Ionicons name="heart" size={12} color="#FFFFFF" />
           </StyledView>
@@ -102,19 +94,19 @@ export function ActiveMatchCard({ match, onMessage, onEndMatch }: ActiveMatchCar
         {/* Right Side: Header + Partner Info */}
         <StyledView className="flex-1">
           {/* "You have a match!" - Top Right */}
-          <StyledText className="text-sm font-bold text-rose-900 mb-2">
+          <StyledText className="text-sm font-bold text-rose-900 mb-2" style={{ fontFamily: FONTS.bold }}>
             You have a match!
           </StyledText>
 
           {/* Partner Name & Age */}
-          <StyledText className="text-lg font-bold text-rose-900 mb-1">
+          <StyledText className="text-lg font-bold text-rose-900 mb-1" style={{ fontFamily: FONTS.bold }}>
             {match.partnerProfile.firstName}, {match.partnerProfile.age}
           </StyledText>
 
           {/* Days Together */}
           <StyledView className="flex-row items-center">
             <StyledText className="text-sm mr-1">{milestoneIcon}</StyledText>
-            <StyledText className="text-xs font-medium text-rose-700">
+            <StyledText className="text-xs font-medium text-rose-700" style={{ fontFamily: FONTS.medium }}>
               {daysActive} {daysActive === 1 ? 'day' : 'days'} together
             </StyledText>
           </StyledView>
@@ -124,7 +116,7 @@ export function ActiveMatchCard({ match, onMessage, onEndMatch }: ActiveMatchCar
       {/* Milestone Celebration Banner */}
       {milestone && (
         <StyledView className="bg-rose-100 border border-rose-200 rounded-xl p-2 mb-3">
-          <StyledText className="text-center text-rose-800 font-bold text-sm">
+          <StyledText className="text-center text-rose-800 font-bold text-sm" style={{ fontFamily: FONTS.bold }}>
             {milestoneIcon} {milestone}
           </StyledText>
         </StyledView>
@@ -138,17 +130,13 @@ export function ActiveMatchCard({ match, onMessage, onEndMatch }: ActiveMatchCar
           className="flex-1 rounded-xl py-3 items-center justify-center"
           style={{
             backgroundColor: '#F43F5E',
-            shadowColor: '#F43F5E',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.3,
-            shadowRadius: 6,
-            elevation: 4,
+            ...SHADOWS.accentRed,
           }}
           activeOpacity={0.8}
         >
           <StyledView className="flex-row items-center">
             <Ionicons name="chatbubble" size={16} color="#FFFFFF" />
-            <StyledText className="text-white font-bold ml-2 text-sm">
+            <StyledText className="text-white font-bold ml-2 text-sm" style={{ fontFamily: FONTS.bold }}>
               Message
             </StyledText>
           </StyledView>

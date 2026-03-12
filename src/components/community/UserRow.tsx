@@ -7,6 +7,8 @@ import { FriendWithGridStatus } from '../../types/community';
 import { FireIcon, StarIcon } from '../icons/Icons';
 import { KarmaInfoModal } from './karma/KarmaInfoModal';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
+import { FONTS } from '../../constants/typography';
+import { SHADOWS, glowShadow } from '../../theme/shadows';
 
 interface UserRowProps {
     item: FriendWithGridStatus;
@@ -74,13 +76,9 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
 
     const rankColor = rank === 1 ? '#FFD700' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : '#2B65F9';
 
-    const avatarShadow = useMemo(() => streak >= 7 ? {
-        shadowColor: streakTier.ringColor,
-        shadowOffset: { width: 0, height: 0 } as const,
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-        elevation: 3,
-    } : {}, [streak, streakTier.ringColor]);
+    const avatarShadow = useMemo(() => streak >= 7
+        ? glowShadow(streakTier.ringColor, 'medium')
+        : {}, [streak, streakTier.ringColor]);
 
     const avatarContent = (
         <TouchableOpacity onPress={onViewProfile} activeOpacity={onViewProfile ? 0.8 : 1} disabled={!onViewProfile} accessibilityLabel={`View ${name}'s profile`} accessibilityRole="button" style={avatarShadow}>
@@ -212,17 +210,13 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     rankText: {
-        fontFamily: 'Outfit_700Bold',
+        fontFamily: FONTS.bold,
         fontWeight: '700',
         fontSize: 12,
     },
     // #3: Glowing vote button styles
     voteBtnGlow: {
-        shadowColor: '#2B65F9',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.45,
-        shadowRadius: 8,
-        elevation: 6,
+        ...SHADOWS.accentBlue,
     },
     matchBtnGlow: {
         backgroundColor: '#2B65F9',
@@ -251,7 +245,7 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     name: {
-        fontFamily: 'Outfit_700Bold',
+        fontFamily: FONTS.bold,
         fontWeight: '700',
         fontSize: 18,
         lineHeight: 23,
@@ -263,7 +257,7 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     streakText: {
-        fontFamily: 'Outfit_400Regular',
+        fontFamily: FONTS.regular,
         fontSize: 14,
         lineHeight: 18,
         color: '#737373',
@@ -271,22 +265,22 @@ const styles = StyleSheet.create({
     // #1: Streak text color upgrades at tiers
     streakTextWarm: {
         color: '#D97706',
-        fontFamily: 'Outfit_500Medium',
+        fontFamily: FONTS.medium,
     },
     streakTextHot: {
         color: '#DC2626',
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: FONTS.semiBold,
     },
     // #2: Contextual status line
     statusLine: {
-        fontFamily: 'Outfit_400Regular',
+        fontFamily: FONTS.regular,
         fontSize: 12,
         color: '#667085',
         marginTop: 2,
     },
     statusLineActive: {
         color: '#3ECC62',
-        fontFamily: 'Outfit_500Medium',
+        fontFamily: FONTS.medium,
     },
     unreadDot: {
         width: 8,
@@ -304,7 +298,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#EEF3FF',
     },
     matchBtnText: {
-        fontFamily: 'Outfit_700Bold',
+        fontFamily: FONTS.bold,
         fontWeight: '700',
         fontSize: 15,
         color: '#2B65F9',
@@ -326,14 +320,10 @@ const styles = StyleSheet.create({
         borderColor: '#3ECC62',
         backgroundColor: '#EDFCF2',
         gap: 6,
-        shadowColor: '#3ECC62',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 2,
+        ...SHADOWS.accentGreen,
     },
     pointsBtnText: {
-        fontFamily: 'Outfit_700Bold',
+        fontFamily: FONTS.bold,
         fontWeight: '700',
         fontSize: 15,
         color: '#3ECC62',

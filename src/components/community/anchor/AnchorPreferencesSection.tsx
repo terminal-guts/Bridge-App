@@ -11,6 +11,7 @@ import { View, Text, Image, ScrollView } from 'react-native';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 import { UserProfile, Photo } from '../../../types';
+import { FONTS } from '../../../constants/typography';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -99,7 +100,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
       >
         {/* Demographics */}
         <StyledView style={{ marginBottom: 20, width: '100%' }}>
-          <StyledText className="text-sm font-semibold text-neutral-700 mb-3 uppercase tracking-wide">
+          <StyledText className="text-sm font-semibold text-neutral-700 mb-3 uppercase tracking-wide" style={{ fontFamily: FONTS.semiBold }}>
             Demographics
           </StyledText>
 
@@ -153,7 +154,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
           anchor.partnerLifestylePreferences?.tobacco ||
           anchor.partnerLifestylePreferences?.otherDrugs) && (
           <StyledView style={{ marginBottom: 20, width: '100%' }}>
-            <StyledText className="text-sm font-semibold text-neutral-700 mb-3 uppercase tracking-wide">
+            <StyledText className="text-sm font-semibold text-neutral-700 mb-3 uppercase tracking-wide" style={{ fontFamily: FONTS.semiBold }}>
               Lifestyle Preferences
             </StyledText>
 

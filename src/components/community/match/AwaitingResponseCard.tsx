@@ -23,6 +23,8 @@ import {
   formatRelativeTime,
 } from '../../../utils/communityHelpers';
 import { COLORS } from '../../../theme/colors';
+import { FONTS } from '../../../constants/typography';
+import { glowShadow } from '../../../theme/shadows';
 
 const StyledView = styled(View) as typeof View;
 const StyledText = styled(Text) as typeof Text;
@@ -60,11 +62,7 @@ export function AwaitingResponseCard({ proposal }: AwaitingResponseCardProps) {
         backgroundColor: COLORS.backgroundSoftYellow,
         borderWidth: 3,
         borderColor: COLORS.warning.bg,
-        shadowColor: COLORS.warning.icon,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 5,
+        ...glowShadow(COLORS.warning.icon, 'medium'),
       }}
     >
       {/* Header */}
@@ -72,7 +70,7 @@ export function AwaitingResponseCard({ proposal }: AwaitingResponseCardProps) {
         <Ionicons name="time-outline" size={24} color={COLORS.warning.icon} style={{ marginRight: 8 }} />
         <StyledText
           className="text-xl font-semibold"
-          style={{ color: COLORS.warning.text }}
+          style={{ color: COLORS.warning.text, fontFamily: FONTS.semiBold }}
         >
           Awaiting Their Response
         </StyledText>
@@ -92,7 +90,7 @@ export function AwaitingResponseCard({ proposal }: AwaitingResponseCardProps) {
         />
 
         {/* Partner Info */}
-        <StyledText className="text-2xl font-bold mb-1" style={{ color: COLORS.warning.text }}>
+        <StyledText className="text-2xl font-bold mb-1" style={{ color: COLORS.warning.text, fontFamily: FONTS.bold }}>
           {proposal.partnerProfile.firstName.charAt(0)}, {proposal.partnerProfile.age}
         </StyledText>
 
@@ -105,7 +103,7 @@ export function AwaitingResponseCard({ proposal }: AwaitingResponseCardProps) {
       >
         <StyledView className="flex-row items-center mb-2">
           <Ionicons name="checkmark-circle" size={24} color={COLORS.emerald} style={{ marginRight: 8 }} />
-          <StyledText className="text-base font-semibold" style={{ color: COLORS.warning.text }}>
+          <StyledText className="text-base font-semibold" style={{ color: COLORS.warning.text, fontFamily: FONTS.semiBold }}>
             You accepted {acceptedTimeAgo}
           </StyledText>
         </StyledView>
@@ -123,7 +121,7 @@ export function AwaitingResponseCard({ proposal }: AwaitingResponseCardProps) {
         <Ionicons name="hourglass-outline" size={18} color={COLORS.warning.icon} />
         <StyledText
           className="text-sm ml-2 font-medium"
-          style={{ color: COLORS.darkAmber }}
+          style={{ color: COLORS.darkAmber, fontFamily: FONTS.medium }}
         >
           ⏰ Expires in {expirationData.text}
         </StyledText>

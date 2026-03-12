@@ -10,6 +10,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { KarmaInfoModal } from './KarmaInfoModal';
+import { FONTS } from '../../../constants/typography';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -41,7 +42,7 @@ export function KarmaBadge({ points = 0 }: KarmaBadgeProps) {
       >
         <StyledText
           className="text-xs font-semibold"
-          style={{ color: '#34C759' }}
+          style={{ color: '#34C759', fontFamily: FONTS.semiBold }}
         >
           {points} pts
         </StyledText>

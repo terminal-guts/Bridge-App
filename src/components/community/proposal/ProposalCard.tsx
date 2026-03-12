@@ -15,6 +15,7 @@ import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { Proposal, UserProfile, Endorsement } from '../../../types/community';
 import { KarmaBadge } from '../karma/KarmaBadge';
+import { FONTS } from '../../../constants/typography';
 
 const StyledView = styled(View) as typeof View;
 const StyledText = styled(Text) as typeof Text;
@@ -116,7 +117,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
         />
 
         {/* Name & Age */}
-        <StyledText className="text-sm font-semibold text-neutral-900 mb-0.5">
+        <StyledText className="text-sm font-semibold text-neutral-900 mb-0.5" style={{ fontFamily: FONTS.semiBold }}>
           {user.firstName}, {user.age}
         </StyledText>
 
@@ -171,7 +172,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
               {isFriend && (
                 <>
                   <KarmaBadge
-                    points={endorsement.endorserProfile.karma?.karmaPoints || 0}
+                    points={endorsement.endorserProfile.karma?.karma_points || 0}
                   />
                   <StyledText className="text-xs text-neutral-700">)</StyledText>
                 </>
@@ -206,7 +207,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
       {highlyRecommended && (
         <StyledView className="flex-row items-center mb-3 px-2 py-1.5 bg-amber-50 rounded-lg self-start">
           <Ionicons name="star" size={16} color="#F59E0B" />
-          <StyledText className="text-xs font-semibold text-amber-700 ml-1">
+          <StyledText className="text-xs font-semibold text-amber-700 ml-1" style={{ fontFamily: FONTS.semiBold }}>
             Highly Recommended
           </StyledText>
         </StyledView>
@@ -226,7 +227,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
 
       {/* Endorsement Section */}
       <StyledView className="bg-neutral-50 rounded-lg p-3 mb-4">
-        <StyledText className="text-xs font-semibold text-neutral-700 mb-2">
+        <StyledText className="text-xs font-semibold text-neutral-700 mb-2" style={{ fontFamily: FONTS.semiBold }}>
           Endorsed by:
         </StyledText>
         {renderEndorsers()}
@@ -250,6 +251,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
             className="font-semibold"
             style={{
               color: hasVoted ? (yourVote === false ? '#FFFFFF' : '#9CA3AF') : '#FFFFFF',
+              fontFamily: FONTS.semiBold,
             }}
           >
             {hasVoted && yourVote === false ? '✓ No' : 'Vote No'}
@@ -271,6 +273,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
             className="font-semibold"
             style={{
               color: hasVoted ? (yourVote === true ? '#FFFFFF' : '#9CA3AF') : '#FFFFFF',
+              fontFamily: FONTS.semiBold,
             }}
           >
             {hasVoted && yourVote === true ? '✓ Yes' : 'Vote Yes'}

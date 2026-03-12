@@ -11,6 +11,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { SectionCompatibility } from '../../utils/proposalMatching';
+import { FONTS } from '../../constants/typography';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -58,6 +59,7 @@ export function SectionHeader({ title, compatibility }: SectionHeaderProps) {
       <StyledText style={{
         fontSize: 14,
         fontWeight: '700',
+        fontFamily: FONTS.bold,
         color: '#475569',
         flex: 1,
       }}>
@@ -69,6 +71,7 @@ export function SectionHeader({ title, compatibility }: SectionHeaderProps) {
         <StyledText style={{
           fontSize: 13,
           fontWeight: '600',
+          fontFamily: FONTS.semiBold,
           color: '#94A3B8',
         }}>
           ({compatibility.compatible}/{compatibility.total})

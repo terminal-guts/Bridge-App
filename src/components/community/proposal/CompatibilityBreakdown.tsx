@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { styled } from 'nativewind';
+import { FONTS } from '../../../constants/typography';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -46,11 +47,11 @@ export function CompatibilityBreakdown({ categoryScores, totalScore }: Compatibi
   return (
     <StyledView className="bg-white rounded-2xl p-4 mx-4 mb-4">
       <StyledView className="flex-row items-center justify-between mb-4">
-        <StyledText className="text-lg font-semibold text-neutral-900">
+        <StyledText className="text-lg font-semibold text-neutral-900" style={{ fontFamily: FONTS.semiBold }}>
           Compatibility
         </StyledText>
         <StyledView className="bg-green-50 rounded-full px-3 py-1">
-          <StyledText className="text-green-700 font-bold text-base">
+          <StyledText className="text-green-700 font-bold text-base" style={{ fontFamily: FONTS.bold }}>
             {Math.round(totalScore)}%
           </StyledText>
         </StyledView>

@@ -7,9 +7,8 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { SafeAreaView, StatusBar, ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { styled } from 'nativewind';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 
 import { RootStackParamList } from '../../types';
@@ -21,9 +20,10 @@ import { transformBackendProposal } from '../../services/proposalApiService';
 import { mapProfileRow, resolveProfilePhotos } from '../../services/communityBackendService';
 import { createLogger } from '../../utils/secureLogger';
 import { getQuestionById } from '../../utils/deepQuestions';
+import { FONTS } from '../../constants/typography';
+import { ScreenWrapper } from '../../components/ui';
 
 const logger = createLogger('FriendProposalScreen');
-const StyledSafeAreaView = styled(SafeAreaView);
 
 interface FriendProposalScreenProps {
   navigation: NavigationProp<RootStackParamList, 'FriendProposal'>;
@@ -185,47 +185,50 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
     // Vote is already recorded via ProposalReviewView → submitProposalVote
     communityService.markFriendAsHelped(friendId).catch(() => {});
     // Invalidate friends cache so the friends area refreshes on return
-    communityService.invalidateFriendsCache();
+    if ('invalidateFriendsCache' in communityService) {
+      (communityService as any).invalidateFriendsCache();
+    }
     navigation.goBack();
   }, [friendId, navigation]);
 
   if (loading) {
     return (
-      <StyledSafeAreaView className="flex-1 bg-white items-center justify-center">
-        <StatusBar barStyle="dark-content" />
-        <ActivityIndicator size="large" color="#437FFF" />
-        <Text style={{ marginTop: 12, color: '#667085', fontSize: 14 }}>
-          Loading {friendName}'s proposal...
-        </Text>
-      </StyledSafeAreaView>
+      <ScreenWrapper>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color="#437FFF" />
+          <Text style={{ marginTop: 12, color: '#667085', fontSize: 14 }}>
+            Loading {friendName}'s proposal...
+          </Text>
+        </View>
+      </ScreenWrapper>
     );
   }
 
   if (error || !proposal) {
     return (
-      <StyledSafeAreaView className="flex-1 bg-white items-center justify-center px-6">
-        <StatusBar barStyle="dark-content" />
-        <Text style={{ fontSize: 16, color: '#344054', textAlign: 'center', marginBottom: 16 }}>
-          {error || 'No proposal found'}
-        </Text>
-        <TouchableOpacity
-          onPress={handleBack}
-          style={{
-            backgroundColor: '#437FFF',
-            paddingHorizontal: 24,
-            paddingVertical: 12,
-            borderRadius: 8,
-          }}
-        >
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Go Back</Text>
-        </TouchableOpacity>
-      </StyledSafeAreaView>
+      <ScreenWrapper>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+          <Text style={{ fontSize: 16, color: '#344054', textAlign: 'center', marginBottom: 16 }}>
+            {error || 'No proposal found'}
+          </Text>
+          <TouchableOpacity
+            onPress={handleBack}
+            style={{
+              backgroundColor: '#437FFF',
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 8,
+            }}
+          >
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold }}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </ScreenWrapper>
     );
   }
 
   return (
-    <StyledSafeAreaView className="flex-1 bg-white">
-      <StatusBar barStyle="dark-content" />
+    <ScreenWrapper>
       <ProposalReviewView
         initialProposals={[proposal]}
         showBackButton={true}
@@ -233,7 +236,7 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
         onVoteComplete={handleVoteComplete}
         deepQuestions={deepQuestions}
       />
-    </StyledSafeAreaView>
+    </ScreenWrapper>
   );
 }
 

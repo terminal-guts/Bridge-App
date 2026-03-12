@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useReducer, useMemo } from 'react';
-import { View, Text, TextInput, ScrollView, SafeAreaView, StatusBar, TouchableOpacity, StyleSheet, Dimensions, Share, Alert, RefreshControl, Modal, Animated, Easing } from 'react-native';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Share, Alert, RefreshControl, Modal, Animated, Easing } from 'react-native';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
-import { styled } from 'nativewind';
 import { UserRow } from '../../components/community/UserRow';
 import { ProposalReviewView } from '../../components/community/proposal/ProposalReviewView';
 import { GuideTarget } from '../../components/guides';
@@ -21,6 +20,9 @@ import { ProfileCompletionBanner } from '../../components/profile/ProfileComplet
 import { useGuide } from '../../hooks/useGuide';
 import { beginnerTourGuide } from '../../config/guides';
 import { CommunitySkeleton } from '../../components/ui/SkeletonLoader';
+import { FONTS } from '../../constants/typography';
+import { OVERLAYS } from '../../theme/shadows';
+import { ScreenWrapper } from '../../components/ui';
 import { getLast7PMCentral } from '../../utils/centralTime';
 import { successHaptic } from '../../utils/haptics';
 import { getFriendUnreadCount } from '../../services/messageService';
@@ -162,7 +164,7 @@ function MatchResetTimer() {
           transform: [{ scale: pulseAnim }],
         }}>
           <Ionicons name="time-outline" size={13} color={color} />
-          <Text style={{ fontSize: 13, fontWeight: '600', color }}>{label}</Text>
+          <Text style={{ fontSize: 13, fontFamily: FONTS.semiBold, color }}>{label}</Text>
         </Animated.View>
       </TouchableOpacity>
 
@@ -186,7 +188,7 @@ function MatchResetTimer() {
 const timerInfoStyles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: OVERLAYS.medium,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -200,14 +202,14 @@ const timerInfoStyles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontFamily: 'Outfit_700Bold',
+    fontFamily: FONTS.bold,
     fontSize: 18,
     color: '#101828',
     marginBottom: 8,
     textAlign: 'center',
   },
   body: {
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: FONTS.regular,
     fontSize: 14,
     color: '#667085',
     textAlign: 'center',
@@ -221,7 +223,7 @@ const timerInfoStyles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   btnText: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     fontSize: 15,
     color: '#FFFFFF',
   },
@@ -231,7 +233,6 @@ interface CommunityScreenProps {
   navigation: NavigationProp<MainTabParamList, 'Community'>;
 }
 
-const StyledSafeAreaView = styled(SafeAreaView);
 
 export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const { startGuideIfNeeded } = useGuide();
@@ -527,29 +528,26 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   if (loading || hasCompletedVoting === null) {
     return (
-      <StyledSafeAreaView className="flex-1 bg-white">
-        <StatusBar barStyle="dark-content" />
+      <ScreenWrapper>
         <CommunitySkeleton />
-      </StyledSafeAreaView>
+      </ScreenWrapper>
     );
   }
 
   // Gate: must vote on 3 proposals before entering the community area
   if (!hasCompletedVoting) {
     return (
-      <StyledSafeAreaView className="flex-1 bg-white">
-        <StatusBar barStyle="dark-content" />
+      <ScreenWrapper>
         <ProposalReviewView
           onVotesComplete={handleVotesComplete}
           isActive={true}
         />
-      </StyledSafeAreaView>
+      </ScreenWrapper>
     );
   }
 
   return (
-    <StyledSafeAreaView className="flex-1 bg-white">
-      <StatusBar barStyle="dark-content" />
+    <ScreenWrapper>
       <OfflineBanner />
       <ProfileCompletionBanner
         profile={profile}
@@ -734,15 +732,15 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           </View>
         </ScrollView>
       )}
-    </StyledSafeAreaView>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingBottom: 80, width: '100%' },
-  tagline: { fontFamily: 'Outfit_600SemiBold', fontSize: 20, lineHeight: 26, color: '#0B1226', textAlign: 'center', marginBottom: 12 },
+  tagline: { fontFamily: FONTS.semiBold, fontSize: 20, lineHeight: 26, color: '#0B1226', textAlign: 'center', marginBottom: 12 },
   illustration: { width: 300, height: 300, marginBottom: 32 },
-  subtitle: { fontFamily: 'Outfit_600SemiBold', fontSize: 17, lineHeight: 24, color: '#0B1226', textAlign: 'center', marginBottom: 20, width: '100%' },
+  subtitle: { fontFamily: FONTS.semiBold, fontSize: 17, lineHeight: 24, color: '#0B1226', textAlign: 'center', marginBottom: 20, width: '100%' },
   ctaButton: {
     backgroundColor: '#007AFF',
     width: 250,
@@ -756,7 +754,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 4,
   },
-  ctaText: { fontFamily: 'Outfit_600SemiBold', fontSize: 15, color: '#FFFFFF' },
+  ctaText: { fontFamily: FONTS.semiBold, fontSize: 15, color: '#FFFFFF' },
   codeContainer: {
     backgroundColor: '#F4F7FF',
     borderRadius: 16,
@@ -768,14 +766,14 @@ const styles = StyleSheet.create({
     borderColor: '#D1DEFF',
   },
   codeLabel: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     fontSize: 12,
     color: '#2B65F9',
     letterSpacing: 1,
     marginBottom: 8,
   },
   codeValue: {
-    fontFamily: 'Outfit_700Bold',
+    fontFamily: FONTS.bold,
     fontSize: 24,
     color: '#010101',
     marginBottom: 16,
@@ -797,7 +795,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   enterCodeButtonText: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     fontSize: 14,
     color: '#2B65F9',
   },
@@ -813,7 +811,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontFamily: 'Outfit_500Medium',
+    fontFamily: FONTS.medium,
     fontSize: 14,
     color: '#010101',
     marginRight: 8,
@@ -825,12 +823,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   enterCodeAddBtnText: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     fontSize: 14,
     color: '#FFFFFF',
   },
   enterCodeErrorText: {
-    fontFamily: 'Outfit_500Medium',
+    fontFamily: FONTS.medium,
     fontSize: 12,
     color: '#EF4444',
     marginTop: 4,
@@ -879,7 +877,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   crewBannerHeadline: {
-    fontFamily: 'Outfit_700Bold',
+    fontFamily: FONTS.bold,
     fontSize: 14,
     color: '#101828',
     flex: 1,
@@ -904,7 +902,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   impactText: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     fontSize: 13,
     color: '#2B65F9',
     flex: 1,
@@ -920,12 +918,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   inviteContactsButtonText: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     fontSize: 15,
     color: '#FFFFFF',
   },
   headerTitle: {
-    fontFamily: 'Outfit_700Bold',
+    fontFamily: FONTS.bold,
     fontWeight: '700',
     fontSize: 32,
     lineHeight: 38,
@@ -965,7 +963,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   sectionTitle: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     fontSize: 14,
     color: '#667085',
     letterSpacing: 0.3,
