@@ -2,6 +2,7 @@ import React from 'react';
 import { TouchableOpacity, Text, ActivityIndicator, View } from 'react-native';
 import { styled } from 'nativewind';
 import { lightHaptic } from '../../utils/haptics';
+import { FONTS } from '../../constants/typography';
 
 interface ButtonProps {
   onPress: () => void;
@@ -61,6 +62,13 @@ export const Button: React.FC<ButtonProps> = ({
     destructive: 'text-white font-semibold',
   };
 
+  const textFontFamily = {
+    primary: FONTS.bold,
+    secondary: FONTS.semiBold,
+    ghost: FONTS.medium,
+    destructive: FONTS.semiBold,
+  };
+
   const handlePress = () => {
     lightHaptic();
     onPress();
@@ -82,7 +90,7 @@ export const Button: React.FC<ButtonProps> = ({
           size={size === 'sm' ? 'small' : 'small'}
         />
       ) : (
-        <StyledText className={`${textSizeStyles[size]} ${textVariantStyles[variant]}`}>
+        <StyledText className={`${textSizeStyles[size]} ${textVariantStyles[variant]}`} style={{ fontFamily: textFontFamily[variant] }}>
           {children}
         </StyledText>
       )}

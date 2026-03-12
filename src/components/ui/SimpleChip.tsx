@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text } from 'react-native';
 import { styled } from 'nativewind';
+import { FONTS } from '../../constants/typography';
 
 interface SimpleChipProps {
   label: string;
@@ -24,7 +25,10 @@ const SimpleChipComponent: React.FC<SimpleChipProps> = ({ label, selected, onPre
           : 'bg-white border-neutral-300'
       }`}
     >
-      <StyledText className={`text-sm ${selected ? 'text-white font-medium' : 'text-neutral-700'}`}>
+      <StyledText
+        className={`text-sm ${selected ? 'text-white font-medium' : 'text-neutral-700'}`}
+        style={{ fontFamily: selected ? FONTS.medium : FONTS.regular }}
+      >
         {label}
       </StyledText>
     </StyledTouchableOpacity>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { BaseToast, ErrorToast, InfoToast } from 'react-native-toast-message';
+import { FONTS } from '../../constants/typography';
 
 /**
  * Custom Toast Configuration
@@ -31,13 +32,13 @@ export const toastConfig = {
       text1Style={{
         fontSize: 16,
         fontWeight: '600',
-        fontFamily: 'Satoshi-Bold',
+        fontFamily: FONTS.bold,
         color: '#171717',
         marginBottom: 2,
       }}
       text2Style={{
         fontSize: 14,
-        fontFamily: 'Inter-Regular',
+        fontFamily: FONTS.regular,
         color: '#525252',
         lineHeight: 18,
       }}
@@ -67,13 +68,13 @@ export const toastConfig = {
       text1Style={{
         fontSize: 16,
         fontWeight: '600',
-        fontFamily: 'Satoshi-Bold',
+        fontFamily: FONTS.bold,
         color: '#171717',
         marginBottom: 2,
       }}
       text2Style={{
         fontSize: 14,
-        fontFamily: 'Inter-Regular',
+        fontFamily: FONTS.regular,
         color: '#525252',
         lineHeight: 18,
       }}
@@ -103,13 +104,13 @@ export const toastConfig = {
       text1Style={{
         fontSize: 16,
         fontWeight: '600',
-        fontFamily: 'Satoshi-Bold',
+        fontFamily: FONTS.bold,
         color: '#171717',
         marginBottom: 2,
       }}
       text2Style={{
         fontSize: 14,
-        fontFamily: 'Inter-Regular',
+        fontFamily: FONTS.regular,
         color: '#525252',
         lineHeight: 18,
       }}
@@ -139,7 +140,7 @@ export const toastConfig = {
         style={{
           fontSize: 16,
           fontWeight: '600',
-          fontFamily: 'Satoshi-Bold',
+          fontFamily: FONTS.bold,
           color: '#171717',
           marginBottom: 4,
         }}
@@ -150,7 +151,7 @@ export const toastConfig = {
         <Text
           style={{
             fontSize: 14,
-            fontFamily: 'Inter-Regular',
+            fontFamily: FONTS.regular,
             color: '#525252',
             lineHeight: 18,
           }}

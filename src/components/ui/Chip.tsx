@@ -2,6 +2,7 @@ import React, { useMemo, useCallback } from 'react';
 import { TouchableOpacity, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { lightHaptic } from '../../utils/haptics';
+import { FONTS } from '../../constants/typography';
 
 interface ChipProps {
   label: string;
@@ -61,6 +62,12 @@ const ChipComponent: React.FC<ChipProps> = ({
     return 'text-neutral-700';
   }, [variant, selected]);
 
+  const textFontFamily = useMemo(() => {
+    // All styled variants use font-medium; default (no variant, not selected) uses regular
+    if (variant !== 'none' || selected) return FONTS.medium;
+    return FONTS.regular;
+  }, [variant, selected]);
+
   const handlePress = useCallback(() => {
     lightHaptic();
     onPress?.();
@@ -74,7 +81,7 @@ const ChipComponent: React.FC<ChipProps> = ({
         accessibilityRole="text"
         accessibilityLabel={label}
       >
-        <StyledText className={`${TEXT_SIZE_STYLES[size]} ${textStyles}`}>
+        <StyledText className={`${TEXT_SIZE_STYLES[size]} ${textStyles}`} style={{ fontFamily: textFontFamily }}>
           {label}
         </StyledText>
       </StyledTouchableOpacity>
@@ -91,7 +98,7 @@ const ChipComponent: React.FC<ChipProps> = ({
       accessibilityLabel={label}
       accessibilityState={{ selected }}
     >
-      <StyledText className={`${TEXT_SIZE_STYLES[size]} ${textStyles}`}>
+      <StyledText className={`${TEXT_SIZE_STYLES[size]} ${textStyles}`} style={{ fontFamily: textFontFamily }}>
         {label}
       </StyledText>
     </StyledTouchableOpacity>

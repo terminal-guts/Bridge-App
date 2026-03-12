@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { TextInput, View, Text, TextInputProps } from 'react-native';
 import { styled } from 'nativewind';
+import { FONTS } from '../../constants/typography';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -62,7 +63,7 @@ export const Input: React.FC<InputProps> = ({
   return (
     <StyledView className={`${containerClassName}`}>
       {label && (
-        <StyledText className="text-xs font-medium text-neutral-700 mb-1">
+        <StyledText className="text-xs font-medium text-neutral-700 mb-1" style={{ fontFamily: FONTS.medium }}>
           {label}
           {required && <StyledText className="text-red-500"> *</StyledText>}
           {optional && <StyledText className="text-neutral-400"> (optional)</StyledText>}
@@ -79,6 +80,7 @@ export const Input: React.FC<InputProps> = ({
         className={`border rounded-md px-3 py-3 text-base text-neutral-900 ${borderColor} ${className}`}
         placeholderTextColor="#98A2B3"
         style={{
+          fontFamily: FONTS.regular,
           lineHeight: 20,
           paddingVertical: 12,
         }}

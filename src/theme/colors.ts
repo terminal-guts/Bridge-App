@@ -117,6 +117,8 @@ export const COLORS = {
     rose: '#F43F5E',
 
     // ── Background ───────────────────────────────────────────
+    // #FDFAF7 — universal screen background (warm off-white)
+    screenBackground: '#FDFAF7',
     background: '#F8FAFC',
     // #F9FAFB — subtle off-white for unanswered cards
     backgroundSubtle: '#F9FAFB',
@@ -204,6 +206,13 @@ export const COLORS = {
         info: '#437FFF',
         warning: '#F59E0B',
         error: '#EF4444',
+    },
+
+    // ── Modal Overlays ─────────────────────────────────────────
+    overlay: {
+        light: 'rgba(0, 0, 0, 0.35)',
+        medium: 'rgba(0, 0, 0, 0.50)',
+        heavy: 'rgba(0, 0, 0, 0.65)',
     },
 };
 

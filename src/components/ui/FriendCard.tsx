@@ -23,6 +23,8 @@ import {
     STREAK_TIERS,
     KARMA_TIERS,
 } from '../../constants/friendsArea';
+import { FONTS } from '../../constants/typography';
+import { SHADOWS } from '../../theme/shadows';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -168,11 +170,7 @@ const styles = StyleSheet.create({
         minHeight: 84,
     },
     avatarContainer: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-        elevation: 3,
+        ...SHADOWS.sm,
     },
     avatar: {
         width: 60,
@@ -192,6 +190,7 @@ const styles = StyleSheet.create({
     nameText: {
         fontSize: 17,
         fontWeight: '700',
+        fontFamily: FONTS.bold,
         color: '#0F172A',
         letterSpacing: -0.3,
     },
@@ -211,6 +210,7 @@ const styles = StyleSheet.create({
     streakCount: {
         fontSize: 13,
         fontWeight: '600',
+        fontFamily: FONTS.semiBold,
         color: '#475569',
         marginLeft: 3,
     },
@@ -227,6 +227,7 @@ const styles = StyleSheet.create({
     tierText: {
         fontSize: 10,
         fontWeight: '700',
+        fontFamily: FONTS.bold,
         letterSpacing: 0.2,
         textTransform: 'uppercase',
     },
@@ -240,16 +241,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 12,
-        shadowColor: '#3B82F6',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 2,
+        ...SHADOWS.accentBlue,
     },
     voteButtonText: {
         color: '#FFFFFF',
         fontSize: 14,
         fontWeight: '700',
+        fontFamily: FONTS.bold,
     },
     karmaContainer: {
         alignItems: 'flex-end',
@@ -257,6 +255,7 @@ const styles = StyleSheet.create({
     karmaText: {
         fontSize: 18,
         fontWeight: '800',
+        fontFamily: FONTS.extraBold,
         letterSpacing: -0.5,
     },
 });

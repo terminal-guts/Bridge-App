@@ -10,6 +10,7 @@ export { Avatar } from './Avatar';
 export { SkeletonLoader, DashboardSkeleton, ProfileSkeleton, SurveySkeleton } from './SkeletonLoader';
 export { InfoModal, InfoSection, InfoBullet } from './InfoModal';
 export { OptionButton } from './OptionButton';
+export { ScreenWrapper } from './ScreenWrapper';
 export {
   H1,
   H2,

@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, TouchableOpacity, ViewStyle, Platform } from 'react-native';
+import { View, TouchableOpacity, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
+import { SHADOWS } from '../../theme/shadows';
 
 /**
  * Elevation levels for visual hierarchy:
@@ -33,72 +34,16 @@ interface CardProps {
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 
-/**
- * Get shadow styles based on elevation level and variant
- * Implements sophisticated multi-layered shadow system with warm tones:
- * - Primary layer: Warm brown shadow for natural depth
- * - Secondary layer: Subtle colored glow based on variant
- * - Creates depth, warmth, and visual excitement
- */
-const getElevationStyle = (elevation: ElevationLevel, variant: CardVariant): ViewStyle => {
-  if (elevation === 0) return {};
+/** Map Card elevation levels → centralized SHADOWS presets */
+const ELEVATION_MAP: Record<ElevationLevel, ViewStyle> = {
+  0: SHADOWS.none,
+  1: SHADOWS.md,
+  2: SHADOWS.lg,
+  3: SHADOWS.xl,
+};
 
-  // Warm shadow colors for natural, inviting depth
-  const warmShadows = {
-    subtle: '#4A3428',     // Warm taupe-brown
-    default: '#3D2817',    // Rich warm brown
-    elevated: '#2E1810',   // Deep chocolate brown
-    premium: '#1F0E08',    // Luxurious dark espresso
-  };
-
-  const baseShadowColor = warmShadows[variant] || warmShadows.default;
-
-  const shadows = {
-    1: {
-      // Subtle - soft ambient shadow with gentle warmth
-      ...Platform.select({
-        ios: {
-          shadowColor: baseShadowColor,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.12,
-          shadowRadius: 4,
-        },
-        android: {
-          elevation: 3,
-        },
-      }),
-    },
-    2: {
-      // Standard - balanced depth with noticeable presence
-      ...Platform.select({
-        ios: {
-          shadowColor: baseShadowColor,
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: 0.18,
-          shadowRadius: 8,
-        },
-        android: {
-          elevation: 5,
-        },
-      }),
-    },
-    3: {
-      // Elevated - dramatic depth with rich shadow spread
-      ...Platform.select({
-        ios: {
-          shadowColor: baseShadowColor,
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.24,
-          shadowRadius: 16,
-        },
-        android: {
-          elevation: 10,
-        },
-      }),
-    },
-  };
-
-  return shadows[elevation];
+const getElevationStyle = (elevation: ElevationLevel, _variant: CardVariant): ViewStyle => {
+  return ELEVATION_MAP[elevation];
 };
 
 export const Card: React.FC<CardProps> = ({
