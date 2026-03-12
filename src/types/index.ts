@@ -347,7 +347,6 @@ export type RootStackParamList = {
 
   // Main Stack
   MainTabs: { screen?: string; params?: any } | undefined;
-  MatchDetail: { matchId: string };
   MatchReveal: undefined;
   MatchProposal: { match?: Match; profile?: UserProfile; proposalId?: string };
   ProposalProfile: {

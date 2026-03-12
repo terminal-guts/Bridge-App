@@ -57,7 +57,7 @@ function withSuspense<P extends object>(LazyComponent: React.LazyExoticComponent
 
 // Match sub-screens
 const MatchRevealScreen = withSuspense(React.lazy(() => import('../screens/match/MatchRevealScreen').then(m => ({ default: m.MatchRevealScreen }))));
-const MatchDetailScreen = withSuspense(React.lazy(() => import('../screens/match/MatchDetailScreen').then(m => ({ default: m.MatchDetailScreen }))));
+
 const MatchProposalScreen = withSuspense(React.lazy(() => import('../screens/match/MatchProposalScreen').then(m => ({ default: m.MatchProposalScreen }))));
 
 // Profile sub-screens
@@ -381,7 +381,6 @@ export const AppNavigator = () => {
           <Stack.Screen name="FriendProposal" component={FriendProposalScreen} />
 
           {/* Match Screens */}
-          <Stack.Screen name="MatchDetail" component={MatchDetailScreen} />
           <Stack.Screen name="MatchReveal" component={MatchRevealScreen} />
           <Stack.Screen name="MatchProposal" component={MatchProposalScreen} />
           <Stack.Screen name="ProposalProfile" component={ProfileMatchScreen} options={{ headerShown: false }} />
