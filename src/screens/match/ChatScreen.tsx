@@ -20,7 +20,7 @@ import {
 import { styled } from 'nativewind';
 import { H3, Body, BodySmall } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
-import { RootStackParamList, Message, Match } from '../../types';
+import { RootStackParamList, Message, Match, MatchStatus } from '../../types';
 import { getCurrentUser } from '../../services/authService';
 import {
   getMatchMessages,
@@ -38,6 +38,8 @@ import { AudioRecorder } from '../../components/chat/AudioRecorder';
 import { communityService } from '../../services/communityServiceIndex';
 import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';
+import { FONTS } from '../../constants/typography';
+import { OVERLAYS } from '../../theme/shadows';
 
 const logger = createLogger('ChatScreen');
 
@@ -231,7 +233,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
           id: matchId,
           user1Id: userResult.data.id,
           user2Id: recipientId || '',
-          status: 'active',
+          status: 'accepted' as MatchStatus,
           communityScore: 0,
           matchedAt: new Date().toISOString(),
           expiresAt: new Date(Date.now() + 86400000).toISOString(),
@@ -964,12 +966,12 @@ const dateProposalStyles = StyleSheet.create({
     marginBottom: 6,
   },
   headerText: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     fontSize: 14,
     color: '#437FFF',
   },
   body: {
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: FONTS.regular,
     fontSize: 15,
     color: '#101828',
     lineHeight: 22,
@@ -1005,7 +1007,7 @@ const cs = StyleSheet.create({
   },
   menuItemText: {
     fontSize: 15,
-    fontFamily: 'Outfit_500Medium',
+    fontFamily: FONTS.medium,
     color: '#101828',
   },
   menuDivider: {
@@ -1019,7 +1021,7 @@ const cs = StyleSheet.create({
 const ts = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: OVERLAYS.medium,
     justifyContent: 'flex-start',
   },
   card: {
@@ -1057,14 +1059,14 @@ const ts = StyleSheet.create({
     marginBottom: 14,
   },
   title: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     fontSize: 20,
     color: '#101828',
     textAlign: 'center',
     marginBottom: 6,
   },
   subtitle: {
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: FONTS.regular,
     fontSize: 14,
     color: '#667085',
     textAlign: 'center',
@@ -1090,12 +1092,12 @@ const ts = StyleSheet.create({
     backgroundColor: '#EEF3FF',
   },
   pillText: {
-    fontFamily: 'Outfit_500Medium',
+    fontFamily: FONTS.medium,
     fontSize: 13,
     color: '#667085',
   },
   pillTextActive: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     color: '#437FFF',
   },
   textArea: {
@@ -1104,7 +1106,7 @@ const ts = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: FONTS.regular,
     fontSize: 15,
     color: '#101828',
     minHeight: 64,
@@ -1122,7 +1124,7 @@ const ts = StyleSheet.create({
     opacity: 0.35,
   },
   submitBtnText: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     fontSize: 16,
     color: '#FFFFFF',
   },

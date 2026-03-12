@@ -3,7 +3,10 @@ import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'reac
 import { Image, ImageBackground } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
+import { Ionicons } from '@expo/vector-icons';
 import { CheckmarkIcon, HourglassIcon, ChatIcon, HeartsIcon, ArrowRightIcon, QuestionIcon } from '../icons/Icons';
+import { FONTS } from '../../constants/typography';
+import { SHADOWS, glowShadow } from '../../theme/shadows';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -79,6 +82,7 @@ interface MatchCardProps {
     matchedByAvatars: string[];
     onPress?: () => void;
     onDismiss?: () => void;
+    onShare?: () => void;
 }
 
 // "Matched by" for active, "Picked by" for proposals
@@ -102,6 +106,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
     matchedByAvatars,
     onPress,
     onDismiss,
+    onShare,
 }) => {
     const topBadge = TOP_BADGE_CONFIG[status];
     const bottomPills = BOTTOM_PILLS[status];
@@ -201,6 +206,17 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                 </View>
             </ImageBackground>
 
+            {/* Share button — only for active match */}
+            {isActiveMatch && onShare && (
+                <TouchableOpacity
+                    onPress={onShare}
+                    style={styles.shareButton}
+                    activeOpacity={0.8}
+                >
+                    <Ionicons name="share-outline" size={22} color="#FFFFFF" />
+                </TouchableOpacity>
+            )}
+
             {/* Action button — contextual per state */}
             <Animated.View style={[
                 styles.actionButtonWrap,
@@ -232,20 +248,11 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         overflow: 'hidden',
         backgroundColor: '#000',
-        // Subtle lift shadow for all states
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.12,
-        shadowRadius: 16,
-        elevation: 8,
+        ...SHADOWS.xl,
     },
     // Active match gets a colored glow
     cardActive: {
-        shadowColor: '#34C759',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 20,
-        elevation: 10,
+        ...glowShadow('#34C759', 'strong'),
     },
     cardInner: {
         flex: 1,
@@ -268,7 +275,7 @@ const styles = StyleSheet.create({
     },
     topBadgeText: {
         color: '#FFFFFF',
-        fontFamily: 'Outfit_700Bold',
+        fontFamily: FONTS.bold,
         fontSize: 16,
         lineHeight: 20,
     },
@@ -302,13 +309,13 @@ const styles = StyleSheet.create({
     },
     pillText: {
         color: '#FFFFFF',
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: FONTS.semiBold,
         fontSize: 15,
         lineHeight: 19,
     },
     nameText: {
         color: '#FFFFFF',
-        fontFamily: 'Outfit_900Bold',
+        fontFamily: FONTS.extraBold,
         fontWeight: '700',
         fontSize: 32,
         lineHeight: 38,
@@ -325,7 +332,7 @@ const styles = StyleSheet.create({
     },
     matchedByText: {
         color: '#FFFFFF',
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: FONTS.semiBold,
         fontSize: 16,
         lineHeight: 20,
     },
@@ -344,9 +351,23 @@ const styles = StyleSheet.create({
     },
     dateText: {
         color: 'rgba(255, 255, 255, 0.7)',
-        fontFamily: 'Outfit_500Medium',
+        fontFamily: FONTS.medium,
         fontSize: 16,
         lineHeight: 20,
+    },
+    // Share button — top-right, next to dismiss (right: 16 + 32 dismiss + 10 gap = 58)
+    shareButton: {
+        position: 'absolute',
+        right: 58,
+        top: 14,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: 'rgba(255,255,255,0.22)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.12)',
     },
     // Wrapper for positioning (Animated.View needs this separate from the button)
     actionButtonWrap: {
@@ -362,11 +383,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 14,
-        elevation: 8,
+        ...SHADOWS.xl,
     },
     // Active match — blue chat button with glow
     actionButtonChat: {

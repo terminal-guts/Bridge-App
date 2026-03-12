@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  SafeAreaView,
-  StatusBar,
   ScrollView,
   Image,
   Animated,
   Dimensions,
 } from 'react-native';
 import { styled } from 'nativewind';
-import { H1, H2, H3, Body, Button, Card, Chip } from '../../components/ui';
+import { H1, H2, H3, Body, Button, Card, Chip, ScreenWrapper } from '../../components/ui';
 import { valueEmoji, interestEmoji } from '../../utils/emojiMaps';
 import { PartialMatch } from '../../types';
 import { mockPartialMatch } from '../../services/mockData';
@@ -17,7 +15,6 @@ import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
-const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 const StyledImage = styled(Image);
@@ -100,8 +97,7 @@ export const MatchRevealScreen: React.FC<MatchRevealScreenProps> = ({
   };
 
   return (
-    <StyledSafeAreaView className="flex-1 bg-neutral-50">
-      <StatusBar barStyle="dark-content" />
+    <ScreenWrapper>
       <StyledScrollView className="flex-1">
         <Animated.View
           style={{
@@ -260,6 +256,6 @@ export const MatchRevealScreen: React.FC<MatchRevealScreenProps> = ({
           </StyledView>
         </Animated.View>
       </StyledScrollView>
-    </StyledSafeAreaView>
+    </ScreenWrapper>
   );
 };

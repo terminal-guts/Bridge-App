@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, StyleSheet, StatusBar, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback, RefreshControl, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback, RefreshControl, KeyboardAvoidingView, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MatchCard } from '../../components/matches/MatchCard';
@@ -13,7 +13,17 @@ import { getUserProfile } from '../../services/profileService';
 import { UserProfile } from '../../types';
 import { ProfileCompletionBanner } from '../../components/profile/ProfileCompletionBanner';
 import { showToast } from '../../utils/toast';
+import { lightHaptic, heavyHaptic } from '../../utils/haptics';
+import { shareToInstagramStories, shareToMessages, shareGeneric } from '../../utils/shareMatch';
+import { ShareMatchSheet } from '../../components/matches/ShareMatchSheet';
+import { ShareableMatchCard } from '../../components/matches/ShareableMatchCard';
+import { computeApprovalPercent } from '../../utils/matchCardGenerator';
+import { OVERLAYS } from '../../theme/shadows';
+import { ScreenWrapper } from '../../components/ui';
+import ViewShot from 'react-native-view-shot';
+import * as FileSystem from 'expo-file-system';
 import { MatchesSkeleton } from '../../components/ui/SkeletonLoader';
+import { FONTS } from '../../constants/typography';
 
 // Pre-register the illustration asset at module load time so it is available
 // before the screen mounts (avoids a first-render blank on fresh installs).
@@ -110,7 +120,7 @@ function EndedMatchPopupContent({ event }: { event: MatchEndedEvent }) {
 const popupStyles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.45)',
+        backgroundColor: OVERLAYS.medium,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -125,7 +135,7 @@ const popupStyles = StyleSheet.create({
     content: { alignItems: 'center' },
     icon: { fontSize: 32, marginBottom: 10 },
     headline: {
-        fontFamily: 'Outfit_700Bold',
+        fontFamily: FONTS.bold,
         fontSize: 20,
         color: '#101828',
         textAlign: 'center',
@@ -142,21 +152,21 @@ const popupStyles = StyleSheet.create({
         marginBottom: 14,
     },
     reasonLabel: {
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: FONTS.semiBold,
         fontSize: 12,
         color: '#98A2B3',
         marginBottom: 4,
         letterSpacing: 0.4,
     },
     reasonText: {
-        fontFamily: 'Outfit_400Regular',
+        fontFamily: FONTS.regular,
         fontSize: 14,
         color: '#344054',
         fontStyle: 'italic',
         lineHeight: 20,
     },
     body: {
-        fontFamily: 'Outfit_400Regular',
+        fontFamily: FONTS.regular,
         fontSize: 14,
         color: '#667085',
         textAlign: 'center',
@@ -171,7 +181,7 @@ const popupStyles = StyleSheet.create({
         alignItems: 'center',
     },
     continueBtnText: {
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: FONTS.semiBold,
         fontSize: 16,
         color: '#FFFFFF',
     },
@@ -213,6 +223,10 @@ export function MatchesScreen() {
     const [endMatchSubmitting, setEndMatchSubmitting] = useState(false);
     const [popupEvent, setPopupEvent] = useState<MatchEndedEvent | null>(null);
     const [refreshing, setRefreshing] = useState(false);
+    const [shareSheetVisible, setShareSheetVisible] = useState(false);
+    const [shareImageUri, setShareImageUri] = useState<string | null>(null);
+    const [shareLoading, setShareLoading] = useState(false);
+    const viewShotRef = useRef<ViewShot>(null);
     const navigation = useNavigation<any>();
     const { height: windowHeight } = useWindowDimensions();
     const insets = useSafeAreaInsets();
@@ -323,12 +337,84 @@ export function MatchesScreen() {
         }
     }, [endMatchReason, endMatchCustomReason, endMatchSubmitting, activeMatch]);
 
+    const handleSharePress = useCallback(async () => {
+        // Debounce: ignore if already generating
+        if (shareLoading || shareSheetVisible) return;
+        heavyHaptic();
+        setShareSheetVisible(true);
+        setShareLoading(true);
+        try {
+            // Retry-based capture: wait for ViewShot to be ready (up to 2s)
+            let uri: string | null = null;
+            for (let attempt = 0; attempt < 8; attempt++) {
+                if (!isMountedRef.current) return;
+                if (viewShotRef.current?.capture) {
+                    uri = await viewShotRef.current.capture();
+                    break;
+                }
+                await new Promise(resolve => setTimeout(resolve, 250));
+            }
+            if (!uri) throw new Error('Card not ready');
+            if (isMountedRef.current) setShareImageUri(uri);
+        } catch (error) {
+            showToast.error('Could not generate card', 'Try again later');
+            if (isMountedRef.current) setShareSheetVisible(false);
+        } finally {
+            if (isMountedRef.current) setShareLoading(false);
+        }
+    }, [activeMatch, shareLoading, shareSheetVisible]);
+
+    const handleCloseShareSheet = useCallback(() => {
+        // Clean up temp image file after a delay — user may still be in a system share sheet
+        const uri = shareImageUri;
+        setShareSheetVisible(false);
+        setShareImageUri(null);
+        if (uri) {
+            setTimeout(async () => {
+                try { await FileSystem.deleteAsync(uri, { idempotent: true }); } catch {}
+            }, 10000);
+        }
+    }, [shareImageUri]);
+
+    const handleShareInstagram = useCallback(() => {
+        if (shareImageUri) shareToInstagramStories(shareImageUri);
+    }, [shareImageUri]);
+
+    const handleShareSnapchat = useCallback(() => {
+        // Snapchat doesn't have a reliable deep-link for stickers — use system share
+        if (shareImageUri) shareGeneric(shareImageUri);
+    }, [shareImageUri]);
+
+    const handleShareMessages = useCallback(() => {
+        if (shareImageUri) shareToMessages(shareImageUri);
+    }, [shareImageUri]);
+
+    const handleShareMore = useCallback(() => {
+        if (shareImageUri) shareGeneric(shareImageUri);
+    }, [shareImageUri]);
+
+    const handleSaveToPhotos = useCallback(async () => {
+        if (!shareImageUri) return;
+        try {
+            const MediaLibrary = await import('expo-media-library');
+            const { status } = await MediaLibrary.requestPermissionsAsync();
+            if (status !== 'granted') {
+                showToast.error('Permission needed', 'Allow photo access to save');
+                return;
+            }
+            await MediaLibrary.saveToLibraryAsync(shareImageUri);
+            lightHaptic();
+            showToast.success('Saved', 'Match card saved to your photos');
+        } catch {
+            showToast.error('Could not save', 'Try again later');
+        }
+    }, [shareImageUri]);
+
     if (loading && !popupEvent) {
         return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-                <StatusBar barStyle="dark-content" />
+            <ScreenWrapper>
                 <MatchesSkeleton />
-            </SafeAreaView>
+            </ScreenWrapper>
         );
     }
 
@@ -355,8 +441,7 @@ export function MatchesScreen() {
     // ── Empty state ─────────────────────────────────────────────────────────
     if (screenState === 'empty') {
         return (
-            <SafeAreaView style={styles.root}>
-                <StatusBar barStyle="dark-content" />
+            <ScreenWrapper>
                 <ProfileCompletionBanner
                     profile={profile}
                     onPress={() => navigation.navigate('Profile')}
@@ -400,7 +485,7 @@ export function MatchesScreen() {
                         </View>
                     </View>
                 </Modal>
-            </SafeAreaView>
+            </ScreenWrapper>
         );
     }
 
@@ -455,12 +540,17 @@ export function MatchesScreen() {
     const partnerName = partner?.firstName || 'Unknown';
     const partnerAge = partner?.age;
 
-    const endorserAvatars =
-        (screenState === 'active_match'
-            ? activeMatch?.endorsers
-            : currentProposal?.endorsers
-        )?.map((e: any) => e.endorserProfile?.photos?.[0]?.url)
-            .filter(Boolean) ?? [];
+    const endorsers = screenState === 'active_match'
+        ? activeMatch?.endorsers
+        : currentProposal?.endorsers;
+
+    const endorserAvatars = endorsers
+        ?.map((e: any) => e.endorserProfile?.photos?.[0]?.url)
+        .filter(Boolean) ?? [];
+
+    const endorserNames = endorsers
+        ?.map((e: any) => e.endorserProfile?.firstName)
+        .filter(Boolean) ?? [];
 
     // Date label — context-appropriate per state
     const matchDate: string = (() => {
@@ -485,7 +575,7 @@ export function MatchesScreen() {
         } else {
             navigation.navigate('ProposalProfile', {
                 partnerProfile: currentProposal!.partnerProfile,
-                communityScore: currentProposal!.communityScore,
+                communityScore: computeApprovalPercent(currentProposal!.proposalId || ''),
                 endorsers: currentProposal!.endorsers ?? [],
                 screenState,
                 proposalId: currentProposal!.proposalId,
@@ -494,9 +584,9 @@ export function MatchesScreen() {
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+        <View style={{ flex: 1, backgroundColor: '#FDFAF7' }}>
             {/* Safe area spacer so OfflineBanner sits below the status bar */}
-            <View style={{ paddingTop: insets.top, backgroundColor: '#FFFFFF' }}>
+            <View style={{ paddingTop: insets.top, backgroundColor: '#FDFAF7' }}>
                 <OfflineBanner />
             </View>
             {screenState !== 'active_match' && (
@@ -540,6 +630,7 @@ export function MatchesScreen() {
                             matchedByAvatars={endorserAvatars}
                             onPress={handleCardPress}
                             onDismiss={() => setEndMatchModalVisible(true)}
+                            onShare={handleSharePress}
                         />
                     )}
 
@@ -672,6 +763,34 @@ export function MatchesScreen() {
                 </KeyboardAvoidingView>
             </Modal>
 
+            {/* ── Offscreen shareable card (mounted for ViewShot capture) ── */}
+            {screenState === 'active_match' && activeMatch && (
+                <ShareableMatchCard
+                    ref={viewShotRef}
+                    user1Photo={profile?.photos?.[0]?.url ?? null}
+                    user1Name={profile?.firstName ?? 'You'}
+                    user2Photo={activeMatch.partnerProfile?.photos?.[0]?.url ?? null}
+                    user2Name={activeMatch.partnerProfile?.firstName ?? 'Match'}
+                    approvalPercent={computeApprovalPercent(activeMatch.proposalId ?? activeMatch.matchId ?? activeMatch.id ?? '')}
+                    matchedByCount={endorserAvatars.length}
+                    matchedByAvatars={endorserAvatars}
+                    matchedByNames={endorserNames}
+                />
+            )}
+
+            {/* ── Share Match Sheet ──────────────────────────────────────── */}
+            <ShareMatchSheet
+                visible={shareSheetVisible}
+                imageUri={shareImageUri}
+                loading={shareLoading}
+                onShareInstagram={handleShareInstagram}
+                onShareSnapchat={handleShareSnapchat}
+                onShareMessages={handleShareMessages}
+                onShareMore={handleShareMore}
+                onSaveToPhotos={handleSaveToPhotos}
+                onClose={handleCloseShareSheet}
+            />
+
             {/* ── Timer Info Modal ─────────────────────────────────────────── */}
             <Modal visible={timerInfoVisible} transparent animationType="fade" onRequestClose={() => setTimerInfoVisible(false)}>
                 <TouchableOpacity style={styles.timerInfoOverlay} activeOpacity={1} onPress={() => setTimerInfoVisible(false)}>
@@ -699,7 +818,7 @@ export function MatchesScreen() {
 }
 
 const styles = StyleSheet.create({
-    root: { flex: 1, backgroundColor: '#FFFFFF' },
+    root: { flex: 1, backgroundColor: '#FDFAF7' },
     header: { paddingTop: 16, paddingHorizontal: 24, paddingBottom: 8 },
     headerRow: {
         paddingHorizontal: 24,
@@ -708,8 +827,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
     },
-    headerTitle: { fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 32, lineHeight: 38, color: '#010101', letterSpacing: -0.5 },
-    headerSubtitle: { fontFamily: 'Outfit_400Regular', fontSize: 14, lineHeight: 18, color: '#667085', marginTop: 2 },
+    headerTitle: { fontFamily: FONTS.bold, fontWeight: '700', fontSize: 32, lineHeight: 38, color: '#010101', letterSpacing: -0.5 },
+    headerSubtitle: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 18, color: '#667085', marginTop: 2 },
     timerBadge: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -724,9 +843,9 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     emptyContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-    tagline: { fontFamily: 'Outfit_600SemiBold', fontSize: 20, lineHeight: 26, color: '#0B1226', textAlign: 'center', marginBottom: 12 },
+    tagline: { fontFamily: FONTS.semiBold, fontSize: 20, lineHeight: 26, color: '#0B1226', textAlign: 'center', marginBottom: 12 },
     illustration: { width: 300, height: 300, marginBottom: 32 },
-    subtitle: { fontFamily: 'Outfit_500Medium', fontSize: 14, lineHeight: 17, color: '#6B7280', textAlign: 'center', marginBottom: 16 },
+    subtitle: { fontFamily: FONTS.medium, fontSize: 14, lineHeight: 17, color: '#6B7280', textAlign: 'center', marginBottom: 16 },
     ctaButton: {
         backgroundColor: '#007AFF',
         width: 250,
@@ -740,12 +859,12 @@ const styles = StyleSheet.create({
         shadowRadius: 12,
         elevation: 4,
     },
-    ctaText: { fontFamily: 'Outfit_600SemiBold', fontSize: 15, color: '#FFFFFF' },
+    ctaText: { fontFamily: FONTS.semiBold, fontSize: 15, color: '#FFFFFF' },
 
     // Modal
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.45)',
+        backgroundColor: OVERLAYS.medium,
         justifyContent: 'flex-start',
     },
     modalCard: {
@@ -757,14 +876,14 @@ const styles = StyleSheet.create({
         paddingBottom: 28,
     },
     modalTitle: {
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: FONTS.semiBold,
         fontSize: 20,
         color: '#101828',
         marginBottom: 6,
         textAlign: 'center',
     },
     modalSubtitle: {
-        fontFamily: 'Outfit_400Regular',
+        fontFamily: FONTS.regular,
         fontSize: 14,
         color: '#667085',
         textAlign: 'center',
@@ -776,7 +895,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         paddingHorizontal: 14,
         paddingVertical: 12,
-        fontFamily: 'Outfit_400Regular',
+        fontFamily: FONTS.regular,
         fontSize: 14,
         color: '#101828',
         minHeight: 100,
@@ -784,7 +903,7 @@ const styles = StyleSheet.create({
         marginBottom: 6,
     },
     charCount: {
-        fontFamily: 'Outfit_400Regular',
+        fontFamily: FONTS.regular,
         fontSize: 12,
         color: '#98A2B3',
         textAlign: 'right',
@@ -803,7 +922,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     cancelBtnText: {
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: FONTS.semiBold,
         fontSize: 15,
         color: '#344054',
     },
@@ -815,7 +934,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     destructiveBtnText: {
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: FONTS.semiBold,
         fontSize: 15,
         color: '#FFFFFF',
     },
@@ -824,7 +943,7 @@ const styles = StyleSheet.create({
     },
     centeredModalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.45)',
+        backgroundColor: OVERLAYS.medium,
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 24,
@@ -856,12 +975,12 @@ const styles = StyleSheet.create({
         backgroundColor: '#EEF3FF',
     },
     reasonText: {
-        fontFamily: 'Outfit_400Regular',
+        fontFamily: FONTS.regular,
         fontSize: 12,
         color: '#667085',
     },
     reasonTextActive: {
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: FONTS.semiBold,
         color: '#437FFF',
     },
     continueBtn: {
@@ -871,7 +990,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     continueBtnText: {
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: FONTS.semiBold,
         fontSize: 16,
         color: '#FFFFFF',
     },
@@ -879,7 +998,7 @@ const styles = StyleSheet.create({
     // Timer info modal
     timerInfoOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.45)',
+        backgroundColor: OVERLAYS.medium,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -893,14 +1012,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     timerInfoTitle: {
-        fontFamily: 'Outfit_700Bold',
+        fontFamily: FONTS.bold,
         fontSize: 18,
         color: '#101828',
         marginBottom: 8,
         textAlign: 'center',
     },
     timerInfoBody: {
-        fontFamily: 'Outfit_400Regular',
+        fontFamily: FONTS.regular,
         fontSize: 14,
         color: '#667085',
         textAlign: 'center',
@@ -914,7 +1033,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 32,
     },
     timerInfoBtnText: {
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: FONTS.semiBold,
         fontSize: 15,
         color: '#FFFFFF',
     },
@@ -924,7 +1043,7 @@ const styles = StyleSheet.create({
 const tsStyles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.45)',
+        backgroundColor: OVERLAYS.medium,
         justifyContent: 'flex-start',
     },
     card: {
@@ -962,14 +1081,14 @@ const tsStyles = StyleSheet.create({
         marginBottom: 14,
     },
     title: {
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: FONTS.semiBold,
         fontSize: 20,
         color: '#101828',
         textAlign: 'center',
         marginBottom: 6,
     },
     subtitle: {
-        fontFamily: 'Outfit_400Regular',
+        fontFamily: FONTS.regular,
         fontSize: 14,
         color: '#667085',
         textAlign: 'center',
@@ -995,12 +1114,12 @@ const tsStyles = StyleSheet.create({
         backgroundColor: '#EEF3FF',
     },
     pillText: {
-        fontFamily: 'Outfit_500Medium',
+        fontFamily: FONTS.medium,
         fontSize: 13,
         color: '#667085',
     },
     pillTextActive: {
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: FONTS.semiBold,
         color: '#437FFF',
     },
     textArea: {
@@ -1009,7 +1128,7 @@ const tsStyles = StyleSheet.create({
         borderRadius: 14,
         paddingHorizontal: 16,
         paddingVertical: 14,
-        fontFamily: 'Outfit_400Regular',
+        fontFamily: FONTS.regular,
         fontSize: 15,
         color: '#101828',
         minHeight: 64,
@@ -1027,7 +1146,7 @@ const tsStyles = StyleSheet.create({
         opacity: 0.35,
     },
     submitBtnText: {
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: FONTS.semiBold,
         fontSize: 16,
         color: '#FFFFFF',
     },

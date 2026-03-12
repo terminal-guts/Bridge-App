@@ -4,6 +4,7 @@ import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { createLogger } from '../../utils/secureLogger';
+import { FONTS } from '../../constants/typography';
 
 const logger = createLogger('AudioRecorder');
 
@@ -251,7 +252,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#EF4444', marginRight: 8,
     },
     timerText: {
-        fontSize: 14, fontWeight: '600', color: '#B91C1C',
+        fontSize: 14, fontWeight: '600', fontFamily: FONTS.semiBold, color: '#B91C1C',
         marginRight: 10, minWidth: 36, fontVariant: ['tabular-nums'],
     },
     waveformBars: {

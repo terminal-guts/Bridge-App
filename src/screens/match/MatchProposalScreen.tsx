@@ -50,11 +50,13 @@ import { lightHaptic, mediumHaptic, successHaptic, warningHaptic } from '../../u
 import { showToast } from '../../utils/toast';
 import { valueEmoji, interestEmoji } from '../../utils/emojiMaps';
 import { TIER_CONFIG } from '../../utils/questionTiers';
+import { computeApprovalPercent } from '../../utils/matchCardGenerator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getFriends } from '../../services/friendService';
 import { communityService } from '../../services/communityServiceIndex';
 import { getUserProfile } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
+import { FONTS } from '../../constants/typography';
 
 const logger = createLogger('MatchProposalScreen');
 
@@ -329,7 +331,7 @@ const CommunityScore: React.FC<{ score: number; endorsement: FriendEndorsement }
       </StyledView>
 
       <StyledView className="flex-row items-end">
-        <Body style={{ fontSize: 44, lineHeight: 48, fontWeight: '700', color: colors.bg }}>{displayedScore}</Body>
+        <Body style={{ fontSize: 44, lineHeight: 48, fontWeight: '700', fontFamily: FONTS.bold, color: colors.bg }}>{displayedScore}</Body>
         <Body className="text-xl font-medium mb-2 ml-1" style={{ color: COLORS.neutral300 }}>%</Body>
       </StyledView>
 
@@ -544,7 +546,7 @@ const PassFeedbackModal: React.FC<{ visible: boolean; onClose: () => void; onSub
 
   return (
     <ModalContainer visible={visible} onClose={onClose}>
-      <Body className="text-center mb-2" style={{ fontSize: 20, fontWeight: '600', color: COLORS.neutral900 }}>Help us improve</Body>
+      <Body className="text-center mb-2" style={{ fontSize: 20, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral900 }}>Help us improve</Body>
       <Body className="text-center mb-6" style={{ fontSize: 16, color: COLORS.neutral500, lineHeight: 24 }}>Why wasn't this a good match? (Optional)</Body>
 
       <StyledView className="mb-6">
@@ -559,7 +561,7 @@ const PassFeedbackModal: React.FC<{ visible: boolean; onClose: () => void; onSub
             <StyledView className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: selectedFeedback === option.id ? COLORS.primaryBorder : COLORS.neutral50 }}>
               <Ionicons name={option.icon as any} size={16} color={selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral500} />
             </StyledView>
-            <Body className="ml-3 flex-1" style={{ fontSize: 16, fontWeight: '500', color: selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral700 }}>{option.label}</Body>
+            <Body className="ml-3 flex-1" style={{ fontSize: 16, fontWeight: '500', fontFamily: FONTS.medium, color: selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral700 }}>{option.label}</Body>
             {selectedFeedback === option.id && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary500} />}
           </StyledTouchableOpacity>
         ))}
@@ -567,10 +569,10 @@ const PassFeedbackModal: React.FC<{ visible: boolean; onClose: () => void; onSub
 
       <StyledView className="flex-row" style={{ gap: 12 }}>
         <StyledTouchableOpacity onPress={onClose} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 8 }} activeOpacity={0.7}>
-          <Body style={{ fontSize: 16, fontWeight: '600', color: COLORS.neutral600 }}>Skip</Body>
+          <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral600 }}>Skip</Body>
         </StyledTouchableOpacity>
         <StyledTouchableOpacity onPress={() => selectedFeedback ? onSubmit(selectedFeedback) : onClose()} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.primary500, borderRadius: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 }} activeOpacity={0.8}>
-          <Body style={{ fontSize: 16, fontWeight: '600', color: COLORS.white }}>Done</Body>
+          <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.white }}>Done</Body>
         </StyledTouchableOpacity>
       </StyledView>
     </ModalContainer>
@@ -598,7 +600,7 @@ const RecommendToFriendModal: React.FC<{ visible: boolean; profileName: string; 
         <StyledView className="w-16 h-16 rounded-full items-center justify-center mb-4" style={{ backgroundColor: COLORS.primary50 }}>
           <Ionicons name="gift-outline" size={28} color={COLORS.primary500} />
         </StyledView>
-        <Body className="text-center mb-2" style={{ fontSize: 20, fontWeight: '600', color: COLORS.neutral900 }}>Know someone who'd click?</Body>
+        <Body className="text-center mb-2" style={{ fontSize: 20, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral900 }}>Know someone who'd click?</Body>
         <Body className="text-center" style={{ fontSize: 16, color: COLORS.neutral500, lineHeight: 24 }}>Recommend {profileName} to a friend</Body>
       </StyledView>
 
@@ -607,10 +609,10 @@ const RecommendToFriendModal: React.FC<{ visible: boolean; profileName: string; 
       ) : friends.length === 0 ? (
         <StyledView className="py-6 items-center">
           <StyledView className="w-14 h-14 rounded-full items-center justify-center mb-4" style={{ backgroundColor: COLORS.neutral50 }}><Ionicons name="people-outline" size={24} color={COLORS.neutral300} /></StyledView>
-          <Body className="mb-2" style={{ fontSize: 16, fontWeight: '600', color: COLORS.neutral700 }}>No friends yet</Body>
+          <Body className="mb-2" style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral700 }}>No friends yet</Body>
           <Body className="text-center mb-5" style={{ fontSize: 14, color: COLORS.neutral500, lineHeight: 20, paddingHorizontal: 16 }}>Add friends to share match recommendations</Body>
           <StyledTouchableOpacity onPress={() => { onClose(); navigation.navigate('ContactInvite'); }} style={{ backgroundColor: COLORS.primary500, borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24 }} activeOpacity={0.8}>
-            <Body style={{ fontSize: 16, fontWeight: '600', color: COLORS.white }}>Add Friends</Body>
+            <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.white }}>Add Friends</Body>
           </StyledTouchableOpacity>
         </StyledView>
       ) : (
@@ -620,7 +622,7 @@ const RecommendToFriendModal: React.FC<{ visible: boolean; profileName: string; 
               <StyledView className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: selectedFriend === friend.friendId ? COLORS.primaryBorder : COLORS.primary50 }}>
                 <Ionicons name="person" size={16} color={selectedFriend === friend.friendId ? COLORS.primary500 : '#93C5FD'} />
               </StyledView>
-              <Body className="ml-3 flex-1" style={{ fontSize: 16, fontWeight: '500', color: selectedFriend === friend.friendId ? COLORS.primary500 : COLORS.neutral700 }}>{friend.profile.firstName}</Body>
+              <Body className="ml-3 flex-1" style={{ fontSize: 16, fontWeight: '500', fontFamily: FONTS.medium, color: selectedFriend === friend.friendId ? COLORS.primary500 : COLORS.neutral700 }}>{friend.profile.firstName}</Body>
               {selectedFriend === friend.friendId && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary500} />}
             </StyledTouchableOpacity>
           ))}
@@ -629,11 +631,11 @@ const RecommendToFriendModal: React.FC<{ visible: boolean; profileName: string; 
 
       <StyledView className="flex-row" style={{ gap: 12 }}>
         <StyledTouchableOpacity onPress={onSkip} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 8 }} activeOpacity={0.7}>
-          <Body style={{ fontSize: 16, fontWeight: '600', color: COLORS.neutral600 }}>No Thanks</Body>
+          <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral600 }}>No Thanks</Body>
         </StyledTouchableOpacity>
         {friends.length > 0 && (
           <StyledTouchableOpacity onPress={() => selectedFriend && onRecommend(selectedFriend)} disabled={!selectedFriend} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: selectedFriend ? COLORS.primary500 : COLORS.neutral100, borderRadius: 8 }} activeOpacity={0.8}>
-            <Body style={{ fontSize: 16, fontWeight: '600', color: selectedFriend ? COLORS.white : COLORS.neutral400 }}>Recommend</Body>
+            <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: selectedFriend ? COLORS.white : COLORS.neutral400 }}>Recommend</Body>
           </StyledTouchableOpacity>
         )}
       </StyledView>
@@ -647,15 +649,15 @@ const PassConfirmModal: React.FC<{ visible: boolean; onConfirm: () => void; onCa
       <StyledView className="w-14 h-14 rounded-full items-center justify-center mb-4" style={{ backgroundColor: COLORS.warningBg }}>
         <Ionicons name="help-circle-outline" size={28} color={COLORS.warningIcon} />
       </StyledView>
-      <Body className="text-center mb-2" style={{ fontSize: 20, fontWeight: '600', color: COLORS.neutral900 }}>Pass on this match?</Body>
+      <Body className="text-center mb-2" style={{ fontSize: 20, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral900 }}>Pass on this match?</Body>
       <Body className="text-center" style={{ fontSize: 16, color: COLORS.neutral500, lineHeight: 24 }}>Are you sure? You won't be able to match with this person again.</Body>
     </StyledView>
     <StyledView className="flex-row" style={{ gap: 12 }}>
       <StyledTouchableOpacity onPress={onCancel} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 8 }} activeOpacity={0.7}>
-        <Body style={{ fontSize: 16, fontWeight: '600', color: COLORS.neutral600 }}>Keep Looking</Body>
+        <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral600 }}>Keep Looking</Body>
       </StyledTouchableOpacity>
       <StyledTouchableOpacity onPress={onConfirm} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.errorBg, borderRadius: 8 }} activeOpacity={0.7}>
-        <Body style={{ fontSize: 16, fontWeight: '600', color: COLORS.errorText }}>Pass</Body>
+        <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.errorText }}>Pass</Body>
       </StyledTouchableOpacity>
     </StyledView>
   </ModalContainer>
@@ -829,7 +831,8 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   // Accept immediately without confirmation - reduced friction!
   const handleAcceptInitiate = useCallback(async () => {
     // Guard: don't allow accept on expired proposals
-    if (route.params?.expiresAt && new Date(route.params.expiresAt).getTime() <= Date.now()) {
+    const expiresAt = route.params?.match?.expiresAt;
+    if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) {
       showToast.error('Proposal expired', 'This proposal is no longer available');
       navigation.goBack();
       return;
@@ -976,7 +979,8 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   }
 
   const photos = profile.photos || [];
-  const communityScore = match?.communityScore || 0.75;
+  // Hash-based decorative score (70–99) seeded by proposal ID — see CLAUDE.md
+  const communityScore = computeApprovalPercent(match?.id || '') / 100;
   const expiresAt = match?.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   const displayedQuestions = (profile.displayedQuestions || []).map(id => profile.deepQuestions?.find(q => q.questionId === id)).filter((q): q is DeepQuestionAnswer => q !== undefined).sort((a, b) => (a.tier || 0) - (b.tier || 0));
   const hasLifestyleInfo = profile.drinkingFrequency || profile.cannabisFrequency || profile.tobaccoFrequency || profile.otherDrugsFrequency;
@@ -1109,11 +1113,11 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
         <StyledView className="flex-row" style={{ gap: 12 }}>
           <StyledTouchableOpacity onPress={handlePassInitiate} disabled={isPassing || isAccepting} className="flex-1 flex-row items-center justify-center py-3.5" activeOpacity={0.8} style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 8, opacity: isPassing || isAccepting ? 0.6 : 1 }}>
             <Ionicons name="close" size={18} color={COLORS.neutral600} />
-            <Body style={{ color: COLORS.neutral600, fontWeight: '600', fontSize: 16, marginLeft: 8 }}>{isPassing ? 'Passing...' : 'Pass'}</Body>
+            <Body style={{ color: COLORS.neutral600, fontWeight: '600', fontFamily: FONTS.semiBold, fontSize: 16, marginLeft: 8 }}>{isPassing ? 'Passing...' : 'Pass'}</Body>
           </StyledTouchableOpacity>
           <StyledTouchableOpacity onPress={handleAcceptInitiate} disabled={isPassing || isAccepting} className="flex-1 flex-row items-center justify-center py-3.5" activeOpacity={0.8} style={{ backgroundColor: COLORS.primary500, borderRadius: 8, opacity: isPassing || isAccepting ? 0.6 : 1, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 }}>
             <Ionicons name="heart" size={18} color="white" />
-            <Body style={{ color: COLORS.white, fontWeight: '600', fontSize: 16, marginLeft: 8 }}>{isAccepting ? 'Accepting...' : 'Accept'}</Body>
+            <Body style={{ color: COLORS.white, fontWeight: '600', fontFamily: FONTS.semiBold, fontSize: 16, marginLeft: 8 }}>{isAccepting ? 'Accepting...' : 'Accept'}</Body>
           </StyledTouchableOpacity>
         </StyledView>
       </StyledView>
