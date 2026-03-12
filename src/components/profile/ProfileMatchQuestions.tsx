@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
+import { FONTS } from '../../constants/typography';
 
 const questions = [
     {
@@ -19,7 +20,7 @@ const questions = [
 export default function ProfileMatchQuestions() {
     return (
         <View className="mb-[150px]">
-            <Text className="font-outfit-medium text-[#2563EB]/20 text-base mb-3 ml-4">
+            <Text className="font-medium text-[#2563EB]/20 text-base mb-3 ml-4" style={{ fontFamily: FONTS.medium }}>
                 Deep questions
             </Text>
             <View className="flex flex-col gap-[14px] items-center">
@@ -28,10 +29,10 @@ export default function ProfileMatchQuestions() {
                         key={index}
                         className="bg-white border border-black/10 shadow-sm rounded-xl p-3 w-full max-w-[343px]"
                     >
-                        <Text className="font-outfit-medium text-[#010101]/30 text-sm leading-[18px] mb-1">
+                        <Text className="font-medium text-[#010101]/30 text-sm leading-[18px] mb-1" style={{ fontFamily: FONTS.medium }}>
                             {index + 1}. {item.q}
                         </Text>
-                        <Text className="font-outfit-regular text-[#010101]/15 text-[13px] leading-5">
+                        <Text className="text-[#010101]/15 text-[13px] leading-5" style={{ fontFamily: FONTS.regular }}>
                             {item.a}
                         </Text>
                     </View>

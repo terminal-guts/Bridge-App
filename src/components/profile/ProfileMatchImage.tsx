@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, ImageBackground, TouchableOpacity } from 'react-native';
 import { ArrowLeft, Star } from 'lucide-react-native';
+import { FONTS } from '../../constants/typography';
 
 export default function ProfileMatchImage() {
     return (
@@ -29,7 +30,7 @@ export default function ProfileMatchImage() {
                     <View className="w-3.5 h-3.5 border-[1.5px] border-[#34C759] rounded-sm flex items-center justify-center">
                         <Star size={10} color="#34C759" fill="#34C759" />
                     </View>
-                    <Text className="font-outfit-semibold text-[#34C759] text-xs">
+                    <Text className="font-semibold text-[#34C759] text-xs" style={{ fontFamily: FONTS.semiBold }}>
                         Karma Pts : 80 pts
                     </Text>
                 </View>

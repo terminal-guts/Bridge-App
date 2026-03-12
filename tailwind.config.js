@@ -101,9 +101,11 @@ module.exports = {
         romantic: '#FF8B7C', // Soft coral-pink for match elements
       },
       fontFamily: {
-        // Will need to load custom fonts later
-        'satoshi': ['System', 'sans-serif'],
-        'inter': ['System', 'sans-serif'],
+        'sans': ['PlusJakartaSans_400Regular', 'sans-serif'],
+        'sans-medium': ['PlusJakartaSans_500Medium', 'sans-serif'],
+        'sans-semibold': ['PlusJakartaSans_600SemiBold', 'sans-serif'],
+        'sans-bold': ['PlusJakartaSans_700Bold', 'sans-serif'],
+        'sans-extrabold': ['PlusJakartaSans_800ExtraBold', 'sans-serif'],
       },
       borderRadius: {
         'xs': '4px',

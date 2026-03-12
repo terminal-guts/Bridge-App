@@ -108,11 +108,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                   <Body className="text-error-800 font-semibold mb-2">
                     Error Details (Dev Mode):
                   </Body>
-                  <Body className="text-error-700 text-xs font-mono">
+                  <Body className="text-error-700 text-xs">
                     {this.state.error.message}
                   </Body>
                   {this.state.error.stack && (
-                    <Body className="text-error-600 text-xs font-mono mt-2">
+                    <Body className="text-error-600 text-xs mt-2">
                       {this.state.error.stack.split('\n').slice(0, 5).join('\n')}
                     </Body>
                   )}
