@@ -79,7 +79,6 @@ describe('transformBackendProposal', () => {
     expect(result.yesVotes).toBe(8); // 5 + 3
     expect(result.noVotes).toBe(3); // 2 + 1
     expect(result.totalVotes).toBe(11); // 5 + 2 + 3 + 1
-    expect(result.poolEligible).toBe(true);
     expect(result.compatibilityScore).toBe(85);
     expect(result.categoryScores).toEqual({ values: 90, interests: 80 });
     expect(result.votingStartedAt).toBe('2026-03-01T12:00:00Z');
@@ -129,17 +128,7 @@ describe('transformBackendProposal', () => {
     expect(result.totalVotes).toBe(0);
   });
 
-  it('handles pool_eligible defaulting to true when undefined', () => {
-    const raw = { id: 'test' };
-    const result = transformBackendProposal(raw);
-    expect(result.poolEligible).toBe(true);
-  });
-
-  it('preserves pool_eligible = false', () => {
-    const raw = { id: 'test', pool_eligible: false };
-    const result = transformBackendProposal(raw);
-    expect(result.poolEligible).toBe(false);
-  });
+  // poolEligible was removed from Proposal type — no longer tested
 });
 
 // ============================================================================
