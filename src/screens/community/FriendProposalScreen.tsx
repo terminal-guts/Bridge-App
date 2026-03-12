@@ -116,40 +116,40 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
 
         if (cancelled) return;
 
-        // Build deep questions data — find questions both users answered
+        // Build deep questions data — show ALL questions from both users
         const dqA = dqAResult.data;
         const dqB = dqBResult.data;
-        const sharedQuestions: DeepQuestionData[] = [];
-        if (dqA?.answers && dqB?.answers) {
-          const answersA = dqA.answers as Record<string, string>;
-          const answersB = dqB.answers as Record<string, string>;
-          const displayedA = new Set((dqA.displayed_question_ids || []).map(String));
-          const displayedB = new Set((dqB.displayed_question_ids || []).map(String));
+        const allQuestions: DeepQuestionData[] = [];
+        const answersA = (dqA?.answers || {}) as Record<string, string>;
+        const answersB = (dqB?.answers || {}) as Record<string, string>;
+        const displayedA = new Set((dqA?.displayed_question_ids || []).map(String));
+        const displayedB = new Set((dqB?.displayed_question_ids || []).map(String));
 
-          const allAIds = Object.keys(answersA);
-          const allBIds = new Set(Object.keys(answersB));
-          const sharedIds = allAIds.filter(id => allBIds.has(id) && answersA[id] && answersB[id]);
+        // Collect all unique question IDs from both users
+        const allQIds = new Set([...Object.keys(answersA), ...Object.keys(answersB)]);
+        const qIdArray = Array.from(allQIds);
 
-          // Sort: displayed by both first, then displayed by one, then others
-          sharedIds.sort((a, b) => {
-            const aScore = (displayedA.has(a) ? 2 : 0) + (displayedB.has(a) ? 2 : 0);
-            const bScore = (displayedA.has(b) ? 2 : 0) + (displayedB.has(b) ? 2 : 0);
-            return bScore - aScore;
-          });
+        // Sort: shared first, then displayed, then others
+        qIdArray.sort((a, b) => {
+          const aShared = answersA[a] && answersB[a] ? 4 : 0;
+          const bShared = answersA[b] && answersB[b] ? 4 : 0;
+          const aDisp = (displayedA.has(a) ? 1 : 0) + (displayedB.has(a) ? 1 : 0);
+          const bDisp = (displayedA.has(b) ? 1 : 0) + (displayedB.has(b) ? 1 : 0);
+          return (bShared + bDisp) - (aShared + aDisp);
+        });
 
-          for (const qId of sharedIds.slice(0, 3)) {
-            const questionDef = getQuestionById(Number(qId));
-            if (questionDef) {
-              sharedQuestions.push({
-                questionId: Number(qId),
-                questionText: questionDef.question,
-                userAAnswer: answersA[qId],
-                userBAnswer: answersB[qId],
-              });
-            }
+        for (const qId of qIdArray.slice(0, 5)) {
+          const questionDef = getQuestionById(Number(qId));
+          if (questionDef && (answersA[qId] || answersB[qId])) {
+            allQuestions.push({
+              questionId: Number(qId),
+              questionText: questionDef.question,
+              userAAnswer: answersA[qId] || undefined,
+              userBAnswer: answersB[qId] || undefined,
+            });
           }
         }
-        setDeepQuestions(sharedQuestions);
+        setDeepQuestions(allQuestions);
 
         const fullProposal: Proposal = {
           ...transformed,

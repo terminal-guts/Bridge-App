@@ -167,8 +167,8 @@ const VALUES_SIMILARITY: Record<string, string[]> = {
 export interface DeepQuestionData {
   questionId: number;
   questionText: string;
-  userAAnswer: string;
-  userBAnswer: string;
+  userAAnswer?: string;
+  userBAnswer?: string;
 }
 
 // ─── Smart pill matching helper ───────────────────────────────────────────────
@@ -521,155 +521,323 @@ function SmartPillCloudSection({
   );
 }
 
-// ─── Helper: Deep Question Card with reveal mechanic ──────────────────────────
-function QuestionCard({
+// ─── Helper: Photo card with optional carousel ──────────────────────────────
+function ProposalPhotoCard({
+  photos,
+  name,
+  age,
+  width,
+  height,
+  side,
+  proposalId,
+}: {
+  photos: Array<{ url?: string; isMain?: boolean }>;
+  name: string;
+  age?: number;
+  width: number;
+  height: number;
+  side: 'left' | 'right';
+  proposalId: string;
+}) {
+  const [currentPage, setCurrentPage] = useState(0);
+  const validPhotos = (photos || []).filter((p: any) => p.url);
+  const showCarousel = validPhotos.length > 1;
+  const mainPhoto = validPhotos.find((p: any) => p.isMain) || validPhotos[0];
+
+  const handleScroll = useCallback((e: any) => {
+    const page = Math.round(e.nativeEvent.contentOffset.x / width);
+    setCurrentPage(page);
+  }, [width]);
+
+  const borderRadiusStyle = side === 'left'
+    ? { borderTopLeftRadius: PHOTO_RADIUS, borderBottomLeftRadius: PHOTO_RADIUS, borderTopRightRadius: 0, borderBottomRightRadius: 0 }
+    : { borderTopLeftRadius: 0, borderBottomLeftRadius: 0, borderTopRightRadius: PHOTO_RADIUS, borderBottomRightRadius: PHOTO_RADIUS };
+
+  return (
+    <View style={{ width, height, ...borderRadiusStyle, overflow: 'hidden' }}>
+      {showCarousel ? (
+        <ScrollView
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={handleScroll}
+          bounces={false}
+          style={{ width, height }}
+        >
+          {validPhotos.map((photo: any, i: number) => (
+            <Image
+              key={`${proposalId}-${side}-${i}`}
+              source={{ uri: photo.url }}
+              style={{ width, height }}
+              contentFit="cover"
+              transition={200}
+              cachePolicy="disk"
+              recyclingKey={`${proposalId}-${side}-${i}`}
+            />
+          ))}
+        </ScrollView>
+      ) : (
+        <Image
+          source={{ uri: mainPhoto?.url || 'https://via.placeholder.com/200' }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, ...borderRadiusStyle }}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="disk"
+          recyclingKey={`${proposalId}-${side}`}
+        />
+      )}
+      <LinearGradient
+        colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.92)']}
+        locations={[0.45, 0.75, 1]}
+        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 130 }}
+        pointerEvents="none"
+      />
+      {showCarousel && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 10,
+            left: 0,
+            right: 0,
+            flexDirection: 'row',
+            justifyContent: 'center',
+            gap: 4,
+          }}
+          pointerEvents="none"
+        >
+          {validPhotos.map((_: any, i: number) => (
+            <View
+              key={`dot-${side}-${i}`}
+              style={{
+                width: i === currentPage ? 18 : 6,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: i === currentPage ? '#FFFFFF' : 'rgba(255,255,255,0.45)',
+              }}
+            />
+          ))}
+        </View>
+      )}
+      <View style={{ position: 'absolute', bottom: 14, left: 14 }} pointerEvents="none">
+        <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 28, color: '#FFF', letterSpacing: -0.3 }}>
+          {name}{age ? `, ${age}` : ''}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Helper: Single reveal card inside a carousel page ───────────────────────
+function RevealCardInline({
+  name,
+  answer,
+  revealed,
+  onReveal,
+  scale,
+  side,
+}: {
+  name: string;
+  answer: string;
+  revealed: boolean;
+  onReveal: () => void;
+  scale: Animated.Value;
+  side: 'left' | 'right' | 'solo';
+}) {
+  const minH = side === 'solo' ? 70 : 90;
+  return (
+    <TouchableOpacity
+      onPress={onReveal}
+      activeOpacity={revealed ? 1 : 0.7}
+      style={{ flex: side === 'solo' ? undefined : 1 }}
+    >
+      <Animated.View style={{
+        minHeight: minH,
+        borderRadius: 10,
+        padding: 12,
+        justifyContent: 'center',
+        transform: [{ scale }],
+        ...(revealed
+          ? { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBD5E1' }
+          : { backgroundColor: '#0F172A', borderWidth: 1, borderColor: 'rgba(99, 131, 255, 0.2)' }),
+      }}>
+        {revealed ? (
+          <>
+            <Text style={{
+              fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 11,
+              color: BLUE, marginBottom: 6,
+            }}>{name}</Text>
+            <Text style={{
+              fontFamily: 'Outfit_400Regular', fontSize: 13,
+              color: '#334155', lineHeight: 18,
+            }}>{answer}</Text>
+          </>
+        ) : side === 'solo' ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{
+              width: 36, height: 36, borderRadius: 18,
+              backgroundColor: 'rgba(99, 131, 255, 0.2)',
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 16, color: '#93A8FF' }}>?</Text>
+            </View>
+            <View>
+              <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 13, color: '#FFFFFF' }}>{name}</Text>
+              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Tap to reveal</Text>
+            </View>
+          </View>
+        ) : (
+          <View style={{ alignItems: 'center' }}>
+            <View style={{
+              width: 38, height: 38, borderRadius: 19,
+              backgroundColor: 'rgba(99, 131, 255, 0.2)',
+              alignItems: 'center', justifyContent: 'center', marginBottom: 8,
+            }}>
+              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 18, color: '#93A8FF' }}>?</Text>
+            </View>
+            <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>{name}</Text>
+          </View>
+        )}
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
+
+// ─── Helper: Question Carousel — swipeable card deck ─────────────────────────
+const CAROUSEL_CONTENT_WIDTH = SCREEN_WIDTH - 32 - 24; // SectionCard padding (12*2) + outer padding (16*2)
+
+function QuestionCarousel({
+  questions,
+  userAName,
+  userBName,
+}: {
+  questions: DeepQuestionData[];
+  userAName: string;
+  userBName: string;
+}) {
+  const [currentPage, setCurrentPage] = useState(0);
+  const total = questions.length;
+
+  const onScroll = useCallback((e: any) => {
+    const page = Math.round(e.nativeEvent.contentOffset.x / CAROUSEL_CONTENT_WIDTH);
+    setCurrentPage(page);
+  }, []);
+
+  return (
+    <View>
+      {/* Carousel */}
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={onScroll}
+        decelerationRate="fast"
+        snapToInterval={CAROUSEL_CONTENT_WIDTH}
+        contentContainerStyle={{ gap: 0 }}
+      >
+        {questions.map((q, idx) => (
+          <QuestionPage
+            key={`qp-${q.questionId}`}
+            question={q}
+            userAName={userAName}
+            userBName={userBName}
+            width={CAROUSEL_CONTENT_WIDTH}
+          />
+        ))}
+      </ScrollView>
+
+      {/* Dots + counter */}
+      {total > 1 && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, gap: 6 }}>
+          {questions.map((_, i) => (
+            <View
+              key={`qdot-${i}`}
+              style={{
+                width: i === currentPage ? 18 : 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: i === currentPage ? BLUE : '#D1D5DB',
+              }}
+            />
+          ))}
+          <Text style={{
+            fontFamily: 'Outfit_500Medium', fontSize: 11,
+            color: '#9CA3AF', marginLeft: 6,
+          }}>
+            {currentPage + 1}/{total}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ─── Helper: Single page inside question carousel ────────────────────────────
+function QuestionPage({
   question,
   userAName,
   userBName,
+  width,
 }: {
   question: DeepQuestionData;
   userAName: string;
   userBName: string;
+  width: number;
 }) {
+  const hasA = !!question.userAAnswer;
+  const hasB = !!question.userBAnswer;
+  const bothAnswered = hasA && hasB;
   const [revealedA, setRevealedA] = useState(false);
   const [revealedB, setRevealedB] = useState(false);
-  const scaleA = useRef(new Animated.Value(0.95)).current;
-  const opacityA = useRef(new Animated.Value(0.4)).current;
-  const scaleB = useRef(new Animated.Value(0.95)).current;
-  const opacityB = useRef(new Animated.Value(0.4)).current;
+
+  const scaleA = useRef(new Animated.Value(1)).current;
+  const scaleB = useRef(new Animated.Value(1)).current;
 
   const revealA = useCallback(() => {
-    if (revealedA) return;
-    setRevealedA(true);
-    Animated.parallel([
-      Animated.spring(scaleA, { toValue: 1, useNativeDriver: true }),
-      Animated.timing(opacityA, { toValue: 1, duration: 300, useNativeDriver: true }),
+    if (revealedA || !hasA) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    Animated.sequence([
+      Animated.timing(scaleA, { toValue: 0.92, duration: 80, useNativeDriver: true }),
+      Animated.spring(scaleA, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }),
     ]).start();
-  }, [revealedA, scaleA, opacityA]);
+    setRevealedA(true);
+  }, [revealedA, hasA, scaleA]);
 
   const revealB = useCallback(() => {
-    if (revealedB) return;
-    setRevealedB(true);
-    Animated.parallel([
-      Animated.spring(scaleB, { toValue: 1, useNativeDriver: true }),
-      Animated.timing(opacityB, { toValue: 1, duration: 300, useNativeDriver: true }),
+    if (revealedB || !hasB) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    Animated.sequence([
+      Animated.timing(scaleB, { toValue: 0.92, duration: 80, useNativeDriver: true }),
+      Animated.spring(scaleB, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }),
     ]).start();
-  }, [revealedB, scaleB, opacityB]);
+    setRevealedB(true);
+  }, [revealedB, hasB, scaleB]);
 
   return (
-    <View style={{
-      backgroundColor: '#F8FAFC',
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: '#E2E8F0',
-      padding: 14,
-      marginBottom: 12,
-    }}>
-      {/* Question text */}
-      <Text style={{
-        fontFamily: 'Outfit_600SemiBold',
-        fontWeight: '600',
-        fontSize: 14,
-        color: '#1E293B',
-        marginBottom: 12,
-        lineHeight: 20,
+    <View style={{ width, paddingRight: 0 }}>
+      <View style={{
+        backgroundColor: '#F8FAFC',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        padding: 14,
       }}>
-        {question.questionText}
-      </Text>
-
-      {/* Two answer cards side by side */}
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        {/* User A card */}
-        <TouchableOpacity
-          onPress={revealA}
-          activeOpacity={revealedA ? 1 : 0.7}
-          style={{ flex: 1 }}
-        >
-          <Animated.View style={{
-            backgroundColor: revealedA ? '#FFFFFF' : '#E2E8F0',
-            borderRadius: 10,
-            padding: 12,
-            minHeight: 80,
-            justifyContent: 'center',
-            borderWidth: 1,
-            borderColor: revealedA ? '#CBD5E1' : '#E2E8F0',
-            transform: [{ scale: scaleA }],
-            opacity: opacityA,
+          <Text style={{
+            fontFamily: 'Outfit_600SemiBold', fontWeight: '600',
+            fontSize: 14, color: '#1E293B', marginBottom: 12, lineHeight: 20,
           }}>
-            <Text style={{
-              fontFamily: 'Outfit_500Medium',
-              fontWeight: '500',
-              fontSize: 11,
-              color: BLUE,
-              marginBottom: 6,
-            }}>
-              {userAName}
-            </Text>
-            {revealedA ? (
-              <Text style={{
-                fontFamily: 'Outfit_400Regular',
-                fontSize: 13,
-                color: '#334155',
-                lineHeight: 18,
-              }}>
-                {question.userAAnswer}
-              </Text>
-            ) : (
-              <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-                <Ionicons name="eye-outline" size={20} color="#94A3B8" />
-                <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
-                  Tap to reveal
-                </Text>
-              </View>
-            )}
-          </Animated.View>
-        </TouchableOpacity>
+            {question.questionText}
+          </Text>
 
-        {/* User B card */}
-        <TouchableOpacity
-          onPress={revealB}
-          activeOpacity={revealedB ? 1 : 0.7}
-          style={{ flex: 1 }}
-        >
-          <Animated.View style={{
-            backgroundColor: revealedB ? '#FFFFFF' : '#E2E8F0',
-            borderRadius: 10,
-            padding: 12,
-            minHeight: 80,
-            justifyContent: 'center',
-            borderWidth: 1,
-            borderColor: revealedB ? '#CBD5E1' : '#E2E8F0',
-            transform: [{ scale: scaleB }],
-            opacity: opacityB,
-          }}>
-            <Text style={{
-              fontFamily: 'Outfit_500Medium',
-              fontWeight: '500',
-              fontSize: 11,
-              color: BLUE,
-              marginBottom: 6,
-            }}>
-              {userBName}
-            </Text>
-            {revealedB ? (
-              <Text style={{
-                fontFamily: 'Outfit_400Regular',
-                fontSize: 13,
-                color: '#334155',
-                lineHeight: 18,
-              }}>
-                {question.userBAnswer}
-              </Text>
-            ) : (
-              <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-                <Ionicons name="eye-outline" size={20} color="#94A3B8" />
-                <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
-                  Tap to reveal
-                </Text>
-              </View>
-            )}
-          </Animated.View>
-        </TouchableOpacity>
+          {bothAnswered ? (
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <RevealCardInline name={userAName} answer={question.userAAnswer!} revealed={revealedA} onReveal={revealA} scale={scaleA} side="left" />
+              <RevealCardInline name={userBName} answer={question.userBAnswer!} revealed={revealedB} onReveal={revealB} scale={scaleB} side="right" />
+            </View>
+          ) : hasA ? (
+            <RevealCardInline name={userAName} answer={question.userAAnswer!} revealed={revealedA} onReveal={revealA} scale={scaleA} side="solo" />
+          ) : (
+            <RevealCardInline name={userBName} answer={question.userBAnswer!} revealed={revealedB} onReveal={revealB} scale={scaleB} side="solo" />
+          )}
       </View>
     </View>
   );
@@ -709,74 +877,133 @@ function LiveVoteBar({
   if (total === 0) {
     return (
       <View style={{ marginTop: 10, marginBottom: 4, alignItems: 'center' }}>
+        {/* Empty capsule bar */}
         <View style={{
-          height: 8,
-          borderRadius: 4,
-          backgroundColor: '#E5E7EB',
-          width: '100%',
-          marginBottom: 6,
-        }} />
-        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#9CA3AF' }}>
-          No votes yet
-        </Text>
+          height: 14, borderRadius: 7, width: '100%', marginBottom: 8,
+          backgroundColor: '#F1F5F9',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.06, shadowRadius: 2, elevation: 1,
+          overflow: 'hidden',
+        }}>
+          {/* Top highlight for 3D capsule */}
+          <LinearGradient
+            colors={['rgba(255,255,255,0.8)', 'rgba(255,255,255,0)', 'rgba(0,0,0,0.03)']}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          />
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: BLUE }} />
+          <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: BLUE }}>
+            Be the first to weigh in!
+          </Text>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={{ marginTop: 10, marginBottom: 4 }}>
-      {/* Stacked bar */}
+      {/* Liquid 3D capsule bar */}
       <View style={{
-        flexDirection: 'row',
-        height: 8,
-        borderRadius: 4,
-        overflow: 'hidden',
-        backgroundColor: '#E5E7EB',
+        height: 14, borderRadius: 7, overflow: 'hidden',
+        backgroundColor: '#F1F5F9',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08, shadowRadius: 3, elevation: 2,
       }}>
-        {yesVotes > 0 && (
-          <Animated.View style={{
-            height: 8,
-            backgroundColor: GREEN,
-            width: yesWidth.interpolate({
-              inputRange: [0, 100],
-              outputRange: ['0%', '100%'],
-            }),
-          }} />
-        )}
-        {noVotes > 0 && (
-          <Animated.View style={{
-            height: 8,
-            backgroundColor: RED,
-            width: noWidth.interpolate({
-              inputRange: [0, 100],
-              outputRange: ['0%', '100%'],
-            }),
-          }} />
-        )}
-        {unsureVotes > 0 && (
-          <Animated.View style={{
-            height: 8,
-            backgroundColor: GREY_VOTE,
-            width: unsureWidth.interpolate({
-              inputRange: [0, 100],
-              outputRange: ['0%', '100%'],
-            }),
-          }} />
-        )}
+        {/* Inner shadow (bottom darkening for depth) */}
+        <LinearGradient
+          colors={['rgba(0,0,0,0.04)', 'transparent', 'rgba(0,0,0,0.06)']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}
+        />
+        {/* Colored segments */}
+        <View style={{ flexDirection: 'row', height: 14, zIndex: 1 }}>
+          {yesVotes > 0 && (
+            <Animated.View style={{
+              height: 14,
+              overflow: 'hidden',
+              width: yesWidth.interpolate({
+                inputRange: [0, 100],
+                outputRange: ['0%', '100%'],
+              }),
+            }}>
+              <LinearGradient
+                colors={['#4ADE80', GREEN, '#22C55E']}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={{ flex: 1 }}
+              />
+            </Animated.View>
+          )}
+          {noVotes > 0 && (
+            <Animated.View style={{
+              height: 14,
+              overflow: 'hidden',
+              width: noWidth.interpolate({
+                inputRange: [0, 100],
+                outputRange: ['0%', '100%'],
+              }),
+            }}>
+              <LinearGradient
+                colors={['#FF6B6B', RED, '#E11D48']}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={{ flex: 1 }}
+              />
+            </Animated.View>
+          )}
+          {unsureVotes > 0 && (
+            <Animated.View style={{
+              height: 14,
+              overflow: 'hidden',
+              width: unsureWidth.interpolate({
+                inputRange: [0, 100],
+                outputRange: ['0%', '100%'],
+              }),
+            }}>
+              <LinearGradient
+                colors={['#C4C9D4', GREY_VOTE, '#8B93A1']}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={{ flex: 1 }}
+              />
+            </Animated.View>
+          )}
+        </View>
+        {/* Top glossy highlight sheen */}
+        <LinearGradient
+          colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.1)', 'transparent']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 7, zIndex: 2 }}
+          pointerEvents="none"
+        />
       </View>
 
-      {/* Vote counts text */}
-      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 6 }}>
-        <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: GREEN }}>
-          {yesVotes} Yes
-        </Text>
-        <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: '#CBD5E1' }}>&middot;</Text>
-        <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: RED }}>
-          {noVotes} No
-        </Text>
-        <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: '#CBD5E1' }}>&middot;</Text>
-        <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: GREY_VOTE }}>
-          {unsureVotes} Unsure
+      {/* Vote counts + sentiment */}
+      <View style={{ alignItems: 'center', marginTop: 8, gap: 2 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12 }}>
+          <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: GREEN }}>
+            {yesVotes} Yes
+          </Text>
+          <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: '#CBD5E1' }}>&middot;</Text>
+          <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: RED }}>
+            {noVotes} No
+          </Text>
+          <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: '#CBD5E1' }}>&middot;</Text>
+          <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 12, color: GREY_VOTE }}>
+            {unsureVotes} Unsure
+          </Text>
+        </View>
+        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: '#9CA3AF' }}>
+          {total} voted{' \u00b7 '}
+          {yesVotes > noVotes + unsureVotes ? 'strong yes' :
+           noVotes > yesVotes + unsureVotes ? 'strong no' :
+           yesVotes === noVotes && unsureVotes === 0 ? 'evenly split' :
+           'community is split'}
         </Text>
       </View>
     </View>
@@ -898,34 +1125,45 @@ export function ProposalReviewView({
       } else {
         setCurrentIndex(prev => prev + 1);
       }
-    }, 300);
+    }, 1000);
   }, [currentIndex, proposals.length, onVoteComplete, onBack, onVotesComplete]);
 
-  const handleVote = useCallback((vote: 'yes' | 'no' | 'unsure') => {
+  const handleVote = useCallback(async (vote: 'yes' | 'no' | 'unsure') => {
     if (voting || currentIndex >= proposals.length) return;
     const current = proposals[currentIndex];
     if (!current) return;
 
-    if (!rateLimiterRef.current.isAllowed('vote', 10, 60000)) {
+    if (!rateLimiterRef.current.isAllowed('vote', 20, 60000)) {
       showToast.info('Slow down!', 'Please wait a moment before voting again');
       return;
     }
 
     setVoting(true);
 
-    // Haptics — fire and forget, never block navigation
+    // Haptics — distinct feel per vote type, fire and forget
     if (vote === 'yes') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    } else if (vote === 'no') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     } else {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     }
 
-    // Submit vote — fire and forget, navigation never depends on this succeeding
-    communityService.submitProposalVote(current.id, vote).catch((err: any) => {
-      logger.error('[ProposalReviewView] Vote submission error (non-blocking):', err);
-    });
+    // Submit vote — wait for server confirmation before advancing
+    try {
+      await communityService.submitProposalVote(current.id, vote);
+    } catch (err: any) {
+      logger.error('[ProposalReviewView] Vote submission failed:', err);
+      if (isMountedRef.current) {
+        setVoting(false);
+        showToast.error('Vote failed', 'Check your connection and try again');
+      }
+      return;
+    }
 
-    // Optimistically update local vote counts so compatScore recomputes immediately
+    if (!isMountedRef.current) return;
+
+    // Update local vote counts after confirmed
     setProposals(prev => prev.map((p, i) => {
       if (i !== currentIndex) return p;
       return {
@@ -939,7 +1177,7 @@ export function ProposalReviewView({
     // Trigger +1 Karma popup
     triggerKarmaPopup();
 
-    // Always advance after a short delay
+    // Advance after confirmed
     advanceProposal();
   }, [voting, currentIndex, proposals, advanceProposal, triggerKarmaPopup]);
 
@@ -1185,68 +1423,30 @@ export function ProposalReviewView({
                 the native image layer is rounded independently. */}
             <View style={{ flexDirection: 'row' }}>
 
-              {/* Left photo card — outer corners rounded, inner edge straight */}
-              <View style={{
-                width: PHOTO_WIDTH,
-                height: PHOTO_HEIGHT,
-                borderTopLeftRadius: PHOTO_RADIUS,
-                borderBottomLeftRadius: PHOTO_RADIUS,
-                borderTopRightRadius: 0,
-                borderBottomRightRadius: 0,
-                overflow: 'hidden',
-              }}>
-                <Image
-                  source={{ uri: photoA?.url || 'https://via.placeholder.com/200' }}
-                  style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderTopLeftRadius: PHOTO_RADIUS, borderBottomLeftRadius: PHOTO_RADIUS }}
-                  contentFit="cover"
-                  transition={200}
-                  cachePolicy="disk"
-                  recyclingKey={`${proposal.id}-a`}
-                />
-                <LinearGradient
-                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.92)']}
-                  locations={[0.45, 0.75, 1]}
-                  style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 130 }}
-                />
-                <View style={{ position: 'absolute', bottom: 14, left: 14 }}>
-                  <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 28, color: '#FFF', letterSpacing: -0.3 }}>
-                    {userA.firstName}{userA.age ? `, ${userA.age}` : ''}
-                  </Text>
-                </View>
-              </View>
+              {/* Left photo card */}
+              <ProposalPhotoCard
+                photos={userA.photos || []}
+                name={userA.firstName}
+                age={userA.age}
+                width={PHOTO_WIDTH}
+                height={PHOTO_HEIGHT}
+                side="left"
+                proposalId={proposal.id}
+              />
 
               {/* Gap between cards */}
               <View style={{ width: DIVIDER_WIDTH }} />
 
-              {/* Right photo card — outer corners rounded, inner edge straight */}
-              <View style={{
-                width: PHOTO_WIDTH,
-                height: PHOTO_HEIGHT,
-                borderTopLeftRadius: 0,
-                borderBottomLeftRadius: 0,
-                borderTopRightRadius: PHOTO_RADIUS,
-                borderBottomRightRadius: PHOTO_RADIUS,
-                overflow: 'hidden',
-              }}>
-                <Image
-                  source={{ uri: photoB?.url || 'https://via.placeholder.com/200' }}
-                  style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderTopRightRadius: PHOTO_RADIUS, borderBottomRightRadius: PHOTO_RADIUS }}
-                  contentFit="cover"
-                  transition={200}
-                  cachePolicy="disk"
-                  recyclingKey={`${proposal.id}-b`}
-                />
-                <LinearGradient
-                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.92)']}
-                  locations={[0.45, 0.75, 1]}
-                  style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 130 }}
-                />
-                <View style={{ position: 'absolute', bottom: 14, left: 14 }}>
-                  <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 28, color: '#FFF', letterSpacing: -0.3 }}>
-                    {userB.firstName}{userB.age ? `, ${userB.age}` : ''}
-                  </Text>
-                </View>
-              </View>
+              {/* Right photo card */}
+              <ProposalPhotoCard
+                photos={userB.photos || []}
+                name={userB.firstName}
+                age={userB.age}
+                width={PHOTO_WIDTH}
+                height={PHOTO_HEIGHT}
+                side="right"
+                proposalId={proposal.id}
+              />
             </View>
 
             {/* Compatibility badge — centered between photos */}
@@ -1319,14 +1519,11 @@ export function ProposalReviewView({
         {/* ── Questions (Deep Questions with card reveal) ─────────────── */}
         {deepQuestions && deepQuestions.length > 0 && (
           <SectionCard title="Questions" matched={undefined} total={undefined}>
-            {deepQuestions.map((q) => (
-              <QuestionCard
-                key={`dq-${q.questionId}`}
-                question={q}
-                userAName={userA.firstName}
-                userBName={userB.firstName}
-              />
-            ))}
+            <QuestionCarousel
+              questions={deepQuestions}
+              userAName={userA.firstName}
+              userBName={userB.firstName}
+            />
           </SectionCard>
         )}
 
@@ -1462,7 +1659,7 @@ export function ProposalReviewView({
             <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>No</Text>
           </TouchableOpacity>
 
-          {/* For Friend */}
+          {/* Recommend */}
           <TouchableOpacity
             onPress={handleForFriendPress}
             disabled={voting}
@@ -1480,7 +1677,7 @@ export function ProposalReviewView({
             }}
           >
             <Ionicons name="person-add-outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
-            <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>For Friend</Text>
+            <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>Recommend</Text>
           </TouchableOpacity>
 
           {/* Not Sure */}
@@ -1531,7 +1728,7 @@ export function ProposalReviewView({
               /* ── Step 1: Pick which person to recommend ── */
               <View style={{ padding: 24 }}>
                 <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 20, color: '#010101', textAlign: 'center', marginBottom: 6 }}>
-                  For a Friend
+                  Recommend
                 </Text>
                 <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#010101', opacity: 0.6, textAlign: 'center', marginBottom: 20 }}>
                   Who would you like to recommend?
