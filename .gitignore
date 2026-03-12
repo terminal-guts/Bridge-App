@@ -33,3 +33,9 @@ pm-test-state.json
 
 # Supabase query helper (contains service role key)
 scripts/supabase-query.sh
+
+# Iconscout raw assets (large zips and source directories)
+assets/iconscout/*.zip
+assets/iconscout/mental-health-143/
+assets/iconscout/sport-215/
+assets/iconscout/stay-at-home-14/
