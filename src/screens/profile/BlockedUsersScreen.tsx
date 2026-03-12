@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity, Alert, TextInput, ActivityIndicator } from 'react-native';
+import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity, Alert, TextInput, ActivityIndicator, Keyboard } from 'react-native';
 import { styled } from 'nativewind';
-import { H2, H3, Body, Card, Button } from '../../components/ui';
+import { Body, Card } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,11 +24,10 @@ const StyledTextInput = styled(TextInput);
 export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigation }) => {
   const [blockedUsers, setBlockedUsers] = useState<BlockedUserType[]>([]);
   const [emailInput, setEmailInput] = useState('');
-  const [showAddBlock, setShowAddBlock] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [blocking, setBlocking] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // Get current user and load blocked users
   useEffect(() => {
     loadCurrentUser();
   }, []);
@@ -86,9 +85,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
             try {
               const result = await unblockUser(blockedUserId);
               if (result.ok) {
-                // Remove from local state
                 setBlockedUsers(prev => prev.filter(u => u.blockedUserId !== blockedUserId));
-                Alert.alert('Success', `${userName} has been unblocked`);
               } else {
                 Alert.alert('Error', result.error?.message || 'Failed to unblock user');
               }
@@ -114,14 +111,15 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
       return;
     }
 
-    // Basic email validation
     if (!trimmed.includes('@') || !trimmed.includes('.')) {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
 
+    Keyboard.dismiss();
+    setBlocking(true);
+
     try {
-      // Find user by email
       const { data: profile, error: findError } = await supabase
         .from('user_profiles')
         .select('user_id, first_name, last_name')
@@ -129,20 +127,23 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
         .single();
 
       if (findError || !profile) {
+        setBlocking(false);
         Alert.alert('Not Found', 'No Bridge account found with this email');
         return;
       }
 
       if (profile.user_id === currentUserId) {
+        setBlocking(false);
         Alert.alert('Error', 'You cannot block yourself');
         return;
       }
 
       const userName = `${profile.first_name} ${profile.last_name}`;
+      setBlocking(false);
 
       Alert.alert(
         'Block User',
-        `Block ${userName}? They will not be able to see your profile or match with you.`,
+        `Block ${userName}? They won't be able to see your profile or match with you.`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -152,8 +153,6 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
               const result = await blockUser(profile.user_id);
               if (result.ok) {
                 setEmailInput('');
-                setShowAddBlock(false);
-                Alert.alert('Success', `${userName} has been blocked`);
                 loadBlockedUsers();
               } else {
                 Alert.alert('Error', result.error?.message || 'Failed to block user');
@@ -163,6 +162,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
         ]
       );
     } catch (error) {
+      setBlocking(false);
       logger.error('Failed to block by email:', error);
       Alert.alert('Error', 'Failed to block user');
     }
@@ -182,87 +182,61 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
       <StatusBar barStyle="dark-content" />
 
       {/* Header */}
-      <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center justify-between">
-        <StyledView className="flex-row items-center flex-1">
-          <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
-            <Ionicons name="arrow-back" size={24} color="#101828" />
-          </StyledTouchableOpacity>
-          <H3>Blocked Users</H3>
-        </StyledView>
-        <StyledTouchableOpacity onPress={() => setShowAddBlock(!showAddBlock)}>
-          <Ionicons name={showAddBlock ? "close" : "add-circle"} size={24} color="#437FFF" />
+      <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center">
+        <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
+          <Ionicons name="arrow-back" size={24} color="#101828" />
         </StyledTouchableOpacity>
+        <Body className="text-neutral-900 font-semibold text-lg">Blocked Users</Body>
       </StyledView>
 
-      <StyledScrollView className="flex-1">
+      <StyledScrollView className="flex-1" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         <StyledView className="px-4 py-4">
-          {/* Info Card */}
-          <Card className="mb-6 bg-primary-50 border border-primary-200">
-            <StyledView className="flex-row items-start mb-3">
-              <Ionicons name="shield-checkmark" size={20} color="#437FFF" />
-              <Body className="text-primary-900 font-semibold text-sm ml-3">
-                When you block a user:
-              </Body>
-            </StyledView>
-            <StyledView className="space-y-2">
-              <StyledView className="flex-row items-start">
-                <StyledView className="w-1.5 h-1.5 bg-primary-700 rounded-full mt-1.5 mr-2" />
-                <Body className="flex-1 text-primary-700 text-sm">
-                  Any active proposal or match between you is cancelled
-                </Body>
-              </StyledView>
-              <StyledView className="flex-row items-start">
-                <StyledView className="w-1.5 h-1.5 bg-primary-700 rounded-full mt-1.5 mr-2" />
-                <Body className="flex-1 text-primary-700 text-sm">
-                  You'll never appear in each other's proposals
-                </Body>
-              </StyledView>
-              <StyledView className="flex-row items-start">
-                <StyledView className="w-1.5 h-1.5 bg-primary-700 rounded-full mt-1.5 mr-2" />
-                <Body className="flex-1 text-primary-700 text-sm">
-                  Your friendship is removed and you can't message each other
-                </Body>
-              </StyledView>
-            </StyledView>
-          </Card>
 
-          {/* Add Block by Email */}
-          {showAddBlock && (
-            <Card className="mb-6">
-              <H3 className="mb-3">Block by Email</H3>
-              <Body className="text-neutral-600 text-sm mb-4">
-                Enter an email address to block that user from Bridge
-              </Body>
+          {/* Block Input — primary action, right at the top */}
+          <StyledView className="mb-5">
+            <Body className="text-neutral-500 text-xs mb-2 ml-1">BLOCK SOMEONE BY EMAIL</Body>
+            <StyledView className="flex-row items-center bg-white border border-neutral-200 rounded-xl overflow-hidden">
               <StyledTextInput
                 value={emailInput}
                 onChangeText={setEmailInput}
-                placeholder="user@example.com"
+                placeholder="email@example.com"
+                placeholderTextColor="#9CA3AF"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
-                className="bg-white border border-neutral-300 rounded-lg px-4 py-3 text-neutral-900 mb-3"
+                returnKeyType="go"
+                onSubmitEditing={handleBlockByEmail}
+                className="flex-1 px-4 py-3.5 text-neutral-900 text-sm"
+                editable={!blocking}
               />
-              <Button onPress={handleBlockByEmail} variant="primary" fullWidth>
-                Block User
-              </Button>
-            </Card>
-          )}
+              <StyledTouchableOpacity
+                onPress={handleBlockByEmail}
+                disabled={!emailInput.trim() || blocking}
+                className="px-4 py-3.5"
+              >
+                {blocking ? (
+                  <ActivityIndicator size="small" color="#437FFF" />
+                ) : (
+                  <Ionicons
+                    name="arrow-forward-circle"
+                    size={26}
+                    color={emailInput.trim() ? '#437FFF' : '#D1D5DB'}
+                  />
+                )}
+              </StyledTouchableOpacity>
+            </StyledView>
+          </StyledView>
 
           {/* Blocked Users List */}
           {loading ? (
-            <Card className="bg-neutral-50 py-8">
-              <StyledView className="items-center">
-                <ActivityIndicator size="large" color="#437FFF" />
-                <Body className="text-neutral-600 mt-3">Loading blocked users...</Body>
-              </StyledView>
-            </Card>
+            <StyledView className="items-center py-12">
+              <ActivityIndicator size="large" color="#437FFF" />
+            </StyledView>
           ) : blockedUsers.length > 0 ? (
             <>
-              <StyledView className="mb-3">
-                <Body className="text-neutral-600 text-sm">
-                  {blockedUsers.length} {blockedUsers.length === 1 ? 'user' : 'users'} blocked
-                </Body>
-              </StyledView>
+              <Body className="text-neutral-400 text-xs mb-3 ml-1">
+                {blockedUsers.length} BLOCKED
+              </Body>
 
               {blockedUsers.map((user) => {
                 const userName = user.blockedUserProfile
@@ -270,43 +244,40 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                   : 'Unknown User';
 
                 return (
-                  <Card key={user.id} className="mb-3">
-                    <StyledView className="flex-row items-center justify-between">
-                      <StyledView className="flex-1">
-                        <Body className="text-neutral-900 font-semibold mb-1">
-                          {userName}
-                        </Body>
-                        <StyledView className="flex-row items-center">
-                          <Ionicons name="calendar-outline" size={14} color="#667085" />
-                          <Body className="text-neutral-500 text-xs ml-1">
-                            Blocked {formatDate(user.blockedAt)}
-                          </Body>
-                        </StyledView>
-                      </StyledView>
-                      <StyledTouchableOpacity
-                        onPress={() => handleUnblock(user.blockedUserId, userName)}
-                        className="bg-neutral-100 px-4 py-2 rounded-lg"
-                      >
-                        <Body className="text-neutral-700 font-medium text-sm">Unblock</Body>
-                      </StyledTouchableOpacity>
+                  <StyledView key={user.id} className="bg-white rounded-xl mb-2 px-4 py-3.5 flex-row items-center justify-between border border-neutral-100">
+                    <StyledView className="flex-1 mr-3">
+                      <Body className="text-neutral-900 font-semibold text-sm">
+                        {userName}
+                      </Body>
+                      <Body className="text-neutral-400 text-xs mt-0.5">
+                        {formatDate(user.blockedAt)}
+                      </Body>
                     </StyledView>
-                  </Card>
+                    <StyledTouchableOpacity
+                      onPress={() => handleUnblock(user.blockedUserId, userName)}
+                      className="border border-neutral-200 px-3.5 py-1.5 rounded-lg"
+                    >
+                      <Body className="text-neutral-600 font-medium text-xs">Unblock</Body>
+                    </StyledTouchableOpacity>
+                  </StyledView>
                 );
               })}
             </>
-          ) : (
-            <Card className="bg-neutral-50 py-8">
-              <StyledView className="items-center">
-                <StyledView className="w-16 h-16 bg-neutral-100 rounded-full items-center justify-center mb-3">
-                  <Ionicons name="ban" size={28} color="#98A2B3" />
-                </StyledView>
-                <Body className="text-neutral-700 font-medium mb-1">No Blocked Users</Body>
-                <Body className="text-neutral-500 text-sm text-center px-8">
-                  You haven't blocked anyone yet. Blocked users won't be able to see your profile or match with you.
-                </Body>
+          ) : null}
+
+          {/* Info footer — compact, secondary */}
+          {!loading && (
+            <StyledView className="mt-6 px-2">
+              <StyledView className="flex-row items-center mb-2">
+                <Ionicons name="information-circle-outline" size={15} color="#9CA3AF" />
+                <Body className="text-neutral-400 text-xs ml-1.5 font-medium">What happens when you block someone</Body>
               </StyledView>
-            </Card>
+              <Body className="text-neutral-400 text-xs leading-5 ml-0.5">
+                Active proposals and matches are cancelled. You won't appear in each other's proposals. Your friendship is removed.
+              </Body>
+            </StyledView>
           )}
+
         </StyledView>
       </StyledScrollView>
     </StyledSafeAreaView>
