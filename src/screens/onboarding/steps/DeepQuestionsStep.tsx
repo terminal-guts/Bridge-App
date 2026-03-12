@@ -3,7 +3,7 @@ import { View, TouchableOpacity, TextInput, Modal, ScrollView, Alert } from 'rea
 import { styled } from 'nativewind';
 import { H1, H2, H3, Body } from '../../../components/ui';
 import { OnboardingData, DeepQuestionAnswer } from '../../../types';
-import { EvaIcon } from '../../../components/icons';
+import { EvaIcon, type IconName    } from '../../../components/icons';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 
 interface DeepQuestionsStepProps {

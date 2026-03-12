@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H2, H3, Body } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { EvaIcon } from '../../components/icons';
+import { EvaIcon  } from '../../components/icons';
 
 interface PrivacyPolicyProps {
   navigation: NavigationProp<RootStackParamList>;

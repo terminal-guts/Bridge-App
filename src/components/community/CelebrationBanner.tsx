@@ -12,6 +12,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
+import { EvaIcon } from '../icons';
 import { CELEBRATION_BANNER } from '../../constants/friendsArea';
 import { successHaptic } from '../../utils/haptics';
 
@@ -69,7 +70,7 @@ export const CelebrationBanner: React.FC = () => {
             letterSpacing: 0.2,
           }}
         >
-          🎉 You helped everyone today! 🌟
+           You helped everyone today!
         </StyledText>
       </LinearGradient>
     </StyledView>

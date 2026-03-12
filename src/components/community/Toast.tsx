@@ -8,7 +8,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon, type IconName    } from '../../components/icons';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -118,7 +118,7 @@ export function Toast({
         }}
       >
         {/* Icon */}
-        <Ionicons name={(icon || config.icon) as any} size={24} color="#FFFFFF" />
+        <EvaIcon name={(icon || config.icon) as any} size={24} color="#FFFFFF" />
 
         {/* Message */}
         <StyledText className="flex-1 text-white font-medium ml-3">

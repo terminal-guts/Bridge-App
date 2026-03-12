@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon  } from '../../components/icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -79,7 +79,7 @@ const KarmaPill = ({ karma, size = 'medium' }: { karma: number; size?: 'small' |
   const paddingH = size === 'large' ? 14 : size === 'medium' ? 12 : 10;
   return (
     <View style={[styles.karmaPill, { paddingVertical: paddingV, paddingHorizontal: paddingH }]}>
-      <Ionicons name="star-outline" size={iconSize} color="#34C759" style={{ marginRight: 4 }} />
+      <EvaIcon name="star-outline" size={iconSize} color="#34C759" style={{ marginRight: 4 }} />
       <Text style={[styles.karmaPillText, { fontSize }]}>{karma} pts</Text>
     </View>
   );
@@ -89,7 +89,7 @@ const KarmaPill = ({ karma, size = 'medium' }: { karma: number; size?: 'small' |
 
 const FriendBadge = () => (
   <View style={styles.friendBadge}>
-    <Ionicons name="people" size={10} color="#FFFFFF" />
+    <EvaIcon name="people" size={10} color="#FFFFFF" />
   </View>
 );
 
@@ -170,13 +170,13 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
         <StatusBar barStyle="dark-content" />
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Ionicons name="arrow-back" size={24} color="#101828" />
+            <EvaIcon name="arrow-back" size={24} color="#101828" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Leaderboard</Text>
           <View style={{ width: 24 }} />
         </View>
         <View style={styles.emptyState}>
-          <Ionicons name="trophy-outline" size={64} color="#D0D5DD" />
+          <EvaIcon name="award-outline" size={64} color="#D0D5DD" />
           <Text style={styles.emptyTitle}>No Rankings Yet</Text>
           <Text style={styles.emptyBody}>Be the first to earn karma and climb the leaderboard!</Text>
         </View>
@@ -191,11 +191,11 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Ionicons name="arrow-back" size={24} color="#101828" />
+          <EvaIcon name="arrow-back" size={24} color="#101828" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Leaderboard</Text>
         <TouchableOpacity onPress={handleInfo} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Ionicons name="information-circle-outline" size={24} color="#667085" />
+          <EvaIcon name="info-outline" size={24} color="#667085" />
         </TouchableOpacity>
       </View>
 
@@ -213,7 +213,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
 
       {/* 1 — Countdown timer */}
       <View style={styles.countdownRow}>
-        <Ionicons name="time-outline" size={14} color="#667085" />
+        <EvaIcon name="clock-outline" size={14} color="#667085" />
         <Text style={styles.countdownText}>
           Resets in {countdown.days}d {countdown.hours}h {countdown.minutes}m
         </Text>

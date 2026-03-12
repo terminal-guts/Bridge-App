@@ -7,7 +7,7 @@ import { UserRow } from '../../components/community/UserRow';
 import { ProposalReviewView } from '../../components/community/proposal/ProposalReviewView';
 import { GuideTarget } from '../../components/guides';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
-import { EvaIcon } from '../../components/icons';
+import { EvaIcon  } from '../../components/icons';
 import { MainTabParamList } from '../../types';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { communityService } from '../../services/communityServiceIndex';

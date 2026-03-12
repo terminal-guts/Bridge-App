@@ -4,9 +4,9 @@
  */
 
 import React from 'react';
-import { EvaIcon, IconScoutIcon } from '../components/icons';
+import { EvaIcon, IconScoutIcon  } from '../components/icons';
 
-// Map to either IconScoutName or { type: 'eva', name: EvaIconName }
+// Map to either IconScoutName or { type: 'eva', name: IconName }
 export type IconDef =
   | string // IconScout icon name
   | { type: 'eva'; name: string; color?: string }
@@ -36,7 +36,7 @@ export const VALUES_ICONS: Record<string, IconDef> = {
   'Growth Mindset': 'growth',
   'Creativity': 'creativity',
   // Social
-  'Community': 'comminity',
+  'Community': 'community',
   'Social Justice': 'social-justice',
   'Environmentalism': 'environmentalism',
   'Diversity': 'diversity',
@@ -128,7 +128,8 @@ export interface RenderIconProps {
   style?: any;
 }
 
-export function RenderIcon({ iconDef, size = 16, color, style }: RenderIconProps) {
+
+export const RenderIcon = React.memo(function RenderIcon({ iconDef, size = 16, color, style }: RenderIconProps) {
   if (!iconDef) return null;
 
   if (typeof iconDef === 'string') {
@@ -136,7 +137,7 @@ export function RenderIcon({ iconDef, size = 16, color, style }: RenderIconProps
   }
 
   if (iconDef.type === 'eva') {
-    return <EvaIcon name={iconDef.name} size={size} color={iconDef.color || color} style={style} variant="fill" />;
+    return <EvaIcon name={iconDef.name as any} size={size} color={iconDef.color || color} style={style} variant="fill" />;
   }
 
   // Optional support for custom SVGs if implemented later
@@ -147,7 +148,7 @@ export function RenderIcon({ iconDef, size = 16, color, style }: RenderIconProps
   }
 
   return null;
-}
+});
 
 // Keeping these for backwards compatibility until all usages are replaced
 // But they will return an empty string to force text components to not render emojis

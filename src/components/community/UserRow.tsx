@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon  } from '../../components/icons';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { FriendWithGridStatus } from '../../types/community';
 import { FireIcon, StarIcon } from '../icons/Icons';
@@ -59,7 +59,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                     accessibilityLabel={`Chat with ${name}`}
                     accessibilityRole="button"
                 >
-                    <Ionicons name="chatbubble-outline" size={20} color="#437FFF" />
+                    <EvaIcon name="message-circle-outline" size={20} color="#437FFF" />
                 </TouchableOpacity>
             )}
 

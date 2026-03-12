@@ -45,9 +45,9 @@ import { styled } from 'nativewind';
 import { Body } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile, DeepQuestionAnswer, Match } from '../../types';
-import { EvaIcon } from '../../components/icons';
+import { EvaIcon, type IconName    } from '../../components/icons';
 import { lightHaptic, mediumHaptic, successHaptic, warningHaptic } from '../../utils/haptics';
-import { valueEmoji, interestEmoji } from '../../utils/emojiMaps';
+import { valueEmoji, interestEmoji, getValueIconDef, getInterestIconDef, RenderIcon } from '../../utils/emojiMaps';
 import { TIER_CONFIG } from '../../utils/questionTiers';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getFriends } from '../../services/friendService';
@@ -141,21 +141,21 @@ interface PassFeedbackOption {
 // ============================================================================
 
 const PASS_FEEDBACK_OPTIONS: PassFeedbackOption[] = [
-  { id: 'not_my_type', label: 'Not my type', icon: 'heart-dislike-outline' },
+  { id: 'not_my_type', label: 'Not my type', icon: 'close-square-outline' },
   { id: 'age', label: 'Age preference', icon: 'calendar-outline' },
-  { id: 'location', label: 'Too far away', icon: 'location-outline' },
-  { id: 'lifestyle', label: 'Lifestyle mismatch', icon: 'leaf-outline' },
-  { id: 'values', label: 'Different values', icon: 'diamond-outline' },
-  { id: 'other', label: 'Other reason', icon: 'ellipsis-horizontal' },
+  { id: 'location', label: 'Too far away', icon: 'pin-outline' },
+  { id: 'lifestyle', label: 'Lifestyle mismatch', icon: 'activity-outline' },
+  { id: 'values', label: 'Different values', icon: 'star-outline' },
+  { id: 'other', label: 'Other reason', icon: 'more-horizontal-outline' },
 ];
 
 const PILL_STYLES: Record<string, { bg: string; iconColor: string; textColor: string }> = {
-  'location-outline': { bg: '#EFF6FF', iconColor: '#3B82F6', textColor: '#1D4ED8' },
-  'resize-outline': { bg: COLORS.successBg, iconColor: COLORS.success, textColor: '#059669' },
+  'pin-outline': { bg: '#EFF6FF', iconColor: '#3B82F6', textColor: '#1D4ED8' },
+  'maximize-outline': { bg: COLORS.successBg, iconColor: COLORS.success, textColor: '#059669' },
   'person-outline': { bg: COLORS.purpleBg, iconColor: COLORS.purple, textColor: '#6D28D9' },
-  'chatbubble-outline': { bg: COLORS.pinkBg, iconColor: COLORS.pink, textColor: '#BE185D' },
-  'globe-outline': { bg: COLORS.warningBg, iconColor: COLORS.warning, textColor: COLORS.warningIcon },
-  'sparkles-outline': { bg: COLORS.purpleBg, iconColor: '#7C3AED', textColor: '#6D28D9' },
+  'message-circle-outline': { bg: COLORS.pinkBg, iconColor: COLORS.pink, textColor: '#BE185D' },
+  'globe-2-outline': { bg: COLORS.warningBg, iconColor: COLORS.warning, textColor: COLORS.warningIcon },
+  'star-outline': { bg: COLORS.purpleBg, iconColor: '#7C3AED', textColor: '#6D28D9' },
   'flag-outline': { bg: '#FFF1F2', iconColor: '#F43F5E', textColor: '#BE123C' },
   default: { bg: COLORS.neutral50, iconColor: COLORS.neutral400, textColor: COLORS.neutral600 },
 };
@@ -374,7 +374,7 @@ const WhyThisMatch: React.FC<{ mutualInterests: string[]; mutualValues: string[]
             {mutualInterests.map((interest) => (
               <StyledView key={interest} className="rounded-full px-3.5 py-2 mr-2 mb-2 flex-row items-center" style={{ backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: COLORS.primaryBorder }}>
                 <EvaIcon name="checkmark-circle-2" size={12} color={COLORS.primary500} />
-                <Body className="text-sm font-medium ml-1.5" style={{ color: '#1D4ED8' }}>{interestEmoji(interest)} {interest}</Body>
+                <Body className="text-sm font-medium ml-1.5" style={{ color: '#1D4ED8' }}><RenderIcon iconDef={getInterestIconDef(interest)} /> {interest}</Body>
               </StyledView>
             ))}
           </StyledView>
@@ -391,7 +391,7 @@ const WhyThisMatch: React.FC<{ mutualInterests: string[]; mutualValues: string[]
             {mutualValues.map((value) => (
               <StyledView key={value} className="rounded-full px-3.5 py-2 mr-2 mb-2 flex-row items-center" style={{ backgroundColor: COLORS.successBg, borderWidth: 1, borderColor: COLORS.successBorder }}>
                 <EvaIcon name="checkmark-circle-2" size={12} color={COLORS.success} />
-                <Body className="text-sm font-medium ml-1.5" style={{ color: '#059669' }}>{valueEmoji(value)} {value}</Body>
+                <Body className="text-sm font-medium ml-1.5" style={{ color: '#059669' }}><RenderIcon iconDef={getValueIconDef(value)} /> {value}</Body>
               </StyledView>
             ))}
           </StyledView>
@@ -956,11 +956,11 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   const hasLifestyleInfo = profile.drinkingFrequency || profile.cannabisFrequency || profile.tobaccoFrequency || profile.otherDrugsFrequency;
   const basicInfoPills: Array<{ icon: string; text: string }> = [];
   if (profile.gender?.length) basicInfoPills.push({ icon: 'person-outline', text: profile.gender.join(', ') });
-  if (profile.pronounsList?.length) basicInfoPills.push({ icon: 'chatbubble-outline', text: profile.pronounsList.join('/') });
-  if (profile.height) basicInfoPills.push({ icon: 'resize-outline', text: profile.height });
-  if (profile.location) basicInfoPills.push({ icon: 'location-outline', text: profile.location });
-  if (profile.ethnicity) basicInfoPills.push({ icon: 'globe-outline', text: profile.ethnicity });
-  if (profile.religion) basicInfoPills.push({ icon: 'sparkles-outline', text: profile.religion });
+  if (profile.pronounsList?.length) basicInfoPills.push({ icon: 'message-circle-outline', text: profile.pronounsList.join('/') });
+  if (profile.height) basicInfoPills.push({ icon: 'maximize-outline', text: profile.height });
+  if (profile.location) basicInfoPills.push({ icon: 'pin-outline', text: profile.location });
+  if (profile.ethnicity) basicInfoPills.push({ icon: 'globe-2-outline', text: profile.ethnicity });
+  if (profile.religion) basicInfoPills.push({ icon: 'star-outline', text: profile.religion });
   if (profile.politicalLeaning) basicInfoPills.push({ icon: 'flag-outline', text: formatFrequency(profile.politicalLeaning) || '' });
 
   return (
@@ -1034,8 +1034,8 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
           <CommunityScore score={communityScore} endorsement={endorsement} />
           <WhyThisMatch mutualInterests={mutualInterests} mutualValues={mutualValues} compatibilityHighlights={compatibilityHighlights} />
           {basicInfoPills.length > 0 && <StyledView className="flex-row flex-wrap mb-6">{basicInfoPills.map((pill) => <InfoPill key={`${pill.icon}-${pill.text}`} icon={pill.icon} text={pill.text} />)}</StyledView>}
-          {profile.interests?.length > 0 && <Section title="Interests" icon="heart-outline" delay={50}><StyledView className="flex-row flex-wrap">{profile.interests.map((interest) => <Tag key={interest} label={`${interestEmoji(interest)} ${interest}`} variant="primary" isMutual={mutualInterests.includes(interest)} />)}</StyledView></Section>}
-          {profile.values?.length > 0 && <Section title="Values" icon="diamond-outline" delay={100}><StyledView className="flex-row flex-wrap">{profile.values.map((value) => <Tag key={value} label={`${valueEmoji(value)} ${value}`} variant="success" isMutual={mutualValues.includes(value)} />)}</StyledView></Section>}
+          {profile.interests?.length > 0 && <Section title="Interests" icon="heart-outline" delay={50}><StyledView className="flex-row flex-wrap">{profile.interests.map((interest) => <Tag key={interest} label={interest} iconDef={getInterestIconDef(interest)} variant="primary" isMutual={mutualInterests.includes(interest)} />)}</StyledView></Section>}
+          {profile.values?.length > 0 && <Section title="Values" icon="diamond-outline" delay={100}><StyledView className="flex-row flex-wrap">{profile.values.map((value) => <Tag key={value} label={value} iconDef={getValueIconDef(value)} variant="success" isMutual={mutualValues.includes(value)} />)}</StyledView></Section>}
           {(profile.hasChildren || profile.familyPlans) && (
             <Section title="Family" icon="people-outline" delay={150}>
               <StyledView className="rounded-2xl p-4" style={{ backgroundColor: COLORS.neutral50 }}>

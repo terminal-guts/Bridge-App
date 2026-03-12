@@ -16,7 +16,7 @@ import { H2, H3, Body, Card, Button } from '../../components/ui';
 import { AnswerQuestionModal } from '../../components/profile/AnswerQuestionModal';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList, DeepQuestionAnswer, UserProfile } from '../../types';
-import { EvaIcon } from '../../components/icons';
+import { EvaIcon  } from '../../components/icons';
 import { getCurrentUser } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { lightHaptic, mediumHaptic, successHaptic } from '../../utils/haptics';

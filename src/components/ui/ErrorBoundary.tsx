@@ -1,7 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon  } from '../../components/icons';
 import { H2, Body, Button } from '.';
 import { createLogger } from '../../utils/secureLogger';
 import { Sentry } from '../../lib/sentry';
@@ -89,7 +89,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             <StyledView className="items-center">
               {/* Error Icon */}
               <StyledView className="w-20 h-20 bg-error-100 rounded-full items-center justify-center mb-6">
-                <Ionicons name="alert-circle" size={48} color="#EF4444" />
+                <EvaIcon name="alert-circle" size={48} color="#EF4444" />
               </StyledView>
 
               {/* Error Title */}
@@ -125,7 +125,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 activeOpacity={0.7}
                 className="bg-primary-500 px-8 py-4 rounded-xl flex-row items-center mb-3"
               >
-                <Ionicons name="refresh" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <EvaIcon name="refresh" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
                 <Body className="text-white font-semibold text-base">
                   Try Again
                 </Body>
@@ -204,7 +204,7 @@ export class CardErrorBoundary extends Component<ErrorBoundaryProps, ErrorBounda
           className="items-center justify-center py-8 px-4"
         >
           <StyledView className="w-12 h-12 bg-error-100 rounded-full items-center justify-center mb-3">
-            <Ionicons name="warning" size={24} color="#EF4444" />
+            <EvaIcon name="alert-triangle" size={24} color="#EF4444" />
           </StyledView>
 
           <Body className="text-neutral-700 font-medium text-center mb-1">

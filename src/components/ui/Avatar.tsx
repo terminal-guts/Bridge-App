@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon  } from '../../components/icons';
 import { createLogger } from '../../utils/secureLogger';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 
@@ -42,7 +42,7 @@ export const Avatar: React.FC<AvatarProps> = ({
         className={`bg-neutral-200 items-center justify-center ${roundedClass} ${className}`}
         style={{ width: size, height: size }}
       >
-        <Ionicons name="person" size={size * 0.5} color="#A3A3A3" />
+        <EvaIcon name="person" size={size * 0.5} color="#A3A3A3" />
       </StyledView>
     );
   }

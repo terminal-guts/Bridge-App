@@ -15,7 +15,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, Animated } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon  } from '../../../components/icons';
 import { MatchProposal } from '../../../types/community';
 import { lightHaptic } from '../../../utils/haptics';
 import {
@@ -186,7 +186,7 @@ export function PendingProposalCard({ proposal, onViewProfile }: PendingProposal
             style={{ backgroundColor: '#FF6B6B' }}
           >
             <StyledText className="text-[10px] text-white font-bold">
-              ⏰
+              <EvaIcon name="clock-outline" size={10} color="white" />
             </StyledText>
           </StyledView>
         )}
@@ -194,8 +194,7 @@ export function PendingProposalCard({ proposal, onViewProfile }: PendingProposal
 
       {/* Expiration Timer - Compact */}
       <StyledView className="flex-row items-center mb-2">
-        <Ionicons
-          name="time-outline"
+        <EvaIcon name="clock-outline"
           size={12}
           color={getUrgencyColor(expirationData.urgencyLevel)}
         />

@@ -11,10 +11,10 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon  } from '../../../components/icons';
 import { UserProfile } from '../../../types';
 import { ProfileView } from '../../profile/ProfileView';
-import { valueEmoji, interestEmoji } from '../../../utils/emojiMaps';
+import { valueEmoji, interestEmoji, getValueIconDef, getInterestIconDef, RenderIcon } from '../../../utils/emojiMaps';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -106,7 +106,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
           {/* Height */}
           {anchor.height && (
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-              <Ionicons name="resize-outline" size={14} color="#10B981" style={{ marginRight: 6 }} />
+              <EvaIcon name="resize-outline" size={14} color="#10B981" style={{ marginRight: 6 }} />
               <StyledText style={{ fontSize: 12, color: '#6B5B4F', fontWeight: '500' }}>
                 {formatHeight(anchor.height)}
               </StyledText>
@@ -116,7 +116,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
           {/* Ethnicity */}
           {anchor.ethnicity && (
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-              <Ionicons name="globe-outline" size={14} color="#8B5CF6" style={{ marginRight: 6 }} />
+              <EvaIcon name="globe-outline" size={14} color="#8B5CF6" style={{ marginRight: 6 }} />
               <StyledText style={{ fontSize: 12, color: '#6B5B4F', fontWeight: '500' }}>
                 {anchor.ethnicity}
               </StyledText>
@@ -126,7 +126,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
           {/* Occupation */}
           {anchor.currentJob && (
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-              <Ionicons name="briefcase" size={14} color="#3B82F6" style={{ marginRight: 6 }} />
+              <EvaIcon name="briefcase" size={14} color="#3B82F6" style={{ marginRight: 6 }} />
               <StyledText style={{ fontSize: 12, color: '#6B5B4F', fontWeight: '500' }}>
                 {anchor.currentJob}
               </StyledText>
@@ -151,7 +151,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
                     }}
                   >
                     <StyledText style={{ fontSize: 10, color: '#7C3AED', fontWeight: '600' }}>
-                      {valueEmoji(value)} {value}
+                      <RenderIcon iconDef={getValueIconDef(value)} /> {value}
                     </StyledText>
                   </StyledView>
                 ))}
@@ -177,7 +177,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
                     }}
                   >
                     <StyledText style={{ fontSize: 10, color: '#D97706', fontWeight: '600' }}>
-                      {interestEmoji(interest)} {interest}
+                      <RenderIcon iconDef={getInterestIconDef(interest)} /> {interest}
                     </StyledText>
                   </StyledView>
                 ))}
@@ -203,7 +203,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
 
         {/* Age Preference */}
         <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-          <Ionicons name="calendar-outline" size={12} color="#EC4899" style={{ marginRight: 6 }} />
+          <EvaIcon name="calendar-outline" size={12} color="#EC4899" style={{ marginRight: 6 }} />
           <StyledText style={{ fontSize: 11, color: '#6B5B4F', fontWeight: '500' }}>
             Ages {anchor.preferences?.ageMin || 18}-{anchor.preferences?.ageMax || 99}
           </StyledText>
@@ -211,7 +211,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
 
         {/* Height Preference */}
         <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-          <Ionicons name="resize-outline" size={12} color="#10B981" style={{ marginRight: 6 }} />
+          <EvaIcon name="resize-outline" size={12} color="#10B981" style={{ marginRight: 6 }} />
           <StyledText style={{ fontSize: 11, color: '#6B5B4F', fontWeight: '500' }}>
             {formatHeightRange()}
           </StyledText>
@@ -219,7 +219,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
 
         {/* Preferred Ethnicities */}
         <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-          <Ionicons name="globe-outline" size={12} color="#8B5CF6" style={{ marginRight: 6 }} />
+          <EvaIcon name="globe-outline" size={12} color="#8B5CF6" style={{ marginRight: 6 }} />
           <StyledText style={{ fontSize: 11, color: '#6B5B4F', fontWeight: '500' }}>
             {anchor.preferredEthnicities && anchor.preferredEthnicities.length > 0
               ? anchor.preferredEthnicities.join(', ')

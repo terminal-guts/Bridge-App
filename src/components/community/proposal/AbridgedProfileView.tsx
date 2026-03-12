@@ -16,7 +16,7 @@ import { EvaIcon } from '../../icons';
 import { UserProfile, Photo } from '../../../types';
 import { Body } from '../../ui';
 import { CompatibilityResult } from '../../../utils/compatibilityHelpers';
-import { valueEmoji, interestEmoji } from '../../../utils/emojiMaps';
+import { valueEmoji, interestEmoji, getValueIconDef, getInterestIconDef } from '../../../utils/emojiMaps';
 
 const StyledView = styled(View);
 const StyledImage = styled(Image);
@@ -214,7 +214,7 @@ export function AbridgedProfileView({ user, compatibility }: AbridgedProfileView
             <Body className="text-[8px] text-neutral-600 mb-0.5">Values</Body>
             <StyledView className="flex-row flex-wrap">
               {user.values.slice(0, 4).map((value, index) => (
-                <Pill key={index} label={`${valueEmoji(value)} ${value}`} />
+                <Pill key={index} label={value} iconDef={getValueIconDef(value)} />
               ))}
             </StyledView>
           </StyledView>
@@ -226,7 +226,7 @@ export function AbridgedProfileView({ user, compatibility }: AbridgedProfileView
             <Body className="text-[8px] text-neutral-600 mb-0.5">Interests</Body>
             <StyledView className="flex-row flex-wrap">
               {user.interests.slice(0, 4).map((interest, index) => (
-                <Pill key={index} label={`${interestEmoji(interest)} ${interest}`} />
+                <Pill key={index} label={interest} iconDef={getInterestIconDef(interest)} />
               ))}
             </StyledView>
           </StyledView>

@@ -32,7 +32,7 @@ import {
 import { Image, ImageBackground } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon  } from '../../../components/icons';
 import { GuideTarget } from '../../guides';
 import { UserProfile } from '../../../types';
 import { Proposal, CommunityTask } from '../../../types/community';
@@ -231,13 +231,13 @@ function computeSmartPills(
 // ─── Helper: icon for match status ────────────────────────────────────────────
 function MatchIcon({ status }: { status: MatchStatus }) {
   if (status === 'both_happy') {
-    return <Ionicons name="checkmark" size={20} color={GREEN} />;
+    return <EvaIcon name="checkmark" size={20} color={GREEN} />;
   }
   if (status === 'neither_happy') {
-    return <Ionicons name="close" size={20} color={RED} />;
+    return <EvaIcon name="close" size={20} color={RED} />;
   }
   if (status === 'left_happy' || status === 'right_happy') {
-    return <Ionicons name="warning" size={18} color="#FFA629" />;
+    return <EvaIcon name="alert-triangle" size={18} color="#FFA629" />;
   }
   return null;
 }
@@ -616,7 +616,7 @@ function QuestionCard({
               </Text>
             ) : (
               <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-                <Ionicons name="eye-outline" size={20} color="#94A3B8" />
+                <EvaIcon name="eye-outline" size={20} color="#94A3B8" />
                 <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
                   Tap to reveal
                 </Text>
@@ -662,7 +662,7 @@ function QuestionCard({
               </Text>
             ) : (
               <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-                <Ionicons name="eye-outline" size={20} color="#94A3B8" />
+                <EvaIcon name="eye-outline" size={20} color="#94A3B8" />
                 <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
                   Tap to reveal
                 </Text>
@@ -1144,7 +1144,7 @@ export function ProposalReviewView({
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={24} color="#010101" />
+            <EvaIcon name="arrow-back" size={24} color="#010101" />
           </TouchableOpacity>
         </View>
       ) : (
@@ -1268,7 +1268,7 @@ export function ProposalReviewView({
                 borderWidth: 3,
                 borderColor: '#FFFFFF',
               }}>
-                <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                <EvaIcon name="star" size={16} color="#FFFFFF" />
                 <Text style={{ fontFamily: 'Outfit_600SemiBold', fontWeight: '600', fontSize: 16, color: '#FFFFFF' }}>
                   {compatScore} %
                 </Text>
@@ -1435,7 +1435,7 @@ export function ProposalReviewView({
             gap: 10,
           }}
         >
-          <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+          <EvaIcon name="checkmark" size={18} color="#FFFFFF" />
           <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 16, color: '#FFFFFF' }}>Yes</Text>
         </TouchableOpacity>
 
@@ -1458,7 +1458,7 @@ export function ProposalReviewView({
               padding: 10,
             }}
           >
-            <Ionicons name="close-outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
+            <EvaIcon name="close-square-outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
             <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>No</Text>
           </TouchableOpacity>
 
@@ -1479,7 +1479,7 @@ export function ProposalReviewView({
               padding: 10,
             }}
           >
-            <Ionicons name="person-add-outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
+            <EvaIcon name="person-add-outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
             <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>For Friend</Text>
           </TouchableOpacity>
 
@@ -1500,7 +1500,7 @@ export function ProposalReviewView({
               padding: 10,
             }}
           >
-            <Ionicons name="information-circle-outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
+            <EvaIcon name="info-outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
             <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>Not Sure</Text>
           </TouchableOpacity>
         </View>
@@ -1679,7 +1679,7 @@ export function ProposalReviewView({
                               alignItems: 'center',
                               justifyContent: 'center',
                             }}>
-                              <Ionicons name="checkmark" size={14} color="#FFF" />
+                              <EvaIcon name="checkmark" size={14} color="#FFF" />
                             </View>
                           )}
                         </TouchableOpacity>

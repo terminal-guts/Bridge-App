@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon  } from '../../../components/icons';
 
 interface KarmaInfoModalProps {
   visible: boolean;
@@ -14,7 +14,7 @@ export function KarmaInfoModal({ visible, onClose }: KarmaInfoModalProps) {
         <Pressable style={styles.card} onPress={e => e.stopPropagation()}>
 
           <View style={styles.header}>
-            <Ionicons name="star" size={18} color="#34C759" />
+            <EvaIcon name="star" size={18} color="#34C759" />
             <Text style={styles.title}>Karma Score</Text>
           </View>
 

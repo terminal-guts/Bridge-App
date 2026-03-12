@@ -34,7 +34,7 @@ export const getQuestionTier = (questionId: number): QuestionTier => {
  */
 export const TIER_CONFIG = {
   1: {
-    emoji: '👋',
+    emoji: 'smiling-face',
     name: 'Lighthearted',
     bg: '#DBEAFE',      // Sky blue
     border: '#93C5FD',  // Sky blue border
@@ -43,7 +43,7 @@ export const TIER_CONFIG = {
     color: '#0284C7',   // Deep sky blue for shadows
   },
   2: {
-    emoji: '💭',
+    emoji: 'message-circle-outline',
     name: 'Relationship',
     bg: '#D1FAE5',      // Emerald/teal green - VERY DIFFERENT from blue
     border: '#6EE7B7',  // Bright emerald border
@@ -52,7 +52,7 @@ export const TIER_CONFIG = {
     color: '#059669',   // Deep emerald for shadows
   },
   3: {
-    emoji: '💜',
+    emoji: 'heart',
     name: 'Reflective',
     bg: '#FCE7F3',      // Pink
     border: '#F9A8D4',  // Pink border

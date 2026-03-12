@@ -11,7 +11,7 @@ import { MainTabParamList, UserProfile, DeepQuestionAnswer } from '../../types';
 import { signOut } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { getFriendCount } from '../../services/friendService';
-import { EvaIcon } from '../../components/icons';
+import { EvaIcon, type IconName    } from '../../components/icons';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { ProfileCompletionBanner } from '../../components/profile/ProfileCompletionBanner';
@@ -1076,7 +1076,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                 }}>
                 <EvaIcon name="star" size={12} color="#34C759" variant="outline" />
                 <H2 className="text-xs" style={{ color: '#34C759', fontWeight: '600' }}>
-                  {profile.karma?.karmaPoints ?? 0} pts
+                  {profile.karma?.karma_points ?? 0} pts
                 </H2>
               </StyledTouchableOpacity>
             </StyledView>

@@ -11,7 +11,7 @@
 import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import { EvaIcon } from '../icons';
+import {  EvaIcon, type IconName  } from '../icons';
 import { H2, H3, Body, Card } from '../ui';
 import { UserProfile } from '../../types';
 import { calculateProfileStrengthBreakdown } from '../../utils/profileCompleteness';

@@ -10,10 +10,10 @@ import {
 } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, H2, H3, Body, Button, Card, Chip } from '../../components/ui';
-import { valueEmoji, interestEmoji } from '../../utils/emojiMaps';
+import { valueEmoji, interestEmoji, getValueIconDef, getInterestIconDef } from '../../utils/emojiMaps';
 import { PartialMatch } from '../../types';
 import { mockPartialMatch } from '../../services/mockData';
-import { EvaIcon } from '../../components/icons';
+import { EvaIcon  } from '../../components/icons';
 
 const { width } = Dimensions.get('window');
 
@@ -177,7 +177,7 @@ export const MatchRevealScreen: React.FC<MatchRevealScreenProps> = ({
               <StyledView className="flex-row flex-wrap -mx-1">
                 {match.profile.interests.map((interest, index) => (
                   <StyledView key={index} className="px-1 mb-2">
-                    <Chip label={`${interestEmoji(interest)} ${interest}`} />
+                    <Chip label={interest} iconDef={getInterestIconDef(interest)} />
                   </StyledView>
                 ))}
                 <StyledView className="px-1 mb-2">
@@ -196,7 +196,7 @@ export const MatchRevealScreen: React.FC<MatchRevealScreenProps> = ({
               <StyledView className="flex-row flex-wrap -mx-1">
                 {match.profile.values.map((value, index) => (
                   <StyledView key={index} className="px-1 mb-2">
-                    <Chip label={`${valueEmoji(value)} ${value}`} />
+                    <Chip label={value} iconDef={getValueIconDef(value)} />
                   </StyledView>
                 ))}
                 <StyledView className="px-1 mb-2">

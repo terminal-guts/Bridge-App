@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { Button } from '../ui';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon  } from '../../components/icons';
 import { TouchableOpacity as RNTouchableOpacity } from 'react-native';
 
 interface OnboardingLayoutProps {
@@ -97,7 +97,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
                 className="absolute top-4 left-4 z-50 p-2"
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="arrow-back" size={24} color="#101828" />
+                <EvaIcon name="arrow-back" size={24} color="#101828" />
               </StyledRNTouchableOpacity>
             )}
 
@@ -181,7 +181,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
             className="absolute top-4 left-4 z-50 p-2"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="arrow-back" size={24} color="#101828" />
+            <EvaIcon name="arrow-back" size={24} color="#101828" />
           </StyledRNTouchableOpacity>
         )}
 

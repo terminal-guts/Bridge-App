@@ -5,7 +5,7 @@ import { H1, Body, Input } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { OnboardingLayout } from '../../components/onboarding/OnboardingLayout';
-import { EvaIcon } from '../../components/icons';
+import { EvaIcon  } from '../../components/icons';
 import { sendOtpToEmail, isAllowedEmailDomain } from '../../services/authService';
 import { createLogger } from '../../utils/secureLogger';
 

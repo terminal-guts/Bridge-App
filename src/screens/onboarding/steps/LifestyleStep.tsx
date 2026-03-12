@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import { EvaIcon } from '../../../components/icons';
+import { EvaIcon, type IconName, FireIcon    } from '../../../components/icons';
 import { H1, H3, Body, Card } from '../../../components/ui';
 import { OnboardingData, LifestylePreferences } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
@@ -190,25 +190,25 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
         <QuestionSection
           title="Drinking"
           field="drinking"
-          icon="wine-outline"
+          icon="droplet-outline"
         />
 
         <QuestionSection
           title="Cannabis"
           field="cannabis"
-          icon="leaf-outline"
+          icon="activity-outline"
         />
 
         <QuestionSection
           title="Tobacco"
           field="tobacco"
-          icon="flame-outline"
+          icon="fire"
         />
 
         <QuestionSection
           title="Other Drugs"
           field="otherDrugs"
-          icon="medical-outline"
+          icon="plus-square-outline"
         />
 
         {error && (

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, TouchableOpacity, Image, Alert, Linking, Platform, ScrollView } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
-import { EvaIcon } from '../../../components/icons';
+import { EvaIcon  } from '../../../components/icons';
 import * as ImagePicker from 'expo-image-picker';
 import { OnboardingData, Photo } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';

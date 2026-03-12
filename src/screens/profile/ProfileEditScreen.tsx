@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H2, H3, Body, Card, Button, Chip, Input } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile } from '../../types';
-import { EvaIcon } from '../../components/icons';
+import { EvaIcon  } from '../../components/icons';
 import * as ImagePicker from 'expo-image-picker';
 import { getCurrentUser, signOut } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';

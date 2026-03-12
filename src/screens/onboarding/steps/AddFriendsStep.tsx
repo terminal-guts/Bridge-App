@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { H1, H2, Body, Input, Button } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
-import { EvaIcon } from '../../../components/icons';
+import { EvaIcon  } from '../../../components/icons';
 import * as Clipboard from 'expo-clipboard';
 import { getUserFriendCode, addFriendByCode, bulkAddFriendsByCodes } from '../../../services/friendService';
 import { getUserProfile } from '../../../services/profileService';

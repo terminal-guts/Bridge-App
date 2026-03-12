@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { styled } from 'nativewind';
 import { H2, Body, Caption } from './Typography';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon  } from '../../components/icons';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -10,7 +10,7 @@ interface InfoModalProps {
   visible: boolean;
   onClose: () => void;
   title: string;
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: string;
   iconColor?: string;
   iconBackground?: string;
   children: React.ReactNode;
@@ -94,7 +94,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
               className="absolute top-4 right-4 p-2 rounded-full bg-neutral-100"
               activeOpacity={0.7}
             >
-              <Ionicons name="close" size={20} color="#64748B" />
+              <EvaIcon name="close" size={20} color="#64748B" />
             </StyledTouchableOpacity>
 
             {/* Icon */}
@@ -102,7 +102,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
               className="w-16 h-16 rounded-2xl items-center justify-center mb-4"
               style={{ backgroundColor: iconBackground }}
             >
-              <Ionicons name={icon} size={32} color={iconColor} />
+              <EvaIcon name={icon} size={32} color={iconColor} />
             </StyledView>
 
             {/* Title */}
@@ -158,13 +158,12 @@ export const InfoSection: React.FC<{
  * Styled bullet point for use within InfoModal
  */
 export const InfoBullet: React.FC<{
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: string;
   children: React.ReactNode;
 }> = ({ icon = 'checkmark-circle', children }) => {
   return (
     <StyledView className="flex-row mb-3">
-      <Ionicons
-        name={icon}
+      <EvaIcon name={icon}
         size={20}
         color="#12B981"
         style={{ marginRight: 12, marginTop: 2 }}

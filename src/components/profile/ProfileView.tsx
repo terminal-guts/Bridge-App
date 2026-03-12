@@ -11,7 +11,7 @@ import { styled } from 'nativewind';
 import { EvaIcon } from '../icons';
 import { UserProfile } from '../../types';
 import { clampDisplayScore } from '../../utils/compatibilityHelpers';
-import { valueEmoji, interestEmoji } from '../../utils/emojiMaps';
+import { valueEmoji, interestEmoji, getValueIconDef, getInterestIconDef, RenderIcon } from '../../utils/emojiMaps';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -427,7 +427,7 @@ export function ProfileView({
                     }}
                   >
                     <StyledText style={{ fontSize: 13, color: '#B45309', fontWeight: '500' }}>
-                      {interestEmoji(interest)} {interest}
+                      <RenderIcon iconDef={getInterestIconDef(interest)} /> {interest}
                     </StyledText>
                   </StyledView>
                 ))}
@@ -454,7 +454,7 @@ export function ProfileView({
                     }}
                   >
                     <StyledText style={{ fontSize: 13, color: '#065F46', fontWeight: '500' }}>
-                      {valueEmoji(value)} {value}
+                      <RenderIcon iconDef={getValueIconDef(value)} /> {value}
                     </StyledText>
                   </StyledView>
                 ))}

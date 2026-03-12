@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H2, H3, Body, Card, Button } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { EvaIcon } from '../../components/icons';
+import { EvaIcon  } from '../../components/icons';
 import { getUserProfile } from '../../services/profileService';
 import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';

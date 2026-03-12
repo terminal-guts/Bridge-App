@@ -32,7 +32,7 @@ import {
   subscribeToFriendMessages,
   markFriendMessagesAsRead,
 } from '../../services/messageService';
-import { EvaIcon } from '../../components/icons';
+import { EvaIcon  } from '../../components/icons';
 import { AudioPlayer } from '../../components/chat/AudioPlayer';
 import { AudioRecorder } from '../../components/chat/AudioRecorder';
 import { communityService } from '../../services/communityServiceIndex';

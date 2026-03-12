@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Image } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, H3, Body, Card } from '../../../components/ui';
-import { EvaIcon } from '../../../components/icons';
+import { EvaIcon  } from '../../../components/icons';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 
 interface WelcomeToBridgeStepProps {

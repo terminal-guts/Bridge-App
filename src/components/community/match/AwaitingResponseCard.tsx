@@ -16,7 +16,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon  } from '../../../components/icons';
 import { MatchProposal } from '../../../types/community';
 import {
   formatExpirationTime,
@@ -69,7 +69,7 @@ export function AwaitingResponseCard({ proposal }: AwaitingResponseCardProps) {
     >
       {/* Header */}
       <StyledView className="flex-row items-center mb-4">
-        <Ionicons name="time-outline" size={24} color={COLORS.warning.icon} style={{ marginRight: 8 }} />
+        <EvaIcon name="clock-outline" size={24} color={COLORS.warning.icon} style={{ marginRight: 8 }} />
         <StyledText
           className="text-xl font-semibold"
           style={{ color: COLORS.warning.text }}
@@ -104,7 +104,7 @@ export function AwaitingResponseCard({ proposal }: AwaitingResponseCardProps) {
         style={{ backgroundColor: COLORS.warning.bg }}
       >
         <StyledView className="flex-row items-center mb-2">
-          <Ionicons name="checkmark-circle" size={24} color={COLORS.emerald} style={{ marginRight: 8 }} />
+          <EvaIcon name="checkmark-circle-2" size={24} color={COLORS.emerald} style={{ marginRight: 8 }} />
           <StyledText className="text-base font-semibold" style={{ color: COLORS.warning.text }}>
             You accepted {acceptedTimeAgo}
           </StyledText>
@@ -120,12 +120,12 @@ export function AwaitingResponseCard({ proposal }: AwaitingResponseCardProps) {
 
       {/* Expiration Timer */}
       <StyledView className="flex-row items-center justify-center">
-        <Ionicons name="hourglass-outline" size={18} color={COLORS.warning.icon} />
+        <EvaIcon name="hourglass-outline" size={18} color={COLORS.warning.icon} />
         <StyledText
           className="text-sm ml-2 font-medium"
           style={{ color: COLORS.darkAmber }}
         >
-          ⏰ Expires in {expirationData.text}
+          <EvaIcon name="clock-outline" size={12} color={COLORS.darkAmber} style={{ marginRight: 4, marginTop: 1 }} /> Expires in {expirationData.text}
         </StyledText>
       </StyledView>
     </StyledView>

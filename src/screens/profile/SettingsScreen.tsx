@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H1, H3, Body, Card, Button } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { EvaIcon } from '../../components/icons';
+import { EvaIcon, type IconName    } from '../../components/icons';
 import { signOut } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
 import { resetGuide } from '../../services/guideService';
@@ -144,13 +144,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               <Body className="text-neutral-500 text-xs">v1.0.0</Body>
             </StyledView>
             <SettingRow
-              icon="chatbubble-ellipses-outline"
+              icon="message-circle-outline"
               title="Feedback"
               subtitle="Improve the app to win $50!"
               onPress={() => navigation.navigate('SupportChat')}
             />
             <SettingRow
-              icon="trophy-outline"
+              icon="award-outline"
               title="Leaderboard"
               subtitle="Best matchmaker wins $50!"
               onPress={() => navigation.navigate('Leaderboard')}
@@ -209,7 +209,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               showArrow={false}
             />
             <SettingRow
-              icon="chatbubbles-outline"
+              icon="message-circle-outline"
               title="Messages"
               subtitle="New messages and ghosting alerts"
               toggle
@@ -218,7 +218,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               showArrow={false}
             />
             <SettingRow
-              icon="notifications-outline"
+              icon="bell-outline"
               title="App Reminders"
               subtitle="Profile completion and inactivity nudges"
               toggle
@@ -238,12 +238,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               onPress={() => navigation.navigate('HelpSupport')}
             />
             <SettingRow
-              icon="document-text-outline"
+              icon="file-text-outline"
               title="Terms of Service"
               onPress={() => navigation.navigate('TermsOfService')}
             />
             <SettingRow
-              icon="lock-closed-outline"
+              icon="lock-outline"
               title="Privacy Policy"
               onPress={() => navigation.navigate('PrivacyPolicy')}
             />

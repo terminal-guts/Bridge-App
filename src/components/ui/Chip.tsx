@@ -3,7 +3,10 @@ import { TouchableOpacity, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { lightHaptic } from '../../utils/haptics';
 
+import { RenderIcon, type IconDef } from '../../utils/emojiMaps';
+
 interface ChipProps {
+  iconDef?: IconDef;
   label: string;
   selected?: boolean;
   onPress?: () => void;
@@ -27,6 +30,7 @@ const TEXT_SIZE_STYLES = {
 } as const;
 
 const ChipComponent: React.FC<ChipProps> = ({
+  iconDef,
   label,
   selected = false,
   onPress,
@@ -74,9 +78,12 @@ const ChipComponent: React.FC<ChipProps> = ({
         accessibilityRole="text"
         accessibilityLabel={label}
       >
-        <StyledText className={`${TEXT_SIZE_STYLES[size]} ${textStyles}`}>
-          {label}
-        </StyledText>
+
+    <StyledText className={`${TEXT_SIZE_STYLES[size]} ${textStyles} flex-row items-center`}>
+      {iconDef && <RenderIcon iconDef={iconDef} size={size === 'sm' ? 12 : 14} style={{ marginRight: 4 }} />}
+      {label}
+    </StyledText>
+
       </StyledTouchableOpacity>
     );
   }
@@ -91,9 +98,12 @@ const ChipComponent: React.FC<ChipProps> = ({
       accessibilityLabel={label}
       accessibilityState={{ selected }}
     >
-      <StyledText className={`${TEXT_SIZE_STYLES[size]} ${textStyles}`}>
-        {label}
-      </StyledText>
+
+    <StyledText className={`${TEXT_SIZE_STYLES[size]} ${textStyles} flex-row items-center`}>
+      {iconDef && <RenderIcon iconDef={iconDef} size={size === 'sm' ? 12 : 14} style={{ marginRight: 4 }} />}
+      {label}
+    </StyledText>
+
     </StyledTouchableOpacity>
   );
 };

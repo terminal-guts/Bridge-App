@@ -17,7 +17,7 @@ import {
 import { styled } from 'nativewind';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { EvaIcon } from '../../components/icons';
+import { EvaIcon  } from '../../components/icons';
 import { H3, Body } from '../../components/ui';
 import * as Clipboard from 'expo-clipboard';
 import { getUserFriendCode, addFriendByCode, bulkAddFriendsByCodes } from '../../services/friendService';

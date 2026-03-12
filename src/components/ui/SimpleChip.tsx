@@ -2,7 +2,10 @@ import React from 'react';
 import { TouchableOpacity, Text } from 'react-native';
 import { styled } from 'nativewind';
 
+import { RenderIcon, type IconDef } from '../../utils/emojiMaps';
+
 interface SimpleChipProps {
+  iconDef?: IconDef;
   label: string;
   selected: boolean;
   onPress: () => void;
@@ -12,7 +15,7 @@ const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledText = styled(Text);
 
 // Ultra-simplified chip with minimal overhead - NO haptics, NO variant logic
-const SimpleChipComponent: React.FC<SimpleChipProps> = ({ label, selected, onPress }) => {
+const SimpleChipComponent: React.FC<SimpleChipProps> = ({ label, selected, onPress, iconDef }) => {
   return (
     <StyledTouchableOpacity
       onPress={onPress}

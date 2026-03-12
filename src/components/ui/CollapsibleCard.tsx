@@ -12,7 +12,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, Animated, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon  } from '../../components/icons';
 import { Card } from './Card';
 import { lightHaptic } from '../../utils/haptics';
 
@@ -104,7 +104,7 @@ export const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
           </StyledView>
 
           <Animated.View style={{ transform: [{ rotate }] }}>
-            <Ionicons name="chevron-down" size={20} color="#667085" />
+            <EvaIcon name="chevron-down" size={20} color="#667085" />
           </Animated.View>
         </StyledView>
       </StyledTouchableOpacity>

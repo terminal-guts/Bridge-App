@@ -16,7 +16,7 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon  } from '../../../components/icons';
 import { lightHaptic, mediumHaptic } from '../../../utils/haptics';
 
 const StyledView = styled(View);
@@ -170,7 +170,7 @@ export function EndMatchModal({ visible, onClose, onSubmit }: EndMatchModalProps
                         }}
                       >
                         {selectedReason === reason.id && (
-                          <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                          <EvaIcon name="checkmark" size={16} color="#FFFFFF" />
                         )}
                       </StyledView>
 

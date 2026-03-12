@@ -8,7 +8,7 @@
 import React from 'react';
 import { View, Animated } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon  } from '../../components/icons';
 import { Body } from '.';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 
@@ -24,7 +24,7 @@ export const OfflineBanner: React.FC = () => {
 
   return (
     <StyledView className="bg-warning px-4 py-3 flex-row items-center">
-      <Ionicons name="cloud-offline" size={20} color="#FFFFFF" />
+      <EvaIcon name="wifi-off" size={20} color="#FFFFFF" />
       <Body className="text-white ml-2 font-medium text-sm">
         You're offline. Some features may not work.
       </Body>
@@ -41,7 +41,7 @@ export const OfflineMessage: React.FC<OfflineMessageProps> = ({
 }) => {
   return (
     <StyledView className="flex-1 items-center justify-center px-6">
-      <Ionicons name="cloud-offline-outline" size={80} color="#D0D5DD" />
+      <EvaIcon name="wifi-off-outline" size={80} color="#D0D5DD" />
       <Body className="text-neutral-700 text-center mt-4 text-base font-medium">
         You're Offline
       </Body>

@@ -10,7 +10,7 @@
 
 import React from 'react';
 import { View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon  } from '../../../components/icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
 import { MatchStatus } from '../../../utils/proposalMatching';
@@ -34,7 +34,7 @@ export function MatchStatusIcon({ status, size = 20 }: MatchStatusIconProps) {
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-          <Ionicons name="checkmark" size={size * 0.7} color="#FFFFFF" />
+          <EvaIcon name="checkmark" size={size * 0.7} color="#FFFFFF" />
         </StyledView>
       );
 
@@ -58,7 +58,7 @@ export function MatchStatusIcon({ status, size = 20 }: MatchStatusIconProps) {
               justifyContent: 'center',
             }}
           >
-            <Ionicons name="warning" size={size * 0.7} color="#FFFFFF" />
+            <EvaIcon name="alert-triangle" size={size * 0.7} color="#FFFFFF" />
           </LinearGradient>
         </StyledView>
       );
@@ -83,7 +83,7 @@ export function MatchStatusIcon({ status, size = 20 }: MatchStatusIconProps) {
               justifyContent: 'center',
             }}
           >
-            <Ionicons name="warning" size={size * 0.7} color="#FFFFFF" />
+            <EvaIcon name="alert-triangle" size={size * 0.7} color="#FFFFFF" />
           </LinearGradient>
         </StyledView>
       );
@@ -98,7 +98,7 @@ export function MatchStatusIcon({ status, size = 20 }: MatchStatusIconProps) {
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-          <Ionicons name="close" size={size * 0.7} color="#FFFFFF" />
+          <EvaIcon name="close" size={size * 0.7} color="#FFFFFF" />
         </StyledView>
       );
 
@@ -113,7 +113,7 @@ export function MatchStatusIcon({ status, size = 20 }: MatchStatusIconProps) {
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-          <Ionicons name="remove" size={size * 0.7} color="#FFFFFF" />
+          <EvaIcon name="minus" size={size * 0.7} color="#FFFFFF" />
         </StyledView>
       );
   }

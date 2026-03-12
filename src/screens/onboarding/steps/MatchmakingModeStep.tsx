@@ -3,7 +3,7 @@ import { View, TouchableOpacity, Animated, Image } from 'react-native';
 import { styled } from 'nativewind';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { H1, Body, H3 } from '../../../components/ui';
-import { EvaIcon } from '../../../components/icons';
+import { EvaIcon, type IconName    } from '../../../components/icons';
 
 interface MatchmakingModeStepProps {
   data: any;

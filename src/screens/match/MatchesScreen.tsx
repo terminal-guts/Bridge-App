@@ -69,22 +69,22 @@ function EndedMatchPopupContent({ event }: { event: MatchEndedEvent }) {
 
     const config: Record<MatchEndedEvent['type'], { icon: string; headline: string; body: string }> = {
         expired: {
-            icon: '⏰',
+            icon: 'clock-outline',
             headline: 'Your match expired',
             body: 'The proposal timed out before anyone decided. Stay active — your next match could come soon.',
         },
         you_rejected: {
-            icon: '👋',
+            icon: 'smiling-face',
             headline: 'You passed',
             body: "That's totally okay — trust your instincts. Keep at it, the right fit is worth waiting for. Every pass brings you closer to someone great.",
         },
         they_rejected: {
-            icon: '💙',
+            icon: 'heart',
             headline: "It didn't work out this time",
             body: "They decided to go a different direction. Your friends are still out there finding the right match for you.",
         },
         match_ended: {
-            icon: '🌱',
+            icon: 'activity-outline',
             headline: 'A Fresh Start',
             body: "You're back in the matching pool. Your community is still here to help you find your next great connection.",
         },

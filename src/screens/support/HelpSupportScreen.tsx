@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H2, H3, Body, Card } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon  } from '../../components/icons';
 
 interface HelpSupportScreenProps {
   navigation: NavigationProp<RootStackParamList>;
@@ -47,7 +47,7 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
     <StyledView className="mb-4">
       <StyledView className="flex-row items-start mb-2">
         <StyledView className="w-5 h-5 bg-primary-100 rounded-full items-center justify-center mr-2 mt-0.5">
-          <Ionicons name="help-circle-outline" size={14} color="#437FFF" />
+          <EvaIcon name="question-mark-circle-outline" size={14} color="#437FFF" />
         </StyledView>
         <Body className="flex-1 text-neutral-900 font-semibold text-sm">{question}</Body>
       </StyledView>
@@ -64,7 +64,7 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
       {/* Header */}
       <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center">
         <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
-          <Ionicons name="arrow-back" size={24} color="#101828" />
+          <EvaIcon name="arrow-back" size={24} color="#101828" />
         </StyledTouchableOpacity>
         <H3>Help & Support</H3>
       </StyledView>
@@ -75,7 +75,7 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
           <Card className="mb-4 bg-gradient-to-br from-primary-50 to-white border border-primary-200">
             <StyledView className="items-center py-2">
               <StyledView className="w-16 h-16 bg-primary-500 rounded-full items-center justify-center mb-3">
-                <Ionicons name="mail" size={28} color="white" />
+                <EvaIcon name="mail" size={28} color="white" />
               </StyledView>
               <H2 className="text-lg mb-2 text-center">We're Here to Help</H2>
               <Body className="text-neutral-600 text-center text-sm mb-4 px-4">
@@ -98,7 +98,7 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
                   elevation: 4,
                 }}
               >
-                <Ionicons name="send" size={18} color="white" />
+                <EvaIcon name="send" size={18} color="white" />
                 <Body className="text-white font-semibold ml-2">Send Email</Body>
               </StyledTouchableOpacity>
             </StyledView>
@@ -110,7 +110,7 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
             <StyledView className="space-y-3">
               <StyledView className="flex-row items-start">
                 <StyledView className="w-10 h-10 bg-success/10 rounded-lg items-center justify-center mr-3">
-                  <Ionicons name="help-circle" size={20} color="#12B981" />
+                  <EvaIcon name="question-mark-circle" size={20} color="#12B981" />
                 </StyledView>
                 <StyledView className="flex-1">
                   <Body className="text-neutral-900 font-medium mb-1">General Questions</Body>
@@ -122,7 +122,7 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
 
               <StyledView className="flex-row items-start">
                 <StyledView className="w-10 h-10 bg-error/10 rounded-lg items-center justify-center mr-3">
-                  <Ionicons name="bug" size={20} color="#EF4444" />
+                  <EvaIcon name="alert-triangle" size={20} color="#EF4444" />
                 </StyledView>
                 <StyledView className="flex-1">
                   <Body className="text-neutral-900 font-medium mb-1">Report a Problem</Body>
@@ -144,7 +144,7 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
                 }}
               >
                 <StyledView className="w-10 h-10 bg-warning/10 rounded-lg items-center justify-center mr-3">
-                  <Ionicons name="flag" size={20} color="#F59E0B" />
+                  <EvaIcon name="flag" size={20} color="#F59E0B" />
                 </StyledView>
                 <StyledView className="flex-1">
                   <Body className="text-neutral-900 font-medium mb-1">Safety & Reporting</Body>
@@ -152,12 +152,12 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
                     Report inappropriate behavior or content
                   </Body>
                 </StyledView>
-                <Ionicons name="chevron-forward" size={16} color="#98A2B3" style={{ marginTop: 4 }} />
+                <EvaIcon name="chevron-right" size={16} color="#98A2B3" style={{ marginTop: 4 }} />
               </StyledTouchableOpacity>
 
               <StyledView className="flex-row items-start">
                 <StyledView className="w-10 h-10 bg-primary-100 rounded-lg items-center justify-center mr-3">
-                  <Ionicons name="chatbubbles" size={20} color="#437FFF" />
+                  <EvaIcon name="message-circle" size={20} color="#437FFF" />
                 </StyledView>
                 <StyledView className="flex-1">
                   <Body className="text-neutral-900 font-medium mb-1">Feedback & Suggestions</Body>
@@ -202,7 +202,7 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
           {/* Response Time */}
           <Card className="bg-primary-50 border border-primary-100">
             <StyledView className="flex-row items-start">
-              <Ionicons name="time" size={20} color="#437FFF" />
+              <EvaIcon name="clock" size={20} color="#437FFF" />
               <StyledView className="flex-1 ml-3">
                 <Body className="text-primary-900 font-semibold text-sm mb-1">
                   Response Time

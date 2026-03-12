@@ -15,7 +15,7 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon  } from '../../../components/icons';
 import { ActiveMatch } from '../../../types/community';
 import { mediumHaptic, lightHaptic } from '../../../utils/haptics';
 import {
@@ -95,7 +95,7 @@ export function ActiveMatchCard({ match, onMessage, onEndMatch }: ActiveMatchCar
               elevation: 4,
             }}
           >
-            <Ionicons name="heart" size={12} color="#FFFFFF" />
+            <EvaIcon name="heart" size={12} color="#FFFFFF" />
           </StyledView>
         </StyledView>
 
@@ -147,7 +147,7 @@ export function ActiveMatchCard({ match, onMessage, onEndMatch }: ActiveMatchCar
           activeOpacity={0.8}
         >
           <StyledView className="flex-row items-center">
-            <Ionicons name="chatbubble" size={16} color="#FFFFFF" />
+            <EvaIcon name="message-circle" size={16} color="#FFFFFF" />
             <StyledText className="text-white font-bold ml-2 text-sm">
               Message
             </StyledText>

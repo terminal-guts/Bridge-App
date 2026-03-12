@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
-import { EvaIcon } from '../../../components/icons';
+import { EvaIcon  } from '../../../components/icons';
 
 interface SignUpMethodStepProps {
   data: Partial<OnboardingData>;
