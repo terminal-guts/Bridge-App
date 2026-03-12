@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef, useReducer } from 'react';
-import { View, Text, TextInput, ScrollView, SafeAreaView, StatusBar, TouchableOpacity, StyleSheet, Dimensions, Share, Alert, RefreshControl, Modal } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef, useReducer, useMemo } from 'react';
+import { View, Text, TextInput, ScrollView, SafeAreaView, StatusBar, TouchableOpacity, StyleSheet, Dimensions, Share, Alert, RefreshControl, Modal, Animated, Easing } from 'react-native';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 import { styled } from 'nativewind';
@@ -8,6 +8,7 @@ import { ProposalReviewView } from '../../components/community/proposal/Proposal
 import { GuideTarget } from '../../components/guides';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { MainTabParamList } from '../../types';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { communityService } from '../../services/communityServiceIndex';
@@ -21,6 +22,42 @@ import { useGuide } from '../../hooks/useGuide';
 import { beginnerTourGuide } from '../../config/guides';
 import { CommunitySkeleton } from '../../components/ui/SkeletonLoader';
 import { getLast7PMCentral } from '../../utils/centralTime';
+import { successHaptic } from '../../utils/haptics';
+import { getFriendUnreadCount } from '../../services/messageService';
+
+// Pre-computed style value — avoids allocation on every render
+const HELP_SECTION_MARGIN_TOP = Math.round(SCREEN_HEIGHT * 0.055);
+
+// ── Mock leaderboard karma thresholds for rank interpolation ─────────────────
+// Sorted descending — same values as LeaderboardScreen MOCK_WEEKLY
+const MOCK_LEADERBOARD_KARMA = [87, 74, 68, 62, 55, 51, 48, 44, 39, 36, 32, 29, 25, 21, 18, 14, 11, 8, 5, 3];
+
+/** Given a karma score, return approximate global leaderboard rank (1-indexed) */
+function getApproxRank(karma: number): number {
+  for (let i = 0; i < MOCK_LEADERBOARD_KARMA.length; i++) {
+    if (karma >= MOCK_LEADERBOARD_KARMA[i]) return i + 1;
+  }
+  return MOCK_LEADERBOARD_KARMA.length + 1;
+}
+
+/** Split friends into needs-help vs already-helped, sorted by karma rank */
+function partitionFriends(friends: FriendWithGridStatus[]) {
+  const toMatch = friends.filter(f => !f.hasCompletedGrid);
+  const helped = friends
+    .filter(f => f.hasCompletedGrid)
+    .sort((a, b) =>
+      getApproxRank(a.karmaScore?.karmaPoints ?? 0) - getApproxRank(b.karmaScore?.karmaPoints ?? 0)
+    );
+  return { toMatch, helped };
+}
+
+/** Compute activity status line for a crew member */
+function getFriendStatusLine(user: FriendWithGridStatus): string | undefined {
+  if (user.isMatched) return 'Has a match!';
+  const assists = user.assistsCount || 0;
+  if (assists > 0) return `${assists} match${assists === 1 ? '' : 'es'} made`;
+  return undefined;
+}
 
 // ── Match reset countdown timer ───────────────────────────────────────────────
 //
@@ -33,6 +70,8 @@ function MatchResetTimer() {
   // Incrementing counter just to force a re-render every second
   const [, tick] = useReducer((n: number) => n + 1, 0);
   const [infoVisible, setInfoVisible] = useState(false);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulsingRef = useRef(false);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -41,6 +80,23 @@ function MatchResetTimer() {
         communityService.triggerReset();
         targetRef.current = Number(communityService.getNextResetAt());
       }
+
+      // Start pulse when <30 min remaining
+      const shouldPulse = ms > 0 && ms < 30 * 60 * 1000;
+      if (shouldPulse && !pulsingRef.current) {
+        pulsingRef.current = true;
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(pulseAnim, { toValue: 1.08, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+            Animated.timing(pulseAnim, { toValue: 1, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          ])
+        ).start();
+      } else if (!shouldPulse && pulsingRef.current) {
+        pulsingRef.current = false;
+        pulseAnim.stopAnimation();
+        pulseAnim.setValue(1);
+      }
+
       tick(); // force re-render
     }, 1000);
 
@@ -54,7 +110,7 @@ function MatchResetTimer() {
       clearInterval(id);
       unsub();
     };
-  }, []);
+  }, [pulseAnim]);
 
   // Computed fresh every render — never stale
   const remaining = Math.max(0, targetRef.current - Date.now());
@@ -93,7 +149,7 @@ function MatchResetTimer() {
   return (
     <>
       <TouchableOpacity activeOpacity={0.7} onPress={() => setInfoVisible(true)}>
-        <View style={{
+        <Animated.View style={{
           flexDirection: 'row',
           alignItems: 'center',
           backgroundColor: bgColor,
@@ -103,10 +159,11 @@ function MatchResetTimer() {
           paddingHorizontal: 9,
           height: 34,
           gap: 5,
+          transform: [{ scale: pulseAnim }],
         }}>
           <Ionicons name="time-outline" size={13} color={color} />
           <Text style={{ fontSize: 13, fontWeight: '600', color }}>{label}</Text>
-        </View>
+        </Animated.View>
       </TouchableOpacity>
 
       <Modal visible={infoVisible} transparent animationType="fade" onRequestClose={() => setInfoVisible(false)}>
@@ -190,6 +247,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [enterCodeValue, setEnterCodeValue] = useState('');
   const [enterCodeError, setEnterCodeError] = useState('');
   const [addingCode, setAddingCode] = useState(false);
+  const [unreadMap, setUnreadMap] = useState<Record<string, boolean>>({});
 
   const handleEnterCode = useCallback(async () => {
     const code = enterCodeValue.trim().toUpperCase();
@@ -215,6 +273,25 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     }
   }, [enterCodeValue, friendCode]);
 
+  const loadUnreadCounts = useCallback(async (friends: FriendWithGridStatus[]) => {
+    if (!profile?.userId || friends.length === 0) return;
+    try {
+      const results = await Promise.all(
+        friends.map(f => getFriendUnreadCount(profile.userId, f.friendId).then(r => ({
+          friendId: f.friendId,
+          hasUnread: r.ok && (r.data ?? 0) > 0,
+        })))
+      );
+      const map: Record<string, boolean> = {};
+      for (const r of results) {
+        if (r.hasUnread) map[r.friendId] = true;
+      }
+      setUnreadMap(map);
+    } catch {
+      // Silent fail — unread dots are non-critical
+    }
+  }, [profile?.userId]);
+
   const loadFriendsData = useCallback(async () => {
     try {
       const [data, codeRes] = await Promise.all([
@@ -226,17 +303,17 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
         setFriendCode(codeRes.data.code);
       }
 
-      const toMatch = data.friends.filter((f: FriendWithGridStatus) => !f.hasCompletedGrid);
-      const helped = data.friends
-        .filter((f: FriendWithGridStatus) => f.hasCompletedGrid)
-        .sort((a: FriendWithGridStatus, b: FriendWithGridStatus) => (b.karmaScore?.karmaPoints ?? 0) - (a.karmaScore?.karmaPoints ?? 0));
+      const { toMatch, helped } = partitionFriends(data.friends);
       setUsersToMatch(toMatch);
       setAlreadyHelped(helped);
+
+      // Load unread counts for sitting tight friends (they have chat)
+      loadUnreadCounts(helped);
     } catch (error) {
       console.error("Failed to load community data:", error);
       Alert.alert('Error', 'Failed to load community data. Pull down to refresh.');
     }
-  }, []);
+  }, [loadUnreadCounts]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -265,10 +342,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
     // If we have a cached "voting done" and cached friends, render immediately
     if (cachedVoting === true && cachedFriends) {
-      const toMatch = cachedFriends.filter((f: FriendWithGridStatus) => !f.hasCompletedGrid);
-      const helped = cachedFriends
-        .filter((f: FriendWithGridStatus) => f.hasCompletedGrid)
-        .sort((a: FriendWithGridStatus, b: FriendWithGridStatus) => b.assistsCount - a.assistsCount);
+      const { toMatch, helped } = partitionFriends(cachedFriends);
       setUsersToMatch(toMatch);
       setAlreadyHelped(helped);
       setHasCompletedVoting(true);
@@ -390,11 +464,66 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     await new Promise(resolve => setTimeout(resolve, 800));
     await loadFriendsData();
     setHasCompletedVoting(true);
+    // #7: Haptic reward on unlocking friends area
+    successHaptic();
     // Cache so next cold open skips the voting gate
     const cycleId = String(getLast7PMCentral());
     communityService.cacheVotingComplete(true, cycleId).catch(() => {});
     navigation.navigate('Community');
   }, [loadFriendsData, navigation]);
+
+  // ── Memoized derived values ──────────────────────────────────────────────
+  // Computed once when list data changes, not on every render tick
+  const totalFriends = usersToMatch.length + alreadyHelped.length;
+  const showInviteBanner = totalFriends > 0 && totalFriends < 5;
+
+  const bannerSection = useMemo(() => {
+    if (totalFriends < 5) {
+      const avatarFriends = [...usersToMatch, ...alreadyHelped].slice(0, 4);
+      return { kind: 'invite' as const, avatarFriends };
+    }
+    const totalAssists =
+      alreadyHelped.reduce((sum, f) => sum + (f.assistsCount || 0), 0) +
+      usersToMatch.reduce((sum, f) => sum + (f.assistsCount || 0), 0);
+    return { kind: 'impact' as const, totalAssists };
+  }, [totalFriends, usersToMatch, alreadyHelped]);
+
+  // Stable per-item callback maps — keyed by friendId so memo on UserRow is effective
+  const voteHandlers = useMemo(() => {
+    const viewProfile: Record<string, () => void> = {};
+    const matchHandlers: Record<string, () => void> = {};
+    for (const user of usersToMatch) {
+      viewProfile[user.friendId] = () =>
+        (navigation as any).navigate('ProfileView', { profile: user.friend });
+      matchHandlers[user.friendId] = () =>
+        (navigation as any).navigate('FriendProposal', {
+          friendId: user.friendId,
+          friendName: user.friend.firstName,
+          friendPhotoUrl: user.friend.photos?.[0]?.url,
+          friendAge: user.friend.age,
+          friendJob: user.friend.currentJob,
+        });
+    }
+    return { viewProfile, matchHandlers };
+  }, [usersToMatch, navigation]);
+
+  const crewHandlers = useMemo(() => {
+    const viewProfile: Record<string, () => void> = {};
+    const chatHandlers: Record<string, () => void> = {};
+    for (const user of alreadyHelped) {
+      viewProfile[user.friendId] = () =>
+        (navigation as any).navigate('ProfileView', { profile: user.friend });
+      chatHandlers[user.friendId] = () =>
+        (navigation as any).navigate('Chat', {
+          friendshipId: user.friendshipId,
+          recipientId: user.friendId,
+          recipientName: user.friend.firstName,
+          recipientPhoto: user.friend.photos?.[0]?.url,
+          isFriendChat: true,
+        });
+    }
+    return { viewProfile, chatHandlers };
+  }, [alreadyHelped, navigation]);
 
   if (loading || hasCompletedVoting === null) {
     return (
@@ -430,30 +559,23 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       {/* Header section */}
       <View className="px-6 pt-4">
         <View className="flex-row items-center justify-between">
-          <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 32, lineHeight: 38, color: '#010101', letterSpacing: -0.5 }}>
+          <Text style={styles.headerTitle}>
             Community
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={styles.headerRight}>
             <MatchResetTimer />
-            <GuideTarget id="add-friend-button">
-              <TouchableOpacity
-                onPress={() => (navigation as any).navigate('ContactInvite')}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                activeOpacity={0.7}
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 17,
-                  backgroundColor: '#F4F7FF',
-                  borderWidth: 1,
-                  borderColor: '#D1DEFF',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons name="person-add-outline" size={18} color="#2B65F9" />
-              </TouchableOpacity>
-            </GuideTarget>
+            {!showInviteBanner && (
+              <GuideTarget id="add-friend-button">
+                <TouchableOpacity
+                  onPress={() => (navigation as any).navigate('ContactInvite')}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  activeOpacity={0.7}
+                  style={styles.addFriendBtn}
+                >
+                  <Ionicons name="person-add-outline" size={18} color="#2B65F9" />
+                </TouchableOpacity>
+              </GuideTarget>
+            )}
           </View>
         </View>
       </View>
@@ -537,78 +659,77 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2B65F9" />
           }
         >
-          {/* Invite nudge banner — show when user has fewer than 5 friends */}
-          {(usersToMatch.length + alreadyHelped.length) < 5 && (
+          {/* #5: Invite nudge when <5 friends; #10: Impact card when >=5 friends */}
+          {bannerSection.kind === 'invite' ? (
             <TouchableOpacity
-              style={styles.inviteNudgeBanner}
+              style={styles.crewBanner}
               activeOpacity={0.85}
               onPress={() => (navigation as any).navigate('ContactInvite')}
             >
-              <View style={styles.inviteNudgeLeft}>
-                <Ionicons name="people" size={20} color="#2B65F9" />
-                <Text style={styles.inviteNudgeText}>
-                  Invite {5 - (usersToMatch.length + alreadyHelped.length)} more friend{5 - (usersToMatch.length + alreadyHelped.length) === 1 ? '' : 's'} for better matches
-                </Text>
+              <View style={styles.crewAvatarRow}>
+                {bannerSection.avatarFriends.map((f, i) => (
+                  <Image
+                    key={f.friendId}
+                    source={{ uri: f.friend.photos?.[0]?.url || 'https://via.placeholder.com/36' }}
+                    style={[styles.crewAvatar, i > 0 && { marginLeft: -10 }]}
+                  />
+                ))}
+                <View style={[styles.crewAddCircle, bannerSection.avatarFriends.length > 0 && { marginLeft: -10 }]}>
+                  <Ionicons name="add" size={16} color="#2B65F9" />
+                </View>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#2B65F9" />
+              <Text style={styles.crewBannerHeadline}>Add your people</Text>
             </TouchableOpacity>
+          ) : (
+            <View style={styles.impactCard}>
+              <Ionicons name="heart-circle" size={22} color="#2B65F9" />
+              <Text style={styles.impactText}>
+                {bannerSection.totalAssists > 0
+                  ? `You've helped make ${bannerSection.totalAssists} match${bannerSection.totalAssists === 1 ? '' : 'es'}`
+                  : 'Keep voting to help your friends find matches'}
+              </Text>
+            </View>
           )}
 
           {usersToMatch.length > 0 && (
-            <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 15, color: '#9CA3AF', marginTop: SCREEN_HEIGHT * 0.055, marginBottom: 4, paddingHorizontal: 24 }}>
-              Help your friends
-            </Text>
+            <View style={[styles.sectionHeader, { marginTop: HELP_SECTION_MARGIN_TOP }]}>
+              <View style={[styles.sectionAccent, { backgroundColor: '#2B65F9' }]} />
+              <Text style={styles.sectionTitle}>Help your friends</Text>
+            </View>
           )}
-          {/* Main list */}
-          <View>
+          {/* Main list — #3: vote ring + #9: vote-only action */}
+          <View style={styles.voteListBg}>
             {usersToMatch.map((user, index) => (
               <UserRow
                 key={user.friendId}
                 item={user}
                 index={index}
-                onViewProfile={() => (navigation as any).navigate('ProfileView', { profile: user.friend })}
-                onMatch={() => (navigation as any).navigate('FriendProposal', {
-                  friendId: user.friendId,
-                  friendName: user.friend.firstName,
-                  friendPhotoUrl: user.friend.photos?.[0]?.url,
-                  friendAge: user.friend.age,
-                  friendJob: user.friend.currentJob,
-                })}
-                onChat={() => (navigation as any).navigate('Chat', {
-                  friendshipId: user.friendshipId,
-                  recipientId: user.friendId,
-                  recipientName: user.friend.firstName,
-                  recipientPhoto: user.friend.photos?.[0]?.url,
-                  isFriendChat: true,
-                })}
+                showVoteRing
+                onViewProfile={voteHandlers.viewProfile[user.friendId]}
+                onMatch={voteHandlers.matchHandlers[user.friendId]}
               />
             ))}
           </View>
 
           {/* Already Helped section */}
           {alreadyHelped.length > 0 && (
-            <View style={{ marginTop: 20, marginBottom: 4, paddingHorizontal: 24 }}>
-              <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 15, color: '#9CA3AF' }}>
-                Sitting tight
-              </Text>
+            <View style={[styles.sectionHeader, { marginTop: 20 }]}>
+              <View style={[styles.sectionAccent, { backgroundColor: '#3ECC62' }]} />
+              <Text style={styles.sectionTitle}>Your crew</Text>
             </View>
           )}
 
           <View className="pb-8">
             {alreadyHelped.map((user, index) => (
-              <UserRow
-                key={user.friendId}
-                item={user}
-                index={index}
-                onViewProfile={() => (navigation as any).navigate('ProfileView', { profile: user.friend })}
-                onChat={() => (navigation as any).navigate('Chat', {
-                  friendshipId: user.friendshipId,
-                  recipientId: user.friendId,
-                  recipientName: user.friend.firstName,
-                  recipientPhoto: user.friend.photos?.[0]?.url,
-                  isFriendChat: true,
-                })}
-              />
+                <UserRow
+                  key={user.friendId}
+                  item={user}
+                  index={index}
+                  statusLine={getFriendStatusLine(user)}
+                  hasUnread={!!unreadMap[user.friendId]}
+                  onViewProfile={crewHandlers.viewProfile[user.friendId]}
+                  onChat={crewHandlers.chatHandlers[user.friendId]}
+                />
             ))}
           </View>
         </ScrollView>
@@ -715,30 +836,77 @@ const styles = StyleSheet.create({
     marginTop: 4,
     width: '100%',
   },
-  inviteNudgeBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  crewBanner: {
     backgroundColor: '#EEF3FF',
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 4,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#D1DEFF',
-  },
-  inviteNudgeLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+    shadowColor: '#2B65F9',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  crewAvatarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  crewAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#EEF3FF',
+    backgroundColor: '#E5E7EB',
+  },
+  crewAddCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#2B65F9',
+    borderStyle: 'dashed',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  crewBannerHeadline: {
+    fontFamily: 'Outfit_700Bold',
+    fontSize: 14,
+    color: '#101828',
     flex: 1,
   },
-  inviteNudgeText: {
+  impactCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F4F7FF',
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#D1DEFF',
+    gap: 10,
+    shadowColor: '#2B65F9',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  impactText: {
     fontFamily: 'Outfit_600SemiBold',
     fontSize: 13,
     color: '#2B65F9',
-    marginLeft: 10,
     flex: 1,
   },
   inviteContactsButton: {
@@ -755,6 +923,56 @@ const styles = StyleSheet.create({
     fontFamily: 'Outfit_600SemiBold',
     fontSize: 15,
     color: '#FFFFFF',
+  },
+  headerTitle: {
+    fontFamily: 'Outfit_700Bold',
+    fontWeight: '700',
+    fontSize: 32,
+    lineHeight: 38,
+    color: '#010101',
+    letterSpacing: -0.5,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  addFriendBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#F4F7FF',
+    borderWidth: 1,
+    borderColor: '#D1DEFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2B65F9',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  sectionAccent: {
+    width: 3,
+    height: 16,
+    borderRadius: 2,
+  },
+  sectionTitle: {
+    fontFamily: 'Outfit_600SemiBold',
+    fontSize: 14,
+    color: '#667085',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  voteListBg: {
+    backgroundColor: 'rgba(43, 101, 249, 0.02)',
   },
 });
 
