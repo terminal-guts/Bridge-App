@@ -75,6 +75,7 @@ const SupportChatScreen = withSuspense(React.lazy(() => import('../screens/suppo
 
 // Community sub-screens
 const LeaderboardScreen = withSuspense(React.lazy(() => import('../screens/community/LeaderboardScreen').then(m => ({ default: m.LeaderboardScreen }))));
+const StatsScreen = withSuspense(React.lazy(() => import('../screens/community/StatsScreen').then(m => ({ default: m.StatsScreen }))));
 
 // Friends sub-screens
 const ContactInviteScreen = withSuspense(React.lazy(() => import('../screens/friends/ContactInviteScreen').then(m => ({ default: m.ContactInviteScreen }))));
@@ -405,6 +406,7 @@ export const AppNavigator = () => {
           <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
           <Stack.Screen name="SupportChat" component={SupportChatScreen} />
           <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
+          <Stack.Screen name="Stats" component={StatsScreen} />
 
           {/* Friends */}
           <Stack.Screen name="ContactInvite" component={ContactInviteScreen} />

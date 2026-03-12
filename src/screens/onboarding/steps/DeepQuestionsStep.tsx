@@ -5,6 +5,7 @@ import { H1, H2, H3, Body } from '../../../components/ui';
 import { OnboardingData, DeepQuestionAnswer } from '../../../types';
 import { Ionicons } from '@expo/vector-icons';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
+import { FONTS } from '../../../constants/typography';
 
 interface DeepQuestionsStepProps {
   data: Partial<OnboardingData>;
@@ -398,7 +399,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
               autoFocus
               textAlignVertical="top"
               className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 min-h-[200px] text-base text-neutral-900"
-              style={{ fontFamily: 'System' }}
+              style={{ fontFamily: FONTS.regular }}
             />
 
             <Body className="text-neutral-400 text-xs mt-3">

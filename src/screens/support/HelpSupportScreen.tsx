@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
 import { styled } from 'nativewind';
-import { H2, H3, Body, Card } from '../../components/ui';
+import { H2, H3, Body, Card, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +10,6 @@ interface HelpSupportScreenProps {
   navigation: NavigationProp<RootStackParamList>;
 }
 
-const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -58,8 +57,7 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
   );
 
   return (
-    <StyledSafeAreaView className="flex-1 bg-neutral-50">
-      <StatusBar barStyle="dark-content" />
+    <ScreenWrapper>
 
       {/* Header */}
       <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center">
@@ -215,6 +213,6 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
           </Card>
         </StyledView>
       </StyledScrollView>
-    </StyledSafeAreaView>
+    </ScreenWrapper>
   );
 };

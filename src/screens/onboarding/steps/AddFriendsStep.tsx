@@ -39,6 +39,7 @@ import {
 } from '../../../services/contactsService';
 import { showToast } from '../../../utils/toast';
 import { createLogger } from '../../../utils/secureLogger';
+import { FONTS } from '../../../constants/typography';
 
 const logger = createLogger('AddFriendsStep');
 
@@ -76,7 +77,7 @@ const ContactAvatar = React.memo(({ contact, bgColor, textColor }: { contact: No
   }
   return (
     <StyledView className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${bgColor}`}>
-      <StyledText className={`font-semibold text-base ${textColor}`}>
+      <StyledText className={`font-semibold text-base ${textColor}`} style={{ fontFamily: FONTS.semiBold }}>
         {contact.name[0]?.toUpperCase()}
       </StyledText>
     </StyledView>
@@ -101,14 +102,14 @@ const ContactRow = React.memo(({ contact, isSelected, isAdding, onToggleSelect, 
       <StyledView className="flex-row items-center px-4 py-3 bg-white">
         <ContactAvatar contact={contact} bgColor="bg-green-100" textColor="text-green-600" />
         <StyledView className="flex-1 mr-3">
-          <StyledText className="text-neutral-900 font-medium text-sm" numberOfLines={1}>
+          <StyledText className="text-neutral-900 font-medium text-sm" numberOfLines={1} style={{ fontFamily: FONTS.medium }}>
             {contact.name}
           </StyledText>
-          <StyledText className="text-green-600 text-xs font-medium">On Bridge</StyledText>
+          <StyledText className="text-green-600 text-xs font-medium" style={{ fontFamily: FONTS.medium }}>On Bridge</StyledText>
         </StyledView>
         {alreadyAdded ? (
           <StyledView className="bg-green-100 px-4 py-2 rounded-full">
-            <StyledText className="text-green-700 text-xs font-semibold">Added</StyledText>
+            <StyledText className="text-green-700 text-xs font-semibold" style={{ fontFamily: FONTS.semiBold }}>Added</StyledText>
           </StyledView>
         ) : (
           <StyledTouchableOpacity
@@ -119,7 +120,7 @@ const ContactRow = React.memo(({ contact, isSelected, isAdding, onToggleSelect, 
             {isAdding ? (
               <ActivityIndicator size="small" color="white" />
             ) : (
-              <StyledText className="text-white text-xs font-semibold">Add Friend</StyledText>
+              <StyledText className="text-white text-xs font-semibold" style={{ fontFamily: FONTS.semiBold }}>Add Friend</StyledText>
             )}
           </StyledTouchableOpacity>
         )}
@@ -151,10 +152,10 @@ const ContactRow = React.memo(({ contact, isSelected, isAdding, onToggleSelect, 
       <StyledView className="flex-1 mr-3">
         <StyledText className={`font-medium text-sm ${
           contact.isInvited && !canRemind ? 'text-neutral-400' : 'text-neutral-900'
-        }`} numberOfLines={1}>
+        }`} numberOfLines={1} style={{ fontFamily: FONTS.medium }}>
           {contact.name}
         </StyledText>
-        <StyledText className="text-neutral-500 text-xs" numberOfLines={1}>
+        <StyledText className="text-neutral-500 text-xs" numberOfLines={1} style={{ fontFamily: FONTS.regular }}>
           {contact.phoneNumber}
         </StyledText>
       </StyledView>
@@ -164,11 +165,11 @@ const ContactRow = React.memo(({ contact, isSelected, isAdding, onToggleSelect, 
           className="bg-primary-100 px-3 py-1.5 rounded-full"
           onPress={() => onInviteSingle(contact)}
         >
-          <StyledText className="text-primary-500 text-xs font-semibold">Remind</StyledText>
+          <StyledText className="text-primary-500 text-xs font-semibold" style={{ fontFamily: FONTS.semiBold }}>Remind</StyledText>
         </StyledTouchableOpacity>
       ) : contact.isInvited ? (
         <StyledView className="bg-neutral-100 px-3 py-1.5 rounded-full">
-          <StyledText className="text-neutral-400 text-xs font-semibold">Invited</StyledText>
+          <StyledText className="text-neutral-400 text-xs font-semibold" style={{ fontFamily: FONTS.semiBold }}>Invited</StyledText>
         </StyledView>
       ) : (
         <StyledView className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
@@ -207,7 +208,7 @@ const SectionHeader = React.memo(({ title, onAddAll, addAllDisabled, addAllLabel
               <EvaIcon name="star" variant="outline" color="primary" size={14} />
             </StyledView>
           )}
-          <StyledText className={`text-xs font-bold ${textClass}`}>
+          <StyledText className={`text-xs font-bold ${textClass}`} style={{ fontFamily: FONTS.bold }}>
             {title}
           </StyledText>
         </StyledView>
@@ -217,7 +218,7 @@ const SectionHeader = React.memo(({ title, onAddAll, addAllDisabled, addAllLabel
             disabled={addAllDisabled}
             className={`px-3 py-1 rounded-full ${addAllDisabled ? 'bg-green-100' : 'bg-green-500'}`}
           >
-            <StyledText className={`text-xs font-semibold ${addAllDisabled ? 'text-green-400' : 'text-white'}`}>
+            <StyledText className={`text-xs font-semibold ${addAllDisabled ? 'text-green-400' : 'text-white'}`} style={{ fontFamily: FONTS.semiBold }}>
               {addAllLabel || 'Add All'}
             </StyledText>
           </StyledTouchableOpacity>
@@ -543,8 +544,8 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
         {friendCode ? (
           <StyledView className="px-4 py-3 bg-white border-b border-neutral-200">
             <StyledView className="flex-row items-center mb-2">
-              <StyledText className="text-xs text-neutral-500 font-medium mr-1.5">Your code</StyledText>
-              <StyledText className="text-xs font-bold text-primary-500 flex-1" numberOfLines={1}>{friendCode}</StyledText>
+              <StyledText className="text-xs text-neutral-500 font-medium mr-1.5" style={{ fontFamily: FONTS.medium }}>Your code</StyledText>
+              <StyledText className="text-xs font-bold text-primary-500 flex-1" numberOfLines={1} style={{ fontFamily: FONTS.bold }}>{friendCode}</StyledText>
               <StyledTouchableOpacity
                 className="p-1.5 rounded-full bg-primary-50 ml-1"
                 onPress={handleCopyCode}
@@ -577,13 +578,13 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
                 onPress={handleEnterCode}
                 disabled={addingCode}
               >
-                <StyledText className="text-white text-sm font-semibold">
+                <StyledText className="text-white text-sm font-semibold" style={{ fontFamily: FONTS.semiBold }}>
                   {addingCode ? '...' : 'Add'}
                 </StyledText>
               </StyledTouchableOpacity>
             </StyledView>
             {enterCodeError ? (
-              <StyledText className="text-red-500 text-xs mt-1">{enterCodeError}</StyledText>
+              <StyledText className="text-red-500 text-xs mt-1" style={{ fontFamily: FONTS.regular }}>{enterCodeError}</StyledText>
             ) : null}
           </StyledView>
         ) : null}
@@ -647,7 +648,7 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
               onPress={handleSendInvites}
               disabled={sending}
             >
-              <StyledText className="text-white font-bold text-base">
+              <StyledText className="text-white font-bold text-base" style={{ fontFamily: FONTS.bold }}>
                 {sending
                   ? 'Opening Messages...'
                   : `Send ${selectedIds.size} Invite${selectedIds.size === 1 ? '' : 's'}`

@@ -15,6 +15,7 @@ import {
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
+import { FONTS } from '../../constants/typography';
 import {
   getSupportMessages,
   sendSupportMessage,
@@ -292,7 +293,7 @@ const s = StyleSheet.create({
     borderBottomColor: '#E4E7EC',
   },
   headerTitle: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: FONTS.semiBold,
     fontSize: 18,
     color: '#101828',
   },
@@ -302,14 +303,14 @@ const s = StyleSheet.create({
 
   dateSep: { alignItems: 'center', marginVertical: 16 },
   dateSepPill: { backgroundColor: '#F2F4F7', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999 },
-  dateSepText: { fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#667085' },
+  dateSepText: { fontFamily: FONTS.regular, fontSize: 12, color: '#667085' },
 
   bubbleRow: { marginBottom: 12 },
   bubbleRowRight: { alignItems: 'flex-end' },
   bubbleRowLeft: { alignItems: 'flex-start' },
 
   autoReplyLabel: {
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: FONTS.regular,
     fontSize: 11,
     color: '#98A2B3',
     marginBottom: 2,
@@ -320,12 +321,12 @@ const s = StyleSheet.create({
   bubbleUser: { backgroundColor: '#437FFF', borderBottomRightRadius: 4 },
   bubbleAdmin: { backgroundColor: '#F2F4F7', borderBottomLeftRadius: 4 },
 
-  bubbleText: { fontFamily: 'Outfit_400Regular', fontSize: 15, lineHeight: 22 },
+  bubbleText: { fontFamily: FONTS.regular, fontSize: 15, lineHeight: 22 },
   bubbleTextUser: { color: '#FFFFFF' },
   bubbleTextAdmin: { color: '#101828' },
 
   timestamp: {
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: FONTS.regular,
     fontSize: 11,
     color: '#98A2B3',
     marginTop: 2,
@@ -339,7 +340,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   failedBannerText: {
-    fontFamily: 'Outfit_500Medium',
+    fontFamily: FONTS.medium,
     fontSize: 13,
     color: '#D92D20',
   },
@@ -363,7 +364,7 @@ const s = StyleSheet.create({
     marginRight: 8,
   },
   textInput: {
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: FONTS.regular,
     fontSize: 15,
     color: '#101828',
     maxHeight: 96,
@@ -374,7 +375,7 @@ const s = StyleSheet.create({
 
   // Char count
   charCountWrap: { paddingHorizontal: 24, paddingBottom: 4, alignItems: 'flex-end', backgroundColor: '#FFFFFF' },
-  charCount: { fontFamily: 'Outfit_400Regular', fontSize: 11, color: '#98A2B3' },
+  charCount: { fontFamily: FONTS.regular, fontSize: 11, color: '#98A2B3' },
   charCountRed: { color: '#D92D20' },
 });
 

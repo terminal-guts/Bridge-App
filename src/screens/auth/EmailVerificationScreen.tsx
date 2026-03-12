@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, SafeAreaView, StatusBar, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import { Button, H1, H2, Body } from '../../components/ui';
+import { Button, H1, H2, Body, ScreenWrapper } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 
@@ -10,7 +10,6 @@ interface EmailVerificationScreenProps {
   route: RouteProp<RootStackParamList, 'EmailVerification'>;
 }
 
-const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 
@@ -47,8 +46,7 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
   };
 
   return (
-    <StyledSafeAreaView className="flex-1 bg-neutral-50">
-      <StatusBar barStyle="dark-content" />
+    <ScreenWrapper>
       <StyledView className="flex-1 px-6">
         {/* Icon */}
         <StyledView className="flex-1 items-center justify-center">
@@ -107,6 +105,6 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
           </Button>
         </StyledView>
       </StyledView>
-    </StyledSafeAreaView>
+    </ScreenWrapper>
   );
 };

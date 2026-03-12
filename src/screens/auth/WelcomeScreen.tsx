@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, SafeAreaView, StatusBar, Text, TouchableOpacity, Animated } from 'react-native';
 import { styled } from 'nativewind';
+import { FONTS } from '../../constants/typography';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
@@ -104,10 +105,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
                   transform: [{ translateY: textTranslateY }],
                 }}
               >
-                <StyledText className="text-white/90 text-base font-normal leading-relaxed mb-2">
+                <StyledText className="text-white/90 text-base font-normal leading-relaxed mb-2" style={{ fontFamily: FONTS.regular }}>
                   The community finds the fit.
                 </StyledText>
-                <StyledText className="text-white/90 text-base font-normal leading-relaxed">
+                <StyledText className="text-white/90 text-base font-normal leading-relaxed" style={{ fontFamily: FONTS.regular }}>
                   We bridge the gap.
                 </StyledText>
               </Animated.View>
@@ -127,7 +128,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
                 className="bg-white rounded-full py-4 px-8 mb-4 shadow-lg active:scale-[0.98]"
                 activeOpacity={0.9}
               >
-                <StyledText className="text-neutral-900 text-center text-lg font-semibold">
+                <StyledText className="text-neutral-900 text-center text-lg font-semibold" style={{ fontFamily: FONTS.semiBold }}>
                   Get started
                 </StyledText>
               </StyledTouchableOpacity>
@@ -138,7 +139,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
                 className="py-3 active:opacity-70"
                 activeOpacity={0.7}
               >
-                <StyledText className="text-white/80 text-center text-base font-medium">
+                <StyledText className="text-white/80 text-center text-base font-medium" style={{ fontFamily: FONTS.medium }}>
                   Sign in
                 </StyledText>
               </StyledTouchableOpacity>

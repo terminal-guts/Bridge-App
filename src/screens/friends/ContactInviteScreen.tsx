@@ -6,8 +6,6 @@ import {
   SectionList,
   TouchableOpacity,
   ActivityIndicator,
-  SafeAreaView,
-  StatusBar,
   Linking,
   Platform,
   Share,
@@ -19,7 +17,8 @@ import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { EvaIcon } from '../../components/icons';
 import { Ionicons } from '@expo/vector-icons';
-import { H3, Body } from '../../components/ui';
+import { H3, Body, ScreenWrapper } from '../../components/ui';
+import { OVERLAYS, SHADOWS } from '../../theme/shadows';
 import * as Clipboard from 'expo-clipboard';
 import { getUserFriendCode, addFriendByCode, bulkAddFriendsByCodes } from '../../services/friendService';
 import { getUserProfile } from '../../services/profileService';
@@ -40,6 +39,7 @@ import {
 } from '../../services/contactsService';
 import { createLogger } from '../../utils/secureLogger';
 import { showToast } from '../../utils/toast';
+import { FONTS } from '../../constants/typography';
 
 const logger = createLogger('ContactInviteScreen');
 
@@ -48,7 +48,6 @@ interface Props {
   route: RouteProp<RootStackParamList, 'ContactInvite'>;
 }
 
-const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledText = styled(Text);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -594,8 +593,7 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
   const keyExtractor = useCallback((item: NormalizedContact) => item.id, []);
 
   return (
-    <StyledSafeAreaView className="flex-1 bg-neutral-50">
-      <StatusBar barStyle="dark-content" />
+    <ScreenWrapper>
 
       {/* Header */}
       <StyledView className="flex-row items-center justify-between px-4 py-3 border-b border-neutral-200 bg-white">
@@ -790,19 +788,19 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
       {celebrationCount > 0 && (
         <View
           pointerEvents="none"
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: OVERLAYS.medium, alignItems: 'center', justifyContent: 'center', zIndex: 999 }}
         >
-          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 20, paddingHorizontal: 40, paddingVertical: 32, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 12 }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 20, paddingHorizontal: 40, paddingVertical: 32, alignItems: 'center', ...SHADOWS.xxl }}>
             <Text style={{ fontSize: 48, marginBottom: 8 }}>🎉</Text>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: '#0B1226', marginBottom: 4 }}>
+            <Text style={{ fontSize: 20, fontWeight: '700', fontFamily: FONTS.bold, color: '#0B1226', marginBottom: 4 }}>
               {celebrationCount} invite{celebrationCount === 1 ? '' : 's'} sent!
             </Text>
-            <Text style={{ fontSize: 14, color: '#667085', textAlign: 'center' }}>
+            <Text style={{ fontSize: 14, color: '#667085', textAlign: 'center', fontFamily: FONTS.regular }}>
               Your friends are going to love Bridge
             </Text>
           </View>
         </View>
       )}
-    </StyledSafeAreaView>
+    </ScreenWrapper>
   );
 };

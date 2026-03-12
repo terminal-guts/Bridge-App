@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, SafeAreaView, StatusBar, TouchableOpacity, TextInput, StyleSheet, Keyboard, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { View, TouchableOpacity, TextInput, StyleSheet, Keyboard, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { styled } from 'nativewind';
-import { Button, H2, Body } from '../../components/ui';
+import { Button, H2, Body, ScreenWrapper } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { verifyEmail, sendOtpToEmail, signInWithPassword, isReviewerBypassEmail } from '../../services/authService';
 import { fetchAndSetUserProfile } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
+import { FONTS } from '../../constants/typography';
 
 const logger = createLogger('EmailVerificationScreen');
 
@@ -15,7 +16,6 @@ interface PhoneVerificationScreenProps {
   route: RouteProp<RootStackParamList, 'PhoneVerification'>;
 }
 
-const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -154,8 +154,7 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
   };
 
   return (
-    <StyledSafeAreaView className="flex-1 bg-neutral-50">
-      <StatusBar barStyle="dark-content" />
+    <ScreenWrapper>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -233,7 +232,7 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
           </StyledView>
         </StyledScrollView>
       </KeyboardAvoidingView>
-    </StyledSafeAreaView>
+    </ScreenWrapper>
   );
 };
 
@@ -249,6 +248,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 20,
     fontWeight: '600',
+    fontFamily: FONTS.semiBold,
     color: '#101828',
   },
   otpInputFocused: {
