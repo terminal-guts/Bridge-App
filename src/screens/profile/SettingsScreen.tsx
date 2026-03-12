@@ -4,7 +4,6 @@ import { styled } from 'nativewind';
 import { H1, H3, Body, Card, Button, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { Ionicons } from '@expo/vector-icons';
 import { signOut } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
 import { resetGuide } from '../../services/guideService';
@@ -14,6 +13,7 @@ import { deleteAccount } from '../../services/accountService';
 import { notificationPreferencesService } from '../../services/notificationPreferencesService';
 import { notificationService } from '../../services/notificationService';
 import { showToast } from '../../utils/toast';
+import { EvaIcon } from '../../components/icons';
 
 const logger = createLogger('SettingsScreen');
 
@@ -56,9 +56,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
 
     await notificationPreferencesService.updatePreferences({ [key]: value });
 
-    // Re-evaluate the 7 PM match nudge if matches preference changed
-    if (key === 'matchesEnabled') {
-      await notificationService.setupDailyMatchNudge();
+    // Re-evaluate engagement notifications if matches/nudges preference changed
+    if (key === 'matchesEnabled' || key === 'nudgesEnabled') {
+      await notificationService.setupEngagementCadence();
     }
   };
 
@@ -100,7 +100,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
     >
       <StyledView className="flex-row items-center">
         <StyledView className="w-10 h-10 bg-neutral-100 rounded-lg items-center justify-center mr-3">
-          <Ionicons name={icon as any} size={20} color="#667085" />
+          <EvaIcon name={icon} variant="outline" size={20} color="#667085" />
         </StyledView>
         <StyledView className="flex-1">
           <Body className="text-neutral-900 mb-1">{title}</Body>
@@ -117,7 +117,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
             ios_backgroundColor="#D0D5DD"
           />
         ) : showArrow ? (
-          <Ionicons name="chevron-forward" size={20} color="#98A2B3" />
+          <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color="#98A2B3" />
         ) : null}
       </StyledView>
     </StyledTouchableOpacity>
@@ -129,7 +129,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
       {/* Header */}
       <StyledView className="flex-row items-center justify-between px-4 py-3 border-b border-neutral-200 bg-white">
         <StyledTouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#101828" />
+          <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
         </StyledTouchableOpacity>
         <H3>Settings</H3>
         <StyledView style={{ width: 24 }} />
@@ -144,19 +144,19 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               <Body className="text-neutral-500 text-xs">v1.0.0</Body>
             </StyledView>
             <SettingRow
-              icon="trophy-outline"
+              icon="award"
               title="Leaderboard"
               subtitle="Best matchmaker wins $100!"
               onPress={() => navigation.navigate('Leaderboard')}
             />
             <SettingRow
-              icon="chatbubble-ellipses-outline"
+              icon="message-circle"
               title="Feedback"
               subtitle="Improve the app to win $50!"
               onPress={() => navigation.navigate('SupportChat')}
             />
             <SettingRow
-              icon="stats-chart-outline"
+              icon="bar-chart"
               title="Your Stats"
               subtitle="See your matchmaking stats & share them"
               onPress={() => navigation.navigate('Stats')}
@@ -167,13 +167,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
           <Card className="mb-6">
             <H3 className="mb-4">Preferences</H3>
             <SettingRow
-              icon="pause-circle-outline"
+              icon="pause-circle"
               title="Pause Profile"
               subtitle="Take a break from Bridge"
               onPress={() => navigation.navigate('PauseProfile')}
             />
             <SettingRow
-              icon="ban-outline"
+              icon="slash"
               title="Blocked Users"
               subtitle="Manage blocked profiles"
               onPress={() => navigation.navigate('BlockedUsers')}
@@ -181,7 +181,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="school-outline" size={20} color="#94A3B8" />
+                  <EvaIcon name="book" variant="outline" size={20} color="#94A3B8" />
                 </View>
                 <View>
                   <Body style={{ color: '#1E293B' }}>Tutorial</Body>
@@ -206,16 +206,16 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
           <Card className="mb-6">
             <H3 className="mb-4">Notifications</H3>
             <SettingRow
-              icon="heart-outline"
+              icon="heart"
               title="Matches & Proposals"
-              subtitle="New matches, voting, and 7 PM reveals"
+              subtitle="Matches, voting, accuracy bonuses, 6:55 PM heads-up"
               toggle
               toggleValue={matchesEnabled}
               onToggle={() => updatePreference('matchesEnabled', !matchesEnabled)}
               showArrow={false}
             />
             <SettingRow
-              icon="chatbubbles-outline"
+              icon="message-square"
               title="Messages"
               subtitle="New messages and ghosting alerts"
               toggle
@@ -224,9 +224,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               showArrow={false}
             />
             <SettingRow
-              icon="notifications-outline"
-              title="App Reminders"
-              subtitle="Profile completion and inactivity nudges"
+              icon="bell"
+              title="Streaks & Reminders"
+              subtitle="Streak alerts, friend nudges, 8 AM recap"
               toggle
               toggleValue={nudgesEnabled}
               onToggle={() => updatePreference('nudgesEnabled', !nudgesEnabled)}
@@ -238,18 +238,18 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
           <Card className="mb-6">
             <H3 className="mb-4">Legal & Support</H3>
             <SettingRow
-              icon="mail-outline"
+              icon="email"
               title="Help & Support"
               subtitle="Get help or report an issue"
               onPress={() => navigation.navigate('HelpSupport')}
             />
             <SettingRow
-              icon="document-text-outline"
+              icon="file-text"
               title="Terms of Service"
               onPress={() => navigation.navigate('TermsOfService')}
             />
             <SettingRow
-              icon="lock-closed-outline"
+              icon="lock"
               title="Privacy Policy"
               onPress={() => navigation.navigate('PrivacyPolicy')}
             />
@@ -259,7 +259,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
           <Card className="mb-8 border border-error/20">
             <H3 className="mb-4 text-error">Danger Zone</H3>
             <SettingRow
-              icon="log-out-outline"
+              icon="log-out"
               title="Sign Out"
               subtitle="You'll need to sign in again"
               onPress={() => {
@@ -288,7 +288,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               }}
             />
             <SettingRow
-              icon="trash-outline"
+              icon="trash"
               title="Delete Account"
               subtitle="Permanently delete your account and data"
               onPress={() => {

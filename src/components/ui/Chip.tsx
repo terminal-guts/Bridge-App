@@ -1,8 +1,9 @@
 import React, { useMemo, useCallback } from 'react';
-import { TouchableOpacity, Text } from 'react-native';
+import { TouchableOpacity, Text, View } from 'react-native';
 import { styled } from 'nativewind';
 import { lightHaptic } from '../../utils/haptics';
 import { FONTS } from '../../constants/typography';
+import { IconScoutIcon } from '../icons';
 
 interface ChipProps {
   label: string;
@@ -11,6 +12,8 @@ interface ChipProps {
   size?: 'sm' | 'md';
   className?: string;
   variant?: 'none' | 'mine' | 'partner' | 'both' | 'interest' | 'value' | 'location' | 'hometown';
+  /** Optional IconScout icon name to render before the label */
+  iconName?: string;
 }
 
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -27,6 +30,8 @@ const TEXT_SIZE_STYLES = {
   md: 'text-sm',
 } as const;
 
+const StyledView = styled(View);
+
 const ChipComponent: React.FC<ChipProps> = ({
   label,
   selected = false,
@@ -34,7 +39,9 @@ const ChipComponent: React.FC<ChipProps> = ({
   size = 'md',
   className = '',
   variant = 'none',
+  iconName,
 }) => {
+  const iconSize = size === 'sm' ? 14 : 16;
 
   // Memoize style calculations
   const baseStyles = useMemo(() => `rounded-full border ${SIZE_STYLES[size]}`, [size]);
@@ -73,6 +80,19 @@ const ChipComponent: React.FC<ChipProps> = ({
     onPress?.();
   }, [onPress]);
 
+  const content = iconName ? (
+    <StyledView className="flex-row items-center">
+      <IconScoutIcon name={iconName} size={iconSize} style={{ marginRight: 4 }} />
+      <StyledText className={`${TEXT_SIZE_STYLES[size]} ${textStyles}`} style={{ fontFamily: textFontFamily }}>
+        {label}
+      </StyledText>
+    </StyledView>
+  ) : (
+    <StyledText className={`${TEXT_SIZE_STYLES[size]} ${textStyles}`} style={{ fontFamily: textFontFamily }}>
+      {label}
+    </StyledText>
+  );
+
   if (!onPress) {
     return (
       <StyledTouchableOpacity
@@ -81,9 +101,7 @@ const ChipComponent: React.FC<ChipProps> = ({
         accessibilityRole="text"
         accessibilityLabel={label}
       >
-        <StyledText className={`${TEXT_SIZE_STYLES[size]} ${textStyles}`} style={{ fontFamily: textFontFamily }}>
-          {label}
-        </StyledText>
+        {content}
       </StyledTouchableOpacity>
     );
   }
@@ -98,9 +116,7 @@ const ChipComponent: React.FC<ChipProps> = ({
       accessibilityLabel={label}
       accessibilityState={{ selected }}
     >
-      <StyledText className={`${TEXT_SIZE_STYLES[size]} ${textStyles}`} style={{ fontFamily: textFontFamily }}>
-        {label}
-      </StyledText>
+      {content}
     </StyledTouchableOpacity>
   );
 };

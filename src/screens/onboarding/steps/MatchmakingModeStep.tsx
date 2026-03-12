@@ -3,7 +3,7 @@ import { View, TouchableOpacity, Animated, Image } from 'react-native';
 import { styled } from 'nativewind';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { H1, Body, H3 } from '../../../components/ui';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../../../components/icons';
 
 interface MatchmakingModeStepProps {
   data: any;
@@ -74,7 +74,7 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
 
   const renderOption = (
     mode: Mode,
-    icon: keyof typeof Ionicons.glyphMap,
+    icon: keyof typeof Record<string, number>,
     title: string,
     description: string,
     animValue: Animated.Value,
@@ -97,8 +97,9 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
                 isSelected ? 'bg-primary-500' : 'bg-neutral-100'
               }`}
             >
-              <Ionicons
+              <EvaIcon
                 name={icon}
+                variant="outline"
                 size={20}
                 color={isSelected ? '#FFFFFF' : '#667085'}
               />
@@ -112,8 +113,9 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
               </Body>
             </StyledView>
             <StyledView className="mt-1">
-              <Ionicons
-                name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
+              <EvaIcon
+                name={isSelected ? 'checkmark-circle-2' : 'radio-button-off'}
+                variant={isSelected ? 'fill' : 'outline'}
                 size={24}
                 color={isSelected ? '#437FFF' : '#D0D5DD'}
               />

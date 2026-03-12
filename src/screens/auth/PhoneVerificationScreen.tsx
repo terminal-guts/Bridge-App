@@ -7,9 +7,10 @@ import { RootStackParamList } from '../../types';
 import { verifyEmail, sendOtpToEmail, signInWithPassword, isReviewerBypassEmail } from '../../services/authService';
 import { fetchAndSetUserProfile } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
+import { EvaIcon } from '../../components/icons';
 import { FONTS } from '../../constants/typography';
 
-const logger = createLogger('EmailVerificationScreen');
+const logger = createLogger('PhoneVerificationScreen');
 
 interface PhoneVerificationScreenProps {
   navigation: NavigationProp<RootStackParamList, 'PhoneVerification'>;
@@ -168,7 +169,7 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
             {/* Icon */}
             <StyledView className="items-center mb-6">
               <StyledView className="w-20 h-20 bg-primary-100 rounded-full items-center justify-center mb-4">
-                <Body className="text-primary-500 text-2xl">{'✉️'}</Body>
+                <EvaIcon name="email" variant="outline" size={28} color="#437FFF" />
               </StyledView>
 
               <H2 className="text-center mb-2">Verify your email</H2>

@@ -19,7 +19,7 @@ const SimpleChipComponent: React.FC<SimpleChipProps> = ({ label, selected, onPre
       onPress={onPress}
       activeOpacity={1}
       delayPressIn={0}
-      className={`px-3 py-2 rounded-full border mr-2 mb-2 ${
+      className={`px-3 py-2 rounded-full border ${
         selected
           ? 'bg-primary-500 border-primary-500'
           : 'bg-white border-neutral-300'

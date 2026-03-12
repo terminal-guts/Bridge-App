@@ -133,6 +133,10 @@ export interface UserProfile {
   karma?: { karma_points: number; badge_tier: string; total_assists: number };
   bio?: string; // User bio/about me
 
+  // Suspension status
+  isSuspended?: boolean;
+  suspensionReason?: string | null;
+
   // Guide completion tracking (frontend-only for now)
   hasCompletedTabNavigationGuide?: boolean;
   hasCompletedDailyGridGuide?: boolean;
@@ -181,20 +185,6 @@ export interface MatchPreferences {
 }
 
 // Survey Types
-export interface DailySurvey {
-  id: string;
-  recipientProfile: UserProfile;
-  candidates: UserProfile[];
-  expiresAt: string;
-  completedAt?: string;
-  rankings?: SurveyRanking[];
-}
-
-export interface SurveyRanking {
-  candidateId: string;
-  rank: 1 | 2 | 3;
-}
-
 // ============================================================================
 // Match Types
 // ============================================================================
@@ -303,19 +293,6 @@ export interface PricingData {
 }
 
 // ============================================================================
-// Strike Types
-// ============================================================================
-
-export interface Strike {
-  id: UUID;
-  userId: UUID;
-  reason: string;
-  details: string;
-  issuedAt: ISODateString;
-  issuedBy: UUID;
-}
-
-// ============================================================================
 // Notification Types
 // ============================================================================
 
@@ -365,11 +342,14 @@ export type RootStackParamList = {
     isFriendChat?: boolean
   };
   ProfileEdit: undefined;
+  EditPhotos: undefined;
+  EditBasics: undefined;
+  EditAbout: undefined;
+  EditInterests: undefined;
+  EditLifestyle: undefined;
   ProfilePreview: { previewProfile?: UserProfile } | undefined;
   ProfileView: { userId: string; profile?: UserProfile; showActions?: boolean; onAccept?: () => void; onPass?: () => void };
-  DeepQuestions: { userId?: string; editable?: boolean; tier?: 1 | 2 | 3 };
   Settings: undefined;
-  FriendCode: { returnTo?: string; matchId?: string } | undefined;
   FriendProposal: { friendId: string; friendName: string; friendPhotoUrl?: string; friendAge?: number; friendJob?: string };
   MatchPreferences: undefined;
   BlockedUsers: undefined;
@@ -380,11 +360,8 @@ export type RootStackParamList = {
   SupportChat: undefined;
   Leaderboard: undefined;
   Stats: undefined;
-  ShareCandidate: { candidateId: string };
-  ReportUser: { userId: string };
-  StrikeWarning: { strike: Strike };
-  Compatibility: undefined;
-  EmailVerification: { email: string };
+  SuggestMatch: undefined;
+  Suspended: undefined;
   ContactInvite: { autoAddCode?: string } | undefined;
 };
 

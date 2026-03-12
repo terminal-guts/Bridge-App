@@ -874,6 +874,48 @@ class CommunityBackendService {
       .select('id', { count: 'exact', head: true })
       .eq('match_id', match.id);
 
+    // Fetch yes-voters from the originating proposal for "Picked by" avatars
+    let endorsers: any[] = [];
+    if (match.proposal_id) {
+      const { data: yesVotes } = await supabase
+        .from('proposal_votes')
+        .select('voter_user_id')
+        .eq('proposal_id', match.proposal_id)
+        .eq('vote_type', 'YES')
+        .limit(3);
+
+      if (yesVotes && yesVotes.length > 0) {
+        const voterIds = yesVotes.map((v: any) => v.voter_user_id);
+        const [{ data: voterRows }, { data: voterPhotos }] = await Promise.all([
+          supabase.from('user_profiles').select('*').in('user_id', voterIds),
+          supabase.from('user_photos').select('user_id, storage_path, is_main').in('user_id', voterIds).eq('is_main', true),
+        ]);
+
+        if (voterRows && voterRows.length > 0) {
+          const voterProfiles = voterRows.map(mapProfileRow);
+
+          if (voterPhotos && voterPhotos.length > 0) {
+            const mainPhotoByUser = new Map<string, string>();
+            for (const p of voterPhotos) {
+              if (!mainPhotoByUser.has(p.user_id)) mainPhotoByUser.set(p.user_id, p.storage_path);
+            }
+            for (const profile of voterProfiles) {
+              if (profile.photos.length === 0 && mainPhotoByUser.has(profile.userId)) {
+                const path = mainPhotoByUser.get(profile.userId)!;
+                profile.photos = [{ id: path, url: path, isMain: true, order: 0 }];
+              }
+            }
+          }
+
+          await resolveProfilePhotos(voterProfiles);
+          const voterMap = new Map(voterProfiles.map(p => [p.userId, p]));
+          endorsers = voterIds
+            .map((vid: string) => ({ endorserProfile: voterMap.get(vid) }))
+            .filter((e: any) => e.endorserProfile);
+        }
+      }
+    }
+
     return {
       id: match.id,
       matchId: match.id,
@@ -887,7 +929,7 @@ class CommunityBackendService {
       canEndMatch: daysUntilCanEnd <= 0,
       chatId: match.id,
       messagesExchanged: messageCount || 0,
-      endorsers: [],
+      endorsers,
     };
   }
 

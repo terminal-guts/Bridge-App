@@ -100,6 +100,17 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createAdminClient();
 
+    // 0. Check if user is suspended
+    const { data: voterProfile } = await supabase
+      .from('user_profiles')
+      .select('is_suspended')
+      .eq('user_id', voterId)
+      .maybeSingle();
+
+    if (voterProfile?.is_suspended) {
+      return Response.json({ error: 'Your account has been suspended' }, { status: 403, headers: corsHeaders });
+    }
+
     // 0a. Daily vote cap — safety net against abuse (generous limit; real users won't hit this)
     const { count: todayVotes } = await supabase
       .from('proposal_votes')

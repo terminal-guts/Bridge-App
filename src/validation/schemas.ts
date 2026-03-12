@@ -244,28 +244,6 @@ export const generateFriendCodeSchema = z.object({
 });
 
 // ============================================================================
-// SURVEY SCHEMAS
-// ============================================================================
-
-export const surveyRankingSchema = z.object({
-  candidate_user_id: uuidSchema,
-  rank_position: z.number().int().min(1).max(3),
-});
-
-export const submitSurveyRankingsSchema = z.object({
-  surveyId: uuidSchema,
-  rankings: z.array(surveyRankingSchema)
-    .length(3, 'Exactly 3 rankings required')
-    .refine(
-      (rankings) => {
-        const positions = rankings.map(r => r.rank_position).sort();
-        return positions[0] === 1 && positions[1] === 2 && positions[2] === 3;
-      },
-      { message: 'Rankings must include positions 1, 2, and 3' }
-    ),
-});
-
-// ============================================================================
 // MATCH SCHEMAS
 // ============================================================================
 
@@ -414,5 +392,4 @@ export type Preferences = z.infer<typeof preferencesSchema>;
 export type Lifestyle = z.infer<typeof lifestyleSchema>;
 export type Photo = z.infer<typeof photoSchema>;
 export type DeepQuestionAnswer = z.infer<typeof deepQuestionAnswerSchema>;
-export type SurveyRanking = z.infer<typeof surveyRankingSchema>;
 export type UserSettings = z.infer<typeof userSettingsSchema>;

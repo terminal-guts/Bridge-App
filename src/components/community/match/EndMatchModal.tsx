@@ -16,10 +16,10 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
 import { lightHaptic, mediumHaptic } from '../../../utils/haptics';
 import { SHADOWS, OVERLAYS } from '../../../theme/shadows';
 import { FONTS } from '../../../constants/typography';
+import { EvaIcon } from '../../icons';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -124,7 +124,7 @@ export function EndMatchModal({ visible, onClose, onSubmit }: EndMatchModalProps
             >
               {/* Header */}
               <StyledView className="items-center mb-6">
-                <StyledText className="text-3xl mb-3">💔</StyledText>
+                <EvaIcon name="close-circle" variant="outline" size={32} color="#EF4444" style={{ marginBottom: 12 }} />
                 <StyledText
                   className="text-2xl font-bold text-center mb-2"
                   style={{ color: '#78716C' }}
@@ -169,7 +169,7 @@ export function EndMatchModal({ visible, onClose, onSubmit }: EndMatchModalProps
                         }}
                       >
                         {selectedReason === reason.id && (
-                          <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                          <EvaIcon name="checkmark" variant="outline" size={16} color="#FFFFFF" />
                         )}
                       </StyledView>
 

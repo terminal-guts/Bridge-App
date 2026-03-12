@@ -301,7 +301,3 @@ export const getBlockedUsersCount = async (): Promise<ApiResponse<number>> => {
   }
 };
 
-/**
- * @deprecated Use isUserPairBlocked() instead.
- */
-export const isMutuallyBlocked = isUserPairBlocked;

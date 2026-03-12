@@ -32,7 +32,6 @@ import {
   subscribeToFriendMessages,
   markFriendMessagesAsRead,
 } from '../../services/messageService';
-import { Ionicons } from '@expo/vector-icons';
 import { AudioPlayer } from '../../components/chat/AudioPlayer';
 import { AudioRecorder } from '../../components/chat/AudioRecorder';
 import { communityService } from '../../services/communityServiceIndex';
@@ -40,6 +39,7 @@ import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';
 import { FONTS } from '../../constants/typography';
 import { OVERLAYS } from '../../theme/shadows';
+import { EvaIcon } from '../../components/icons';
 
 const logger = createLogger('ChatScreen');
 
@@ -502,7 +502,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
           {isDateProposal ? (
             <View style={dateProposalStyles.card}>
               <View style={dateProposalStyles.header}>
-                <Ionicons name="calendar" size={18} color="#437FFF" />
+                <EvaIcon name="calendar" variant="outline" size={18} color="#437FFF" />
                 <Text style={dateProposalStyles.headerText}>Date Proposal</Text>
               </View>
               <Text style={dateProposalStyles.body}>{dateProposalBody}</Text>
@@ -531,7 +531,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
             <BodySmall className="text-neutral-500">{timeString}</BodySmall>
             {isOwnMessage && item.readAt && (
               <StyledView className="ml-1">
-                <Ionicons name="checkmark-done" size={12} color="#437FFF" />
+                <EvaIcon name="done-all" variant="outline" size={12} color="#437FFF" />
               </StyledView>
             )}
           </StyledView>
@@ -545,7 +545,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       return (
         <StyledView className="flex-1 items-center justify-center px-8 py-12">
           <StyledView className="w-20 h-20 bg-primary-50 rounded-full items-center justify-center mb-4">
-            <Ionicons name="people" size={40} color="#437FFF" />
+            <EvaIcon name="people" variant="outline" size={40} color="#437FFF" />
           </StyledView>
           <H3 className="mb-2 text-center">Chat with {recipientName}</H3>
           <BodySmall className="text-neutral-600 text-center">
@@ -558,7 +558,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     return (
       <StyledView className="flex-1 items-center justify-center px-8">
         <StyledView className="w-20 h-20 bg-primary-50 rounded-full items-center justify-center mb-4">
-          <Ionicons name="chatbubbles" size={40} color="#437FFF" />
+          <EvaIcon name="message-circle" variant="outline" size={40} color="#437FFF" />
         </StyledView>
         <H3 className="mb-2 text-center">Start the conversation!</H3>
         <BodySmall className="text-neutral-600 text-center">
@@ -582,7 +582,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
   if (error && !match && !isFriend) {
     return (
       <StyledSafeAreaView className="flex-1 bg-white justify-center items-center px-8">
-        <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+        <EvaIcon name="alert-circle" variant="outline" size={64} color="#EF4444" />
         <H3 className="mt-4 mb-2 text-center">Something went wrong</H3>
         <BodySmall className="text-neutral-600 text-center mb-6">{error}</BodySmall>
         <StyledTouchableOpacity
@@ -609,7 +609,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       <StyledView className="flex-row items-center justify-between px-4 py-3 border-b border-neutral-200">
         <StyledView className="flex-row items-center flex-1">
           <StyledTouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#101828" />
+            <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
           </StyledTouchableOpacity>
           {(() => {
             const photoUrl = (recipientProfile?.photos?.find(p => p.isMain) || recipientProfile?.photos?.[0])?.url || recipientPhoto;
@@ -639,7 +639,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
             onPress={() => setMenuVisible(true)}
             style={{ padding: 4 }}
           >
-            <Ionicons name="ellipsis-vertical" size={22} color="#667085" />
+            <EvaIcon name="more-vertical" variant="outline" size={22} color="#667085" />
           </StyledTouchableOpacity>
         )}
       </StyledView>
@@ -700,11 +700,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
                     {sendingMessage ? (
                       <ActivityIndicator size="small" color="white" />
                     ) : (
-                      <Ionicons
-                        name="send"
-                        size={20}
-                        color={newMessage.trim() ? 'white' : '#98A2B3'}
-                      />
+                      <EvaIcon name="paper-plane" variant="outline" size={20} color="newMessage.trim()" />
                     )}
                   </StyledTouchableOpacity>
                 ) : null}
@@ -733,21 +729,21 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
         >
           <View style={cs.menuCard}>
             <TouchableOpacity style={cs.menuItem} onPress={openProposeDateModal}>
-              <Ionicons name="calendar-outline" size={18} color="#101828" />
+              <EvaIcon name="calendar" variant="outline" size={18} color="#101828" />
               <Text style={cs.menuItemText}>Propose a Date</Text>
             </TouchableOpacity>
 
             <View style={cs.menuDivider} />
 
             <TouchableOpacity style={cs.menuItem} onPress={openEndMatchModal}>
-              <Ionicons name="close-circle-outline" size={18} color="#101828" />
+              <EvaIcon name="close-circle" variant="outline" size={18} color="#101828" />
               <Text style={cs.menuItemText}>End Match</Text>
             </TouchableOpacity>
 
             <View style={cs.menuDivider} />
 
             <TouchableOpacity style={cs.menuItem} onPress={openReportModal}>
-              <Ionicons name="flag-outline" size={18} color="#D92D20" />
+              <EvaIcon name="flag" variant="outline" size={18} color="#D92D20" />
               <Text style={[cs.menuItemText, { color: '#D92D20' }]}>Report</Text>
             </TouchableOpacity>
           </View>
@@ -771,11 +767,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
               onPress={() => { setProposeDateModalVisible(false); setDateProposalText(''); }}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <Ionicons name="close" size={22} color="#667085" />
+              <EvaIcon name="close" variant="outline" size={22} color="#667085" />
             </TouchableOpacity>
 
             <View style={[ts.iconWrap, { backgroundColor: '#EEF3FF' }]}>
-              <Ionicons name="calendar" size={26} color="#437FFF" />
+              <EvaIcon name="calendar" variant="outline" size={26} color="#437FFF" />
             </View>
             <Text style={ts.title}>Propose a Date</Text>
             <Text style={ts.subtitle}>Suggest something fun with {recipientName}</Text>
@@ -825,11 +821,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
               onPress={() => { setEndMatchModalVisible(false); setEndMatchReason(''); setEndMatchCustomReason(''); }}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <Ionicons name="close" size={22} color="#667085" />
+              <EvaIcon name="close" variant="outline" size={22} color="#667085" />
             </TouchableOpacity>
 
             <View style={[ts.iconWrap, { backgroundColor: '#FFF4ED' }]}>
-              <Ionicons name="heart-dislike" size={26} color="#F97316" />
+              <EvaIcon name="close-square" variant="outline" size={26} color="#F97316" />
             </View>
             <Text style={ts.title}>End this match?</Text>
             <Text style={ts.subtitle}>You'll re-enter the matchmaking pool.{'\n'}Your reason will be shared with them.</Text>
@@ -892,11 +888,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
               onPress={() => { setReportModalVisible(false); setReportReason(''); setReportDetails(''); }}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <Ionicons name="close" size={22} color="#667085" />
+              <EvaIcon name="close" variant="outline" size={22} color="#667085" />
             </TouchableOpacity>
 
             <View style={[ts.iconWrap, { backgroundColor: '#FEF3F2' }]}>
-              <Ionicons name="flag" size={26} color="#D92D20" />
+              <EvaIcon name="flag" variant="outline" size={26} color="#D92D20" />
             </View>
             <Text style={ts.title}>Report {recipientName}</Text>
             <Text style={ts.subtitle}>Our team reviews all reports within 24 hours</Text>

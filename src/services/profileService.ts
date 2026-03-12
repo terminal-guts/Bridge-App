@@ -167,6 +167,8 @@ function mapBackendToUserProfile(data: any): UserProfile {
     isVerified: data.is_verified || false,
     profileCompleted: data.profile_completed || false,
     matchmakingOnly: data.matchmaking_only || false,
+    isSuspended: data.is_suspended ?? false,
+    suspensionReason: data.suspension_reason ?? null,
     createdAt: data.created_at || new Date().toISOString(),
     updatedAt: data.updated_at || new Date().toISOString(),
     karma: data.karma_score ? {
@@ -781,6 +783,29 @@ export const getGuideCompletionStatus = async (
 };
 
 // ============================================================================
+// SUSPENSION CHECK
+// ============================================================================
+
+export async function checkSuspensionStatus(): Promise<{ isSuspended: boolean; reason: string | null }> {
+  try {
+    const userId = await getCurrentUserId();
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('is_suspended, suspension_reason')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error || !data) return { isSuspended: false, reason: null };
+    return {
+      isSuspended: data.is_suspended ?? false,
+      reason: data.suspension_reason ?? null,
+    };
+  } catch {
+    return { isSuspended: false, reason: null };
+  }
+}
+
+// ============================================================================
 // FETCH AND SET (used by AppNavigator / auth flow)
 // ============================================================================
 
@@ -807,8 +832,8 @@ function mapToLegacyProfile(up: UserProfile): Profile {
       'https://i.pravatar.cc/32?u=2',
       'https://i.pravatar.cc/32?u=3',
     ],
-    values: up.values.map(v => ({ emoji: '✨', text: v })),
-    interests: up.interests.map(i => ({ emoji: '✨', text: i })),
+    values: up.values.map(v => ({ emoji: '', text: v })),
+    interests: up.interests.map(i => ({ emoji: '', text: i })),
     questions: (up.deepQuestions || []).map(dq => ({ q: dq.question, a: dq.answer })),
   };
 }
@@ -834,24 +859,24 @@ export const getProfileById = async (id: string): Promise<Profile | null> => {
           'https://i.pravatar.cc/32?u=3',
         ],
         values: [
-          { emoji: '💗', text: 'Kindness' },
-          { emoji: '🤝', text: 'Honesty' },
-          { emoji: '🌱', text: 'Growth' },
-          { emoji: '👨\u200d👩\u200d👧\u200d👦', text: 'Family' },
-          { emoji: '🎯', text: 'Ambition' },
-          { emoji: '😂', text: 'Humor' },
-          { emoji: '🤗', text: 'Empathy' },
-          { emoji: '🔍', text: 'Curiosity' },
+          { emoji: '', text: 'Kindness' },
+          { emoji: '', text: 'Honesty' },
+          { emoji: '', text: 'Growth' },
+          { emoji: '', text: 'Family' },
+          { emoji: '', text: 'Ambition' },
+          { emoji: '', text: 'Humor' },
+          { emoji: '', text: 'Empathy' },
+          { emoji: '', text: 'Curiosity' },
         ],
         interests: [
-          { emoji: '✈️', text: 'Travel' },
-          { emoji: '🎵', text: 'Live music' },
-          { emoji: '☕', text: 'Coffee chats' },
-          { emoji: '🥾', text: 'Hiking' },
-          { emoji: '📚', text: 'Book clubs' },
-          { emoji: '🍜', text: 'Food walks' },
-          { emoji: '✨', text: 'Weekend getaways' },
-          { emoji: '🎨', text: 'Art galleries' },
+          { emoji: '', text: 'Travel' },
+          { emoji: '', text: 'Live music' },
+          { emoji: '', text: 'Coffee chats' },
+          { emoji: '', text: 'Hiking' },
+          { emoji: '', text: 'Book clubs' },
+          { emoji: '', text: 'Food walks' },
+          { emoji: '', text: 'Weekend getaways' },
+          { emoji: '', text: 'Art galleries' },
         ],
         questions: [
           {

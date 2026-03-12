@@ -68,7 +68,7 @@ export const CelebrationBanner: React.FC = () => {
             letterSpacing: 0.2,
           }}
         >
-          🎉 You helped everyone today! 🌟
+          You helped everyone today!
         </StyledText>
       </LinearGradient>
     </StyledView>

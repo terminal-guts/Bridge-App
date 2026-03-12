@@ -22,7 +22,7 @@ const FREQUENCY_OPTIONS = [
   { value: 'no', label: 'No' },
   { value: 'sometimes', label: 'Sometimes' },
   { value: 'yes', label: 'Yes' },
-  { value: 'prefer_not_to_say', label: 'Prefer not to say' }
+  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
 ];
 
 interface LifestyleSectionProps {
@@ -52,60 +52,52 @@ export const LifestyleSection = React.memo<LifestyleSectionProps>(({
 
       {/* Drinking Frequency */}
       <SectionHeader title="DRINKING" titleExtra={<StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}> *</StyledText>} />
-      <StyledView className="flex-row flex-wrap gap-2 mb-4">
+      <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
         {FREQUENCY_OPTIONS.map((option) => (
           <Chip
             key={option.value}
             label={option.label}
             selected={drinkingFrequency === option.value}
-            onPress={() => {
-              onUpdateDrinking(drinkingFrequency === option.value ? '' : option.value);
-            }}
+            onPress={() => onUpdateDrinking(drinkingFrequency === option.value ? '' : option.value)}
           />
         ))}
       </StyledView>
 
       {/* Cannabis */}
       <SectionHeader title="CANNABIS" titleExtra={<StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}> *</StyledText>} />
-      <StyledView className="flex-row flex-wrap gap-2 mb-4">
+      <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
         {FREQUENCY_OPTIONS.map((option) => (
           <Chip
             key={option.value}
             label={option.label}
             selected={cannabisFrequency === option.value}
-            onPress={() => {
-              onUpdateCannabis(cannabisFrequency === option.value ? '' : option.value);
-            }}
+            onPress={() => onUpdateCannabis(cannabisFrequency === option.value ? '' : option.value)}
           />
         ))}
       </StyledView>
 
       {/* Tobacco/Vaping */}
       <SectionHeader title="TOBACCO/VAPING" titleExtra={<StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}> *</StyledText>} />
-      <StyledView className="flex-row flex-wrap gap-2 mb-4">
+      <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
         {FREQUENCY_OPTIONS.map((option) => (
           <Chip
             key={option.value}
             label={option.label}
             selected={tobaccoFrequency === option.value}
-            onPress={() => {
-              onUpdateTobacco(tobaccoFrequency === option.value ? '' : option.value);
-            }}
+            onPress={() => onUpdateTobacco(tobaccoFrequency === option.value ? '' : option.value)}
           />
         ))}
       </StyledView>
 
       {/* Other Drugs */}
       <SectionHeader title="OTHER DRUGS" titleExtra={<StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}> *</StyledText>} />
-      <StyledView className="flex-row flex-wrap gap-2 mb-4">
+      <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
         {FREQUENCY_OPTIONS.map((option) => (
           <Chip
             key={option.value}
             label={option.label}
             selected={otherDrugsFrequency === option.value}
-            onPress={() => {
-              onUpdateOtherDrugs(otherDrugsFrequency === option.value ? '' : option.value);
-            }}
+            onPress={() => onUpdateOtherDrugs(otherDrugsFrequency === option.value ? '' : option.value)}
           />
         ))}
       </StyledView>

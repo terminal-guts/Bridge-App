@@ -3,9 +3,9 @@ import { View, TouchableOpacity, TextInput, Modal, ScrollView, Alert } from 'rea
 import { styled } from 'nativewind';
 import { H1, H2, H3, Body } from '../../../components/ui';
 import { OnboardingData, DeepQuestionAnswer } from '../../../types';
-import { Ionicons } from '@expo/vector-icons';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import { FONTS } from '../../../constants/typography';
+import { EvaIcon } from '../../../components/icons';
 
 interface DeepQuestionsStepProps {
   data: Partial<OnboardingData>;
@@ -203,9 +203,9 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
   };
 
   const tierIcons: Record<Tier, string> = {
-    1: 'chatbubble-outline',
-    2: 'heart-outline',
-    3: 'sparkles-outline',
+    1: 'message-circle',
+    2: 'heart',
+    3: 'star',
   };
 
   // Render question item
@@ -233,7 +233,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
           <StyledView className="flex-row items-start">
             {isAnswered && (
               <StyledView className="mr-3 mt-1">
-                <Ionicons name="checkmark-circle" size={20} color="#437FFF" />
+                <EvaIcon name="checkmark-circle-2" variant="outline" size={20} color="#437FFF" />
               </StyledView>
             )}
             <StyledView className="flex-1">
@@ -258,7 +258,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
                 }}
                 className="flex-row items-center"
               >
-                <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                <EvaIcon name="trash-2" variant="outline" size={16} color="#EF4444" />
                 <Body className="ml-1 text-xs text-error">Delete</Body>
               </StyledTouchableOpacity>
             </StyledView>
@@ -300,15 +300,13 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
                 hasAnswerInTier ? 'bg-green-100' : colors.bg
               }`}
             >
-              <Ionicons
-                name={(hasAnswerInTier ? 'checkmark-circle' : tierIcons[tier]) as any}
+              <EvaIcon
+                name={hasAnswerInTier ? 'checkmark-circle-2' : tierIcons[tier]}
+                variant={hasAnswerInTier ? 'fill' : 'outline'}
                 size={28}
-                color={hasAnswerInTier ? '#10B981' : colors.text.replace('text-', '#')}
-                style={{
-                  color: hasAnswerInTier
-                    ? '#10B981'
-                    : tier === 1 ? '#2563EB' : tier === 2 ? '#9333EA' : '#EC4899'
-                }}
+                color={hasAnswerInTier
+                  ? '#10B981'
+                  : tier === 1 ? '#2563EB' : tier === 2 ? '#9333EA' : '#EC4899'}
               />
             </StyledView>
             <StyledView className="flex-1">
@@ -320,8 +318,9 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
             <Body className={`text-sm mr-2 ${completionColor}`}>
               {completionText}
             </Body>
-            <Ionicons
-              name={isExpanded ? 'chevron-up' : 'chevron-down'}
+            <EvaIcon
+              name={isExpanded ? 'arrow-ios-upward' : 'arrow-ios-downward'}
+              variant="outline"
               size={24}
               color="#9CA3AF"
             />

@@ -1,15 +1,14 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
 import { FONTS } from '../../constants/typography';
 import { OVERLAYS } from '../../theme/shadows';
+import { EvaIcon } from '../icons';
 
 interface ShareMatchSheetProps {
     visible: boolean;
     imageUri: string | null;
     loading: boolean;
-    onShareInstagram: () => void;
     onShareSnapchat: () => void;
     onShareMessages: () => void;
     onShareMore: () => void;
@@ -18,17 +17,15 @@ interface ShareMatchSheetProps {
 }
 
 const SHARE_TARGETS = [
-    { key: 'snapchat', label: 'Snapchat', icon: 'logo-snapchat' as const, color: '#FFFC00', iconColor: '#000000', action: 'onShareSnapchat' },
-    { key: 'instagram', label: 'Instagram Stories', icon: 'logo-instagram' as const, color: '#E4405F', iconColor: '#FFFFFF', action: 'onShareInstagram' },
-    { key: 'message', label: 'iMessage', icon: 'chatbubble-outline' as const, color: '#2B65F9', iconColor: '#FFFFFF', action: 'onShareMessages' },
-    { key: 'more', label: 'More...', icon: 'share-outline' as const, color: '#667085', iconColor: '#FFFFFF', action: 'onShareMore' },
+    { key: 'snapchat', label: 'Snapchat', icon: 'share' as const, color: '#FFFC00', iconColor: '#000000', action: 'onShareSnapchat' },
+    { key: 'message', label: 'iMessage', icon: 'message-circle' as const, color: '#2B65F9', iconColor: '#FFFFFF', action: 'onShareMessages' },
+    { key: 'more', label: 'More...', icon: 'share' as const, color: '#667085', iconColor: '#FFFFFF', action: 'onShareMore' },
 ] as const;
 
 export const ShareMatchSheet: React.FC<ShareMatchSheetProps> = ({
     visible,
     imageUri,
     loading,
-    onShareInstagram,
     onShareSnapchat,
     onShareMessages,
     onShareMore,
@@ -36,7 +33,6 @@ export const ShareMatchSheet: React.FC<ShareMatchSheetProps> = ({
     onClose,
 }) => {
     const actions: Record<string, () => void> = {
-        onShareInstagram,
         onShareSnapchat,
         onShareMessages,
         onShareMore,
@@ -90,7 +86,7 @@ export const ShareMatchSheet: React.FC<ShareMatchSheetProps> = ({
                                 disabled={loading || !imageUri}
                             >
                                 <View style={[styles.targetIconCircle, { backgroundColor: color }]}>
-                                    <Ionicons name={icon} size={24} color={iconColor} />
+                                    <EvaIcon name={icon} variant="outline" size={24} color={iconColor} />
                                 </View>
                                 <Text style={styles.targetLabel} numberOfLines={1}>{label}</Text>
                             </TouchableOpacity>
@@ -104,7 +100,7 @@ export const ShareMatchSheet: React.FC<ShareMatchSheetProps> = ({
                         onPress={onSaveToPhotos}
                         disabled={loading || !imageUri}
                     >
-                        <Ionicons name="download-outline" size={20} color="#2B65F9" />
+                        <EvaIcon name="download" variant="outline" size={20} color="#2B65F9" />
                         <Text style={styles.saveBtnText}>Save to Photos</Text>
                     </TouchableOpacity>
 

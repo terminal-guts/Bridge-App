@@ -13,10 +13,29 @@ const logger = createLogger('NotificationService');
 const STORAGE_KEYS = {
     LAST_INACTIVITY_NUDGE: '@bridge_last_inactivity_nudge',
     LAST_PROFILE_REMINDER: '@bridge_last_profile_reminder',
+    LAST_STREAK_RISK_NUDGE: '@bridge_last_streak_risk_nudge',
+    LAST_FRIEND_NUDGE_PREFIX: '@bridge_friend_nudge_',
+    LAST_ACCURACY_BONUS: '@bridge_last_accuracy_bonus',
+    DAILY_NOTIF_COUNT_PREFIX: '@bridge_notif_count_',
 };
 
-// Minimum hours between repeated nudges of the same type
-const NUDGE_COOLDOWN_HOURS = 24;
+// Cooldown hours by notification type
+const COOLDOWN_HOURS = {
+    DEFAULT: 24,             // streak risk, friend nudge
+    INACTIVITY: 72,          // Tier 3: re-engagement — max 1 per 3 days
+    PROFILE_REMINDER: 72,    // Tier 3: re-engagement
+    ACCURACY_BONUS: 6,       // prevent spam if multiple proposals resolve at once
+};
+
+// Tier 2 daily cap — max engagement notifications per day
+const DAILY_NOTIFICATION_CAP = 3;
+
+// Scheduled notification identifiers
+const NOTIF_IDS = {
+    ANTICIPATION_655PM: 'anticipation_655pm',
+    MORNING_RECAP_8AM: 'morning_recap_8am',
+    DAILY_MATCH_NUDGE_7PM: 'daily_match_nudge_7pm',
+};
 
 // Configure how notifications are handled when the app is foregrounded
 Notifications.setNotificationHandler({
@@ -30,9 +49,43 @@ Notifications.setNotificationHandler({
 });
 
 /**
+ * Get today's date key for daily cap tracking (YYYY-MM-DD).
+ */
+function todayKey(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Check if a Tier 2 notification can be sent (daily cap not reached).
+ * If allowed, increments the counter. Returns true if the notification should proceed.
+ */
+async function canSendTier2Notification(): Promise<boolean> {
+    try {
+        const key = STORAGE_KEYS.DAILY_NOTIF_COUNT_PREFIX + todayKey();
+        const raw = await AsyncStorage.getItem(key);
+        const count = raw ? parseInt(raw, 10) : 0;
+        if (count >= DAILY_NOTIFICATION_CAP) {
+            logger.info(`[NotificationService] Daily Tier 2 cap reached (${count}/${DAILY_NOTIFICATION_CAP})`);
+            return false;
+        }
+        await AsyncStorage.setItem(key, (count + 1).toString());
+        return true;
+    } catch {
+        return true; // fail open — better to send than silently drop
+    }
+}
+
+/**
  * Notification Service
  * Handles push notification registration, local scheduling, and
  * real-time subscription-based notifications for proposals/matches/messages.
+ *
+ * Notification Tiers (see NOTIFICATION_STRATEGY.md):
+ * - Tier 1 (Transactional): match, message, proposal deciding — no cap, always send
+ * - Tier 2 (Engagement): streak risk, anticipation, recap, accuracy, celebration, nudge — 3/day cap
+ * - Tier 3 (Re-engagement): inactivity, profile, streak death — 72h cooldown, separate budget
+ * - Tier 4 (Weekly): summary — 1/week
  */
 export const notificationService = {
     /**
@@ -140,7 +193,7 @@ export const notificationService = {
         if (!prefs.matchesEnabled) return;
         await notificationService.scheduleLocalNotification(
             'New Proposals Ready',
-            'You have new proposals to vote on. Help your community find matches!',
+            'Your friends need your vote! Help them find their match.',
             { type: 'new_proposals', screen: 'Community' },
         );
     },
@@ -153,8 +206,8 @@ export const notificationService = {
         if (!prefs.matchesEnabled) return;
         await notificationService.scheduleLocalNotification(
             "It's a Match!",
-            `You and ${name} have matched! Start the conversation now.`,
-            { type: 'match', screen: 'Chat' },
+            `💘 You and ${name} matched! Say hi.`,
+            { type: 'match', screen: 'Matches' },
         );
     },
 
@@ -172,19 +225,6 @@ export const notificationService = {
     },
 
     /**
-     * Notify about a pending proposal decision (generic)
-     */
-    notifyPendingDecision: async () => {
-        const prefs = await notificationPreferencesService.getPreferences();
-        if (!prefs.matchesEnabled) return;
-        await notificationService.scheduleLocalNotification(
-            'Community Approved a Match!',
-            'A proposal has been approved by the community. Accept or decline now!',
-            { type: 'pending_decision', screen: 'Matches' },
-        );
-    },
-
-    /**
      * Notify that a specific proposal has moved to "deciding" —
      * the community approved it and now the user gets to choose.
      */
@@ -192,8 +232,8 @@ export const notificationService = {
         const prefs = await notificationPreferencesService.getPreferences();
         if (!prefs.matchesEnabled) return;
         await notificationService.scheduleLocalNotification(
-            'Your Community Has Spoken! 🎉',
-            `Time to decide — do you want to connect with ${partnerName}?`,
+            'Your Community Has Spoken!',
+            `Your friends approved ${partnerName} for you. Ready to decide?`,
             { type: 'proposal_deciding', screen: 'Matches', proposalId },
         );
     },
@@ -205,22 +245,9 @@ export const notificationService = {
         const prefs = await notificationPreferencesService.getPreferences();
         if (!prefs.nudgesEnabled) return;
         await notificationService.scheduleLocalNotification(
-            "We Miss You!",
-            `It's been ${days} days since your last visit. Come back and see what's new!`,
-            { type: 'inactivity' },
-        );
-    },
-
-    /**
-     * Notify about a potential ghosting situation
-     */
-    notifyGhosting: async (name: string) => {
-        const prefs = await notificationPreferencesService.getPreferences();
-        if (!prefs.messagesEnabled) return;
-        await notificationService.scheduleLocalNotification(
-            "Don't let it go cold!",
-            `${name} is still waiting for your reply. Keep the conversation going!`,
-            { type: 'ghosting', screen: 'Chat' },
+            'Your Friends Miss You!',
+            `It's been ${days} days. Your friends are voting!`,
+            { type: 'inactivity', screen: 'Community' },
         );
     },
 
@@ -235,9 +262,115 @@ export const notificationService = {
             : missingItems.slice(0, 2).join(' and ');
 
         await notificationService.scheduleLocalNotification(
-            'Complete Your Profile ✨',
-            `Add your ${itemText} to get better matches and more visibility!`,
+            'Finish Your Profile',
+            `Add your ${itemText} to get better matches!`,
             { type: 'profile_incomplete', screen: 'Profile' },
+        );
+    },
+
+    // ========================================================================
+    // Engagement Notifications (Hook Model triggers)
+    // ========================================================================
+
+    /**
+     * Notify when a friend's streak is at risk (they have an active proposal
+     * the user hasn't voted on and it's getting late).
+     */
+    notifyStreakAtRisk: async (friendName: string, streakDays: number) => {
+        const prefs = await notificationPreferencesService.getPreferences();
+        if (!prefs.nudgesEnabled) return;
+
+        // 24h cooldown on streak risk nudges
+        const lastNudge = await AsyncStorage.getItem(STORAGE_KEYS.LAST_STREAK_RISK_NUDGE);
+        if (lastNudge) {
+            const hoursSince = (Date.now() - parseInt(lastNudge, 10)) / (1000 * 60 * 60);
+            if (hoursSince < COOLDOWN_HOURS.DEFAULT) return;
+        }
+
+        // Tier 2 daily cap
+        if (!(await canSendTier2Notification())) return;
+
+        await notificationService.scheduleLocalNotification(
+            'Streak at risk!',
+            `Your ${streakDays}-day streak with ${friendName} is at risk!`,
+            { type: 'streak_risk', screen: 'Community' },
+        );
+        await AsyncStorage.setItem(STORAGE_KEYS.LAST_STREAK_RISK_NUDGE, Date.now().toString());
+    },
+
+    /**
+     * Notify when the user earns bonus karma from an accurate vote.
+     * These arrive unpredictably — variable ratio reinforcement (slot machine effect).
+     */
+    notifyAccuracyBonus: async (points: number) => {
+        const prefs = await notificationPreferencesService.getPreferences();
+        if (!prefs.matchesEnabled) return;
+
+        // 6h cooldown — prevents spam when multiple proposals resolve at once
+        const lastBonus = await AsyncStorage.getItem(STORAGE_KEYS.LAST_ACCURACY_BONUS);
+        if (lastBonus) {
+            const hoursSince = (Date.now() - parseInt(lastBonus, 10)) / (1000 * 60 * 60);
+            if (hoursSince < COOLDOWN_HOURS.ACCURACY_BONUS) return;
+        }
+
+        // Tier 2 daily cap
+        if (!(await canSendTier2Notification())) return;
+
+        await notificationService.scheduleLocalNotification(
+            'Nice call!',
+            `⭐ You earned +${points} bonus karma for an accurate vote.`,
+            { type: 'accuracy_bonus', screen: 'Community' },
+        );
+        await AsyncStorage.setItem(STORAGE_KEYS.LAST_ACCURACY_BONUS, Date.now().toString());
+    },
+
+    /**
+     * Notify when a friend nudges the user to vote.
+     */
+    notifyFriendNudge: async (nudgerName: string) => {
+        const prefs = await notificationPreferencesService.getPreferences();
+        if (!prefs.nudgesEnabled) return;
+
+        // Tier 2 daily cap
+        if (!(await canSendTier2Notification())) return;
+
+        await notificationService.scheduleLocalNotification(
+            'You got nudged!',
+            `${nudgerName} nudged you to vote!`,
+            { type: 'friend_nudge', screen: 'Community' },
+        );
+    },
+
+    /**
+     * Notify when friends all helped make a match happen.
+     */
+    notifySharedCelebration: async (friendNames: string[], personAName: string, personBName: string) => {
+        const prefs = await notificationPreferencesService.getPreferences();
+        if (!prefs.matchesEnabled) return;
+
+        // Tier 2 daily cap
+        if (!(await canSendTier2Notification())) return;
+
+        const friendList = friendNames.length <= 2
+            ? friendNames.join(' and ')
+            : `${friendNames[0]} and ${friendNames.length - 1} others`;
+        await notificationService.scheduleLocalNotification(
+            'You all called it!',
+            `You and ${friendList} helped ${personAName} and ${personBName} match!`,
+            { type: 'shared_celebration', screen: 'Community' },
+        );
+    },
+
+    /**
+     * Notify when a streak ends (friend had a proposal but user didn't vote).
+     */
+    notifyStreakDeath: async (friendName: string, previousDays: number) => {
+        const prefs = await notificationPreferencesService.getPreferences();
+        if (!prefs.nudgesEnabled) return;
+        await notificationService.scheduleLocalNotification(
+            'Streak ended',
+            `Your ${previousDays}-day streak with ${friendName} ended.`,
+            { type: 'streak_death', screen: 'Community' },
         );
     },
 
@@ -246,41 +379,63 @@ export const notificationService = {
     // ========================================================================
 
     /**
-     * Setup 7 PM daily matches notification
+     * Setup engagement cadence — replaces the old single 7PM nudge with:
+     * - 6:55 PM anticipation notification (5 min before proposals drop)
+     * - 8:00 AM morning recap
+     * Also cancels the legacy daily_match_nudge_7pm.
      */
-    setupDailyMatchNudge: async () => {
+    setupEngagementCadence: async () => {
         try {
             const prefs = await notificationPreferencesService.getPreferences();
-            const DAILY_NUDGE_ID = 'daily_match_nudge_7pm';
 
-            // Clear existing first
+            // Cancel legacy and existing scheduled notifications
             const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+            const idsToCancel = [NOTIF_IDS.DAILY_MATCH_NUDGE_7PM, NOTIF_IDS.ANTICIPATION_655PM, NOTIF_IDS.MORNING_RECAP_8AM];
             for (const notif of scheduled) {
-                if (notif.identifier === DAILY_NUDGE_ID) {
-                    await Notifications.cancelScheduledNotificationAsync(DAILY_NUDGE_ID);
+                if (idsToCancel.includes(notif.identifier)) {
+                    await Notifications.cancelScheduledNotificationAsync(notif.identifier);
                 }
             }
 
-            if (!prefs.matchesEnabled) return;
+            // Schedule 6:55 PM anticipation — "New proposals drop in 5 minutes"
+            if (prefs.matchesEnabled) {
+                await Notifications.scheduleNotificationAsync({
+                    identifier: NOTIF_IDS.ANTICIPATION_655PM,
+                    content: {
+                        title: 'Almost time!',
+                        body: 'New proposals drop in 5 minutes — get ready to help your friends.',
+                        data: { screen: 'Community' },
+                    },
+                    trigger: {
+                        type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+                        hour: 18,
+                        minute: 55,
+                        repeats: true,
+                    } as Notifications.CalendarTriggerInput,
+                });
+                logger.info('Scheduled 6:55 PM anticipation notification');
+            }
 
-            // Schedule daily at 19:00 local time
-            await Notifications.scheduleNotificationAsync({
-                identifier: DAILY_NUDGE_ID,
-                content: {
-                    title: 'New Matches Are Out!',
-                    body: 'Check out the new matches that your community has prepared for you.',
-                    data: { screen: 'Matches' },
-                },
-                trigger: {
-                    type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-                    hour: 19,
-                    minute: 0,
-                    repeats: true,
-                } as Notifications.CalendarTriggerInput,
-            });
-            logger.info('Scheduled daily 7pm match nudge');
+            // Schedule 8:00 AM morning recap — "Last night's votes are in"
+            if (prefs.nudgesEnabled) {
+                await Notifications.scheduleNotificationAsync({
+                    identifier: NOTIF_IDS.MORNING_RECAP_8AM,
+                    content: {
+                        title: 'Good morning!',
+                        body: "Last night's votes are in — see what happened.",
+                        data: { screen: 'Community' },
+                    },
+                    trigger: {
+                        type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+                        hour: 8,
+                        minute: 0,
+                        repeats: true,
+                    } as Notifications.CalendarTriggerInput,
+                });
+                logger.info('Scheduled 8:00 AM morning recap notification');
+            }
         } catch (e: any) {
-            logger.error('Failed to schedule daily match nudge', e.message);
+            logger.error('Failed to schedule engagement cadence', e.message);
         }
     },
 
@@ -293,7 +448,8 @@ export const notificationService = {
             await Promise.allSettled([
                 notificationService.checkAndScheduleInactivityNudge(),
                 notificationService.checkAndScheduleProfileReminder(),
-                notificationService.setupDailyMatchNudge(),
+                notificationService.setupEngagementCadence(),
+                notificationService.checkAndScheduleStreakRiskNudge(),
             ]);
         } catch (err) {
             logger.error('[NotificationService] Error in app-open checks', err);
@@ -306,11 +462,11 @@ export const notificationService = {
      */
     checkAndScheduleInactivityNudge: async () => {
         try {
-            // Throttle: don't send more than once per NUDGE_COOLDOWN_HOURS
+            // Throttle: 72h cooldown (Tier 3 re-engagement)
             const lastNudge = await AsyncStorage.getItem(STORAGE_KEYS.LAST_INACTIVITY_NUDGE);
             if (lastNudge) {
                 const hoursSince = (Date.now() - parseInt(lastNudge, 10)) / (1000 * 60 * 60);
-                if (hoursSince < NUDGE_COOLDOWN_HOURS) return;
+                if (hoursSince < COOLDOWN_HOURS.INACTIVITY) return;
             }
 
             const { data: userData } = await supabase.auth.getUser();
@@ -365,11 +521,11 @@ export const notificationService = {
      */
     checkAndScheduleProfileReminder: async () => {
         try {
-            // Throttle
+            // Throttle: 72h cooldown (Tier 3 re-engagement)
             const lastReminder = await AsyncStorage.getItem(STORAGE_KEYS.LAST_PROFILE_REMINDER);
             if (lastReminder) {
                 const hoursSince = (Date.now() - parseInt(lastReminder, 10)) / (1000 * 60 * 60);
-                if (hoursSince < NUDGE_COOLDOWN_HOURS) return;
+                if (hoursSince < COOLDOWN_HOURS.PROFILE_REMINDER) return;
             }
 
             const { data: userData } = await supabase.auth.getUser();
@@ -418,12 +574,84 @@ export const notificationService = {
         }
     },
 
+    /**
+     * Check if the user has friends with active proposals they haven't voted on
+     * and it's after 9 PM — schedule a streak risk notification.
+     */
+    checkAndScheduleStreakRiskNudge: async () => {
+        try {
+            const now = new Date();
+            const currentHour = now.getHours();
+            // Only fire after 9 PM local time
+            if (currentHour < 21) return;
+
+            // Throttle: 24h cooldown
+            const lastNudge = await AsyncStorage.getItem(STORAGE_KEYS.LAST_STREAK_RISK_NUDGE);
+            if (lastNudge) {
+                const hoursSince = (Date.now() - parseInt(lastNudge, 10)) / (1000 * 60 * 60);
+                if (hoursSince < COOLDOWN_HOURS.DEFAULT) return;
+            }
+
+            const { data: userData } = await supabase.auth.getUser();
+            const userId = userData?.user?.id;
+            if (!userId) return;
+
+            // Find friends with active proposals the user hasn't voted on
+            const { data: friends } = await supabase
+                .from('friends')
+                .select('friend_id, streak_days')
+                .eq('user_id', userId)
+                .gt('streak_days', 0);
+
+            if (!friends || friends.length === 0) return;
+
+            // Check each friend for an active proposal the user hasn't voted on
+            for (const friend of friends) {
+                const { data: proposal } = await supabase
+                    .from('proposals')
+                    .select('id')
+                    .eq('user_a_id', friend.friend_id)
+                    .eq('status', 'active')
+                    .limit(1)
+                    .maybeSingle();
+
+                if (!proposal) continue;
+
+                // Check if user has already voted
+                const { data: vote } = await supabase
+                    .from('proposal_votes')
+                    .select('id')
+                    .eq('proposal_id', proposal.id)
+                    .eq('voter_id', userId)
+                    .limit(1)
+                    .maybeSingle();
+
+                if (!vote) {
+                    // User hasn't voted — streak at risk!
+                    const { data: friendProfile } = await supabase
+                        .from('user_profiles')
+                        .select('first_name')
+                        .eq('user_id', friend.friend_id)
+                        .maybeSingle();
+
+                    await notificationService.notifyStreakAtRisk(
+                        friendProfile?.first_name || 'A friend',
+                        friend.streak_days
+                    );
+                    return; // Only send one streak risk nudge per check
+                }
+            }
+        } catch (err) {
+            logger.error('[NotificationService] Streak risk check failed', err);
+        }
+    },
+
     // ========================================================================
     // Real-Time Subscriptions (call on app startup)
     // ========================================================================
 
     /**
-     * Subscribe to real-time notifications for matches and messages.
+     * Subscribe to real-time notifications for matches, messages, and karma changes.
      * Returns cleanup function to unsubscribe.
      */
     subscribeToRealtimeNotifications: async () => {
@@ -450,6 +678,43 @@ export const notificationService = {
                         .eq('id', partnerId)
                         .maybeSingle();
                     notificationService.notifyMatchNotice(partner?.first_name || 'Someone');
+
+                    // Shared celebration — notify friends who helped
+                    try {
+                        const proposalId = payload.new.proposal_id;
+                        if (proposalId) {
+                            const { data: voters } = await supabase
+                                .from('proposal_votes')
+                                .select('voter_id')
+                                .eq('proposal_id', proposalId)
+                                .neq('voter_id', userId);
+
+                            if (voters && voters.length > 0) {
+                                const voterIds = voters.map((v: any) => v.voter_id);
+                                const { data: friendProfiles } = await supabase
+                                    .from('user_profiles')
+                                    .select('first_name')
+                                    .in('user_id', voterIds);
+
+                                const friendNames = friendProfiles?.map((p: any) => p.first_name).filter(Boolean) || [];
+                                if (friendNames.length > 0) {
+                                    const user1Id = payload.new.user1_id;
+                                    const user2Id = payload.new.user2_id;
+                                    const { data: matchProfiles } = await supabase
+                                        .from('user_profiles')
+                                        .select('user_id, first_name')
+                                        .in('user_id', [user1Id, user2Id]);
+
+                                    const personA = matchProfiles?.find((p: any) => p.user_id === user1Id)?.first_name || 'Someone';
+                                    const personB = matchProfiles?.find((p: any) => p.user_id === user2Id)?.first_name || 'Someone';
+
+                                    await notificationService.notifySharedCelebration(friendNames, personA, personB);
+                                }
+                            }
+                        }
+                    } catch {
+                        // Non-critical — don't block match notification
+                    }
                 }
             )
             .on(
@@ -468,6 +733,43 @@ export const notificationService = {
                         .eq('id', partnerId)
                         .maybeSingle();
                     notificationService.notifyMatchNotice(partner?.first_name || 'Someone');
+
+                    // Shared celebration — notify friends who helped
+                    try {
+                        const proposalId = payload.new.proposal_id;
+                        if (proposalId) {
+                            const { data: voters } = await supabase
+                                .from('proposal_votes')
+                                .select('voter_id')
+                                .eq('proposal_id', proposalId)
+                                .neq('voter_id', userId);
+
+                            if (voters && voters.length > 0) {
+                                const voterIds = voters.map((v: any) => v.voter_id);
+                                const { data: friendProfiles } = await supabase
+                                    .from('user_profiles')
+                                    .select('first_name')
+                                    .in('user_id', voterIds);
+
+                                const friendNames = friendProfiles?.map((p: any) => p.first_name).filter(Boolean) || [];
+                                if (friendNames.length > 0) {
+                                    const user1Id = payload.new.user1_id;
+                                    const user2Id = payload.new.user2_id;
+                                    const { data: matchProfiles } = await supabase
+                                        .from('user_profiles')
+                                        .select('user_id, first_name')
+                                        .in('user_id', [user1Id, user2Id]);
+
+                                    const personA = matchProfiles?.find((p: any) => p.user_id === user1Id)?.first_name || 'Someone';
+                                    const personB = matchProfiles?.find((p: any) => p.user_id === user2Id)?.first_name || 'Someone';
+
+                                    await notificationService.notifySharedCelebration(friendNames, personA, personB);
+                                }
+                            }
+                        }
+                    } catch {
+                        // Non-critical — don't block match notification
+                    }
                 }
             )
             .subscribe();
@@ -576,12 +878,37 @@ export const notificationService = {
             )
             .subscribe();
 
+        // Subscribe to karma score changes — delayed accuracy bonus (variable reward)
+        // When karma_points increases by >1, it's an accuracy bonus from the backend
+        const karmaChannel = supabase
+            .channel('karma-accuracy-bonus')
+            .on(
+                'postgres_changes' as any,
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'karma_scores',
+                    filter: `user_id=eq.${userId}`,
+                } as any,
+                async (payload: any) => {
+                    const oldPoints = payload.old?.karma_points ?? 0;
+                    const newPoints = payload.new?.karma_points ?? 0;
+                    const delta = newPoints - oldPoints;
+                    // Only fire for accuracy bonuses (>1 point, since +1 is a normal vote)
+                    if (delta > 1) {
+                        notificationService.notifyAccuracyBonus(delta);
+                    }
+                }
+            )
+            .subscribe();
+
         // Return cleanup function
         return () => {
             supabase.removeChannel(matchChannel);
             supabase.removeChannel(messageChannel);
             supabase.removeChannel(proposalChannelA);
             supabase.removeChannel(proposalChannelB);
+            supabase.removeChannel(karmaChannel);
         };
     },
 

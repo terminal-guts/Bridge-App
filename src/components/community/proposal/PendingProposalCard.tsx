@@ -15,7 +15,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, Animated } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
 import { SHADOWS } from '../../../theme/shadows';
 import { MatchProposal } from '../../../types/community';
 import { lightHaptic } from '../../../utils/haptics';
@@ -25,6 +24,7 @@ import {
   getUrgencyColor,
 } from '../../../utils/communityHelpers';
 import { FONTS } from '../../../constants/typography';
+import { EvaIcon } from '../../icons';
 
 const StyledView = styled(View) as typeof View;
 const StyledText = styled(Text) as typeof Text;
@@ -183,20 +183,14 @@ export function PendingProposalCard({ proposal, onViewProfile }: PendingProposal
             className="px-2 py-1 rounded-full"
             style={{ backgroundColor: '#FF6B6B' }}
           >
-            <StyledText className="text-[10px] text-white font-bold" style={{ fontFamily: FONTS.bold }}>
-              ⏰
-            </StyledText>
+            <EvaIcon name="clock" variant="outline" size={14} color="#F59E0B" />
           </StyledView>
         )}
       </StyledView>
 
       {/* Expiration Timer - Compact */}
       <StyledView className="flex-row items-center mb-2">
-        <Ionicons
-          name="time-outline"
-          size={12}
-          color={getUrgencyColor(expirationData.urgencyLevel)}
-        />
+        <EvaIcon name="clock" variant="outline" size={12} color="getUrgencyColor(expirationData.urgencyLevel)" />
         <StyledText
           className="text-xs ml-1 font-medium"
           style={{ color: getUrgencyColor(expirationData.urgencyLevel), fontFamily: FONTS.medium }}

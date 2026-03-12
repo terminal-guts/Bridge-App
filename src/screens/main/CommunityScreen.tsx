@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef, useReducer, useMemo } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Share, Alert, RefreshControl, Modal, Animated, Easing } from 'react-native';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Share, Alert, RefreshControl, Modal, Animated, Easing } from 'react-native';
 
-const SCREEN_HEIGHT = Dimensions.get('window').height;
 import { UserRow } from '../../components/community/UserRow';
 import { ProposalReviewView } from '../../components/community/proposal/ProposalReviewView';
 import { GuideTarget } from '../../components/guides';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../../components/icons';
 import { Image } from 'expo-image';
 import { MainTabParamList } from '../../types';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
@@ -24,11 +23,11 @@ import { FONTS } from '../../constants/typography';
 import { OVERLAYS } from '../../theme/shadows';
 import { ScreenWrapper } from '../../components/ui';
 import { getLast7PMCentral } from '../../utils/centralTime';
-import { successHaptic } from '../../utils/haptics';
+import { lightHaptic, successHaptic } from '../../utils/haptics';
 import { getFriendUnreadCount } from '../../services/messageService';
-
-// Pre-computed style value — avoids allocation on every render
-const HELP_SECTION_MARGIN_TOP = Math.round(SCREEN_HEIGHT * 0.055);
+import { getActiveSuggestions } from '../../services/friendProposalService';
+import { sendNudge } from '../../services/nudgeService';
+import { showToast } from '../../utils/toast';
 
 // ── Mock leaderboard karma thresholds for rank interpolation ─────────────────
 // Sorted descending — same values as LeaderboardScreen MOCK_WEEKLY
@@ -54,7 +53,13 @@ function partitionFriends(friends: FriendWithGridStatus[]) {
 }
 
 /** Compute activity status line for a crew member */
-function getFriendStatusLine(user: FriendWithGridStatus): string | undefined {
+function getFriendStatusLine(
+  user: FriendWithGridStatus,
+  suggestionsMap?: Map<string, { suggestedForName: string; status: 'queued' | 'stashed' }>,
+): string | undefined {
+  // Show suggestion indicator (takes priority over assists count)
+  const suggestion = suggestionsMap?.get(user.friend.userId || '');
+  if (suggestion) return `Suggested for ${suggestion.suggestedForName}`;
   if (user.isMatched) return 'Has a match!';
   const assists = user.assistsCount || 0;
   if (assists > 0) return `${assists} match${assists === 1 ? '' : 'es'} made`;
@@ -163,7 +168,7 @@ function MatchResetTimer() {
           gap: 5,
           transform: [{ scale: pulseAnim }],
         }}>
-          <Ionicons name="time-outline" size={13} color={color} />
+          <EvaIcon name="clock" variant="outline" size={13} color={color} />
           <Text style={{ fontSize: 13, fontFamily: FONTS.semiBold, color }}>{label}</Text>
         </Animated.View>
       </TouchableOpacity>
@@ -249,6 +254,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [enterCodeError, setEnterCodeError] = useState('');
   const [addingCode, setAddingCode] = useState(false);
   const [unreadMap, setUnreadMap] = useState<Record<string, boolean>>({});
+  const [suggestionsMap, setSuggestionsMap] = useState<Map<string, { suggestedForName: string; status: 'queued' | 'stashed' }>>(new Map());
 
   const handleEnterCode = useCallback(async () => {
     const code = enterCodeValue.trim().toUpperCase();
@@ -295,14 +301,16 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   const loadFriendsData = useCallback(async () => {
     try {
-      const [data, codeRes] = await Promise.all([
+      const [data, codeRes, suggestions] = await Promise.all([
         communityService.getFriendsAreaData(),
-        getUserFriendCode()
+        getUserFriendCode(),
+        getActiveSuggestions(),
       ]);
 
       if (codeRes.ok && codeRes.data) {
         setFriendCode(codeRes.data.code);
       }
+      setSuggestionsMap(suggestions);
 
       const { toMatch, helped } = partitionFriends(data.friends);
       setUsersToMatch(toMatch);
@@ -317,7 +325,12 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   }, [loadUnreadCounts]);
 
   const onRefresh = useCallback(async () => {
+    lightHaptic();
     setRefreshing(true);
+    // Invalidate in-memory + AsyncStorage cache so pull-to-refresh always fetches fresh data
+    if ('invalidateFriendsCache' in communityService) {
+      (communityService as any).invalidateFriendsCache();
+    }
     try {
       await Promise.all([
         loadFriendsData(),
@@ -526,6 +539,17 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     return { viewProfile, chatHandlers };
   }, [alreadyHelped, navigation]);
 
+  const handleNudge = useCallback(async (friendId: string) => {
+    const friend = alreadyHelped.find(f => f.friendId === friendId);
+    const friendName = friend?.friend?.firstName || 'Your friend';
+    const result = await sendNudge(friendId);
+    if (result.ok) {
+      showToast.success('Nudge sent!', `${friendName} will be reminded to vote.`);
+    } else {
+      showToast.error('Could not send nudge', 'Check your connection and try again.');
+    }
+  }, [alreadyHelped]);
+
   if (loading || hasCompletedVoting === null) {
     return (
       <ScreenWrapper>
@@ -570,7 +594,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                   activeOpacity={0.7}
                   style={styles.addFriendBtn}
                 >
-                  <Ionicons name="person-add-outline" size={18} color="#2B65F9" />
+                  <EvaIcon name="person-add" variant="outline" size={18} color="#2B65F9" />
                 </TouchableOpacity>
               </GuideTarget>
             )}
@@ -587,8 +611,17 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           }
         >
           <View style={styles.emptyContainer}>
-            <Text style={styles.subtitle}>
-              Share your friend code to connect with people you know. Once you're friends, you can vote on each other's matches.
+            {/* Illustration-like icon section */}
+            <View style={styles.emptyIconCircle}>
+              <EvaIcon name="people" variant="outline" size={48} color="#2B65F9" />
+            </View>
+            {/* Hero text */}
+            <Text style={styles.emptyHeroText}>
+              Bridge works best with your real friends
+            </Text>
+            {/* Secondary explanation */}
+            <Text style={styles.emptySubtext}>
+              Add your crew and they'll help find your perfect match. The more friends you have, the better your matches get.
             </Text>
 
             {friendCode ? (
@@ -601,7 +634,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                       style={styles.enterCodeButton}
                       onPress={async () => { const msg = await buildInviteMessage(friendCode, profile?.firstName); Share.share({ message: msg }); }}
                     >
-                      <Ionicons name="share-outline" size={18} color="#2B65F9" style={{ marginRight: 6 }} />
+                      <EvaIcon name="share" variant="outline" size={18} color="#2B65F9" style={{ marginRight: 6 }} />
                       <Text style={styles.enterCodeButtonText}>Share Code</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -642,7 +675,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                   activeOpacity={0.85}
                   onPress={() => (navigation as any).navigate('ContactInvite')}
                 >
-                  <Ionicons name="people-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <EvaIcon name="people" variant="outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
                   <Text style={styles.inviteContactsButtonText}>Invite from Contacts</Text>
                 </TouchableOpacity>
               </>
@@ -673,45 +706,50 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                   />
                 ))}
                 <View style={[styles.crewAddCircle, bannerSection.avatarFriends.length > 0 && { marginLeft: -10 }]}>
-                  <Ionicons name="add" size={16} color="#2B65F9" />
+                  <EvaIcon name="plus" variant="outline" size={16} color="#2B65F9" />
                 </View>
               </View>
               <Text style={styles.crewBannerHeadline}>Add your people</Text>
             </TouchableOpacity>
           ) : (
             <View style={styles.impactCard}>
-              <Ionicons name="heart-circle" size={22} color="#2B65F9" />
+              <EvaIcon name="heart" variant="outline" size={22} color="#2B65F9" />
               <Text style={styles.impactText}>
                 {bannerSection.totalAssists > 0
                   ? `You've helped make ${bannerSection.totalAssists} match${bannerSection.totalAssists === 1 ? '' : 'es'}`
-                  : 'Keep voting to help your friends find matches'}
+                  : 'Your votes matter! Help friends find their match.'}
               </Text>
             </View>
           )}
 
           {usersToMatch.length > 0 && (
-            <View style={[styles.sectionHeader, { marginTop: HELP_SECTION_MARGIN_TOP }]}>
+            <View style={styles.sectionHeader}>
               <View style={[styles.sectionAccent, { backgroundColor: '#2B65F9' }]} />
               <Text style={styles.sectionTitle}>Help your friends</Text>
+              <View style={styles.helpCountBadge}>
+                <Text style={styles.helpCountText}>{usersToMatch.length}</Text>
+              </View>
             </View>
           )}
           {/* Main list — #3: vote ring + #9: vote-only action */}
-          <View style={styles.voteListBg}>
-            {usersToMatch.map((user, index) => (
-              <UserRow
-                key={user.friendId}
-                item={user}
-                index={index}
-                showVoteRing
-                onViewProfile={voteHandlers.viewProfile[user.friendId]}
-                onMatch={voteHandlers.matchHandlers[user.friendId]}
-              />
-            ))}
-          </View>
+          {usersToMatch.length > 0 && (
+            <View style={styles.voteListBg}>
+              {usersToMatch.map((user, index) => (
+                <UserRow
+                  key={user.friendId}
+                  item={user}
+                  index={index}
+                  showVoteRing
+                  onViewProfile={voteHandlers.viewProfile[user.friendId]}
+                  onMatch={voteHandlers.matchHandlers[user.friendId]}
+                />
+              ))}
+            </View>
+          )}
 
           {/* Already Helped section */}
           {alreadyHelped.length > 0 && (
-            <View style={[styles.sectionHeader, { marginTop: 20 }]}>
+            <View style={[styles.sectionHeader, usersToMatch.length > 0 && { marginTop: 20 }]}>
               <View style={[styles.sectionAccent, { backgroundColor: '#3ECC62' }]} />
               <Text style={styles.sectionTitle}>Your crew</Text>
             </View>
@@ -723,13 +761,34 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                   key={user.friendId}
                   item={user}
                   index={index}
-                  statusLine={getFriendStatusLine(user)}
+                  statusLine={getFriendStatusLine(user, suggestionsMap)}
                   hasUnread={!!unreadMap[user.friendId]}
                   onViewProfile={crewHandlers.viewProfile[user.friendId]}
                   onChat={crewHandlers.chatHandlers[user.friendId]}
+                  onNudge={handleNudge}
                 />
             ))}
+
+            {/* Suggest a Match — inline row at bottom of crew list */}
+            {(usersToMatch.length + alreadyHelped.length) >= 2 && (
+              <TouchableOpacity
+                style={styles.suggestMatchRow}
+                activeOpacity={0.75}
+                onPress={() => { lightHaptic(); navigation.getParent()?.navigate('SuggestMatch'); }}
+              >
+                <EvaIcon name="heart" variant="outline" size={16} color="#437FFF" />
+                <Text style={styles.suggestMatchText}>Suggest a Match</Text>
+                <EvaIcon name="arrow-ios-forward" variant="outline" size={14} color="#437FFF" />
+              </TouchableOpacity>
+            )}
           </View>
+
+          {/* Slim caught-up footer — only when no pending votes */}
+          {usersToMatch.length === 0 && alreadyHelped.length > 0 && (
+            <Text style={styles.caughtUpFooter}>
+              All caught up — new proposals drop at 7 PM
+            </Text>
+          )}
         </ScrollView>
       )}
     </ScreenWrapper>
@@ -738,6 +797,36 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
 const styles = StyleSheet.create({
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingBottom: 80, width: '100%' },
+  emptyIconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#EEF3FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#D1DEFF',
+  },
+  emptyHeroText: {
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    fontSize: 22,
+    lineHeight: 28,
+    color: '#0B1226',
+    textAlign: 'center',
+    marginBottom: 8,
+    width: '100%',
+  },
+  emptySubtext: {
+    fontFamily: FONTS.regular,
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#667085',
+    textAlign: 'center',
+    marginBottom: 28,
+    width: '100%',
+  },
   tagline: { fontFamily: FONTS.semiBold, fontSize: 20, lineHeight: 26, color: '#0B1226', textAlign: 'center', marginBottom: 12 },
   illustration: { width: 300, height: 300, marginBottom: 32 },
   subtitle: { fontFamily: FONTS.semiBold, fontSize: 17, lineHeight: 24, color: '#0B1226', textAlign: 'center', marginBottom: 20, width: '100%' },
@@ -838,7 +927,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EEF3FF',
     marginHorizontal: 16,
     marginTop: 16,
-    marginBottom: 4,
+    marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 14,
@@ -888,7 +977,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F4F7FF',
     marginHorizontal: 16,
     marginTop: 16,
-    marginBottom: 4,
+    marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 14,
@@ -953,7 +1042,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
     paddingHorizontal: 24,
     gap: 8,
   },
@@ -971,6 +1060,46 @@ const styles = StyleSheet.create({
   },
   voteListBg: {
     backgroundColor: 'rgba(43, 101, 249, 0.02)',
+  },
+  suggestMatchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E8EDFB',
+  },
+  suggestMatchText: {
+    flex: 1,
+    fontFamily: FONTS.semiBold,
+    fontSize: 15,
+    color: '#437FFF',
+  },
+  // ── Help count badge ──────────────────────────────────────────
+  helpCountBadge: {
+    backgroundColor: '#2B65F9',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+    marginLeft: 4,
+  },
+  helpCountText: {
+    fontFamily: FONTS.semiBold,
+    fontSize: 11,
+    color: '#FFFFFF',
+  },
+  // ── Caught up footer ──────────────────────────────────────────────
+  caughtUpFooter: {
+    fontFamily: FONTS.regular,
+    fontSize: 13,
+    color: '#98A2B3',
+    textAlign: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
   },
 });
 

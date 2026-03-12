@@ -45,10 +45,9 @@ import { styled } from 'nativewind';
 import { Body } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile, DeepQuestionAnswer, Match } from '../../types';
-import { Ionicons } from '@expo/vector-icons';
 import { lightHaptic, mediumHaptic, successHaptic, warningHaptic } from '../../utils/haptics';
 import { showToast } from '../../utils/toast';
-import { valueEmoji, interestEmoji } from '../../utils/emojiMaps';
+import { valueIconName, interestIconName } from '../../utils/emojiMaps';
 import { TIER_CONFIG } from '../../utils/questionTiers';
 import { computeApprovalPercent } from '../../utils/matchCardGenerator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -57,6 +56,7 @@ import { communityService } from '../../services/communityServiceIndex';
 import { getUserProfile } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
 import { FONTS } from '../../constants/typography';
+import { EvaIcon, IconScoutIcon } from '../../components/icons';
 
 const logger = createLogger('MatchProposalScreen');
 
@@ -145,22 +145,22 @@ interface PassFeedbackOption {
 // ============================================================================
 
 const PASS_FEEDBACK_OPTIONS: PassFeedbackOption[] = [
-  { id: 'not_my_type', label: 'Not my type', icon: 'heart-dislike-outline' },
-  { id: 'age', label: 'Age preference', icon: 'calendar-outline' },
-  { id: 'location', label: 'Too far away', icon: 'location-outline' },
-  { id: 'lifestyle', label: 'Lifestyle mismatch', icon: 'leaf-outline' },
-  { id: 'values', label: 'Different values', icon: 'diamond-outline' },
-  { id: 'other', label: 'Other reason', icon: 'ellipsis-horizontal' },
+  { id: 'not_my_type', label: 'Not my type', icon: 'close-circle' },
+  { id: 'age', label: 'Age preference', icon: 'calendar' },
+  { id: 'location', label: 'Too far away', icon: 'pin' },
+  { id: 'lifestyle', label: 'Lifestyle mismatch', icon: 'activity' },
+  { id: 'values', label: 'Different values', icon: 'star' },
+  { id: 'other', label: 'Other reason', icon: 'more-horizontal' },
 ];
 
 const PILL_STYLES: Record<string, { bg: string; iconColor: string; textColor: string }> = {
-  'location-outline': { bg: '#EFF6FF', iconColor: '#3B82F6', textColor: '#1D4ED8' },
-  'resize-outline': { bg: COLORS.successBg, iconColor: COLORS.success, textColor: '#059669' },
-  'person-outline': { bg: COLORS.purpleBg, iconColor: COLORS.purple, textColor: '#6D28D9' },
-  'chatbubble-outline': { bg: COLORS.pinkBg, iconColor: COLORS.pink, textColor: '#BE185D' },
-  'globe-outline': { bg: COLORS.warningBg, iconColor: COLORS.warning, textColor: COLORS.warningIcon },
-  'sparkles-outline': { bg: COLORS.purpleBg, iconColor: '#7C3AED', textColor: '#6D28D9' },
-  'flag-outline': { bg: '#FFF1F2', iconColor: '#F43F5E', textColor: '#BE123C' },
+  'pin': { bg: '#EFF6FF', iconColor: '#3B82F6', textColor: '#1D4ED8' },
+  'maximize': { bg: COLORS.successBg, iconColor: COLORS.success, textColor: '#059669' },
+  'person': { bg: COLORS.purpleBg, iconColor: COLORS.purple, textColor: '#6D28D9' },
+  'message-circle': { bg: COLORS.pinkBg, iconColor: COLORS.pink, textColor: '#BE185D' },
+  'globe': { bg: COLORS.warningBg, iconColor: COLORS.warning, textColor: COLORS.warningIcon },
+  'star': { bg: COLORS.purpleBg, iconColor: '#7C3AED', textColor: '#6D28D9' },
+  'flag': { bg: '#FFF1F2', iconColor: '#F43F5E', textColor: '#BE123C' },
   default: { bg: COLORS.neutral50, iconColor: COLORS.neutral400, textColor: COLORS.neutral600 },
 };
 
@@ -245,7 +245,7 @@ const ExpirationTimer: React.FC<{ expiresAt: string }> = ({ expiresAt }) => {
   if (timeLeft.expired) {
     return (
       <StyledView className="flex-row items-center px-3.5 py-2 rounded-full" style={{ backgroundColor: 'rgba(239, 68, 68, 0.9)' }}>
-        <Ionicons name="time-outline" size={13} color="white" />
+        <EvaIcon name="clock" variant="outline" size={13} color="white" />
         <Body className="text-white text-xs font-semibold ml-1.5 tracking-wide">Expired</Body>
       </StyledView>
     );
@@ -254,7 +254,7 @@ const ExpirationTimer: React.FC<{ expiresAt: string }> = ({ expiresAt }) => {
   const isUrgent = timeLeft.hours < 6;
   return (
     <StyledView className="flex-row items-center px-3.5 py-2 rounded-full" style={{ backgroundColor: isUrgent ? 'rgba(245, 158, 11, 0.9)' : 'rgba(0, 0, 0, 0.4)' }}>
-      <Ionicons name="time-outline" size={13} color="white" />
+      <EvaIcon name="clock" variant="outline" size={13} color="white" />
       <Body className="text-white text-xs font-semibold ml-1.5 tracking-wide">{timeLeft.hours}h {timeLeft.minutes}m</Body>
     </StyledView>
   );
@@ -321,7 +321,7 @@ const CommunityScore: React.FC<{ score: number; endorsement: FriendEndorsement }
       <StyledView className="flex-row items-center justify-between mb-4">
         <StyledView className="flex-row items-center">
           <StyledView className="w-9 h-9 rounded-full items-center justify-center" style={{ backgroundColor: colors.light }}>
-            <Ionicons name="people" size={16} color={colors.bg} />
+            <EvaIcon name="people" variant="outline" size={16} color={colors.bg} />
           </StyledView>
           <Body className="font-bold text-base ml-3 tracking-tight" style={{ color: COLORS.neutral800 }}>Community Score</Body>
         </StyledView>
@@ -344,7 +344,7 @@ const CommunityScore: React.FC<{ score: number; endorsement: FriendEndorsement }
           <StyledView className="flex-row">
             {[...Array(Math.min(endorsement.count, 5))].map((_, i) => (
               <StyledView key={i} className="w-7 h-7 rounded-full items-center justify-center" style={{ backgroundColor: '#EFF6FF', borderWidth: 2, borderColor: COLORS.white, marginLeft: i > 0 ? -8 : 0 }}>
-                <Ionicons name="person" size={11} color={COLORS.primary500} />
+                <EvaIcon name="person" variant="outline" size={11} color="COLORS.primary500" />
               </StyledView>
             ))}
           </StyledView>
@@ -363,7 +363,7 @@ const WhyThisMatch: React.FC<{ mutualInterests: string[]; mutualValues: string[]
     <StyledView className="p-4 mb-4" style={{ backgroundColor: COLORS.primary50, borderRadius: 12, borderWidth: 1, borderColor: COLORS.primaryBorder }}>
       <StyledView className="flex-row items-center mb-4">
         <StyledView className="w-9 h-9 rounded-full items-center justify-center" style={{ backgroundColor: COLORS.primary500 }}>
-          <Ionicons name="sparkles" size={16} color="white" />
+          <EvaIcon name="star" variant="outline" size={16} color="white" />
         </StyledView>
         <Body className="font-bold text-base ml-3 tracking-tight" style={{ color: COLORS.neutral800 }}>Why This Match</Body>
       </StyledView>
@@ -371,14 +371,15 @@ const WhyThisMatch: React.FC<{ mutualInterests: string[]; mutualValues: string[]
       {mutualInterests.length > 0 && (
         <StyledView className="mb-4">
           <StyledView className="flex-row items-center mb-3">
-            <Ionicons name="heart" size={13} color={COLORS.primary500} />
+            <EvaIcon name="heart" variant="outline" size={13} color="COLORS.primary500" />
             <Body className="text-sm font-semibold ml-2" style={{ color: '#1D4ED8' }}>You both love</Body>
           </StyledView>
           <StyledView className="flex-row flex-wrap">
             {mutualInterests.map((interest) => (
               <StyledView key={interest} className="rounded-full px-3.5 py-2 mr-2 mb-2 flex-row items-center" style={{ backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: COLORS.primaryBorder }}>
-                <Ionicons name="checkmark-circle" size={12} color={COLORS.primary500} />
-                <Body className="text-sm font-medium ml-1.5" style={{ color: '#1D4ED8' }}>{interestEmoji(interest)} {interest}</Body>
+                <EvaIcon name="checkmark-circle-2" variant="outline" size={12} color="COLORS.primary500" />
+                <IconScoutIcon name={interestIconName(interest)} size={14} style={{ marginRight: 3 }} />
+                <Body className="text-sm font-medium ml-1.5" style={{ color: '#1D4ED8' }}>{interest}</Body>
               </StyledView>
             ))}
           </StyledView>
@@ -388,14 +389,15 @@ const WhyThisMatch: React.FC<{ mutualInterests: string[]; mutualValues: string[]
       {mutualValues.length > 0 && (
         <StyledView className="mb-4">
           <StyledView className="flex-row items-center mb-3">
-            <Ionicons name="diamond" size={13} color={COLORS.success} />
+            <EvaIcon name="award" variant="outline" size={13} color="COLORS.success" />
             <Body className="text-sm font-semibold ml-2" style={{ color: '#059669' }}>Shared values</Body>
           </StyledView>
           <StyledView className="flex-row flex-wrap">
             {mutualValues.map((value) => (
               <StyledView key={value} className="rounded-full px-3.5 py-2 mr-2 mb-2 flex-row items-center" style={{ backgroundColor: COLORS.successBg, borderWidth: 1, borderColor: COLORS.successBorder }}>
-                <Ionicons name="checkmark-circle" size={12} color={COLORS.success} />
-                <Body className="text-sm font-medium ml-1.5" style={{ color: '#059669' }}>{valueEmoji(value)} {value}</Body>
+                <EvaIcon name="checkmark-circle-2" variant="outline" size={12} color="COLORS.success" />
+                <IconScoutIcon name={valueIconName(value)} size={14} style={{ marginRight: 3 }} />
+                <Body className="text-sm font-medium ml-1.5" style={{ color: '#059669' }}>{value}</Body>
               </StyledView>
             ))}
           </StyledView>
@@ -404,7 +406,7 @@ const WhyThisMatch: React.FC<{ mutualInterests: string[]; mutualValues: string[]
 
       {compatibilityHighlights.length > 0 && compatibilityHighlights.map((highlight, i) => (
         <StyledView key={highlight} className="flex-row items-center" style={{ marginBottom: i === compatibilityHighlights.length - 1 ? 0 : 8 }}>
-          <Ionicons name="checkmark" size={15} color={COLORS.primary500} />
+          <EvaIcon name="checkmark" variant="outline" size={15} color="COLORS.primary500" />
           <Body className="text-sm ml-2.5" style={{ color: COLORS.neutral600, lineHeight: 18 }}>{highlight}</Body>
         </StyledView>
       ))}
@@ -423,7 +425,7 @@ const InfoPill: React.FC<{ icon: string; text: string }> = React.memo(({ icon, t
   const style = PILL_STYLES[icon] || PILL_STYLES.default;
   return (
     <StyledView className="flex-row items-center rounded-full px-3.5 py-2 mr-2 mb-2.5" style={{ backgroundColor: style.bg, borderWidth: 1, borderColor: `${style.iconColor}20` }}>
-      <Ionicons name={icon as any} size={14} color={style.iconColor} />
+      <EvaIcon name={icon} variant="outline" size={14} color={style.iconColor} />
       <Body className="text-sm font-medium ml-1.5" style={{ color: style.textColor }}>{text}</Body>
     </StyledView>
   );
@@ -447,7 +449,7 @@ const Section: React.FC<{ title: string; icon: string; children: React.ReactNode
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], marginBottom: 28 }}>
       <StyledView className="flex-row items-center mb-4">
         <StyledView className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: '#EFF6FF' }}>
-          <Ionicons name={icon as any} size={15} color={COLORS.primary500} />
+          <EvaIcon name={icon} variant="outline" size={15} color={COLORS.primary500} />
         </StyledView>
         <Body className="text-xs uppercase tracking-widest ml-3 font-medium" style={{ color: COLORS.neutral400 }}>{title}</Body>
       </StyledView>
@@ -456,7 +458,7 @@ const Section: React.FC<{ title: string; icon: string; children: React.ReactNode
   );
 });
 
-const Tag: React.FC<{ label: string; variant?: 'default' | 'primary' | 'success'; isMutual?: boolean }> = ({ label, variant = 'default', isMutual = false }) => {
+const Tag: React.FC<{ label: string; variant?: 'default' | 'primary' | 'success'; isMutual?: boolean; iconName?: string }> = ({ label, variant = 'default', isMutual = false, iconName }) => {
   const styles = {
     default: { bg: COLORS.neutral50, border: COLORS.neutral200, text: COLORS.neutral600 },
     primary: { bg: '#EFF6FF', border: COLORS.primaryBorder, text: '#1D4ED8' },
@@ -467,7 +469,8 @@ const Tag: React.FC<{ label: string; variant?: 'default' | 'primary' | 'success'
 
   return (
     <StyledView className="rounded-full px-4 py-2.5 mr-2 mb-2.5 flex-row items-center" style={{ backgroundColor: s.bg, borderWidth: isMutual ? 2 : 1, borderColor: isMutual ? accentColor : s.border }}>
-      {isMutual && <Ionicons name="checkmark-circle" size={13} color={accentColor} style={{ marginRight: 5 }} />}
+      {isMutual && <EvaIcon name="checkmark-circle-2" variant="outline" size={13} color="accentColor" style={{ marginRight: 5 }} />}
+      {iconName && <IconScoutIcon name={iconName} size={14} style={{ marginRight: 3 }} />}
       <Body className="text-sm font-medium" style={{ color: s.text }}>{label}</Body>
     </StyledView>
   );
@@ -481,7 +484,7 @@ const LifestyleRow: React.FC<{ icon: string; label: string; value: string }> = (
     <StyledView className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: COLORS.neutral100 }}>
       <StyledView className="flex-row items-center flex-1">
         <StyledView className="w-9 h-9 rounded-xl items-center justify-center" style={{ backgroundColor: COLORS.neutral50 }}>
-          <Ionicons name={icon as any} size={17} color={COLORS.neutral500} />
+          <EvaIcon name={icon} variant="outline" size={17} color={COLORS.neutral500} />
         </StyledView>
         <Body className="ml-3 font-medium" style={{ color: COLORS.neutral600 }}>{label}</Body>
       </StyledView>
@@ -559,10 +562,10 @@ const PassFeedbackModal: React.FC<{ visible: boolean; onClose: () => void; onSub
             activeOpacity={0.7}
           >
             <StyledView className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: selectedFeedback === option.id ? COLORS.primaryBorder : COLORS.neutral50 }}>
-              <Ionicons name={option.icon as any} size={16} color={selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral500} />
+              <EvaIcon name={option.icon} variant="outline" size={16} color={selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral500} />
             </StyledView>
             <Body className="ml-3 flex-1" style={{ fontSize: 16, fontWeight: '500', fontFamily: FONTS.medium, color: selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral700 }}>{option.label}</Body>
-            {selectedFeedback === option.id && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary500} />}
+            {selectedFeedback === option.id && <EvaIcon name="checkmark-circle-2" variant="outline" size={20} color="COLORS.primary500" />}
           </StyledTouchableOpacity>
         ))}
       </StyledView>
@@ -598,7 +601,7 @@ const RecommendToFriendModal: React.FC<{ visible: boolean; profileName: string; 
     <ModalContainer visible={visible} onClose={onClose}>
       <StyledView className="items-center mb-5">
         <StyledView className="w-16 h-16 rounded-full items-center justify-center mb-4" style={{ backgroundColor: COLORS.primary50 }}>
-          <Ionicons name="gift-outline" size={28} color={COLORS.primary500} />
+          <EvaIcon name="gift" variant="outline" size={28} color="COLORS.primary500" />
         </StyledView>
         <Body className="text-center mb-2" style={{ fontSize: 20, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral900 }}>Know someone who'd click?</Body>
         <Body className="text-center" style={{ fontSize: 16, color: COLORS.neutral500, lineHeight: 24 }}>Recommend {profileName} to a friend</Body>
@@ -608,7 +611,7 @@ const RecommendToFriendModal: React.FC<{ visible: boolean; profileName: string; 
         <StyledView className="py-8 items-center"><Body style={{ fontSize: 16, color: COLORS.neutral500 }}>Loading friends...</Body></StyledView>
       ) : friends.length === 0 ? (
         <StyledView className="py-6 items-center">
-          <StyledView className="w-14 h-14 rounded-full items-center justify-center mb-4" style={{ backgroundColor: COLORS.neutral50 }}><Ionicons name="people-outline" size={24} color={COLORS.neutral300} /></StyledView>
+          <StyledView className="w-14 h-14 rounded-full items-center justify-center mb-4" style={{ backgroundColor: COLORS.neutral50 }}><EvaIcon name="people" variant="outline" size={24} color="COLORS.neutral300" /></StyledView>
           <Body className="mb-2" style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral700 }}>No friends yet</Body>
           <Body className="text-center mb-5" style={{ fontSize: 14, color: COLORS.neutral500, lineHeight: 20, paddingHorizontal: 16 }}>Add friends to share match recommendations</Body>
           <StyledTouchableOpacity onPress={() => { onClose(); navigation.navigate('ContactInvite'); }} style={{ backgroundColor: COLORS.primary500, borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24 }} activeOpacity={0.8}>
@@ -620,10 +623,10 @@ const RecommendToFriendModal: React.FC<{ visible: boolean; profileName: string; 
           {friends.slice(0, 5).map((friend) => (
             <StyledTouchableOpacity key={friend.friendId} onPress={() => { lightHaptic(); setSelectedFriend(friend.friendId === selectedFriend ? null : friend.friendId); }} className="flex-row items-center mb-2 py-3 px-3" style={{ backgroundColor: selectedFriend === friend.friendId ? COLORS.primary50 : COLORS.white, borderWidth: 1, borderColor: selectedFriend === friend.friendId ? COLORS.primary500 : COLORS.neutral300, borderRadius: 8 }} activeOpacity={0.7}>
               <StyledView className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: selectedFriend === friend.friendId ? COLORS.primaryBorder : COLORS.primary50 }}>
-                <Ionicons name="person" size={16} color={selectedFriend === friend.friendId ? COLORS.primary500 : '#93C5FD'} />
+                <EvaIcon name="person" variant="outline" size={16} color="selectedFriend" />
               </StyledView>
               <Body className="ml-3 flex-1" style={{ fontSize: 16, fontWeight: '500', fontFamily: FONTS.medium, color: selectedFriend === friend.friendId ? COLORS.primary500 : COLORS.neutral700 }}>{friend.profile.firstName}</Body>
-              {selectedFriend === friend.friendId && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary500} />}
+              {selectedFriend === friend.friendId && <EvaIcon name="checkmark-circle-2" variant="outline" size={20} color="COLORS.primary500" />}
             </StyledTouchableOpacity>
           ))}
         </ScrollView>
@@ -647,7 +650,7 @@ const PassConfirmModal: React.FC<{ visible: boolean; onConfirm: () => void; onCa
   <ModalContainer visible={visible} onClose={onCancel} variant="center">
     <StyledView className="items-center mb-5">
       <StyledView className="w-14 h-14 rounded-full items-center justify-center mb-4" style={{ backgroundColor: COLORS.warningBg }}>
-        <Ionicons name="help-circle-outline" size={28} color={COLORS.warningIcon} />
+        <EvaIcon name="question-mark-circle" variant="outline" size={28} color="COLORS.warningIcon" />
       </StyledView>
       <Body className="text-center mb-2" style={{ fontSize: 20, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral900 }}>Pass on this match?</Body>
       <Body className="text-center" style={{ fontSize: 16, color: COLORS.neutral500, lineHeight: 24 }}>Are you sure? You won't be able to match with this person again.</Body>
@@ -706,13 +709,13 @@ const CelebrationOverlay: React.FC<{ visible: boolean; recipientName: string; on
           const angle = (index * 30) * (Math.PI / 180);
           return (
             <Animated.View key={`heart-${index}`} style={{ position: 'absolute', transform: [{ translateX: Math.cos(angle) * 100 }, { translateY: Math.sin(angle) * 100 }, { scale }] }}>
-              <Ionicons name="heart" size={24} color={COLORS.pink} />
+              <EvaIcon name="heart" variant="outline" size={24} color="COLORS.pink" />
             </Animated.View>
           );
         })}
         <Animated.View style={{ transform: [{ scale: scaleAnim }, { rotate: rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['-180deg', '0deg'] }) }] }}>
           <StyledView className="w-28 h-28 rounded-full items-center justify-center mb-6" style={{ backgroundColor: COLORS.successBg }}>
-            <Ionicons name="checkmark-circle" size={64} color={COLORS.success} />
+            <EvaIcon name="checkmark-circle-2" variant="outline" size={64} color="COLORS.success" />
           </StyledView>
         </Animated.View>
         <Animated.View style={{ opacity: scaleAnim }}>
@@ -951,7 +954,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
     }
   }, [navigation]);
 
-  const handleViewDeepQuestions = useCallback(() => { if (profile) { lightHaptic(); navigation.navigate('DeepQuestions', { userId: profile.userId, editable: false }); } }, [navigation, profile]);
+  const handleViewDeepQuestions = useCallback(() => { /* Deep Questions screen removed */ }, []);
 
   // Cleanup navigation timer on unmount
   useEffect(() => {
@@ -969,7 +972,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
     return (
       <StyledView className="flex-1 items-center justify-center px-6" style={{ backgroundColor: COLORS.neutral50 }}>
         <StatusBar barStyle="dark-content" />
-        <Ionicons name="person-outline" size={64} color={COLORS.neutral300} />
+        <EvaIcon name="person" variant="outline" size={64} color="COLORS.neutral300" />
         <Body className="mt-4 text-center" style={{ color: COLORS.neutral600 }}>Profile not found</Body>
         <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mt-4 px-6 py-3 rounded-full" style={{ backgroundColor: COLORS.primary500 }}>
           <Body className="font-semibold" style={{ color: COLORS.white }}>Go Back</Body>
@@ -985,13 +988,13 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   const displayedQuestions = (profile.displayedQuestions || []).map(id => profile.deepQuestions?.find(q => q.questionId === id)).filter((q): q is DeepQuestionAnswer => q !== undefined).sort((a, b) => (a.tier || 0) - (b.tier || 0));
   const hasLifestyleInfo = profile.drinkingFrequency || profile.cannabisFrequency || profile.tobaccoFrequency || profile.otherDrugsFrequency;
   const basicInfoPills: Array<{ icon: string; text: string }> = [];
-  if (profile.gender?.length) basicInfoPills.push({ icon: 'person-outline', text: profile.gender.join(', ') });
-  if (profile.pronounsList?.length) basicInfoPills.push({ icon: 'chatbubble-outline', text: profile.pronounsList.join('/') });
-  if (profile.height) basicInfoPills.push({ icon: 'resize-outline', text: profile.height });
-  if (profile.location) basicInfoPills.push({ icon: 'location-outline', text: profile.location });
-  if (profile.ethnicity) basicInfoPills.push({ icon: 'globe-outline', text: profile.ethnicity });
-  if (profile.religion) basicInfoPills.push({ icon: 'sparkles-outline', text: profile.religion });
-  if (profile.politicalLeaning) basicInfoPills.push({ icon: 'flag-outline', text: formatFrequency(profile.politicalLeaning) || '' });
+  if (profile.gender?.length) basicInfoPills.push({ icon: 'person', text: profile.gender.join(', ') });
+  if (profile.pronounsList?.length) basicInfoPills.push({ icon: 'message-circle', text: profile.pronounsList.join('/') });
+  if (profile.height) basicInfoPills.push({ icon: 'maximize', text: profile.height });
+  if (profile.location) basicInfoPills.push({ icon: 'pin', text: profile.location });
+  if (profile.ethnicity) basicInfoPills.push({ icon: 'globe', text: profile.ethnicity });
+  if (profile.religion) basicInfoPills.push({ icon: 'star', text: profile.religion });
+  if (profile.politicalLeaning) basicInfoPills.push({ icon: 'flag', text: formatFrequency(profile.politicalLeaning) || '' });
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
@@ -999,21 +1002,21 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
 
       {/* Swipe Indicators */}
       <Animated.View style={{ position: 'absolute', top: '33%', left: 32, zIndex: 40, opacity: swipeX.interpolate({ inputRange: [-100, 0], outputRange: [1, 0], extrapolate: 'clamp' }), transform: [{ scale: swipeX.interpolate({ inputRange: [-100, 0], outputRange: [1.2, 0.8], extrapolate: 'clamp' }) }] }}>
-        <StyledView className="rounded-full p-4" style={{ backgroundColor: COLORS.error }}><Ionicons name="close" size={32} color="white" /></StyledView>
+        <StyledView className="rounded-full p-4" style={{ backgroundColor: COLORS.error }}><EvaIcon name="close" variant="outline" size={32} color="white" /></StyledView>
       </Animated.View>
       <Animated.View style={{ position: 'absolute', top: '33%', right: 32, zIndex: 40, opacity: swipeX.interpolate({ inputRange: [0, 100], outputRange: [0, 1], extrapolate: 'clamp' }), transform: [{ scale: swipeX.interpolate({ inputRange: [0, 100], outputRange: [0.8, 1.2], extrapolate: 'clamp' }) }] }}>
-        <StyledView className="rounded-full p-4" style={{ backgroundColor: COLORS.success }}><Ionicons name="heart" size={32} color="white" /></StyledView>
+        <StyledView className="rounded-full p-4" style={{ backgroundColor: COLORS.success }}><EvaIcon name="heart" variant="outline" size={32} color="white" /></StyledView>
       </Animated.View>
 
       {/* Fixed Header */}
       <StyledView className="absolute z-50 flex-row items-center justify-between px-4" style={{ top: insets.top + 8, left: 0, right: 0 }}>
         <StyledTouchableOpacity onPress={() => { lightHaptic(); navigation.goBack(); }} className="rounded-full p-2.5" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }} activeOpacity={0.8}>
-          <Ionicons name="close" size={22} color="white" />
+          <EvaIcon name="close" variant="outline" size={22} color="white" />
         </StyledTouchableOpacity>
         <StyledView className="flex-row items-center">
           <ExpirationTimer expiresAt={expiresAt} />
           <StyledTouchableOpacity onPress={handleOptionsMenu} className="rounded-full p-2.5 ml-2" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }} activeOpacity={0.8}>
-            <Ionicons name="ellipsis-vertical" size={18} color="white" />
+            <EvaIcon name="more-vertical" variant="outline" size={18} color="white" />
           </StyledTouchableOpacity>
         </StyledView>
       </StyledView>
@@ -1046,14 +1049,14 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
                   <Body className="text-white font-bold" style={{ fontSize: 34, lineHeight: 40, letterSpacing: -0.5, textShadowColor: 'rgba(0, 0, 0, 0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 }}>{getFirstInitial(profile.firstName)}, {profile.age}</Body>
                 </StyledView>
                 <StyledView className="flex-row items-center">
-                  <Ionicons name="shield-checkmark-outline" size={13} color="rgba(255,255,255,0.7)" />
+                  <EvaIcon name="shield" variant="outline" size={13} color="rgba(255,255,255,0.7)" />
                   <Body className="ml-1.5" style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>Full profile revealed after matching</Body>
                 </StyledView>
               </StyledView>
             </>
           ) : (
             <StyledView className="flex-1 items-center justify-center" style={{ backgroundColor: '#1a1a1a' }}>
-              <StyledView className="w-32 h-32 rounded-full items-center justify-center mb-4" style={{ backgroundColor: '#262626' }}><Ionicons name="camera-outline" size={48} color="#525252" /></StyledView>
+              <StyledView className="w-32 h-32 rounded-full items-center justify-center mb-4" style={{ backgroundColor: '#262626' }}><EvaIcon name="camera" variant="outline" size={48} color="#525252" /></StyledView>
               <Body className="font-medium" style={{ color: COLORS.neutral500 }}>No photos available</Body>
             </StyledView>
           )}
@@ -1064,28 +1067,28 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
           <CommunityScore score={communityScore} endorsement={endorsement} />
           <WhyThisMatch mutualInterests={mutualInterests} mutualValues={mutualValues} compatibilityHighlights={compatibilityHighlights} />
           {basicInfoPills.length > 0 && <StyledView className="flex-row flex-wrap mb-6">{basicInfoPills.map((pill) => <InfoPill key={`${pill.icon}-${pill.text}`} icon={pill.icon} text={pill.text} />)}</StyledView>}
-          {profile.interests?.length > 0 && <Section title="Interests" icon="heart-outline" delay={50}><StyledView className="flex-row flex-wrap">{profile.interests.map((interest) => <Tag key={interest} label={`${interestEmoji(interest)} ${interest}`} variant="primary" isMutual={mutualInterests.includes(interest)} />)}</StyledView></Section>}
-          {profile.values?.length > 0 && <Section title="Values" icon="diamond-outline" delay={100}><StyledView className="flex-row flex-wrap">{profile.values.map((value) => <Tag key={value} label={`${valueEmoji(value)} ${value}`} variant="success" isMutual={mutualValues.includes(value)} />)}</StyledView></Section>}
+          {profile.interests?.length > 0 && <Section title="Interests" icon="heart" delay={50}><StyledView className="flex-row flex-wrap">{profile.interests.map((interest) => <Tag key={interest} label={interest} iconName={interestIconName(interest)} variant="primary" isMutual={mutualInterests.includes(interest)} />)}</StyledView></Section>}
+          {profile.values?.length > 0 && <Section title="Values" icon="star" delay={100}><StyledView className="flex-row flex-wrap">{profile.values.map((value) => <Tag key={value} label={value} iconName={valueIconName(value)} variant="success" isMutual={mutualValues.includes(value)} />)}</StyledView></Section>}
           {(profile.hasChildren || profile.familyPlans) && (
-            <Section title="Family" icon="people-outline" delay={150}>
+            <Section title="Family" icon="people" delay={150}>
               <StyledView className="rounded-2xl p-4" style={{ backgroundColor: COLORS.neutral50 }}>
-                {profile.hasChildren && <StyledView className="flex-row items-center mb-2.5"><Ionicons name="person-outline" size={17} color={COLORS.neutral400} /><Body className="ml-2.5" style={{ color: COLORS.neutral600 }}>{formatFrequency(profile.hasChildren)}</Body></StyledView>}
-                {profile.familyPlans && <StyledView className="flex-row items-center"><Ionicons name="heart-outline" size={17} color={COLORS.neutral400} /><Body className="ml-2.5" style={{ color: COLORS.neutral600 }}>{formatFrequency(profile.familyPlans)}</Body></StyledView>}
+                {profile.hasChildren && <StyledView className="flex-row items-center mb-2.5"><EvaIcon name="person" variant="outline" size={17} color="COLORS.neutral400" /><Body className="ml-2.5" style={{ color: COLORS.neutral600 }}>{formatFrequency(profile.hasChildren)}</Body></StyledView>}
+                {profile.familyPlans && <StyledView className="flex-row items-center"><EvaIcon name="heart" variant="outline" size={17} color="COLORS.neutral400" /><Body className="ml-2.5" style={{ color: COLORS.neutral600 }}>{formatFrequency(profile.familyPlans)}</Body></StyledView>}
               </StyledView>
             </Section>
           )}
           {hasLifestyleInfo && (
-            <Section title="Lifestyle" icon="leaf-outline" delay={200}>
+            <Section title="Lifestyle" icon="activity" delay={200}>
               <StyledView className="rounded-2xl px-4 py-1" style={{ backgroundColor: COLORS.neutral50 }}>
-                {profile.drinkingFrequency && <LifestyleRow icon="wine-outline" label="Drinking" value={formatFrequency(profile.drinkingFrequency) || ''} />}
-                {profile.cannabisFrequency && <LifestyleRow icon="leaf-outline" label="Cannabis" value={formatFrequency(profile.cannabisFrequency) || ''} />}
-                {profile.tobaccoFrequency && <LifestyleRow icon="flame-outline" label="Tobacco" value={formatFrequency(profile.tobaccoFrequency) || ''} />}
-                {profile.otherDrugsFrequency && <LifestyleRow icon="medical-outline" label="Other" value={formatFrequency(profile.otherDrugsFrequency) || ''} />}
+                {profile.drinkingFrequency && <LifestyleRow icon="droplet" label="Drinking" value={formatFrequency(profile.drinkingFrequency) || ''} />}
+                {profile.cannabisFrequency && <LifestyleRow icon="activity" label="Cannabis" value={formatFrequency(profile.cannabisFrequency) || ''} />}
+                {profile.tobaccoFrequency && <LifestyleRow icon="flash" label="Tobacco" value={formatFrequency(profile.tobaccoFrequency) || ''} />}
+                {profile.otherDrugsFrequency && <LifestyleRow icon="plus-circle" label="Other" value={formatFrequency(profile.otherDrugsFrequency) || ''} />}
               </StyledView>
             </Section>
           )}
           {displayedQuestions.length > 0 && (
-            <Section title="Questions" icon="chatbubble-ellipses-outline" delay={250}>
+            <Section title="Questions" icon="message-circle" delay={250}>
               {displayedQuestions.map((qa) => {
                 const config = TIER_CONFIG[qa.tier as 1 | 2 | 3];
                 return (
@@ -1095,12 +1098,6 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
                   </StyledView>
                 );
               })}
-              {profile.deepQuestions && profile.deepQuestions.length > displayedQuestions.length && (
-                <StyledTouchableOpacity onPress={handleViewDeepQuestions} className="flex-row items-center justify-center py-3 mt-2">
-                  <Body className="font-semibold" style={{ color: COLORS.primary500 }}>View all {profile.deepQuestions.length} answers</Body>
-                  <Ionicons name="chevron-forward" size={17} color={COLORS.primary500} style={{ marginLeft: 4 }} />
-                </StyledTouchableOpacity>
-              )}
             </Section>
           )}
           <StyledView className="items-center py-5"><Body className="text-sm" style={{ color: COLORS.neutral300 }}>Swipe right to accept, left to pass</Body></StyledView>
@@ -1112,11 +1109,11 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
       <StyledView className="absolute bottom-0 left-0 right-0 bg-white" style={{ paddingBottom: insets.bottom + 8, paddingTop: 12, paddingHorizontal: 16, borderTopWidth: 1, borderTopColor: COLORS.neutral200 }}>
         <StyledView className="flex-row" style={{ gap: 12 }}>
           <StyledTouchableOpacity onPress={handlePassInitiate} disabled={isPassing || isAccepting} className="flex-1 flex-row items-center justify-center py-3.5" activeOpacity={0.8} style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 8, opacity: isPassing || isAccepting ? 0.6 : 1 }}>
-            <Ionicons name="close" size={18} color={COLORS.neutral600} />
+            <EvaIcon name="close" variant="outline" size={18} color="COLORS.neutral600" />
             <Body style={{ color: COLORS.neutral600, fontWeight: '600', fontFamily: FONTS.semiBold, fontSize: 16, marginLeft: 8 }}>{isPassing ? 'Passing...' : 'Pass'}</Body>
           </StyledTouchableOpacity>
           <StyledTouchableOpacity onPress={handleAcceptInitiate} disabled={isPassing || isAccepting} className="flex-1 flex-row items-center justify-center py-3.5" activeOpacity={0.8} style={{ backgroundColor: COLORS.primary500, borderRadius: 8, opacity: isPassing || isAccepting ? 0.6 : 1, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 }}>
-            <Ionicons name="heart" size={18} color="white" />
+            <EvaIcon name="heart" variant="outline" size={18} color="white" />
             <Body style={{ color: COLORS.white, fontWeight: '600', fontFamily: FONTS.semiBold, fontSize: 16, marginLeft: 8 }}>{isAccepting ? 'Accepting...' : 'Accept'}</Body>
           </StyledTouchableOpacity>
         </StyledView>

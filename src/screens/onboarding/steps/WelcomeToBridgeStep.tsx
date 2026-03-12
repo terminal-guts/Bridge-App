@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Image } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, H3, Body, Card } from '../../../components/ui';
-import { Ionicons } from '@expo/vector-icons';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
+import { EvaIcon } from '../../../components/icons';
 
 interface WelcomeToBridgeStepProps {
   onNext: () => void;
@@ -37,7 +37,7 @@ export const WelcomeToBridgeStep: React.FC<WelcomeToBridgeStepProps> = ({
       <Card className="mb-5 p-5">
         <StyledView className="flex-row items-start mb-2">
           <StyledView className="bg-primary-100 p-2 rounded-full mr-3">
-            <Ionicons name="people" size={24} color="#7C3AED" />
+            <EvaIcon name="people" variant="outline" size={24} color="#7C3AED" />
           </StyledView>
           <StyledView className="flex-1">
             <H3 className="mb-2">Smarter Matches, Powered By Community</H3>
@@ -52,7 +52,7 @@ export const WelcomeToBridgeStep: React.FC<WelcomeToBridgeStepProps> = ({
       <Card className="mb-5 p-5">
         <StyledView className="flex-row items-start mb-2">
           <StyledView className="bg-primary-100 p-2 rounded-full mr-3">
-            <Ionicons name="link" size={24} color="#7C3AED" />
+            <EvaIcon name="link" variant="outline" size={24} color="#7C3AED" />
           </StyledView>
           <StyledView className="flex-1">
             <H3 className="mb-2">Your People Help You Find Your Person</H3>
@@ -67,7 +67,7 @@ export const WelcomeToBridgeStep: React.FC<WelcomeToBridgeStepProps> = ({
       <Card className="mb-5 p-5">
         <StyledView className="flex-row items-start mb-2">
           <StyledView className="bg-primary-100 p-2 rounded-full mr-3">
-            <Ionicons name="trending-up" size={24} color="#7C3AED" />
+            <EvaIcon name="trending-up" variant="outline" size={24} color="#7C3AED" />
           </StyledView>
           <StyledView className="flex-1">
             <H3 className="mb-2">5 minutes a day</H3>

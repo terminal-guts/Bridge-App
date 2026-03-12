@@ -44,6 +44,10 @@ import { UNIVERSAL_PROPOSAL_RELEASE_HOUR } from '../../constants/timings';
 import { SHADOWS } from '../../theme/shadows';
 import { createLogger } from '../../utils/secureLogger';
 import { showToast } from '../../utils/toast';
+import { successHaptic, warningHaptic, errorHaptic } from '../../utils/haptics';
+import { sendNudge } from '../../services/nudgeService';
+import { getPreviousStreaks, saveCurrentStreaks, detectStreakChanges } from '../../services/streakTrackingService';
+import { notificationService } from '../../services/notificationService';
 
 const logger = createLogger('FriendsAreaView');
 
@@ -115,10 +119,34 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
     try {
       setLoading(true);
 
-      const data = await communityService.getFriendsAreaData();
+      const [data, previousStreaks] = await Promise.all([
+        communityService.getFriendsAreaData(),
+        getPreviousStreaks(),
+      ]);
+
       setFriends(data.friends);
       setPendingProposals(data.pendingProposals);
       setActiveMatch(data.activeMatch);
+
+      // Detect and announce streak changes (deaths + milestones)
+      if (data.friends.length > 0) {
+        const friendsForTracking = data.friends.map(f => ({
+          friendId: f.friendId,
+          friendName: f.friend?.firstName || 'A friend',
+          streakDays: f.streakDays || 0,
+        }));
+
+        const changes = detectStreakChanges(friendsForTracking, previousStreaks);
+        for (const change of changes) {
+          if (change.type === 'death') {
+            errorHaptic();
+            showToast.error('Streak ended', `Your ${change.previousDays}-day streak with ${change.friendName} ended.`);
+            notificationService.notifyStreakDeath(change.friendName, change.previousDays);
+          }
+        }
+
+        await saveCurrentStreaks(friendsForTracking);
+      }
 
       setLoading(false);
     } catch (error) {
@@ -168,6 +196,30 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
 
     return () => clearInterval(interval);
   }, []); // Empty deps - only run once on mount
+
+  // Streak milestone celebration — fires when a friend crosses 7/14/30 threshold
+  const handleStreakMilestone = useCallback((days: number, friendName: string) => {
+    successHaptic();
+    if (days >= 30) {
+      showToast.success('Legendary streak!', `You and ${friendName} hit ${days} days!`);
+    } else if (days >= 14) {
+      showToast.success('Hot streak!', `You and ${friendName} hit ${days} days!`);
+    } else {
+      showToast.info('Streak growing!', `You and ${friendName} hit ${days} days!`);
+    }
+  }, []);
+
+  // Nudge handler — sends push notification via edge function
+  const handleNudgeFriend = useCallback(async (friendId: string) => {
+    const friend = friends.find(f => f.friendId === friendId);
+    const friendName = friend?.friend?.firstName || 'Your friend';
+    const result = await sendNudge(friendId);
+    if (result.ok) {
+      showToast.success('Nudge sent!', `${friendName} will be reminded to vote.`);
+    } else {
+      showToast.error('Could not send nudge', 'Check your connection and try again.');
+    }
+  }, [friends]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -389,7 +441,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                         ...SHADOWS.accentRed,
                       }}
                     >
-                      <StyledText className="text-3xl">💫</StyledText>
+                      <EvaIcon name="star" variant="outline" size={32} color="#7C3AED" />
                     </StyledView>
                   </StyledView>
 
@@ -413,7 +465,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                   style={{ padding: 12 }}
                 >
                   <StyledText className="text-sm font-semibold text-rose-900 text-center">
-                    ✨ Stay tuned! Next proposal drops at {UNIVERSAL_PROPOSAL_RELEASE_HOUR}:00 UTC.
+                    Stay tuned! Next proposal drops at {UNIVERSAL_PROPOSAL_RELEASE_HOUR}:00 UTC.
                   </StyledText>
                 </StyledView>
               </StyledView>
@@ -464,6 +516,8 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                       onHelpMatch={() => handleHelpFriend(friendItem.friendId)}
                       onMessage={() => handleChatWithFriend(friendItem.friendId)}
                       onViewProfile={() => handleViewFriendProfile(friendItem.friendId)}
+                      onNudge={friendItem.variant === 'completed' ? handleNudgeFriend : undefined}
+                      onStreakMilestone={handleStreakMilestone}
                     />
                   );
 
@@ -542,7 +596,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
           /* Empty State - No friends at all */
           <StyledView className="px-4 pt-4 pb-4">
             <StyledView className="bg-blue-50 rounded-2xl p-6 items-center">
-              <StyledText className="text-3xl mb-2">👋</StyledText>
+              <EvaIcon name="smiling-face" variant="outline" size={32} color="#437FFF" style={{ marginBottom: 8 }} />
               <StyledText className="text-base font-medium text-neutral-700 text-center mb-4">
                 Add friends to help them find matches
               </StyledText>
@@ -562,7 +616,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
           friends.length === 0 &&
           !activeMatch && (
             <StyledView className="flex-1 items-center justify-center px-6" style={{ minHeight: 400 }}>
-              <StyledText className="text-5xl mb-4">✨</StyledText>
+              <EvaIcon name="star" variant="outline" size={48} color="#F59E0B" style={{ marginBottom: 16 }} />
               <StyledText className="text-xl font-semibold text-neutral-900 mb-2 text-center">
                 All Caught Up
               </StyledText>

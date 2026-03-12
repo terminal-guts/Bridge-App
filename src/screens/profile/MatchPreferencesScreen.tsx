@@ -4,7 +4,6 @@ import { styled } from 'nativewind';
 import { H3, Body, Card, Button, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile } from '../../types';
-import { Ionicons } from '@expo/vector-icons';
 import RangeSlider from 'rn-range-slider';
 import NetInfo from '@react-native-community/netinfo';
 import { getCurrentUser } from '../../services/authService';
@@ -13,6 +12,7 @@ import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { calculateMatchPreferencesCompleteness } from '../../utils/profileCompleteness';
 import { createLogger } from '../../utils/secureLogger';
 import { FONTS } from '../../constants/typography';
+import { EvaIcon } from '../../components/icons';
 
 const logger = createLogger('MatchPreferencesScreen');
 
@@ -461,7 +461,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
       <StyledView className="bg-white border-b border-neutral-200 px-4 py-3">
         <StyledView className="flex-row items-center justify-between">
           <StyledTouchableOpacity onPress={handleClose} className="mr-3">
-            <Ionicons name="close" size={24} color="#101828" />
+            <EvaIcon name="close" variant="outline" size={24} color="#101828" />
           </StyledTouchableOpacity>
           <StyledView className="flex-1">
             <H3>Match Preferences</H3>
@@ -515,7 +515,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                     Long-term relationship
                   </Body>
                 </StyledView>
-                <Ionicons name="checkmark-circle" size={24} color="#9333ea" />
+                <EvaIcon name="checkmark-circle-2" variant="outline" size={24} color="#9333ea" />
               </StyledView>
             </StyledView>
           </Card>
@@ -526,7 +526,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             <Body className="text-neutral-600 text-sm mb-4">
               Select all gender identities you're open to matching with
             </Body>
-            <StyledView className="flex-row flex-wrap gap-2">
+            <StyledView className="flex-row flex-wrap gap-2.5">
               {GENDER_OPTIONS.map((option) => {
                 const isSelected = interestedInGenders.includes(option.value);
                 return (
@@ -541,7 +541,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                         setInterestedInGenders(prev => [...prev, option.value]);
                       }
                     }}
-                    className={`px-3 py-2 rounded-lg border ${
+                    className={`px-3 py-2 rounded-full border ${
                       isSelected
                         ? 'bg-purple-500 border-purple-500'
                         : 'bg-white border-neutral-300'
@@ -568,7 +568,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                       lightHaptic();
                       setInterestedInGenders(prev => prev.filter(g => g !== customGender));
                     }}
-                    className="px-3 py-2 rounded-lg border bg-purple-500 border-purple-500"
+                    className="px-3 py-2 rounded-full border bg-purple-500 border-purple-500"
                   >
                     <Body className="text-sm text-white font-medium">{customGender}</Body>
                   </StyledTouchableOpacity>
@@ -576,7 +576,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
               {/* Other button */}
               <StyledTouchableOpacity
                 onPress={() => openCustomModal('gender')}
-                className="px-3 py-2 rounded-lg border border-dashed border-neutral-400 bg-neutral-50"
+                className="px-3 py-2 rounded-full border border-dashed border-neutral-400 bg-neutral-50"
               >
                 <Body className="text-sm text-neutral-600">+ Other</Body>
               </StyledTouchableOpacity>
@@ -643,7 +643,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             <Body className="text-neutral-600 text-sm mb-4">
               Select the ethnicities you're interested in for potential matches
             </Body>
-            <StyledView className="flex-row flex-wrap gap-2">
+            <StyledView className="flex-row flex-wrap gap-2.5">
               {ETHNICITY_OPTIONS.map(ethnicity => {
                 const isSelected = preferredEthnicities.includes(ethnicity);
                 return (
@@ -662,12 +662,12 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                     }}
                     className={`px-3 py-2 rounded-full border ${
                       isSelected
-                        ? 'bg-purple-100 border-purple-500'
+                        ? 'bg-purple-500 border-purple-500'
                         : 'bg-white border-neutral-300'
                     }`}
                   >
                     <Body className={`text-sm ${
-                      isSelected ? 'text-purple-700 font-medium' : 'text-neutral-700'
+                      isSelected ? 'text-white font-medium' : 'text-neutral-700'
                     }`}>{ethnicity}</Body>
                   </StyledTouchableOpacity>
                 );
@@ -683,9 +683,9 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                       lightHaptic();
                       setPreferredEthnicities(prev => prev.filter(e => e !== customEthnicity));
                     }}
-                    className="px-3 py-2 rounded-full border bg-purple-100 border-purple-500"
+                    className="px-3 py-2 rounded-full border bg-purple-500 border-purple-500"
                   >
-                    <Body className="text-sm text-purple-700 font-medium">{customEthnicity}</Body>
+                    <Body className="text-sm text-white font-medium">{customEthnicity}</Body>
                   </StyledTouchableOpacity>
                 ))}
               {/* Other button */}
@@ -704,7 +704,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             <Body className="text-neutral-600 text-sm mb-4">
               Select the political views you're open to matching with
             </Body>
-            <StyledView className="flex-row flex-wrap gap-2">
+            <StyledView className="flex-row flex-wrap gap-2.5">
               {POLITICAL_OPTIONS.map(option => {
                 const isSelected = preferredPolitics.includes(option.value);
                 return (
@@ -723,12 +723,12 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                     }}
                     className={`px-3 py-2 rounded-full border ${
                       isSelected
-                        ? 'bg-purple-100 border-purple-500'
+                        ? 'bg-purple-500 border-purple-500'
                         : 'bg-white border-neutral-300'
                     }`}
                   >
                     <Body className={`text-sm ${
-                      isSelected ? 'text-purple-700 font-medium' : 'text-neutral-700'
+                      isSelected ? 'text-white font-medium' : 'text-neutral-700'
                     }`}>{option.label}</Body>
                   </StyledTouchableOpacity>
                 );
@@ -746,7 +746,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             {/* Drinking */}
             <StyledView className="mb-4">
               <Body className="text-neutral-700 text-sm font-medium mb-2">Drinking</Body>
-              <StyledView className="flex-row flex-wrap gap-2">
+              <StyledView className="flex-row flex-wrap gap-2.5">
                 {LIFESTYLE_FREQUENCY_OPTIONS.map(option => {
                   const isSelected = partnerPreferences.partnerDrinking.includes(option.value);
                   return (
@@ -769,7 +769,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                           }));
                         }
                       }}
-                      className={`px-3 py-2 rounded-lg border ${
+                      className={`px-3 py-2 rounded-full border ${
                         isSelected
                           ? 'bg-purple-500 border-purple-500'
                           : 'bg-white border-neutral-300'
@@ -787,7 +787,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             {/* Cannabis */}
             <StyledView className="mb-4">
               <Body className="text-neutral-700 text-sm font-medium mb-2">Cannabis</Body>
-              <StyledView className="flex-row flex-wrap gap-2">
+              <StyledView className="flex-row flex-wrap gap-2.5">
                 {LIFESTYLE_FREQUENCY_OPTIONS.map(option => {
                   const isSelected = partnerPreferences.partnerCannabis.includes(option.value);
                   return (
@@ -810,7 +810,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                           }));
                         }
                       }}
-                      className={`px-3 py-2 rounded-lg border ${
+                      className={`px-3 py-2 rounded-full border ${
                         isSelected
                           ? 'bg-purple-500 border-purple-500'
                           : 'bg-white border-neutral-300'
@@ -828,7 +828,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             {/* Tobacco */}
             <StyledView className="mb-4">
               <Body className="text-neutral-700 text-sm font-medium mb-2">Tobacco/Vaping</Body>
-              <StyledView className="flex-row flex-wrap gap-2">
+              <StyledView className="flex-row flex-wrap gap-2.5">
                 {LIFESTYLE_FREQUENCY_OPTIONS.map(option => {
                   const isSelected = partnerPreferences.partnerTobacco.includes(option.value);
                   return (
@@ -851,7 +851,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                           }));
                         }
                       }}
-                      className={`px-3 py-2 rounded-lg border ${
+                      className={`px-3 py-2 rounded-full border ${
                         isSelected
                           ? 'bg-purple-500 border-purple-500'
                           : 'bg-white border-neutral-300'
@@ -869,7 +869,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             {/* Other Drugs */}
             <StyledView>
               <Body className="text-neutral-700 text-sm font-medium mb-2">Other Substances</Body>
-              <StyledView className="flex-row flex-wrap gap-2">
+              <StyledView className="flex-row flex-wrap gap-2.5">
                 {LIFESTYLE_FREQUENCY_OPTIONS.map(option => {
                   const isSelected = partnerPreferences.partnerOtherDrugs.includes(option.value);
                   return (
@@ -892,7 +892,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                           }));
                         }
                       }}
-                      className={`px-3 py-2 rounded-lg border ${
+                      className={`px-3 py-2 rounded-full border ${
                         isSelected
                           ? 'bg-purple-500 border-purple-500'
                           : 'bg-white border-neutral-300'

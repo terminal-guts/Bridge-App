@@ -11,8 +11,8 @@ import {
   ViewToken,
 } from 'react-native';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
+import { EvaIcon } from '../../components/icons';
 import { RootStackParamList } from '../../types';
-import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS } from '../../constants/typography';
@@ -85,7 +85,7 @@ const KarmaPill = ({ karma, size = 'medium' }: { karma: number; size?: 'small' |
   return (
     <View style={[s.karmaPillShadow, size === 'large' && s.karmaPillShadowLarge]}>
       <View style={[s.karmaPill, { paddingVertical: paddingV, paddingHorizontal: paddingH }]}>
-        <Ionicons name="star-outline" size={iconSize} color="#34C759" style={{ marginRight: 4 }} />
+        <EvaIcon name="star" variant="outline" size={iconSize} color="#34C759" style={{ marginRight: 4 }} />
         <Text style={[s.karmaPillText, { fontSize }]}>{karma} pts</Text>
       </View>
     </View>
@@ -96,7 +96,7 @@ const KarmaPill = ({ karma, size = 'medium' }: { karma: number; size?: 'small' |
 
 const FriendBadge = () => (
   <View style={s.friendBadge}>
-    <Ionicons name="people" size={10} color="#FFFFFF" />
+    <EvaIcon name="people" variant="outline" size={10} color="#FFFFFF" />
   </View>
 );
 
@@ -120,8 +120,9 @@ const RankChangeArrow = ({ change }: { change: number }) => {
   const isUp = change > 0;
   return (
     <View style={[s.rankChangeWrap, isUp ? s.rankChangeUp : s.rankChangeDown]}>
-      <Ionicons
-        name={isUp ? 'caret-up' : 'caret-down'}
+      <EvaIcon
+        name={isUp ? 'arrow-upward' : 'arrow-downward'}
+        variant="outline"
         size={10}
         color={isUp ? '#16A34A' : '#DC2626'}
       />
@@ -283,12 +284,12 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
   const renderHeader = (showInfo = false) => (
     <View style={s.header}>
       <TouchableOpacity onPress={handleBack} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-        <Ionicons name="arrow-back" size={24} color="#101828" />
+        <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
       </TouchableOpacity>
       <Text style={s.headerTitle}>Leaderboard</Text>
       {showInfo ? (
         <TouchableOpacity onPress={handleInfo} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Ionicons name="information-circle-outline" size={24} color="#667085" />
+          <EvaIcon name="info" variant="outline" size={24} color="#667085" />
         </TouchableOpacity>
       ) : (
         <View style={{ width: 24 }} />
@@ -312,7 +313,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
       <ScreenWrapper>
         {renderHeader()}
         <View style={s.emptyState}>
-          <Ionicons name="cloud-offline-outline" size={64} color="#D0D5DD" />
+          <EvaIcon name="wifi-off" variant="outline" size={64} color="#D0D5DD" />
           <Text style={s.emptyTitle}>Something went wrong</Text>
           <Text style={s.emptyBody}>{error}</Text>
           <TouchableOpacity style={s.retryBtn} onPress={handleRetry}>
@@ -328,7 +329,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
       <ScreenWrapper>
         {renderHeader()}
         <View style={s.emptyState}>
-          <Ionicons name="trophy-outline" size={64} color="#D0D5DD" />
+          <EvaIcon name="award" variant="outline" size={64} color="#D0D5DD" />
           <Text style={s.emptyTitle}>No Rankings Yet</Text>
           <Text style={s.emptyBody}>Be the first to earn karma and climb the leaderboard!</Text>
         </View>
@@ -363,7 +364,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
 
         {/* Countdown */}
         <View style={s.countdownRow}>
-          <Ionicons name="time-outline" size={14} color="#667085" />
+          <EvaIcon name="clock" variant="outline" size={14} color="#667085" />
           <Text style={s.countdownText}>
             Resets in {countdown.days}d {countdown.hours}h {countdown.minutes}m
           </Text>

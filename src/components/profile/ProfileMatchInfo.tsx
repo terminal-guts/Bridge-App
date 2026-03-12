@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Image } from 'react-native';
 import { Check } from 'lucide-react-native';
+import { EvaIcon } from '../icons';
 import { FONTS } from '../../constants/typography';
 
 export default function ProfileMatchInfo() {
@@ -16,7 +17,7 @@ export default function ProfileMatchInfo() {
       <View className="flex flex-row items-center gap-1.5">
         <View className="relative w-5 h-5 flex flex-row items-center justify-center">
           <View className="absolute z-10 w-full h-full rounded-full border-[1.5px] border-[#00C8B3] flex items-center justify-center">
-            <Text style={{ fontSize: 10 }}>💗</Text>
+            <EvaIcon name="heart" variant="outline" size={10} color="#FF7A5C" />
           </View>
         </View>
         <Text className="text-sm text-[#010101]/70" style={{ fontFamily: FONTS.regular }}>

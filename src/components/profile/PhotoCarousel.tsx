@@ -21,9 +21,9 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
 import { Body } from '../ui';
 import { lightHaptic } from '../../utils/haptics';
+import { EvaIcon } from '../icons';
 
 interface Photo {
   url: string;
@@ -131,7 +131,7 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({
                 accessibilityLabel="Close"
                 accessibilityRole="button"
               >
-                <Ionicons name="close" size={24} color="white" />
+                <EvaIcon name="close" variant="outline" size={24} color="white" />
               </StyledTouchableOpacity>
             </StyledView>
           </StyledSafeAreaView>

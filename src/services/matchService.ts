@@ -186,94 +186,6 @@ export const getUserMatches = async (): Promise<ApiResponse<Match[]>> => {
 };
 
 /**
- * Accept a match proposal
- */
-export const acceptMatch = async (matchId: string): Promise<ApiResponse<Match>> => {
-  try {
-    const { data, error } = await supabase.functions.invoke('accept_match', {
-      body: { match_id: matchId },
-    });
-
-    if (error) {
-      return {
-        ok: false,
-        error: {
-          code: 'ACCEPT_MATCH_FAILED',
-          message: error.message,
-        },
-      };
-    }
-
-    if (!data?.ok) {
-      return {
-        ok: false,
-        error: {
-          code: data?.error?.code || 'ACCEPT_MATCH_FAILED',
-          message: data?.error?.message || 'Failed to accept match',
-        },
-      };
-    }
-
-    return { ok: true, data: data.data };
-  } catch (error: any) {
-    return {
-      ok: false,
-      error: {
-        code: 'ACCEPT_MATCH_ERROR',
-        message: error.message || 'An unexpected error occurred',
-      },
-    };
-  }
-};
-
-/**
- * Reject a match proposal
- */
-export const rejectMatch = async (
-  matchId: string,
-  reason: string
-): Promise<ApiResponse<void>> => {
-  try {
-    const { data, error } = await supabase.functions.invoke('reject_match', {
-      body: {
-        match_id: matchId,
-        rejection_reason: reason,
-      },
-    });
-
-    if (error) {
-      return {
-        ok: false,
-        error: {
-          code: 'REJECT_MATCH_FAILED',
-          message: error.message,
-        },
-      };
-    }
-
-    if (!data?.ok) {
-      return {
-        ok: false,
-        error: {
-          code: data?.error?.code || 'REJECT_MATCH_FAILED',
-          message: data?.error?.message || 'Failed to reject match',
-        },
-      };
-    }
-
-    return { ok: true };
-  } catch (error: any) {
-    return {
-      ok: false,
-      error: {
-        code: 'REJECT_MATCH_ERROR',
-        message: error.message || 'An unexpected error occurred',
-      },
-    };
-  }
-};
-
-/**
  * Exit an active match
  */
 export const exitMatch = async (
@@ -282,7 +194,7 @@ export const exitMatch = async (
   exitDetails?: string
 ): Promise<ApiResponse<void>> => {
   try {
-    const { data, error } = await supabase.functions.invoke('exit_match', {
+    const { data, error } = await supabase.functions.invoke('exit-match', {
       body: {
         match_id: matchId,
         exit_reason: exitReason,

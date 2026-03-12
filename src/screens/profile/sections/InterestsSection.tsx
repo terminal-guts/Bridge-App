@@ -79,7 +79,7 @@ export const InterestsSection = React.memo<InterestsSectionProps>(({
       </Body>
 
       {/* Available Interests Grid */}
-      <StyledView className="flex-row flex-wrap gap-2 mb-4">
+      <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
         {AVAILABLE_INTERESTS.map((interest) => (
           <SimpleChip
             key={interest}

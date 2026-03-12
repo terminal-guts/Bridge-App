@@ -74,7 +74,7 @@ export const ValuesSection = React.memo<ValuesSectionProps>(({
       </Body>
 
       {/* Available Values Grid */}
-      <StyledView className="flex-row flex-wrap gap-2 mb-4">
+      <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
         {AVAILABLE_VALUES.map((value) => (
           <SimpleChip
             key={value}

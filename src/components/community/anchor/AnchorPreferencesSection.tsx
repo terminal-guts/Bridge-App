@@ -9,9 +9,9 @@
 import React from 'react';
 import { View, Text, Image, ScrollView } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
 import { UserProfile, Photo } from '../../../types';
 import { FONTS } from '../../../constants/typography';
+import { EvaIcon } from '../../icons';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -107,7 +107,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
           <StyledView style={{ width: '100%' }}>
             {/* Age Range */}
             <StyledView className="flex-row items-center py-2">
-              <Ionicons name="calendar-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
+              <EvaIcon name="calendar" variant="outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
               <StyledText className="text-neutral-900 flex-1">
                 Age: {anchor.preferences?.ageMin || 18} - {anchor.preferences?.ageMax || 99}
               </StyledText>
@@ -115,7 +115,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
 
             {/* Gender Preference */}
             <StyledView className="flex-row items-center py-2">
-              <Ionicons name="person-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
+              <EvaIcon name="person" variant="outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
               <StyledText className="text-neutral-900 flex-1">
                 {formatGenderPreference()}
               </StyledText>
@@ -123,7 +123,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
 
             {/* Height Range */}
             <StyledView className="flex-row items-center py-2">
-              <Ionicons name="resize-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
+              <EvaIcon name="maximize" variant="outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
               <StyledText className="text-neutral-900 flex-1">
                 Height: {formatHeightRange()}
               </StyledText>
@@ -132,7 +132,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
             {/* Ethnicity Preferences */}
             {anchor.preferredEthnicities && anchor.preferredEthnicities.length > 0 && (
               <StyledView className="flex-row items-start py-2">
-                <Ionicons name="globe-outline" size={18} color="#64748B" style={{ marginRight: 12, marginTop: 2 }} />
+                <EvaIcon name="globe" variant="outline" size={18} color="#64748B" style={{ marginRight: 12, marginTop: 2 }} />
                 <StyledView className="flex-1 flex-row flex-wrap">
                   {anchor.preferredEthnicities.map((ethnicity: string, index: number) => (
                     <StyledView
@@ -161,7 +161,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
             <StyledView style={{ width: '100%' }}>
               {anchor.partnerLifestylePreferences?.drinking && (
                 <StyledView className="flex-row items-center py-2">
-                  <Ionicons name="wine-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
+                  <EvaIcon name="droplet" variant="outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
                   <StyledText className="text-neutral-900 flex-1">
                     Drinking: {formatFrequency(toSingleValue(anchor.partnerLifestylePreferences.drinking))}
                   </StyledText>
@@ -170,7 +170,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
 
               {anchor.partnerLifestylePreferences?.cannabis && (
                 <StyledView className="flex-row items-center py-2">
-                  <Ionicons name="leaf-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
+                  <EvaIcon name="activity" variant="outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
                   <StyledText className="text-neutral-900 flex-1">
                     Cannabis: {formatFrequency(toSingleValue(anchor.partnerLifestylePreferences.cannabis))}
                   </StyledText>
@@ -179,7 +179,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
 
               {anchor.partnerLifestylePreferences?.tobacco && (
                 <StyledView className="flex-row items-center py-2">
-                  <Ionicons name="ban-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
+                  <EvaIcon name="slash" variant="outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
                   <StyledText className="text-neutral-900 flex-1">
                     Tobacco: {formatFrequency(toSingleValue(anchor.partnerLifestylePreferences.tobacco))}
                   </StyledText>
@@ -188,7 +188,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
 
               {anchor.partnerLifestylePreferences?.otherDrugs && (
                 <StyledView className="flex-row items-center py-2">
-                  <Ionicons name="medical-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
+                  <EvaIcon name="plus-square" variant="outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
                   <StyledText className="text-neutral-900 flex-1">
                     Other drugs: {formatFrequency(toSingleValue(anchor.partnerLifestylePreferences.otherDrugs))}
                   </StyledText>

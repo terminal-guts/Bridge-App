@@ -8,11 +8,11 @@
 import React, { useState, useRef } from 'react';
 import { View, Modal, ScrollView, Text, TouchableOpacity, Image, FlatList, Dimensions } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
 import { UserProfile } from '../../types';
 import { clampDisplayScore } from '../../utils/compatibilityHelpers';
-import { valueEmoji, interestEmoji } from '../../utils/emojiMaps';
+import { valueIconName, interestIconName } from '../../utils/emojiMaps';
 import { FONTS } from '../../constants/typography';
+import { EvaIcon, IconScoutIcon } from '../icons';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -104,7 +104,7 @@ export function ProfileView({
             onPress={onClose}
             style={{ flexDirection: 'row', alignItems: 'center' }}
           >
-            <Ionicons name="arrow-back" size={28} color="#4A4540" />
+            <EvaIcon name="arrow-back" variant="outline" size={28} color="#4A4540" />
             <StyledText style={{ fontSize: 16, fontFamily: FONTS.regular, color: '#4A4540', marginLeft: 8 }}>Back</StyledText>
           </StyledTouchableOpacity>
         </StyledView>
@@ -267,7 +267,7 @@ export function ProfileView({
                 paddingVertical: 8,
                 borderRadius: 20,
               }}>
-                <Ionicons name="person" size={16} color="#7C3AED" style={{ marginRight: 6 }} />
+                <EvaIcon name="person" variant="outline" size={16} color="#7C3AED" style={{ marginRight: 6 }} />
                 <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                   {capitalize(profile.gender[0])}
                 </StyledText>
@@ -284,7 +284,7 @@ export function ProfileView({
                 paddingVertical: 8,
                 borderRadius: 20,
               }}>
-                <Ionicons name="chatbubble-outline" size={16} color="#EC4899" style={{ marginRight: 6 }} />
+                <EvaIcon name="message-circle" variant="outline" size={16} color="#EC4899" style={{ marginRight: 6 }} />
                 <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                   {profile.pronouns.replace('_', '/')}
                 </StyledText>
@@ -300,7 +300,7 @@ export function ProfileView({
               paddingVertical: 8,
               borderRadius: 20,
             }}>
-              <Ionicons name="calendar-outline" size={16} color="#EC4899" style={{ marginRight: 6 }} />
+              <EvaIcon name="calendar" variant="outline" size={16} color="#EC4899" style={{ marginRight: 6 }} />
               <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                 {profile.age}
               </StyledText>
@@ -316,7 +316,7 @@ export function ProfileView({
                 paddingVertical: 8,
                 borderRadius: 20,
               }}>
-                <Ionicons name="resize-outline" size={16} color="#10B981" style={{ marginRight: 6 }} />
+                <EvaIcon name="maximize" variant="outline" size={16} color="#10B981" style={{ marginRight: 6 }} />
                 <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                   {formatHeight(profile.height)}
                 </StyledText>
@@ -333,7 +333,7 @@ export function ProfileView({
                 paddingVertical: 8,
                 borderRadius: 20,
               }}>
-                <Ionicons name="briefcase" size={16} color="#3B82F6" style={{ marginRight: 6 }} />
+                <EvaIcon name="briefcase" variant="outline" size={16} color="#3B82F6" style={{ marginRight: 6 }} />
                 <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                   {profile.currentJob}
                 </StyledText>
@@ -350,7 +350,7 @@ export function ProfileView({
                 paddingVertical: 8,
                 borderRadius: 20,
               }}>
-                <Ionicons name="globe-outline" size={16} color="#8B5CF6" style={{ marginRight: 6 }} />
+                <EvaIcon name="globe" variant="outline" size={16} color="#8B5CF6" style={{ marginRight: 6 }} />
                 <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                   {profile.ethnicity}
                 </StyledText>
@@ -367,7 +367,7 @@ export function ProfileView({
                 paddingVertical: 8,
                 borderRadius: 20,
               }}>
-                <Ionicons name="moon-outline" size={16} color="#6366F1" style={{ marginRight: 6 }} />
+                <EvaIcon name="moon" variant="outline" size={16} color="#6366F1" style={{ marginRight: 6 }} />
                 <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                   {profile.religion}
                 </StyledText>
@@ -384,7 +384,7 @@ export function ProfileView({
                 paddingVertical: 8,
                 borderRadius: 20,
               }}>
-                <Ionicons name="flag-outline" size={16} color="#EF4444" style={{ marginRight: 6 }} />
+                <EvaIcon name="flag" variant="outline" size={16} color="#EF4444" style={{ marginRight: 6 }} />
                 <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                   {capitalize(profile.politicalLeaning.replace(/_/g, ' '))}
                 </StyledText>
@@ -401,7 +401,7 @@ export function ProfileView({
                 paddingVertical: 8,
                 borderRadius: 20,
               }}>
-                <Ionicons name="time-outline" size={16} color="#4B5563" style={{ marginRight: 6 }} />
+                <EvaIcon name="clock" variant="outline" size={16} color="#4B5563" style={{ marginRight: 6 }} />
                 <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                   Joined {new Date(profile.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </StyledText>
@@ -413,7 +413,7 @@ export function ProfileView({
           {profile.interests && profile.interests.length > 0 && (
             <StyledView style={{ marginBottom: 20 }}>
               <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <Ionicons name="star" size={18} color="#F59E0B" style={{ marginRight: 6 }} />
+                <EvaIcon name="star" variant="outline" size={18} color="#F59E0B" style={{ marginRight: 6 }} />
                 <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600', fontFamily: FONTS.semiBold }}>Interests</StyledText>
               </StyledView>
               <StyledView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
@@ -421,14 +421,17 @@ export function ProfileView({
                   <StyledView
                     key={index}
                     style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
                       backgroundColor: '#FEF3C7',
                       paddingHorizontal: 12,
                       paddingVertical: 6,
                       borderRadius: 16,
                     }}
                   >
+                    <IconScoutIcon name={interestIconName(interest)} size={14} style={{ marginRight: 3 }} />
                     <StyledText style={{ fontSize: 13, color: '#B45309', fontWeight: '500', fontFamily: FONTS.medium }}>
-                      {interestEmoji(interest)} {interest}
+                      {interest}
                     </StyledText>
                   </StyledView>
                 ))}
@@ -440,7 +443,7 @@ export function ProfileView({
           {profile.values && profile.values.length > 0 && (
             <StyledView style={{ marginBottom: 20 }}>
               <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <Ionicons name="diamond" size={18} color="#10B981" style={{ marginRight: 6 }} />
+                <EvaIcon name="award" variant="outline" size={18} color="#10B981" style={{ marginRight: 6 }} />
                 <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600', fontFamily: FONTS.semiBold }}>Values</StyledText>
               </StyledView>
               <StyledView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
@@ -448,14 +451,17 @@ export function ProfileView({
                   <StyledView
                     key={index}
                     style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
                       backgroundColor: '#D1FAE5',
                       paddingHorizontal: 12,
                       paddingVertical: 6,
                       borderRadius: 16,
                     }}
                   >
+                    <IconScoutIcon name={valueIconName(value)} size={14} style={{ marginRight: 3 }} />
                     <StyledText style={{ fontSize: 13, color: '#065F46', fontWeight: '500', fontFamily: FONTS.medium }}>
-                      {valueEmoji(value)} {value}
+                      {value}
                     </StyledText>
                   </StyledView>
                 ))}
@@ -467,7 +473,7 @@ export function ProfileView({
           {showDeepQuestions && profile.deepQuestions && profile.deepQuestions.length > 0 && (
             <StyledView style={{ marginBottom: 20 }}>
               <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                <Ionicons name="chatbox-ellipses" size={18} color="#7C3AED" style={{ marginRight: 6 }} />
+                <EvaIcon name="message-square" variant="outline" size={18} color="#7C3AED" style={{ marginRight: 6 }} />
                 <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600', fontFamily: FONTS.semiBold }}>About Me</StyledText>
               </StyledView>
 
@@ -484,18 +490,18 @@ export function ProfileView({
           {/* Family */}
           <StyledView style={{ marginBottom: 20 }}>
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <Ionicons name="people" size={18} color="#F59E0B" style={{ marginRight: 6 }} />
+              <EvaIcon name="people" variant="outline" size={18} color="#F59E0B" style={{ marginRight: 6 }} />
               <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600', fontFamily: FONTS.semiBold }}>Family</StyledText>
             </StyledView>
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-              <Ionicons name="person-outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
+              <EvaIcon name="person" variant="outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
               <StyledText style={{ fontSize: 14, fontFamily: FONTS.regular, color: '#4A4540' }}>
                 {profile.hasChildren === 'no' ? 'No children' : profile.hasChildren === 'yes' ? 'Has children' : 'Prefer not to say'}
               </StyledText>
             </StyledView>
             {profile.familyPlans && (
               <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="heart-outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
+                <EvaIcon name="heart" variant="outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
                 <StyledText style={{ fontSize: 14, fontFamily: FONTS.regular, color: '#4A4540' }}>
                   {profile.familyPlans === 'want_children' ? 'Want children someday' :
                     profile.familyPlans === 'open_to_children' ? 'Open to children' :
@@ -508,7 +514,7 @@ export function ProfileView({
           {/* Lifestyle */}
           <StyledView style={{ marginBottom: 20 }}>
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <Ionicons name="leaf" size={18} color="#8B5CF6" style={{ marginRight: 6 }} />
+              <EvaIcon name="activity" variant="outline" size={18} color="#8B5CF6" style={{ marginRight: 6 }} />
               <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600', fontFamily: FONTS.semiBold }}>Lifestyle</StyledText>
             </StyledView>
 
@@ -520,7 +526,7 @@ export function ProfileView({
                 marginBottom: 10,
               }}>
                 <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="wine" size={16} color="#78716C" style={{ marginRight: 8 }} />
+                  <EvaIcon name="droplet" variant="outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
                   <StyledText style={{ fontSize: 14, fontFamily: FONTS.regular, color: '#4A4540' }}>Drinking</StyledText>
                 </StyledView>
                 <StyledText style={{ fontSize: 14, color: '#78716C', fontWeight: '500', fontFamily: FONTS.medium }}>
@@ -537,7 +543,7 @@ export function ProfileView({
                 marginBottom: 10,
               }}>
                 <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="leaf-outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
+                  <EvaIcon name="activity" variant="outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
                   <StyledText style={{ fontSize: 14, fontFamily: FONTS.regular, color: '#4A4540' }}>Cannabis</StyledText>
                 </StyledView>
                 <StyledText style={{ fontSize: 14, color: '#78716C', fontWeight: '500', fontFamily: FONTS.medium }}>
@@ -553,7 +559,7 @@ export function ProfileView({
                 alignItems: 'center',
               }}>
                 <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="fitness-outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
+                  <EvaIcon name="activity" variant="outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
                   <StyledText style={{ fontSize: 14, fontFamily: FONTS.regular, color: '#4A4540' }}>Tobacco</StyledText>
                 </StyledView>
                 <StyledText style={{ fontSize: 14, color: '#78716C', fontWeight: '500', fontFamily: FONTS.medium }}>

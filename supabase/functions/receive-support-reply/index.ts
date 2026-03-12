@@ -138,9 +138,9 @@ serve(async (req: Request) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             to: settings.push_token,
-            title: 'Bridge Team',
-            body: 'New message from Bridge support',
-            data: { screen: 'SupportChat' },
+            title: 'Bridge Support',
+            body: 'You have a new reply from our team. Tap to read it.',
+            data: { type: 'support_reply', screen: 'SupportChat' },
           }),
         });
       }

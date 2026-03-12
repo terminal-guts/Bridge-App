@@ -11,11 +11,11 @@
 import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
 import { H2, H3, Body, Card } from '../ui';
 import { UserProfile } from '../../types';
 import { calculateProfileStrengthBreakdown } from '../../utils/profileCompleteness';
 import { createLogger } from '../../utils/secureLogger';
+import { EvaIcon } from '../icons';
 
 const logger = createLogger('ProfileStrengthDashboard');
 
@@ -27,7 +27,7 @@ interface ProfileStrengthDashboardProps {
 
 interface SectionScore {
   name: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: keyof typeof Record<string, number>;
   score: number;
   maxScore: number;
   suggestions: string[];
@@ -81,7 +81,7 @@ const calculateStrength = (profile: UserProfile): {
 
   sections.push({
     name: 'About Me',
-    icon: 'person-outline',
+    icon: 'person',
     score: breakdown.sections.aboutMe.score,
     maxScore: breakdown.sections.aboutMe.maxScore,
     suggestions: aboutSuggestions.slice(0, 2),
@@ -106,7 +106,7 @@ const calculateStrength = (profile: UserProfile): {
 
   sections.push({
     name: 'Match Preferences',
-    icon: 'heart-outline',
+    icon: 'heart',
     score: breakdown.sections.matchPreferences.score,
     maxScore: breakdown.sections.matchPreferences.maxScore,
     suggestions: preferencesSuggestions.slice(0, 2),
@@ -125,7 +125,7 @@ const calculateStrength = (profile: UserProfile): {
 
   sections.push({
     name: 'Photos',
-    icon: 'camera-outline',
+    icon: 'camera',
     score: breakdown.sections.photos.score,
     maxScore: breakdown.sections.photos.maxScore,
     suggestions: photosSuggestions,
@@ -148,7 +148,7 @@ const calculateStrength = (profile: UserProfile): {
 
   sections.push({
     name: 'Questions',
-    icon: 'chatbubble-ellipses-outline',
+    icon: 'message-circle',
     score: breakdown.sections.deepQuestions.score,
     maxScore: breakdown.sections.deepQuestions.maxScore,
     suggestions: questionsSuggestions.slice(0, 2),
@@ -200,8 +200,9 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
               elevation: 4,
             }}
           >
-            <Ionicons
-              name={isComplete ? 'checkmark-circle' : 'analytics'}
+            <EvaIcon
+              name={isComplete ? 'checkmark-circle-2' : 'bar-chart'}
+              variant="outline"
               size={18}
               color={isComplete ? '#10B981' : '#437FFF'}
             />
@@ -234,12 +235,12 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
             >
               {/* Category Icon & Name */}
               <StyledView className="flex-row items-center mb-2">
-                <Ionicons name={section.icon} size={16} color={section.color} />
+                <EvaIcon name={section.icon} variant="outline" size={16} color={section.color} />
                 <Body className="text-neutral-900 font-semibold text-xs ml-1.5 flex-1" numberOfLines={1}>
                   {section.name}
                 </Body>
                 {sectionComplete && (
-                  <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                  <EvaIcon name="checkmark-circle-2" variant="outline" size={14} color="#10B981" />
                 )}
               </StyledView>
 

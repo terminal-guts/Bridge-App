@@ -12,10 +12,10 @@ import React, { useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Image, Animated } from 'react-native';
 import { styled } from 'nativewind';
 import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
 import { Proposal, UserProfile, Endorsement } from '../../../types/community';
 import { KarmaBadge } from '../karma/KarmaBadge';
 import { FONTS } from '../../../constants/typography';
+import { EvaIcon } from '../../icons';
 
 const StyledView = styled(View) as typeof View;
 const StyledText = styled(Text) as typeof Text;
@@ -206,7 +206,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
       {/* Highly Recommended Badge */}
       {highlyRecommended && (
         <StyledView className="flex-row items-center mb-3 px-2 py-1.5 bg-amber-50 rounded-lg self-start">
-          <Ionicons name="star" size={16} color="#F59E0B" />
+          <EvaIcon name="star" variant="outline" size={16} color="#F59E0B" />
           <StyledText className="text-xs font-semibold text-amber-700 ml-1" style={{ fontFamily: FONTS.semiBold }}>
             Highly Recommended
           </StyledText>

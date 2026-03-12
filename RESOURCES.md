@@ -25,7 +25,6 @@
 - [NFX — Network Effects Bible](https://www.nfx.com/post/network-effects-bible/) — Comprehensive guide to 16 types of network effects
 - [NFX — Network Effects Manual](https://www.nfx.com/post/network-effects-manual/) — Tactical playbook for building network effects
 - [a16z — The Dynamics of Network Effects](https://a16z.com/the-dynamics-of-network-effects/) — Why network effects (including in dating apps) are more fragile than assumed
-- [Engagement Hierarchy (Sarah Tavel)](https://sarahtavel.medium.com/the-hierarchy-of-engagement-expanded-648329d60804) — Core → Retain → Self-perpetuating framework
 - [a16z — Social Strikes Back](https://a16z.com/social-strikes-back/) — Why social apps keep winning with new models
 - [Brian Balfour — Four Fits Framework](https://brianbalfour.com/essays/hubspot-growth-framework-100m) — Market-product, product-channel, channel-model, model-market fit
 - [Reforge — Retention & Engagement](https://www.reforge.com/blog/retention-engagement-growth-silent-killer) — Why retention is the silent killer of growth
@@ -38,7 +37,6 @@
 - [Logan Ury — How Not to Die Alone](https://www.loganury.com/) — Behavioral science applied to dating (Hinge's Director of Relationship Science)
 - [GWI — Dating App Consumer Insights](https://www.gwi.com/reports/online-dating) — User demographics, motivations, and behavior data
 - [Choice Overload in Dating (Psychology Today)](https://www.psychologytoday.com/us/blog/romantically-attached/202410/too-many-fish-in-the-sea-choice-overload-in-dating) — Research on how excessive options create decision paralysis — validates Bridge's single-proposal model
-- [Coffee Meets Bagel — Curated Matching with AI (CIO Dive)](https://www.ciodive.com/news/coffee-meets-bagel-dating-technology-ai-data/548395/) — How CMB uses data analytics, neural networks, and social graphs for curated daily matches
 - [How Tinder's Algorithm Works (InDepth)](https://www.indepth.work/blog/how-does-the-tinder-algorithm-work) — Technical breakdown of matching algorithms, Smart Photos AI, and the post-ELO era
 - [The Science of Two-Sided Matching (Stanford)](http://web.stanford.edu/~alroth/papers/92_HGT_Two-SidedMatching.pdf) — Foundational academic paper on matching markets by Alvin Roth
 - [Bumble S-1 Filing (SEC)](https://www.sec.gov/Archives/edgar/data/1830043/000119312521026218/d62083ds1.htm) — Bumble's IPO filing with product/market/revenue insights
@@ -71,6 +69,17 @@
 - [Community-Led Growth (Lenny's Newsletter)](https://www.lennysnewsletter.com/p/how-notion-leveraged-community-to) — How Notion built a $10B business through community, Ambassador Programs, and content marketing
 - [Dating App Safety & Chat Moderation (Stream)](https://getstream.io/blog/dating-app-safety/) — Content filtering, keyword detection, image recognition, ML threat detection — relevant to Bridge's support/reporting system
 
+## Icon Design & Visual Language
+
+- [Solid vs. Outline Icons: Which Are Faster to Recognize? (UX Movement)](https://uxmovement.com/mobile/solid-vs-outline-icons-which-are-faster-to-recognize/) — Research showing outline icons are better when distinguishing features are on edges; solid icons better for physical object silhouettes. Never mix styles on the same interface.
+- [Iconography vs Illustrations — When to Use Each (Big Human)](https://www.bighuman.com/blog/guide-to-iconography-and-illustrations) — Icons for navigation/quick-reference, illustrations for storytelling/brand personality. Bridge uses both: Eva outline for UI, IconScout illustrations for values/interests.
+- [How to Use Icons in UI Design (Noun Project)](https://blog.thenounproject.com/how-to-use-icons-in-ui-and-ux-design-best-practices/) — Best practices: consistency, labeling (88% vs 60% recognition), sizing (16/24/32px), 48px touch targets
+- [Filled vs. Outline Icons: Usability Impact (UNC Master's Paper)](https://cdr.lib.unc.edu/concern/masters_papers/6w924g35w) — Academic research on how icon style affects task performance speed and accuracy
+- [Icons as Visual Elements for Screen Design (Smashing Magazine)](https://www.smashingmagazine.com/2018/02/user-interfaces-icons-visual-elements-screen-design/) — Comprehensive guide to icon design principles, metaphor selection, and visual weight
+- [Icon Usability (Nielsen Norman Group)](https://www.nngroup.com/articles/icon-usability/) — Gold-standard research: icons + labels dramatically outperform icons alone
+- [Design Tip: Filled vs. Outlined Icons (UXD World)](https://uxdworld.com/design-tip-25/) — Quick reference for when to use each style
+- [Custom Iconography for Dating Apps (Medium)](https://medium.com/@shane.cornerus/best-ui-ux-design-practices-for-dating-app-development-in-2026-164b8a4c5e18) — 2026 dating app UI/UX trends: custom icon sets reinforce branding over generic libraries
+
 ## React Native, Expo & Mobile Performance
 
 - [React Native Performance (Official Docs)](https://reactnative.dev/docs/performance) — 60 FPS targets, JS/UI thread profiling, FlatList optimization, native driver animations
@@ -101,8 +110,6 @@
 
 ### E2E Testing
 - [Expo + Maestro E2E](https://docs.expo.dev/eas/workflows/examples/e2e-tests/) — Official guide for Maestro E2E on EAS Workflows CI
-- [Maestro for React Native (real-world)](https://addjam.com/blog/2026-02-18/our-experience-adding-e2e-testing-react-native-maestro/) — Real-world experience adding Maestro to a RN app
-- [Mobile E2E Framework Comparison](https://www.qawolf.com/blog/the-best-mobile-e2e-testing-frameworks-in-2025-strengths-tradeoffs-and-use-cases) — Detox vs Maestro vs Appium tradeoff analysis
 - [Detox vs Maestro](https://www.getpanto.ai/blog/detox-vs-maestro) — Detailed comparison: setup, flakiness, speed, learning curve
 
 ### Supabase Backend Testing

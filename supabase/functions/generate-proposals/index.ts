@@ -18,11 +18,136 @@ Deno.serve(async (req: Request) => {
     const maxProposals = body.max_proposals || MAX_PROPOSALS_PER_RUN;
     const supabase = createAdminClient();
 
-    // 1. Fetch eligible users (not paused, profile completed, wants to be matched)
+    // ── 0. Process friend suggestions before algorithmic proposals ──────
+    const now = new Date().toISOString();
+    let friendProposalsCreated = 0;
+
+    // 0a. Expire stashed suggestions older than 5 days
+    await supabase
+      .from('friend_suggestions')
+      .update({ status: 'expired', updated_at: now })
+      .in('status', ['queued', 'stashed'])
+      .lt('expires_at', now);
+
+    // 0b. Fetch remaining queued/stashed suggestions
+    const { data: activeSuggestions } = await supabase
+      .from('friend_suggestions')
+      .select('*')
+      .in('status', ['queued', 'stashed'])
+      .order('created_at', { ascending: true });
+
+    // 0c. Check which users have deciding+ proposals (ineligible for friend suggestions)
+    const { data: decidingProposals } = await supabase
+      .from('proposals')
+      .select('user_a_id, user_b_id')
+      .in('status', ['deciding', 'candidate_match', 'confirmed', 'accepted']);
+
+    const usersInDecidingState = new Set<string>();
+    (decidingProposals || []).forEach(p => {
+      usersInDecidingState.add(p.user_a_id);
+      usersInDecidingState.add(p.user_b_id);
+    });
+
+    // Track users who get friend-suggestion proposals (block them from algorithmic generation)
+    const usersBlockedBySuggestion = new Set<string>();
+
+    // Also track all users with queued/stashed suggestions (block from algorithm even if not converted yet)
+    for (const s of (activeSuggestions || [])) {
+      usersBlockedBySuggestion.add(s.user_a_id);
+      usersBlockedBySuggestion.add(s.user_b_id);
+    }
+
+    for (const suggestion of (activeSuggestions || [])) {
+      const { user_a_id: sA, user_b_id: sB } = suggestion;
+
+      // If either user is in deciding+ state, stash the suggestion (don't discard)
+      if (usersInDecidingState.has(sA) || usersInDecidingState.has(sB)) {
+        if (suggestion.status !== 'stashed') {
+          await supabase
+            .from('friend_suggestions')
+            .update({ status: 'stashed', stashed_at: now, updated_at: now })
+            .eq('id', suggestion.id);
+        }
+        continue;
+      }
+
+      // Both users are eligible — convert suggestion to proposal
+
+      // Expire any pending algorithmic proposals for either user
+      await supabase
+        .from('proposals')
+        .update({ status: 'expired_sent', updated_at: now, expired_at: now })
+        .eq('status', 'pending')
+        .or(`user_a_id.eq.${sA},user_b_id.eq.${sA},user_a_id.eq.${sB},user_b_id.eq.${sB}`);
+
+      // Create the friend proposal
+      const votingExpires = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
+      const displayScore = Math.floor(Math.random() * 30) + 70;
+
+      const { data: created, error: insertErr } = await supabase
+        .from('proposals')
+        .insert({
+          user_a_id: sA,
+          user_b_id: sB,
+          status: 'pending',
+          compatibility_score: displayScore,
+          pool_yes_votes: 0,
+          pool_no_votes: 0,
+          friend_yes_votes: 1, // Suggester's auto-YES
+          friend_no_votes: 0,
+          user_a_decision: 'pending',
+          user_b_decision: 'pending',
+          voting_started_at: now,
+          voting_expires_at: votingExpires,
+          created_by: suggestion.suggested_by,
+          creation_type: 'friend_proposal',
+          created_at: now,
+          updated_at: now,
+        })
+        .select()
+        .single();
+
+      if (insertErr) {
+        console.error(`Error creating friend proposal from suggestion ${suggestion.id}: ${insertErr.message}`);
+        continue;
+      }
+
+      // Insert suggester's auto-YES vote
+      if (created) {
+        await supabase
+          .from('proposal_votes')
+          .insert({
+            proposal_id: created.id,
+            voter_user_id: suggestion.suggested_by,
+            vote_type: 'YES',
+            is_friend_vote: true,
+            friend_of: sA,
+            created_at: now,
+          });
+
+        // Increment suggester's karma for the auto-vote
+        await supabase.rpc('increment_karma_for_vote', { p_user_id: suggestion.suggested_by });
+      }
+
+      // Mark suggestion as converted
+      await supabase
+        .from('friend_suggestions')
+        .update({
+          status: 'converted',
+          converted_proposal_id: created?.id,
+          updated_at: now,
+        })
+        .eq('id', suggestion.id);
+
+      friendProposalsCreated++;
+    }
+
+    // ── 1. Fetch eligible users (not paused, profile completed, wants to be matched) ──
     const { data: profiles, error: profilesErr } = await supabase
       .from('user_profiles')
       .select('*')
       .eq('is_paused', false)
+      .eq('is_suspended', false)
       .eq('profile_completed', true)
       .or('matchmaking_only.is.null,matchmaking_only.eq.false');
 
@@ -32,7 +157,8 @@ Deno.serve(async (req: Request) => {
     const { data: allActiveProfiles, error: activeErr } = await supabase
       .from('user_profiles')
       .select('user_id')
-      .eq('is_paused', false);
+      .eq('is_paused', false)
+      .eq('is_suspended', false);
 
     if (activeErr) throw activeErr;
     if (!profiles || profiles.length < 2) {
@@ -170,11 +296,14 @@ Deno.serve(async (req: Request) => {
         const a = eligibleProfiles[i];
         const b = eligibleProfiles[j];
 
-        // Skip users who already have an active proposal or match
+        // Skip users who already have an active proposal, match, or queued friend suggestion
         if (usersWithActiveProposal.has(a.user_id) || usersWithActiveProposal.has(b.user_id)) {
           continue;
         }
         if (matchedUsers.has(a.user_id) || matchedUsers.has(b.user_id)) {
+          continue;
+        }
+        if (usersBlockedBySuggestion.has(a.user_id) || usersBlockedBySuggestion.has(b.user_id)) {
           continue;
         }
 
@@ -386,6 +515,7 @@ Deno.serve(async (req: Request) => {
       status: 'success',
       eligible_users: eligibleProfiles.length,
       candidates_filtered: candidates.length,
+      friend_proposals_created: friendProposalsCreated,
       proposals_created: createdProposals.length,
       proposals_assigned: allToAssign.length,
       pool_voters_assigned: totalAssigned,

@@ -16,7 +16,6 @@ import { styled } from 'nativewind';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { EvaIcon } from '../../components/icons';
-import { Ionicons } from '@expo/vector-icons';
 import { H3, Body, ScreenWrapper } from '../../components/ui';
 import { OVERLAYS, SHADOWS } from '../../theme/shadows';
 import * as Clipboard from 'expo-clipboard';
@@ -696,14 +695,14 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
                   onPress={handleCopyCode}
                   hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 >
-                  <Ionicons name="copy-outline" size={16} color="#437FFF" />
+                  <EvaIcon name="copy" variant="outline" size={16} color="#437FFF" />
                 </StyledTouchableOpacity>
                 <StyledTouchableOpacity
                   className="p-1.5 rounded-full bg-primary-50 ml-1"
                   onPress={handleShareCode}
                   hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 >
-                  <Ionicons name="share-outline" size={16} color="#437FFF" />
+                  <EvaIcon name="share" variant="outline" size={16} color="#437FFF" />
                 </StyledTouchableOpacity>
               </StyledView>
               {/* Enter a code */}
@@ -791,7 +790,8 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: OVERLAYS.medium, alignItems: 'center', justifyContent: 'center', zIndex: 999 }}
         >
           <View style={{ backgroundColor: '#FFFFFF', borderRadius: 20, paddingHorizontal: 40, paddingVertical: 32, alignItems: 'center', ...SHADOWS.xxl }}>
-            <Text style={{ fontSize: 48, marginBottom: 8 }}>🎉</Text>
+            <EvaIcon name="award" variant="outline" size={48} color="#437FFF" />
+            <View style={{ marginBottom: 8 }} />
             <Text style={{ fontSize: 20, fontWeight: '700', fontFamily: FONTS.bold, color: '#0B1226', marginBottom: 4 }}>
               {celebrationCount} invite{celebrationCount === 1 ? '' : 's'} sent!
             </Text>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { View, ScrollView, FlatList, TouchableOpacity, Alert, RefreshControl, Modal, Switch, Animated, Platform } from 'react-native';
+import { View, ScrollView, FlatList, TouchableOpacity, Alert, RefreshControl, Modal, Switch, Animated, Platform, TextInput, ActionSheetIOS } from 'react-native';
 import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PROFILE_CACHE_DURATION, NAVIGATION_DELAY, AVATAR_SIZE_XL } from '../../constants';
@@ -12,7 +12,6 @@ import { MainTabParamList, UserProfile, DeepQuestionAnswer } from '../../types';
 import { signOut } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { getFriendCount } from '../../services/friendService';
-import { Ionicons } from '@expo/vector-icons';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { ProfileCompletionBanner } from '../../components/profile/ProfileCompletionBanner';
@@ -39,6 +38,7 @@ import { AnswerQuestionModal } from '../../components/profile/AnswerQuestionModa
 import { GuideTarget } from '../../components/guides';
 import { useGuide } from '../../hooks/useGuide';
 import { profileGuide } from '../../config/guides';
+import { EvaIcon } from '../../components/icons';
 
 interface ProfileScreenProps {
   navigation: NavigationProp<MainTabParamList, 'Profile'>;
@@ -159,7 +159,7 @@ const UnansweredQuestionCard = React.memo<{
           <Body className="text-neutral-900 font-medium text-sm">{question.question}</Body>
         </StyledView>
         <StyledView className="w-8 h-8 rounded-full bg-primary-100 items-center justify-center">
-          <Ionicons name="add" size={20} color="#437FFF" />
+          <EvaIcon name="plus" variant="outline" size={20} color="#437FFF" />
         </StyledView>
       </StyledView>
     </Card>
@@ -210,6 +210,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
   const [showAnswerModal, setShowAnswerModal] = useState(false);
   const [showChangeQuestionModal, setShowChangeQuestionModal] = useState(false);
   const [currentEditingQuestion, setCurrentEditingQuestion] = useState<DeepQuestionAnswer | null>(null);
+
+  // Inline editing state (frictionless — no modal needed for quick edits)
+  const [inlineEditSlot, setInlineEditSlot] = useState<number | null>(null);
+  const [inlineEditText, setInlineEditText] = useState('');
+  const [inlineEditSaving, setInlineEditSaving] = useState(false);
+  const [answerMoreExpanded, setAnswerMoreExpanded] = useState(false);
 
   // Guide system
   const { startGuideIfNeeded } = useGuide();
@@ -414,6 +420,88 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
   const handleChangeQuestion = () => {
     setShowEditAnswerModal(false);
     setShowChangeQuestionModal(true);
+  };
+
+  // Inline edit save — no modal, edits answer directly on the card
+  const handleInlineSave = async (slotIndex: number, question: DeepQuestionAnswer) => {
+    const trimmed = inlineEditText.trim();
+    if (!trimmed || !profile) return;
+    if (trimmed === question.answer) {
+      setInlineEditSlot(null);
+      return;
+    }
+    setInlineEditSaving(true);
+    try {
+      const updatedQuestions = (profile.deepQuestions || []).map(q =>
+        q.questionId === question.questionId
+          ? { ...q, answer: trimmed, updatedAt: new Date().toISOString() }
+          : q
+      );
+      const result = await updateUserProfile({ ...profile, deepQuestions: updatedQuestions });
+      if (result.ok) {
+        if (isMountedRef.current) {
+          setProfile({ ...profile, deepQuestions: updatedQuestions });
+        }
+        showToast.success('Answer updated!');
+        setInlineEditSlot(null);
+      } else {
+        Alert.alert('Error', result.error?.message || 'Failed to save');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'An unexpected error occurred');
+    } finally {
+      setInlineEditSaving(false);
+    }
+  };
+
+  // Action sheet for filled question slots (iOS-native, frictionless)
+  const showSlotActions = (slotIndex: number, question: DeepQuestionAnswer) => {
+    lightHaptic();
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Edit Answer', 'Switch Question', 'Remove', 'Cancel'],
+          destructiveButtonIndex: 2,
+          cancelButtonIndex: 3,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 0) {
+            setInlineEditText(question.answer);
+            setInlineEditSlot(slotIndex);
+          } else if (buttonIndex === 1) {
+            setSelectedSlotIndex(slotIndex);
+            setCurrentEditingQuestion(question);
+            setShowChangeQuestionModal(true);
+          } else if (buttonIndex === 2) {
+            Alert.alert('Remove Question?', 'This will remove it from your displayed profile.', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Remove', style: 'destructive', onPress: () => handleRemoveFromSlot(slotIndex) },
+            ]);
+          }
+        }
+      );
+    } else {
+      Alert.alert('Question Options', undefined, [
+        { text: 'Edit Answer', onPress: () => { setInlineEditText(question.answer); setInlineEditSlot(slotIndex); } },
+        { text: 'Switch Question', onPress: () => { setSelectedSlotIndex(slotIndex); setCurrentEditingQuestion(question); setShowChangeQuestionModal(true); } },
+        { text: 'Remove', style: 'destructive', onPress: () => handleRemoveFromSlot(slotIndex) },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
+  };
+
+  // Remove question from a slot (extracted for reuse)
+  const handleRemoveFromSlot = async (slotIndex: number) => {
+    if (!profile) return;
+    const updatedDisplayed = [...(profile.displayedQuestions || [])];
+    updatedDisplayed.splice(slotIndex, 1);
+    const result = await updateUserProfile({ displayedQuestions: updatedDisplayed });
+    if (result.ok) {
+      await loadProfile();
+      showToast.success('Question removed');
+    } else {
+      Alert.alert('Error', result.error?.message || 'Failed to remove question');
+    }
   };
 
   // PHASE 3: Handle selecting a different answered question for a slot
@@ -668,77 +756,105 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
           const slot3Question = displayedQuestionIds[2] ? answeredQuestions.find(q => q.questionId === displayedQuestionIds[2]) : null;
 
           const handleSlotClick = (slotIndex: number, currentQuestion: DeepQuestionAnswer | null | undefined) => {
-            lightHaptic();
-            setSelectedSlotIndex(slotIndex);
-
             if (currentQuestion) {
-              // Slot is filled - show edit modal
-              setCurrentEditingQuestion(currentQuestion);
-              setShowEditAnswerModal(true);
+              // Filled slot — show native action sheet (1 tap to any action)
+              showSlotActions(slotIndex, currentQuestion);
             } else {
-              // Slot is empty - show question selection modal
+              // Empty slot — show question selection
+              lightHaptic();
+              setSelectedSlotIndex(slotIndex);
               setShowQuestionSelectionModal(true);
             }
           };
 
-          const handleRemoveQuestion = async (slotIndex: number) => {
-            lightHaptic();
-            // Remove the question from this slot
-            const updatedDisplayed = [...displayedQuestionIds];
-            updatedDisplayed.splice(slotIndex, 1);
-
-            // Update backend
-            const result = await updateUserProfile({
-              displayedQuestions: updatedDisplayed,
-            });
-
-            if (result.ok) {
-              // Reload profile to reflect changes
-              await loadProfile();
-              showToast.success('Question removed');
-            } else {
-              Alert.alert('Error', result.error?.message || 'Failed to remove question');
-            }
-          };
-
-          const renderQuestionSlot = (slotIndex: number, question: DeepQuestionAnswer | null | undefined) => (
-            <StyledTouchableOpacity
-              key={slotIndex}
-              onPress={() => handleSlotClick(slotIndex, question)}
-              activeOpacity={0.7}
-              className="mb-3"
-            >
-              {question ? (
-                // Filled state
-                <Card className="bg-white border border-neutral-200">
-                  <StyledView className="flex-row items-start justify-between mb-2">
-                    <Body className="text-xs font-bold text-primary-600 uppercase">Question {slotIndex + 1}</Body>
-                    <StyledTouchableOpacity
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleRemoveQuestion(slotIndex);
+          const renderQuestionSlot = (slotIndex: number, question: DeepQuestionAnswer | null | undefined) => {
+            // Inline editing mode — TextInput directly on the card
+            if (question && inlineEditSlot === slotIndex) {
+              return (
+                <StyledView key={slotIndex} className="mb-3">
+                  <Card className="bg-white border-2 border-primary-400">
+                    <Body className="text-xs font-bold text-primary-600 uppercase mb-2">Question {slotIndex + 1}</Body>
+                    <Body className="text-neutral-900 font-semibold text-base mb-2">{question.question}</Body>
+                    <TextInput
+                      value={inlineEditText}
+                      onChangeText={setInlineEditText}
+                      multiline
+                      autoFocus
+                      style={{
+                        fontFamily: FONTS.regular,
+                        fontSize: 14,
+                        color: '#374151',
+                        backgroundColor: '#F9FAFB',
+                        borderRadius: 8,
+                        padding: 12,
+                        minHeight: 80,
+                        textAlignVertical: 'top',
+                        borderWidth: 1,
+                        borderColor: '#D1D5DB',
                       }}
-                      className="w-6 h-6 items-center justify-center"
-                    >
-                      <Ionicons name="close" size={20} color="#6B7280" />
-                    </StyledTouchableOpacity>
-                  </StyledView>
-                  <Body className="text-neutral-900 font-semibold text-base mb-2">{question.question}</Body>
-                  <Body className="text-neutral-600 text-sm" numberOfLines={2}>{question.answer}</Body>
-                </Card>
-              ) : (
-                // Empty state (dashed border)
-                <Card className="bg-neutral-50 border-2 border-dashed border-neutral-300">
-                  <StyledView className="items-center py-8">
-                    <Body className="text-neutral-500 font-medium mb-3">Select a question</Body>
-                    <StyledView className="w-12 h-12 rounded-full bg-primary-100 items-center justify-center">
-                      <Ionicons name="add" size={24} color="#437FFF" />
+                    />
+                    <StyledView className="flex-row justify-end mt-3" style={{ gap: 8 }}>
+                      <StyledTouchableOpacity
+                        onPress={() => setInlineEditSlot(null)}
+                        className="px-4 py-2 rounded-lg bg-neutral-100"
+                      >
+                        <Body className="text-neutral-600 text-sm font-medium">Cancel</Body>
+                      </StyledTouchableOpacity>
+                      <StyledTouchableOpacity
+                        onPress={() => handleInlineSave(slotIndex, question)}
+                        disabled={inlineEditSaving || !inlineEditText.trim()}
+                        className="px-4 py-2 rounded-lg bg-primary-500"
+                        style={{ opacity: inlineEditSaving || !inlineEditText.trim() ? 0.5 : 1 }}
+                      >
+                        <Body className="text-white text-sm font-medium">
+                          {inlineEditSaving ? 'Saving...' : 'Save'}
+                        </Body>
+                      </StyledTouchableOpacity>
                     </StyledView>
-                  </StyledView>
-                </Card>
-              )}
-            </StyledTouchableOpacity>
-          );
+                  </Card>
+                </StyledView>
+              );
+            }
+
+            return (
+              <StyledTouchableOpacity
+                key={slotIndex}
+                onPress={() => handleSlotClick(slotIndex, question)}
+                activeOpacity={0.7}
+                className="mb-3"
+              >
+                {question ? (
+                  // Filled state
+                  <Card className="bg-white border border-neutral-200">
+                    <StyledView className="flex-row items-start justify-between mb-2">
+                      <Body className="text-xs font-bold text-primary-600 uppercase">Question {slotIndex + 1}</Body>
+                      <StyledTouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          showSlotActions(slotIndex, question);
+                        }}
+                        className="w-6 h-6 items-center justify-center"
+                      >
+                        <EvaIcon name="more-horizontal" variant="outline" size={20} color="#6B7280" />
+                      </StyledTouchableOpacity>
+                    </StyledView>
+                    <Body className="text-neutral-900 font-semibold text-base mb-2">{question.question}</Body>
+                    <Body className="text-neutral-600 text-sm" numberOfLines={2}>{question.answer}</Body>
+                  </Card>
+                ) : (
+                  // Empty state (dashed border)
+                  <Card className="bg-neutral-50 border-2 border-dashed border-neutral-300">
+                    <StyledView className="items-center py-6">
+                      <StyledView className="w-10 h-10 rounded-full bg-primary-100 items-center justify-center mb-2">
+                        <EvaIcon name="plus" variant="outline" size={20} color="#437FFF" />
+                      </StyledView>
+                      <Body className="text-neutral-500 font-medium text-sm">Tap to add a question</Body>
+                    </StyledView>
+                  </Card>
+                )}
+              </StyledTouchableOpacity>
+            );
+          };
 
           return (
             <>
@@ -815,116 +931,140 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
 
                 return (
                   <>
-                    {/* Show separator only when 3 questions are displayed */}
-                    {displayedQuestionIds.length === 3 && (
+                    {/* Answer More accordion — collapsible to reduce scroll fatigue */}
+                    {(unansweredQuestions.length > 0 || nonDisplayedAnswers.length > 0) && (
                       <>
-                        {/* Separator */}
-                        <StyledView className="flex-row items-center my-6">
-                          <StyledView className="flex-1 h-px bg-neutral-200" />
-                          <Body className="text-neutral-400 text-xs mx-3 uppercase tracking-wide">Answer More</Body>
-                          <StyledView className="flex-1 h-px bg-neutral-200" />
-                        </StyledView>
+                        {/* Separator / Toggle */}
+                        <StyledTouchableOpacity
+                          onPress={() => {
+                            lightHaptic();
+                            setAnswerMoreExpanded(!answerMoreExpanded);
+                          }}
+                          activeOpacity={0.7}
+                          className="my-6"
+                        >
+                          <StyledView className="flex-row items-center">
+                            <StyledView className="flex-1 h-px bg-neutral-200" />
+                            <StyledView className="flex-row items-center mx-3">
+                              <Body className="text-neutral-400 text-xs uppercase tracking-wide mr-1">
+                                Answer More
+                              </Body>
+                              <EvaIcon
+                                name={answerMoreExpanded ? 'arrow-ios-upward' : 'arrow-ios-downward'}
+                                variant="outline"
+                                size={14}
+                                color="#9CA3AF"
+                              />
+                            </StyledView>
+                            <StyledView className="flex-1 h-px bg-neutral-200" />
+                          </StyledView>
+                        </StyledTouchableOpacity>
 
-                        <StyledView className="mb-4">
-                          <H3 className="mb-2">Improve Your Matches</H3>
-                          <Body className="text-neutral-600 text-xs mb-4">
-                            Answer more questions to help our algorithm find better matches. These won't display on your profile.
-                          </Body>
-                        </StyledView>
+                        {answerMoreExpanded && (
+                          <>
+                            <StyledView className="mb-4">
+                              <H3 className="mb-2">Improve Your Matches</H3>
+                              <Body className="text-neutral-600 text-xs mb-4">
+                                Answer more questions to help our algorithm find better matches. These won't display on your profile.
+                              </Body>
+                            </StyledView>
+
+                            {/* Unanswered Questions */}
+                            {unansweredQuestions.length > 0 && (
+                              <>
+                                <Body className="text-neutral-700 font-semibold text-sm mb-3">
+                                  Unanswered ({unansweredQuestions.length})
+                                </Body>
+                                <FlatList
+                                  data={unansweredQuestions}
+                                  keyExtractor={(item) => `unanswered-${item.id}`}
+                                  renderItem={({ item }) => (
+                                    <UnansweredQuestionCard
+                                      question={item}
+                                      onPress={() => {
+                                        mediumHaptic();
+                                        handleAnswerMoreQuestion(item.id, item.question);
+                                      }}
+                                    />
+                                  )}
+                                  scrollEnabled={false}
+                                  removeClippedSubviews={true}
+                                  maxToRenderPerBatch={10}
+                                  updateCellsBatchingPeriod={50}
+                                  initialNumToRender={10}
+                                  windowSize={5}
+                                />
+                              </>
+                            )}
+
+                            {/* Previously Answered (Not Displayed) */}
+                            {nonDisplayedAnswers.length > 0 && (
+                              <>
+                                <Body className="text-neutral-700 font-semibold text-sm mb-3 mt-4">
+                                  Answered but Not Displayed ({nonDisplayedAnswers.length})
+                                </Body>
+                                <FlatList
+                                  data={nonDisplayedAnswers}
+                                  keyExtractor={(item) => `answered-${item.questionId}`}
+                                  renderItem={({ item }) => (
+                                    <AnsweredQuestionCard
+                                      question={item}
+                                      onPress={() => {
+                                        lightHaptic();
+                                        setCurrentEditingQuestion(item);
+                                        setShowEditAnswerModal(true);
+                                      }}
+                                    />
+                                  )}
+                                  scrollEnabled={false}
+                                  removeClippedSubviews={true}
+                                  maxToRenderPerBatch={10}
+                                  updateCellsBatchingPeriod={50}
+                                  initialNumToRender={10}
+                                  windowSize={5}
+                                />
+                              </>
+                            )}
+                          </>
+                        )}
                       </>
                     )}
 
-                    {/* Question lists and modal - Always available */}
-                        {/* Unanswered Questions - Virtualized with FlatList */}
-                        {unansweredQuestions.length > 0 && (
-                          <>
-                            <Body className="text-neutral-700 font-semibold text-sm mb-3">
-                              Unanswered ({unansweredQuestions.length})
+                    {/* All Questions Answered — compact horizontal card */}
+                    {unansweredQuestions.length === 0 && (
+                      <Card className="bg-green-50 border border-green-200 mt-4">
+                        <StyledView className="flex-row items-center">
+                          <EvaIcon name="checkmark-circle-2" variant="outline" size={28} color="#10B981" />
+                          <StyledView className="ml-3 flex-1">
+                            <Body className="text-green-900 font-bold text-sm">All Done!</Body>
+                            <Body className="text-green-700 text-xs">
+                              You've answered all 21 questions. Our algorithm has everything it needs.
                             </Body>
-                            <FlatList
-                              data={unansweredQuestions}
-                              keyExtractor={(item) => `unanswered-${item.id}`}
-                              renderItem={({ item }) => (
-                                <UnansweredQuestionCard
-                                  question={item}
-                                  onPress={() => {
-                                    mediumHaptic();
-                                    handleAnswerMoreQuestion(item.id, item.question);
-                                  }}
-                                />
-                              )}
-                              scrollEnabled={false}
-                              removeClippedSubviews={true}
-                              maxToRenderPerBatch={10}
-                              updateCellsBatchingPeriod={50}
-                              initialNumToRender={10}
-                              windowSize={5}
-                            />
-                          </>
-                        )}
+                          </StyledView>
+                        </StyledView>
+                      </Card>
+                    )}
 
-                        {/* Previously Answered (Not Displayed) - Virtualized with FlatList */}
-                        {nonDisplayedAnswers.length > 0 && (
-                          <>
-                            <Body className="text-neutral-700 font-semibold text-sm mb-3 mt-4">
-                              Answered but Not Displayed ({nonDisplayedAnswers.length})
-                            </Body>
-                            <FlatList
-                              data={nonDisplayedAnswers}
-                              keyExtractor={(item) => `answered-${item.questionId}`}
-                              renderItem={({ item }) => (
-                                <AnsweredQuestionCard
-                                  question={item}
-                                  onPress={() => {
-                                    lightHaptic();
-                                    setCurrentEditingQuestion(item);
-                                    setShowEditAnswerModal(true);
-                                  }}
-                                />
-                              )}
-                              scrollEnabled={false}
-                              removeClippedSubviews={true}
-                              maxToRenderPerBatch={10}
-                              updateCellsBatchingPeriod={50}
-                              initialNumToRender={10}
-                              windowSize={5}
-                            />
-                          </>
-                        )}
-
-                        {/* All Questions Answered */}
-                        {unansweredQuestions.length === 0 && (
-                          <Card className="bg-green-50 border border-green-200">
-                            <StyledView className="items-center py-8">
-                              <Ionicons name="checkmark-circle" size={48} color="#10B981" />
-                              <Body className="text-green-900 font-bold text-lg mt-3 mb-2">All Done!</Body>
-                              <Body className="text-green-700 text-sm text-center">
-                                You've answered all 21 questions. Our algorithm has everything it needs to find great matches for you!
-                              </Body>
-                            </StyledView>
-                          </Card>
-                        )}
-
-                        {/* Modal for answering more questions */}
-                        {selectedQuestionToAnswer && selectedSlotIndex === null && (
-                          <AnswerQuestionModal
-                            visible={showAnswerModal}
-                            question={selectedQuestionToAnswer.question}
-                            tier={1 as 1 | 2 | 3}
-                            initialAnswer=""
-                            onSave={async (answer) => {
-                              const success = await handleSaveMoreAnswer(answer);
-                              if (success) {
-                                setShowAnswerModal(false);
-                                setSelectedQuestionToAnswer(null);
-                              }
-                            }}
-                            onClose={() => {
-                              setShowAnswerModal(false);
-                              setSelectedQuestionToAnswer(null);
-                            }}
-                          />
-                        )}
+                    {/* Modal for answering more questions */}
+                    {selectedQuestionToAnswer && selectedSlotIndex === null && (
+                      <AnswerQuestionModal
+                        visible={showAnswerModal}
+                        question={selectedQuestionToAnswer.question}
+                        tier={1 as 1 | 2 | 3}
+                        initialAnswer=""
+                        onSave={async (answer) => {
+                          const success = await handleSaveMoreAnswer(answer);
+                          if (success) {
+                            setShowAnswerModal(false);
+                            setSelectedQuestionToAnswer(null);
+                          }
+                        }}
+                        onClose={() => {
+                          setShowAnswerModal(false);
+                          setSelectedQuestionToAnswer(null);
+                        }}
+                      />
+                    )}
                   </>
                 );
               })()}
@@ -993,7 +1133,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               accessibilityLabel="Preview profile"
               accessibilityRole="button"
             >
-              <Ionicons name="eye-outline" size={24} color="#7C3AED" />
+              <EvaIcon name="eye" variant="outline" size={24} color="#7C3AED" />
             </StyledTouchableOpacity>
             <StyledTouchableOpacity
               onPress={() => {
@@ -1003,7 +1143,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               accessibilityLabel="Edit profile"
               accessibilityRole="button"
             >
-              <Ionicons name="create-outline" size={24} color="#437FFF" />
+              <EvaIcon name="edit-2" variant="outline" size={24} color="#437FFF" />
             </StyledTouchableOpacity>
             <StyledTouchableOpacity
               onPress={() => {
@@ -1013,7 +1153,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               accessibilityLabel="Settings"
               accessibilityRole="button"
             >
-              <Ionicons name="settings-outline" size={24} color="#475467" />
+              <EvaIcon name="settings-2" variant="outline" size={24} color="#475467" />
             </StyledTouchableOpacity>
           </StyledView>
         </StyledView>
@@ -1054,7 +1194,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                   elevation: 5,
                 }}
               >
-                <Ionicons name="person-outline" size={40} color="#98A2B3" />
+                <EvaIcon name="person" variant="outline" size={40} color="#98A2B3" />
               </StyledView>
             )}
 
@@ -1071,7 +1211,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                   borderWidth: 1, borderColor: '#34C759',
                   borderRadius: 999, gap: 4,
                 }}>
-                <Ionicons name="star-outline" size={12} color="#34C759" />
+                <EvaIcon name="star" variant="outline" size={12} color="#34C759" />
                 <H2 className="text-xs" style={{ color: '#34C759', fontWeight: '600', fontFamily: FONTS.semiBold }}>
                   {profile.karma?.karma_points ?? 0} pts
                 </H2>
@@ -1093,7 +1233,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                 accessibilityLabel={`View ${friendCount} friend${friendCount !== 1 ? 's' : ''}`}
                 accessibilityRole="button"
               >
-                <Ionicons name="people" size={16} color="#475467" />
+                <EvaIcon name="people" variant="outline" size={16} color="#475467" />
                 <Body className="text-neutral-700 text-sm font-medium ml-1.5">
                   {friendCount} {friendCount === 1 ? 'Friend' : 'Friends'}
                 </Body>
@@ -1111,7 +1251,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                 accessibilityLabel="Add friends"
                 accessibilityRole="button"
               >
-                <Ionicons name="person-add" size={16} color="white" />
+                <EvaIcon name="person-add" variant="outline" size={16} color="white" />
                 <Body className="text-white text-sm font-medium ml-1.5">Add Friends</Body>
               </StyledTouchableOpacity>
             </StyledView>
@@ -1204,14 +1344,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
       <Modal
         visible={showQuestionSelectionModal}
         animationType="slide"
-        transparent={false}
+        presentationStyle="pageSheet"
         onRequestClose={() => setShowQuestionSelectionModal(false)}
       >
-        <ScreenWrapper>
 
           {/* Header */}
           <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center justify-between">
-            <H2 className="text-lg">Select a Question</H2>
+            <H2 className="text-lg">Pick a Question</H2>
             <StyledTouchableOpacity
               onPress={() => {
                 lightHaptic();
@@ -1220,7 +1359,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               accessibilityLabel="Close"
               accessibilityRole="button"
             >
-              <Ionicons name="close" size={28} color="#101828" />
+              <EvaIcon name="close" variant="outline" size={28} color="#101828" />
             </StyledTouchableOpacity>
           </StyledView>
 
@@ -1292,7 +1431,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                   {unanswered.length === 0 && answeredNotDisplayed.length === 0 && (
                     <Card className="bg-blue-50 border border-blue-200">
                       <StyledView className="items-center py-8">
-                        <Ionicons name="checkmark-circle" size={48} color="#437FFF" />
+                        <EvaIcon name="checkmark-circle-2" variant="outline" size={48} color="#437FFF" />
                         <Body className="text-blue-900 font-bold text-lg mt-3 mb-2">All Questions Answered!</Body>
                         <Body className="text-blue-700 text-sm text-center">
                           You've answered all 21 questions. You can edit your answers anytime.
@@ -1304,7 +1443,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               );
             })()}
           </StyledScrollView>
-        </ScreenWrapper>
       </Modal>
 
       {/* PHASE 2: Answer Modal (reusing existing AnswerQuestionModal) - Only for displayed slots (not "more questions") */}
@@ -1334,14 +1472,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
       <Modal
         visible={showChangeQuestionModal}
         animationType="slide"
-        transparent={false}
+        presentationStyle="pageSheet"
         onRequestClose={() => setShowChangeQuestionModal(false)}
       >
-        <ScreenWrapper>
 
           {/* Header */}
           <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center justify-between">
-            <H2 className="text-lg">Change Question</H2>
+            <H2 className="text-lg">Switch Question</H2>
             <StyledTouchableOpacity
               onPress={() => {
                 lightHaptic();
@@ -1350,46 +1487,79 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               accessibilityLabel="Close"
               accessibilityRole="button"
             >
-              <Ionicons name="close" size={28} color="#101828" />
+              <EvaIcon name="close" variant="outline" size={28} color="#101828" />
             </StyledTouchableOpacity>
           </StyledView>
 
           {/* Question List */}
           <StyledScrollView className="flex-1 px-4 py-4">
             <Body className="text-neutral-600 text-sm mb-4">
-              Select a different question you've already answered to display in this slot.
+              Pick a different question to display in this slot.
             </Body>
 
             {(() => {
               const answeredQuestions = profile?.deepQuestions || [];
               const displayedIds = profile?.displayedQuestions || [];
+              const answeredIds = answeredQuestions.map(q => q.questionId);
+              const unansweredForChange = getUnansweredQuestions(answeredIds);
 
               // Show answered questions that aren't currently displayed
               const availableQuestions = answeredQuestions.filter(q => !displayedIds.includes(q.questionId));
 
               return (
                 <>
-                  {availableQuestions.map((q) => (
-                    <StyledTouchableOpacity
-                      key={q.questionId}
-                      onPress={() => {
-                        mediumHaptic();
-                        handleChangeToAnsweredQuestion(q.questionId);
-                      }}
-                      activeOpacity={0.7}
-                      className="mb-3"
-                    >
-                      <Card className="bg-white border border-neutral-200">
-                        <Body className="text-neutral-900 font-semibold text-base mb-2">{q.question}</Body>
-                        <Body className="text-neutral-600 text-sm" numberOfLines={2}>{q.answer}</Body>
-                      </Card>
-                    </StyledTouchableOpacity>
-                  ))}
+                  {availableQuestions.length > 0 && (
+                    <>
+                      <Body className="text-neutral-700 font-semibold text-sm mb-3">
+                        Already Answered ({availableQuestions.length})
+                      </Body>
+                      {availableQuestions.map((q) => (
+                        <StyledTouchableOpacity
+                          key={q.questionId}
+                          onPress={() => {
+                            mediumHaptic();
+                            handleChangeToAnsweredQuestion(q.questionId);
+                          }}
+                          activeOpacity={0.7}
+                          className="mb-3"
+                        >
+                          <Card className="bg-white border border-neutral-200">
+                            <Body className="text-neutral-900 font-semibold text-base mb-2">{q.question}</Body>
+                            <Body className="text-neutral-600 text-sm" numberOfLines={2}>{q.answer}</Body>
+                          </Card>
+                        </StyledTouchableOpacity>
+                      ))}
+                    </>
+                  )}
 
-                  {availableQuestions.length === 0 && (
+                  {unansweredForChange.length > 0 && (
+                    <>
+                      <Body className="text-neutral-700 font-semibold text-sm mb-3 mt-2">
+                        Unanswered ({unansweredForChange.length})
+                      </Body>
+                      {unansweredForChange.map((q) => (
+                        <StyledTouchableOpacity
+                          key={q.id}
+                          onPress={() => {
+                            mediumHaptic();
+                            setShowChangeQuestionModal(false);
+                            handleQuestionSelected(q.id, q.question);
+                          }}
+                          activeOpacity={0.7}
+                          className="mb-3"
+                        >
+                          <Card className="bg-white border border-dashed border-neutral-300">
+                            <Body className="text-neutral-900 font-medium text-base leading-6">{q.question}</Body>
+                          </Card>
+                        </StyledTouchableOpacity>
+                      ))}
+                    </>
+                  )}
+
+                  {availableQuestions.length === 0 && unansweredForChange.length === 0 && (
                     <Card className="bg-blue-50 border border-blue-200">
                       <StyledView className="items-center py-8">
-                        <Ionicons name="information-circle" size={48} color="#437FFF" />
+                        <EvaIcon name="info" variant="outline" size={48} color="#437FFF" />
                         <Body className="text-blue-900 font-bold text-lg mt-3 mb-2">No Other Questions</Body>
                         <Body className="text-blue-700 text-sm text-center">
                           All your answered questions are already displayed. Answer more questions to have more options!
@@ -1401,7 +1571,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               );
             })()}
           </StyledScrollView>
-        </ScreenWrapper>
       </Modal>
 
       {/* Photo Carousel */}

@@ -214,6 +214,8 @@ export function transformBackendProposal(raw: any): Partial<Proposal> {
     isFriendVote: raw.is_friend_vote,
     userAProfile: raw.user_a_profile,
     userBProfile: raw.user_b_profile,
+    createdBy: raw.created_by,
+    creationType: raw.creation_type,
   };
 }
 

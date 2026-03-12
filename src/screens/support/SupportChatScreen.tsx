@@ -13,8 +13,8 @@ import {
   Text,
 } from 'react-native';
 import { NavigationProp } from '@react-navigation/native';
+import { EvaIcon } from '../../components/icons';
 import { RootStackParamList } from '../../types';
-import { Ionicons } from '@expo/vector-icons';
 import { FONTS } from '../../constants/typography';
 import {
   getSupportMessages,
@@ -210,7 +210,7 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#101828" />
+          <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Feedback</Text>
         <View style={{ width: 24 }} />
@@ -261,7 +261,7 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
               {sending ? (
                 <ActivityIndicator size="small" color="white" />
               ) : (
-                <Ionicons name="send" size={20} color={input.trim() ? 'white' : '#98A2B3'} />
+                <EvaIcon name="paper-plane" variant="outline" size={20} color={input.trim() ? 'white' : '#98A2B3'} />
               )}
             </TouchableOpacity>
           ) : null}

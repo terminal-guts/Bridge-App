@@ -83,7 +83,7 @@ export interface GuideStep {
   /** Main message text (supports \n for line breaks) */
   message: string;
 
-  /** Optional icon name (Ionicons) */
+  /** Optional icon name (EvaIcon) */
   icon?: string;
 
   /** Optional image to display between message and button (require() asset) */

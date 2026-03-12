@@ -15,7 +15,6 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
 import { FriendWithGridStatus } from '../../types/community';
 import { lightHaptic } from '../../utils/haptics';
 import {
@@ -36,11 +35,11 @@ const StyledTouchable = styled(TouchableOpacity);
  * Get streak visual treatment based on streak length
  */
 const getStreakDisplay = (streakDays: number) => {
-    if (streakDays >= STREAK_TIERS.CROWN) return { emoji: '🔥', suffix: '👑' };
-    if (streakDays >= STREAK_TIERS.DIAMOND) return { emoji: '🔥', suffix: '💎' };
-    if (streakDays >= STREAK_TIERS.STAR) return { emoji: '🔥', suffix: '💫' };
-    if (streakDays >= STREAK_TIERS.SPARKLE) return { emoji: '🔥', suffix: '✨' };
-    return { emoji: '🔥', suffix: null };
+    if (streakDays >= STREAK_TIERS.CROWN) return { emoji: '', suffix: '' };
+    if (streakDays >= STREAK_TIERS.DIAMOND) return { emoji: '', suffix: '' };
+    if (streakDays >= STREAK_TIERS.STAR) return { emoji: '', suffix: '' };
+    if (streakDays >= STREAK_TIERS.SPARKLE) return { emoji: '', suffix: '' };
+    return { emoji: '', suffix: null };
 };
 
 interface FriendCardProps {
@@ -53,6 +52,8 @@ interface FriendCardProps {
     onHelpMatch?: () => void;
     onMessage?: () => void;
     onViewProfile?: () => void;
+    onNudge?: (friendId: string) => void;
+    onStreakMilestone?: (days: number, friendName: string) => void;
 }
 
 export const FriendCard = React.memo<FriendCardProps>(({
@@ -63,7 +64,9 @@ export const FriendCard = React.memo<FriendCardProps>(({
     onAvatarPress,
     onHelpMatch,
     onMessage,
-    onViewProfile
+    onViewProfile,
+    onNudge,
+    onStreakMilestone,
 }) => {
     // Normalize data
     const name = friend.friend?.firstName || friend.name || 'Friend';

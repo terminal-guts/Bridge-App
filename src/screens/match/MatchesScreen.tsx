@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback, RefreshControl, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback, RefreshControl, KeyboardAvoidingView, Platform, Animated, Easing } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MatchCard } from '../../components/matches/MatchCard';
@@ -14,7 +14,7 @@ import { UserProfile } from '../../types';
 import { ProfileCompletionBanner } from '../../components/profile/ProfileCompletionBanner';
 import { showToast } from '../../utils/toast';
 import { lightHaptic, heavyHaptic } from '../../utils/haptics';
-import { shareToInstagramStories, shareToMessages, shareGeneric } from '../../utils/shareMatch';
+import { shareToMessages, shareGeneric } from '../../utils/shareMatch';
 import { ShareMatchSheet } from '../../components/matches/ShareMatchSheet';
 import { ShareableMatchCard } from '../../components/matches/ShareableMatchCard';
 import { computeApprovalPercent } from '../../utils/matchCardGenerator';
@@ -36,6 +36,14 @@ type ScreenState =
     | 'awaiting_them'   // You voted yes, waiting for them
     | 'neither_voted'   // Proposal exists, no one has voted yet
     | 'empty';          // Nothing at all
+
+// Map screen state → MatchCard status prop
+const CARD_STATUS: Record<Exclude<ScreenState, 'empty'>, import('../../components/matches/MatchCard').MatchStatus> = {
+    active_match: 'active_match',
+    awaiting_you: 'awaiting_you',
+    awaiting_them: 'awaiting_them',
+    neither_voted: 'new_match',
+};
 
 const END_MATCH_REASONS = [
     'Conversation fizzled',
@@ -79,22 +87,22 @@ function EndedMatchPopupContent({ event }: { event: MatchEndedEvent }) {
 
     const config: Record<MatchEndedEvent['type'], { icon: string; headline: string; body: string }> = {
         expired: {
-            icon: '⏰',
+            icon: 'clock',
             headline: 'Your match expired',
             body: 'The proposal timed out before anyone decided. Stay active — your next match could come soon.',
         },
         you_rejected: {
-            icon: '👋',
+            icon: 'smiling-face',
             headline: 'You passed',
             body: "That's totally okay — trust your instincts. Keep at it, the right fit is worth waiting for. Every pass brings you closer to someone great.",
         },
         they_rejected: {
-            icon: '💙',
+            icon: 'heart',
             headline: "It didn't work out this time",
             body: "They decided to go a different direction. Your friends are still out there finding the right match for you.",
         },
         match_ended: {
-            icon: '🌱',
+            icon: 'activity',
             headline: 'A Fresh Start',
             body: "You're back in the matching pool. Your community is still here to help you find your next great connection.",
         },
@@ -227,15 +235,17 @@ export function MatchesScreen() {
     const [shareImageUri, setShareImageUri] = useState<string | null>(null);
     const [shareLoading, setShareLoading] = useState(false);
     const viewShotRef = useRef<ViewShot>(null);
+    const cardEntrance = useRef(new Animated.Value(0)).current;
     const navigation = useNavigation<any>();
     const { height: windowHeight } = useWindowDimensions();
     const insets = useSafeAreaInsets();
 
-    // Layout values as proportions of screen height — scales across all iOS devices
-    const headerPad = Math.round(windowHeight * 0.011);    // ~10pt on 874pt screen
-    const scrollMargin = 0;                                 // no gap between header and card
-    const cardMB = Math.round(windowHeight * 0.092);        // ~80pt on 874pt screen
-    const tabBarH = Math.round(windowHeight * 0.069);       // ~60pt on 874pt screen
+    // All spacing proportional to screen height — scales across iPhone SE to Pro Max
+    const headerPad = Math.round(windowHeight * 0.011);     // ~10pt — top breathing room
+    const scrollMargin = Math.round(windowHeight * 0.009);  // ~8pt — gap between header and card
+    const cardMB = Math.round(windowHeight * 0.018);        // ~16pt — card bottom to tab bar
+    // Tab bar: matches locked CustomTabBar formula exactly (contentHeight + bottom safe area)
+    const tabBarH = Math.round(windowHeight * 0.057) + insets.bottom;
 
     const headerTotal = headerPad + 38 + 8 + scrollMargin;  // headerPad + title lineHeight + paddingBottom + scrollMargin
     const activeCardHeight = windowHeight - insets.top - headerTotal - tabBarH - cardMB;
@@ -275,7 +285,11 @@ export function MatchesScreen() {
         } catch (error) {
             console.error('Failed to load match data', error);
         } finally {
-            if (isMountedRef.current) setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+                cardEntrance.setValue(0);
+                Animated.timing(cardEntrance, { toValue: 1, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+            }
         }
     };
 
@@ -376,9 +390,7 @@ export function MatchesScreen() {
         }
     }, [shareImageUri]);
 
-    const handleShareInstagram = useCallback(() => {
-        if (shareImageUri) shareToInstagramStories(shareImageUri);
-    }, [shareImageUri]);
+
 
     const handleShareSnapchat = useCallback(() => {
         // Snapchat doesn't have a reliable deep-link for stickers — use system share
@@ -409,6 +421,42 @@ export function MatchesScreen() {
             showToast.error('Could not save', 'Try again later');
         }
     }, [shareImageUri]);
+
+    // ── Empty state countdown — time until next 7 PM Central ────────────────
+    // NOTE: Must be above the early return to preserve hook order
+    const emptyCountdown = useMemo(() => {
+        const nowDate = new Date(now);
+        // Central Time offset: CDT = UTC-5, CST = UTC-6
+        // Determine if DST: second Sunday of March to first Sunday of November
+        const year = nowDate.getUTCFullYear();
+        const marchSecondSun = new Date(Date.UTC(year, 2, 8));
+        marchSecondSun.setUTCDate(8 + (7 - marchSecondSun.getUTCDay()) % 7);
+        const novFirstSun = new Date(Date.UTC(year, 10, 1));
+        novFirstSun.setUTCDate(1 + (7 - novFirstSun.getUTCDay()) % 7);
+        const isDST = nowDate.getTime() >= marchSecondSun.getTime() && nowDate.getTime() < novFirstSun.getTime();
+        const centralOffsetMs = isDST ? -5 * 3600000 : -6 * 3600000;
+
+        // Current time in Central
+        const centralNow = new Date(now + centralOffsetMs);
+        const centralHour = centralNow.getUTCHours();
+        const centralMin = centralNow.getUTCMinutes();
+
+        // Next 7 PM Central in UTC
+        let next7pm = new Date(centralNow);
+        next7pm.setUTCHours(19, 0, 0, 0);
+        if (centralHour >= 19) {
+            next7pm.setUTCDate(next7pm.getUTCDate() + 1);
+        }
+        // Convert back to UTC
+        const next7pmUtc = next7pm.getTime() - centralOffsetMs;
+        const diffMs = next7pmUtc - now;
+        if (diffMs <= 0) return null;
+
+        const h = Math.floor(diffMs / 3600000);
+        const m = Math.floor((diffMs % 3600000) / 60000);
+        const s = Math.floor((diffMs % 60000) / 1000);
+        return h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`;
+    }, [now]);
 
     if (loading && !popupEvent) {
         return (
@@ -455,18 +503,25 @@ export function MatchesScreen() {
                         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#2B65F9" />
                     }
                 >
-                    <Text style={styles.tagline}>Real connections take a little time</Text>
+                    <Text style={styles.tagline}>Your friends are on it</Text>
                     <IllustrationImage />
                     <Text style={styles.subtitle}>
-                        We're looking for your best match! Why not help friends in the meantime?
+                        Your crew is out there finding someone great for you. The more you vote, the faster they'll vote for you.
                     </Text>
+                    {emptyCountdown && (
+                        <View style={stateStyles.countdownContainer}>
+                            <ClockIcon size={14} color="#437FFF" />
+                            <Text style={stateStyles.countdownText}>Next proposals in {emptyCountdown}</Text>
+                        </View>
+                    )}
                     <TouchableOpacity
                         style={styles.ctaButton}
                         activeOpacity={0.85}
                         onPress={() => navigation.navigate('Community')}
                     >
-                        <Text style={styles.ctaText}>Help Others Find a Match</Text>
+                        <Text style={styles.ctaText}>Vote for Your Friends</Text>
                     </TouchableOpacity>
+                    <Text style={stateStyles.proposalDropText}>New proposals drop at 7 PM every day</Text>
                 </ScrollView>
 
                 {/* Ended Match Popup — must render here so it persists over empty state */}
@@ -516,19 +571,8 @@ export function MatchesScreen() {
         }
     }
 
-    // ── State-specific subtitle for the header ─────────────────────────────
-    const headerSubtitle: string | null = (() => {
-        switch (screenState) {
-            case 'neither_voted':
-                return 'Your friends found someone they think you\'d like';
-            case 'awaiting_you':
-                return 'Someone is waiting to hear from you';
-            case 'awaiting_them':
-                return 'Sit tight — they\'re making up their mind';
-            default:
-                return null;
-        }
-    })();
+    // Card communicates all state info — no subtitle or badge needed in header
+    const adjustedCardHeight = activeCardHeight;
 
     // ── Build card props ────────────────────────────────────────────────────
     const partner =
@@ -595,15 +639,10 @@ export function MatchesScreen() {
                     onPress={() => navigation.navigate('Profile')}
                 />
             )}
-            {/* Header row: title left, countdown timer right */}
+            {/* Header: "Match" + timer on one row, subtitle below */}
             <View style={[styles.headerRow, { paddingTop: headerPad }]}>
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.headerTitle}>Match</Text>
-                    {headerSubtitle && (
-                        <Text style={styles.headerSubtitle}>{headerSubtitle}</Text>
-                    )}
-                </View>
-                {timerLabel && (
+                <Text style={styles.headerTitle}>Match</Text>
+                {timerLabel && screenState !== 'active_match' && (
                     <TouchableOpacity activeOpacity={0.7} onPress={() => setTimerInfoVisible(true)}>
                         <View style={[styles.timerBadge, { backgroundColor: timerBg, borderColor: timerBdrClr }]}>
                             <ClockIcon size={13} color={timerClr} />
@@ -619,57 +658,19 @@ export function MatchesScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#2B65F9" />
                 }
             >
-                <View style={{ marginBottom: cardMB, height: activeCardHeight }}>
-                    {screenState === 'active_match' && (
-                        <MatchCard
-                            status="active_match"
-                            name={partnerName}
-                            age={partnerAge}
-                            matchDate={matchDate}
-                            imageUrl={partnerPhoto}
-                            matchedByAvatars={endorserAvatars}
-                            onPress={handleCardPress}
-                            onDismiss={() => setEndMatchModalVisible(true)}
-                            onShare={handleSharePress}
-                        />
-                    )}
-
-                    {screenState === 'awaiting_you' && (
-                        <MatchCard
-                            status="awaiting_you"
-                            name={partnerName}
-                            age={partnerAge}
-                            matchDate={matchDate}
-                            imageUrl={partnerPhoto}
-                            matchedByAvatars={endorserAvatars}
-                            onPress={handleCardPress}
-                        />
-                    )}
-
-                    {screenState === 'awaiting_them' && (
-                        <MatchCard
-                            status="awaiting_them"
-                            name={partnerName}
-                            age={partnerAge}
-                            matchDate={matchDate}
-                            imageUrl={partnerPhoto}
-                            matchedByAvatars={endorserAvatars}
-                            onPress={handleCardPress}
-                        />
-                    )}
-
-                    {screenState === 'neither_voted' && (
-                        <MatchCard
-                            status="new_match"
-                            name={partnerName}
-                            age={partnerAge}
-                            matchDate={matchDate}
-                            imageUrl={partnerPhoto}
-                            matchedByAvatars={endorserAvatars}
-                            onPress={handleCardPress}
-                        />
-                    )}
-                </View>
+                <Animated.View style={{ marginBottom: cardMB, height: adjustedCardHeight, opacity: cardEntrance, transform: [{ translateY: cardEntrance.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }] }}>
+                    <MatchCard
+                        status={CARD_STATUS[screenState as Exclude<ScreenState, 'empty'>]}
+                        name={partnerName}
+                        age={partnerAge}
+                        matchDate={matchDate}
+                        imageUrl={partnerPhoto}
+                        matchedByAvatars={endorserAvatars}
+                        onPress={handleCardPress}
+                        onDismiss={screenState === 'active_match' ? () => setEndMatchModalVisible(true) : undefined}
+                        onShare={screenState === 'active_match' ? handleSharePress : undefined}
+                    />
+                </Animated.View>
             </ScrollView>
 
             {/* ── Ended Match Popup ────────────────────────────────────────── */}
@@ -715,7 +716,7 @@ export function MatchesScreen() {
                         </TouchableOpacity>
 
                         <View style={[tsStyles.iconWrap, { backgroundColor: '#FFF4ED' }]}>
-                            <Text style={{ fontSize: 26 }}>💔</Text>
+                            <Text style={{ fontSize: 26 }}>close-circle</Text>
                         </View>
                         <Text style={tsStyles.title}>End this match?</Text>
                         <Text style={tsStyles.subtitle}>
@@ -783,7 +784,6 @@ export function MatchesScreen() {
                 visible={shareSheetVisible}
                 imageUri={shareImageUri}
                 loading={shareLoading}
-                onShareInstagram={handleShareInstagram}
                 onShareSnapchat={handleShareSnapchat}
                 onShareMessages={handleShareMessages}
                 onShareMore={handleShareMore}
@@ -821,14 +821,14 @@ const styles = StyleSheet.create({
     root: { flex: 1, backgroundColor: '#FDFAF7' },
     header: { paddingTop: 16, paddingHorizontal: 24, paddingBottom: 8 },
     headerRow: {
-        paddingHorizontal: 24,
-        paddingBottom: 8,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        paddingHorizontal: 24,
+        paddingBottom: 4,
     },
     headerTitle: { fontFamily: FONTS.bold, fontWeight: '700', fontSize: 32, lineHeight: 38, color: '#010101', letterSpacing: -0.5 },
-    headerSubtitle: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 18, color: '#667085', marginTop: 2 },
+    headerSubtitle: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 18, color: '#667085', paddingHorizontal: 24, paddingBottom: 4 },
     timerBadge: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1149,6 +1149,59 @@ const tsStyles = StyleSheet.create({
         fontFamily: FONTS.semiBold,
         fontSize: 16,
         color: '#FFFFFF',
+    },
+});
+
+// ── State-specific layout styles ─────────────────────────────────────────────
+const stateStyles = StyleSheet.create({
+    // awaiting_them — "You voted yes" confirmation badge
+    votedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginLeft: 24,
+        marginBottom: 4,
+        backgroundColor: 'rgba(52, 199, 89, 0.1)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        alignSelf: 'flex-start',
+    },
+    votedCheckmark: {
+        fontFamily: FONTS.bold,
+        fontSize: 12,
+        color: '#34C759',
+        marginRight: 4,
+    },
+    votedText: {
+        fontFamily: FONTS.medium,
+        fontSize: 12,
+        color: '#34C759',
+    },
+    // empty state — countdown timer
+    countdownContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(67, 127, 255, 0.08)',
+        borderWidth: 1,
+        borderColor: 'rgba(67, 127, 255, 0.2)',
+        borderRadius: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        marginBottom: 16,
+        gap: 6,
+    },
+    countdownText: {
+        fontFamily: FONTS.semiBold,
+        fontSize: 13,
+        color: '#437FFF',
+    },
+    // empty state — secondary text below CTA
+    proposalDropText: {
+        fontFamily: FONTS.regular,
+        fontSize: 12,
+        color: '#98A2B3',
+        textAlign: 'center',
+        marginTop: 12,
     },
 });
 

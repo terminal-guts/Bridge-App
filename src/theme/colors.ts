@@ -111,10 +111,7 @@ export const COLORS = {
 
     // ── Decorative / Category Icons ──────────────────────────
     purple: '#7C3AED',
-    violet: '#8B5CF6',
-    indigo: '#6366F1',
     pink: '#EC4899',
-    rose: '#F43F5E',
 
     // ── Background ───────────────────────────────────────────
     // #FDFAF7 — universal screen background (warm off-white)
@@ -183,22 +180,14 @@ export const COLORS = {
     navIndicator: '#437FFF',
 
     // ── Misc / Special ───────────────────────────────────────
-    // #101828 — onboarding back arrow
-    onboardingIcon: '#101828',
     // #D9D9D9 — inactive pagination dot / placeholder avatar
     paginationInactive: '#D9D9D9',
     // #2B6BE6 — score value color (ProfileMatchScreen community score)
     scoreBlue: '#2B6BE6',
     // #0F1724 — card title on ProfileMatchScreen
     cardTitleDark: '#0F1724',
-    // #053763 — dark navy icon
-    navyIcon: '#053763',
     // #565164 — pass button background
     passButton: '#565164',
-    // #8B4545 — dark red text (expiring proposal details)
-    darkRedText: '#8B4545',
-    // #065F46 — dark green text (values tags)
-    darkGreenText: '#065F46',
 
     // ── Toast Backgrounds ────────────────────────────────────
     toast: {

@@ -11,8 +11,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { NavigationProp } from '@react-navigation/native';
+import { EvaIcon } from '../../components/icons';
 import { RootStackParamList } from '../../types';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
@@ -78,7 +78,7 @@ const EMPTY_CAMPUS_STATS: CampusStats = {
 
 // ─── Dynamic Fun Facts ──────────────────────────────────────────────────────
 
-type FunFact = { icon: keyof typeof Ionicons.glyphMap; color: string; text: string };
+type FunFact = { icon: keyof typeof Record<string, number>; color: string; text: string };
 
 const buildFunFacts = (user: UserStats, campus: CampusStats): FunFact[] => {
   const facts: FunFact[] = [];
@@ -93,14 +93,14 @@ const buildFunFacts = (user: UserStats, campus: CampusStats): FunFact[] => {
 
   // Streak highlight
   if (at.current_streak >= 3) {
-    facts.push({ icon: 'flame', color: '#FF3B30', text: `You're on a ${at.current_streak}-day voting streak — keep it going!` });
+    facts.push({ icon: 'flash', color: '#FF3B30', text: `You're on a ${at.current_streak}-day voting streak — keep it going!` });
   }
 
   // Yes-rate personality
   if (at.yes_rate >= 75 && at.total_votes_cast >= 5) {
     facts.push({ icon: 'heart', color: '#FF6B6B', text: `You approve ${at.yes_rate}% of proposals — you see the best in people` });
   } else if (at.yes_rate > 0 && at.yes_rate <= 35 && at.total_votes_cast >= 5) {
-    facts.push({ icon: 'shield-checkmark', color: '#6C5CE7', text: `You only approve ${at.yes_rate}% of proposals — high standards!` });
+    facts.push({ icon: 'shield', color: '#6C5CE7', text: `You only approve ${at.yes_rate}% of proposals — high standards!` });
   }
 
   // Assists milestone
@@ -223,8 +223,9 @@ const TrendArrow = React.memo(({ value }: { value: number }) => {
   const isUp = value > 0;
   return (
     <View style={[st.trendPill, { backgroundColor: isUp ? '#EDFCF2' : '#FEF2F2' }]}>
-      <Ionicons
-        name={isUp ? 'arrow-up' : 'arrow-down'}
+      <EvaIcon
+        name={isUp ? 'arrow-upward' : 'arrow-downward'}
+        variant="outline"
         size={10}
         color={isUp ? '#10B981' : '#EF4444'}
       />
@@ -262,7 +263,7 @@ const PeriodToggle = React.memo(({ period, onToggle }: {
 // ─── Stat Card ───────────────────────────────────────────────────────────────
 
 const StatCard = React.memo(({ icon, iconColor, label, value, suffix, trend, index }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: keyof typeof Record<string, number>;
   iconColor: string;
   label: string;
   value: number;
@@ -276,7 +277,7 @@ const StatCard = React.memo(({ icon, iconColor, label, value, suffix, trend, ind
   >
     <View style={s.statCardHeader}>
       <View style={[s.statIconCircle, { backgroundColor: iconColor + '15' }]}>
-        <Ionicons name={icon} size={20} color={iconColor} />
+        <EvaIcon name={icon} variant="outline" size={20} color={iconColor} />
       </View>
       {trend !== undefined ? <TrendArrow value={trend} /> : null}
     </View>
@@ -293,7 +294,7 @@ const StatCard = React.memo(({ icon, iconColor, label, value, suffix, trend, ind
 // ─── Highlight Row ───────────────────────────────────────────────────────────
 
 const HighlightRow = React.memo(({ icon, iconColor, label, value, index }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: keyof typeof Record<string, number>;
   iconColor: string;
   label: string;
   value: string | number;
@@ -303,7 +304,7 @@ const HighlightRow = React.memo(({ icon, iconColor, label, value, index }: {
     <View style={s.highlightRow}>
       <View style={s.highlightLeft}>
         <View style={[s.highlightIconDot, { backgroundColor: iconColor + '15' }]}>
-          <Ionicons name={icon} size={16} color={iconColor} />
+          <EvaIcon name={icon} variant="outline" size={16} color={iconColor} />
         </View>
         <Text style={s.highlightLabel}>{label}</Text>
       </View>
@@ -323,7 +324,7 @@ const FunFactCard = React.memo(({ fact, index }: {
     style={st.funFactRow}
   >
     <View style={[st.funFactIcon, { backgroundColor: fact.color + '15' }]}>
-      <Ionicons name={fact.icon} size={16} color={fact.color} />
+      <EvaIcon name={fact.icon} variant="outline" size={16} color={fact.color} />
     </View>
     <Text style={st.funFactText}>{fact.text}</Text>
   </Animated.View>
@@ -334,7 +335,7 @@ const FunFactCard = React.memo(({ fact, index }: {
 const EmptyState = React.memo(({ navigation }: { navigation: NavigationProp<RootStackParamList> }) => (
   <View style={st.emptyWrap}>
     <View style={st.emptyIconCircle}>
-      <Ionicons name="bar-chart-outline" size={40} color="#437FFF" />
+      <EvaIcon name="bar-chart" variant="outline" size={40} color="#437FFF" />
     </View>
     <Text style={st.emptyTitle}>Your stats are waiting</Text>
     <Text style={st.emptyDesc}>
@@ -346,7 +347,7 @@ const EmptyState = React.memo(({ navigation }: { navigation: NavigationProp<Root
       activeOpacity={0.7}
     >
       <Text style={st.emptyCtaText}>Start Voting</Text>
-      <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+      <EvaIcon name="arrow-forward" variant="outline" size={16} color="#FFFFFF" />
     </TouchableOpacity>
   </View>
 ));
@@ -373,7 +374,7 @@ const CampusTab = React.memo(({ period, onPeriodChange, data }: {
           style={s.heroCard}
         >
           <View style={s.heroIconCircle}>
-            <Ionicons name="heart" size={28} color="#FFFFFF" />
+            <EvaIcon name="heart" variant="outline" size={28} color="#FFFFFF" />
           </View>
           <AnimatedNumber value={d.total_couples_set_up} delay={300} style={s.heroValue} />
           <Text style={s.heroLabel}>
@@ -405,7 +406,7 @@ const CampusTab = React.memo(({ period, onPeriodChange, data }: {
         <View style={s.highlightDivider} />
         <HighlightRow icon="calendar" iconColor="#437FFF" label="Busiest Day" value={d.most_popular_day} index={2} />
         <View style={s.highlightDivider} />
-        <HighlightRow icon="flame" iconColor="#FF3B30" label="Streak Record" value={`${d.streak_record} days`} index={3} />
+        <HighlightRow icon="flash" iconColor="#FF3B30" label="Streak Record" value={`${d.streak_record} days`} index={3} />
         <View style={s.highlightDivider} />
         <HighlightRow icon="analytics" iconColor="#34C759" label="Match Rate" value={`${d.match_rate}%`} index={4} />
       </Animated.View>
@@ -473,7 +474,7 @@ const YourStatsTab = React.memo(({ period, onPeriodChange, navigation, data, cam
             ) : null}
           </View>
           <View style={s.impactRight}>
-            <Ionicons name="heart-circle" size={52} color="#FF6B6B" />
+            <EvaIcon name="heart" variant="outline" size={52} color="#FF6B6B" />
           </View>
         </View>
       </Animated.View>
@@ -511,7 +512,7 @@ const YourStatsTab = React.memo(({ period, onPeriodChange, navigation, data, cam
         <Text style={s.sectionTitle}>Streaks</Text>
       </Animated.View>
       <View style={s.statGrid}>
-        <StatCard icon="flame" iconColor="#FF3B30" label="Current Streak" value={d.current_streak} suffix="d" index={4} />
+        <StatCard icon="flash" iconColor="#FF3B30" label="Current Streak" value={d.current_streak} suffix="d" index={4} />
         <StatCard icon="ribbon" iconColor="#FF9500" label="Best Streak" value={d.longest_streak} suffix="d" index={5} />
       </View>
 
@@ -522,7 +523,7 @@ const YourStatsTab = React.memo(({ period, onPeriodChange, navigation, data, cam
           style={s.rankGradient}
         >
           <View style={s.rankIconWrap}>
-            <Ionicons name="podium" size={24} color="#437FFF" />
+            <EvaIcon name="award" variant="outline" size={24} color="#437FFF" />
           </View>
           <View style={s.rankText}>
             <Text style={s.rankTitle}>Weekly Rank</Text>
@@ -704,11 +705,11 @@ export const StatsScreen: React.FC<Props> = ({ navigation }) => {
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Ionicons name="arrow-back" size={24} color="#101828" />
+          <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Stats</Text>
         <TouchableOpacity onPress={handleShare} disabled={loading || !!error} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Ionicons name="share-outline" size={22} color={loading || error ? '#D0D5DD' : '#437FFF'} />
+          <EvaIcon name="share" variant="outline" size={22} color={loading || error ? '#D0D5DD' : '#437FFF'} />
         </TouchableOpacity>
       </View>
 
@@ -719,12 +720,7 @@ export const StatsScreen: React.FC<Props> = ({ navigation }) => {
           onPress={() => handleTabSwitch('campus')}
           activeOpacity={0.7}
         >
-          <Ionicons
-            name="school"
-            size={16}
-            color={activeTab === 'campus' ? '#FFFFFF' : '#667085'}
-            style={s.tabIcon}
-          />
+          <EvaIcon name="book" variant="outline" size={16} color={activeTab === 'campus' ? '#437FFF' : '#667085'} style={s.tabIcon} />
           <Text style={[s.tabText, activeTab === 'campus' && s.tabTextActive]}>Campus</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -732,12 +728,7 @@ export const StatsScreen: React.FC<Props> = ({ navigation }) => {
           onPress={() => handleTabSwitch('you')}
           activeOpacity={0.7}
         >
-          <Ionicons
-            name="person"
-            size={16}
-            color={activeTab === 'you' ? '#FFFFFF' : '#667085'}
-            style={s.tabIcon}
-          />
+          <EvaIcon name="person" variant="outline" size={16} color={activeTab === 'you' ? '#437FFF' : '#667085'} style={s.tabIcon} />
           <Text style={[s.tabText, activeTab === 'you' && s.tabTextActive]}>You</Text>
         </TouchableOpacity>
       </View>
@@ -750,10 +741,10 @@ export const StatsScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       ) : error ? (
         <View style={s.centered}>
-          <Ionicons name="alert-circle-outline" size={48} color="#F04438" />
+          <EvaIcon name="alert-circle" variant="outline" size={48} color="#F04438" />
           <Text style={s.errorText}>{error}</Text>
           <TouchableOpacity style={s.retryButton} onPress={loadStats} activeOpacity={0.7}>
-            <Ionicons name="refresh" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <EvaIcon name="refresh" variant="outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
             <Text style={s.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>

@@ -4,11 +4,11 @@ import { styled } from 'nativewind';
 import { Body, Card, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { Ionicons } from '@expo/vector-icons';
 import { getBlockedUsers, blockUser, unblockUser, BlockedUser as BlockedUserType } from '../../services/blockService';
 import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';
 import { FONTS } from '../../constants/typography';
+import { EvaIcon } from '../../components/icons';
 
 const logger = createLogger('BlockedUsersScreen');
 
@@ -183,7 +183,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
       {/* Header */}
       <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center">
         <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
-          <Ionicons name="arrow-back" size={24} color="#101828" />
+          <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
         </StyledTouchableOpacity>
         <Body className="text-neutral-900 font-semibold text-lg">Blocked Users</Body>
       </StyledView>
@@ -216,8 +216,9 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                 {blocking ? (
                   <ActivityIndicator size="small" color="#437FFF" />
                 ) : (
-                  <Ionicons
-                    name="arrow-forward-circle"
+                  <EvaIcon
+                    name="arrow-circle-right"
+                    variant="outline"
                     size={26}
                     color={emailInput.trim() ? '#437FFF' : '#D1D5DB'}
                   />
@@ -268,7 +269,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
           {!loading && (
             <StyledView className="mt-6 px-2">
               <StyledView className="flex-row items-center mb-2">
-                <Ionicons name="information-circle-outline" size={15} color="#9CA3AF" />
+                <EvaIcon name="info" variant="outline" size={15} color="#9CA3AF" />
                 <Body className="text-neutral-400 text-xs ml-1.5 font-medium">What happens when you block someone</Body>
               </StyledView>
               <Body className="text-neutral-400 text-xs leading-5 ml-0.5">

@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, Animated, Alert, Text, StyleSheet } from 'react-native';
 import { Audio } from 'expo-av';
-import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { createLogger } from '../../utils/secureLogger';
 import { FONTS } from '../../constants/typography';
+import { EvaIcon } from '../icons';
 
 const logger = createLogger('AudioRecorder');
 
@@ -189,7 +189,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
                 activeOpacity={0.7}
                 style={[styles.micButton, disabled && styles.micButtonDisabled]}
             >
-                <Ionicons name="mic-outline" size={24} color="white" />
+                <EvaIcon name="mic" variant="outline" size={24} color="white" />
             </TouchableOpacity>
         );
     }
@@ -199,7 +199,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
         <View style={styles.recordingBar}>
             {/* Cancel */}
             <TouchableOpacity onPress={cancelRecording} activeOpacity={0.7} style={styles.cancelButton}>
-                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                <EvaIcon name="trash-2" variant="outline" size={20} color="#EF4444" />
             </TouchableOpacity>
 
             {/* Waveform + Timer */}
@@ -221,7 +221,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
 
             {/* Send */}
             <TouchableOpacity onPress={sendRecording} activeOpacity={0.7} style={styles.sendButton}>
-                <Ionicons name="arrow-up" size={20} color="white" />
+                <EvaIcon name="arrow-upward" variant="outline" size={20} color="white" />
             </TouchableOpacity>
         </View>
     );

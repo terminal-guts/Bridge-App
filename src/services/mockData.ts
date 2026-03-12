@@ -1,6 +1,5 @@
 import {
   UserProfile,
-  DailySurvey,
   Match,
   PartialMatch,
   Message,
@@ -560,19 +559,6 @@ export const currentUserProfile: UserProfile = {
   updatedAt: '2024-01-01T10:00:00Z',
 };
 
-// Mock daily survey — expiresAt computed at call time to prevent stale timestamps
-export const getMockDailySurvey = (): DailySurvey => ({
-  id: 'survey1',
-  recipientProfile: mockProfiles[0], // Sarah
-  candidates: [mockProfiles[1], mockProfiles[2], mockProfiles[3]], // Michael, Emily, James
-  expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-  completedAt: undefined,
-  rankings: undefined,
-});
-
-// Legacy compat — callers that imported the old constant get a fresh copy each time
-export const mockDailySurvey: DailySurvey = getMockDailySurvey();
-
 // Mock partial match (for match reveal)
 export const mockPartialMatch: PartialMatch = {
   id: 'pm1',
@@ -735,17 +721,6 @@ export const mockNotifications: Notification[] = [
 
 // Helper functions to simulate API calls
 export const mockApiDelay = () => new Promise(resolve => setTimeout(resolve, 800));
-
-export const getMockDailySurveyAsync = async (): Promise<DailySurvey | null> => {
-  await mockApiDelay();
-  const now = new Date();
-  const surveyHour = 20; // 8 PM
-
-  if (now.getHours() >= surveyHour - 1 && now.getHours() <= surveyHour + 1) {
-    return mockDailySurvey;
-  }
-  return null;
-};
 
 export const getMockMatches = async (): Promise<Match[]> => {
   await mockApiDelay();

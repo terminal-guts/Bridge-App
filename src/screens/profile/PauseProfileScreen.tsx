@@ -4,11 +4,11 @@ import { styled } from 'nativewind';
 import { H2, H3, Body, Card, Button, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { Ionicons } from '@expo/vector-icons';
 import { getUserProfile, updateProfilePauseStatus } from '../../services/profileService';
 import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';
 import { FONTS } from '../../constants/typography';
+import { EvaIcon } from '../../components/icons';
 
 const logger = createLogger('PauseProfileScreen');
 
@@ -135,7 +135,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
       {/* Header */}
       <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center">
         <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
-          <Ionicons name="arrow-back" size={24} color="#101828" />
+          <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
         </StyledTouchableOpacity>
         <H3>Pause Profile</H3>
       </StyledView>
@@ -155,8 +155,9 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
             <StyledView className="flex-row items-center justify-between">
               <StyledView className="flex-1 mr-4">
                 <StyledView className="flex-row items-center mb-2">
-                  <Ionicons
-                    name={isPaused ? "pause-circle" : "checkmark-circle"}
+                  <EvaIcon
+                    name={isPaused ? "pause-circle" : "checkmark-circle-2"}
+                    variant="outline"
                     size={24}
                     color={isPaused ? "#F59E0B" : "#12B981"}
                   />
@@ -185,7 +186,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
             <StyledView className="space-y-3">
               <StyledView className="flex-row items-start">
                 <StyledView className="w-5 h-5 bg-error/20 rounded-full items-center justify-center mr-3 mt-0.5">
-                  <Ionicons name="close" size={12} color="#EF4444" />
+                  <EvaIcon name="close" variant="outline" size={12} color="#EF4444" />
                 </StyledView>
                 <Body className="flex-1 text-neutral-700 text-sm">
                   You're removed from the matchmaking pool
@@ -194,7 +195,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
 
               <StyledView className="flex-row items-start">
                 <StyledView className="w-5 h-5 bg-error/20 rounded-full items-center justify-center mr-3 mt-0.5">
-                  <Ionicons name="close" size={12} color="#EF4444" />
+                  <EvaIcon name="close" variant="outline" size={12} color="#EF4444" />
                 </StyledView>
                 <Body className="flex-1 text-neutral-700 text-sm">
                   You won't receive new proposals or matches
@@ -203,7 +204,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
 
               <StyledView className="flex-row items-start">
                 <StyledView className="w-5 h-5 bg-error/20 rounded-full items-center justify-center mr-3 mt-0.5">
-                  <Ionicons name="close" size={12} color="#EF4444" />
+                  <EvaIcon name="close" variant="outline" size={12} color="#EF4444" />
                 </StyledView>
                 <Body className="flex-1 text-neutral-700 text-sm">
                   You won't appear as a candidate for others
@@ -218,7 +219,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
             <StyledView className="space-y-3">
               <StyledView className="flex-row items-start">
                 <StyledView className="w-5 h-5 bg-success/20 rounded-full items-center justify-center mr-3 mt-0.5">
-                  <Ionicons name="checkmark" size={12} color="#12B981" />
+                  <EvaIcon name="checkmark" variant="outline" size={12} color="#12B981" />
                 </StyledView>
                 <Body className="flex-1 text-neutral-700 text-sm">
                   You can still vote on others' proposals
@@ -227,7 +228,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
 
               <StyledView className="flex-row items-start">
                 <StyledView className="w-5 h-5 bg-success/20 rounded-full items-center justify-center mr-3 mt-0.5">
-                  <Ionicons name="checkmark" size={12} color="#12B981" />
+                  <EvaIcon name="checkmark" variant="outline" size={12} color="#12B981" />
                 </StyledView>
                 <Body className="flex-1 text-neutral-700 text-sm">
                   Your existing matches remain available
@@ -236,7 +237,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
 
               <StyledView className="flex-row items-start">
                 <StyledView className="w-5 h-5 bg-success/20 rounded-full items-center justify-center mr-3 mt-0.5">
-                  <Ionicons name="checkmark" size={12} color="#12B981" />
+                  <EvaIcon name="checkmark" variant="outline" size={12} color="#12B981" />
                 </StyledView>
                 <Body className="flex-1 text-neutral-700 text-sm">
                   You can still chat with current matches
@@ -245,7 +246,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
 
               <StyledView className="flex-row items-start">
                 <StyledView className="w-5 h-5 bg-success/20 rounded-full items-center justify-center mr-3 mt-0.5">
-                  <Ionicons name="checkmark" size={12} color="#12B981" />
+                  <EvaIcon name="checkmark" variant="outline" size={12} color="#12B981" />
                 </StyledView>
                 <Body className="flex-1 text-neutral-700 text-sm">
                   Your profile data is preserved
@@ -254,7 +255,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
 
               <StyledView className="flex-row items-start">
                 <StyledView className="w-5 h-5 bg-success/20 rounded-full items-center justify-center mr-3 mt-0.5">
-                  <Ionicons name="checkmark" size={12} color="#12B981" />
+                  <EvaIcon name="checkmark" variant="outline" size={12} color="#12B981" />
                 </StyledView>
                 <Body className="flex-1 text-neutral-700 text-sm">
                   You can resume anytime with one tap

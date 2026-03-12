@@ -17,16 +17,6 @@ module.exports = {
           600: '#3D72E8',
           700: '#2854B8',
         },
-        secondary: {
-          50: '#FAF5FF',
-          100: '#F3E8FF',
-          200: '#E9D5FF',
-          300: '#D8B4FE',
-          400: '#C084FC',
-          500: '#A855F7', // Purple
-          600: '#9333EA',
-          700: '#7C3AED',
-        },
         purple: {
           50: '#FAF5FF',
           100: '#F3E8FF',
@@ -54,16 +44,6 @@ module.exports = {
           500: '#FF7A5C', // Warm coral for romantic elements
           600: '#E8614A',
           700: '#C74A36',
-        },
-        peach: {
-          50: '#FFF9F5',
-          100: '#FFF0E6',
-          200: '#FFE0CC',
-          300: '#FFC999',
-          400: '#FFB088',
-          500: '#FF9966', // Soft peach for highlights
-          600: '#E87A4D',
-          700: '#C75C35',
         },
         amber: {
           50: '#FFFBEB',
@@ -113,13 +93,6 @@ module.exports = {
         'md': '8px',
         'lg': '12px',
         'xl': '16px',
-      },
-      // Shadow colors for dual-shadow system
-      boxShadowColor: {
-        'light': 'rgba(255, 255, 255, 0.5)',
-        'dark': 'rgba(42, 31, 26, 0.15)',
-        'warm-light': 'rgba(255, 250, 245, 0.8)',
-        'warm-dark': 'rgba(255, 150, 120, 0.2)',
       },
     },
   },

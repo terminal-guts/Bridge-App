@@ -11,8 +11,9 @@ import { supabase } from '../lib/supabase';
 import { FEATURES } from '../config/features';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { Sentry } from '../lib/sentry';
-import { fetchAndSetUserProfile, invalidateProfileCache } from '../services/profileService';
+import { fetchAndSetUserProfile, invalidateProfileCache, checkSuspensionStatus } from '../services/profileService';
 import { isIntentionalSignOut, resetIntentionalSignOut } from '../services/authService';
+import * as Notifications from 'expo-notifications';
 import { notificationService } from '../services/notificationService';
 import { setCachedUserId, clearCachedUserId } from '../utils/auth';
 import { showToast } from '../utils/toast';
@@ -29,7 +30,6 @@ import {
   ProfileScreen,
   CommunityScreen,
 } from '../screens/main';
-import { DeepQuestionsScreen } from '../screens/main/DeepQuestionsScreen';
 import { FriendProposalScreen } from '../screens/community/FriendProposalScreen';
 
 // Onboarding
@@ -66,6 +66,11 @@ const MatchPreferencesScreen = withSuspense(React.lazy(() => import('../screens/
 const BlockedUsersScreen = withSuspense(React.lazy(() => import('../screens/profile/BlockedUsersScreen').then(m => ({ default: m.BlockedUsersScreen }))));
 const PauseProfileScreen = withSuspense(React.lazy(() => import('../screens/profile/PauseProfileScreen').then(m => ({ default: m.PauseProfileScreen }))));
 const ProfileMatchScreen = withSuspense(React.lazy(() => import('../screens/profile/ProfileMatchScreen')));
+const EditPhotosScreen = withSuspense(React.lazy(() => import('../screens/profile/EditPhotosScreen').then(m => ({ default: m.EditPhotosScreen }))));
+const EditBasicsScreen = withSuspense(React.lazy(() => import('../screens/profile/EditBasicsScreen').then(m => ({ default: m.EditBasicsScreen }))));
+const EditAboutScreen = withSuspense(React.lazy(() => import('../screens/profile/EditAboutScreen').then(m => ({ default: m.EditAboutScreen }))));
+const EditInterestsScreen = withSuspense(React.lazy(() => import('../screens/profile/EditInterestsScreen').then(m => ({ default: m.EditInterestsScreen }))));
+const EditLifestyleScreen = withSuspense(React.lazy(() => import('../screens/profile/EditLifestyleScreen').then(m => ({ default: m.EditLifestyleScreen }))));
 
 // Legal & Support
 const TermsOfService = withSuspense(React.lazy(() => import('../screens/legal/TermsOfService').then(m => ({ default: m.TermsOfService }))));
@@ -76,6 +81,12 @@ const SupportChatScreen = withSuspense(React.lazy(() => import('../screens/suppo
 // Community sub-screens
 const LeaderboardScreen = withSuspense(React.lazy(() => import('../screens/community/LeaderboardScreen').then(m => ({ default: m.LeaderboardScreen }))));
 const StatsScreen = withSuspense(React.lazy(() => import('../screens/community/StatsScreen').then(m => ({ default: m.StatsScreen }))));
+
+// Auth sub-screens
+const SuspendedScreen = withSuspense(React.lazy(() => import('../screens/auth/SuspendedScreen')));
+
+// Community sub-screens
+const SuggestMatchScreen = withSuspense(React.lazy(() => import('../screens/community/SuggestMatchScreen')));
 
 // Friends sub-screens
 const ContactInviteScreen = withSuspense(React.lazy(() => import('../screens/friends/ContactInviteScreen').then(m => ({ default: m.ContactInviteScreen }))));
@@ -189,6 +200,8 @@ const MainTabs = () => {
 // Root Stack Navigator
 export const AppNavigator = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [isSuspended, setIsSuspended] = useState(false);
+  const [suspensionReason, setSuspensionReason] = useState<string | null>(null);
   const navigationRef = React.useRef<any>(null);
   const authStateRef = React.useRef<boolean | null>(null);
   const pendingInviteCode = useRef<string | null>(null);
@@ -210,6 +223,65 @@ export const AppNavigator = () => {
     }
   }, []);
 
+  // Route to the correct screen when a push notification is tapped
+  const handleNotificationNavigation = useCallback((data: Record<string, any>) => {
+    const nav = navigationRef.current;
+    if (!nav || !authStateRef.current) return;
+
+    const screen = data?.screen as string | undefined;
+    const type = data?.type as string | undefined;
+
+    // Explicit screen routing (set in notification data payload)
+    if (screen === 'Leaderboard') {
+      nav.navigate('Leaderboard');
+      return;
+    }
+    if (screen === 'SupportChat') {
+      nav.navigate('SupportChat');
+      return;
+    }
+    if (screen === 'Chat') {
+      nav.navigate('MainTabs', { screen: 'Matches' });
+      return;
+    }
+    if (screen === 'Matches') {
+      nav.navigate('MainTabs', { screen: 'Matches' });
+      return;
+    }
+    if (screen === 'Community') {
+      nav.navigate('MainTabs', { screen: 'Community' });
+      return;
+    }
+    if (screen === 'Profile') {
+      nav.navigate('MainTabs', { screen: 'Profile' });
+      return;
+    }
+
+    // Fallback: route by notification type
+    if (type === 'match' || type === 'pending_decision' || type === 'proposal_deciding') {
+      nav.navigate('MainTabs', { screen: 'Matches' });
+      return;
+    }
+    if (type === 'message' || type === 'ghosting') {
+      nav.navigate('MainTabs', { screen: 'Matches' });
+      return;
+    }
+    if (type === 'new_proposals') {
+      nav.navigate('MainTabs', { screen: 'Community' });
+      return;
+    }
+    if (type === 'weekly_summary' || type === 'leaderboard') {
+      nav.navigate('Leaderboard');
+      return;
+    }
+    if (type === 'profile_incomplete') {
+      nav.navigate('MainTabs', { screen: 'Profile' });
+      return;
+    }
+
+    // Default — just open the app (no extra navigation)
+  }, []);
+
   // Listen for deep links while app is open
   useEffect(() => {
     const subscription = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
@@ -219,6 +291,26 @@ export const AppNavigator = () => {
     });
     return () => subscription.remove();
   }, [handleDeepLink]);
+
+  // Route to the correct screen when a push notification is tapped
+  useEffect(() => {
+    // Handle taps on notifications that arrive while app is running
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data || {};
+      handleNotificationNavigation(data);
+    });
+
+    // Handle the case where the app was opened from a killed state by a notification tap
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) {
+        const data = response.notification.request.content.data || {};
+        // Small delay to ensure navigation container is ready
+        setTimeout(() => handleNotificationNavigation(data), 500);
+      }
+    });
+
+    return () => responseSubscription.remove();
+  }, [handleNotificationNavigation]);
 
   // Process pending invite code once authenticated
   useEffect(() => {
@@ -267,7 +359,11 @@ export const AppNavigator = () => {
           if (!profileResult.ok && profileResult.error?.code !== 'PROFILE_NOT_FOUND') {
             logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
           }
+          // Check suspension status
+          const suspStatus = await checkSuspensionStatus();
           if (!isMountedRef.current) return;
+          setIsSuspended(suspStatus.isSuspended);
+          setSuspensionReason(suspStatus.reason);
           setIsAuthenticated(true);
         }
       } catch (err) {
@@ -293,9 +389,15 @@ export const AppNavigator = () => {
         notificationService.scheduleAppOpenChecks();
 
         // Also run checks when app comes back to foreground
-        appStateSubscription = AppState.addEventListener('change', (nextState) => {
+        appStateSubscription = AppState.addEventListener('change', async (nextState) => {
           if (nextState === 'active') {
             notificationService.scheduleAppOpenChecks();
+            // Re-check suspension status on foreground
+            try {
+              const suspStatus = await checkSuspensionStatus();
+              setIsSuspended(suspStatus.isSuspended);
+              setSuspensionReason(suspStatus.reason);
+            } catch {}
           }
         });
       } catch (err) {
@@ -361,7 +463,7 @@ export const AppNavigator = () => {
         }}
       >
         <Stack.Navigator
-          initialRouteName={isAuthenticated ? 'MainTabs' : 'Welcome'}
+          initialRouteName={isAuthenticated ? (isSuspended ? 'Suspended' : 'MainTabs') : 'Welcome'}
           screenOptions={{
             headerShown: false,
             cardStyle: { backgroundColor: '#F9FAFB' },
@@ -392,9 +494,13 @@ export const AppNavigator = () => {
           {/* Profile & Settings */}
           <Stack.Screen name="Settings" component={SettingsScreen} />
           <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
+          <Stack.Screen name="EditPhotos" component={EditPhotosScreen} />
+          <Stack.Screen name="EditBasics" component={EditBasicsScreen} />
+          <Stack.Screen name="EditAbout" component={EditAboutScreen} />
+          <Stack.Screen name="EditInterests" component={EditInterestsScreen} />
+          <Stack.Screen name="EditLifestyle" component={EditLifestyleScreen} />
           <Stack.Screen name="ProfilePreview" component={ProfileMatchScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ProfileView" component={ProfileMatchScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="DeepQuestions" component={DeepQuestionsScreen} />
           <Stack.Screen name="MatchPreferences" component={MatchPreferencesScreen} />
           <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} />
           <Stack.Screen name="PauseProfile" component={PauseProfileScreen} />
@@ -407,17 +513,13 @@ export const AppNavigator = () => {
           <Stack.Screen name="SupportChat" component={SupportChatScreen} />
           <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
           <Stack.Screen name="Stats" component={StatsScreen} />
+          <Stack.Screen name="SuggestMatch" component={SuggestMatchScreen} />
 
           {/* Friends */}
           <Stack.Screen name="ContactInvite" component={ContactInviteScreen} />
 
-          {/* Additional Screens - To be implemented */}
-          {/*
-          - ProfileEdit
-          - ShareCandidate
-          - ReportUser
-          - StrikeWarning
-          */}
+          {/* Suspension */}
+          <Stack.Screen name="Suspended" component={SuspendedScreen} options={{ gestureEnabled: false }} />
         </Stack.Navigator>
         {/* Dev State Toggle - quick UI state switcher */}
         {FEATURES.ENABLE_DEV_STATE_TOGGLE && <DevStateToggle />}

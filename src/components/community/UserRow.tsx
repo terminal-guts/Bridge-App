@@ -1,11 +1,11 @@
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { FriendWithGridStatus } from '../../types/community';
 import { FireIcon, StarIcon } from '../icons/Icons';
 import { KarmaInfoModal } from './karma/KarmaInfoModal';
+import { NudgeButton } from './NudgeButton';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { FONTS } from '../../constants/typography';
 import { SHADOWS, glowShadow } from '../../theme/shadows';
@@ -21,21 +21,28 @@ interface UserRowProps {
     statusLine?: string;
     showVoteRing?: boolean;
     hasUnread?: boolean;
+    onNudge?: (friendId: string) => void;
+    onStreakMilestone?: (days: number, friendName: string) => void;
+    previousStreakDays?: number;
 }
 
-// Streak tier — color & size intensify with streak length
+// Streak tier — color & size intensify with streak length (4 tiers + default)
 const STREAK_TIERS = [
-    { min: 30, color: '#EF4444', ringColor: '#EF4444', size: 17, label: 'blazing' as const },
-    { min: 7,  color: '#F59E0B', ringColor: '#F59E0B', size: 16, label: 'warm' as const },
-    { min: 1,  color: '#2B65F9', ringColor: '#2B65F9', size: 15, label: 'new' as const },
+    { min: 30, color: '#EF4444', ringColor: '#EF4444', size: 18, label: 'legendary' as const, sublabel: 'Legendary!' },
+    { min: 14, color: '#F97316', ringColor: '#D97706', size: 17, label: 'hot' as const, sublabel: 'Hot streak!' },
+    { min: 7,  color: '#F59E0B', ringColor: '#F59E0B', size: 16, label: 'warm' as const, sublabel: null },
+    { min: 1,  color: '#2B65F9', ringColor: '#2B65F9', size: 15, label: 'new' as const, sublabel: null },
 ] as const;
-const DEFAULT_STREAK_TIER = { color: '#9CA3AF', ringColor: '#F0F0F0', size: 14, label: 'none' as const };
+const DEFAULT_STREAK_TIER = { color: '#9CA3AF', ringColor: '#F0F0F0', size: 14, label: 'none' as const, sublabel: null };
+
+// Milestone thresholds for streak celebrations
+const STREAK_MILESTONES = [30, 14, 7] as const;
 
 function getStreakTier(days: number) {
     return STREAK_TIERS.find(t => days >= t.min) ?? DEFAULT_STREAK_TIER;
 }
 
-export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onViewProfile, onChat, rank, onRankPress, statusLine, showVoteRing, hasUnread }) => {
+export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onViewProfile, onChat, rank, onRankPress, statusLine, showVoteRing, hasUnread, onNudge, onStreakMilestone, previousStreakDays }) => {
     const name = item.friend.firstName || 'User';
     const rawImageUrl = item.friend.photos?.[0]?.url || 'https://via.placeholder.com/150';
     const imageUrl = useMemo(() => getOptimizedImageUrl(rawImageUrl, 68), [rawImageUrl]);
@@ -45,6 +52,17 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
     const points = item.karmaScore?.karmaPoints || 0;
     const [showKarmaModal, setShowKarmaModal] = useState(false);
     const streakTier = useMemo(() => getStreakTier(streak), [streak]);
+
+    // Streak milestone / death detection
+    useEffect(() => {
+        if (previousStreakDays == null || !onStreakMilestone) return;
+        for (const milestone of STREAK_MILESTONES) {
+            if (streak >= milestone && previousStreakDays < milestone) {
+                onStreakMilestone(streak, name);
+                break;
+            }
+        }
+    }, [streak, previousStreakDays, onStreakMilestone, name]);
 
     // #3+#7: Vote button pulse glow animation
     const voteScale = useRef(new Animated.Value(1)).current;
@@ -76,20 +94,43 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
 
     const rankColor = rank === 1 ? '#FFD700' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : '#2B65F9';
 
-    const avatarShadow = useMemo(() => streak >= 7
-        ? glowShadow(streakTier.ringColor, 'medium')
-        : {}, [streak, streakTier.ringColor]);
+    const avatarShadow = useMemo(() => streak >= 14
+        ? glowShadow(streakTier.ringColor, 'strong')
+        : streak >= 7
+            ? glowShadow(streakTier.ringColor, 'medium')
+            : {}, [streak, streakTier.ringColor]);
+
+    // Legendary pulse animation (30+ day streaks)
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    useEffect(() => {
+        if (streak < 30) return;
+        const loop = Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, { toValue: 1.05, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+                Animated.timing(pulseAnim, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+            ])
+        );
+        loop.start();
+        return () => { loop.stop(); pulseAnim.setValue(1); };
+    }, [streak, pulseAnim]);
 
     const avatarContent = (
-        <TouchableOpacity onPress={onViewProfile} activeOpacity={onViewProfile ? 0.8 : 1} disabled={!onViewProfile} accessibilityLabel={`View ${name}'s profile`} accessibilityRole="button" style={avatarShadow}>
-            <Image
-                source={{ uri: imageUrl }}
-                style={[styles.avatar, { borderColor: streakTier.ringColor }]}
-                contentFit="cover"
-                transition={200}
-                cachePolicy="disk"
-            />
-        </TouchableOpacity>
+        <Animated.View style={streak >= 30 ? { transform: [{ scale: pulseAnim }] } : undefined}>
+            <TouchableOpacity onPress={onViewProfile} activeOpacity={onViewProfile ? 0.8 : 1} disabled={!onViewProfile} accessibilityLabel={`View ${name}'s profile`} accessibilityRole="button" style={avatarShadow}>
+                <Image
+                    source={{ uri: imageUrl }}
+                    style={[
+                        styles.avatar,
+                        { borderColor: streakTier.ringColor },
+                        streak >= 14 && { borderWidth: 2.5, borderColor: '#D97706' },
+                        streak >= 30 && { borderColor: '#EF4444' },
+                    ]}
+                    contentFit="cover"
+                    transition={200}
+                    cachePolicy="disk"
+                />
+            </TouchableOpacity>
+        </Animated.View>
     );
 
     // Shared info block used in both vote and chat rows
@@ -101,14 +142,25 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
             </View>
             <View style={styles.streakRow}>
                 <FireIcon size={streakTier.size} color={streakTier.color} />
-                <Text style={[styles.streakText, streak >= 30 && styles.streakTextHot, streak >= 7 && streak < 30 && styles.streakTextWarm]}>
-                    {streak} day{streak !== 1 ? 's' : ''}
-                </Text>
+                <View>
+                    <Text style={[
+                        styles.streakText,
+                        streak >= 30 && styles.streakTextHot,
+                        streak >= 14 && streak < 30 && styles.streakTextHot14,
+                        streak >= 7 && streak < 14 && styles.streakTextWarm,
+                    ]}>
+                        {streak} day{streak !== 1 ? 's' : ''}
+                    </Text>
+                    {streakTier.sublabel && (
+                        <Text style={[styles.streakSublabel, { color: streakTier.color }]}>{streakTier.sublabel}</Text>
+                    )}
+                </View>
             </View>
             {statusLine ? (
                 <Text style={[
                     styles.statusLine,
                     statusLine === 'Has a match!' && styles.statusLineActive,
+                    statusLine.startsWith('Suggested for') && styles.statusLineSuggestion,
                 ]} numberOfLines={1}>{statusLine}</Text>
             ) : null}
         </View>
@@ -174,10 +226,19 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                 {avatarContent}
                 {infoBlock}
             </View>
-            <TouchableOpacity style={styles.pointsBtn} activeOpacity={0.75} onPress={handleKarmaTap} accessibilityLabel={`${name}'s karma: ${points} points`} accessibilityRole="button">
-                <StarIcon size={15} color="#3ECC62" />
-                <Text style={styles.pointsBtnText}>{points} pts</Text>
-            </TouchableOpacity>
+            <View style={styles.rightActions}>
+                {onNudge && (
+                    <NudgeButton
+                        friendId={item.friend.id || ''}
+                        friendName={name}
+                        onNudge={onNudge}
+                    />
+                )}
+                <TouchableOpacity style={styles.pointsBtn} activeOpacity={0.75} onPress={handleKarmaTap} accessibilityLabel={`${name}'s karma: ${points} points`} accessibilityRole="button">
+                    <StarIcon size={15} color="#3ECC62" />
+                    <Text style={styles.pointsBtnText}>{points} pts</Text>
+                </TouchableOpacity>
+            </View>
             <KarmaInfoModal visible={showKarmaModal} onClose={() => setShowKarmaModal(false)} />
         </TouchableOpacity>
     );
@@ -198,6 +259,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         flex: 1,
+    },
+    rightActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
     rankBadge: {
         width: 32,
@@ -267,9 +333,18 @@ const styles = StyleSheet.create({
         color: '#D97706',
         fontFamily: FONTS.medium,
     },
+    streakTextHot14: {
+        color: '#F97316',
+        fontFamily: FONTS.semiBold,
+    },
     streakTextHot: {
         color: '#DC2626',
+        fontFamily: FONTS.bold,
+    },
+    streakSublabel: {
         fontFamily: FONTS.semiBold,
+        fontSize: 11,
+        marginTop: 1,
     },
     // #2: Contextual status line
     statusLine: {
@@ -280,6 +355,10 @@ const styles = StyleSheet.create({
     },
     statusLineActive: {
         color: '#3ECC62',
+        fontFamily: FONTS.medium,
+    },
+    statusLineSuggestion: {
+        color: '#437FFF',
         fontFamily: FONTS.medium,
     },
     unreadDot: {

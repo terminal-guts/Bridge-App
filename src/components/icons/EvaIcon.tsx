@@ -6,7 +6,7 @@
  *
  * Usage:
  * <EvaIcon name="arrow-back" variant="outline" color="primary" size={24} />
- * <EvaIcon name="checkmark" variant="fill" color="#FF7A5C" size={20} />
+ * <EvaIcon name="checkmark" variant="outline" color="#FF7A5C" size={20} />
  */
 
 import React from 'react';
@@ -94,10 +94,13 @@ export function EvaIcon({
     return null;
   }
 
-  // Replace fill/stroke colors in SVG with the specified color
-  const colorizedSvg = svgContent
-    .replace(/fill="[^"]*"/g, `fill="${resolvedColor}"`)
-    .replace(/stroke="[^"]*"/g, `stroke="${resolvedColor}"`);
+  // Colorize the SVG:
+  // 1. Replace existing fill/stroke colors (preserve "none" — it's structural)
+  // 2. Add fill to the root <svg> tag so paths without explicit fill inherit it
+  let colorizedSvg = svgContent
+    .replace(/fill="(?!none)[^"]*"/g, `fill="${resolvedColor}"`)
+    .replace(/stroke="(?!none)[^"]*"/g, `stroke="${resolvedColor}"`)
+    .replace(/^<svg /, `<svg fill="${resolvedColor}" `);
 
   return (
     <StyledView style={[{ width: size, height: size }, style]}>

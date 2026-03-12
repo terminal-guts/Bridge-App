@@ -56,14 +56,14 @@ const MOCK_FIRST_NAMES = [
 ];
 
 const MOCK_BIOS = [
-  'Coffee enthusiast ☕ | Hiking on weekends | Love deep conversations',
-  'Bookworm 📚 | Trying every ramen spot in the city | Dog person',
-  'Amateur photographer 📸 | Rock climbing addict | Always planning the next trip',
-  'Yoga instructor 🧘 | Plant parent | Passionate about sustainability',
-  'Software engineer 💻 | Board game nights | Cooking experiments',
-  'Graphic designer 🎨 | Live music lover | Vintage fashion collector',
-  'Teacher by day, musician by night 🎸 | Love trying new restaurants',
-  'Running marathons 🏃 | Science nerd | Documentary binge-watcher',
+  'Coffee enthusiast | Hiking on weekends | Love deep conversations',
+  'Bookworm | Trying every ramen spot in the city | Dog person',
+  'Amateur photographer | Rock climbing addict | Always planning the next trip',
+  'Yoga instructor | Plant parent | Passionate about sustainability',
+  'Software engineer | Board game nights | Cooking experiments',
+  'Graphic designer | Live music lover | Vintage fashion collector',
+  'Teacher by day, musician by night | Love trying new restaurants',
+  'Running marathons | Science nerd | Documentary binge-watcher',
   'Architect | Urban explorer | Weekend baker',
   'Marketing manager | Wine tasting enthusiast | Trivia night champion'
 ];
@@ -861,7 +861,7 @@ const mockPendingProposal: PendingMatchProposal = {
       id: 'endorsement-pending-1',
       proposalId: 'proposal-approved-001',
       endorserUserId: 'friend-maya',
-      endorserProfile: { firstName: 'Maya' } as any,
+      endorserProfile: { firstName: 'Maya', photos: [{ id: 'p-maya', url: 'https://i.pravatar.cc/150?u=maya', isMain: true, order: 0 }] } as any,
       endorsementType: 'friend_of_a' as const,
       selectedCandidateId: 'friend-maya',
       createdAt: new Date().toISOString(),
@@ -879,24 +879,21 @@ const mockPendingProposal: PendingMatchProposal = {
 
 const mockActiveMatch: ActiveMatch = {
   id: 'active-match-001',
-  matchedUser: generateMockUser({
-    id: 'active-match-user',
-    firstName: 'Reese',
-    age: 26,
-    location: 'Queens, NY',
-    bio: 'Musician | Foodie | Always exploring new neighborhoods',
-  }),
+  // Same partner as proposal — in production, the active match IS the proposal that both accepted
+  matchedUser: mockPendingProposal.matchedUser,
   matchedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
   canEndAt: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day from now
   daysUntilCanEnd: 1,
   chatId: 'chat-001',
+  // Carry over the same endorsers from the proposal that created this match
   endorsers: [
+    ...mockPendingProposal.endorsers,
     {
-      id: 'endorsement-active-1',
-      proposalId: 'proposal-approved-002',
+      id: 'endorsement-active-2',
+      proposalId: 'proposal-approved-001',
       endorserUserId: 'friend-ethan',
-      endorserProfile: { firstName: 'Ethan' } as any,
-      endorsementType: 'friend_of_a' as const,
+      endorserProfile: { firstName: 'Ethan', photos: [{ id: 'p-ethan', url: 'https://i.pravatar.cc/150?u=ethan', isMain: true, order: 0 }] } as any,
+      endorsementType: 'friend_of_b' as const,
       selectedCandidateId: 'friend-ethan',
       createdAt: new Date().toISOString(),
     },

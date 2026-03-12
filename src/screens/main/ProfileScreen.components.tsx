@@ -8,9 +8,9 @@ import React from 'react';
 import { View, Image, TouchableOpacity, ScrollView } from 'react-native';
 import { styled } from 'nativewind';
 import { H2, H3, Body, Card, CollapsibleCard, Chip } from '../../components/ui';
-import { Ionicons } from '@expo/vector-icons';
 import { UserProfile, Match } from '../../types';
-import { valueEmoji, interestEmoji } from '../../utils/emojiMaps';
+import { valueIconName, interestIconName } from '../../utils/emojiMaps';
+import { EvaIcon } from '../../components/icons';
 
 const StyledView = styled(View);
 const StyledImage = styled(Image);
@@ -21,7 +21,7 @@ const StyledScrollView = styled(ScrollView);
 export type SectionType = 'basic' | 'interests' | 'values' | 'lifestyle' | 'preferences';
 
 interface ProfileInfoItemProps {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: keyof typeof Record<string, number>;
   label: string;
   value: string;
   subtitle?: string;
@@ -38,7 +38,7 @@ export const ProfileInfoItem: React.FC<ProfileInfoItemProps> = ({
 }) => (
   <StyledView className="flex-row items-center">
     <StyledView className="w-10 h-10 bg-primary-100 rounded-lg items-center justify-center mr-3">
-      <Ionicons name={icon} size={20} color="#437FFF" />
+      <EvaIcon name={icon} variant="outline" size={20} color="#437FFF" />
     </StyledView>
     <StyledView className="flex-1">
       <Body className="text-neutral-500 text-xs mb-1">{label}</Body>
@@ -72,23 +72,23 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
             accessibilityLabel="Edit profile"
             accessibilityRole="button"
           >
-            <Ionicons name="pencil" size={18} color="#437FFF" />
+            <EvaIcon name="edit-2" variant="outline" size={18} color="#437FFF" />
           </StyledTouchableOpacity>
         </StyledView>
       }
       defaultExpanded={true}
     >
       <StyledView className="space-y-3">
-        <ProfileInfoItem icon="calendar-outline" label="Age" value={`${profile.age} years old`} />
+        <ProfileInfoItem icon="calendar" label="Age" value={`${profile.age} years old`} />
         {profile.height && (
-          <ProfileInfoItem icon="resize-outline" label="Height" value={profile.height} />
+          <ProfileInfoItem icon="maximize" label="Height" value={profile.height} />
         )}
-        <ProfileInfoItem icon="body-outline" label="Ethnicity" value={profile.ethnicity} />
+        <ProfileInfoItem icon="person" label="Ethnicity" value={profile.ethnicity} />
         {profile.location && (
-          <ProfileInfoItem icon="location-outline" label="Lives in" value={profile.location} />
+          <ProfileInfoItem icon="pin" label="Lives in" value={profile.location} />
         )}
         {profile.hometown && (
-          <ProfileInfoItem icon="home-outline" label="From" value={profile.hometown} />
+          <ProfileInfoItem icon="home" label="From" value={profile.hometown} />
         )}
       </StyledView>
     </CollapsibleCard>
@@ -102,7 +102,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
         <StyledView className="space-y-3">
           {profile.currentJob && (
             <ProfileInfoItem
-              icon="briefcase-outline"
+              icon="briefcase"
               label="Current Job"
               value={profile.currentJob}
               subtitle={profile.companyPosition}
@@ -110,7 +110,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
           )}
           {profile.school && (
             <ProfileInfoItem
-              icon="school-outline"
+              icon="book"
               label="Education"
               value={profile.school}
               subtitle={profile.educationLevel ? profile.educationLevel.replace('_', ' ') : undefined}
@@ -133,21 +133,21 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
         <StyledView className="space-y-3">
           {profile.pronounsList && profile.pronounsList.length > 0 && (
             <ProfileInfoItem
-              icon="person-outline"
+              icon="person"
               label="Pronouns"
               value={profile.pronounsList.join(' / ')}
             />
           )}
           {profile.customMyGender && (
             <ProfileInfoItem
-              icon="transgender-outline"
+              icon="people"
               label="Gender Identity"
               value={profile.customMyGender}
             />
           )}
           {profile.interestedInGenders && profile.interestedInGenders.length > 0 && (
             <ProfileInfoItem
-              icon="heart-outline"
+              icon="heart"
               label="Interested In"
               value={profile.interestedInGenders.map(g => g.charAt(0).toUpperCase() + g.slice(1)).join(', ')}
               subtitle={profile.customInterestedIn}
@@ -155,14 +155,14 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
           )}
           {profile.religion && (
             <ProfileInfoItem
-              icon="flower-outline"
+              icon="sun"
               label="Religion"
               value={profile.religion}
             />
           )}
           {profile.politicalLeaning && profile.politicalLeaning !== 'prefer_not_to_say' && (
             <ProfileInfoItem
-              icon="flag-outline"
+              icon="flag"
               label="Political Views"
               value={profile.politicalLeaning.replace(/_/g, ' ')}
             />
@@ -180,14 +180,14 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
         <StyledView className="space-y-3">
           {profile.hasChildren && (
             <ProfileInfoItem
-              icon="people-outline"
+              icon="people"
               label="Has Children"
               value={profile.hasChildren}
             />
           )}
           {profile.familyPlans && (
             <ProfileInfoItem
-              icon="heart-outline"
+              icon="heart"
               label="Family Plans"
               value={profile.familyPlans}
             />
@@ -206,16 +206,16 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
           {(profile.drinkingFrequency || profile.cannabisFrequency || profile.tobaccoFrequency || profile.otherDrugsFrequency) && (
             <StyledView className="space-y-3">
               {profile.drinkingFrequency && (
-                <ProfileInfoItem icon="wine-outline" label="Drinking" value={profile.drinkingFrequency} />
+                <ProfileInfoItem icon="droplet" label="Drinking" value={profile.drinkingFrequency} />
               )}
               {profile.cannabisFrequency && (
-                <ProfileInfoItem icon="leaf-outline" label="Cannabis" value={profile.cannabisFrequency} />
+                <ProfileInfoItem icon="activity" label="Cannabis" value={profile.cannabisFrequency} />
               )}
               {profile.tobaccoFrequency && (
-                <ProfileInfoItem icon="ban-outline" label="Tobacco" value={profile.tobaccoFrequency} />
+                <ProfileInfoItem icon="close-circle" label="Tobacco" value={profile.tobaccoFrequency} />
               )}
               {profile.otherDrugsFrequency && (
-                <ProfileInfoItem icon="medical-outline" label="Other Substances" value={profile.otherDrugsFrequency} />
+                <ProfileInfoItem icon="plus-circle" label="Other Substances" value={profile.otherDrugsFrequency} />
               )}
             </StyledView>
           )}
@@ -245,7 +245,7 @@ export const InterestsSection: React.FC<InterestsSectionProps> = ({ interests })
       <StyledView className="flex-row flex-wrap -mx-1">
         {interests.map((interest, index) => (
           <StyledView key={index} className="px-1 mb-2">
-            <Chip label={`${interestEmoji(interest)} ${interest}`} variant="interest" />
+            <Chip label={interest} variant="interest" iconName={interestIconName(interest)} />
           </StyledView>
         ))}
       </StyledView>
@@ -273,7 +273,7 @@ export const ValuesSection: React.FC<ValuesSectionProps> = ({ values }) => {
       <StyledView className="flex-row flex-wrap -mx-1">
         {values.map((value, index) => (
           <StyledView key={index} className="px-1 mb-2">
-            <Chip label={`${valueEmoji(value)} ${value}`} variant="value" />
+            <Chip label={value} variant="value" iconName={valueIconName(value)} />
           </StyledView>
         ))}
       </StyledView>
@@ -307,7 +307,7 @@ export const PartnerLifestyleSection: React.FC<PartnerLifestyleSectionProps> = (
     <Card className="mb-6">
       <StyledView className="flex-row items-center justify-between mb-3">
         <StyledView className="flex-row items-center flex-1">
-          <Ionicons name="heart-circle-outline" size={20} color="#7C3AED" />
+          <EvaIcon name="heart" variant="outline" size={20} color="#7C3AED" />
           <H3 className="ml-2">What I Want in a Partner - Lifestyle</H3>
         </StyledView>
         {onEdit && (
@@ -316,7 +316,7 @@ export const PartnerLifestyleSection: React.FC<PartnerLifestyleSectionProps> = (
             accessibilityLabel="Edit partner lifestyle preferences"
             accessibilityRole="button"
           >
-            <Ionicons name="pencil" size={18} color="#7C3AED" />
+            <EvaIcon name="edit-2" variant="outline" size={18} color="#7C3AED" />
           </StyledTouchableOpacity>
         )}
       </StyledView>
@@ -324,7 +324,7 @@ export const PartnerLifestyleSection: React.FC<PartnerLifestyleSectionProps> = (
         {drinking && (
           <StyledView className="flex-row justify-between items-center">
             <StyledView className="flex-row items-center">
-              <Ionicons name="wine-outline" size={18} color="#7C3AED" />
+              <EvaIcon name="droplet" variant="outline" size={18} color="#7C3AED" />
               <Body className="text-purple-700 ml-2">Drinking</Body>
             </StyledView>
             <Body className="text-purple-900 font-medium capitalize">{drinking.replace(/_/g, ' ')}</Body>
@@ -333,7 +333,7 @@ export const PartnerLifestyleSection: React.FC<PartnerLifestyleSectionProps> = (
         {weed && (
           <StyledView className="flex-row justify-between items-center">
             <StyledView className="flex-row items-center">
-              <Ionicons name="leaf-outline" size={18} color="#7C3AED" />
+              <EvaIcon name="activity" variant="outline" size={18} color="#7C3AED" />
               <Body className="text-purple-700 ml-2">Weed</Body>
             </StyledView>
             <Body className="text-purple-900 font-medium capitalize">{weed.replace(/_/g, ' ')}</Body>
@@ -342,7 +342,7 @@ export const PartnerLifestyleSection: React.FC<PartnerLifestyleSectionProps> = (
         {tobacco && (
           <StyledView className="flex-row justify-between items-center">
             <StyledView className="flex-row items-center">
-              <Ionicons name="close-circle-outline" size={18} color="#7C3AED" />
+              <EvaIcon name="close-circle" variant="outline" size={18} color="#7C3AED" />
               <Body className="text-purple-700 ml-2">Tobacco</Body>
             </StyledView>
             <Body className="text-purple-900 font-medium capitalize">{tobacco.replace(/_/g, ' ')}</Body>
@@ -351,7 +351,7 @@ export const PartnerLifestyleSection: React.FC<PartnerLifestyleSectionProps> = (
         {drugs && (
           <StyledView className="flex-row justify-between items-center">
             <StyledView className="flex-row items-center">
-              <Ionicons name="medical-outline" size={18} color="#7C3AED" />
+              <EvaIcon name="plus-square" variant="outline" size={18} color="#7C3AED" />
               <Body className="text-purple-700 ml-2">Drugs</Body>
             </StyledView>
             <Body className="text-purple-900 font-medium capitalize">{drugs.replace(/_/g, ' ')}</Body>
@@ -363,7 +363,7 @@ export const PartnerLifestyleSection: React.FC<PartnerLifestyleSectionProps> = (
 };
 
 interface LifestyleItemProps {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: keyof typeof Record<string, number>;
   label: string;
   value: string;
 }
@@ -371,7 +371,7 @@ interface LifestyleItemProps {
 const LifestyleItem: React.FC<LifestyleItemProps> = ({ icon, label, value }) => (
   <StyledView className="flex-row justify-between items-center">
     <StyledView className="flex-row items-center">
-      <Ionicons name={icon} size={18} color="#667085" />
+      <EvaIcon name={icon} variant="outline" size={18} color="#667085" />
       <Body className="text-neutral-600 ml-2">{label}</Body>
     </StyledView>
     <Body className="text-neutral-900 font-medium capitalize">{value}</Body>
@@ -405,35 +405,35 @@ export const LifestyleSection: React.FC<LifestyleSectionProps> = ({ lifestyle })
       <StyledView className="space-y-3">
         {lifestyle.exercise && (
           <LifestyleItem
-            icon="fitness-outline"
+            icon="activity"
             label="Exercise"
             value={lifestyle.exercise.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
           />
         )}
         {lifestyle.drinking && (
           <LifestyleItem
-            icon="wine-outline"
+            icon="droplet"
             label="Drinking"
             value={lifestyle.drinking.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
           />
         )}
         {lifestyle.smoking && (
           <LifestyleItem
-            icon="ban-outline"
+            icon="close-circle"
             label="Smoking"
             value={lifestyle.smoking.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
           />
         )}
         {lifestyle.children && (
           <LifestyleItem
-            icon="heart-outline"
+            icon="heart"
             label="Children Preference"
             value={lifestyle.children.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
           />
         )}
         {lifestyle.pets && lifestyle.pets.length > 0 && (
           <LifestyleItem
-            icon="paw-outline"
+            icon="smiling-face"
             label="Pets"
             value={lifestyle.pets.map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(', ')}
           />
@@ -457,17 +457,17 @@ export const PreferencesSection: React.FC<PreferencesSectionProps> = ({ preferen
       <H3 className="mb-4">Looking For - Basics</H3>
       <StyledView className="space-y-3">
         <LifestyleItem
-          icon="calendar-outline"
+          icon="calendar"
           label="Age Range"
           value={`${preferences.ageMin}-${preferences.ageMax}`}
         />
         <LifestyleItem
-          icon="people-outline"
+          icon="people"
           label="Interested In (Gender)"
           value={preferences.gender === 'both' ? 'Men & Women' : preferences.gender.charAt(0).toUpperCase() + preferences.gender.slice(1)}
         />
         <LifestyleItem
-          icon="heart-outline"
+          icon="heart"
           label="Looking For"
           value={preferences.lookingFor.charAt(0).toUpperCase() + preferences.lookingFor.slice(1)}
         />
@@ -480,7 +480,7 @@ export const PreferencesSection: React.FC<PreferencesSectionProps> = ({ preferen
         <H3 className="mb-4">Physical Preferences</H3>
         <StyledView className="space-y-3">
           <LifestyleItem
-            icon="resize-outline"
+            icon="maximize"
             label="Height Preference"
             value={`${Math.floor(preferences.heightMin / 12)}'${preferences.heightMin % 12}" - ${Math.floor(preferences.heightMax / 12)}'${preferences.heightMax % 12}"`}
           />
@@ -526,21 +526,21 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({ match, onMatchP
               {matchProfile.firstName}
             </H3>
             <StyledView className="flex-row items-center mb-0.5">
-              <Ionicons name="heart" size={12} color="#10B981" />
+              <EvaIcon name="heart" variant="outline" size={12} color="#10B981" />
               <Body className="text-neutral-600 text-xs ml-1.5">
                 Matched: {matchedDate}
               </Body>
             </StyledView>
             {unmatchedDate && (
               <StyledView className="flex-row items-center">
-                <Ionicons name="close-circle" size={12} color="#EF4444" />
+                <EvaIcon name="close-circle" variant="outline" size={12} color="#EF4444" />
                 <Body className="text-neutral-600 text-xs ml-1.5">
                   Unmatched: {unmatchedDate}
                 </Body>
               </StyledView>
             )}
           </StyledView>
-          <Ionicons name="chevron-forward" size={20} color="#D0D5DD" />
+          <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color="#D0D5DD" />
         </StyledView>
       </Card>
     </StyledTouchableOpacity>
@@ -556,7 +556,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({ match, onMatchP
 });
 
 interface EmptyStateProps {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: keyof typeof Record<string, number>;
   title: string;
   message: string;
 }
@@ -581,7 +581,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, message }) 
           <StyledView className="absolute w-16 h-16 bg-white/40 rounded-xl" />
 
           {/* Icon - Properly centered */}
-          <Ionicons name={icon} size={36} color="#437FFF" style={{ zIndex: 1 }} />
+          <EvaIcon name={icon} variant="outline" size={36} color="#437FFF" style={{ zIndex: 1 }} />
         </StyledView>
       </StyledView>
 
@@ -647,7 +647,7 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
       <StyledView className="flex-row items-center justify-between mb-3">
         <StyledView className="flex-row items-center flex-1">
           <StyledView className="w-12 h-12 bg-primary-500 rounded-xl items-center justify-center mr-3 shadow-md">
-            <Ionicons name="person" size={24} color="white" />
+            <EvaIcon name="person" variant="outline" size={24} color="white" />
           </StyledView>
           <StyledView className="flex-1">
             <H3 className="text-neutral-900 mb-1">About Me</H3>
@@ -668,7 +668,7 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
         {/* Age */}
         <StyledView className="flex-row items-center justify-between py-2 border-b border-primary-100/50">
           <StyledView className="flex-row items-center">
-            <Ionicons name="calendar-outline" size={16} color="#437FFF" />
+            <EvaIcon name="calendar" variant="outline" size={16} color="#437FFF" />
             <Body className="text-neutral-700 text-sm ml-2">Age</Body>
           </StyledView>
           <Body className="text-neutral-900 font-semibold text-sm">
@@ -679,7 +679,7 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
         {/* Ethnicity */}
         <StyledView className="flex-row items-center justify-between py-2 border-b border-primary-100/50">
           <StyledView className="flex-row items-center">
-            <Ionicons name="body-outline" size={16} color="#437FFF" />
+            <EvaIcon name="person" variant="outline" size={16} color="#437FFF" />
             <Body className="text-neutral-700 text-sm ml-2">Ethnicity</Body>
           </StyledView>
           <Body className="text-neutral-900 font-semibold text-sm" numberOfLines={1}>
@@ -750,7 +750,7 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
       <StyledView className="flex-row items-center justify-between mb-3">
         <StyledView className="flex-row items-center flex-1">
           <StyledView className="w-12 h-12 bg-purple-500 rounded-xl items-center justify-center mr-3 shadow-md">
-            <Ionicons name="heart" size={24} color="white" />
+            <EvaIcon name="heart" variant="outline" size={24} color="white" />
           </StyledView>
           <StyledView className="flex-1">
             <H3 className="text-neutral-900 mb-1">Match Preferences</H3>
@@ -771,7 +771,7 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
         {/* Looking For */}
         <StyledView className="flex-row items-center justify-between py-2 border-b border-purple-100/50">
           <StyledView className="flex-row items-center">
-            <Ionicons name="heart-outline" size={16} color="#7C3AED" />
+            <EvaIcon name="heart" variant="outline" size={16} color="#7C3AED" />
             <Body className="text-neutral-700 text-sm ml-2">Looking For</Body>
           </StyledView>
           <Body className="text-neutral-900 font-semibold text-sm capitalize">
@@ -782,7 +782,7 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
         {/* Height Preference */}
         <StyledView className="flex-row items-center justify-between py-2 border-b border-purple-100/50">
           <StyledView className="flex-row items-center">
-            <Ionicons name="resize-outline" size={16} color="#7C3AED" />
+            <EvaIcon name="maximize" variant="outline" size={16} color="#7C3AED" />
             <Body className="text-neutral-700 text-sm ml-2">Height</Body>
           </StyledView>
           <Body className="text-neutral-900 font-semibold text-sm">
@@ -795,12 +795,12 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
         {/* Preferred Politics */}
         <StyledView className="flex-row items-center justify-between py-2">
           <StyledView className="flex-row items-center">
-            <Ionicons name="flag-outline" size={16} color="#7C3AED" />
+            <EvaIcon name="flag" variant="outline" size={16} color="#7C3AED" />
             <Body className="text-neutral-700 text-sm ml-2">Preferred Politics</Body>
           </StyledView>
           <Body className="text-neutral-900 font-semibold text-sm" numberOfLines={1}>
             {(() => {
-              const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+              const cap = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
               if (!preferredPolitics || preferredPolitics.length === 0) return '-';
               if (preferredPolitics.length === 1) return cap(preferredPolitics[0]);
               return `${cap(preferredPolitics[0])} +${preferredPolitics.length - 1}`;

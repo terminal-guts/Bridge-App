@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
 import { H3, Body, Button } from './';
 import { lightHaptic } from '../../utils/haptics';
+import { EvaIcon } from '../icons';
 
 interface ErrorStateProps {
   title?: string;
@@ -43,7 +43,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
       <StyledView className="mb-4">
         {icon || (
           <StyledView className="w-16 h-16 bg-error-100 rounded-full items-center justify-center">
-            <Ionicons name="alert-circle-outline" size={32} color="#EF4444" />
+            <EvaIcon name="alert-circle" variant="outline" size={32} color="#EF4444" />
           </StyledView>
         )}
       </StyledView>
@@ -72,7 +72,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
           activeOpacity={0.7}
           className="bg-primary-500 px-6 py-3 rounded-xl flex-row items-center"
         >
-          <Ionicons name="refresh" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+          <EvaIcon name="refresh" variant="outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
           <Body className="text-white font-semibold">
             {retryLabel}
           </Body>
@@ -106,7 +106,7 @@ export const CardErrorState: React.FC<ErrorStateProps> = ({
       className={`items-center justify-center py-8 px-4 ${className}`}
     >
       <StyledView className="w-12 h-12 bg-error-100 rounded-full items-center justify-center mb-3">
-        <Ionicons name="alert-circle" size={24} color="#EF4444" />
+        <EvaIcon name="alert-circle" variant="outline" size={24} color="#EF4444" />
       </StyledView>
 
       <Body className="text-neutral-700 font-medium text-center mb-1">

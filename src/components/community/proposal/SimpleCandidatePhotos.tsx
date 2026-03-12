@@ -15,7 +15,6 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
 import { UserProfile, Photo } from '../../../types';
 import { Body } from '../../ui';
 import { createLogger } from '../../../utils/secureLogger';

@@ -408,16 +408,6 @@ export const TOUCH_TARGET_SIZE = 48; // px
 export const GRID_COLUMNS_MOBILE = 2;
 
 /**
- * Grid column count (tablet)
- */
-export const GRID_COLUMNS_TABLET = 3;
-
-/**
  * Grid gap
  */
 export const GRID_GAP = 16; // px
-
-/**
- * Max container width (desktop)
- */
-export const CONTAINER_MAX_WIDTH = 1200; // px

@@ -114,6 +114,10 @@ export interface Proposal {
   isFriendVote?: boolean;
   userAProfile?: Partial<UserProfile>;
   userBProfile?: Partial<UserProfile>;
+
+  // Friend proposal fields
+  createdBy?: string;
+  creationType?: 'algorithm' | 'friend_proposal';
 }
 
 export type EndorsementType = 'random_matcher' | 'friend_of_a' | 'friend_of_b' | 'friend_of_both';
@@ -330,24 +334,6 @@ export interface ActiveMatch {
   chatId?: string;
   endorsers?: Endorsement[];
   messagesExchanged?: number;
-}
-
-// ==================== Friend Chat Types ====================
-
-export type FriendMessageType = 'text' | 'system_event' | 'signal_notification';
-export type FriendEventType = 'assist_earned' | 'badge_upgrade' | 'signal_sent' | 'signal_approved' | 'proposal_created';
-
-export interface FriendChatMessage {
-  id: string;
-  friendshipId: string;
-  senderUserId: string;
-  messageText?: string;
-  messageType: FriendMessageType;
-  eventType?: FriendEventType;
-  eventData?: Record<string, any>;
-  isRead: boolean;
-  readAt?: string;
-  createdAt: string;
 }
 
 // ==================== Community Service Response Types ====================

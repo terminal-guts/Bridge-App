@@ -33,7 +33,7 @@ import {
 import { Image, ImageBackground } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
+import { Confetti } from '../Confetti';
 import { GuideTarget } from '../../guides';
 import { UserProfile } from '../../../types';
 import { Proposal, CommunityTask } from '../../../types/community';
@@ -57,6 +57,7 @@ import { communityService } from '../../../services/communityServiceIndex';
 import { createLogger } from '../../../utils/secureLogger';
 import { OVERLAYS } from '../../../theme/shadows';
 import { getQuestionById } from '../../../utils/deepQuestions';
+import { EvaIcon } from '../../icons';
 
 const logger = createLogger('ProposalReviewView');
 
@@ -233,13 +234,13 @@ function computeSmartPills(
 // ─── Helper: icon for match status ────────────────────────────────────────────
 function MatchIcon({ status }: { status: MatchStatus }) {
   if (status === 'both_happy') {
-    return <Ionicons name="checkmark" size={20} color={GREEN} />;
+    return <EvaIcon name="checkmark" variant="outline" size={20} color="GREEN" />;
   }
   if (status === 'neither_happy') {
-    return <Ionicons name="close" size={20} color={RED} />;
+    return <EvaIcon name="close" variant="outline" size={20} color="RED" />;
   }
   if (status === 'left_happy' || status === 'right_happy') {
-    return <Ionicons name="warning" size={18} color="#FFA629" />;
+    return <EvaIcon name="alert-triangle" variant="outline" size={18} color="#FFA629" />;
   }
   return null;
 }
@@ -1047,6 +1048,18 @@ export function ProposalReviewView({
   const karmaTranslateY = useRef(new Animated.Value(0)).current;
   const [showKarmaPopup, setShowKarmaPopup] = useState(false);
 
+  // Confetti on yes votes
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  // Vote flash overlay
+  const [voteFlashColor, setVoteFlashColor] = useState<string | null>(null);
+  const flashOpacity = useRef(new Animated.Value(0)).current;
+
+  // Post-vote crowd reveal
+  const [crowdReveal, setCrowdReveal] = useState<{ message: string; subMessage: string; color: string } | null>(null);
+  const crowdRevealOpacity = useRef(new Animated.Value(0)).current;
+  const crowdRevealTranslateY = useRef(new Animated.Value(20)).current;
+
   // For Friend modal state
   const [showForFriendModal, setShowForFriendModal] = useState(false);
   const [forFriendStep, setForFriendStep] = useState<1 | 2>(1);
@@ -1108,6 +1121,61 @@ export function ProposalReviewView({
     });
   }, [karmaOpacity, karmaTranslateY]);
 
+  // Post-vote crowd reveal animation
+  const triggerCrowdReveal = useCallback((vote: 'yes' | 'no' | 'unsure', proposal: any) => {
+    const totalVotes = (proposal.totalVotes ?? 0) + 1;
+    const yesVotes = vote === 'yes' ? (proposal.yesVotes ?? 0) + 1 : (proposal.yesVotes ?? 0);
+    const noVotes = vote === 'no' ? (proposal.noVotes ?? 0) + 1 : (proposal.noVotes ?? 0);
+
+    if (totalVotes < 2) {
+      // First voter — no crowd data yet
+      setCrowdReveal({ message: 'First vote!', subMessage: 'You set the tone', color: '#2B65F9' });
+    } else if (vote === 'yes') {
+      const yesPct = Math.round((yesVotes / totalVotes) * 100);
+      if (yesPct >= 70) {
+        setCrowdReveal({ message: `${yesPct}% agree with you`, subMessage: `${yesVotes - 1} other${yesVotes - 1 === 1 ? '' : 's'} voted Yes`, color: '#10B981' });
+      } else if (yesPct <= 35) {
+        setCrowdReveal({ message: 'Bold call!', subMessage: `Only ${yesPct}% voted Yes`, color: '#F59E0B' });
+      } else {
+        setCrowdReveal({ message: `You and ${yesVotes - 1} other${yesVotes - 1 === 1 ? '' : 's'}`, subMessage: 'voted Yes', color: '#10B981' });
+      }
+    } else if (vote === 'no') {
+      const noPct = Math.round((noVotes / totalVotes) * 100);
+      if (noPct >= 50) {
+        setCrowdReveal({ message: `${noPct}% agree`, subMessage: 'Most people voted No too', color: '#667085' });
+      } else {
+        setCrowdReveal({ message: 'Going against the crowd', subMessage: `Only ${noPct}% voted No`, color: '#F59E0B' });
+      }
+    } else {
+      setCrowdReveal({ message: 'On the fence', subMessage: `${totalVotes} votes so far`, color: '#667085' });
+    }
+
+    crowdRevealOpacity.setValue(0);
+    crowdRevealTranslateY.setValue(20);
+    Animated.parallel([
+      Animated.timing(crowdRevealOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.timing(crowdRevealTranslateY, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start(() => {
+      setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(crowdRevealOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+          Animated.timing(crowdRevealTranslateY, { toValue: -10, duration: 400, useNativeDriver: true }),
+        ]).start(() => setCrowdReveal(null));
+      }, 1800);
+    });
+  }, [crowdRevealOpacity, crowdRevealTranslateY]);
+
+  // Vote flash overlay animation
+  const triggerVoteFlash = useCallback((color: string) => {
+    setVoteFlashColor(color);
+    flashOpacity.setValue(0.3);
+    Animated.timing(flashOpacity, {
+      toValue: 0,
+      duration: 400,
+      useNativeDriver: true,
+    }).start(() => setVoteFlashColor(null));
+  }, [flashOpacity]);
+
   // Advance to the next proposal or trigger completion callbacks.
   // Used by both handleVote and handleForFriendConfirm.
   const advanceProposal = useCallback(() => {
@@ -1145,11 +1213,17 @@ export function ProposalReviewView({
     // Haptics — distinct feel per vote type, fire and forget
     if (vote === 'yes') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      setShowConfetti(true);
     } else if (vote === 'no') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     } else {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     }
+
+    // Vote flash
+    if (vote === 'yes') triggerVoteFlash('#10B981');      // green
+    else if (vote === 'no') triggerVoteFlash('#EF4444');   // red
+    else triggerVoteFlash('#F59E0B');                       // amber for unsure
 
     // Submit vote — wait for server confirmation before advancing
     try {
@@ -1179,9 +1253,12 @@ export function ProposalReviewView({
     // Trigger +1 Karma popup
     triggerKarmaPopup();
 
+    // Trigger crowd reveal overlay
+    triggerCrowdReveal(vote, current);
+
     // Advance after confirmed
     advanceProposal();
-  }, [voting, currentIndex, proposals, advanceProposal, triggerKarmaPopup]);
+  }, [voting, currentIndex, proposals, advanceProposal, triggerKarmaPopup, triggerVoteFlash, triggerCrowdReveal]);
 
   // ── For Friend handlers ───────────────────────────────────────────────────
   const handleForFriendPress = useCallback(() => {
@@ -1384,7 +1461,7 @@ export function ProposalReviewView({
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={24} color="#010101" />
+            <EvaIcon name="arrow-back" variant="outline" size={24} color="#010101" />
           </TouchableOpacity>
         </View>
       ) : (
@@ -1470,13 +1547,23 @@ export function ProposalReviewView({
                 borderWidth: 3,
                 borderColor: '#FFFFFF',
               }}>
-                <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                <EvaIcon name="star" variant="outline" size={16} color="#FFFFFF" />
                 <Text style={{ fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: 16, color: '#FFFFFF' }}>
                   {compatScore} %
                 </Text>
               </View>
             </View>
           </View>
+
+          {/* Friend suggestion banner — anonymous, never reveals who suggested */}
+          {proposal.creationType === 'friend_proposal' && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6 }}>
+              <EvaIcon name="people" variant="outline" size={14} color="#437FFF" />
+              <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 13, color: '#437FFF' }}>
+                A friend suggested this match
+              </Text>
+            </View>
+          )}
 
           {/* Live Vote Bar — replaces "Are they a match?" subtitle */}
           <View style={{ position: 'relative' }}>
@@ -1634,7 +1721,7 @@ export function ProposalReviewView({
             gap: 10,
           }}
         >
-          <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+          <EvaIcon name="checkmark" variant="outline" size={18} color="#FFFFFF" />
           <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 16, color: '#FFFFFF' }}>Yes</Text>
         </TouchableOpacity>
 
@@ -1657,7 +1744,7 @@ export function ProposalReviewView({
               padding: 10,
             }}
           >
-            <Ionicons name="close-outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
+            <EvaIcon name="close" variant="outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
             <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>No</Text>
           </TouchableOpacity>
 
@@ -1678,7 +1765,7 @@ export function ProposalReviewView({
               padding: 10,
             }}
           >
-            <Ionicons name="person-add-outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
+            <EvaIcon name="person-add" variant="outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
             <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>Recommend</Text>
           </TouchableOpacity>
 
@@ -1699,7 +1786,7 @@ export function ProposalReviewView({
               padding: 10,
             }}
           >
-            <Ionicons name="information-circle-outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
+            <EvaIcon name="info" variant="outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
             <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>Not Sure</Text>
           </TouchableOpacity>
         </View>
@@ -1878,7 +1965,7 @@ export function ProposalReviewView({
                               alignItems: 'center',
                               justifyContent: 'center',
                             }}>
-                              <Ionicons name="checkmark" size={14} color="#FFF" />
+                              <EvaIcon name="checkmark" variant="outline" size={14} color="#FFF" />
                             </View>
                           )}
                         </TouchableOpacity>
@@ -1937,6 +2024,56 @@ export function ProposalReviewView({
           </View>
         </View>
       </Modal>
+
+      {/* Post-vote crowd reveal */}
+      {crowdReveal && (
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: '35%',
+            left: 0,
+            right: 0,
+            alignItems: 'center',
+            opacity: crowdRevealOpacity,
+            transform: [{ translateY: crowdRevealTranslateY }],
+            pointerEvents: 'none',
+            zIndex: 9997,
+          }}
+        >
+          <View style={{
+            backgroundColor: 'rgba(0,0,0,0.75)',
+            borderRadius: 16,
+            paddingHorizontal: 24,
+            paddingVertical: 16,
+            alignItems: 'center',
+            maxWidth: 280,
+          }}>
+            <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: 18, color: crowdReveal.color, textAlign: 'center' }}>
+              {crowdReveal.message}
+            </Text>
+            <Text style={{ fontFamily: FONTS.regular, fontSize: 13, color: '#CCCCCC', textAlign: 'center', marginTop: 4 }}>
+              {crowdReveal.subMessage}
+            </Text>
+          </View>
+        </Animated.View>
+      )}
+
+      {/* Vote flash overlay */}
+      {voteFlashColor && (
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: voteFlashColor,
+            opacity: flashOpacity,
+            pointerEvents: 'none',
+            zIndex: 9998,
+          }}
+        />
+      )}
+
+      {/* Confetti on yes votes */}
+      <Confetti trigger={showConfetti} onComplete={() => setShowConfetti(false)} />
 
     </View>
   );

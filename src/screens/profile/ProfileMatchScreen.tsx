@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity, TouchableWithoutFeedback,
-    ImageBackground, Image, ActivityIndicator, Dimensions, StyleSheet, PanResponder,
+    ImageBackground, ActivityIndicator, Dimensions, StyleSheet, PanResponder,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Check, Star, Heart, X, Sparkles, Users } from 'lucide-react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { communityService } from '../../services/communityServiceIndex';
 import { getUserProfile, getFullUserProfileById } from '../../services/profileService';
+import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { KarmaInfoModal } from '../../components/community/karma/KarmaInfoModal';
 import { VALUES_EMOJI, INTERESTS_EMOJI, getEmoji } from '../../utils/emojiMaps';
 import { showToast } from '../../utils/toast';
@@ -73,7 +74,14 @@ export default function ProfileMatchScreen() {
     // All hooks must be called before any early returns
     const endorserAvatars = useMemo<string[]>(() =>
         (endorsers ?? [])
-            .map((e: any) => e.endorserProfile?.photos?.[0]?.url)
+            .map((e: any) => {
+                // Try multiple paths for the photo URL
+                const profile = e.endorserProfile ?? e;
+                const photoUrl = profile?.photos?.[0]?.url
+                    ?? profile?.photoUrl
+                    ?? profile?.photo;
+                return photoUrl || null;
+            })
             .filter(Boolean),
         [endorsers]
     );
@@ -211,8 +219,15 @@ export default function ProfileMatchScreen() {
                                 <View style={styles.avatarStack}>
                                     {endorserAvatars.length > 0
                                         ? endorserAvatars.map((uri, i) => (
-                                            <View key={uri} style={[styles.stackAvatarContainer, { marginLeft: i === 0 ? 0 : -8 }]}>
-                                                <Image source={{ uri }} style={styles.stackAvatar} />
+                                            <View key={`endorser-${i}`} style={[styles.stackAvatarContainer, { marginLeft: i === 0 ? 0 : -8 }]}>
+                                                <Image
+                                                    source={{ uri: getOptimizedImageUrl(uri, 24) }}
+                                                    style={styles.stackAvatar}
+                                                    contentFit="cover"
+                                                    transition={200}
+                                                    cachePolicy="disk"
+                                                    placeholder={require('../../../assets/favicon.png')}
+                                                />
                                             </View>
                                         ))
                                         : [0, 1, 2].map((_, i) => (

@@ -118,9 +118,9 @@ export function formatFriendshipDuration(addedAt: string): string {
  */
 export function getMatchMilestone(daysActive: number): string | null {
   if (daysActive === 3) return '3 days together! You can now end this match if needed.';
-  if (daysActive === 7) return 'One week together! 🎉';
-  if (daysActive === 14) return 'Two weeks together! Keep it going! 💫';
-  if (daysActive === 30) return 'One month together! Amazing! 🌟';
+  if (daysActive === 7) return 'One week together!';
+  if (daysActive === 14) return 'Two weeks together! Keep it going!';
+  if (daysActive === 30) return 'One month together! Amazing!';
   return null;
 }
 
@@ -135,11 +135,11 @@ export function shouldShowCelebration(daysActive: number): boolean {
  * Get milestone icon for match duration
  */
 export function getMatchMilestoneIcon(daysActive: number): string {
-  if (daysActive >= 30) return '🌟';
-  if (daysActive >= 14) return '💫';
-  if (daysActive >= 7) return '🎉';
-  if (daysActive >= 3) return '✨';
-  return '💙';
+  if (daysActive >= 30) return 'star';
+  if (daysActive >= 14) return 'star';
+  if (daysActive >= 7) return 'award';
+  if (daysActive >= 3) return 'heart';
+  return 'heart';
 }
 
 // ============================================================================

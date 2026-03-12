@@ -95,23 +95,23 @@ function buildNotificationBody(stats: WeeklyStats): { title: string; body: strin
   // No activity at all — don't send a depressing "0 matches, 0 votes" notification
   if (totalMatches === 0 && totalVotes === 0) {
     return {
-      title: 'New week on Bridge',
-      body: 'The leaderboard just reset. Vote for your friends this week to climb the ranks and win $100!',
+      title: 'New Week on Bridge',
+      body: 'Leaderboard just reset! Vote for your friends to climb the ranks and win $100.',
     };
   }
 
   // Winner has karma — announce them
   if (winnerKarma > 0) {
     return {
-      title: 'This week on Bridge',
-      body: `${totalMatches} ${matchWord} made, ${totalVotes} ${voteWord} cast. ${winnerName} won the $100 prize with ${winnerKarma} karma!`,
+      title: 'Weekly Recap',
+      body: `${totalMatches} ${matchWord}, ${totalVotes} ${voteWord}. ${winnerName} won $100 with ${winnerKarma} karma! New week starts now.`,
     };
   }
 
   // Activity happened but no clear karma winner (e.g. karma just reset)
   return {
-    title: 'This week on Bridge',
-    body: `${totalMatches} ${matchWord} made and ${totalVotes} ${voteWord} cast this week. New leaderboard starts now — who's winning $100?`,
+    title: 'Weekly Recap',
+    body: `${totalMatches} ${matchWord} and ${totalVotes} ${voteWord} this week. New leaderboard is live — who's winning $100?`,
   };
 }
 
@@ -124,7 +124,7 @@ async function sendPushBatch(tokens: string[], title: string, body: string): Pro
       to: token,
       title,
       body,
-      data: { screen: 'Leaderboard' },
+      data: { type: 'weekly_summary', screen: 'Leaderboard' },
       sound: 'default',
     }));
 

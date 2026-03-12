@@ -15,7 +15,6 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
 import { ActiveMatch } from '../../../types/community';
 import { mediumHaptic, lightHaptic } from '../../../utils/haptics';
 import {
@@ -26,6 +25,7 @@ import {
 } from '../../../utils/communityHelpers';
 import { FONTS } from '../../../constants/typography';
 import { SHADOWS } from '../../../theme/shadows';
+import { EvaIcon } from '../../icons';
 
 const StyledView = styled(View) as typeof View;
 const StyledText = styled(Text) as typeof Text;
@@ -87,7 +87,7 @@ export function ActiveMatchCard({ match, onMessage, onEndMatch }: ActiveMatchCar
             className="absolute -bottom-1 -right-1 bg-rose-500 rounded-full w-6 h-6 items-center justify-center"
             style={SHADOWS.accentRed}
           >
-            <Ionicons name="heart" size={12} color="#FFFFFF" />
+            <EvaIcon name="heart" variant="outline" size={12} color="#FFFFFF" />
           </StyledView>
         </StyledView>
 
@@ -135,7 +135,7 @@ export function ActiveMatchCard({ match, onMessage, onEndMatch }: ActiveMatchCar
           activeOpacity={0.8}
         >
           <StyledView className="flex-row items-center">
-            <Ionicons name="chatbubble" size={16} color="#FFFFFF" />
+            <EvaIcon name="message-circle" variant="outline" size={16} color="#FFFFFF" />
             <StyledText className="text-white font-bold ml-2 text-sm" style={{ fontFamily: FONTS.bold }}>
               Message
             </StyledText>

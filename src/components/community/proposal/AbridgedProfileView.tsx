@@ -12,11 +12,11 @@
 import React from 'react';
 import { View, Image } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
 import { UserProfile, Photo } from '../../../types';
 import { Body } from '../../ui';
 import { CompatibilityResult } from '../../../utils/compatibilityHelpers';
-import { valueEmoji, interestEmoji } from '../../../utils/emojiMaps';
+import { valueIconName, interestIconName } from '../../../utils/emojiMaps';
+import { EvaIcon, IconScoutIcon } from '../../icons';
 
 const StyledView = styled(View);
 const StyledImage = styled(Image);
@@ -121,9 +121,12 @@ export function AbridgedProfileView({ user, compatibility }: AbridgedProfileView
   };
 
   // Pill tag component for values/interests
-  const Pill = ({ label }: { label: string }) => (
+  const Pill = ({ label, iconName }: { label: string; iconName?: string }) => (
     <StyledView className="bg-neutral-100 rounded-full px-2 py-0.5 mr-1 mb-1">
-      <Body className="text-[8px] text-neutral-700 font-medium">{label}</Body>
+      <StyledView className="flex-row items-center">
+        {iconName && <IconScoutIcon name={iconName} size={10} style={{ marginRight: 2 }} />}
+        <Body className="text-[8px] text-neutral-700 font-medium">{label}</Body>
+      </StyledView>
     </StyledView>
   );
 
@@ -214,7 +217,7 @@ export function AbridgedProfileView({ user, compatibility }: AbridgedProfileView
             <Body className="text-[8px] text-neutral-600 mb-0.5">Values</Body>
             <StyledView className="flex-row flex-wrap">
               {user.values.slice(0, 4).map((value, index) => (
-                <Pill key={index} label={`${valueEmoji(value)} ${value}`} />
+                <Pill key={index} label={value} iconName={valueIconName(value)} />
               ))}
             </StyledView>
           </StyledView>
@@ -226,7 +229,7 @@ export function AbridgedProfileView({ user, compatibility }: AbridgedProfileView
             <Body className="text-[8px] text-neutral-600 mb-0.5">Interests</Body>
             <StyledView className="flex-row flex-wrap">
               {user.interests.slice(0, 4).map((interest, index) => (
-                <Pill key={index} label={`${interestEmoji(interest)} ${interest}`} />
+                <Pill key={index} label={interest} iconName={interestIconName(interest)} />
               ))}
             </StyledView>
           </StyledView>
@@ -238,7 +241,7 @@ export function AbridgedProfileView({ user, compatibility }: AbridgedProfileView
             <Body className="text-[8px] text-green-800 font-bold mb-0.5">Compatible</Body>
             {compatMessages.map((message, index) => (
               <StyledView key={index} className="flex-row items-center mb-0.5">
-                <Ionicons name="checkmark-circle" size={10} color="#10B981" style={{ marginRight: 4 }} />
+                <EvaIcon name="checkmark-circle-2" variant="outline" size={10} color="#10B981" style={{ marginRight: 4 }} />
                 <Body className="text-[9px] text-green-700 font-medium" numberOfLines={1}>
                   {message}
                 </Body>
@@ -253,7 +256,7 @@ export function AbridgedProfileView({ user, compatibility }: AbridgedProfileView
             <Body className="text-[8px] text-red-800 font-bold mb-0.5">Conflicts</Body>
             {incompatMessages.map((message, index) => (
               <StyledView key={index} className="flex-row items-center mb-0.5">
-                <Ionicons name="alert-circle" size={10} color="#EF4444" style={{ marginRight: 4 }} />
+                <EvaIcon name="alert-circle" variant="outline" size={10} color="#EF4444" style={{ marginRight: 4 }} />
                 <Body className="text-[9px] text-red-700 font-medium" numberOfLines={1}>
                   {message}
                 </Body>

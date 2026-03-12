@@ -68,7 +68,7 @@ export const showToast = {
   matchAccepted: (recipientName: string) => {
     Toast.show({
       type: 'success',
-      text1: 'Match Accepted! 🎉',
+      text1: 'Match Accepted!',
       text2: `You can now chat with ${recipientName}`,
       position: 'top',
       visibilityTime: 3000,
