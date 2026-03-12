@@ -8,18 +8,23 @@
 CREATE OR REPLACE FUNCTION delete_user_account(target_user_id UUID)
 RETURNS VOID AS $$
 BEGIN
-  -- Cancel active proposals
-  UPDATE proposals SET status = 'cancelled'
+  -- Expire pending proposals (not 'cancelled' — that status doesn't exist)
+  UPDATE proposals SET status = 'expired', expired_at = now(), updated_at = now()
   WHERE (user_a_id = target_user_id OR user_b_id = target_user_id)
-    AND status IN ('pending', 'active');
+    AND status = 'pending';
 
   -- End active matches
-  UPDATE matches SET status = 'ended', ended_at = now()
-  WHERE (user_a_id = target_user_id OR user_b_id = target_user_id)
+  UPDATE matches SET status = 'ended', updated_at = now()
+  WHERE (user_id_1 = target_user_id OR user_id_2 = target_user_id)
     AND status = 'active';
 
-  -- Delete from all referencing tables
+  -- Clean up proposal_votes referencing this user (voter, friend_of, recommend_to)
+  -- friend_of and recommend_to_id FKs have NO CASCADE, so must be handled explicitly
   DELETE FROM proposal_votes WHERE voter_user_id = target_user_id;
+  UPDATE proposal_votes SET friend_of = NULL WHERE friend_of = target_user_id;
+  UPDATE proposal_votes SET recommend_to_id = NULL WHERE recommend_to_id = target_user_id;
+
+  -- Delete from all referencing tables
   DELETE FROM match_exits WHERE exiting_user_id = target_user_id;
   DELETE FROM messages WHERE sender_id = target_user_id OR receiver_id = target_user_id;
   DELETE FROM friend_messages WHERE sender_id = target_user_id OR receiver_id = target_user_id;
@@ -33,6 +38,21 @@ BEGIN
   DELETE FROM onboarding_progress WHERE user_id = target_user_id;
   DELETE FROM deep_question_answers WHERE user_id = target_user_id;
   DELETE FROM user_profiles WHERE user_id = target_user_id;
+
+  -- Support tables
+  DELETE FROM support_messages WHERE user_id = target_user_id;
+  DELETE FROM support_conversations WHERE user_id = target_user_id;
+
+  -- Karma snapshots
+  BEGIN
+    DELETE FROM karma_weekly_snapshots WHERE user_id = target_user_id;
+  EXCEPTION WHEN undefined_table THEN NULL;
+  END;
+
+  BEGIN
+    DELETE FROM karma_rank_snapshots WHERE user_id = target_user_id;
+  EXCEPTION WHEN undefined_table THEN NULL;
+  END;
 
   -- Tables that may not exist yet (wrapped in exception handlers)
   BEGIN
@@ -57,7 +77,17 @@ BEGIN
   EXCEPTION WHEN undefined_table THEN NULL;
   END;
 
-  -- Finally, delete the auth user row (cascades any remaining FKs)
+  BEGIN
+    DELETE FROM support_reply_context WHERE current_user_id = target_user_id;
+  EXCEPTION WHEN undefined_table THEN NULL;
+  END;
+
+  BEGIN
+    DELETE FROM email_verification_codes WHERE user_id = target_user_id;
+  EXCEPTION WHEN undefined_table THEN NULL;
+  END;
+
+  -- Finally, delete the auth user row (cascades any remaining FKs like profiles, sessions, etc.)
   DELETE FROM auth.users WHERE id = target_user_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

@@ -44,6 +44,23 @@ Deno.serve(async (req: Request) => {
       throw error;
     }
 
+    // Chain: send weekly summary push notification after snapshot completes
+    try {
+      const fnUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-weekly-summary`;
+      await fetch(fnUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        },
+        body: JSON.stringify({ triggered_by: 'snapshot-weekly-karma' }),
+      });
+      console.log('Triggered send-weekly-summary');
+    } catch (notifyErr) {
+      // Don't fail the snapshot if notification fails
+      console.error('Failed to trigger weekly summary:', notifyErr);
+    }
+
     return Response.json({
       status: 'success',
       data,

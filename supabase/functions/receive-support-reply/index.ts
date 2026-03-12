@@ -44,19 +44,24 @@ serve(async (req: Request) => {
       const userIdPrefix = prefixMatch[1].toLowerCase();
       replyContent = (prefixMatch[2] || '').trim();
 
-      // Look up user by ID prefix (cast UUID to text for LIKE)
-      const { data: conversations } = await supabaseAdmin
-        .rpc('exec_sql', {
-          sql: `SELECT json_agg(t) FROM (SELECT user_id FROM support_conversations WHERE user_id::text LIKE '${userIdPrefix}%' ORDER BY last_message_at DESC LIMIT 1) t`,
-        });
+      // Look up user by ID prefix using UUID range query
+      // Pad prefix to full UUID-length lower and upper bounds
+      const lower = userIdPrefix.padEnd(8, '0') + '-0000-0000-0000-000000000000';
+      const upper = userIdPrefix.padEnd(8, 'f') + '-ffff-ffff-ffff-ffffffffffff';
+      const { data: convRows, error: convErr } = await supabaseAdmin
+        .from('support_conversations')
+        .select('user_id')
+        .gte('user_id', lower)
+        .lte('user_id', upper)
+        .order('last_message_at', { ascending: false })
+        .limit(1);
 
-      const users = conversations as any;
-      if (!users || !Array.isArray(users) || users.length === 0) {
-        console.error('No user found for prefix:', userIdPrefix);
+      if (convErr || !convRows || convRows.length === 0) {
+        console.error('No user found for prefix:', userIdPrefix, convErr);
         return twiml(`<Message>No user found for #${userIdPrefix}</Message>`);
       }
 
-      userId = users[0].user_id;
+      userId = convRows[0].user_id;
 
       // Update reply context to this user
       await supabaseAdmin

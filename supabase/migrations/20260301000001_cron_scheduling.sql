@@ -13,7 +13,7 @@
 --   00:00 AM UTC daily  — proposal-lifecycle       (expire old proposals, check thresholds)
 --   00:05 AM UTC daily  — generate-proposals       (create new proposals for eligible users)
 --   Every 4h            — proposal-lifecycle-check  (safety net, same as lifecycle)
---   00:00 AM UTC Monday — snapshot-weekly-karma    (snapshot karma baselines for weekly leaderboard)
+--   00:00 AM UTC Monday — snapshot-weekly-karma    (snapshot karma baselines, then chains send-weekly-summary)
 --
 -- DST note: 00:00 UTC = 7PM CDT (Mar-Nov) / 6PM CST (Nov-Mar).
 -- Using 00:00 UTC means the cycle runs at 6PM CST during winter. This is acceptable
@@ -117,6 +117,13 @@ SELECT cron.schedule(
 );
 
 -- ============================================
+-- 5. Weekly Summary Notification
+--    NOT a standalone cron — chained from snapshot-weekly-karma to avoid
+--    double-send. snapshot-weekly-karma calls send-weekly-summary after
+--    completing the karma snapshot. Edge function is deployed separately.
+-- ============================================
+
+-- ============================================
 -- MANUAL TESTING
 -- ============================================
 -- To manually trigger the lifecycle:
@@ -126,6 +133,11 @@ SELECT cron.schedule(
 --
 -- To manually trigger proposal generation:
 --   curl -s "https://ikyiwnydgedwbmcdzgbe.supabase.co/functions/v1/generate-proposals" \
+--     --header "Authorization: Bearer <SERVICE_ROLE_KEY>" \
+--     --header "Content-Type: application/json" -d '{}'
+--
+-- To manually trigger weekly summary notification (use ?force=true to bypass day check):
+--   curl -s "https://ikyiwnydgedwbmcdzgbe.supabase.co/functions/v1/send-weekly-summary?force=true" \
 --     --header "Authorization: Bearer <SERVICE_ROLE_KEY>" \
 --     --header "Content-Type: application/json" -d '{}'
 --
