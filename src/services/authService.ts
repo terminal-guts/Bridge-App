@@ -41,6 +41,7 @@ export const isReviewerBypassEmail = (email: string): boolean => {
 // Flag set before intentional sign-outs so AppNavigator doesn't show a "Session Expired" toast
 let _intentionalSignOut = false;
 export const isIntentionalSignOut = () => _intentionalSignOut;
+export const setIntentionalSignOut = () => { _intentionalSignOut = true; };
 export const resetIntentionalSignOut = () => { _intentionalSignOut = false; };
 
 interface User {

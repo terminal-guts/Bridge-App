@@ -379,6 +379,7 @@ export type RootStackParamList = {
   HelpSupport: undefined;
   SupportChat: undefined;
   Leaderboard: undefined;
+  Stats: undefined;
   ShareCandidate: { candidateId: string };
   ReportUser: { userId: string };
   StrikeWarning: { strike: Strike };

@@ -520,13 +520,17 @@ class CommunityBackendService {
       karmaMap.set(k.user_id, k);
     });
 
-    // Build map: friendId → active proposal ID (if any)
-    const friendProposalMap = new Map<string, string>();
+    // Build map: friendId → ALL active proposal IDs (a friend can appear in multiple proposals)
+    const friendProposalMap = new Map<string, string[]>();
     for (const p of (friendProposalsA || [])) {
-      friendProposalMap.set(p.user_a_id, p.id);
+      const existing = friendProposalMap.get(p.user_a_id) || [];
+      existing.push(p.id);
+      friendProposalMap.set(p.user_a_id, existing);
     }
     for (const p of (friendProposalsB || [])) {
-      friendProposalMap.set(p.user_b_id, p.id);
+      const existing = friendProposalMap.get(p.user_b_id) || [];
+      existing.push(p.id);
+      friendProposalMap.set(p.user_b_id, existing);
     }
 
     // Friends whose proposal involves the current user — can't vote on your own proposal
@@ -548,7 +552,7 @@ class CommunityBackendService {
     }
 
     // Fetch current user's votes on friends' active proposals
-    const activeProposalIds = Array.from(friendProposalMap.values());
+    const activeProposalIds = Array.from(friendProposalMap.values()).flat();
     let votedProposalIds = new Set<string>();
 
     if (activeProposalIds.length > 0) {
@@ -579,8 +583,8 @@ class CommunityBackendService {
     // true (Already Helped) = everything else
     const alreadyHelped = new Set<string>();
     for (const friendId of friendIds) {
-      const proposalId = friendProposalMap.get(friendId);
-      if (!proposalId) {
+      const proposalIds = friendProposalMap.get(friendId);
+      if (!proposalIds || proposalIds.length === 0) {
         // No active proposal → already helped (nothing to vote on)
         alreadyHelped.add(friendId);
       } else if (friendsProposedWithMe.has(friendId)) {
@@ -589,8 +593,8 @@ class CommunityBackendService {
       } else if (friendsWithMatch.has(friendId)) {
         // Has active match → already helped
         alreadyHelped.add(friendId);
-      } else if (votedProposalIds.has(proposalId)) {
-        // User already voted or recommended from this proposal → already helped
+      } else if (proposalIds.every(pid => votedProposalIds.has(pid))) {
+        // User already voted or recommended on ALL of this friend's proposals → already helped
         alreadyHelped.add(friendId);
       }
       // Otherwise: friend has active proposal user hasn't acted on → Help
@@ -730,7 +734,7 @@ class CommunityBackendService {
             // Normalize: old proposals stored 0–1 decimal, new ones store 70–99 integer
             return s > 0 && s < 1 ? Math.round(s * 100) : Math.round(s);
           })(),
-          endorsers: [],
+          endorsers: [] as any[],
           expiresAt: raw.decision_deadline_at || new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
           approvedAt: raw.confirmed_at || raw.sent_to_users_at || raw.created_at,
           receivedAt: raw.sent_to_users_at || raw.created_at,
@@ -791,7 +795,7 @@ class CommunityBackendService {
               const voterIds = votesByProposal.get(proposal.proposalId) ?? [];
               proposal.endorsers = voterIds
                 .slice(0, 3)
-                .map((vid: string) => ({ endorserProfile: voterMap.get(vid) }))
+                .map((vid: string) => ({ endorserProfile: voterMap.get(vid) }) as any)
                 .filter((e: any) => e.endorserProfile);
             }
           }
@@ -947,7 +951,7 @@ class CommunityBackendService {
 
     const { data: karma } = await supabase
       .from('karma_scores')
-      .select('user_id, karma_points, total_assists, total_proposals, badge_tier, proposal_success_rate, voting_accuracy_rate')
+      .select('user_id, karma_points, total_assists, total_proposals, badge_tier, proposal_success_rate, voting_accuracy_rate, updated_at')
       .eq('user_id', userId)
       .maybeSingle();
 

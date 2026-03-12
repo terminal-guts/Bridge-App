@@ -7,6 +7,7 @@
 import { ApiResponse } from '../types';
 import { supabase } from '../lib/supabase';
 import { cleanupSubscriptions } from './messageService';
+import { setIntentionalSignOut } from './authService';
 import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('AccountService');
@@ -67,7 +68,8 @@ export const deleteAccount = async (): Promise<ApiResponse<void>> => {
 
     logger.info('[ACCOUNT] Account deleted successfully');
 
-    // Sign out locally (session is already invalidated server-side)
+    // Mark as intentional so AppNavigator doesn't show "Session Expired"
+    setIntentionalSignOut();
     await supabase.auth.signOut();
 
     return { ok: true };
