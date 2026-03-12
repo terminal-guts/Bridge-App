@@ -29,3 +29,35 @@ Rules:
 - The `compatibility_score` column on the `proposals` table is for internal backend/algorithm use only and must never be surfaced in the UI
 
 This is a deliberate product decision. Do not "fix" this.
+
+## Typography System — Plus Jakarta Sans
+
+The entire app uses **Plus Jakarta Sans** (Google Fonts, OFL license). This is a deliberate design decision — do not switch to another font or reintroduce system fonts.
+
+### Architecture (3 layers)
+
+1. **`src/constants/typography.ts`** — single source of truth. Exports:
+   - `FONTS` — font family constants (`regular`, `medium`, `semiBold`, `bold`, `extraBold`)
+   - `FONT_SIZES` — 12-step size scale (11px–40px)
+   - `LINE_HEIGHTS` — matching line-height scale
+   - `TEXT_STYLES` — 18 semantic presets (display, heading, body, label, caption, button)
+
+2. **`src/components/ui/Typography.tsx`** — shared text components (`H1`, `H2`, `H3`, `Body`, `BodySmall`, `Label`, `Caption`, `Display`). Each resolves the correct `fontFamily` from NativeWind `font-bold`/`font-semibold`/`font-medium` classes via `resolveFontFamily()`.
+
+3. **`src/utils/setDefaultFonts.ts`** — global fallback that patches `Text.render` (or `defaultProps`) to map `fontWeight` → correct PlusJakartaSans variant. Imported in `App.tsx` after fonts load.
+
+### Rules for new code
+
+- **Always set `fontFamily`** when using inline styles with `fontWeight`. Use `FONTS.bold` etc., never raw strings.
+- **Import `FONTS`** from `src/constants/typography` — never hardcode `'PlusJakartaSans_700Bold'` in components.
+- **Typography components** handle font resolution automatically — prefer `<Body className="font-bold">` over manual fontFamily.
+- **Font loading** happens in `App.tsx` via `useFonts` hook from `@expo-google-fonts/plus-jakarta-sans`. The app shows a loading indicator until fonts are ready.
+- **Weight mapping**:
+  - `FONTS.regular` = 400 (body text, descriptions)
+  - `FONTS.medium` = 500 (labels, secondary emphasis)
+  - `FONTS.semiBold` = 600 (subheadings, buttons)
+  - `FONTS.bold` = 700 (headings, names)
+  - `FONTS.extraBold` = 800 (hero text, large numbers)
+- **Do not** use `Outfit`, `Satoshi`, `Inter`, or any other font family — these have been fully removed.
+- **Do not** rely on `fontWeight` alone — React Native with custom fonts requires the specific font file via `fontFamily`.
+- **Tailwind config** (`tailwind.config.js`) maps `font-sans` etc. to PlusJakartaSans variants.
