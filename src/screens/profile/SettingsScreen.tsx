@@ -144,16 +144,16 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               <Body className="text-neutral-500 text-xs">v1.0.0</Body>
             </StyledView>
             <SettingRow
+              icon="trophy-outline"
+              title="Leaderboard"
+              subtitle="Best matchmaker wins $100!"
+              onPress={() => navigation.navigate('Leaderboard')}
+            />
+            <SettingRow
               icon="chatbubble-ellipses-outline"
               title="Feedback"
               subtitle="Improve the app to win $50!"
               onPress={() => navigation.navigate('SupportChat')}
-            />
-            <SettingRow
-              icon="trophy-outline"
-              title="Leaderboard"
-              subtitle="Best matchmaker wins $50!"
-              onPress={() => navigation.navigate('Leaderboard')}
             />
           </Card>
 
