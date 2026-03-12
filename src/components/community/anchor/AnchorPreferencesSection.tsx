@@ -9,7 +9,7 @@
 import React from 'react';
 import { View, Text, Image, ScrollView } from 'react-native';
 import { styled } from 'nativewind';
-import { EvaIcon  } from '../../../components/icons';
+import { EvaIcon } from '../../../components/icons';
 import { UserProfile, Photo } from '../../../types';
 
 const StyledView = styled(View);
@@ -122,7 +122,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
 
             {/* Height Range */}
             <StyledView className="flex-row items-center py-2">
-              <EvaIcon name="resize-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
+              <EvaIcon name="maximize-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
               <StyledText className="text-neutral-900 flex-1">
                 Height: {formatHeightRange()}
               </StyledText>
@@ -160,7 +160,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
             <StyledView style={{ width: '100%' }}>
               {anchor.partnerLifestylePreferences?.drinking && (
                 <StyledView className="flex-row items-center py-2">
-                  <EvaIcon name="wine-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
+                  <EvaIcon name="droplet-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
                   <StyledText className="text-neutral-900 flex-1">
                     Drinking: {formatFrequency(toSingleValue(anchor.partnerLifestylePreferences.drinking))}
                   </StyledText>
@@ -169,7 +169,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
 
               {anchor.partnerLifestylePreferences?.cannabis && (
                 <StyledView className="flex-row items-center py-2">
-                  <EvaIcon name="leaf-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
+                  <EvaIcon name="activity-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
                   <StyledText className="text-neutral-900 flex-1">
                     Cannabis: {formatFrequency(toSingleValue(anchor.partnerLifestylePreferences.cannabis))}
                   </StyledText>
@@ -178,7 +178,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
 
               {anchor.partnerLifestylePreferences?.tobacco && (
                 <StyledView className="flex-row items-center py-2">
-                  <EvaIcon name="ban-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
+                  <EvaIcon name="slash-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
                   <StyledText className="text-neutral-900 flex-1">
                     Tobacco: {formatFrequency(toSingleValue(anchor.partnerLifestylePreferences.tobacco))}
                   </StyledText>
@@ -187,7 +187,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
 
               {anchor.partnerLifestylePreferences?.otherDrugs && (
                 <StyledView className="flex-row items-center py-2">
-                  <EvaIcon name="medical-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
+                  <EvaIcon name="plus-square-outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
                   <StyledText className="text-neutral-900 flex-1">
                     Other drugs: {formatFrequency(toSingleValue(anchor.partnerLifestylePreferences.otherDrugs))}
                   </StyledText>

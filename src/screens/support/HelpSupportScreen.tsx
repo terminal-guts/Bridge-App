@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H2, H3, Body, Card } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { EvaIcon  } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 
 interface HelpSupportScreenProps {
   navigation: NavigationProp<RootStackParamList>;

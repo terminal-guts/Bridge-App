@@ -15,7 +15,8 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { styled } from 'nativewind';
-import { EvaIcon  } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
+import { FireIcon } from '../../components/icons/Icons';
 import { FriendWithGridStatus } from '../../types/community';
 import { lightHaptic } from '../../utils/haptics';
 import {
@@ -34,10 +35,10 @@ const StyledTouchable = styled(TouchableOpacity);
  * Get streak visual treatment based on streak length
  */
 const getStreakDisplay = (streakDays: number) => {
-    if (streakDays >= STREAK_TIERS.CROWN) return { emoji: '', suffix: '' };
-    if (streakDays >= STREAK_TIERS.DIAMOND) return { emoji: '', suffix: '' };
-    if (streakDays >= STREAK_TIERS.STAR) return { emoji: '', suffix: '' };
-    if (streakDays >= STREAK_TIERS.SPARKLE) return { emoji: '', suffix: '' };
+    if (streakDays >= STREAK_TIERS.CROWN) return { emoji: '', suffix: 'award' };
+    if (streakDays >= STREAK_TIERS.DIAMOND) return { emoji: '', suffix: 'star' };
+    if (streakDays >= STREAK_TIERS.STAR) return { emoji: '', suffix: 'star-outline' };
+    if (streakDays >= STREAK_TIERS.SPARKLE) return { emoji: '', suffix: 'star-outline' };
     return { emoji: '', suffix: null };
 };
 
@@ -127,7 +128,7 @@ export const FriendCard = React.memo<FriendCardProps>(({
                             <FireIcon size={14} color="#F97316" />
                             <StyledText style={styles.streakCount}>{streak}</StyledText>
                             {streakDisplay.suffix && (
-                                <StyledText style={styles.streakSuffix}>{streakDisplay.suffix}</StyledText>
+                                <EvaIcon name={streakDisplay.suffix as any} size={14} color="#F97316" style={{ marginLeft: 2 }} />
                             )}
                         </StyledView>
                     )}

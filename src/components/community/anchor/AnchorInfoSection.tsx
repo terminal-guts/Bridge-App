@@ -11,7 +11,7 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import { EvaIcon  } from '../../../components/icons';
+import { EvaIcon } from '../../../components/icons';
 import { UserProfile } from '../../../types';
 import { ProfileView } from '../../profile/ProfileView';
 import { valueEmoji, interestEmoji, getValueIconDef, getInterestIconDef, RenderIcon } from '../../../utils/emojiMaps';
@@ -106,7 +106,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
           {/* Height */}
           {anchor.height && (
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-              <EvaIcon name="resize-outline" size={14} color="#10B981" style={{ marginRight: 6 }} />
+              <EvaIcon name="maximize-outline" size={14} color="#10B981" style={{ marginRight: 6 }} />
               <StyledText style={{ fontSize: 12, color: '#6B5B4F', fontWeight: '500' }}>
                 {formatHeight(anchor.height)}
               </StyledText>
@@ -151,7 +151,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
                     }}
                   >
                     <StyledText style={{ fontSize: 10, color: '#7C3AED', fontWeight: '600' }}>
-                      <RenderIcon iconDef={getValueIconDef(value)} /> {value}
+                      <RenderIcon iconDef={getValueIconDef(value)} size={14} color="#059669" /> {value}
                     </StyledText>
                   </StyledView>
                 ))}
@@ -177,7 +177,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
                     }}
                   >
                     <StyledText style={{ fontSize: 10, color: '#D97706', fontWeight: '600' }}>
-                      <RenderIcon iconDef={getInterestIconDef(interest)} /> {interest}
+                      <RenderIcon iconDef={getInterestIconDef(interest)} size={14} color="#d97706" /> {interest}
                     </StyledText>
                   </StyledView>
                 ))}
@@ -211,7 +211,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
 
         {/* Height Preference */}
         <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-          <EvaIcon name="resize-outline" size={12} color="#10B981" style={{ marginRight: 6 }} />
+          <EvaIcon name="maximize-outline" size={12} color="#10B981" style={{ marginRight: 6 }} />
           <StyledText style={{ fontSize: 11, color: '#6B5B4F', fontWeight: '500' }}>
             {formatHeightRange()}
           </StyledText>

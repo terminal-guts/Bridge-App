@@ -7,7 +7,7 @@ import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList, Match } from '../../types';
 import { getCurrentUser } from '../../services/authService';
 import { getUserMatches, acceptMatch, rejectMatch } from '../../services/matchService';
-import { EvaIcon  } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('MatchDetailScreen');
@@ -231,7 +231,7 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
             <StyledView className="flex-row items-center justify-between">
               <StyledView className="flex-row items-center">
                 <StyledView className="bg-primary-500 p-2 rounded-full mr-3">
-                  <EvaIcon name="heart" size={20} color="white" variant="fill" />
+                  <EvaIcon name="heart" size={20} color="white" />
                 </StyledView>
                 <StyledView>
                   <Body className="text-primary-700 font-semibold">Perfect Match!</Body>
@@ -253,28 +253,28 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
             <H1 className="mb-2">{profile.firstName}, {profile.age}</H1>
             <StyledView className="space-y-1">
               <StyledView className="flex-row items-center">
-                  <EvaIcon name="briefcase" size={16} color="#667085" variant="outline" />
+                <EvaIcon name="briefcase-outline" size={16} color="#667085" />
                 <Body className="text-neutral-600 ml-2">{profile.currentJob}</Body>
               </StyledView>
               {profile.companyPosition && (
                 <StyledView className="flex-row items-center">
-                    <EvaIcon name="briefcase" size={16} color="#667085" variant="outline" />
+                  <EvaIcon name="business-outline" size={16} color="#667085" />
                   <Body className="text-neutral-600 ml-2">{profile.companyPosition}</Body>
                 </StyledView>
               )}
               {profile.educationLevel && (
                 <StyledView className="flex-row items-center">
-                    <EvaIcon name="book" size={16} color="#667085" variant="outline" />
+                  <EvaIcon name="school-outline" size={16} color="#667085" />
                   <Body className="text-neutral-600 ml-2">{profile.educationLevel}</Body>
                 </StyledView>
               )}
               <StyledView className="flex-row items-center">
-                  <EvaIcon name="pin" size={16} color="#667085" variant="outline" />
+                <EvaIcon name="pin-outline" size={16} color="#667085" />
                 <Body className="text-neutral-600 ml-2">{profile.location}</Body>
               </StyledView>
               {profile.height && (
                 <StyledView className="flex-row items-center">
-                    <EvaIcon name="expand" size={16} color="#667085" variant="outline" />
+                  <EvaIcon name="maximize-outline" size={16} color="#667085" />
                   <Body className="text-neutral-600 ml-2">{profile.height}</Body>
                 </StyledView>
               )}

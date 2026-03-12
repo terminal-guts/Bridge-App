@@ -10,7 +10,7 @@
 
 import React from 'react';
 import { View } from 'react-native';
-import { EvaIcon  } from '../../../components/icons';
+import { EvaIcon } from '../../../components/icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
 import { MatchStatus } from '../../../utils/proposalMatching';

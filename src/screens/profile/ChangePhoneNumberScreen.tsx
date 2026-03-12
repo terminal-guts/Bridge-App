@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H2, H3, Body, Card, Button } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { EvaIcon  } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 import { getUserProfile } from '../../services/profileService';
 import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';
@@ -289,7 +289,7 @@ export const ChangePhoneNumberScreen: React.FC<ChangePhoneNumberScreenProps> = (
               {/* Info Card */}
               <Card className="bg-primary-50 border border-primary-200">
                 <StyledView className="flex-row items-start">
-                  <EvaIcon name="info" size={20} color="#437FFF" variant="fill" />
+                  <EvaIcon name="info" size={20} color="#437FFF" />
                   <StyledView className="flex-1 ml-3">
                     <Body className="text-primary-900 font-semibold text-sm mb-1">
                       Important

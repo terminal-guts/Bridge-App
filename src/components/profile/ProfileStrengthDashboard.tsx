@@ -11,7 +11,7 @@
 import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import {  EvaIcon, type IconName  } from '../icons';
+import { EvaIcon } from '../../components/icons';
 import { H2, H3, Body, Card } from '../ui';
 import { UserProfile } from '../../types';
 import { calculateProfileStrengthBreakdown } from '../../utils/profileCompleteness';
@@ -27,7 +27,7 @@ interface ProfileStrengthDashboardProps {
 
 interface SectionScore {
   name: string;
-  icon: string;
+  icon: any;
   score: number;
   maxScore: number;
   suggestions: string[];
@@ -81,7 +81,7 @@ const calculateStrength = (profile: UserProfile): {
 
   sections.push({
     name: 'About Me',
-    icon: 'person',
+    icon: 'person-outline',
     score: breakdown.sections.aboutMe.score,
     maxScore: breakdown.sections.aboutMe.maxScore,
     suggestions: aboutSuggestions.slice(0, 2),
@@ -106,7 +106,7 @@ const calculateStrength = (profile: UserProfile): {
 
   sections.push({
     name: 'Match Preferences',
-    icon: 'heart',
+    icon: 'heart-outline',
     score: breakdown.sections.matchPreferences.score,
     maxScore: breakdown.sections.matchPreferences.maxScore,
     suggestions: preferencesSuggestions.slice(0, 2),
@@ -125,7 +125,7 @@ const calculateStrength = (profile: UserProfile): {
 
   sections.push({
     name: 'Photos',
-    icon: 'camera',
+    icon: 'camera-outline',
     score: breakdown.sections.photos.score,
     maxScore: breakdown.sections.photos.maxScore,
     suggestions: photosSuggestions,
@@ -148,7 +148,7 @@ const calculateStrength = (profile: UserProfile): {
 
   sections.push({
     name: 'Questions',
-    icon: 'message-square',
+    icon: 'chatbubble-ellipses-outline',
     score: breakdown.sections.deepQuestions.score,
     maxScore: breakdown.sections.deepQuestions.maxScore,
     suggestions: questionsSuggestions.slice(0, 2),
@@ -200,8 +200,7 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
               elevation: 4,
             }}
           >
-            <EvaIcon
-              name={isComplete ? 'checkmark-circle-2' : 'bar-chart'}
+            <EvaIcon name={isComplete ? 'checkmark-circle' : 'analytics'}
               size={18}
               color={isComplete ? '#10B981' : '#437FFF'}
             />
@@ -234,7 +233,7 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
             >
               {/* Category Icon & Name */}
               <StyledView className="flex-row items-center mb-2">
-                <EvaIcon name={section.icon as any} size={16} color={section.color} />
+                <EvaIcon name={section.icon} size={16} color={section.color} />
                 <Body className="text-neutral-900 font-semibold text-xs ml-1.5 flex-1" numberOfLines={1}>
                   {section.name}
                 </Body>

@@ -21,7 +21,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { styled } from 'nativewind';
-import { EvaIcon } from '../icons';
+import { EvaIcon } from '../../components/icons';
 import { Body } from '../ui';
 import { lightHaptic } from '../../utils/haptics';
 

@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H1, H3, Body, Card, Button } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { EvaIcon, type IconName    } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 import { signOut } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
 import { resetGuide } from '../../services/guideService';
@@ -83,7 +83,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
     toggleValue,
     onToggle,
   }: {
-    icon: string;
+    icon: any;
     title: string;
     subtitle?: string;
     onPress?: () => void;
@@ -99,7 +99,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
     >
       <StyledView className="flex-row items-center">
         <StyledView className="w-10 h-10 bg-neutral-100 rounded-lg items-center justify-center mr-3">
-          <EvaIcon name={icon as any} size={20} color="#667085" variant="outline" />
+          <EvaIcon name={icon} size={20} color="#667085" />
         </StyledView>
         <StyledView className="flex-1">
           <Body className="text-neutral-900 mb-1">{title}</Body>
@@ -144,13 +144,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               <Body className="text-neutral-500 text-xs">v1.0.0</Body>
             </StyledView>
             <SettingRow
-              icon="message-circle-outline"
+              icon="chatbubble-ellipses-outline"
               title="Feedback"
               subtitle="Improve the app to win $50!"
               onPress={() => navigation.navigate('SupportChat')}
             />
             <SettingRow
-              icon="award-outline"
+              icon="trophy-outline"
               title="Leaderboard"
               subtitle="Best matchmaker wins $50!"
               onPress={() => navigation.navigate('Leaderboard')}
@@ -167,7 +167,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               onPress={() => navigation.navigate('PauseProfile')}
             />
             <SettingRow
-              icon="ban-outline"
+              icon="slash-outline"
               title="Blocked Users"
               subtitle="Manage blocked profiles"
               onPress={() => navigation.navigate('BlockedUsers')}
@@ -175,7 +175,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
-                  <EvaIcon name="book" size={20} color="#94A3B8" variant="outline" />
+                  <EvaIcon name="school-outline" size={20} color="#94A3B8" />
                 </View>
                 <View>
                   <Body style={{ color: '#1E293B' }}>Tutorial</Body>
@@ -209,7 +209,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               showArrow={false}
             />
             <SettingRow
-              icon="message-circle-outline"
+              icon="chatbubbles-outline"
               title="Messages"
               subtitle="New messages and ghosting alerts"
               toggle
@@ -218,7 +218,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               showArrow={false}
             />
             <SettingRow
-              icon="bell-outline"
+              icon="notifications-outline"
               title="App Reminders"
               subtitle="Profile completion and inactivity nudges"
               toggle
@@ -238,12 +238,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               onPress={() => navigation.navigate('HelpSupport')}
             />
             <SettingRow
-              icon="file-text-outline"
+              icon="document-text-outline"
               title="Terms of Service"
               onPress={() => navigation.navigate('TermsOfService')}
             />
             <SettingRow
-              icon="lock-outline"
+              icon="lock-closed-outline"
               title="Privacy Policy"
               onPress={() => navigation.navigate('PrivacyPolicy')}
             />

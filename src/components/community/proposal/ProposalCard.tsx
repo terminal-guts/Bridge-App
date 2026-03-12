@@ -12,7 +12,7 @@ import React, { useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Image, Animated } from 'react-native';
 import { styled } from 'nativewind';
 import * as Haptics from 'expo-haptics';
-import { EvaIcon  } from '../../../components/icons';
+import { EvaIcon } from '../../../components/icons';
 import { Proposal, UserProfile, Endorsement } from '../../../types/community';
 import { KarmaBadge } from '../karma/KarmaBadge';
 

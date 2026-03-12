@@ -1,19 +1,14 @@
-/**
- * Shared icon maps for values and interests displayed on profiles.
- * Used across all profile view screens — NOT in edit/onboarding flows.
- */
-
 import React from 'react';
-import { EvaIcon, IconScoutIcon  } from '../components/icons';
+import { EvaIcon } from '../components/icons';
+import { IconScoutIcon } from '../components/icons/IconScoutIcon';
+import { FireIcon } from '../components/icons/Icons';
 
-// Map to either IconScoutName or { type: 'eva', name: IconName }
 export type IconDef =
-  | string // IconScout icon name
+  | string
   | { type: 'eva'; name: string; color?: string }
   | { type: 'custom'; name: string; color?: string };
 
 export const VALUES_ICONS: Record<string, IconDef> = {
-  // Personal
   'Honesty': 'honesty',
   'Integrity': 'integrity',
   'Trust': 'trust',
@@ -21,12 +16,10 @@ export const VALUES_ICONS: Record<string, IconDef> = {
   'Authenticity': 'authenticity',
   'Kindness': 'kindness',
   'Empathy': 'empathy',
-  // Relationship
   'Communication': 'communication',
   'Commitment': 'commitment',
   'Independence': 'independence',
   'Romance': 'romance',
-  // Life
   'Family': 'family',
   'Career': 'career',
   'Ambition': 'ambitious',
@@ -35,15 +28,12 @@ export const VALUES_ICONS: Record<string, IconDef> = {
   'Stability': 'stability',
   'Growth Mindset': 'growth',
   'Creativity': 'creativity',
-  // Social
   'Community': 'community',
   'Social Justice': 'social-justice',
   'Environmentalism': 'environmentalism',
   'Diversity': 'diversity',
-  // Personal Growth
   'Spirituality': 'spirituality',
   'Health': 'health',
-  // Extended / older profile data
   'Loyalty': 'loyalty',
   'Innovation': 'startup',
   'Leadership': 'ambitious',
@@ -55,7 +45,6 @@ export const VALUES_ICONS: Record<string, IconDef> = {
 };
 
 export const INTERESTS_ICONS: Record<string, IconDef> = {
-  // Activities
   'Tennis': 'tennis',
   'Golf': 'golf',
   'Running': 'running',
@@ -66,7 +55,6 @@ export const INTERESTS_ICONS: Record<string, IconDef> = {
   'Lifting': 'lifting',
   'Live Sports': 'live-sports',
   'Watching Sports': 'watching-sports',
-  // Culture & Entertainment
   'Museums': 'museums',
   'Theater': 'theater',
   'Live Music': 'live-music',
@@ -74,30 +62,25 @@ export const INTERESTS_ICONS: Record<string, IconDef> = {
   'Film': 'film',
   'Reading': 'reading',
   'Photography': 'photography',
-  // Food & Drink
   'Cooking': 'cooking',
   'Coffee': 'coffee',
   'Cocktails': 'cocktail',
   'Fine Dining': 'fine-dining',
   'Brunch': 'brunch',
-  // Travel & Adventure
   'Travel': 'travel',
   'Camping': 'camping',
-  // Lifestyle
   'Startups': 'startup',
   'Investing': 'investing',
   'Real Estate': 'real-estate',
   'Fashion': 'fashion',
   'Meditation': 'meditation',
   'Podcasts': 'podcast',
-  // Social
   'Dinner Parties': 'dinner-parties',
   'Game Nights': 'game-nights',
   'Dancing': 'dance',
   'Trivia Nights': 'trivia-nights',
   'Poker': 'poker',
   'Video Games': 'video-game',
-  // Extended / older profile data
   'Volunteering': 'generosity',
   'Art': 'creativity',
   'Music': 'live-music',
@@ -108,16 +91,11 @@ export const INTERESTS_ICONS: Record<string, IconDef> = {
   'Climbing': 'hiking',
 };
 
-/**
- * Returns the icon definition for a value or interest.
- * Case-insensitive lookup.
- */
 export function getIconDef(text: string, map: Record<string, IconDef>): IconDef | undefined {
   const key = Object.keys(map).find(k => k.toLowerCase() === text.toLowerCase());
   return key ? map[key] : undefined;
 }
 
-/** Convenience wrappers returning IconDef */
 export const getValueIconDef = (v: string) => getIconDef(v, VALUES_ICONS);
 export const getInterestIconDef = (i: string) => getIconDef(i, INTERESTS_ICONS);
 
@@ -127,7 +105,6 @@ export interface RenderIconProps {
   color?: string;
   style?: any;
 }
-
 
 export const RenderIcon = React.memo(function RenderIcon({ iconDef, size = 16, color, style }: RenderIconProps) {
   if (!iconDef) return null;
@@ -140,18 +117,13 @@ export const RenderIcon = React.memo(function RenderIcon({ iconDef, size = 16, c
     return <EvaIcon name={iconDef.name as any} size={size} color={iconDef.color || color} style={style} variant="fill" />;
   }
 
-  // Optional support for custom SVGs if implemented later
-  if (iconDef.type === 'custom') {
-    // If you need custom icons like FireIcon, you would import and render them here.
-    // For now we will return an EvaIcon fallback or null
-    return <EvaIcon name="star" size={size} color={iconDef.color || color} style={style} variant="fill" />;
+  if (iconDef.type === 'custom' && iconDef.name === 'flash') {
+    return <FireIcon size={size} color={iconDef.color || color} />;
   }
 
   return null;
 });
 
-// Keeping these for backwards compatibility until all usages are replaced
-// But they will return an empty string to force text components to not render emojis
 export const VALUES_EMOJI: Record<string, string> = {};
 export const INTERESTS_EMOJI: Record<string, string> = {};
 export function getEmoji(text: string, map: Record<string, string>): string { return ''; }

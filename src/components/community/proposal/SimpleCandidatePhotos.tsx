@@ -15,7 +15,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { EvaIcon  } from '../../../components/icons';
+import { EvaIcon } from '../../../components/icons';
 import { UserProfile, Photo } from '../../../types';
 import { Body } from '../../ui';
 import { createLogger } from '../../../utils/secureLogger';

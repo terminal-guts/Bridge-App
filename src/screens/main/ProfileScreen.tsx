@@ -11,7 +11,7 @@ import { MainTabParamList, UserProfile, DeepQuestionAnswer } from '../../types';
 import { signOut } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { getFriendCount } from '../../services/friendService';
-import { EvaIcon, type IconName    } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { ProfileCompletionBanner } from '../../components/profile/ProfileCompletionBanner';
@@ -996,7 +996,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               accessibilityLabel="Preview profile"
               accessibilityRole="button"
             >
-              <EvaIcon name="eye" size={24} color="#7C3AED" variant="outline" />
+              <EvaIcon name="eye-outline" size={24} color="#7C3AED" />
             </StyledTouchableOpacity>
             <StyledTouchableOpacity
               onPress={() => {
@@ -1006,7 +1006,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               accessibilityLabel="Edit profile"
               accessibilityRole="button"
             >
-              <EvaIcon name="edit" size={24} color="#437FFF" variant="outline" />
+              <EvaIcon name="create-outline" size={24} color="#437FFF" />
             </StyledTouchableOpacity>
             <StyledTouchableOpacity
               onPress={() => {
@@ -1016,7 +1016,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               accessibilityLabel="Settings"
               accessibilityRole="button"
             >
-              <EvaIcon name="settings" size={24} color="#475467" variant="outline" />
+              <EvaIcon name="settings-2-outline" size={24} color="#475467" />
             </StyledTouchableOpacity>
           </StyledView>
         </StyledView>
@@ -1057,7 +1057,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                   elevation: 5,
                 }}
               >
-                <EvaIcon name="person" size={40} color="#98A2B3" variant="outline" />
+                <EvaIcon name="person-outline" size={40} color="#98A2B3" />
               </StyledView>
             )}
 
@@ -1074,7 +1074,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                   borderWidth: 1, borderColor: '#34C759',
                   borderRadius: 999, gap: 4,
                 }}>
-                <EvaIcon name="star" size={12} color="#34C759" variant="outline" />
+                <EvaIcon name="star-outline" size={12} color="#34C759" />
                 <H2 className="text-xs" style={{ color: '#34C759', fontWeight: '600' }}>
                   {profile.karma?.karma_points ?? 0} pts
                 </H2>
@@ -1096,7 +1096,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                 accessibilityLabel={`View ${friendCount} friend${friendCount !== 1 ? 's' : ''}`}
                 accessibilityRole="button"
               >
-                <EvaIcon name="people" size={16} color="#475467" variant="fill" />
+                <EvaIcon name="people" size={16} color="#475467" />
                 <Body className="text-neutral-700 text-sm font-medium ml-1.5">
                   {friendCount} {friendCount === 1 ? 'Friend' : 'Friends'}
                 </Body>
@@ -1114,7 +1114,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                 accessibilityLabel="Add friends"
                 accessibilityRole="button"
               >
-                <EvaIcon name="person-add" size={16} color="white" variant="fill" />
+                <EvaIcon name="person-add" size={16} color="white" />
                 <Body className="text-white text-sm font-medium ml-1.5">Add Friends</Body>
               </StyledTouchableOpacity>
             </StyledView>
@@ -1394,7 +1394,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                   {availableQuestions.length === 0 && (
                     <Card className="bg-blue-50 border border-blue-200">
                       <StyledView className="items-center py-8">
-                        <EvaIcon name="info" size={48} color="#437FFF" variant="fill" />
+                        <EvaIcon name="info" size={48} color="#437FFF" />
                         <Body className="text-blue-900 font-bold text-lg mt-3 mb-2">No Other Questions</Body>
                         <Body className="text-blue-700 text-sm text-center">
                           All your answered questions are already displayed. Answer more questions to have more options!

@@ -16,7 +16,7 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { styled } from 'nativewind';
-import { EvaIcon  } from '../../../components/icons';
+import { EvaIcon } from '../../../components/icons';
 import { lightHaptic, mediumHaptic } from '../../../utils/haptics';
 
 const StyledView = styled(View);

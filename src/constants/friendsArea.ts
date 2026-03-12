@@ -66,7 +66,7 @@ export const COLORS = {
 // Timer urgency states
 export const TIMER_STATES = {
   PLENTY: {
-    icon: 'clock-outline',
+    icon: '⏰',
     color: '#64748B',
     bgColor: '#F8FAFC',
     borderColor: '#E2E8F0',
@@ -74,7 +74,7 @@ export const TIMER_STATES = {
     shouldPulse: false,
   },
   MODERATE: {
-    icon: 'fire',
+    icon: '🔥',
     color: '#F59E0B',
     bgColor: '#FFFBEB',
     borderColor: '#FDE68A',
@@ -82,7 +82,7 @@ export const TIMER_STATES = {
     shouldPulse: false,
   },
   URGENT: {
-    icon: 'flash',
+    icon: '⚡',
     color: '#F43F5E',
     bgColor: '#FFF1F2',
     borderColor: '#FECDD3',
@@ -90,7 +90,7 @@ export const TIMER_STATES = {
     shouldPulse: true,
   },
   CRITICAL: {
-    icon: 'alert-triangle',
+    icon: '🚨',
     color: '#DC2626',
     bgColor: '#FEE2E2',
     borderColor: '#FCA5A5',

@@ -32,7 +32,7 @@ import {
   subscribeToFriendMessages,
   markFriendMessagesAsRead,
 } from '../../services/messageService';
-import { EvaIcon  } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 import { AudioPlayer } from '../../components/chat/AudioPlayer';
 import { AudioRecorder } from '../../components/chat/AudioRecorder';
 import { communityService } from '../../services/communityServiceIndex';
@@ -496,7 +496,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
           {isDateProposal ? (
             <View style={dateProposalStyles.card}>
               <View style={dateProposalStyles.header}>
-                <EvaIcon name="calendar" size={18} color="#437FFF" variant="fill" />
+                <EvaIcon name="calendar" size={18} color="#437FFF" />
                 <Text style={dateProposalStyles.headerText}>Date Proposal</Text>
               </View>
               <Text style={dateProposalStyles.body}>{dateProposalBody}</Text>
@@ -525,7 +525,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
             <BodySmall className="text-neutral-500">{timeString}</BodySmall>
             {isOwnMessage && item.readAt && (
               <StyledView className="ml-1">
-                <EvaIcon name="done-all" size={12} color="#437FFF" />
+                <EvaIcon name="checkmark-done" size={12} color="#437FFF" />
               </StyledView>
             )}
           </StyledView>
@@ -539,7 +539,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       return (
         <StyledView className="flex-1 items-center justify-center px-8 py-12">
           <StyledView className="w-20 h-20 bg-primary-50 rounded-full items-center justify-center mb-4">
-            <EvaIcon name="people" size={40} color="#437FFF" variant="fill" />
+            <EvaIcon name="people" size={40} color="#437FFF" />
           </StyledView>
           <H3 className="mb-2 text-center">Chat with {recipientName}</H3>
           <BodySmall className="text-neutral-600 text-center">
@@ -552,7 +552,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     return (
       <StyledView className="flex-1 items-center justify-center px-8">
         <StyledView className="w-20 h-20 bg-primary-50 rounded-full items-center justify-center mb-4">
-          <EvaIcon name="message-square" size={40} color="#437FFF" variant="fill" />
+          <EvaIcon name="message-circle" size={40} color="#437FFF" />
         </StyledView>
         <H3 className="mb-2 text-center">Start the conversation!</H3>
         <BodySmall className="text-neutral-600 text-center">
@@ -576,7 +576,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
   if (error && !match && !isFriend) {
     return (
       <StyledSafeAreaView className="flex-1 bg-white justify-center items-center px-8">
-        <EvaIcon name="alert-circle" size={64} color="#EF4444" variant="outline" />
+        <EvaIcon name="alert-circle-outline" size={64} color="#EF4444" />
         <H3 className="mt-4 mb-2 text-center">Something went wrong</H3>
         <BodySmall className="text-neutral-600 text-center mb-6">{error}</BodySmall>
         <StyledTouchableOpacity
@@ -694,11 +694,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
                     {sendingMessage ? (
                       <ActivityIndicator size="small" color="white" />
                     ) : (
-                      <EvaIcon
-                        name="paper-plane"
+                      <EvaIcon name="send"
                         size={20}
                         color={newMessage.trim() ? 'white' : '#98A2B3'}
-                        variant="fill"
                       />
                     )}
                   </StyledTouchableOpacity>
@@ -728,21 +726,21 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
         >
           <View style={cs.menuCard}>
             <TouchableOpacity style={cs.menuItem} onPress={openProposeDateModal}>
-              <EvaIcon name="calendar" size={18} color="#101828" variant="outline" />
+              <EvaIcon name="calendar-outline" size={18} color="#101828" />
               <Text style={cs.menuItemText}>Propose a Date</Text>
             </TouchableOpacity>
 
             <View style={cs.menuDivider} />
 
             <TouchableOpacity style={cs.menuItem} onPress={openEndMatchModal}>
-              <EvaIcon name="close-circle" size={18} color="#101828" variant="outline" />
+              <EvaIcon name="close-circle-outline" size={18} color="#101828" />
               <Text style={cs.menuItemText}>End Match</Text>
             </TouchableOpacity>
 
             <View style={cs.menuDivider} />
 
             <TouchableOpacity style={cs.menuItem} onPress={openReportModal}>
-              <EvaIcon name="flag" size={18} color="#D92D20" variant="outline" />
+              <EvaIcon name="flag-outline" size={18} color="#D92D20" />
               <Text style={[cs.menuItemText, { color: '#D92D20' }]}>Report</Text>
             </TouchableOpacity>
           </View>
@@ -770,7 +768,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
             </TouchableOpacity>
 
             <View style={[ts.iconWrap, { backgroundColor: '#EEF3FF' }]}>
-              <EvaIcon name="calendar" size={26} color="#437FFF" variant="fill" />
+              <EvaIcon name="calendar" size={26} color="#437FFF" />
             </View>
             <Text style={ts.title}>Propose a Date</Text>
             <Text style={ts.subtitle}>Suggest something fun with {recipientName}</Text>
@@ -824,7 +822,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
             </TouchableOpacity>
 
             <View style={[ts.iconWrap, { backgroundColor: '#FFF4ED' }]}>
-              <EvaIcon name="heart" size={26} color="#F97316" variant="outline" />
+              <EvaIcon name="heart-dislike" size={26} color="#F97316" />
             </View>
             <Text style={ts.title}>End this match?</Text>
             <Text style={ts.subtitle}>You'll re-enter the matchmaking pool.{'\n'}Your reason will be shared with them.</Text>
@@ -891,7 +889,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
             </TouchableOpacity>
 
             <View style={[ts.iconWrap, { backgroundColor: '#FEF3F2' }]}>
-              <EvaIcon name="flag" size={26} color="#D92D20" variant="fill" />
+              <EvaIcon name="flag" size={26} color="#D92D20" />
             </View>
             <Text style={ts.title}>Report {recipientName}</Text>
             <Text style={ts.subtitle}>Our team reviews all reports within 24 hours</Text>

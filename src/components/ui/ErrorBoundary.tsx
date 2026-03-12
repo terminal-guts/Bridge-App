@@ -1,7 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import { EvaIcon  } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 import { H2, Body, Button } from '.';
 import { createLogger } from '../../utils/secureLogger';
 import { Sentry } from '../../lib/sentry';

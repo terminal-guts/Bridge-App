@@ -12,7 +12,7 @@
 import React from 'react';
 import { View, Image } from 'react-native';
 import { styled } from 'nativewind';
-import { EvaIcon } from '../../icons';
+import { EvaIcon } from '../../../components/icons';
 import { UserProfile, Photo } from '../../../types';
 import { Body } from '../../ui';
 import { CompatibilityResult } from '../../../utils/compatibilityHelpers';
@@ -121,7 +121,7 @@ export function AbridgedProfileView({ user, compatibility }: AbridgedProfileView
   };
 
   // Pill tag component for values/interests
-  const Pill = ({ label }: { label: string }) => (
+  const Pill = ({ label, iconDef }: { label: string; iconDef?: any }) => (
     <StyledView className="bg-neutral-100 rounded-full px-2 py-0.5 mr-1 mb-1">
       <Body className="text-[8px] text-neutral-700 font-medium">{label}</Body>
     </StyledView>
@@ -253,7 +253,7 @@ export function AbridgedProfileView({ user, compatibility }: AbridgedProfileView
             <Body className="text-[8px] text-red-800 font-bold mb-0.5">Conflicts</Body>
             {incompatMessages.map((message, index) => (
               <StyledView key={index} className="flex-row items-center mb-0.5">
-                <EvaIcon name="alert-circle" size={10} color="#EF4444" variant="outline" style={{ marginRight: 4 }} />
+                <EvaIcon name="alert-circle" size={10} color="#EF4444" style={{ marginRight: 4 }} />
                 <Body className="text-[9px] text-red-700 font-medium" numberOfLines={1}>
                   {message}
                 </Body>

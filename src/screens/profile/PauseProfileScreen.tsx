@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H2, H3, Body, Card, Button } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { EvaIcon  } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 import { getUserProfile, updateProfilePauseStatus } from '../../services/profileService';
 import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';
@@ -156,8 +156,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
             <StyledView className="flex-row items-center justify-between">
               <StyledView className="flex-1 mr-4">
                 <StyledView className="flex-row items-center mb-2">
-                  <EvaIcon
-                    name={isPaused ? "pause-circle" : "checkmark-circle-2"}
+                  <EvaIcon name={isPaused ? "pause-circle" : "checkmark-circle"}
                     size={24}
                     color={isPaused ? "#F59E0B" : "#12B981"}
                   />

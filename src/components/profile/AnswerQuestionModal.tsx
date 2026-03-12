@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { styled } from 'nativewind';
 import { Body, H3 } from '../ui';
-import { EvaIcon } from '../icons';
+import { EvaIcon } from '../../components/icons';
 import { lightHaptic, mediumHaptic, successHaptic } from '../../utils/haptics';
 
 interface AnswerQuestionModalProps {
@@ -163,7 +163,7 @@ export const AnswerQuestionModal: React.FC<AnswerQuestionModalProps> = ({
                     elevation: 2,
                   }}
                 >
-                  <EvaIcon name="edit" size={16} color="#437FFF" variant="outline" />
+                  <EvaIcon name="pencil" size={16} color="#437FFF" />
                 </StyledTouchableOpacity>
               )}
             </StyledView>

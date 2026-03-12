@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H2, H3, Body, Card, Button } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { EvaIcon  } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 import { getBlockedUsers, blockUser, unblockUser, BlockedUser as BlockedUserType } from '../../services/blockService';
 import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';
@@ -190,7 +190,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
           <H3>Blocked Users</H3>
         </StyledView>
         <StyledTouchableOpacity onPress={() => setShowAddBlock(!showAddBlock)}>
-          <EvaIcon name={showAddBlock ? "close" : "plus-circle"} size={24} color="#437FFF" />
+          <EvaIcon name={showAddBlock ? "close" : "add-circle"} size={24} color="#437FFF" />
         </StyledTouchableOpacity>
       </StyledView>
 
@@ -199,7 +199,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
           {/* Info Card */}
           <Card className="mb-6 bg-primary-50 border border-primary-200">
             <StyledView className="flex-row items-start mb-3">
-              <EvaIcon name="shield" size={20} color="#437FFF" variant="fill" />
+              <EvaIcon name="shield" size={20} color="#437FFF" />
               <Body className="text-primary-900 font-semibold text-sm ml-3">
                 When you block a user:
               </Body>
@@ -277,7 +277,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                           {userName}
                         </Body>
                         <StyledView className="flex-row items-center">
-                          <EvaIcon name="calendar" size={14} color="#667085" variant="outline" />
+                          <EvaIcon name="calendar-outline" size={14} color="#667085" />
                           <Body className="text-neutral-500 text-xs ml-1">
                             Blocked {formatDate(user.blockedAt)}
                           </Body>

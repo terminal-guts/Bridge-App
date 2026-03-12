@@ -32,7 +32,7 @@ import {
 import { Image, ImageBackground } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { EvaIcon  } from '../../../components/icons';
+import { EvaIcon } from '../../../components/icons';
 import { GuideTarget } from '../../guides';
 import { UserProfile } from '../../../types';
 import { Proposal, CommunityTask } from '../../../types/community';
@@ -1458,7 +1458,7 @@ export function ProposalReviewView({
               padding: 10,
             }}
           >
-            <EvaIcon name="close-square-outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
+            <EvaIcon name="close-outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
             <Text style={{ fontFamily: 'Outfit_500Medium', fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>No</Text>
           </TouchableOpacity>
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, TouchableOpacity, Image, Alert, Linking, Platform, ScrollView } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
-import { EvaIcon  } from '../../../components/icons';
+import { EvaIcon } from '../../../components/icons';
 import * as ImagePicker from 'expo-image-picker';
 import { OnboardingData, Photo } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
@@ -239,11 +239,9 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
                     onPress={() => showPhotoOptions(index)}
                     className="w-full h-full bg-neutral-100 rounded-xl items-center justify-center border-2 border-dashed border-neutral-300"
                   >
-                    <EvaIcon
-                      name={isMainSlot ? 'camera' : 'plus'}
+                    <EvaIcon name={isMainSlot ? 'camera-outline' : 'add'}
                       size={isMainSlot ? 36 : 28}
                       color="#98A2B3"
-                      variant={isMainSlot ? 'outline' : 'fill'}
                     />
                     <Body className="text-neutral-400 text-xs mt-1">
                       {isMainSlot ? 'Main Photo' : 'Add Photo'}

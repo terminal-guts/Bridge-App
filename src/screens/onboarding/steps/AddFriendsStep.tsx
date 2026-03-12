@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { H1, H2, Body, Input, Button } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
-import { EvaIcon  } from '../../../components/icons';
+import { EvaIcon } from '../../../components/icons';
 import * as Clipboard from 'expo-clipboard';
 import { getUserFriendCode, addFriendByCode, bulkAddFriendsByCodes } from '../../../services/friendService';
 import { getUserProfile } from '../../../services/profileService';
@@ -549,14 +549,14 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
                 onPress={handleCopyCode}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               >
-                <EvaIcon name="copy" size={16} color="#437FFF" variant="outline" />
+                <EvaIcon name="copy-outline" size={16} color="#437FFF" />
               </StyledTouchableOpacity>
               <StyledTouchableOpacity
                 className="p-1.5 rounded-full bg-primary-50 ml-1"
                 onPress={handleShareCode}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               >
-                <EvaIcon name="share" size={16} color="#437FFF" variant="outline" />
+                <EvaIcon name="share-outline" size={16} color="#437FFF" />
               </StyledTouchableOpacity>
             </StyledView>
             <StyledView className="flex-row items-center">
@@ -770,7 +770,7 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
               onPress={handleRequestPermission}
               className="flex-row items-center justify-center py-3 mb-1"
             >
-              <EvaIcon name="people" size={18} color="#437FFF" variant="outline" />
+              <EvaIcon name="people-outline" size={18} color="#437FFF" />
               <Body className="text-primary-500 font-semibold ml-2">Access Contacts</Body>
             </StyledTouchableOpacity>
           )}

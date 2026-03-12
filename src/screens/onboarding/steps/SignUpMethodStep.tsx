@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
-import { EvaIcon  } from '../../../components/icons';
+import { EvaIcon } from '../../../components/icons';
 
 interface SignUpMethodStepProps {
   data: Partial<OnboardingData>;
@@ -45,7 +45,7 @@ export const SignUpMethodStep: React.FC<SignUpMethodStepProps> = ({
           activeOpacity={0.7}
         >
           <StyledView className="w-12 h-12 bg-primary-50 rounded-full items-center justify-center mr-4">
-            <EvaIcon name="phone" size={24} color="#437FFF" variant="outline" />
+            <EvaIcon name="call-outline" size={24} color="#437FFF" />
           </StyledView>
           <StyledView className="flex-1">
             <Body className="text-neutral-900 font-semibold text-base">Phone Number</Body>
@@ -60,7 +60,7 @@ export const SignUpMethodStep: React.FC<SignUpMethodStepProps> = ({
           activeOpacity={0.7}
         >
           <StyledView className="w-12 h-12 bg-primary-50 rounded-full items-center justify-center mr-4">
-            <EvaIcon name="email" size={24} color="#437FFF" variant="outline" />
+            <EvaIcon name="mail-outline" size={24} color="#437FFF" />
           </StyledView>
           <StyledView className="flex-1">
             <Body className="text-neutral-900 font-semibold text-base">Rice Email</Body>

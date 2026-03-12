@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H2, H3, Body, Card, Button, Chip, Input } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile } from '../../types';
-import { EvaIcon  } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 import * as ImagePicker from 'expo-image-picker';
 import { getCurrentUser, signOut } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
@@ -1021,7 +1021,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
             }}
             className="mb-4 bg-neutral-100 border border-neutral-300 rounded-lg px-4 py-3 flex-row items-center justify-center"
           >
-            <EvaIcon name="eye" size={20} color="#437FFF" variant="outline" />
+            <EvaIcon name="eye-outline" size={20} color="#437FFF" />
             <Body className="text-primary-500 font-semibold ml-2">Preview Profile</Body>
           </StyledTouchableOpacity>
 
@@ -1070,8 +1070,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                         disabled={index === 0}
                         className="px-2 py-1"
                       >
-                        <EvaIcon
-                          name="chevron-left"
+                        <EvaIcon name="chevron-left"
                           size={18}
                           color={index === 0 ? '#666' : 'white'}
                         />
@@ -1082,9 +1081,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                         onPress={() => handleSetMainPhoto(index)}
                         className="px-2 py-1"
                       >
-                        <EvaIcon
-                          name="star"
-                          variant={photo.isMain ? "fill" : "outline"}
+                        <EvaIcon name={photo.isMain ? "star" : "star-outline"}
                           size={18}
                           color={photo.isMain ? "#FCD34D" : "white"}
                         />
@@ -1096,8 +1093,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                         disabled={index === profile.photos.length - 1}
                         className="px-2 py-1"
                       >
-                        <EvaIcon
-                          name="chevron-right"
+                        <EvaIcon name="chevron-right"
                           size={18}
                           color={index === profile.photos.length - 1 ? '#666' : 'white'}
                         />
@@ -1113,7 +1109,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                     onPress={handleAddPhoto}
                     className="aspect-[3/4] rounded-lg border-2 border-dashed border-primary-300 bg-primary-50 items-center justify-center"
                   >
-                    <EvaIcon name="plus-circle" size={32} color="#437FFF" variant="fill" />
+                    <EvaIcon name="add-circle" size={32} color="#437FFF" />
                     <Body className="text-primary-500 text-xs mt-2 text-center px-1">
                       {profile.photos.length === 0
                         ? 'Add Photos'

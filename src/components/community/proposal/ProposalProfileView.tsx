@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Image, ScrollView, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import { EvaIcon  } from '../../../components/icons';
+import { EvaIcon } from '../../../components/icons';
 import { UserProfile } from '../../../types/community';
 import { valueEmoji, interestEmoji, getValueIconDef, getInterestIconDef, RenderIcon } from '../../../utils/emojiMaps';
 
@@ -122,7 +122,7 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                         paddingVertical: 8,
                         borderRadius: 20,
                     }}>
-                        <EvaIcon name="resize-outline" size={16} color="#10B981" style={{ marginRight: 6 }} />
+                        <EvaIcon name="maximize-outline" size={16} color="#10B981" style={{ marginRight: 6 }} />
                         <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500' }}>
                             {formatHeight(user.height as any)}
                         </StyledText>
@@ -218,7 +218,7 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                                 }}
                             >
                                 <StyledText style={{ fontSize: 13, color: '#1E40AF', fontWeight: '500' }}>
-                                    <RenderIcon iconDef={getInterestIconDef(interest)} /> {interest}
+                                    <RenderIcon iconDef={getInterestIconDef(interest)} size={14} color="#d97706" /> {interest}
                                 </StyledText>
                             </StyledView>
                         ))}
@@ -230,7 +230,7 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
             {user.values && user.values.length > 0 && (
                 <StyledView style={{ marginBottom: 20 }}>
                     <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                        <EvaIcon name="diamond" size={18} color="#10B981" style={{ marginRight: 6 }} />
+                        <EvaIcon name="star" size={18} color="#10B981" style={{ marginRight: 6 }} />
                         <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600' }}>Values</StyledText>
                     </StyledView>
                     <StyledView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
@@ -245,7 +245,7 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                                 }}
                             >
                                 <StyledText style={{ fontSize: 13, color: '#065F46', fontWeight: '500' }}>
-                                    <RenderIcon iconDef={getValueIconDef(value)} /> {value}
+                                    <RenderIcon iconDef={getValueIconDef(value)} size={14} color="#059669" /> {value}
                                 </StyledText>
                             </StyledView>
                         ))}
@@ -280,7 +280,7 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
             {/* Lifestyle */}
             <StyledView style={{ marginBottom: 20 }}>
                 <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                    <EvaIcon name="leaf" size={18} color="#8B5CF6" style={{ marginRight: 6 }} />
+                    <EvaIcon name="activity" size={18} color="#8B5CF6" style={{ marginRight: 6 }} />
                     <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600' }}>Lifestyle</StyledText>
                 </StyledView>
 
@@ -292,7 +292,7 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                         marginBottom: 10,
                     }}>
                         <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <EvaIcon name="wine" size={16} color="#78716C" style={{ marginRight: 8 }} />
+                            <EvaIcon name="droplet" size={16} color="#78716C" style={{ marginRight: 8 }} />
                             <StyledText style={{ fontSize: 14, color: '#4A4540' }}>Drinking</StyledText>
                         </StyledView>
                         <StyledText style={{ fontSize: 14, color: '#78716C', fontWeight: '500' }}>
@@ -309,7 +309,7 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                         marginBottom: 10,
                     }}>
                         <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <EvaIcon name="leaf-outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
+                            <EvaIcon name="activity-outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
                             <StyledText style={{ fontSize: 14, color: '#4A4540' }}>Cannabis</StyledText>
                         </StyledView>
                         <StyledText style={{ fontSize: 14, color: '#78716C', fontWeight: '500' }}>
@@ -325,7 +325,7 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                         alignItems: 'center',
                     }}>
                         <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <EvaIcon name="fitness-outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
+                            <EvaIcon name="activity-outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
                             <StyledText style={{ fontSize: 14, color: '#4A4540' }}>Tobacco</StyledText>
                         </StyledView>
                         <StyledText style={{ fontSize: 14, color: '#78716C', fontWeight: '500' }}>

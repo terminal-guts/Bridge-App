@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H1, H3, Body, Card, EmptyState, LoadingState } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { EvaIcon  } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 import { getFriends, removeFriend, FriendWithProfile } from '../../services/friendService';
 import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';

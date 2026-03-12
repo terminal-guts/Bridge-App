@@ -13,7 +13,7 @@ import { H1, H2, H3, Body, Button, Card, Chip } from '../../components/ui';
 import { valueEmoji, interestEmoji, getValueIconDef, getInterestIconDef } from '../../utils/emojiMaps';
 import { PartialMatch } from '../../types';
 import { mockPartialMatch } from '../../services/mockData';
-import { EvaIcon  } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 
 const { width } = Dimensions.get('window');
 
@@ -111,7 +111,7 @@ export const MatchRevealScreen: React.FC<MatchRevealScreenProps> = ({
                 The community thinks you two are perfect for each other
               </Body>
               <StyledView className="flex-row items-center mt-4 bg-white/20 px-3 py-2 rounded-full">
-                <EvaIcon name="people" size={20} color="white" variant="fill" />
+                <EvaIcon name="people" size={20} color="white" />
                 <Body className="text-white font-semibold ml-2">
                   Community Score: {match.communityScore}%
                 </Body>
@@ -166,7 +166,7 @@ export const MatchRevealScreen: React.FC<MatchRevealScreenProps> = ({
               <H2 className="mb-1">{match.profile.firstName}, {match.profile.age}</H2>
               <Body className="text-neutral-600 mb-1">{match.profile.occupation}</Body>
               <StyledView className="flex-row items-center">
-                <EvaIcon name="pin" size={16} color="#667085" variant="outline" />
+                <EvaIcon name="pin-outline" size={16} color="#667085" />
                 <Body className="text-neutral-500 ml-1">New York, NY</Body>
               </StyledView>
             </Card>

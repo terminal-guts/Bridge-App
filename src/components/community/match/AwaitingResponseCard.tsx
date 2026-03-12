@@ -16,7 +16,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image } from 'react-native';
 import { styled } from 'nativewind';
-import { EvaIcon  } from '../../../components/icons';
+import { EvaIcon } from '../../../components/icons';
 import { MatchProposal } from '../../../types/community';
 import {
   formatExpirationTime,
@@ -120,12 +120,12 @@ export function AwaitingResponseCard({ proposal }: AwaitingResponseCardProps) {
 
       {/* Expiration Timer */}
       <StyledView className="flex-row items-center justify-center">
-        <EvaIcon name="hourglass-outline" size={18} color={COLORS.warning.icon} />
+        <EvaIcon name="clock-outline" size={18} color={COLORS.warning.icon} />
         <StyledText
           className="text-sm ml-2 font-medium"
           style={{ color: COLORS.darkAmber }}
         >
-          <EvaIcon name="clock-outline" size={12} color={COLORS.darkAmber} style={{ marginRight: 4, marginTop: 1 }} /> Expires in {expirationData.text}
+          ⏰ Expires in {expirationData.text}
         </StyledText>
       </StyledView>
     </StyledView>

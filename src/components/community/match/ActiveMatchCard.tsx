@@ -15,7 +15,7 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import { EvaIcon  } from '../../../components/icons';
+import { EvaIcon } from '../../../components/icons';
 import { ActiveMatch } from '../../../types/community';
 import { mediumHaptic, lightHaptic } from '../../../utils/haptics';
 import {

@@ -2,10 +2,10 @@ import React from 'react';
 import { TouchableOpacity, Text } from 'react-native';
 import { styled } from 'nativewind';
 
-import { RenderIcon, type IconDef } from '../../utils/emojiMaps';
+import { RenderIcon } from '../../utils/emojiMaps';
 
 interface SimpleChipProps {
-  iconDef?: IconDef;
+  iconDef?: any;
   label: string;
   selected: boolean;
   onPress: () => void;

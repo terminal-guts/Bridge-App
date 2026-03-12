@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { styled } from 'nativewind';
-import { EvaIcon  } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 import { createLogger } from '../../utils/secureLogger';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 

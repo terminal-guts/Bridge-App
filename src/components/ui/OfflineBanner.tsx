@@ -8,7 +8,7 @@
 import React from 'react';
 import { View, Animated } from 'react-native';
 import { styled } from 'nativewind';
-import { EvaIcon  } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 import { Body } from '.';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 

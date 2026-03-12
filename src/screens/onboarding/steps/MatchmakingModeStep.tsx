@@ -3,7 +3,7 @@ import { View, TouchableOpacity, Animated, Image } from 'react-native';
 import { styled } from 'nativewind';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { H1, Body, H3 } from '../../../components/ui';
-import { EvaIcon, type IconName    } from '../../../components/icons';
+import { EvaIcon } from '../../../components/icons';
 
 interface MatchmakingModeStepProps {
   data: any;
@@ -97,8 +97,7 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
                 isSelected ? 'bg-primary-500' : 'bg-neutral-100'
               }`}
             >
-              <EvaIcon
-                name={icon as any}
+              <EvaIcon name={icon}
                 size={20}
                 color={isSelected ? '#FFFFFF' : '#667085'}
               />
@@ -112,8 +111,7 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
               </Body>
             </StyledView>
             <StyledView className="mt-1">
-              <EvaIcon
-                name={isSelected ? 'checkmark-circle-2' : 'radio-button-off'}
+              <EvaIcon name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
                 size={24}
                 color={isSelected ? '#437FFF' : '#D0D5DD'}
               />

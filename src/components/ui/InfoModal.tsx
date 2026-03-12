@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { styled } from 'nativewind';
 import { H2, Body, Caption } from './Typography';
-import { EvaIcon  } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 

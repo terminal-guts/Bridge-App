@@ -3,10 +3,10 @@ import { TouchableOpacity, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { lightHaptic } from '../../utils/haptics';
 
-import { RenderIcon, type IconDef } from '../../utils/emojiMaps';
+import { RenderIcon } from '../../utils/emojiMaps';
 
 interface ChipProps {
-  iconDef?: IconDef;
+  iconDef?: any;
   label: string;
   selected?: boolean;
   onPress?: () => void;

@@ -12,7 +12,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, Animated, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { styled } from 'nativewind';
-import { EvaIcon  } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 import { Card } from './Card';
 import { lightHaptic } from '../../utils/haptics';
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text } from 'react-native';
-import { EvaIcon } from '../icons';
+import { EvaIcon } from '../../components/icons';
 
 interface MatchExpiryTimerProps {
     expiresAt: number; // Unix ms timestamp to count down to

@@ -8,7 +8,7 @@ import React from 'react';
 import { View, Image, TouchableOpacity, ScrollView } from 'react-native';
 import { styled } from 'nativewind';
 import { H2, H3, Body, Card, CollapsibleCard, Chip } from '../../components/ui';
-import { EvaIcon  } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 import { UserProfile, Match } from '../../types';
 import { valueEmoji, interestEmoji, getValueIconDef, getInterestIconDef } from '../../utils/emojiMaps';
 
@@ -21,7 +21,7 @@ const StyledScrollView = styled(ScrollView);
 export type SectionType = 'basic' | 'interests' | 'values' | 'lifestyle' | 'preferences';
 
 interface ProfileInfoItemProps {
-  icon: string;
+  icon: any;
   label: string;
   value: string;
   subtitle?: string;
@@ -81,7 +81,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
       <StyledView className="space-y-3">
         <ProfileInfoItem icon="calendar-outline" label="Age" value={`${profile.age} years old`} />
         {profile.height && (
-          <ProfileInfoItem icon="resize-outline" label="Height" value={profile.height} />
+          <ProfileInfoItem icon="maximize-outline" label="Height" value={profile.height} />
         )}
         <ProfileInfoItem icon="body-outline" label="Ethnicity" value={profile.ethnicity} />
         {profile.location && (
@@ -212,7 +212,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
                 <ProfileInfoItem icon="activity-outline" label="Cannabis" value={profile.cannabisFrequency} />
               )}
               {profile.tobaccoFrequency && (
-                <ProfileInfoItem icon="ban-outline" label="Tobacco" value={profile.tobaccoFrequency} />
+                <ProfileInfoItem icon="slash-outline" label="Tobacco" value={profile.tobaccoFrequency} />
               )}
               {profile.otherDrugsFrequency && (
                 <ProfileInfoItem icon="plus-square-outline" label="Other Substances" value={profile.otherDrugsFrequency} />
@@ -363,7 +363,7 @@ export const PartnerLifestyleSection: React.FC<PartnerLifestyleSectionProps> = (
 };
 
 interface LifestyleItemProps {
-  icon: string;
+  icon: any;
   label: string;
   value: string;
 }
@@ -405,7 +405,7 @@ export const LifestyleSection: React.FC<LifestyleSectionProps> = ({ lifestyle })
       <StyledView className="space-y-3">
         {lifestyle.exercise && (
           <LifestyleItem
-            icon="fitness-outline"
+            icon="activity-outline"
             label="Exercise"
             value={lifestyle.exercise.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
           />
@@ -419,7 +419,7 @@ export const LifestyleSection: React.FC<LifestyleSectionProps> = ({ lifestyle })
         )}
         {lifestyle.smoking && (
           <LifestyleItem
-            icon="ban-outline"
+            icon="slash-outline"
             label="Smoking"
             value={lifestyle.smoking.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
           />
@@ -480,7 +480,7 @@ export const PreferencesSection: React.FC<PreferencesSectionProps> = ({ preferen
         <H3 className="mb-4">Physical Preferences</H3>
         <StyledView className="space-y-3">
           <LifestyleItem
-            icon="resize-outline"
+            icon="maximize-outline"
             label="Height Preference"
             value={`${Math.floor(preferences.heightMin / 12)}'${preferences.heightMin % 12}" - ${Math.floor(preferences.heightMax / 12)}'${preferences.heightMax % 12}"`}
           />
@@ -556,7 +556,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({ match, onMatchP
 });
 
 interface EmptyStateProps {
-  icon: string;
+  icon: any;
   title: string;
   message: string;
 }
@@ -782,7 +782,7 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
         {/* Height Preference */}
         <StyledView className="flex-row items-center justify-between py-2 border-b border-purple-100/50">
           <StyledView className="flex-row items-center">
-            <EvaIcon name="resize-outline" size={16} color="#7C3AED" />
+            <EvaIcon name="maximize-outline" size={16} color="#7C3AED" />
             <Body className="text-neutral-700 text-sm ml-2">Height</Body>
           </StyledView>
           <Body className="text-neutral-900 font-semibold text-sm">
