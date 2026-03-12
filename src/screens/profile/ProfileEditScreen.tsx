@@ -546,20 +546,32 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
     setSaving(true);
     try {
       // Upload any new photos (file:// URIs) to Supabase Storage first
-      const uploadedPhotos = [];
-      for (const photo of profile.photos || []) {
+      const uploadPromises = (profile.photos || []).map(async (photo) => {
         if (photo.url.startsWith('file://')) {
           const uploadRes = await uploadPhoto(photo.url, photo.order, photo.isMain);
           if (uploadRes.ok && uploadRes.data) {
-            uploadedPhotos.push(uploadRes.data.photo);
+            return { success: true, photo: uploadRes.data.photo };
           } else {
-            logger.error('Photo upload failed:', uploadRes.error?.message);
-            Alert.alert('Error', `Failed to upload photo: ${uploadRes.error?.message || 'Unknown error'}`);
-            setSaving(false);
-            return;
+            return { success: false, error: uploadRes.error?.message || 'Unknown error' };
           }
         } else {
-          uploadedPhotos.push(photo);
+          return { success: true, photo: photo };
+        }
+      });
+
+      const uploadResults = await Promise.all(uploadPromises);
+      const uploadedPhotos = [];
+
+      for (const result of uploadResults) {
+        if (!result.success) {
+          logger.error('Photo upload failed:', result.error);
+          Alert.alert('Error', `Failed to upload photo: ${result.error}`);
+          setSaving(false);
+          return;
+        }
+        // result.photo is guaranteed to be defined if success is true, but TS needs some help
+        if (result.photo) {
+          uploadedPhotos.push(result.photo);
         }
       }
 
