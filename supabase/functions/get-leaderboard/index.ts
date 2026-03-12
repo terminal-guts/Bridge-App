@@ -57,7 +57,8 @@ Deno.serve(async (req: Request) => {
       userId: row.user_id,
       firstName: row.first_name || 'User',
       weeklyKarma: row.weekly_karma || 0,
-      rank: Number(row.rank)
+      rank: Number(row.rank),
+      rankChange: Number(row.rank_change) || 0
     }));
 
     const topEntries = entries.filter(e => e.rank <= limit);
@@ -69,13 +70,11 @@ Deno.serve(async (req: Request) => {
 
     const participantIdList = Array.from(participantIds);
 
-    const [photosResult, friendsAsUser, friendsAsFriend] = await Promise.all([
+    const [profilesResult, friendsAsUser, friendsAsFriend] = await Promise.all([
       supabase
-        .from('user_photos')
-        .select('user_id, storage_path')
-        .in('user_id', participantIdList)
-        .or('is_main.eq.true,display_order.eq.0')
-        .order('display_order', { ascending: true }),
+        .from('user_profiles')
+        .select('user_id, photos')
+        .in('user_id', participantIdList),
       supabase
         .from('friends')
         .select('friend_id')
@@ -88,9 +87,14 @@ Deno.serve(async (req: Request) => {
         .in('user_id', participantIdList)
     ]);
 
+    // Extract main photo storage path from the JSONB photos array
     const photosMap: Record<string, string> = {};
-    for (const p of (photosResult.data || [])) {
-      if (!photosMap[p.user_id]) photosMap[p.user_id] = p.storage_path;
+    for (const p of (profilesResult.data || [])) {
+      const photos = p.photos as any[] | null;
+      if (!photos || photos.length === 0) continue;
+      // Prefer isMain/is_main photo, fall back to first photo
+      const main = photos.find((ph: any) => ph.isMain || ph.is_main) || photos[0];
+      if (main?.url) photosMap[p.user_id] = main.url;
     }
 
     const friendIds = new Set([

@@ -68,9 +68,9 @@ serve(async (req: Request) => {
       if (!replyContent) {
         // Get user's name for confirmation
         const { data: profile } = await supabaseAdmin
-          .from('profiles')
+          .from('user_profiles')
           .select('first_name')
-          .eq('id', userId)
+          .eq('user_id', userId)
           .single();
 
         const name = profile?.first_name || 'User';

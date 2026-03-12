@@ -68,11 +68,12 @@ export function subscribeToSupportMessages(
   callback: (message: SupportMessage) => void
 ): { unsubscribe: () => void } {
   let channel: any = null;
+  let disposed = false;
 
   // Set up subscription asynchronously
   (async () => {
     const userId = await getAuthenticatedUserId();
-    if (!userId) return;
+    if (!userId || disposed) return;
 
     channel = supabase
       .channel(`support-messages-${userId}`)
@@ -85,6 +86,7 @@ export function subscribeToSupportMessages(
           filter: `user_id=eq.${userId}`,
         },
         (payload: any) => {
+          if (disposed) return;
           const newMessage = payload.new as SupportMessage;
           if (newMessage.sender === 'admin') {
             callback(newMessage);
@@ -92,12 +94,20 @@ export function subscribeToSupportMessages(
         }
       )
       .subscribe();
+
+    // If unsubscribe was called while we were awaiting auth, clean up immediately
+    if (disposed) {
+      supabase.removeChannel(channel);
+      channel = null;
+    }
   })();
 
   return {
     unsubscribe: () => {
+      disposed = true;
       if (channel) {
         supabase.removeChannel(channel);
+        channel = null;
       }
     },
   };

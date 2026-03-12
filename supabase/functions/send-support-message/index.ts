@@ -169,9 +169,9 @@ serve(async (req: Request) => {
     // Get user's first name for SMS
     let firstName = 'User';
     const { data: profile } = await supabaseAdmin
-      .from('profiles')
+      .from('user_profiles')
       .select('first_name')
-      .eq('id', userId)
+      .eq('user_id', userId)
       .single();
 
     if (profile?.first_name) {

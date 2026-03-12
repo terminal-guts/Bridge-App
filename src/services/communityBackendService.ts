@@ -637,6 +637,7 @@ class CommunityBackendService {
           })(),
           isAnchorToday: true,
           hasCompletedGrid: alreadyHelped.has(friendId),
+          isMatched: friendsWithMatch.has(friendId),
           addedAt: f.added_at || new Date().toISOString(),
           streakDays,
           assistsCount: friendKarma?.total_assists || 0,

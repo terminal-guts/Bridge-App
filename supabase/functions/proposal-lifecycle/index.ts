@@ -189,6 +189,14 @@ Deno.serve(async (req: Request) => {
       console.log('Weekly karma snapshot status:', snapshotData);
     }
 
+    // (d) Daily Rank Snapshot: Captures current leaderboard ranks for rank-change arrows.
+    const { data: rankSnapData, error: rankSnapErr } = await supabase.rpc('snapshot_daily_ranks');
+    if (rankSnapErr) {
+      console.error('Daily rank snapshot failed:', rankSnapErr);
+    } else {
+      console.log('Daily rank snapshot status:', rankSnapData);
+    }
+
     // 3. Check decision deadlines on 'deciding' proposals
     const { data: decidingProposals } = await supabase
       .from('proposals')

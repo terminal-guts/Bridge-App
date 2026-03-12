@@ -10,9 +10,10 @@
 --   ALTER DATABASE postgres SET app.settings.service_role_key = 'new-key-here';
 --
 -- Schedule (UTC, targeting ~7PM Central):
---   00:00 AM UTC — proposal-lifecycle       (expire old proposals, check thresholds)
---   00:05 AM UTC — generate-proposals       (create new proposals for eligible users)
---   Every 4h    — proposal-lifecycle-check  (safety net, same as lifecycle)
+--   00:00 AM UTC daily  — proposal-lifecycle       (expire old proposals, check thresholds)
+--   00:05 AM UTC daily  — generate-proposals       (create new proposals for eligible users)
+--   Every 4h            — proposal-lifecycle-check  (safety net, same as lifecycle)
+--   00:00 AM UTC Monday — snapshot-weekly-karma    (snapshot karma baselines for weekly leaderboard)
 --
 -- DST note: 00:00 UTC = 7PM CDT (Mar-Nov) / 6PM CST (Nov-Mar).
 -- Using 00:00 UTC means the cycle runs at 6PM CST during winter. This is acceptable
@@ -31,6 +32,7 @@ WHERE jobname IN (
   'proposal-lifecycle',
   'generate-proposals',
   'proposal-lifecycle-check',
+  'snapshot-weekly-karma',
   'generate-daily-surveys',
   'generate-daily-pairings',
   'daily-generate-proposals',
@@ -85,6 +87,26 @@ SELECT cron.schedule(
   $$
   SELECT net.http_post(
     url := 'https://ikyiwnydgedwbmcdzgbe.supabase.co/functions/v1/proposal-lifecycle',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);
+
+-- ============================================
+-- 4. Snapshot Weekly Karma — Monday 00:00 UTC (= Sunday 7PM Central)
+--    Captures karma baselines at start of each leaderboard week.
+--    Idempotent — safe to re-run (ON CONFLICT DO NOTHING).
+-- ============================================
+SELECT cron.schedule(
+  'snapshot-weekly-karma',
+  '0 0 * * 1',
+  $$
+  SELECT net.http_post(
+    url := 'https://ikyiwnydgedwbmcdzgbe.supabase.co/functions/v1/snapshot-weekly-karma',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
