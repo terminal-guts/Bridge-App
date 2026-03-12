@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H2, H3, Body } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../../components/icons';
 
 interface PrivacyPolicyProps {
   navigation: NavigationProp<RootStackParamList>;
@@ -23,7 +23,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
       {/* Header */}
       <StyledView className="flex-row items-center px-4 py-3 border-b border-neutral-200">
         <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
-          <Ionicons name="arrow-back" size={24} color="#101828" />
+          <EvaIcon name="arrow-back" size={24} color="#101828" />
         </StyledTouchableOpacity>
         <H3>Privacy Policy</H3>
       </StyledView>

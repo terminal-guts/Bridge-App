@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H1, H3, Body, Card, Button } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../../components/icons';
 import { signOut } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
 import { resetGuide } from '../../services/guideService';
@@ -99,7 +99,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
     >
       <StyledView className="flex-row items-center">
         <StyledView className="w-10 h-10 bg-neutral-100 rounded-lg items-center justify-center mr-3">
-          <Ionicons name={icon as any} size={20} color="#667085" />
+          <EvaIcon name={icon as any} size={20} color="#667085" variant="outline" />
         </StyledView>
         <StyledView className="flex-1">
           <Body className="text-neutral-900 mb-1">{title}</Body>
@@ -116,7 +116,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
             ios_backgroundColor="#D0D5DD"
           />
         ) : showArrow ? (
-          <Ionicons name="chevron-forward" size={20} color="#98A2B3" />
+          <EvaIcon name="chevron-right" size={20} color="#98A2B3" />
         ) : null}
       </StyledView>
     </StyledTouchableOpacity>
@@ -129,7 +129,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
       {/* Header */}
       <StyledView className="flex-row items-center justify-between px-4 py-3 border-b border-neutral-200 bg-white">
         <StyledTouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#101828" />
+          <EvaIcon name="arrow-back" size={24} color="#101828" />
         </StyledTouchableOpacity>
         <H3>Settings</H3>
         <StyledView style={{ width: 24 }} />
@@ -175,7 +175,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="school-outline" size={20} color="#94A3B8" />
+                  <EvaIcon name="book" size={20} color="#94A3B8" variant="outline" />
                 </View>
                 <View>
                   <Body style={{ color: '#1E293B' }}>Tutorial</Body>

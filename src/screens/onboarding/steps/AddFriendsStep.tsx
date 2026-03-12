@@ -19,7 +19,6 @@ import { styled } from 'nativewind';
 import { H1, H2, Body, Input, Button } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { EvaIcon } from '../../../components/icons';
-import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { getUserFriendCode, addFriendByCode, bulkAddFriendsByCodes } from '../../../services/friendService';
 import { getUserProfile } from '../../../services/profileService';
@@ -550,14 +549,14 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
                 onPress={handleCopyCode}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               >
-                <Ionicons name="copy-outline" size={16} color="#437FFF" />
+                <EvaIcon name="copy" size={16} color="#437FFF" variant="outline" />
               </StyledTouchableOpacity>
               <StyledTouchableOpacity
                 className="p-1.5 rounded-full bg-primary-50 ml-1"
                 onPress={handleShareCode}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               >
-                <Ionicons name="share-outline" size={16} color="#437FFF" />
+                <EvaIcon name="share" size={16} color="#437FFF" variant="outline" />
               </StyledTouchableOpacity>
             </StyledView>
             <StyledView className="flex-row items-center">
@@ -758,7 +757,7 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
               </Body>
               {addedFriends.map((name, i) => (
                 <StyledView key={i} className="flex-row items-center mb-1">
-                  <Ionicons name="checkmark-circle" size={18} color="#22C55E" />
+                  <EvaIcon name="checkmark-circle-2" size={18} color="#22C55E" />
                   <Body className="text-neutral-700 ml-2">{name}</Body>
                 </StyledView>
               ))}
@@ -771,7 +770,7 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
               onPress={handleRequestPermission}
               className="flex-row items-center justify-center py-3 mb-1"
             >
-              <Ionicons name="people-outline" size={18} color="#437FFF" />
+              <EvaIcon name="people" size={18} color="#437FFF" variant="outline" />
               <Body className="text-primary-500 font-semibold ml-2">Access Contacts</Body>
             </StyledTouchableOpacity>
           )}

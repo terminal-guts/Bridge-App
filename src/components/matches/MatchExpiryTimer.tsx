@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../icons';
 
 interface MatchExpiryTimerProps {
     expiresAt: number; // Unix ms timestamp to count down to
@@ -71,7 +71,7 @@ export function MatchExpiryTimer({ expiresAt }: MatchExpiryTimerProps) {
             height: 34,
             gap: 5,
         }}>
-            <Ionicons name="time-outline" size={13} color={color} />
+            <EvaIcon name="clock-outline" size={13} color={color} />
             <Text style={{ fontSize: 13, fontWeight: '600', color }}>{label}</Text>
         </View>
     );

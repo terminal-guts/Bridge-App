@@ -7,7 +7,7 @@ import { UserRow } from '../../components/community/UserRow';
 import { ProposalReviewView } from '../../components/community/proposal/ProposalReviewView';
 import { GuideTarget } from '../../components/guides';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../../components/icons';
 import { MainTabParamList } from '../../types';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { communityService } from '../../services/communityServiceIndex';
@@ -104,7 +104,7 @@ function MatchResetTimer() {
           height: 34,
           gap: 5,
         }}>
-          <Ionicons name="time-outline" size={13} color={color} />
+          <EvaIcon name="clock-outline" size={13} color={color} />
           <Text style={{ fontSize: 13, fontWeight: '600', color }}>{label}</Text>
         </View>
       </TouchableOpacity>
@@ -451,7 +451,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                   justifyContent: 'center',
                 }}
               >
-                <Ionicons name="person-add-outline" size={18} color="#2B65F9" />
+                <EvaIcon name="person-add" size={18} color="#2B65F9" variant="outline" />
               </TouchableOpacity>
             </GuideTarget>
           </View>
@@ -481,7 +481,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                       style={styles.enterCodeButton}
                       onPress={async () => { const msg = await buildInviteMessage(friendCode, profile?.firstName); Share.share({ message: msg }); }}
                     >
-                      <Ionicons name="share-outline" size={18} color="#2B65F9" style={{ marginRight: 6 }} />
+                      <EvaIcon name="share" size={18} color="#2B65F9" variant="outline" style={{ marginRight: 6 }} />
                       <Text style={styles.enterCodeButtonText}>Share Code</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -522,7 +522,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                   activeOpacity={0.85}
                   onPress={() => (navigation as any).navigate('ContactInvite')}
                 >
-                  <Ionicons name="people-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <EvaIcon name="people" size={20} color="#FFFFFF" variant="outline" style={{ marginRight: 8 }} />
                   <Text style={styles.inviteContactsButtonText}>Invite from Contacts</Text>
                 </TouchableOpacity>
               </>
@@ -545,12 +545,12 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
               onPress={() => (navigation as any).navigate('ContactInvite')}
             >
               <View style={styles.inviteNudgeLeft}>
-                <Ionicons name="people" size={20} color="#2B65F9" />
+                <EvaIcon name="people" size={20} color="#2B65F9" variant="fill" />
                 <Text style={styles.inviteNudgeText}>
                   Invite {5 - (usersToMatch.length + alreadyHelped.length)} more friend{5 - (usersToMatch.length + alreadyHelped.length) === 1 ? '' : 's'} for better matches
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#2B65F9" />
+              <EvaIcon name="chevron-right" size={18} color="#2B65F9" />
             </TouchableOpacity>
           )}
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, TouchableOpacity, Image, Alert, Linking, Platform, ScrollView } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../../../components/icons';
 import * as ImagePicker from 'expo-image-picker';
 import { OnboardingData, Photo } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
@@ -224,14 +224,14 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
                       onPress={() => removePhoto(index)}
                       className="absolute top-2 right-2 bg-neutral-900/60 rounded-full w-7 h-7 items-center justify-center"
                     >
-                      <Ionicons name="close" size={16} color="white" />
+                      <EvaIcon name="close" size={16} color="white" />
                     </StyledTouchableOpacity>
                     {/* Replace button */}
                     <StyledTouchableOpacity
                       onPress={() => showPhotoOptions(index)}
                       className="absolute bottom-2 right-2 bg-neutral-900/60 rounded-full w-7 h-7 items-center justify-center"
                     >
-                      <Ionicons name="refresh" size={14} color="white" />
+                      <EvaIcon name="refresh" size={14} color="white" />
                     </StyledTouchableOpacity>
                   </StyledView>
                 ) : (
@@ -239,10 +239,11 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
                     onPress={() => showPhotoOptions(index)}
                     className="w-full h-full bg-neutral-100 rounded-xl items-center justify-center border-2 border-dashed border-neutral-300"
                   >
-                    <Ionicons
-                      name={isMainSlot ? 'camera-outline' : 'add'}
+                    <EvaIcon
+                      name={isMainSlot ? 'camera' : 'plus'}
                       size={isMainSlot ? 36 : 28}
                       color="#98A2B3"
+                      variant={isMainSlot ? 'outline' : 'fill'}
                     />
                     <Body className="text-neutral-400 text-xs mt-1">
                       {isMainSlot ? 'Main Photo' : 'Add Photo'}

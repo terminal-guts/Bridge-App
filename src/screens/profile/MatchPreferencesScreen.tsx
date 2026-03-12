@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H3, Body, Card, Button } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile } from '../../types';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../../components/icons';
 import RangeSlider from 'rn-range-slider';
 import NetInfo from '@react-native-community/netinfo';
 import { getCurrentUser } from '../../services/authService';
@@ -462,7 +462,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
       <StyledView className="bg-white border-b border-neutral-200 px-4 py-3">
         <StyledView className="flex-row items-center justify-between">
           <StyledTouchableOpacity onPress={handleClose} className="mr-3">
-            <Ionicons name="close" size={24} color="#101828" />
+            <EvaIcon name="close" size={24} color="#101828" />
           </StyledTouchableOpacity>
           <StyledView className="flex-1">
             <H3>Match Preferences</H3>
@@ -516,7 +516,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                     Long-term relationship
                   </Body>
                 </StyledView>
-                <Ionicons name="checkmark-circle" size={24} color="#9333ea" />
+                <EvaIcon name="checkmark-circle-2" size={24} color="#9333ea" />
               </StyledView>
             </StyledView>
           </Card>

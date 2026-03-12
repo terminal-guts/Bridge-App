@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../../../components/icons';
 
 interface SignUpMethodStepProps {
   data: Partial<OnboardingData>;
@@ -45,13 +45,13 @@ export const SignUpMethodStep: React.FC<SignUpMethodStepProps> = ({
           activeOpacity={0.7}
         >
           <StyledView className="w-12 h-12 bg-primary-50 rounded-full items-center justify-center mr-4">
-            <Ionicons name="call-outline" size={24} color="#437FFF" />
+            <EvaIcon name="phone" size={24} color="#437FFF" variant="outline" />
           </StyledView>
           <StyledView className="flex-1">
             <Body className="text-neutral-900 font-semibold text-base">Phone Number</Body>
             <Body className="text-neutral-500 text-sm mt-0.5">Sign up with your phone number</Body>
           </StyledView>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          <EvaIcon name="chevron-right" size={20} color="#9CA3AF" />
         </StyledTouchableOpacity>
 
         <StyledTouchableOpacity
@@ -60,13 +60,13 @@ export const SignUpMethodStep: React.FC<SignUpMethodStepProps> = ({
           activeOpacity={0.7}
         >
           <StyledView className="w-12 h-12 bg-primary-50 rounded-full items-center justify-center mr-4">
-            <Ionicons name="mail-outline" size={24} color="#437FFF" />
+            <EvaIcon name="email" size={24} color="#437FFF" variant="outline" />
           </StyledView>
           <StyledView className="flex-1">
             <Body className="text-neutral-900 font-semibold text-base">Rice Email</Body>
             <Body className="text-neutral-500 text-sm mt-0.5">Sign up with your @rice.edu email</Body>
           </StyledView>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          <EvaIcon name="chevron-right" size={20} color="#9CA3AF" />
         </StyledTouchableOpacity>
       </StyledView>
     </OnboardingLayout>

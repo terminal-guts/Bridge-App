@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H2, H3, Body, Card, Button } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../../components/icons';
 import { getBlockedUsers, blockUser, unblockUser, BlockedUser as BlockedUserType } from '../../services/blockService';
 import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';
@@ -185,12 +185,12 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
       <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center justify-between">
         <StyledView className="flex-row items-center flex-1">
           <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
-            <Ionicons name="arrow-back" size={24} color="#101828" />
+            <EvaIcon name="arrow-back" size={24} color="#101828" />
           </StyledTouchableOpacity>
           <H3>Blocked Users</H3>
         </StyledView>
         <StyledTouchableOpacity onPress={() => setShowAddBlock(!showAddBlock)}>
-          <Ionicons name={showAddBlock ? "close" : "add-circle"} size={24} color="#437FFF" />
+          <EvaIcon name={showAddBlock ? "close" : "plus-circle"} size={24} color="#437FFF" />
         </StyledTouchableOpacity>
       </StyledView>
 
@@ -199,7 +199,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
           {/* Info Card */}
           <Card className="mb-6 bg-primary-50 border border-primary-200">
             <StyledView className="flex-row items-start mb-3">
-              <Ionicons name="shield-checkmark" size={20} color="#437FFF" />
+              <EvaIcon name="shield" size={20} color="#437FFF" variant="fill" />
               <Body className="text-primary-900 font-semibold text-sm ml-3">
                 When you block a user:
               </Body>
@@ -277,7 +277,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                           {userName}
                         </Body>
                         <StyledView className="flex-row items-center">
-                          <Ionicons name="calendar-outline" size={14} color="#667085" />
+                          <EvaIcon name="calendar" size={14} color="#667085" variant="outline" />
                           <Body className="text-neutral-500 text-xs ml-1">
                             Blocked {formatDate(user.blockedAt)}
                           </Body>
@@ -298,7 +298,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
             <Card className="bg-neutral-50 py-8">
               <StyledView className="items-center">
                 <StyledView className="w-16 h-16 bg-neutral-100 rounded-full items-center justify-center mb-3">
-                  <Ionicons name="ban" size={28} color="#98A2B3" />
+                  <EvaIcon name="slash" size={28} color="#98A2B3" />
                 </StyledView>
                 <Body className="text-neutral-700 font-medium mb-1">No Blocked Users</Body>
                 <Body className="text-neutral-500 text-sm text-center px-8">

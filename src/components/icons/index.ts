@@ -5,4 +5,6 @@
  */
 
 export { EvaIcon } from './EvaIcon';
+export { IconScoutIcon } from './IconScoutIcon';
 export type { FillIconName, OutlineIconName, IconName } from './iconRegistry';
+export type { IconScoutName } from './iconScoutRegistry';

@@ -18,7 +18,6 @@ import { styled } from 'nativewind';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { EvaIcon } from '../../components/icons';
-import { Ionicons } from '@expo/vector-icons';
 import { H3, Body } from '../../components/ui';
 import * as Clipboard from 'expo-clipboard';
 import { getUserFriendCode, addFriendByCode, bulkAddFriendsByCodes } from '../../services/friendService';
@@ -694,14 +693,14 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
                   onPress={handleCopyCode}
                   hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 >
-                  <Ionicons name="copy-outline" size={16} color="#437FFF" />
+                  <EvaIcon name="copy" size={16} color="#437FFF" variant="outline" />
                 </StyledTouchableOpacity>
                 <StyledTouchableOpacity
                   className="p-1.5 rounded-full bg-primary-50 ml-1"
                   onPress={handleShareCode}
                   hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 >
-                  <Ionicons name="share-outline" size={16} color="#437FFF" />
+                  <EvaIcon name="share" size={16} color="#437FFF" variant="outline" />
                 </StyledTouchableOpacity>
               </StyledView>
               {/* Enter a code */}

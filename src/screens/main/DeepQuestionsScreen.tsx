@@ -16,7 +16,7 @@ import { H2, H3, Body, Card, Button } from '../../components/ui';
 import { AnswerQuestionModal } from '../../components/profile/AnswerQuestionModal';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList, DeepQuestionAnswer, UserProfile } from '../../types';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../../components/icons';
 import { getCurrentUser } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { lightHaptic, mediumHaptic, successHaptic } from '../../utils/haptics';
@@ -419,7 +419,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
             <StyledView className="flex-1 mr-2">
               {isDisplayed && (
                 <StyledView className="flex-row items-center mb-2">
-                  <Ionicons name="star" size={14} color={COLORS.starGold} />
+                  <EvaIcon name="star" size={14} color={COLORS.starGold} variant="fill" />
                   <Body className="text-xs text-warning ml-1 font-semibold uppercase tracking-wider">
                     Shown to matches
                   </Body>
@@ -438,8 +438,9 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
                   }}
                   className="w-8 h-8 items-center justify-center rounded-full bg-white border border-neutral-200"
                 >
-                  <Ionicons
-                    name={isDisplayed ? "star" : "star-outline"}
+                  <EvaIcon
+                    name="star"
+                    variant={isDisplayed ? "fill" : "outline"}
                     size={16}
                     color={isDisplayed ? COLORS.starGold : COLORS.text.placeholder}
                   />
@@ -451,7 +452,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
                   }}
                   className="w-8 h-8 items-center justify-center rounded-full bg-primary-50 border border-primary-200"
                 >
-                  <Ionicons name="pencil" size={14} color={COLORS.primaryAccent} />
+                  <EvaIcon name="edit" size={14} color={COLORS.primaryAccent} variant="outline" />
                 </StyledTouchableOpacity>
                 <StyledTouchableOpacity
                   onPress={() => {
@@ -460,7 +461,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
                   }}
                   className="w-8 h-8 items-center justify-center rounded-full bg-error/10 border border-error/20"
                 >
-                  <Ionicons name="trash-outline" size={14} color={COLORS.error} />
+                  <EvaIcon name="trash-2" size={14} color={COLORS.error} variant="outline" />
                 </StyledTouchableOpacity>
               </StyledView>
             )}
@@ -480,7 +481,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
               </StyledTouchableOpacity>
               {savingQuestionId === question.id && (
                 <StyledView className="mt-2 flex-row items-center">
-                  <Ionicons name="checkmark-circle" size={14} color={COLORS.emerald} />
+                  <EvaIcon name="checkmark-circle-2" size={14} color={COLORS.emerald} />
                   <Body className="text-success text-xs font-semibold ml-1">Saved successfully</Body>
                 </StyledView>
               )}
@@ -495,7 +496,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
                 style={{ backgroundColor: COLORS.tier1.lightBg, borderColor: COLORS.borderBlueBright }}
                 className="border-2 border-dashed rounded-xl p-4 items-center"
               >
-                <Ionicons name="add-circle-outline" size={24} color={COLORS.primaryAccent} />
+                <EvaIcon name="plus-circle" size={24} color={COLORS.primaryAccent} variant="outline" />
                 <Body className="text-primary-600 text-sm font-semibold mt-2">
                   Tap to share your answer
                 </Body>
@@ -581,7 +582,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
             </StyledView>
           </StyledView>
           <StyledView style={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', borderColor: COLORS.borderBlue }} className="ml-3 w-10 h-10 rounded-full items-center justify-center border">
-            <Ionicons
+            <EvaIcon
               name={isExpanded ? 'chevron-up' : 'chevron-down'}
               size={22}
               color={COLORS.primaryAccent}
@@ -617,7 +618,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
               style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
               className="mr-3 w-10 h-10 rounded-full items-center justify-center"
             >
-              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+              <EvaIcon name="arrow-back" size={22} color="#FFFFFF" />
             </StyledTouchableOpacity>
             <StyledView className="flex-1">
               <Body style={{ color: 'rgba(255, 255, 255, 0.8)' }} className="text-xs uppercase tracking-wider mb-0.5">Your Story</Body>
@@ -672,7 +673,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
               return (
                 <Card className="mb-6 border-2" style={{ borderColor: colors.border, backgroundColor: colors.bg }}>
                   <StyledView className="flex-row items-center mb-3">
-                    <Ionicons name="bulb" size={20} color={colors.border} style={{ marginRight: 8 }} />
+                    <EvaIcon name="bulb" size={20} color={colors.border} variant="fill" style={{ marginRight: 8 }} />
                     <Body className="text-xs font-bold uppercase tracking-wider" style={{ color: colors.text }}>
                       Recommended · Tier {recommendation.tier}
                     </Body>
@@ -692,7 +693,7 @@ export const DeepQuestionsScreen: React.FC<DeepQuestionsScreenProps> = ({ naviga
                     style={{ backgroundColor: colors.border }}
                     activeOpacity={0.85}
                   >
-                    <Ionicons name="create" size={18} color="#FFFFFF" />
+                    <EvaIcon name="edit" size={18} color="#FFFFFF" variant="fill" />
                     <Body className="text-white font-bold text-sm ml-2">Answer This Question</Body>
                   </StyledTouchableOpacity>
                 </Card>

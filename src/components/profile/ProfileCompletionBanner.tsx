@@ -8,7 +8,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, TouchableOpacity, Animated } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Body } from '../ui';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -113,7 +113,7 @@ export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = (
         <StyledView
           className="w-10 h-10 bg-white/20 rounded-full items-center justify-center mr-3"
         >
-          <Ionicons name="star" size={20} color="#FFFFFF" />
+          <EvaIcon name="star" size={20} color="#FFFFFF" variant="fill" />
         </StyledView>
         <StyledView className="flex-1">
           <Body className="text-white font-bold text-sm mb-0.5">
@@ -132,7 +132,7 @@ export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = (
         accessibilityLabel="Dismiss banner"
         accessibilityRole="button"
       >
-        <Ionicons name="close" size={20} color="#FFFFFF" />
+        <EvaIcon name="close" size={20} color="#FFFFFF" />
       </StyledTouchableOpacity>
     </LinearGradient>
   );

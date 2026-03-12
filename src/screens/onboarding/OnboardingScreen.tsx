@@ -3,7 +3,7 @@ import { View, StatusBar, Alert, TouchableOpacity, ActivityIndicator } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { NavigationProp } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../../components/icons';
 import { RootStackParamList, OnboardingData } from '../../types';
 import { createUserProfile, saveOnboardingStep } from '../../services/profileService';
 import { supabase } from '../../lib/supabase';

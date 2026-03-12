@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../../../components/icons';
 import { H1, H3, Body, Card } from '../../../components/ui';
 import { OnboardingData, LifestylePreferences } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
@@ -106,12 +106,13 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
       >
         <StyledView className="flex-1 items-center justify-center py-2.5 px-2">
           {selected && (
-            <Ionicons
-              name="checkmark-circle"
-              size={22}
-              color="#437FFF"
-              style={{ marginBottom: 4 }}
-            />
+            <StyledView style={{ marginBottom: 4 }}>
+              <EvaIcon
+                name="checkmark-circle-2"
+                size={22}
+                color="#437FFF"
+              />
+            </StyledView>
           )}
           <Body className={`text-center text-sm leading-tight ${selected ? 'text-primary-700 font-semibold' : 'text-neutral-700'}`}>
             {label}
@@ -128,11 +129,11 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
   }: {
     title: string;
     field: 'drinking' | 'cannabis' | 'tobacco' | 'otherDrugs';
-    icon: keyof typeof Ionicons.glyphMap;
+    icon: string;
   }) => (
     <StyledView className="mb-8">
       <StyledView className="flex-row items-center mb-4">
-        <Ionicons name={icon} size={24} color="#437FFF" style={{ marginRight: 10 }} />
+        <EvaIcon name={icon as any} size={24} color="#437FFF" variant="outline" style={{ marginRight: 10 }} />
         <H3 className="text-neutral-900">{title}</H3>
       </StyledView>
 

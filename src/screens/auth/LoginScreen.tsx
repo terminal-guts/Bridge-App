@@ -5,7 +5,7 @@ import { H1, Body, Input } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { OnboardingLayout } from '../../components/onboarding/OnboardingLayout';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../../components/icons';
 import { sendOtpToEmail, isAllowedEmailDomain } from '../../services/authService';
 import { createLogger } from '../../utils/secureLogger';
 
@@ -72,7 +72,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         onPress={() => navigation.goBack()}
         className="mb-8 flex-row items-center"
       >
-        <Ionicons name="arrow-back" size={24} color="#3B82F6" />
+        <EvaIcon name="arrow-back" size={24} color="#3B82F6" />
         <Body className="text-primary-500 ml-2 font-medium">Back</Body>
       </StyledTouchableOpacity>
 

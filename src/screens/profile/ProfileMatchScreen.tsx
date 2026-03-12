@@ -6,7 +6,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Check, Star, Heart, X, Sparkles, Users } from 'lucide-react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../../components/icons';
 import { communityService } from '../../services/communityServiceIndex';
 import { getUserProfile, getFullUserProfileById } from '../../services/profileService';
 import { KarmaInfoModal } from '../../components/community/karma/KarmaInfoModal';
