@@ -272,10 +272,11 @@ export const notificationService = {
                     data: { screen: 'Matches' },
                 },
                 trigger: {
+                    type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
                     hour: 19,
                     minute: 0,
                     repeats: true,
-                } as any,
+                } as Notifications.CalendarTriggerInput,
             });
             logger.info('Scheduled daily 7pm match nudge');
         } catch (e: any) {

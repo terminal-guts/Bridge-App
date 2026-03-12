@@ -412,9 +412,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
 
       // Notify founder via email (fire-and-forget)
       const { data: reporterProfile } = await supabase
-        .from('profiles')
+        .from('user_profiles')
         .select('first_name')
-        .eq('id', currentUserId)
+        .eq('user_id', currentUserId)
         .single();
       supabase.functions.invoke('notify-report', {
         body: {
@@ -423,7 +423,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
           reason: reportReason,
           details: reportDetails.trim() || '',
         },
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn('[Report] Failed to notify founder via email:', err);
+        // Report is already saved in user_reports — founder can still see it in DB.
+        // Don't alert the user since the report itself succeeded.
+      });
     } catch (err) {
       Alert.alert('Error', 'Could not submit report. Please try again.');
     }

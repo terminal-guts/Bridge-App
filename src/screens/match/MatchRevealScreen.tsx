@@ -34,7 +34,13 @@ export const MatchRevealScreen: React.FC<MatchRevealScreenProps> = ({
   const [match] = useState<PartialMatch>(mockPartialMatch);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
-  const [timeLeft, setTimeLeft] = useState('');
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const diff = new Date(match.expiresAt).getTime() - Date.now();
+    if (diff <= 0) return 'Expired';
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
+  });
 
   useEffect(() => {
     // Animate in
@@ -142,7 +148,7 @@ export const MatchRevealScreen: React.FC<MatchRevealScreenProps> = ({
                 showsHorizontalScrollIndicator={false}
                 className="rounded-xl overflow-hidden"
               >
-                {match.profile.photos.map((photo, index) => (
+                {(match.profile?.photos || []).map((photo, index) => (
                   <StyledView key={photo.id} style={{ width: width - 32 }}>
                     <StyledImage
                       source={{ uri: photo.url }}
@@ -152,7 +158,7 @@ export const MatchRevealScreen: React.FC<MatchRevealScreenProps> = ({
                     <StyledView className="absolute inset-0 items-center justify-center">
                       <StyledView className="bg-neutral-900/60 px-4 py-2 rounded-full">
                         <Body className="text-white font-medium">
-                          Photo {index + 1} of {match.profile.photos.length} (Blurred)
+                          Photo {index + 1} of {match.profile?.photos?.length || 0} (Blurred)
                         </Body>
                       </StyledView>
                     </StyledView>
@@ -163,8 +169,8 @@ export const MatchRevealScreen: React.FC<MatchRevealScreenProps> = ({
 
             {/* Basic Info (Visible) */}
             <Card className="mb-4">
-              <H2 className="mb-1">{match.profile.firstName}, {match.profile.age}</H2>
-              <Body className="text-neutral-600 mb-1">{match.profile.occupation}</Body>
+              <H2 className="mb-1">{match.profile?.firstName}, {match.profile?.age}</H2>
+              <Body className="text-neutral-600 mb-1">{match.profile?.occupation}</Body>
               <StyledView className="flex-row items-center">
                 <Ionicons name="location-outline" size={16} color="#667085" />
                 <Body className="text-neutral-500 ml-1">New York, NY</Body>
@@ -175,7 +181,7 @@ export const MatchRevealScreen: React.FC<MatchRevealScreenProps> = ({
             <Card className="mb-4">
               <H3 className="mb-3">Interests</H3>
               <StyledView className="flex-row flex-wrap -mx-1">
-                {match.profile.interests.map((interest, index) => (
+                {(match.profile?.interests || []).map((interest, index) => (
                   <StyledView key={index} className="px-1 mb-2">
                     <Chip label={`${interestEmoji(interest)} ${interest}`} />
                   </StyledView>
@@ -194,7 +200,7 @@ export const MatchRevealScreen: React.FC<MatchRevealScreenProps> = ({
             <Card className="mb-6">
               <H3 className="mb-3">Values</H3>
               <StyledView className="flex-row flex-wrap -mx-1">
-                {match.profile.values.map((value, index) => (
+                {(match.profile?.values || []).map((value, index) => (
                   <StyledView key={index} className="px-1 mb-2">
                     <Chip label={`${valueEmoji(value)} ${value}`} />
                   </StyledView>

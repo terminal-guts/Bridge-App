@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -281,10 +281,11 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
     init();
   }, []);
 
-  // Auto-add friend code from deep link
+  // Auto-add friend code from deep link (ref guard prevents duplicate RPC calls)
+  const processedCodeRef = useRef<string | null>(null);
   useEffect(() => {
     const code = route.params?.autoAddCode;
-    if (!code) return;
+    if (!code || processedCodeRef.current === code) return;
     (async () => {
       try {
         const { supabase } = await import('../../lib/supabase');
@@ -292,11 +293,14 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
           .rpc('add_friend_by_code', { friend_code: code.toUpperCase() });
         const row = data?.[0];
         if (!error && (row?.success || row?.message?.includes('already friends'))) {
+          processedCodeRef.current = code; // Only mark processed on success
           showToast.success('Friend added!', 'You were connected via invite link');
         } else {
+          processedCodeRef.current = code; // Mark processed — server rejected it
           showToast.error('Could not add friend', row?.message || 'Invalid code');
         }
       } catch {
+        // Don't mark processed — allow retry on network failure
         showToast.error('Error', 'Could not process invite link');
       }
     })();

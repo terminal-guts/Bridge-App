@@ -47,11 +47,13 @@ import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile, DeepQuestionAnswer, Match } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import { lightHaptic, mediumHaptic, successHaptic, warningHaptic } from '../../utils/haptics';
+import { showToast } from '../../utils/toast';
 import { valueEmoji, interestEmoji } from '../../utils/emojiMaps';
 import { TIER_CONFIG } from '../../utils/questionTiers';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getFriends } from '../../services/friendService';
 import { communityService } from '../../services/communityServiceIndex';
+import { getUserProfile } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('MatchProposalScreen');
@@ -792,13 +794,23 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   const [showCelebration, setShowCelebration] = useState(false);
   const [passFeedbackId, setPassFeedbackId] = useState<string | undefined>(undefined);
   const flatListRef = useRef<FlatList>(null);
+  const isMountedRef = useRef(true);
+  useEffect(() => { return () => { isMountedRef.current = false; }; }, []);
   const swipeX = useRef(new Animated.Value(0)).current;
   const swipeOpacity = useRef(new Animated.Value(1)).current;
   const navigationTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const profile = effectiveProfile;
-  const userInterests = useMemo(() => ['Travel', 'Hiking', 'Photography', 'Music', 'Cooking'], []);
-  const userValues = useMemo(() => ['Honesty', 'Family', 'Growth', 'Adventure'], []);
+  const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    getUserProfile().then((res) => {
+      if (!cancelled && res.ok && res.data) setCurrentUserProfile(res.data);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+  const userInterests = useMemo(() => currentUserProfile?.interests || [], [currentUserProfile]);
+  const userValues = useMemo(() => currentUserProfile?.values || [], [currentUserProfile]);
 
   const mutualInterests = useMemo(() => profile?.interests?.filter(i => userInterests.includes(i)).slice(0, 3) || [], [profile, userInterests]);
   const mutualValues = useMemo(() => profile?.values?.filter(v => userValues.includes(v)).slice(0, 3) || [], [profile, userValues]);
@@ -816,6 +828,13 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
 
   // Accept immediately without confirmation - reduced friction!
   const handleAcceptInitiate = useCallback(async () => {
+    // Guard: don't allow accept on expired proposals
+    if (route.params?.expiresAt && new Date(route.params.expiresAt).getTime() <= Date.now()) {
+      showToast.error('Proposal expired', 'This proposal is no longer available');
+      navigation.goBack();
+      return;
+    }
+
     setIsAccepting(true);
     mediumHaptic();
 
@@ -826,12 +845,17 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
         logger.info('[MatchProposalScreen] Proposal accepted:', route.params.proposalId);
       } catch (error) {
         logger.error('[MatchProposalScreen] Error accepting proposal:', error);
+        if (isMountedRef.current) {
+          setIsAccepting(false);
+          showToast.error('Could not accept', 'This proposal may have expired');
+        }
+        return;
       }
     }
 
     successHaptic();
     setShowCelebration(true);
-  }, [route.params]);
+  }, [route.params, navigation]);
 
   const panResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => false,
@@ -896,12 +920,14 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
       }
     }
 
+    if (!isMountedRef.current) return;
     warningHaptic();
     // Clear any existing navigation timer
     if (navigationTimerRef.current) {
       clearTimeout(navigationTimerRef.current);
     }
     navigationTimerRef.current = setTimeout(() => {
+      if (!isMountedRef.current) return;
       setIsPassing(false);
       navigation.navigate('MainTabs', { screen: 'Matches' });
       navigationTimerRef.current = null;
