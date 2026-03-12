@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useMemo, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
 import { Image, ImageBackground } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
@@ -17,33 +17,55 @@ export type MatchStatus =
 
 // Top-left badge (state pill in corner)
 const TOP_BADGE_CONFIG: Record<MatchStatus, { label: string; bg: string; Icon?: React.FC<any> }> = {
-    active_match:  { label: 'Active Match',            bg: '#34C759',                  Icon: CheckmarkIcon },
-    awaiting_you:  { label: 'Awaiting your response',  bg: '#FF8D28',                  Icon: HourglassIcon },
-    awaiting_them: { label: 'Awaiting their response', bg: '#D4AA01',                  Icon: HourglassIcon },
-    no_match:      { label: 'No match',                bg: '#8E8E93',                  Icon: HourglassIcon },
-    new_match:     { label: 'New match',               bg: '#2B65F9',                  Icon: undefined },
+    active_match:  { label: 'Active Match',       bg: '#34C759',  Icon: CheckmarkIcon },
+    awaiting_you:  { label: 'They said yes!',     bg: '#34C759',  Icon: CheckmarkIcon },
+    awaiting_them: { label: 'You said yes',       bg: '#2B65F9',  Icon: CheckmarkIcon },
+    no_match:      { label: 'No match',           bg: '#8E8E93',  Icon: HourglassIcon },
+    new_match:     { label: 'New Match',          bg: '#2B65F9',  Icon: HeartsIcon },
 };
 
 // Bottom pills — rendered top-to-bottom in the order listed
 const BOTTOM_PILLS: Record<MatchStatus, Array<{ label: string; bg: string; Icon?: React.FC<any> }>> = {
-    active_match:  [
-        { label: 'Both voted yes',      bg: 'rgba(52, 199, 89, 0.55)',  Icon: CheckmarkIcon },
-    ],
+    active_match:  [],
     awaiting_you:  [
-        { label: "You haven't voted",   bg: 'rgba(20, 12, 4, 0.78)',    Icon: QuestionIcon },
-        { label: 'They voted yes',      bg: 'rgba(52, 199, 89, 0.55)',  Icon: CheckmarkIcon },
+        { label: "They're interested",       bg: 'rgba(52, 199, 89, 0.55)',  Icon: CheckmarkIcon },
+        { label: "It's your turn to decide", bg: 'rgba(43, 101, 249, 0.75)', Icon: ArrowRightIcon },
     ],
     awaiting_them: [
-        { label: 'You voted yes',       bg: 'rgba(52, 199, 89, 0.55)',  Icon: CheckmarkIcon },
-        { label: "They haven't voted",  bg: 'rgba(20, 12, 4, 0.78)',    Icon: QuestionIcon },
+        { label: 'You voted yes',            bg: 'rgba(52, 199, 89, 0.55)',  Icon: CheckmarkIcon },
+        { label: 'Waiting on their answer',  bg: 'rgba(255, 255, 255, 0.18)', Icon: HourglassIcon },
     ],
     new_match:     [
-        { label: 'Neither person voted', bg: 'rgba(20, 12, 4, 0.78)', Icon: QuestionIcon },
+        { label: 'Your friends picked someone', bg: 'rgba(43, 101, 249, 0.75)', Icon: HeartsIcon },
     ],
     no_match:      [
-        { label: 'No match',            bg: 'rgba(142, 142, 147, 0.35)', Icon: HourglassIcon },
+        { label: 'No match',                bg: 'rgba(142, 142, 147, 0.35)', Icon: HourglassIcon },
     ],
 };
+
+// Per-state gradient — richer for active match, subtler for others
+const GRADIENT_CONFIG = {
+    active_match: {
+        colors: ['rgba(9, 18, 46, 0)', 'rgba(9, 18, 46, 0.15)', 'rgba(9, 18, 46, 0.5)', 'rgba(9, 18, 46, 0.72)'] as const,
+        locations: [0.25, 0.5, 0.72, 1.0] as const,
+    },
+    awaiting_you: {
+        colors: ['rgba(9, 18, 46, 0)', 'rgba(9, 18, 46, 0.2)', 'rgba(9, 18, 46, 0.55)'] as const,
+        locations: [0.35, 0.65, 1.0] as const,
+    },
+    awaiting_them: {
+        colors: ['rgba(9, 18, 46, 0)', 'rgba(9, 18, 46, 0.18)', 'rgba(9, 18, 46, 0.5)'] as const,
+        locations: [0.35, 0.65, 1.0] as const,
+    },
+    new_match: {
+        colors: ['rgba(9, 18, 46, 0)', 'rgba(9, 18, 46, 0.2)', 'rgba(9, 18, 46, 0.55)'] as const,
+        locations: [0.35, 0.65, 1.0] as const,
+    },
+    no_match: {
+        colors: ['rgba(9, 18, 46, 0)', 'rgba(9, 18, 46, 0.3)', 'rgba(9, 18, 46, 0.55)'] as const,
+        locations: [0.4, 0.65, 1.0] as const,
+    },
+} as const;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Props
@@ -58,6 +80,15 @@ interface MatchCardProps {
     onPress?: () => void;
     onDismiss?: () => void;
 }
+
+// "Matched by" for active, "Picked by" for proposals
+const ENDORSER_LABEL: Record<MatchStatus, string> = {
+    active_match:  'Matched by',
+    awaiting_you:  'Picked by',
+    awaiting_them: 'Picked by',
+    new_match:     'Picked by',
+    no_match:      'Matched by',
+};
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Component
@@ -74,11 +105,28 @@ export const MatchCard: React.FC<MatchCardProps> = ({
 }) => {
     const topBadge = TOP_BADGE_CONFIG[status];
     const bottomPills = BOTTOM_PILLS[status];
+    const gradient = GRADIENT_CONFIG[status];
     const isActiveMatch = status === 'active_match';
+    const isAwaitingYou = status === 'awaiting_you';
+    const endorserLabel = ENDORSER_LABEL[status];
     const optimizedImageUrl = useMemo(() => getOptimizedImageUrl(imageUrl, 400), [imageUrl]);
 
+    // Gentle pulse on the action button for active match — draws the eye to chat
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    useEffect(() => {
+        if (!isActiveMatch) return;
+        const loop = Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, { toValue: 1.08, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+                Animated.timing(pulseAnim, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+            ])
+        );
+        loop.start();
+        return () => { loop.stop(); pulseAnim.setValue(1); };
+    }, [isActiveMatch, pulseAnim]);
+
     return (
-        <View style={styles.card}>
+        <View style={[styles.card, isActiveMatch && styles.cardActive]}>
             <ImageBackground
                 source={{ uri: optimizedImageUrl }}
                 style={StyleSheet.absoluteFillObject}
@@ -87,12 +135,8 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                 cachePolicy="disk"
             >
                 <LinearGradient
-                    colors={[
-                        'rgba(9, 18, 46, 0)',
-                        'rgba(9, 18, 46, 0.3)',
-                        'rgba(9, 18, 46, 0.55)',
-                    ]}
-                    locations={[0.4, 0.65, 1.0]}
+                    colors={gradient.colors}
+                    locations={gradient.locations}
                     style={StyleSheet.absoluteFillObject}
                 />
 
@@ -105,7 +149,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                             <Text style={styles.topBadgeText}>{topBadge.label}</Text>
                         </View>
                         {isActiveMatch && onDismiss && (
-                            <TouchableOpacity onPress={onDismiss} style={[styles.dismissButton, { backgroundColor: 'rgba(120,120,128,0.6)' }]} activeOpacity={0.8}>
+                            <TouchableOpacity onPress={onDismiss} style={styles.dismissButton} activeOpacity={0.8}>
                                 <Text style={styles.dismissX}>✕</Text>
                             </TouchableOpacity>
                         )}
@@ -125,11 +169,11 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                         {/* Name + age */}
                         <Text style={styles.nameText}>{name}{age ? `, ${age}` : ''}</Text>
 
-                        {/* Matched by row */}
+                        {/* Endorser / matched-by row */}
                         {matchedByAvatars.length > 0 && (
                             <View style={styles.matchedByRow}>
                                 <HeartsIcon size={18} color="#00C8B3" />
-                                <Text style={styles.matchedByText}>Matched by :</Text>
+                                <Text style={styles.matchedByText}>{endorserLabel}</Text>
                                 <View style={styles.avatarRow}>
                                     {matchedByAvatars.slice(0, 3).map((url, i) => {
                                         const optimizedAvatarUrl = getOptimizedImageUrl(url, 26);
@@ -157,14 +201,27 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                 </View>
             </ImageBackground>
 
-            {/* Action button — chat for active match, arrow for everything else */}
-            <TouchableOpacity onPress={onPress} style={styles.actionButton} activeOpacity={0.85}>
-                {isActiveMatch ? (
-                    <ChatIcon size={24} color="#2563EB" />
-                ) : (
-                    <ArrowRightIcon size={22} color="#010101" />
-                )}
-            </TouchableOpacity>
+            {/* Action button — contextual per state */}
+            <Animated.View style={[
+                styles.actionButtonWrap,
+                isActiveMatch && { transform: [{ scale: pulseAnim }] },
+            ]}>
+                <TouchableOpacity
+                    onPress={onPress}
+                    style={[
+                        styles.actionButton,
+                        isActiveMatch && styles.actionButtonChat,
+                        isAwaitingYou && styles.actionButtonHighlight,
+                    ]}
+                    activeOpacity={0.85}
+                >
+                    {isActiveMatch ? (
+                        <ChatIcon size={24} color="#FFFFFF" />
+                    ) : (
+                        <ArrowRightIcon size={22} color={isAwaitingYou ? '#FFFFFF' : '#010101'} />
+                    )}
+                </TouchableOpacity>
+            </Animated.View>
         </View>
     );
 };
@@ -172,17 +229,28 @@ export const MatchCard: React.FC<MatchCardProps> = ({
 const styles = StyleSheet.create({
     card: {
         flex: 1,
-        borderRadius: 16,
+        borderRadius: 20,
         overflow: 'hidden',
         backgroundColor: '#000',
+        // Subtle lift shadow for all states
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+        elevation: 8,
     },
-    cardImage: {
-        borderRadius: 16,
+    // Active match gets a colored glow
+    cardActive: {
+        shadowColor: '#34C759',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 20,
+        elevation: 10,
     },
     cardInner: {
         flex: 1,
-        paddingHorizontal: 12,
-        paddingTop: 12,
+        paddingHorizontal: 14,
+        paddingTop: 14,
         justifyContent: 'space-between',
     },
     topRow: {
@@ -193,7 +261,7 @@ const styles = StyleSheet.create({
     topBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        borderRadius: 8,
+        borderRadius: 10,
         paddingHorizontal: 14,
         paddingVertical: 8,
         gap: 6,
@@ -208,6 +276,7 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.18)',
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -219,14 +288,14 @@ const styles = StyleSheet.create({
     },
     bottomSection: {
         gap: 8,
-        paddingBottom: 16,
+        paddingBottom: 18,
         paddingRight: 80,
     },
     pill: {
         flexDirection: 'row',
         alignItems: 'center',
         alignSelf: 'flex-start',
-        borderRadius: 8,
+        borderRadius: 10,
         paddingHorizontal: 12,
         paddingVertical: 7,
         gap: 8,
@@ -244,6 +313,10 @@ const styles = StyleSheet.create({
         fontSize: 32,
         lineHeight: 38,
         letterSpacing: -0.5,
+        // Subtle text shadow so name pops off any photo
+        textShadowColor: 'rgba(0, 0, 0, 0.35)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 6,
     },
     matchedByRow: {
         flexDirection: 'row',
@@ -275,10 +348,14 @@ const styles = StyleSheet.create({
         fontSize: 16,
         lineHeight: 20,
     },
-    actionButton: {
+    // Wrapper for positioning (Animated.View needs this separate from the button)
+    actionButtonWrap: {
         position: 'absolute',
         right: 16,
-        bottom: 16,
+        bottom: 18,
+    },
+    // Default action button
+    actionButton: {
         width: 56,
         height: 56,
         borderRadius: 28,
@@ -290,5 +367,22 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.15,
         shadowRadius: 14,
         elevation: 8,
+    },
+    // Active match — blue chat button with glow
+    actionButtonChat: {
+        backgroundColor: '#2B65F9',
+        shadowColor: '#2B65F9',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.4,
+        shadowRadius: 16,
+        elevation: 10,
+    },
+    // Awaiting you — highlighted blue CTA
+    actionButtonHighlight: {
+        backgroundColor: '#2B65F9',
+        shadowColor: '#2B65F9',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.35,
+        shadowRadius: 12,
     },
 });

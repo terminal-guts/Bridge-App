@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, StyleSheet, StatusBar, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, StyleSheet, StatusBar, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback, RefreshControl, KeyboardAvoidingView, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MatchCard } from '../../components/matches/MatchCard';
@@ -226,11 +226,14 @@ export function MatchesScreen() {
     const headerTotal = headerPad + 38 + 8 + scrollMargin;  // headerPad + title lineHeight + paddingBottom + scrollMargin
     const activeCardHeight = windowHeight - insets.top - headerTotal - tabBarH - cardMB;
 
-    // Tick every second so the timer display stays fresh and counts down in real time
-    useEffect(() => {
-        const id = setInterval(() => setNow(Date.now()), 1000);
-        return () => clearInterval(id);
-    }, []);
+    // Tick every second so the timer display stays fresh — pauses when tab is not focused
+    useFocusEffect(
+        useCallback(() => {
+            setNow(Date.now());
+            const id = setInterval(() => setNow(Date.now()), 1000);
+            return () => clearInterval(id);
+        }, [])
+    );
 
     const loadMatches = async () => {
         try {
@@ -428,6 +431,20 @@ export function MatchesScreen() {
         }
     }
 
+    // ── State-specific subtitle for the header ─────────────────────────────
+    const headerSubtitle: string | null = (() => {
+        switch (screenState) {
+            case 'neither_voted':
+                return 'Your friends found someone they think you\'d like';
+            case 'awaiting_you':
+                return 'Someone is waiting to hear from you';
+            case 'awaiting_them':
+                return 'Sit tight — they\'re making up their mind';
+            default:
+                return null;
+        }
+    })();
+
     // ── Build card props ────────────────────────────────────────────────────
     const partner =
         screenState === 'active_match'
@@ -445,13 +462,15 @@ export function MatchesScreen() {
         )?.map((e: any) => e.endorserProfile?.photos?.[0]?.url)
             .filter(Boolean) ?? [];
 
-    // Date label for each state
+    // Date label — context-appropriate per state
     const matchDate: string = (() => {
         if (screenState === 'active_match') {
             return formatMatchDate(activeMatch!.matchedAt);
         }
-        const ref = (currentProposal as any)?.approvedAt || currentProposal?.expiresAt;
-        return ref ? formatMatchDate(ref) : '';
+        const ref = currentProposal?.approvedAt || currentProposal?.expiresAt;
+        if (!ref) return '';
+        const dateStr = new Date(ref).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return `Proposed ${dateStr}`;
     })();
 
     const handleCardPress = () => {
@@ -466,7 +485,7 @@ export function MatchesScreen() {
         } else {
             navigation.navigate('ProposalProfile', {
                 partnerProfile: currentProposal!.partnerProfile,
-                communityScore: currentProposal!.compatibilityScore || currentProposal!.communityScore,
+                communityScore: currentProposal!.communityScore,
                 endorsers: currentProposal!.endorsers ?? [],
                 screenState,
                 proposalId: currentProposal!.proposalId,
@@ -488,7 +507,12 @@ export function MatchesScreen() {
             )}
             {/* Header row: title left, countdown timer right */}
             <View style={[styles.headerRow, { paddingTop: headerPad }]}>
-                <Text style={styles.headerTitle}>Match</Text>
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.headerTitle}>Match</Text>
+                    {headerSubtitle && (
+                        <Text style={styles.headerSubtitle}>{headerSubtitle}</Text>
+                    )}
+                </View>
                 {timerLabel && (
                     <TouchableOpacity activeOpacity={0.7} onPress={() => setTimerInfoVisible(true)}>
                         <View style={[styles.timerBadge, { backgroundColor: timerBg, borderColor: timerBdrClr }]}>
@@ -574,81 +598,95 @@ export function MatchesScreen() {
                 </View>
             </Modal>
 
-            {/* ── End Match Modal ──────────────────────────────────────────── */}
+            {/* ── End Match Modal (top-sheet style) ─────────────────────── */}
             <Modal
                 visible={endMatchModalVisible}
                 transparent
                 animationType="fade"
                 onRequestClose={() => { setEndMatchModalVisible(false); setEndMatchReason(''); setEndMatchCustomReason(''); }}
             >
-                <TouchableOpacity
-                    activeOpacity={1}
-                    style={styles.centeredModalOverlay}
-                    onPress={() => { setEndMatchModalVisible(false); setEndMatchReason(''); setEndMatchCustomReason(''); }}
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={tsStyles.overlay}
                 >
-                    <TouchableOpacity activeOpacity={1} style={styles.centeredModalCard}>
-                        <Text style={styles.modalTitle}>End this match?</Text>
-                        <Text style={styles.modalSubtitle}>
+                    <View style={tsStyles.card}>
+                        <TouchableOpacity
+                            style={tsStyles.closeBtn}
+                            onPress={() => {
+                                Keyboard.dismiss();
+                                setEndMatchModalVisible(false);
+                                setEndMatchReason('');
+                                setEndMatchCustomReason('');
+                            }}
+                            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        >
+                            <Text style={{ fontSize: 18, color: '#667085' }}>✕</Text>
+                        </TouchableOpacity>
+
+                        <View style={[tsStyles.iconWrap, { backgroundColor: '#FFF4ED' }]}>
+                            <Text style={{ fontSize: 26 }}>💔</Text>
+                        </View>
+                        <Text style={tsStyles.title}>End this match?</Text>
+                        <Text style={tsStyles.subtitle}>
                             You'll re-enter the matchmaking pool.{'\n'}Your reason will be shared with them.
                         </Text>
 
-                        <View style={styles.reasonList}>
+                        <View style={tsStyles.pillRow}>
                             {END_MATCH_REASONS.map(reason => (
                                 <TouchableOpacity
                                     key={reason}
-                                    style={[styles.reasonPill, endMatchReason === reason && styles.reasonPillActive]}
+                                    style={[tsStyles.pill, endMatchReason === reason && tsStyles.pillActive]}
                                     onPress={() => setEndMatchReason(reason)}
                                 >
-                                    <Text style={[styles.reasonText, endMatchReason === reason && styles.reasonTextActive]}>
+                                    <Text style={[tsStyles.pillText, endMatchReason === reason && tsStyles.pillTextActive]}>
                                         {reason}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
 
-                        {endMatchReason === 'Other' && (
-                            <TextInput
-                                style={styles.textArea}
-                                placeholder="Tell us a bit more..."
-                                placeholderTextColor="#98A2B3"
-                                value={endMatchCustomReason}
-                                onChangeText={setEndMatchCustomReason}
-                                multiline
-                                maxLength={300}
-                            />
-                        )}
+                        <TextInput
+                            style={tsStyles.textArea}
+                            placeholder={endMatchReason === 'Other' ? 'Tell us a bit more...' : 'Additional details (optional)'}
+                            placeholderTextColor="#98A2B3"
+                            value={endMatchCustomReason}
+                            onChangeText={setEndMatchCustomReason}
+                            multiline
+                            maxLength={300}
+                        />
 
-                        <View style={styles.modalActions}>
-                            <TouchableOpacity
-                                style={styles.cancelBtn}
-                                onPress={() => {
-                                    Keyboard.dismiss();
-                                    setEndMatchModalVisible(false);
-                                    setEndMatchReason('');
-                                    setEndMatchCustomReason('');
-                                }}
-                            >
-                                <Text style={styles.cancelBtnText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.destructiveBtn, (!endMatchReason || endMatchSubmitting) && styles.btnDisabled]}
-                                onPress={handleEndMatchConfirm}
-                                disabled={!endMatchReason || endMatchSubmitting}
-                            >
-                                <Text style={styles.destructiveBtnText}>{endMatchSubmitting ? 'Ending...' : 'End Match'}</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </TouchableOpacity>
-                </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[tsStyles.submitBtn, { backgroundColor: '#EF4444' }, (!endMatchReason || endMatchSubmitting) && tsStyles.submitBtnDisabled]}
+                            onPress={handleEndMatchConfirm}
+                            disabled={!endMatchReason || endMatchSubmitting}
+                        >
+                            <Text style={tsStyles.submitBtnText}>{endMatchSubmitting ? 'Ending...' : 'End Match'}</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity
+                        activeOpacity={1}
+                        style={{ flex: 1 }}
+                        onPress={() => { setEndMatchModalVisible(false); setEndMatchReason(''); setEndMatchCustomReason(''); }}
+                    />
+                </KeyboardAvoidingView>
             </Modal>
 
             {/* ── Timer Info Modal ─────────────────────────────────────────── */}
             <Modal visible={timerInfoVisible} transparent animationType="fade" onRequestClose={() => setTimerInfoVisible(false)}>
                 <TouchableOpacity style={styles.timerInfoOverlay} activeOpacity={1} onPress={() => setTimerInfoVisible(false)}>
                     <View style={styles.timerInfoCard}>
-                        <Text style={styles.timerInfoTitle}>Time to Decide</Text>
+                        <Text style={styles.timerInfoTitle}>
+                            {screenState === 'active_match' ? 'Match Timer' : 'Time to Decide'}
+                        </Text>
                         <Text style={styles.timerInfoBody}>
-                            Accept or pass before time runs out — otherwise the match expires.
+                            {screenState === 'active_match'
+                                ? 'Your match window is ticking. Make the most of it — start a conversation!'
+                                : screenState === 'awaiting_you'
+                                ? "They already said yes. Decide before time runs out — you don't want to miss this."
+                                : screenState === 'awaiting_them'
+                                ? "You've made your move. They have until the timer runs out to decide."
+                                : 'Both of you have a window to decide. If time runs out, the proposal expires.'}
                         </Text>
                         <TouchableOpacity style={styles.timerInfoBtn} onPress={() => setTimerInfoVisible(false)} activeOpacity={0.85}>
                             <Text style={styles.timerInfoBtnText}>Got it</Text>
@@ -671,6 +709,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     headerTitle: { fontFamily: 'Outfit_700Bold', fontWeight: '700', fontSize: 32, lineHeight: 38, color: '#010101', letterSpacing: -0.5 },
+    headerSubtitle: { fontFamily: 'Outfit_400Regular', fontSize: 14, lineHeight: 18, color: '#667085', marginTop: 2 },
     timerBadge: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -877,6 +916,119 @@ const styles = StyleSheet.create({
     timerInfoBtnText: {
         fontFamily: 'Outfit_600SemiBold',
         fontSize: 15,
+        color: '#FFFFFF',
+    },
+});
+
+// ── Top-sheet modal styles (matches ChatScreen style) ───────────────────────
+const tsStyles = StyleSheet.create({
+    overlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        justifyContent: 'flex-start',
+    },
+    card: {
+        backgroundColor: '#FFFFFF',
+        borderBottomLeftRadius: 24,
+        borderBottomRightRadius: 24,
+        paddingHorizontal: 24,
+        paddingTop: 56,
+        paddingBottom: 28,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 24,
+        elevation: 12,
+    },
+    closeBtn: {
+        position: 'absolute',
+        top: 58,
+        left: 16,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#F2F4F7',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1,
+    },
+    iconWrap: {
+        alignSelf: 'center',
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 14,
+    },
+    title: {
+        fontFamily: 'Outfit_600SemiBold',
+        fontSize: 20,
+        color: '#101828',
+        textAlign: 'center',
+        marginBottom: 6,
+    },
+    subtitle: {
+        fontFamily: 'Outfit_400Regular',
+        fontSize: 14,
+        color: '#667085',
+        textAlign: 'center',
+        marginBottom: 20,
+        lineHeight: 20,
+    },
+    pillRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 16,
+    },
+    pill: {
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 999,
+        borderWidth: 1.5,
+        borderColor: '#E4E7EC',
+        backgroundColor: '#FFFFFF',
+    },
+    pillActive: {
+        borderColor: '#437FFF',
+        backgroundColor: '#EEF3FF',
+    },
+    pillText: {
+        fontFamily: 'Outfit_500Medium',
+        fontSize: 13,
+        color: '#667085',
+    },
+    pillTextActive: {
+        fontFamily: 'Outfit_600SemiBold',
+        color: '#437FFF',
+    },
+    textArea: {
+        borderWidth: 1.5,
+        borderColor: '#E4E7EC',
+        borderRadius: 14,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        fontFamily: 'Outfit_400Regular',
+        fontSize: 15,
+        color: '#101828',
+        minHeight: 64,
+        textAlignVertical: 'top',
+        marginBottom: 20,
+        backgroundColor: '#FAFBFC',
+    },
+    submitBtn: {
+        paddingVertical: 16,
+        borderRadius: 14,
+        backgroundColor: '#437FFF',
+        alignItems: 'center',
+    },
+    submitBtnDisabled: {
+        opacity: 0.35,
+    },
+    submitBtnText: {
+        fontFamily: 'Outfit_600SemiBold',
+        fontSize: 16,
         color: '#FFFFFF',
     },
 });
