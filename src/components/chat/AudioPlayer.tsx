@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Audio, AVPlaybackStatus } from 'expo-av';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../icons';
 import { styled } from 'nativewind';
 import * as FileSystem from 'expo-file-system/legacy';
 import { BodySmall } from '../ui/Typography';
@@ -108,10 +108,11 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ uri, duration, isOwnMe
                 {isLoading ? (
                     <ActivityIndicator size="small" color={isOwnMessage ? 'white' : '#437FFF'} />
                 ) : (
-                    <Ionicons
-                        name={isPlaying ? 'pause' : 'play'}
+                    <EvaIcon
+                        name={isPlaying ? 'pause-circle' : 'play-circle'}
                         size={24}
                         color={isOwnMessage ? 'white' : '#437FFF'}
+                        variant="fill"
                     />
                 )}
             </StyledTouchableOpacity>

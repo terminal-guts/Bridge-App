@@ -7,7 +7,7 @@ import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList, Match } from '../../types';
 import { getCurrentUser } from '../../services/authService';
 import { getUserMatches, acceptMatch, rejectMatch } from '../../services/matchService';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../../components/icons';
 import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('MatchDetailScreen');
@@ -193,11 +193,11 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
       {/* Header */}
       <StyledView className="flex-row items-center justify-between px-4 py-3 border-b border-neutral-200">
         <StyledTouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#101828" />
+          <EvaIcon name="arrow-back" size={24} color="#101828" />
         </StyledTouchableOpacity>
         <H3>Match Details</H3>
         <StyledTouchableOpacity>
-          <Ionicons name="ellipsis-vertical" size={24} color="#101828" />
+          <EvaIcon name="more-vertical" size={24} color="#101828" />
         </StyledTouchableOpacity>
       </StyledView>
 
@@ -231,7 +231,7 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
             <StyledView className="flex-row items-center justify-between">
               <StyledView className="flex-row items-center">
                 <StyledView className="bg-primary-500 p-2 rounded-full mr-3">
-                  <Ionicons name="heart" size={20} color="white" />
+                  <EvaIcon name="heart" size={20} color="white" variant="fill" />
                 </StyledView>
                 <StyledView>
                   <Body className="text-primary-700 font-semibold">Perfect Match!</Body>
@@ -253,28 +253,28 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
             <H1 className="mb-2">{profile.firstName}, {profile.age}</H1>
             <StyledView className="space-y-1">
               <StyledView className="flex-row items-center">
-                <Ionicons name="briefcase-outline" size={16} color="#667085" />
+                  <EvaIcon name="briefcase" size={16} color="#667085" variant="outline" />
                 <Body className="text-neutral-600 ml-2">{profile.currentJob}</Body>
               </StyledView>
               {profile.companyPosition && (
                 <StyledView className="flex-row items-center">
-                  <Ionicons name="business-outline" size={16} color="#667085" />
+                    <EvaIcon name="briefcase" size={16} color="#667085" variant="outline" />
                   <Body className="text-neutral-600 ml-2">{profile.companyPosition}</Body>
                 </StyledView>
               )}
               {profile.educationLevel && (
                 <StyledView className="flex-row items-center">
-                  <Ionicons name="school-outline" size={16} color="#667085" />
+                    <EvaIcon name="book" size={16} color="#667085" variant="outline" />
                   <Body className="text-neutral-600 ml-2">{profile.educationLevel}</Body>
                 </StyledView>
               )}
               <StyledView className="flex-row items-center">
-                <Ionicons name="location-outline" size={16} color="#667085" />
+                  <EvaIcon name="pin" size={16} color="#667085" variant="outline" />
                 <Body className="text-neutral-600 ml-2">{profile.location}</Body>
               </StyledView>
               {profile.height && (
                 <StyledView className="flex-row items-center">
-                  <Ionicons name="resize-outline" size={16} color="#667085" />
+                    <EvaIcon name="expand" size={16} color="#667085" variant="outline" />
                   <Body className="text-neutral-600 ml-2">{profile.height}</Body>
                 </StyledView>
               )}
@@ -367,7 +367,7 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                     View {profile.firstName}'s {profile.deepQuestions.length} answers
                   </Body>
                 </StyledView>
-                <Ionicons name="chevron-forward" size={20} color="#98A2B3" />
+                <EvaIcon name="chevron-right" size={20} color="#98A2B3" />
               </StyledView>
             </Card>
           )}

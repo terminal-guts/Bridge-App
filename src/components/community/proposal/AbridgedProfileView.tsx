@@ -12,7 +12,7 @@
 import React from 'react';
 import { View, Image } from 'react-native';
 import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import { EvaIcon } from '../../icons';
 import { UserProfile, Photo } from '../../../types';
 import { Body } from '../../ui';
 import { CompatibilityResult } from '../../../utils/compatibilityHelpers';
@@ -238,7 +238,7 @@ export function AbridgedProfileView({ user, compatibility }: AbridgedProfileView
             <Body className="text-[8px] text-green-800 font-bold mb-0.5">Compatible</Body>
             {compatMessages.map((message, index) => (
               <StyledView key={index} className="flex-row items-center mb-0.5">
-                <Ionicons name="checkmark-circle" size={10} color="#10B981" style={{ marginRight: 4 }} />
+                <EvaIcon name="checkmark-circle-2" size={10} color="#10B981" style={{ marginRight: 4 }} />
                 <Body className="text-[9px] text-green-700 font-medium" numberOfLines={1}>
                   {message}
                 </Body>
@@ -253,7 +253,7 @@ export function AbridgedProfileView({ user, compatibility }: AbridgedProfileView
             <Body className="text-[8px] text-red-800 font-bold mb-0.5">Conflicts</Body>
             {incompatMessages.map((message, index) => (
               <StyledView key={index} className="flex-row items-center mb-0.5">
-                <Ionicons name="alert-circle" size={10} color="#EF4444" style={{ marginRight: 4 }} />
+                <EvaIcon name="alert-circle" size={10} color="#EF4444" variant="outline" style={{ marginRight: 4 }} />
                 <Body className="text-[9px] text-red-700 font-medium" numberOfLines={1}>
                   {message}
                 </Body>
