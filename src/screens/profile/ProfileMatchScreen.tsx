@@ -13,6 +13,8 @@ import { KarmaInfoModal } from '../../components/community/karma/KarmaInfoModal'
 import { VALUES_EMOJI, INTERESTS_EMOJI, getEmoji } from '../../utils/emojiMaps';
 import { showToast } from '../../utils/toast';
 import { COLORS } from '../../theme/colors';
+import { FONTS } from '../../constants/typography';
+import { SHADOWS } from '../../theme/shadows';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -95,7 +97,7 @@ export default function ProfileMatchScreen() {
 
         // If the displayedIds didn't match anything, fall back to all answered
         const result = fromDisplayed.length > 0 ? fromDisplayed : allAnswered;
-        return result.filter(q => q.question && q.answer);
+        return result.filter((q: { question: string; answer: string }) => q.question && q.answer);
     }, [partnerProfile]);
 
     const handlePass = useCallback(async () => {
@@ -149,7 +151,7 @@ export default function ProfileMatchScreen() {
 
     const photos = partnerProfile.photos || [];
     const photoUrl = photos[currentPhotoIndex]?.url || '';
-    const karmaPts = partnerProfile.karma?.karmaPoints ?? 0;
+    const karmaPts = partnerProfile.karma?.karma_points ?? 0;
 
     return (
         <View style={styles.container}>
@@ -340,7 +342,7 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     waitingText: {
-        fontFamily: 'Outfit_500Medium',
+        fontFamily: FONTS.medium,
         fontSize: 14,
         color: COLORS.waitingAmber,
     },
@@ -425,7 +427,7 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
     },
     heroName: {
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: FONTS.bold,
         fontSize: 24,
         color: '#FFFFFF',
     },
@@ -438,7 +440,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     matchedByText: {
-        fontFamily: 'PlusJakartaSans_500Medium',
+        fontFamily: FONTS.medium,
         fontSize: 13,
         color: '#FFFFFF',
     },
@@ -472,7 +474,7 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     karmaText: {
-        fontFamily: 'PlusJakartaSans_500Medium',
+        fontFamily: FONTS.medium,
         fontSize: 13,
         color: COLORS.backgroundSubtle,
     },
@@ -484,11 +486,7 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.card,
         borderRadius: 24,
         padding: 18,
-        shadowColor: 'rgba(15, 23, 42, 0.08)',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 1,
-        shadowRadius: 18,
-        elevation: 8,
+        ...SHADOWS.lg,
         marginBottom: 16,
     },
     cardHeader: {
@@ -510,12 +508,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     cardTitle: {
-        fontFamily: 'PlusJakartaSans_600SemiBold',
+        fontFamily: FONTS.semiBold,
         fontSize: 15,
         color: COLORS.cardTitleDark,
     },
     scoreValue: {
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: FONTS.bold,
         fontSize: 36,
         lineHeight: 36,
         color: COLORS.scoreBlue,
@@ -541,18 +539,14 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(1, 1, 1, 0.1)',
         padding: 16,
-        shadowColor: 'rgba(0, 0, 0, 0.05)',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 1,
-        shadowRadius: 4,
-        elevation: 2,
+        ...SHADOWS.sm,
         marginBottom: 16,
     },
     section: {
         marginBottom: 20,
     },
     sectionHeading: {
-        fontFamily: 'Outfit_500Medium',
+        fontFamily: FONTS.medium,
         fontSize: 16,
         lineHeight: 20,
         color: COLORS.primary,
@@ -574,7 +568,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     tagText: {
-        fontFamily: 'Outfit_400Regular',
+        fontFamily: FONTS.regular,
         fontSize: 14,
         color: COLORS.text.black,
         opacity: 0.8,
@@ -585,22 +579,18 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(1, 1, 1, 0.1)',
         padding: 12,
-        shadowColor: 'rgba(0, 0, 0, 0.05)',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 1,
-        shadowRadius: 4,
-        elevation: 2,
+        ...SHADOWS.sm,
         marginBottom: 14,
     },
     questionTitle: {
-        fontFamily: 'Outfit_500Medium',
+        fontFamily: FONTS.medium,
         fontSize: 16,
         lineHeight: 22,
         color: COLORS.text.black,
         marginBottom: 4,
     },
     answerText: {
-        fontFamily: 'Outfit_400Regular',
+        fontFamily: FONTS.regular,
         fontSize: 15,
         lineHeight: 24,
         color: COLORS.text.black,

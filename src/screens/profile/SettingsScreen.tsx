@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
 import { styled } from 'nativewind';
-import { H1, H3, Body, Card, Button } from '../../components/ui';
+import { H1, H3, Body, Card, Button, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,9 +9,11 @@ import { signOut } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
 import { resetGuide } from '../../services/guideService';
 import { createLogger } from '../../utils/secureLogger';
+import { FONTS } from '../../constants/typography';
 import { deleteAccount } from '../../services/accountService';
 import { notificationPreferencesService } from '../../services/notificationPreferencesService';
 import { notificationService } from '../../services/notificationService';
+import { showToast } from '../../utils/toast';
 
 const logger = createLogger('SettingsScreen');
 
@@ -19,7 +21,6 @@ interface SettingsScreenProps {
   navigation: NavigationProp<RootStackParamList>;
 }
 
-const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -123,8 +124,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
   );
 
   return (
-    <StyledSafeAreaView className="flex-1 bg-neutral-50">
-      <StatusBar barStyle="dark-content" />
+    <ScreenWrapper>
 
       {/* Header */}
       <StyledView className="flex-row items-center justify-between px-4 py-3 border-b border-neutral-200 bg-white">
@@ -155,6 +155,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               subtitle="Improve the app to win $50!"
               onPress={() => navigation.navigate('SupportChat')}
             />
+            <SettingRow
+              icon="stats-chart-outline"
+              title="Your Stats"
+              subtitle="See your matchmaking stats & share them"
+              onPress={() => navigation.navigate('Stats')}
+            />
           </Card>
 
           {/* Preferences */}
@@ -179,7 +185,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
                 </View>
                 <View>
                   <Body style={{ color: '#1E293B' }}>Tutorial</Body>
-                  <Body style={{ fontSize: 12, color: '#94A3B8' }}>Replay the app walkthrough</Body>
+                  <Body style={{ fontSize: 12, color: '#94A3B8', fontFamily: FONTS.regular }}>Replay the app walkthrough</Body>
                 </View>
               </View>
               <Switch
@@ -309,6 +315,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
                                 const result = await deleteAccount();
                                 setIsDeleting(false);
                                 if (result.ok) {
+                                  showToast.success('Account Deleted', 'Your account has been permanently removed.');
                                   navigation.navigate('Welcome');
                                 } else {
                                   Alert.alert('Error', result.error?.message || 'Failed to delete account. Please contact support.');
@@ -329,6 +336,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
           </Card>
         </StyledView>
       </StyledScrollView>
-    </StyledSafeAreaView>
+    </ScreenWrapper>
   );
 };

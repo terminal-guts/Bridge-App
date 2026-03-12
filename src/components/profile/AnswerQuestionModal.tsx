@@ -13,6 +13,7 @@ import { styled } from 'nativewind';
 import { Body, H3 } from '../ui';
 import { Ionicons } from '@expo/vector-icons';
 import { lightHaptic, mediumHaptic, successHaptic } from '../../utils/haptics';
+import { SHADOWS } from '../../theme/shadows';
 
 interface AnswerQuestionModalProps {
   visible: boolean;
@@ -156,10 +157,7 @@ export const AnswerQuestionModal: React.FC<AnswerQuestionModalProps> = ({
                   }}
                   className="w-8 h-8 items-center justify-center bg-white rounded-full"
                   style={{
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 2,
+                    ...SHADOWS.sm,
                     elevation: 2,
                   }}
                 >

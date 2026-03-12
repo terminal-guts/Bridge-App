@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity, TextInput, Image, Alert, Modal, Switch, Animated, Keyboard, Linking, Platform, Text } from 'react-native';
+import { View, ScrollView, TouchableOpacity, TextInput, Image, Alert, Modal, Switch, Animated, Keyboard, Linking, Platform, Text } from 'react-native';
 import { styled } from 'nativewind';
-import { H2, H3, Body, Card, Button, Chip, Input } from '../../components/ui';
+import { H2, H3, Body, Card, Button, Chip, Input, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +18,7 @@ import { InterestsSection } from './sections/InterestsSection';
 import { ValuesSection } from './sections/ValuesSection';
 import { LifestyleSection } from './sections/LifestyleSection';
 import { createLogger } from '../../utils/secureLogger';
+import { FONTS } from '../../constants/typography';
 
 const logger = createLogger('ProfileEditScreen');
 
@@ -25,7 +26,6 @@ interface ProfileEditScreenProps {
   navigation: NavigationProp<RootStackParamList, 'ProfileEdit'>;
 }
 
-const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -546,32 +546,20 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
     setSaving(true);
     try {
       // Upload any new photos (file:// URIs) to Supabase Storage first
-      const uploadPromises = (profile.photos || []).map(async (photo) => {
+      const uploadedPhotos = [];
+      for (const photo of profile.photos || []) {
         if (photo.url.startsWith('file://')) {
           const uploadRes = await uploadPhoto(photo.url, photo.order, photo.isMain);
           if (uploadRes.ok && uploadRes.data) {
-            return { success: true, photo: uploadRes.data.photo };
+            uploadedPhotos.push(uploadRes.data.photo);
           } else {
-            return { success: false, error: uploadRes.error?.message || 'Unknown error' };
+            logger.error('Photo upload failed:', uploadRes.error?.message);
+            Alert.alert('Error', `Failed to upload photo: ${uploadRes.error?.message || 'Unknown error'}`);
+            setSaving(false);
+            return;
           }
         } else {
-          return { success: true, photo: photo };
-        }
-      });
-
-      const uploadResults = await Promise.all(uploadPromises);
-      const uploadedPhotos = [];
-
-      for (const result of uploadResults) {
-        if (!result.success) {
-          logger.error('Photo upload failed:', result.error);
-          Alert.alert('Error', `Failed to upload photo: ${result.error}`);
-          setSaving(false);
-          return;
-        }
-        // result.photo is guaranteed to be defined if success is true, but TS needs some help
-        if (result.photo) {
-          uploadedPhotos.push(result.photo);
+          uploadedPhotos.push(photo);
         }
       }
 
@@ -935,19 +923,17 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
 
   if (loading) {
     return (
-      <StyledSafeAreaView className="flex-1 bg-neutral-50">
-        <StatusBar barStyle="dark-content" />
+      <ScreenWrapper>
         <StyledView className="flex-1 justify-center items-center">
           <Body className="text-neutral-500">Loading profile...</Body>
         </StyledView>
-      </StyledSafeAreaView>
+      </ScreenWrapper>
     );
   }
 
   if (!profile) {
     return (
-      <StyledSafeAreaView className="flex-1 bg-neutral-50">
-        <StatusBar barStyle="dark-content" />
+      <ScreenWrapper>
         <StyledView className="absolute top-12 right-4 z-10">
           <TouchableOpacity
             onPress={async () => {
@@ -969,13 +955,12 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
             Retry
           </Button>
         </StyledView>
-      </StyledSafeAreaView>
+      </ScreenWrapper>
     );
   }
 
   return (
-    <StyledSafeAreaView className="flex-1 bg-neutral-50">
-      <StatusBar barStyle="dark-content" />
+    <ScreenWrapper>
       <OfflineBanner />
 
       {/* Header */}
@@ -1041,7 +1026,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
           <Card className="mb-6">
             <StyledView className="flex-row items-center justify-between mb-2">
               <StyledView className="flex-row items-center">
-                <H3>Photos <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
+                <H3>Photos <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText></H3>
               </StyledView>
               <Body className={`text-sm font-semibold ${profile.photos.length === 0 ? 'text-error' : 'text-neutral-400'}`}>
                 {profile.photos.length}/3
@@ -1223,7 +1208,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
             )}
             {/* Ethnicity (Multi-select with chips) */}
             <Body className="text-xs font-medium text-neutral-700 mb-2 mt-4">
-              Ethnicity <StyledText style={{ color: '#EF4444' }}>*</StyledText> (Select all that apply)
+              Ethnicity <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText> (Select all that apply)
             </Body>
             <StyledView className="flex-row flex-wrap gap-2 mb-4">
               {/* Predefined ethnicity options */}
@@ -1301,7 +1286,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
             {/* IDENTITY & ATTRACTION */}
             <SectionHeader title="IDENTITY & ATTRACTION" />
             <Body className="text-xs font-medium text-neutral-700 mb-2">
-              Pronouns <StyledText style={{ color: '#EF4444' }}>*</StyledText> (Select up to {MAX_PRONOUNS})
+              Pronouns <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText> (Select up to {MAX_PRONOUNS})
             </Body>
             <Body className="text-primary-500 text-xs font-semibold mb-2">
               {(profile.pronounsList?.length || 0)}/{MAX_PRONOUNS} selected
@@ -1353,7 +1338,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
 
             {/* Gender Identity */}
             <Body className="text-xs font-medium text-neutral-700 mb-2 mt-4">
-              Gender <StyledText style={{ color: '#EF4444' }}>*</StyledText> (Select all that apply)
+              Gender <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText> (Select all that apply)
             </Body>
             <StyledView className="flex-row flex-wrap gap-2 mb-4">
               {/* Predefined gender options */}
@@ -1427,7 +1412,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
             {/* BACKGROUND & BELIEFS */}
             <SectionHeader title="BACKGROUND & BELIEFS" />
             {/* Religion */}
-            <Body className="text-xs font-medium text-neutral-700 mb-2">Religion <StyledText style={{ color: '#EF4444' }}>*</StyledText></Body>
+            <Body className="text-xs font-medium text-neutral-700 mb-2">Religion <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText></Body>
             <StyledView className="flex-row flex-wrap gap-2 mb-4">
               {RELIGION_OPTIONS.map((option) => (
                 <StyledTouchableOpacity
@@ -1468,7 +1453,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
             </StyledView>
 
             {/* Political Leaning */}
-            <Body className="text-xs font-medium text-neutral-700 mb-2">Political Leaning <StyledText style={{ color: '#EF4444' }}>*</StyledText></Body>
+            <Body className="text-xs font-medium text-neutral-700 mb-2">Political Leaning <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText></Body>
             <StyledView className="flex-row flex-wrap gap-2">
               {POLITICAL_OPTIONS.map((option) => (
                 <StyledTouchableOpacity
@@ -1529,7 +1514,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
             <H3 className="mb-4">Professional & Education</H3>
 
             <StyledView className="mb-4">
-              <Body className="text-xs font-medium text-neutral-700 mb-2">Occupation <StyledText style={{ color: '#EF4444' }}>*</StyledText></Body>
+              <Body className="text-xs font-medium text-neutral-700 mb-2">Occupation <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText></Body>
               <Input
                 value={profile.currentJob || ''}
                 onChangeText={(text) => updateProfile({ currentJob: text })}
@@ -1628,7 +1613,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
 
             {/* Do you have children? */}
             <Body className="text-xs font-medium text-neutral-700 mb-2">
-              Do you have children? <StyledText style={{ color: '#EF4444' }}>*</StyledText>
+              Do you have children? <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText>
             </Body>
             <StyledView className="flex-row flex-wrap gap-2 mb-4">
               {CHILDREN_STATUS_OPTIONS.map((option) => (
@@ -1658,7 +1643,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
             </StyledView>
             {/* Family Plans */}
             <Body className="text-xs font-medium text-neutral-700 mb-2">
-              Family Plans <StyledText style={{ color: '#EF4444' }}>*</StyledText>
+              Family Plans <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText>
             </Body>
             <StyledView className="flex-row flex-wrap gap-2 mb-4">
               {FAMILY_PLANS_OPTIONS.map((option) => (
@@ -2752,6 +2737,6 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
           </StyledAnimatedView>
         </StyledAnimatedView>
       </Modal>
-    </StyledSafeAreaView>
+    </ScreenWrapper>
   );
 };

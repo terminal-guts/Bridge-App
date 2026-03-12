@@ -6,6 +6,7 @@ import { H3, Body } from '../../../components/ui/Typography';
 import { SimpleChip } from '../../../components/ui/SimpleChip';
 import { lightHaptic } from '../../../utils/haptics';
 import { COLORS } from '../../../theme/colors';
+import { FONTS } from '../../../constants/typography';
 
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledView = styled(View);
@@ -72,7 +73,7 @@ export const InterestsSection = React.memo<InterestsSectionProps>(({
 
   return (
     <Card className="mb-8">
-      <H3 className="mb-4">Interests <StyledText style={{ color: COLORS.error }}>*</StyledText></H3>
+      <H3 className="mb-4">Interests <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
       <Body className="text-neutral-600 text-sm mb-4">
         Select or add your interests (Select {MIN_INTERESTS}-{MAX_INTERESTS})
       </Body>

@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
-import { H2, H3, Body, Card, Button } from '../../components/ui';
+import { H2, H3, Body, Card, Button, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import { getUserProfile, updateProfilePauseStatus } from '../../services/profileService';
 import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';
+import { FONTS } from '../../constants/typography';
 
 const logger = createLogger('PauseProfileScreen');
 
@@ -15,7 +16,6 @@ interface PauseProfileScreenProps {
   navigation: NavigationProp<RootStackParamList>;
 }
 
-const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -130,8 +130,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
   };
 
   return (
-    <StyledSafeAreaView className="flex-1 bg-neutral-50">
-      <StatusBar barStyle="dark-content" />
+    <ScreenWrapper>
 
       {/* Header */}
       <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center">
@@ -274,6 +273,6 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
           )}
         </StyledView>
       </StyledScrollView>
-    </StyledSafeAreaView>
+    </ScreenWrapper>
   );
 };

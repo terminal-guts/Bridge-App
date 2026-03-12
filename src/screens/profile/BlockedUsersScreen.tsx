@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity, Alert, TextInput, ActivityIndicator, Keyboard } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Alert, TextInput, ActivityIndicator, Keyboard } from 'react-native';
 import { styled } from 'nativewind';
-import { Body, Card } from '../../components/ui';
+import { Body, Card, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import { getBlockedUsers, blockUser, unblockUser, BlockedUser as BlockedUserType } from '../../services/blockService';
 import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';
+import { FONTS } from '../../constants/typography';
 
 const logger = createLogger('BlockedUsersScreen');
 
@@ -15,7 +16,6 @@ interface BlockedUsersScreenProps {
   navigation: NavigationProp<RootStackParamList>;
 }
 
-const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -178,8 +178,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
   };
 
   return (
-    <StyledSafeAreaView className="flex-1 bg-neutral-50">
-      <StatusBar barStyle="dark-content" />
+    <ScreenWrapper>
 
       {/* Header */}
       <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center">
@@ -280,6 +279,6 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
 
         </StyledView>
       </StyledScrollView>
-    </StyledSafeAreaView>
+    </ScreenWrapper>
   );
 };

@@ -5,6 +5,7 @@ import { Card } from '../../../components/ui/Card';
 import { H3, Body } from '../../../components/ui/Typography';
 import { Chip } from '../../../components/ui/Chip';
 import { COLORS } from '../../../theme/colors';
+import { FONTS } from '../../../constants/typography';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -50,7 +51,7 @@ export const LifestyleSection = React.memo<LifestyleSectionProps>(({
       <H3 className="mb-4">Lifestyle Habits</H3>
 
       {/* Drinking Frequency */}
-      <SectionHeader title="DRINKING" titleExtra={<StyledText style={{ color: COLORS.error }}> *</StyledText>} />
+      <SectionHeader title="DRINKING" titleExtra={<StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}> *</StyledText>} />
       <StyledView className="flex-row flex-wrap gap-2 mb-4">
         {FREQUENCY_OPTIONS.map((option) => (
           <Chip
@@ -65,7 +66,7 @@ export const LifestyleSection = React.memo<LifestyleSectionProps>(({
       </StyledView>
 
       {/* Cannabis */}
-      <SectionHeader title="CANNABIS" titleExtra={<StyledText style={{ color: COLORS.error }}> *</StyledText>} />
+      <SectionHeader title="CANNABIS" titleExtra={<StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}> *</StyledText>} />
       <StyledView className="flex-row flex-wrap gap-2 mb-4">
         {FREQUENCY_OPTIONS.map((option) => (
           <Chip
@@ -80,7 +81,7 @@ export const LifestyleSection = React.memo<LifestyleSectionProps>(({
       </StyledView>
 
       {/* Tobacco/Vaping */}
-      <SectionHeader title="TOBACCO/VAPING" titleExtra={<StyledText style={{ color: COLORS.error }}> *</StyledText>} />
+      <SectionHeader title="TOBACCO/VAPING" titleExtra={<StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}> *</StyledText>} />
       <StyledView className="flex-row flex-wrap gap-2 mb-4">
         {FREQUENCY_OPTIONS.map((option) => (
           <Chip
@@ -95,7 +96,7 @@ export const LifestyleSection = React.memo<LifestyleSectionProps>(({
       </StyledView>
 
       {/* Other Drugs */}
-      <SectionHeader title="OTHER DRUGS" titleExtra={<StyledText style={{ color: COLORS.error }}> *</StyledText>} />
+      <SectionHeader title="OTHER DRUGS" titleExtra={<StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}> *</StyledText>} />
       <StyledView className="flex-row flex-wrap gap-2 mb-4">
         {FREQUENCY_OPTIONS.map((option) => (
           <Chip

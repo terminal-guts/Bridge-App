@@ -11,6 +11,7 @@ import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Body } from '../ui';
+import { SHADOWS } from '../../theme/shadows';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile } from '../../types';
 import { lightHaptic } from '../../utils/haptics';
@@ -95,11 +96,7 @@ export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = (
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        shadowColor: '#2563EB',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 4,
+        ...SHADOWS.accentBlue,
       }}
     >
       <StyledTouchableOpacity

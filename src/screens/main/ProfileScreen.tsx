@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { View, SafeAreaView, StatusBar, ScrollView, FlatList, TouchableOpacity, Alert, RefreshControl, Modal, Switch, Animated, Platform } from 'react-native';
+import { View, ScrollView, FlatList, TouchableOpacity, Alert, RefreshControl, Modal, Switch, Animated, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PROFILE_CACHE_DURATION, NAVIGATION_DELAY, AVATAR_SIZE_XL } from '../../constants';
+import { FONTS } from '../../constants/typography';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
-import { H2, H3, Body, Card, Button, ProfileSkeleton } from '../../components/ui';
+import { H2, H3, Body, Card, Button, ProfileSkeleton, ScreenWrapper, Display } from '../../components/ui';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { MainTabParamList, UserProfile, DeepQuestionAnswer } from '../../types';
 import { signOut } from '../../services/authService';
@@ -43,7 +44,6 @@ interface ProfileScreenProps {
   navigation: NavigationProp<MainTabParamList, 'Profile'>;
 }
 
-const StyledSafeAreaView = styled(SafeAreaView) as typeof SafeAreaView;
 const StyledView = styled(View) as typeof View;
 const StyledScrollView = styled(ScrollView) as typeof ScrollView;
 const StyledFlatList = styled(FlatList) as typeof FlatList;
@@ -937,30 +937,27 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
 
   if (loading) {
     return (
-      <StyledSafeAreaView className="flex-1 bg-neutral-50">
-        <StatusBar barStyle="dark-content" />
+      <ScreenWrapper>
         <ProfileSkeleton />
-      </StyledSafeAreaView>
+      </ScreenWrapper>
     );
   }
 
   if (!profile) {
     return (
-      <StyledSafeAreaView className="flex-1 bg-neutral-50">
-        <StatusBar barStyle="dark-content" />
+      <ScreenWrapper>
         <StyledView className="flex-1 justify-center items-center px-6">
           <Body className="text-neutral-600">Failed to load profile</Body>
           <Button onPress={loadProfile} variant="primary" className="mt-4">
             Retry
           </Button>
         </StyledView>
-      </StyledSafeAreaView>
+      </ScreenWrapper>
     );
   }
 
   return (
-    <StyledSafeAreaView className="flex-1 bg-neutral-50">
-      <StatusBar barStyle="dark-content" />
+    <ScreenWrapper>
       <OfflineBanner />
       <ProfileCompletionBanner
         profile={profile}
@@ -986,7 +983,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
         {/* Header with Preview, Edit and Settings */}
         <StyledView className="bg-white border-b border-neutral-200">
         <StyledView className="px-4 py-3 flex-row justify-between items-center">
-          <H2 className="text-xl">Your Profile</H2>
+          <Display>Your Profile</Display>
           <StyledView className="flex-row items-center space-x-3">
             <StyledTouchableOpacity
               onPress={() => {
@@ -1063,7 +1060,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
 
             {/* Name & Karma Badge */}
             <StyledView className="flex-row items-center mb-4" style={{ gap: 8 }}>
-              <H2 className="text-xl">{profile.firstName}</H2>
+              <H2 style={{ fontFamily: FONTS.bold, fontSize: 28 }}>{profile.firstName}</H2>
               <StyledTouchableOpacity
                 onPress={() => setShowKarmaInfoModal(true)}
                 activeOpacity={0.75}
@@ -1075,8 +1072,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                   borderRadius: 999, gap: 4,
                 }}>
                 <Ionicons name="star-outline" size={12} color="#34C759" />
-                <H2 className="text-xs" style={{ color: '#34C759', fontWeight: '600' }}>
-                  {profile.karma?.karmaPoints ?? 0} pts
+                <H2 className="text-xs" style={{ color: '#34C759', fontWeight: '600', fontFamily: FONTS.semiBold }}>
+                  {profile.karma?.karma_points ?? 0} pts
                 </H2>
               </StyledTouchableOpacity>
             </StyledView>
@@ -1210,8 +1207,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
         transparent={false}
         onRequestClose={() => setShowQuestionSelectionModal(false)}
       >
-        <StyledSafeAreaView className="flex-1 bg-neutral-50">
-          <StatusBar barStyle="dark-content" />
+        <ScreenWrapper>
 
           {/* Header */}
           <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center justify-between">
@@ -1308,7 +1304,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               );
             })()}
           </StyledScrollView>
-        </StyledSafeAreaView>
+        </ScreenWrapper>
       </Modal>
 
       {/* PHASE 2: Answer Modal (reusing existing AnswerQuestionModal) - Only for displayed slots (not "more questions") */}
@@ -1341,8 +1337,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
         transparent={false}
         onRequestClose={() => setShowChangeQuestionModal(false)}
       >
-        <StyledSafeAreaView className="flex-1 bg-neutral-50">
-          <StatusBar barStyle="dark-content" />
+        <ScreenWrapper>
 
           {/* Header */}
           <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center justify-between">
@@ -1406,7 +1401,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               );
             })()}
           </StyledScrollView>
-        </StyledSafeAreaView>
+        </ScreenWrapper>
       </Modal>
 
       {/* Photo Carousel */}
@@ -1420,6 +1415,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
       )}
 
       <KarmaInfoModal visible={showKarmaInfoModal} onClose={() => setShowKarmaInfoModal(false)} />
-    </StyledSafeAreaView>
+    </ScreenWrapper>
   );
 };

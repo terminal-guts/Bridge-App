@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity, Alert, Modal, Animated, Keyboard, TextInput, Text } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Alert, Modal, Animated, Keyboard, TextInput, Text } from 'react-native';
 import { styled } from 'nativewind';
-import { H3, Body, Card, Button } from '../../components/ui';
+import { H3, Body, Card, Button, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { getUserProfile, updateUserProfile } from '../../services/profileService
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { calculateMatchPreferencesCompleteness } from '../../utils/profileCompleteness';
 import { createLogger } from '../../utils/secureLogger';
+import { FONTS } from '../../constants/typography';
 
 const logger = createLogger('MatchPreferencesScreen');
 
@@ -19,7 +20,6 @@ interface MatchPreferencesScreenProps {
   navigation: NavigationProp<RootStackParamList>;
 }
 
-const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -455,8 +455,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   }, [profile]);
 
   return (
-    <StyledSafeAreaView className="flex-1 bg-neutral-50">
-      <StatusBar barStyle="dark-content" />
+    <ScreenWrapper>
 
       {/* Header */}
       <StyledView className="bg-white border-b border-neutral-200 px-4 py-3">
@@ -523,7 +522,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Interested In Genders */}
           <Card className="mb-6">
-            <H3 className="mb-2">Gender <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
+            <H3 className="mb-2">Gender <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText></H3>
             <Body className="text-neutral-600 text-sm mb-4">
               Select all gender identities you're open to matching with
             </Body>
@@ -586,7 +585,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Age Range */}
           <Card className="mb-6">
-            <H3 className="mb-4">Age Range <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
+            <H3 className="mb-4">Age Range <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText></H3>
             <StyledView className="flex-row justify-between mb-3">
               <Body className="text-neutral-600">Min: <Body className="text-neutral-900 font-semibold">{preferences.ageMin}</Body></Body>
               <Body className="text-neutral-600">Max: <Body className="text-neutral-900 font-semibold">{preferences.ageMax}</Body></Body>
@@ -611,7 +610,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Height Preference */}
           <Card className="mb-6">
-            <H3 className="mb-3">Height <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
+            <H3 className="mb-3">Height <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText></H3>
             <Body className="text-neutral-600 text-sm mb-4">
               Set your height preferences for potential matches
             </Body>
@@ -640,7 +639,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Preferred Ethnicities */}
           <Card className="mb-6">
-            <H3 className="mb-2">Ethnicity <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
+            <H3 className="mb-2">Ethnicity <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText></H3>
             <Body className="text-neutral-600 text-sm mb-4">
               Select the ethnicities you're interested in for potential matches
             </Body>
@@ -701,7 +700,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Preferred Politics */}
           <Card className="mb-6">
-            <H3 className="mb-2">Politics <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
+            <H3 className="mb-2">Politics <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText></H3>
             <Body className="text-neutral-600 text-sm mb-4">
               Select the political views you're open to matching with
             </Body>
@@ -739,7 +738,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Lifestyle */}
           <Card className="mb-6">
-            <H3 className="mb-2">Lifestyle <StyledText style={{ color: '#EF4444' }}>*</StyledText></H3>
+            <H3 className="mb-2">Lifestyle <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText></H3>
             <Body className="text-neutral-600 text-sm mb-4">
               What lifestyle habits do you prefer in a partner?
             </Body>
@@ -1003,6 +1002,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
           </StyledAnimatedView>
         </StyledAnimatedView>
       </Modal>
-    </StyledSafeAreaView>
+    </ScreenWrapper>
   );
 };

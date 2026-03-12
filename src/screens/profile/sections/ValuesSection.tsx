@@ -6,6 +6,7 @@ import { H3, Body } from '../../../components/ui/Typography';
 import { SimpleChip } from '../../../components/ui/SimpleChip';
 import { lightHaptic } from '../../../utils/haptics';
 import { COLORS } from '../../../theme/colors';
+import { FONTS } from '../../../constants/typography';
 
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledView = styled(View);
@@ -67,7 +68,7 @@ export const ValuesSection = React.memo<ValuesSectionProps>(({
 
   return (
     <Card className="mb-6">
-      <H3 className="mb-4">Values <StyledText style={{ color: COLORS.error }}>*</StyledText></H3>
+      <H3 className="mb-4">Values <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
       <Body className="text-neutral-600 text-sm mb-4">
         What matters most to you? (Select {MIN_VALUES}-{MAX_VALUES})
       </Body>

@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { UserProfile } from '../../types';
 import { clampDisplayScore } from '../../utils/compatibilityHelpers';
 import { valueEmoji, interestEmoji } from '../../utils/emojiMaps';
+import { FONTS } from '../../constants/typography';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -104,14 +105,14 @@ export function ProfileView({
             style={{ flexDirection: 'row', alignItems: 'center' }}
           >
             <Ionicons name="arrow-back" size={28} color="#4A4540" />
-            <StyledText style={{ fontSize: 16, color: '#4A4540', marginLeft: 8 }}>Back</StyledText>
+            <StyledText style={{ fontSize: 16, fontFamily: FONTS.regular, color: '#4A4540', marginLeft: 8 }}>Back</StyledText>
           </StyledTouchableOpacity>
         </StyledView>
 
         {/* Name (if shown) */}
         {showName && (
           <StyledView style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-            <StyledText style={{ fontSize: 28, fontWeight: '700', color: '#4A4540' }}>
+            <StyledText style={{ fontSize: 28, fontWeight: '700', fontFamily: FONTS.bold, color: '#4A4540' }}>
               {profile.firstName} {profile.lastName}
             </StyledText>
           </StyledView>
@@ -205,10 +206,10 @@ export function ProfileView({
                 alignItems: 'center',
                 marginBottom: 16,
               }}>
-                <StyledText style={{ fontSize: 48, fontWeight: '700', color: '#7C3AED' }}>
+                <StyledText style={{ fontSize: 48, fontWeight: '700', fontFamily: FONTS.bold, color: '#7C3AED' }}>
                   {clampDisplayScore(compatibilityScore)}%
                 </StyledText>
-                <StyledText style={{ fontSize: 14, color: '#6B21A8', fontWeight: '600' }}>
+                <StyledText style={{ fontSize: 14, color: '#6B21A8', fontWeight: '600', fontFamily: FONTS.semiBold }}>
                   Compatibility Match
                 </StyledText>
               </StyledView>
@@ -216,13 +217,13 @@ export function ProfileView({
               {/* Why This Match */}
               {whyThisMatch.length > 0 && (
                 <StyledView style={{ marginBottom: 12 }}>
-                  <StyledText style={{ fontSize: 15, fontWeight: '700', color: '#059669', marginBottom: 8 }}>
+                  <StyledText style={{ fontSize: 15, fontWeight: '700', fontFamily: FONTS.bold, color: '#059669', marginBottom: 8 }}>
                     Why This Match
                   </StyledText>
                   {whyThisMatch.map((reason, index) => (
                     <StyledView key={index} style={{ flexDirection: 'row', marginBottom: 6 }}>
-                      <StyledText style={{ color: '#059669', marginRight: 8 }}>✓</StyledText>
-                      <StyledText style={{ fontSize: 13, color: '#4A4540', flex: 1 }}>
+                      <StyledText style={{ fontFamily: FONTS.regular, color: '#059669', marginRight: 8 }}>✓</StyledText>
+                      <StyledText style={{ fontSize: 13, fontFamily: FONTS.regular, color: '#4A4540', flex: 1 }}>
                         {reason}
                       </StyledText>
                     </StyledView>
@@ -233,13 +234,13 @@ export function ProfileView({
               {/* What Doesn't Fit */}
               {whatDoesntFit.length > 0 && (
                 <StyledView>
-                  <StyledText style={{ fontSize: 15, fontWeight: '700', color: '#B45309', marginBottom: 8 }}>
+                  <StyledText style={{ fontSize: 15, fontWeight: '700', fontFamily: FONTS.bold, color: '#B45309', marginBottom: 8 }}>
                     What Doesn't Fit
                   </StyledText>
                   {whatDoesntFit.map((concern, index) => (
                     <StyledView key={index} style={{ flexDirection: 'row', marginBottom: 6 }}>
-                      <StyledText style={{ color: '#B45309', marginRight: 8 }}>•</StyledText>
-                      <StyledText style={{ fontSize: 13, color: '#4A4540', flex: 1 }}>
+                      <StyledText style={{ fontFamily: FONTS.regular, color: '#B45309', marginRight: 8 }}>•</StyledText>
+                      <StyledText style={{ fontSize: 13, fontFamily: FONTS.regular, color: '#4A4540', flex: 1 }}>
                         {concern}
                       </StyledText>
                     </StyledView>
@@ -267,7 +268,7 @@ export function ProfileView({
                 borderRadius: 20,
               }}>
                 <Ionicons name="person" size={16} color="#7C3AED" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500' }}>
+                <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                   {capitalize(profile.gender[0])}
                 </StyledText>
               </StyledView>
@@ -284,7 +285,7 @@ export function ProfileView({
                 borderRadius: 20,
               }}>
                 <Ionicons name="chatbubble-outline" size={16} color="#EC4899" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500' }}>
+                <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                   {profile.pronouns.replace('_', '/')}
                 </StyledText>
               </StyledView>
@@ -300,7 +301,7 @@ export function ProfileView({
               borderRadius: 20,
             }}>
               <Ionicons name="calendar-outline" size={16} color="#EC4899" style={{ marginRight: 6 }} />
-              <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500' }}>
+              <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                 {profile.age}
               </StyledText>
             </StyledView>
@@ -316,7 +317,7 @@ export function ProfileView({
                 borderRadius: 20,
               }}>
                 <Ionicons name="resize-outline" size={16} color="#10B981" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500' }}>
+                <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                   {formatHeight(profile.height)}
                 </StyledText>
               </StyledView>
@@ -333,7 +334,7 @@ export function ProfileView({
                 borderRadius: 20,
               }}>
                 <Ionicons name="briefcase" size={16} color="#3B82F6" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500' }}>
+                <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                   {profile.currentJob}
                 </StyledText>
               </StyledView>
@@ -350,7 +351,7 @@ export function ProfileView({
                 borderRadius: 20,
               }}>
                 <Ionicons name="globe-outline" size={16} color="#8B5CF6" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500' }}>
+                <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                   {profile.ethnicity}
                 </StyledText>
               </StyledView>
@@ -367,7 +368,7 @@ export function ProfileView({
                 borderRadius: 20,
               }}>
                 <Ionicons name="moon-outline" size={16} color="#6366F1" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500' }}>
+                <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                   {profile.religion}
                 </StyledText>
               </StyledView>
@@ -384,7 +385,7 @@ export function ProfileView({
                 borderRadius: 20,
               }}>
                 <Ionicons name="flag-outline" size={16} color="#EF4444" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500' }}>
+                <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                   {capitalize(profile.politicalLeaning.replace(/_/g, ' '))}
                 </StyledText>
               </StyledView>
@@ -401,7 +402,7 @@ export function ProfileView({
                 borderRadius: 20,
               }}>
                 <Ionicons name="time-outline" size={16} color="#4B5563" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500' }}>
+                <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
                   Joined {new Date(profile.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </StyledText>
               </StyledView>
@@ -413,7 +414,7 @@ export function ProfileView({
             <StyledView style={{ marginBottom: 20 }}>
               <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                 <Ionicons name="star" size={18} color="#F59E0B" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600' }}>Interests</StyledText>
+                <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600', fontFamily: FONTS.semiBold }}>Interests</StyledText>
               </StyledView>
               <StyledView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                 {profile.interests.map((interest: string, index: number) => (
@@ -426,7 +427,7 @@ export function ProfileView({
                       borderRadius: 16,
                     }}
                   >
-                    <StyledText style={{ fontSize: 13, color: '#B45309', fontWeight: '500' }}>
+                    <StyledText style={{ fontSize: 13, color: '#B45309', fontWeight: '500', fontFamily: FONTS.medium }}>
                       {interestEmoji(interest)} {interest}
                     </StyledText>
                   </StyledView>
@@ -440,7 +441,7 @@ export function ProfileView({
             <StyledView style={{ marginBottom: 20 }}>
               <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                 <Ionicons name="diamond" size={18} color="#10B981" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600' }}>Values</StyledText>
+                <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600', fontFamily: FONTS.semiBold }}>Values</StyledText>
               </StyledView>
               <StyledView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                 {profile.values.map((value: string, index: number) => (
@@ -453,7 +454,7 @@ export function ProfileView({
                       borderRadius: 16,
                     }}
                   >
-                    <StyledText style={{ fontSize: 13, color: '#065F46', fontWeight: '500' }}>
+                    <StyledText style={{ fontSize: 13, color: '#065F46', fontWeight: '500', fontFamily: FONTS.medium }}>
                       {valueEmoji(value)} {value}
                     </StyledText>
                   </StyledView>
@@ -467,12 +468,12 @@ export function ProfileView({
             <StyledView style={{ marginBottom: 20 }}>
               <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                 <Ionicons name="chatbox-ellipses" size={18} color="#7C3AED" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600' }}>About Me</StyledText>
+                <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600', fontFamily: FONTS.semiBold }}>About Me</StyledText>
               </StyledView>
 
               {profile.deepQuestions.map((q, i) => (
                 <StyledView key={i} style={{ marginBottom: 12 }}>
-                  <StyledText style={{ fontSize: 14, color: '#4A4540', lineHeight: 20 }}>
+                  <StyledText style={{ fontSize: 14, fontFamily: FONTS.regular, color: '#4A4540', lineHeight: 20 }}>
                     {q.answer}
                   </StyledText>
                 </StyledView>
@@ -484,18 +485,18 @@ export function ProfileView({
           <StyledView style={{ marginBottom: 20 }}>
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
               <Ionicons name="people" size={18} color="#F59E0B" style={{ marginRight: 6 }} />
-              <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600' }}>Family</StyledText>
+              <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600', fontFamily: FONTS.semiBold }}>Family</StyledText>
             </StyledView>
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
               <Ionicons name="person-outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
-              <StyledText style={{ fontSize: 14, color: '#4A4540' }}>
+              <StyledText style={{ fontSize: 14, fontFamily: FONTS.regular, color: '#4A4540' }}>
                 {profile.hasChildren === 'no' ? 'No children' : profile.hasChildren === 'yes' ? 'Has children' : 'Prefer not to say'}
               </StyledText>
             </StyledView>
             {profile.familyPlans && (
               <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons name="heart-outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
-                <StyledText style={{ fontSize: 14, color: '#4A4540' }}>
+                <StyledText style={{ fontSize: 14, fontFamily: FONTS.regular, color: '#4A4540' }}>
                   {profile.familyPlans === 'want_children' ? 'Want children someday' :
                     profile.familyPlans === 'open_to_children' ? 'Open to children' :
                       profile.familyPlans === 'dont_want_children' ? 'Don\'t want children' : 'Not sure yet'}
@@ -508,7 +509,7 @@ export function ProfileView({
           <StyledView style={{ marginBottom: 20 }}>
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
               <Ionicons name="leaf" size={18} color="#8B5CF6" style={{ marginRight: 6 }} />
-              <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600' }}>Lifestyle</StyledText>
+              <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600', fontFamily: FONTS.semiBold }}>Lifestyle</StyledText>
             </StyledView>
 
             {profile.drinkingFrequency && (
@@ -520,9 +521,9 @@ export function ProfileView({
               }}>
                 <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Ionicons name="wine" size={16} color="#78716C" style={{ marginRight: 8 }} />
-                  <StyledText style={{ fontSize: 14, color: '#4A4540' }}>Drinking</StyledText>
+                  <StyledText style={{ fontSize: 14, fontFamily: FONTS.regular, color: '#4A4540' }}>Drinking</StyledText>
                 </StyledView>
-                <StyledText style={{ fontSize: 14, color: '#78716C', fontWeight: '500' }}>
+                <StyledText style={{ fontSize: 14, color: '#78716C', fontWeight: '500', fontFamily: FONTS.medium }}>
                   {capitalize(profile.drinkingFrequency)}
                 </StyledText>
               </StyledView>
@@ -537,9 +538,9 @@ export function ProfileView({
               }}>
                 <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Ionicons name="leaf-outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
-                  <StyledText style={{ fontSize: 14, color: '#4A4540' }}>Cannabis</StyledText>
+                  <StyledText style={{ fontSize: 14, fontFamily: FONTS.regular, color: '#4A4540' }}>Cannabis</StyledText>
                 </StyledView>
-                <StyledText style={{ fontSize: 14, color: '#78716C', fontWeight: '500' }}>
+                <StyledText style={{ fontSize: 14, color: '#78716C', fontWeight: '500', fontFamily: FONTS.medium }}>
                   {capitalize(profile.cannabisFrequency)}
                 </StyledText>
               </StyledView>
@@ -553,9 +554,9 @@ export function ProfileView({
               }}>
                 <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Ionicons name="fitness-outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
-                  <StyledText style={{ fontSize: 14, color: '#4A4540' }}>Tobacco</StyledText>
+                  <StyledText style={{ fontSize: 14, fontFamily: FONTS.regular, color: '#4A4540' }}>Tobacco</StyledText>
                 </StyledView>
-                <StyledText style={{ fontSize: 14, color: '#78716C', fontWeight: '500' }}>
+                <StyledText style={{ fontSize: 14, color: '#78716C', fontWeight: '500', fontFamily: FONTS.medium }}>
                   {capitalize(profile.tobaccoFrequency)}
                 </StyledText>
               </StyledView>
