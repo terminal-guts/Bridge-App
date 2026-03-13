@@ -557,14 +557,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     }
 
     return (
-      <StyledView className="flex-1 items-center justify-center px-8">
-        <StyledView className="w-20 h-20 bg-primary-50 rounded-full items-center justify-center mb-4">
-          <EvaIcon name="message-circle" variant="outline" size={40} color="#437FFF" />
+      <StyledView className="flex-1 items-center justify-center px-10">
+        <StyledView className="w-16 h-16 bg-primary-50 rounded-2xl items-center justify-center mb-6">
+          <EvaIcon name="message-circle" variant="outline" size={32} color="#437FFF" />
         </StyledView>
-        <H3 className="mb-2 text-center">Start the conversation!</H3>
-        <BodySmall className="text-neutral-600 text-center">
-          The community matched you two for a reason. Say hello!
-        </BodySmall>
+
+        <H3 className="text-center mb-4 font-bold leading-7 text-neutral-900">
+          Hey! Looks like Bridge did its job and connected you two.
+        </H3>
+
+        <Body className="text-neutral-600 text-center leading-6 italic">
+          "Let me break the ice… what’s one thing that always makes you smile?"
+        </Body>
       </StyledView>
     );
   }, [isFriend, recipientName]);
