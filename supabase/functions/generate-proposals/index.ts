@@ -76,7 +76,7 @@ Deno.serve(async (req: Request) => {
       // Expire any pending algorithmic proposals for either user
       await supabase
         .from('proposals')
-        .update({ status: 'expired_sent', updated_at: now, expired_at: now })
+        .update({ status: 'expired', updated_at: now, expired_at: now })
         .eq('status', 'pending')
         .or(`user_a_id.eq.${sA},user_b_id.eq.${sA},user_a_id.eq.${sB},user_b_id.eq.${sB}`);
 

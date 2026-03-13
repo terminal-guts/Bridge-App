@@ -69,7 +69,7 @@ async function seed() {
 
     const { error } = await supabase
       .from('user_profiles')
-      .upsert(user, { on_conflict: 'id' });
+      .upsert(user, { onConflict: 'id' });
 
     if (error) {
       console.error(`Error creating ${user.first_name}:`, error.message);

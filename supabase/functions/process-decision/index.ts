@@ -109,7 +109,7 @@ Deno.serve(async (req: Request) => {
       return Response.json({ error: 'You are not part of this proposal' }, { status: 403, headers: corsHeaders });
     }
 
-    // 4. Update the decision
+    // 4. Write this user's decision first (before checking the other user's)
     const updateData: Record<string, any> = { updated_at: nowIso };
 
     if (isUserA) {
@@ -120,40 +120,73 @@ Deno.serve(async (req: Request) => {
       updateData.user_b_decided_at = nowIso;
     }
 
-    // Get the other user's decision
-    const otherDecision = isUserA ? proposal.user_b_decision : proposal.user_a_decision;
-
-    // Determine new proposal status
-    let newStatus = proposal.status;
-
+    // If declining, set status immediately (no race concern)
     if (decision === 'declined') {
-      newStatus = 'declined';
-      updateData.status = 'declined';
-      updateData.declined_at = nowIso;
-    } else if (otherDecision === 'accepted') {
-      // Both accepted → match!
-      newStatus = 'passed_to_match';
-      updateData.status = 'passed_to_match';
-      updateData.confirmed_at = nowIso;
-    } else if (otherDecision === 'declined') {
-      newStatus = 'declined';
       updateData.status = 'declined';
       updateData.declined_at = nowIso;
     }
-    // else: other user is still 'pending' — keep current status
 
-    // 5. Update proposal
+    // 5. Write the decision
     const { error: updateErr } = await supabase
       .from('proposals')
       .update(updateData)
-      .eq('id', proposal_id);
+      .eq('id', proposal_id)
+      .eq('status', 'deciding'); // optimistic lock: only update if still deciding
 
     if (updateErr) {
       console.error('Proposal update error:', updateErr);
       return Response.json({ error: 'Failed to update proposal' }, { status: 500, headers: corsHeaders });
     }
 
-    // 6. If both accepted, create a match
+    // 6. Re-fetch proposal AFTER write to check the other user's decision
+    // This prevents the both-accept race condition: even if both users write
+    // simultaneously, the re-fetch will see the other user's written decision.
+    let newStatus = decision === 'declined' ? 'declined' : proposal.status;
+
+    if (decision === 'accepted') {
+      const { data: fresh, error: refetchErr } = await supabase
+        .from('proposals')
+        .select('user_a_decision, user_b_decision, status')
+        .eq('id', proposal_id)
+        .single();
+
+      if (refetchErr || !fresh) {
+        console.error('Re-fetch error:', refetchErr);
+        return Response.json({ error: 'Failed to verify decision' }, { status: 500, headers: corsHeaders });
+      }
+
+      const otherDecision = isUserA ? fresh.user_b_decision : fresh.user_a_decision;
+
+      if (otherDecision === 'accepted') {
+        // Both accepted → match! Use update with status check to prevent duplicate match creation
+        const { error: matchStatusErr } = await supabase
+          .from('proposals')
+          .update({ status: 'passed_to_match', confirmed_at: nowIso, updated_at: nowIso })
+          .eq('id', proposal_id)
+          .eq('status', 'deciding'); // only one concurrent request wins this update
+
+        if (!matchStatusErr) {
+          newStatus = 'passed_to_match';
+        } else {
+          // Other request already promoted it — re-read final status
+          const { data: final } = await supabase
+            .from('proposals')
+            .select('status')
+            .eq('id', proposal_id)
+            .single();
+          newStatus = final?.status || 'passed_to_match';
+        }
+      } else if (otherDecision === 'declined') {
+        newStatus = 'declined';
+        await supabase
+          .from('proposals')
+          .update({ status: 'declined', declined_at: nowIso, updated_at: nowIso })
+          .eq('id', proposal_id);
+      }
+      // else: other user still pending — wait for them
+    }
+
+    // 7. If both accepted, create a match (only the winner of the optimistic lock reaches here)
     if (newStatus === 'passed_to_match') {
       // Ensure user_id_1 < user_id_2 for consistent ordering
       const [u1, u2] = proposal.user_a_id < proposal.user_b_id
