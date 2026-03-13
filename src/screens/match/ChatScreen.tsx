@@ -34,7 +34,9 @@ import {
 } from '../../services/messageService';
 import { AudioPlayer } from '../../components/chat/AudioPlayer';
 import { AudioRecorder } from '../../components/chat/AudioRecorder';
+import { MatchContextCard } from '../../components/chat/MatchContextCard';
 import { communityService } from '../../services/communityServiceIndex';
+import { getUserProfile, getFullUserProfileById } from '../../services/profileService';
 import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
@@ -125,9 +127,26 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
   const [proposeDateModalVisible, setProposeDateModalVisible] = useState(false);
   const [dateProposalText, setDateProposalText] = useState('');
 
+  // Profiles for MatchContextCard (match chats only)
+  const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
+  const [matchRecipientProfile, setMatchRecipientProfile] = useState<any>(null);
+
   // Determine if this is a friend chat or match chat
   // Priority: isFriendChat flag takes precedence, then check if matchId is present
   const isFriend = isFriendChat === true || !matchId;
+
+  // Fetch both profiles for the context card (match chats only)
+  useEffect(() => {
+    if (isFriend) return;
+    getUserProfile().then(res => {
+      if (res.ok && res.data) setCurrentUserProfile(res.data);
+    });
+    if (recipientId) {
+      getFullUserProfileById(recipientId).then(profile => {
+        if (profile) setMatchRecipientProfile(profile);
+      }).catch(() => {});
+    }
+  }, [isFriend, recipientId]);
 
   // Ref to track currentUserId for use in subscription (prevents stale closure)
   const currentUserIdRef = useRef<string | null>(null);
@@ -557,19 +576,27 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     }
 
     return (
-      <StyledView className="flex-1 items-center justify-center px-8">
-        <StyledView className="w-20 h-20 bg-primary-50 rounded-full items-center justify-center mb-4">
-          <EvaIcon name="message-circle" variant="outline" size={40} color="#437FFF" />
-        </StyledView>
-        <H3 className="mb-2 text-center">Start the conversation!</H3>
-        <BodySmall className="text-neutral-600 text-center">
-          The community matched you two for a reason. Say hello!
-        </BodySmall>
+      <StyledView className="flex-1 justify-end px-0 pb-4">
+        <MatchContextCard
+          currentUserProfile={currentUserProfile}
+          recipientProfile={matchRecipientProfile}
+        />
       </StyledView>
     );
-  }, [isFriend, recipientName]);
+  }, [isFriend, currentUserProfile, matchRecipientProfile]);
 
-  const renderHeader = useCallback(() => null, []);
+  const renderHeader = useCallback(() => {
+    // Show context card at the top of match chats (scrolls with messages)
+    if (isFriend || messages.length === 0) return null;
+    return (
+      <StyledView className="mb-2">
+        <MatchContextCard
+          currentUserProfile={currentUserProfile}
+          recipientProfile={matchRecipientProfile}
+        />
+      </StyledView>
+    );
+  }, [isFriend, messages.length, currentUserProfile, matchRecipientProfile]);
 
   if (loading) {
     return (
@@ -683,7 +710,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
                   <StyledTextInput
                     value={newMessage}
                     onChangeText={setNewMessage}
-                    placeholder="Type a message..."
+                    placeholder="Say something..."
                     multiline
                     maxLength={1000}
                     className="text-neutral-900 text-base max-h-24"

@@ -47,7 +47,7 @@ BEGIN
         SELECT
             ks.user_id,
             RANK() OVER (
-                ORDER BY (ks.karma_points - COALESCE(kws.karma_at_start, 0)) DESC,
+                ORDER BY GREATEST(0, ks.karma_points - COALESCE(kws.karma_at_start, 0)) DESC,
                          up.first_name ASC
             ) as rnk
         FROM karma_scores ks
@@ -98,7 +98,7 @@ BEGIN
         SELECT
             ks.user_id AS ws_user_id,
             up.first_name AS ws_first_name,
-            (ks.karma_points - COALESCE(kws.karma_at_start, 0))::integer AS ws_weekly_karma
+            GREATEST(0, ks.karma_points - COALESCE(kws.karma_at_start, 0))::integer AS ws_weekly_karma
         FROM karma_scores ks
         JOIN user_profiles up ON ks.user_id = up.user_id
         LEFT JOIN karma_weekly_snapshots kws ON ks.user_id = kws.user_id AND kws.week_start = v_week_start

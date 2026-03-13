@@ -312,10 +312,9 @@ Steps:
 
 ### Server-side push for transactional (match, message, deciding)
 
-These currently rely on client-side Realtime subscriptions. Move to **Supabase database webhooks** or **pg_net triggers**:
+Database triggers on `matches`, `messages`, and `proposals` call `net.http_post()` → `notify-transactional` edge function.
 
-Option A (recommended): Database trigger → `pg_net` HTTP call to a new `notify-transactional` edge function.
-Option B: Supabase Database Webhooks (Settings → Webhooks) pointing to the edge function.
+**Important:** Triggers read the Supabase URL and service role key from `vault.decrypted_secrets` (not `current_setting`). PostgREST/Supavisor pooled connections don't inherit database-level `app.settings.*` values, so `current_setting()` returns NULL and causes `net.http_post()` to throw — rolling back the parent INSERT/UPDATE. All triggers wrap `net.http_post()` in `BEGIN...EXCEPTION` blocks so a notification failure never blocks the parent operation.
 
 The edge function handles:
 - `matches` INSERT → send New Match push to both users

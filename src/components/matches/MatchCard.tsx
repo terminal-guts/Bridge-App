@@ -256,7 +256,10 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                         ))}
 
                         {/* #2 — Name with tighter tracking */}
-                        <Text style={styles.nameText}>{name}{age ? `, ${age}` : ''}</Text>
+                        <View style={styles.nameRow}>
+                            <Text style={styles.nameText}>{name}{age ? `, ${age}` : ''}</Text>
+                            {hasUnread && <View style={styles.unreadDot} />}
+                        </View>
 
                         {/* #2 + #4 — Endorser row with polished avatars */}
                         <View style={styles.matchedByRow}>
@@ -303,10 +306,6 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                             <ArrowRightIcon size={22} color="#FFFFFF" />
                         )}
                     </View>
-                    {/* Unread message indicator */}
-                    {hasUnread && (
-                        <View style={styles.unreadDot} />
-                    )}
                 </Pressable>
             </Animated.View>
         </View>
@@ -516,17 +515,16 @@ const styles = StyleSheet.create({
         shadowRadius: 16,
         elevation: 10,
     },
-    // Unread message dot — top-right of action button
+    nameRow: {
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
+        gap: 8,
+    },
     unreadDot: {
-        position: 'absolute',
-        top: -2,
-        right: -2,
-        width: 14,
-        height: 14,
-        borderRadius: 7,
-        backgroundColor: '#EF4444',
-        borderWidth: 2.5,
-        borderColor: '#FFFFFF',
-        zIndex: 10,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#437FFF',
+        marginBottom: 4,
     },
 });

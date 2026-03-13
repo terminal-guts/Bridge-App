@@ -30,7 +30,6 @@ const PREFS_KEY = '@bridge_notification_prefs';
 const defaultPreferences: NotificationPreferences = {
   matchesEnabled: true,
   messagesEnabled: true,
-  nudgesEnabled: true,
   showNameIfWinner: true,
   leaderboardVisible: false,
 };
@@ -55,7 +54,6 @@ describe('getPreferences', () => {
     const stored: NotificationPreferences = {
       matchesEnabled: false,
       messagesEnabled: true,
-      nudgesEnabled: false,
       showNameIfWinner: true,
       leaderboardVisible: false,
     };
@@ -74,7 +72,6 @@ describe('getPreferences', () => {
     expect(prefs).toEqual({
       matchesEnabled: false,
       messagesEnabled: true,
-      nudgesEnabled: true,
       showNameIfWinner: true,
       leaderboardVisible: false,
     });
@@ -95,19 +92,18 @@ describe('getPreferences', () => {
 describe('updatePreferences', () => {
   it('partial update merges with existing defaults', async () => {
     const result = await notificationPreferencesService.updatePreferences({
-      nudgesEnabled: false,
+      messagesEnabled: false,
     });
 
     expect(result).toEqual({
       matchesEnabled: true,
-      messagesEnabled: true,
-      nudgesEnabled: false,
+      messagesEnabled: false,
       showNameIfWinner: true,
       leaderboardVisible: false,
     });
 
     const stored = JSON.parse(mockStorage[PREFS_KEY]);
-    expect(stored.nudgesEnabled).toBe(false);
+    expect(stored.messagesEnabled).toBe(false);
     expect(stored.matchesEnabled).toBe(true);
   });
 
@@ -115,7 +111,6 @@ describe('updatePreferences', () => {
     mockStorage[PREFS_KEY] = JSON.stringify({
       matchesEnabled: false,
       messagesEnabled: false,
-      nudgesEnabled: true,
       showNameIfWinner: true,
       leaderboardVisible: false,
     });
@@ -127,7 +122,6 @@ describe('updatePreferences', () => {
     expect(result).toEqual({
       matchesEnabled: false,
       messagesEnabled: true,
-      nudgesEnabled: true,
       showNameIfWinner: true,
       leaderboardVisible: false,
     });
@@ -137,7 +131,6 @@ describe('updatePreferences', () => {
     mockStorage[PREFS_KEY] = JSON.stringify({
       matchesEnabled: true,
       messagesEnabled: true,
-      nudgesEnabled: true,
       showNameIfWinner: true,
       leaderboardVisible: false,
     });
@@ -145,7 +138,6 @@ describe('updatePreferences', () => {
     const fullUpdate: NotificationPreferences = {
       matchesEnabled: false,
       messagesEnabled: false,
-      nudgesEnabled: false,
       showNameIfWinner: false,
       leaderboardVisible: true,
     };

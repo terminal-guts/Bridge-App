@@ -4,7 +4,7 @@ import * as Linking from 'expo-linking';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { UsersTabIcon, HandshakeTabIcon, ProfileTabIcon } from '../components/icons/Icons';
-import { ActivityIndicator, AppState, View, TouchableOpacity, useWindowDimensions, LayoutChangeEvent } from 'react-native';
+import { ActivityIndicator, AppState, View, Text, TouchableOpacity, useWindowDimensions, LayoutChangeEvent, StyleSheet as RNStyleSheet } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { SPRINGS } from '../constants/animations';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -84,6 +84,9 @@ const SuspendedScreen = withSuspense(React.lazy(() => import('../screens/auth/Su
 
 // Community sub-screens
 const SuggestMatchScreen = withSuspense(React.lazy(() => import('../screens/community/SuggestMatchScreen')));
+
+// Badge management
+const BadgeManagementScreen = withSuspense(React.lazy(() => import('../screens/profile/BadgeManagementScreen').then(m => ({ default: m.BadgeManagementScreen }))));
 
 // Friends sub-screens
 const ContactInviteScreen = withSuspense(React.lazy(() => import('../screens/friends/ContactInviteScreen').then(m => ({ default: m.ContactInviteScreen }))));
@@ -297,7 +300,7 @@ export const AppNavigator = () => {
       }
       return;
     }
-    if (type === 'new_proposals' || type === 'vote_reminder' || type === 'streak_at_risk' || type === 'friend_nudge' || type === 'shared_celebration' || type === 'dormant') {
+    if (type === 'new_proposals' || type === 'vote_reminder' || type === 'streak_at_risk' || type === 'shared_celebration' || type === 'dormant') {
       nav.navigate('MainTabs', { screen: 'Community' });
       return;
     }
@@ -558,6 +561,7 @@ export const AppNavigator = () => {
           <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
           <Stack.Screen name="Stats" component={StatsScreen} />
           <Stack.Screen name="SuggestMatch" component={SuggestMatchScreen} />
+          <Stack.Screen name="BadgeManagement" component={BadgeManagementScreen} />
 
           {/* Friends */}
           <Stack.Screen name="ContactInvite" component={ContactInviteScreen} />

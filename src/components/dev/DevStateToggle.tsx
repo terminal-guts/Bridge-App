@@ -1,281 +1,144 @@
-import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Modal,
-  StyleSheet,
-  SafeAreaView,
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { communityService, MockMatchState, MockFriendsState } from '../../services/communityService';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { supabase } from '../../lib/supabase';
 import { FONTS } from '../../constants/typography';
-import { OVERLAYS } from '../../theme/shadows';
 
-const MATCH_OPTIONS: { label: string; value: MockMatchState }[] = [
-  { label: 'Empty',          value: 'empty' },
-  { label: 'New Match',      value: 'new_match' },
-  { label: 'They Voted',     value: 'awaiting_you' },
-  { label: 'You Voted',      value: 'awaiting_them' },
-  { label: 'Active Match',   value: 'active_match' },
-  { label: '⏰ Expired',     value: 'expired' },
-  { label: '👋 You Passed',  value: 'you_rejected' },
-  { label: '💔 They Passed', value: 'they_rejected' },
-  { label: '🔚 Match Ended', value: 'match_ended' },
-];
+// ── DEV STATE TOGGLE — DELETE THIS FILE WHEN DONE ───────────────────────────
+const SAUL_ID = 'b853df7d-19db-4212-8fdf-8696bc72a167';
+const MOLLY_ID = '3ae08fed-c47f-4044-a5ca-f67be336ef90';
 
-const FRIENDS_OPTIONS: { label: string; value: MockFriendsState }[] = [
-  { label: 'Empty',        value: 'empty' },
-  { label: 'With Friends', value: 'with_friends' },
-];
+const findProposal = async () => {
+  const { data } = await supabase.from('proposals').select('id, status')
+    .or(`user_a_id.eq.${SAUL_ID},user_b_id.eq.${SAUL_ID}`)
+    .in('status', ['deciding', 'pending', 'passed_to_match'])
+    .order('created_at', { ascending: false }).limit(1).single();
+  return data;
+};
 
-const TIMER_PRESETS: { label: string; ms: number; color: string }[] = [
-  { label: '20h 🟢', ms: 20 * 3600000,    color: '#1D9E50' },
-  { label: '8h 🟠',  ms: 8  * 3600000,    color: '#C96B00' },
-  { label: '2h 🔴',  ms: 2  * 3600000,    color: '#D92D20' },
-  { label: '30s ⏱',  ms: 30 * 1000,       color: '#D92D20' },
-];
+const findMatch = async (pid: string) => {
+  const { data } = await supabase.from('matches').select('id')
+    .eq('proposal_id', pid).limit(1).single();
+  return data;
+};
 
 export function DevStateToggle() {
-  const navigation = useNavigation<any>();
-  const [visible, setVisible] = useState(false);
-  const [matchState, setMatchStateLocal] = useState<MockMatchState>(
-    communityService.getCurrentMatchState(),
-  );
-  const [friendsState, setFriendsStateLocal] = useState<MockFriendsState>(
-    communityService.getCurrentFriendsState(),
-  );
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [last, setLast] = useState('');
 
-  const applyMatchState = useCallback((state: MockMatchState) => {
-    setMatchStateLocal(state);
-    communityService.setMatchState(state);
-  }, []);
+  const run = async (label: string) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const prop = await findProposal();
+      if (!prop && label !== 'E') return;
+      const pid = prop?.id;
 
-  const applyFriendsState = useCallback((state: MockFriendsState) => {
-    setFriendsStateLocal(state);
-    communityService.setFriendsState(state);
-  }, []);
+      if (label === 'N' || label === 'Y' || label === 'M') {
+        if (pid) {
+          const m = await findMatch(pid);
+          if (m) await supabase.from('matches').delete().eq('id', m.id);
+          await supabase.from('proposals').update({
+            status: 'deciding', confirmed_at: null, declined_at: null,
+            user_a_decision: label === 'Y' ? 'accepted' : 'pending',
+            user_a_decided_at: label === 'Y' ? new Date().toISOString() : null,
+            user_b_decision: label === 'M' ? 'accepted' : 'pending',
+            user_b_decided_at: label === 'M' ? new Date().toISOString() : null,
+          }).eq('id', pid);
+        }
+      } else if (label === 'B' && pid) {
+        await supabase.from('proposals').update({
+          status: 'deciding', confirmed_at: new Date().toISOString(), declined_at: null,
+          user_a_decision: 'accepted', user_a_decided_at: new Date().toISOString(),
+          user_b_decision: 'accepted', user_b_decided_at: new Date().toISOString(),
+        }).eq('id', pid);
+        const existing = await findMatch(pid);
+        if (!existing) {
+          await supabase.from('matches').insert({
+            user_id_1: SAUL_ID, user_id_2: MOLLY_ID, status: 'active',
+            matched_at: new Date().toISOString(), proposal_id: pid,
+          });
+        }
+      } else if (label === 'E') {
+        if (pid) {
+          const m = await findMatch(pid);
+          if (m) await supabase.from('matches').delete().eq('id', m.id);
+          await supabase.from('proposals').update({
+            status: 'declined', declined_at: new Date().toISOString(),
+          }).eq('id', pid);
+        }
+      } else if (label === 'R') {
+        const { data: votes } = await supabase.from('proposal_votes')
+          .select('id, proposal_id, vote_type, is_friend_vote, vote_weight')
+          .eq('voter_user_id', SAUL_ID).order('created_at', { ascending: false }).limit(1);
+        if (votes && votes.length > 0) {
+          const v = votes[0];
+          await supabase.from('proposal_votes').delete().eq('id', v.id);
+          const col = v.vote_type === 'YES'
+            ? (v.is_friend_vote ? 'friend_yes_votes' : 'pool_yes_votes')
+            : (v.is_friend_vote ? 'friend_no_votes' : 'pool_no_votes');
+          const wcol = v.vote_type === 'YES' ? 'weighted_yes' : 'weighted_no';
+          const { data: p } = await supabase.from('proposals')
+            .select(`${col}, ${wcol}`).eq('id', v.proposal_id).single();
+          if (p) {
+            await supabase.from('proposals').update({
+              [col]: Math.max((p as any)[col] - 1, 0),
+              [wcol]: Math.max((p as any)[wcol] - (v.vote_weight || 1), 0),
+            }).eq('id', v.proposal_id);
+          }
+        }
+      }
+      setLast(label);
+    } finally { setBusy(false); }
+  };
+
+  const buttons = [
+    { label: 'N', title: 'New', color: '#10B981' },
+    { label: 'Y', title: 'You', color: '#3B82F6' },
+    { label: 'M', title: 'Molly', color: '#EC4899' },
+    { label: 'B', title: 'Both', color: '#8B5CF6' },
+    { label: 'E', title: 'Empty', color: '#6B7280' },
+    { label: 'R', title: 'Revert', color: '#F59E0B' },
+  ];
 
   return (
-    <>
-      {/* Floating trigger button */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setVisible(true)}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.fabText}>DEV</Text>
-      </TouchableOpacity>
-
-      {/* Bottom sheet modal */}
-      <Modal
-        visible={visible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.backdrop}
-          activeOpacity={1}
-          onPress={() => setVisible(false)}
-        >
-          {/* Prevent taps on the sheet itself from closing */}
-          <TouchableOpacity activeOpacity={1} style={styles.sheet}>
-            {/* Header */}
-            <View style={styles.sheetHeader}>
-              <View style={styles.handle} />
-            </View>
-            <View style={styles.titleRow}>
-              <Text style={styles.sheetTitle}>Dev State Toggle</Text>
-              <TouchableOpacity onPress={() => setVisible(false)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-                <Text style={styles.closeBtn}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* ── Matches ────────────────────────────────────── */}
-            <Text style={styles.sectionLabel}>MATCHES</Text>
-            <View style={styles.chipGrid}>
-              {MATCH_OPTIONS.map(opt => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[styles.chip, matchState === opt.value && styles.chipActive]}
-                  onPress={() => applyMatchState(opt.value)}
-                  activeOpacity={0.75}
-                >
-                  <Text style={[styles.chipText, matchState === opt.value && styles.chipTextActive]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* ── Community / Friends ────────────────────────── */}
-            <Text style={[styles.sectionLabel, { marginTop: 20 }]}>COMMUNITY</Text>
-            <View style={styles.chipGrid}>
-              {FRIENDS_OPTIONS.map(opt => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[styles.chip, friendsState === opt.value && styles.chipActive]}
-                  onPress={() => applyFriendsState(opt.value)}
-                  activeOpacity={0.75}
-                >
-                  <Text style={[styles.chipText, friendsState === opt.value && styles.chipTextActive]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                style={[styles.chip, { borderColor: '#FECACA', backgroundColor: '#FFF5F5' }]}
-                onPress={() => {
-                  communityService.resetToVotingGate();
-                  setVisible(false);
-                }}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.chipText, { color: '#D92D20' }]}>↩ Reset Voting Gate</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* ── Timer ─────────────────────────────────────── */}
-            <Text style={[styles.sectionLabel, { marginTop: 20 }]}>RESET TIMER</Text>
-            <View style={styles.chipGrid}>
-              {TIMER_PRESETS.map(preset => (
-                <TouchableOpacity
-                  key={preset.label}
-                  style={styles.chip}
-                  onPress={() => communityService.setTimeRemaining(preset.ms)}
-                  activeOpacity={0.75}
-                >
-                  <Text style={[styles.chipText, { color: preset.color }]}>{preset.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* ── Auth ──────────────────────────────────────── */}
-            <Text style={[styles.sectionLabel, { marginTop: 20 }]}>AUTH</Text>
-            <View style={styles.chipGrid}>
-              <TouchableOpacity
-                style={[styles.chip, { borderColor: '#437FFF', backgroundColor: 'rgba(67,127,255,0.08)' }]}
-                onPress={() => {
-                  setVisible(false);
-                  navigation.navigate('MainTabs');
-                }}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.chipText, { color: '#437FFF', fontWeight: '700', fontFamily: FONTS.bold }]}>Enter as Alex</Text>
-              </TouchableOpacity>
-            </View>
-
-            <SafeAreaView />
+    <View style={s.container}>
+      {open ? (
+        <View style={s.menu}>
+          {buttons.map(b => (
+            <TouchableOpacity key={b.label} onPress={() => run(b.label)}
+              style={[s.btn, { backgroundColor: b.color, opacity: busy ? 0.5 : 1 },
+                last === b.label && s.btnActive]}>
+              <Text style={s.btnText}>{b.label}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity onPress={() => setOpen(false)}
+            style={[s.btn, { backgroundColor: '#EF4444' }]}>
+            <Text style={s.btnText}>X</Text>
           </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity onPress={() => setOpen(true)} style={s.fab}>
+          <Text style={s.fabText}>DEV</Text>
         </TouchableOpacity>
-      </Modal>
-    </>
+      )}
+    </View>
   );
 }
 
-const BLUE = '#2563EB';
-
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
+  container: { position: 'absolute', bottom: 96, right: 16, zIndex: 9999 },
   fab: {
-    position: 'absolute',
-    bottom: 96,
-    right: 16,
-    backgroundColor: 'rgba(37, 99, 235, 0.9)',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    elevation: 8,
-    zIndex: 9999,
+    backgroundColor: 'rgba(37, 99, 235, 0.9)', borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 7,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18, shadowRadius: 6, elevation: 8,
   },
-  fabText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: FONTS.bold,
-    letterSpacing: 0.8,
-  },
-  backdrop: {
-    flex: 1,
-    backgroundColor: OVERLAYS.medium,
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 8,
-  },
-  sheetHeader: {
-    alignItems: 'center',
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#E0E0E0',
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-  },
-  sheetTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    fontFamily: FONTS.bold,
-    color: '#010101',
-  },
-  closeBtn: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    fontWeight: '600',
-    fontFamily: FONTS.semiBold,
-  },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    fontFamily: FONTS.bold,
-    color: '#9CA3AF',
-    letterSpacing: 1.2,
-    marginBottom: 10,
-  },
-  chipGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-  },
-  chipActive: {
-    backgroundColor: 'rgba(37, 99, 235, 0.08)',
-    borderColor: BLUE,
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: '500',
-    fontFamily: FONTS.medium,
-    color: '#374151',
-  },
-  chipTextActive: {
-    color: BLUE,
-    fontWeight: '700',
-    fontFamily: FONTS.bold,
-  },
+  fabText: { color: '#FFF', fontSize: 12, fontWeight: '700', fontFamily: FONTS.bold, letterSpacing: 0.8 },
+  menu: { flexDirection: 'column', gap: 6, alignItems: 'flex-end' },
+  btn: { borderRadius: 16, paddingHorizontal: 14, paddingVertical: 8, minWidth: 40, alignItems: 'center' },
+  btnActive: { borderWidth: 2, borderColor: '#FFF' },
+  btnText: { color: '#FFF', fontWeight: '700', fontSize: 13, fontFamily: FONTS.bold },
 });
 
 export default DevStateToggle;

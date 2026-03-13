@@ -220,6 +220,26 @@ export async function resolveProfilePhotos(profiles: UserProfile[]): Promise<voi
       }
     }
   }
+
+  // Fire-and-forget: prefetch signed URLs into expo-image disk cache
+  prefetchProfileImages(profiles);
+}
+
+/** Prefetch all signed photo URLs so expo-image has them cached before render. */
+function prefetchProfileImages(profiles: UserProfile[]): void {
+  const urls: string[] = [];
+  for (const p of profiles) {
+    for (const photo of p.photos || []) {
+      if (photo.url && photo.url.startsWith('http')) {
+        urls.push(photo.url);
+      }
+    }
+  }
+  if (urls.length === 0) return;
+  // Dynamic import to avoid pulling expo-image into service bundle eagerly
+  import('expo-image').then(({ Image }) => {
+    Image.prefetch(urls);
+  }).catch(() => {});
 }
 
 function deriveKarmaTier(points: number): KarmaTier {
@@ -293,6 +313,18 @@ class CommunityBackendService {
   // Short-lived cache for friends area data (60s TTL)
   private friendsAreaCache: { data: FriendWithGridStatus[]; ts: number } | null = null;
   private static readonly FRIENDS_CACHE_TTL_MS = 60_000;
+
+  // Full friends-area result cache for stale-while-revalidate
+  private friendsAreaResultCache: {
+    data: { friends: FriendWithGridStatus[]; pendingProposals: any[]; activeMatch: ActiveMatch | null };
+    ts: number;
+  } | null = null;
+  private static readonly FRIENDS_AREA_RESULT_STALE_MS = 30_000; // serve stale for 30s
+  private backgroundRefreshInFlight = false;
+
+  // Timestamp of last full getFriendsAreaData completion — used by screens
+  // to skip redundant refetches on rapid tab switches
+  private lastFriendsAreaLoadAt = 0;
 
   // ========================================================================
   // Proposals (via Edge Functions)
@@ -419,6 +451,7 @@ class CommunityBackendService {
 
   invalidateFriendsCache(): void {
     this.friendsAreaCache = null;
+    this.friendsAreaResultCache = null;
     invalidateCachedFriendsData().catch(() => {});
   }
 
@@ -459,7 +492,8 @@ class CommunityBackendService {
       f.user_id === userId ? f.friend_id : f.user_id
     );
 
-    // Fetch friend profiles, active proposals, matches, karma scores and photos in parallel
+    // Fetch friend profiles, proposals, matches, karma, photos, AND user's own votes
+    // all in ONE parallel batch — eliminates the sequential vote-check round-trip
     const [
       { data: profiles },
       { data: friendProposalsA },
@@ -468,10 +502,12 @@ class CommunityBackendService {
       { data: matchesB },
       { data: userPhotos },
       { data: karmaScores },
+      { data: allUserVotes },
+      { data: allUserRecs },
     ] = await Promise.all([
       supabase
         .from('user_profiles')
-        .select('user_id, first_name, last_name, age, gender, pronouns, height_inches, ethnicity, religion, political_leaning, location, current_job, company_position, education_level, school, photos, interests, values, bio, drinking_frequency, cannabis_frequency, tobacco_frequency, other_drugs_frequency, non_negotiables, profile_photo_path, profile_completed, created_at, updated_at')
+        .select('user_id, first_name, last_name, age, gender, pronouns, location, current_job, profile_photo_path, photos, profile_completed, interests, values')
         .in('user_id', friendIds),
       // Proposals where friend is user_a
       supabase
@@ -508,6 +544,18 @@ class CommunityBackendService {
         .from('karma_scores')
         .select('user_id, karma_points, total_assists, total_proposals, badge_tier, proposal_success_rate, voting_accuracy_rate')
         .in('user_id', friendIds),
+      // Pre-fetch recent user votes (pending proposals are always recent)
+      supabase
+        .from('proposal_votes')
+        .select('proposal_id')
+        .eq('voter_user_id', userId)
+        .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
+      // Pre-fetch recent user recommendations
+      supabase
+        .from('friend_recommendations')
+        .select('source_proposal_id')
+        .eq('recommender_id', userId)
+        .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
     ]);
 
     const profileMap = new Map<string, any>();
@@ -551,31 +599,15 @@ class CommunityBackendService {
       if (friendIds.includes(m.user_id_2)) friendsWithMatch.add(m.user_id_2);
     }
 
-    // Fetch current user's votes on friends' active proposals
-    const activeProposalIds = Array.from(friendProposalMap.values()).flat();
-    let votedProposalIds = new Set<string>();
+    // Filter pre-fetched votes/recs to only friends' active proposals (in-memory)
+    const activeProposalIds = new Set(Array.from(friendProposalMap.values()).flat());
+    const votedProposalIds = new Set<string>();
 
-    if (activeProposalIds.length > 0) {
-      const [{ data: userVotes }, { data: userRecs }] = await Promise.all([
-        supabase
-          .from('proposal_votes')
-          .select('proposal_id')
-          .eq('voter_user_id', userId)
-          .in('proposal_id', activeProposalIds),
-        supabase
-          .from('friend_recommendations')
-          .select('source_proposal_id')
-          .eq('recommender_id', userId)
-          .in('source_proposal_id', activeProposalIds),
-      ]);
-
-      votedProposalIds = new Set((userVotes || []).map((v: any) => v.proposal_id));
-      const recommendedProposalIds = new Set((userRecs || []).map((r: any) => r.source_proposal_id));
-
-      // Merge: recommendation on a proposal also counts as "helped"
-      for (const id of recommendedProposalIds) {
-        votedProposalIds.add(id);
-      }
+    for (const v of (allUserVotes || [])) {
+      if (activeProposalIds.has(v.proposal_id)) votedProposalIds.add(v.proposal_id);
+    }
+    for (const r of (allUserRecs || [])) {
+      if (activeProposalIds.has(r.source_proposal_id)) votedProposalIds.add(r.source_proposal_id);
     }
 
     // Determine hasCompletedGrid for each friend:
@@ -744,28 +776,29 @@ class CommunityBackendService {
         };
       });
 
-      await resolveProfilePhotos(profilesToResolve);
-
       // Fetch yes-voter profiles to populate endorsers (photo avatars shown on proposal card)
       const proposalIds = proposals.map((p: any) => p.proposalId);
+      let voterProfiles: UserProfile[] = [];
+      let yesVotes: any[] = [];
+
       if (proposalIds.length > 0) {
-        const { data: yesVotes } = await supabase
+        const { data: votes } = await supabase
           .from('proposal_votes')
           .select('proposal_id, voter_user_id')
           .in('proposal_id', proposalIds)
           .eq('vote_type', 'YES');
+        yesVotes = votes || [];
 
-        if (yesVotes && yesVotes.length > 0) {
+        if (yesVotes.length > 0) {
           const uniqueVoterIds = [...new Set(yesVotes.map((v: any) => v.voter_user_id))];
           const [{ data: voterRows }, { data: voterPhotos }] = await Promise.all([
-            supabase.from('user_profiles').select('*').in('user_id', uniqueVoterIds),
+            supabase.from('user_profiles').select('user_id, first_name, last_name, profile_photo_path').in('user_id', uniqueVoterIds),
             supabase.from('user_photos').select('user_id, storage_path, is_main').in('user_id', uniqueVoterIds).eq('is_main', true),
           ]);
 
           if (voterRows && voterRows.length > 0) {
-            const voterProfiles = voterRows.map(mapProfileRow);
+            voterProfiles = voterRows.map(mapProfileRow);
 
-            // Inject main photo from user_photos table (real users store photos there, not in user_profiles.photos)
             if (voterPhotos && voterPhotos.length > 0) {
               const mainPhotoByUser = new Map<string, string>();
               for (const p of voterPhotos) {
@@ -778,27 +811,31 @@ class CommunityBackendService {
                 }
               }
             }
-
-            await resolveProfilePhotos(voterProfiles);
-            const voterMap = new Map(voterProfiles.map(p => [p.userId, p]));
-
-            // Group yes-voter IDs by proposal
-            const votesByProposal = new Map<string, string[]>();
-            for (const vote of yesVotes) {
-              const list = votesByProposal.get(vote.proposal_id) ?? [];
-              list.push(vote.voter_user_id);
-              votesByProposal.set(vote.proposal_id, list);
-            }
-
-            // Assign first 3 endorsers to each proposal
-            for (const proposal of proposals) {
-              const voterIds = votesByProposal.get(proposal.proposalId) ?? [];
-              proposal.endorsers = voterIds
-                .slice(0, 3)
-                .map((vid: string) => ({ endorserProfile: voterMap.get(vid) }) as any)
-                .filter((e: any) => e.endorserProfile);
-            }
           }
+        }
+      }
+
+      // Sign ALL photos in one batch — partners + endorsers together
+      await resolveProfilePhotos([...profilesToResolve, ...voterProfiles]);
+
+      if (yesVotes.length > 0 && voterProfiles.length > 0) {
+        const voterMap = new Map(voterProfiles.map(p => [p.userId, p]));
+
+        // Group yes-voter IDs by proposal
+        const votesByProposal = new Map<string, string[]>();
+        for (const vote of yesVotes) {
+          const list = votesByProposal.get(vote.proposal_id) ?? [];
+          list.push(vote.voter_user_id);
+          votesByProposal.set(vote.proposal_id, list);
+        }
+
+        // Assign first 3 endorsers to each proposal
+        for (const proposal of proposals) {
+          const voterIds = votesByProposal.get(proposal.proposalId) ?? [];
+          proposal.endorsers = voterIds
+            .slice(0, 3)
+            .map((vid: string) => ({ endorserProfile: voterMap.get(vid) }) as any)
+            .filter((e: any) => e.endorserProfile);
         }
       }
 
@@ -852,68 +889,58 @@ class CommunityBackendService {
 
     const partnerId = match.user_id_1 === userId ? match.user_id_2 : match.user_id_1;
 
-    // Fetch partner profile
-    const { data: partnerRow } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('user_id', partnerId)
-      .maybeSingle();
+    // Fire partner profile, message count, and endorser queries ALL in parallel
+    const [{ data: partnerRow }, { count: messageCount }, endorserData] = await Promise.all([
+      supabase.from('user_profiles').select('*').eq('user_id', partnerId).maybeSingle(),
+      supabase.from('messages').select('id', { count: 'exact', head: true }).eq('match_id', match.id),
+      match.proposal_id
+        ? supabase.from('proposal_votes').select('voter_user_id').eq('proposal_id', match.proposal_id).eq('vote_type', 'YES').limit(3)
+        : Promise.resolve({ data: null }),
+    ]);
 
     const partnerProfile = partnerRow ? mapProfileRow(partnerRow) : { id: partnerId, firstName: 'Match', photos: [] } as any;
-
-    await resolveProfilePhotos([partnerProfile]);
 
     const matchedAt = new Date(match.created_at);
     const now = new Date();
     const daysActive = Math.floor((now.getTime() - matchedAt.getTime()) / (1000 * 60 * 60 * 24));
     const daysUntilCanEnd = Math.max(0, ACTIVE_MATCH_MINIMUM_DAYS - daysActive);
 
-    // Count messages
-    const { count: messageCount } = await supabase
-      .from('messages')
-      .select('id', { count: 'exact', head: true })
-      .eq('match_id', match.id);
-
-    // Fetch yes-voters from the originating proposal for "Picked by" avatars
+    // Resolve endorser profiles in parallel with partner photo signing
     let endorsers: any[] = [];
-    if (match.proposal_id) {
-      const { data: yesVotes } = await supabase
-        .from('proposal_votes')
-        .select('voter_user_id')
-        .eq('proposal_id', match.proposal_id)
-        .eq('vote_type', 'YES')
-        .limit(3);
+    const yesVotes = endorserData?.data;
 
-      if (yesVotes && yesVotes.length > 0) {
-        const voterIds = yesVotes.map((v: any) => v.voter_user_id);
-        const [{ data: voterRows }, { data: voterPhotos }] = await Promise.all([
-          supabase.from('user_profiles').select('*').in('user_id', voterIds),
-          supabase.from('user_photos').select('user_id, storage_path, is_main').in('user_id', voterIds).eq('is_main', true),
-        ]);
+    if (yesVotes && yesVotes.length > 0) {
+      const voterIds = yesVotes.map((v: any) => v.voter_user_id);
+      const [{ data: voterRows }, { data: voterPhotos }] = await Promise.all([
+        supabase.from('user_profiles').select('user_id, first_name, last_name, profile_photo_path').in('user_id', voterIds),
+        supabase.from('user_photos').select('user_id, storage_path, is_main').in('user_id', voterIds).eq('is_main', true),
+      ]);
 
-        if (voterRows && voterRows.length > 0) {
-          const voterProfiles = voterRows.map(mapProfileRow);
+      if (voterRows && voterRows.length > 0) {
+        const voterProfiles = voterRows.map(mapProfileRow);
 
-          if (voterPhotos && voterPhotos.length > 0) {
-            const mainPhotoByUser = new Map<string, string>();
-            for (const p of voterPhotos) {
-              if (!mainPhotoByUser.has(p.user_id)) mainPhotoByUser.set(p.user_id, p.storage_path);
-            }
-            for (const profile of voterProfiles) {
-              if (profile.photos.length === 0 && mainPhotoByUser.has(profile.userId)) {
-                const path = mainPhotoByUser.get(profile.userId)!;
-                profile.photos = [{ id: path, url: path, isMain: true, order: 0 }];
-              }
+        if (voterPhotos && voterPhotos.length > 0) {
+          const mainPhotoByUser = new Map<string, string>();
+          for (const p of voterPhotos) {
+            if (!mainPhotoByUser.has(p.user_id)) mainPhotoByUser.set(p.user_id, p.storage_path);
+          }
+          for (const profile of voterProfiles) {
+            if (profile.photos.length === 0 && mainPhotoByUser.has(profile.userId)) {
+              const path = mainPhotoByUser.get(profile.userId)!;
+              profile.photos = [{ id: path, url: path, isMain: true, order: 0 }];
             }
           }
-
-          await resolveProfilePhotos(voterProfiles);
-          const voterMap = new Map(voterProfiles.map(p => [p.userId, p]));
-          endorsers = voterIds
-            .map((vid: string) => ({ endorserProfile: voterMap.get(vid) }))
-            .filter((e: any) => e.endorserProfile);
         }
+
+        // Sign partner + endorser photos in one batch
+        await resolveProfilePhotos([partnerProfile, ...voterProfiles]);
+        const voterMap = new Map(voterProfiles.map(p => [p.userId, p]));
+        endorsers = voterIds
+          .map((vid: string) => ({ endorserProfile: voterMap.get(vid) }))
+          .filter((e: any) => e.endorserProfile);
       }
+    } else {
+      await resolveProfilePhotos([partnerProfile]);
     }
 
     return {
@@ -1102,6 +1129,35 @@ class CommunityBackendService {
     pendingProposals: any[];
     activeMatch: ActiveMatch | null;
   }> {
+    // Stale-while-revalidate: return cached result immediately, refresh in background
+    if (
+      this.friendsAreaResultCache &&
+      Date.now() - this.friendsAreaResultCache.ts < CommunityBackendService.FRIENDS_AREA_RESULT_STALE_MS
+    ) {
+      this.lastFriendsAreaLoadAt = Date.now();
+      // Trigger background refresh if not already in-flight
+      if (!this.backgroundRefreshInFlight) {
+        this.backgroundRefreshInFlight = true;
+        this._fetchFriendsAreaData().then(result => {
+          this.friendsAreaResultCache = { data: result, ts: Date.now() };
+        }).catch(() => {}).finally(() => {
+          this.backgroundRefreshInFlight = false;
+        });
+      }
+      return this.friendsAreaResultCache.data;
+    }
+
+    const result = await this._fetchFriendsAreaData();
+    this.friendsAreaResultCache = { data: result, ts: Date.now() };
+    this.lastFriendsAreaLoadAt = Date.now();
+    return result;
+  }
+
+  private async _fetchFriendsAreaData(): Promise<{
+    friends: FriendWithGridStatus[];
+    pendingProposals: any[];
+    activeMatch: ActiveMatch | null;
+  }> {
     const [friends, pendingProposals, activeMatch] = await Promise.all([
       this.getFriendsAsAnchors(),
       this.getPendingMatchProposals(),
@@ -1114,6 +1170,11 @@ class CommunityBackendService {
     }
 
     return { friends, pendingProposals, activeMatch };
+  }
+
+  /** Timestamp of last getFriendsAreaData() completion (ms since epoch). */
+  getLastFriendsAreaLoadTime(): number {
+    return this.lastFriendsAreaLoadAt;
   }
 
   /**

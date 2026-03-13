@@ -681,7 +681,7 @@ export const mockFriends: Friend[] = [
     },
     friendCode: 'BRIDGE123',
     badges: [
-      { id: 'b1', type: 'great_matcher', earnedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'b1', giverId: 'friend2', receiverId: 'friend1', iconName: 'medal-5303266', message: 'Great matchmaker!', isFeatured: false, isHidden: false, createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
     ],
     addedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
   },

@@ -1,5 +1,8 @@
 // Core types for the Bridge dating application
 
+import { FriendBadge } from './badges';
+export * from './badges';
+
 // ============================================================================
 // Common Type Aliases
 // ============================================================================
@@ -262,8 +265,6 @@ export interface Conversation {
 // Friend Types
 // ============================================================================
 
-export type FriendBadgeType = 'great_matcher' | 'algorithm_buster' | 'social_butterfly';
-
 export interface Friend {
   id: UUID;
   userId: UUID;
@@ -272,12 +273,6 @@ export interface Friend {
   friendCode?: string;
   badges: FriendBadge[];
   addedAt: ISODateString;
-}
-
-export interface FriendBadge {
-  id: UUID;
-  type: FriendBadgeType;
-  earnedAt: ISODateString;
 }
 
 // ============================================================================
@@ -363,6 +358,7 @@ export type RootStackParamList = {
   SuggestMatch: undefined;
   Suspended: undefined;
   ContactInvite: { autoAddCode?: string } | undefined;
+  BadgeManagement: undefined;
 };
 
 export type MainTabParamList = {

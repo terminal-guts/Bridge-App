@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { View, ScrollView, FlatList, TouchableOpacity, Alert, RefreshControl, Modal, Switch, Platform, TextInput, ActionSheetIOS } from 'react-native';
+import { View, ScrollView, FlatList, TouchableOpacity, Alert, RefreshControl, Modal, Switch, Platform, TextInput, ActionSheetIOS, ActivityIndicator } from 'react-native';
 import ReanimatedAnimated, {
     useSharedValue,
     useAnimatedStyle,
@@ -37,7 +37,7 @@ import {
 import { ProfileStrengthDashboard } from '../../components/profile/ProfileStrengthDashboard';
 import { PhotoCarousel } from '../../components/profile/PhotoCarousel';
 import { KarmaInfoModal } from '../../components/community/karma/KarmaInfoModal';
-import { lightHaptic, mediumHaptic } from '../../utils/haptics';
+import { lightHaptic, mediumHaptic, successHaptic } from '../../utils/haptics';
 import { showToast } from '../../utils/toast';
 import { DEEP_QUESTIONS, getUnansweredQuestions } from '../../utils/deepQuestions';
 import { createLogger } from '../../utils/secureLogger';
@@ -48,6 +48,9 @@ import { GuideTarget } from '../../components/guides';
 import { useGuide } from '../../hooks/useGuide';
 import { profileGuide } from '../../config/guides';
 import { EvaIcon } from '../../components/icons';
+import { BadgeIcon } from '../../components/icons/BadgeIcon';
+import { FriendBadgeWithGiver } from '../../types/badges';
+import { getReceivedBadges, toggleFeatured } from '../../services/badgeService';
 
 interface ProfileScreenProps {
   navigation: NavigationProp<MainTabParamList, 'Profile'>;
@@ -192,7 +195,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [friendCount, setFriendCount] = useState<number>(0);
-  const [activeTab, setActiveTab] = useState<'about' | 'questions'>('about');
+  const [activeTab, setActiveTab] = useState<'about' | 'badges' | 'questions'>('about');
+  const [badges, setBadges] = useState<FriendBadgeWithGiver[]>([]);
+  const [badgesLoading, setBadgesLoading] = useState(false);
   // Preview modal removed - now using ProfilePreviewScreen for standardized view
   const [showKarmaInfoModal, setShowKarmaInfoModal] = useState(false);
   const [showPhotoCarousel, setShowPhotoCarousel] = useState(false);
@@ -304,16 +309,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
   }, []);
 
   // Reload profile data when screen comes into focus (e.g., after editing profile)
-  // Always reload profile when returning to screen to ensure fresh data after edits
+  // Skip if data was fetched less than 10 seconds ago (rapid tab switching)
   useFocusEffect(
     useCallback(() => {
+      if (Date.now() - lastFetchRef.current < 10_000) {
+        return;
+      }
       logger.info('[ProfileScreen] useFocusEffect triggered - reloading profile data');
 
       // Load all data in parallel for better performance
       Promise.all([
         loadProfile(),
-        loadFriendCount()
-      ]).catch(error => {
+        loadFriendCount(),
+        loadBadges(),
+      ]).then(() => {
+        lastFetchRef.current = Date.now();
+      }).catch(error => {
         logger.error('Failed to load profile data:', error);
         // Show user-visible error notification
         showToast.error(
@@ -345,6 +356,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
     await Promise.all([
       loadProfile(),
       loadFriendCount(),
+      loadBadges(),
     ]);
     lastFetchRef.current = Date.now();
     if (isMountedRef.current) {
@@ -619,6 +631,135 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
     if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
     if (diffMonths < 12) return `${diffMonths}mo ago`;
     return `${Math.floor(diffMonths / 12)}y ago`;
+  };
+
+  const loadBadges = useCallback(async () => {
+    setBadgesLoading(true);
+    const result = await getReceivedBadges();
+    if (result.ok && result.data) {
+      setBadges(result.data);
+    }
+    setBadgesLoading(false);
+  }, []);
+
+  // Load badges when switching to the badges tab
+  useEffect(() => {
+    if (activeTab === 'badges') {
+      loadBadges();
+    }
+  }, [activeTab, loadBadges]);
+
+  const handleToggleFeaturedBadge = async (badge: FriendBadgeWithGiver) => {
+    lightHaptic();
+    const result = await toggleFeatured(badge.id, !badge.isFeatured);
+    if (result.ok) {
+      successHaptic();
+      loadBadges();
+    } else {
+      showToast.error(result.error?.message || 'Failed to update');
+    }
+  };
+
+  const renderBadgesTab = () => {
+    const featured = badges.filter(b => b.isFeatured);
+    const unfeatured = badges.filter(b => !b.isFeatured);
+
+    if (badgesLoading) {
+      return (
+        <StyledView className="px-4 py-12 items-center">
+          <ActivityIndicator color="#437FFF" />
+        </StyledView>
+      );
+    }
+
+    if (badges.length === 0) {
+      return (
+        <StyledView className="px-6 py-12 items-center">
+          <EvaIcon name="award" variant="outline" size={48} color="#D1D5DB" />
+          <H3 style={{ fontFamily: FONTS.semiBold, color: COLORS.text.primary, marginTop: 16, marginBottom: 8 }}>
+            No badges yet
+          </H3>
+          <Body style={{ color: COLORS.text.muted, textAlign: 'center', lineHeight: 22 }}>
+            When friends award you badges, they'll show up here. Badges are mini-testimonials that make your profile stand out.
+          </Body>
+        </StyledView>
+      );
+    }
+
+    const renderBadgeRow = (badge: FriendBadgeWithGiver) => (
+      <StyledView
+        key={badge.id}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingVertical: 14,
+          paddingHorizontal: 4,
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.borderSubtle,
+          gap: 12,
+        }}
+      >
+        <BadgeIcon name={badge.iconName} size={30} />
+        <StyledView style={{ flex: 1 }}>
+          <Body style={{ fontFamily: FONTS.medium, color: COLORS.text.primary }} numberOfLines={1}>
+            {badge.message}
+          </Body>
+          <Body style={{ fontFamily: FONTS.regular, fontSize: 13, color: COLORS.text.muted, marginTop: 2 }}>
+            from {badge.giverFirstName}
+          </Body>
+        </StyledView>
+        <StyledTouchableOpacity
+          onPress={() => handleToggleFeaturedBadge(badge)}
+          style={{ padding: 8 }}
+          activeOpacity={0.6}
+        >
+          <EvaIcon
+            name="star"
+            variant={badge.isFeatured ? 'fill' : 'outline'}
+            size={22}
+            color={badge.isFeatured ? '#F59E0B' : COLORS.text.muted}
+          />
+        </StyledTouchableOpacity>
+      </StyledView>
+    );
+
+    return (
+      <StyledView className="px-4 py-4">
+        {/* Featured Section */}
+        {featured.length > 0 && (
+          <StyledView style={{ marginBottom: 20 }}>
+            <Body style={{
+              fontFamily: FONTS.semiBold,
+              fontSize: 13,
+              color: COLORS.text.muted,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+              marginBottom: 8,
+            }}>
+              Featured ({featured.length}/3)
+            </Body>
+            {featured.map(b => renderBadgeRow(b))}
+          </StyledView>
+        )}
+
+        {/* Unfeatured Badges */}
+        {unfeatured.length > 0 && (
+          <StyledView style={{ marginBottom: 20 }}>
+            <Body style={{
+              fontFamily: FONTS.semiBold,
+              fontSize: 13,
+              color: COLORS.text.muted,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+              marginBottom: 8,
+            }}>
+              All Badges
+            </Body>
+            {unfeatured.map(b => renderBadgeRow(b))}
+          </StyledView>
+        )}
+      </StyledView>
+    );
   };
 
   const renderAboutTab = () => {
@@ -1258,16 +1399,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               </StyledTouchableOpacity>
             </StyledView>
           </StyledView>
+
         </StyledView>
 
-        {/* Tab Bar */}
+        {/* Tab Bar — About | Questions | Badges */}
         <StyledView className="flex-row border-t border-neutral-100">
           <StyledTouchableOpacity
             onPress={() => {
               lightHaptic();
               setActiveTab('about');
             }}
-            style={{ width: '50%' }}
+            style={{ width: '33.33%' }}
             className="py-3 items-center relative"
             accessibilityLabel="About tab"
             accessibilityRole="tab"
@@ -1284,7 +1426,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               <StyledView className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500" />
             )}
           </StyledTouchableOpacity>
-          <GuideTarget id="questions-tab" style={{ width: '50%' }}>
+          <GuideTarget id="questions-tab" style={{ width: '33.33%' }}>
             <StyledTouchableOpacity
               onPress={() => {
                 lightHaptic();
@@ -1307,11 +1449,34 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               )}
             </StyledTouchableOpacity>
           </GuideTarget>
+          <StyledTouchableOpacity
+            onPress={() => {
+              lightHaptic();
+              setActiveTab('badges');
+            }}
+            style={{ width: '33.34%' }}
+            className="py-3 items-center relative"
+            accessibilityLabel={`Badges tab, ${badges.length} badge${badges.length !== 1 ? 's' : ''}`}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === 'badges' }}
+          >
+            <Body
+              className={`font-medium ${
+                activeTab === 'badges' ? 'text-primary-500' : 'text-neutral-600'
+              }`}
+            >
+              Badges{badges.length > 0 ? ` (${badges.length})` : ''}
+            </Body>
+            {activeTab === 'badges' && (
+              <StyledView className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500" />
+            )}
+          </StyledTouchableOpacity>
         </StyledView>
       </StyledView>
 
         {/* Tab Content */}
         {activeTab === 'about' && renderAboutTab()}
+        {activeTab === 'badges' && renderBadgesTab()}
         {activeTab === 'questions' && renderQuestionsTab()}
       </StyledScrollView>
 

@@ -76,7 +76,6 @@ app.include_router(proposals.router)
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from services.daily_pairing_engine import run_daily_pairing
-from services.match_nudge_engine import run_match_nudge_job
 
 scheduler = AsyncIOScheduler()
 
@@ -88,15 +87,7 @@ def daily_pairing_job():
     except Exception as e:
         print(f"[SCHEDULER] Error in daily pairing: {e}")
 
-def nudge_job():
-    try:
-        print("[SCHEDULER] Checking for inactive matches to nudge...")
-        run_match_nudge_job(supabase)
-    except Exception as e:
-        print(f"[SCHEDULER] Error in nudge job: {e}")
-
 scheduler.add_job(daily_pairing_job, 'cron', hour=0, minute=0, timezone='UTC')
-scheduler.add_job(nudge_job, 'cron', hour=12, minute=0, timezone='UTC')
 
 @app.on_event("startup")
 async def start_scheduler():

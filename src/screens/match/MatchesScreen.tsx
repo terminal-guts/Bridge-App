@@ -272,21 +272,21 @@ export function MatchesScreen() {
     const loadMatches = async () => {
         try {
             // Fetch match data and profile in parallel
-            const [data] = await Promise.all([
+            const [data, profileResult] = await Promise.all([
                 communityService.getFriendsAreaData(),
-                getUserProfile().then(result => {
-                    if (isMountedRef.current && result.ok && result.data) setProfile(result.data);
-                }),
+                getUserProfile(),
             ]);
+            const currentUserId = profileResult.ok && profileResult.data ? profileResult.data.userId : null;
+            if (isMountedRef.current && profileResult.ok && profileResult.data) setProfile(profileResult.data);
             if (!isMountedRef.current) return;
             setActiveMatch(data.activeMatch);
             setPendingProposals(data.pendingProposals || []);
 
             // Check for unread messages on active match
-            if (data.activeMatch) {
+            if (data.activeMatch && currentUserId) {
                 const matchId = data.activeMatch.matchId ?? data.activeMatch.id;
-                if (matchId && profile?.userId) {
-                    getUnreadCount(matchId, profile.userId).then(result => {
+                if (matchId) {
+                    getUnreadCount(matchId, currentUserId).then(result => {
                         if (isMountedRef.current) setHasUnreadMatch(result.ok && (result.data ?? 0) > 0);
                     }).catch(() => {});
                 }
@@ -335,9 +335,12 @@ export function MatchesScreen() {
         }
     }, []);
 
-    // Reload match data + profile on each tab focus
+    // Reload match data + profile on each tab focus — skip if recently loaded
     useFocusEffect(
         useCallback(() => {
+            const lastLoad = 'getLastFriendsAreaLoadTime' in communityService
+                ? (communityService as any).getLastFriendsAreaLoadTime() : 0;
+            if (Date.now() - lastLoad < 10_000) return; // data is fresh, skip
             loadMatches();
         }, []),
     );
@@ -836,6 +839,7 @@ export function MatchesScreen() {
                     </View>
                 </TouchableOpacity>
             </Modal>
+
         </View>
     );
 }

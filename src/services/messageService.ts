@@ -931,3 +931,29 @@ export const getFriendUnreadCount = async (
     return { ok: false, error: { code: 'COUNT_ERROR', message: error.message } };
   }
 };
+
+/**
+ * Batch check which friends have unread messages — single query instead of N.
+ * Returns a set of friend IDs that have at least one unread message.
+ */
+export const getBatchUnreadFriendIds = async (
+  userId: string,
+  friendIds: string[],
+): Promise<Set<string>> => {
+  if (!USE_REAL_BACKEND || !isValidUUID(userId) || friendIds.length === 0) {
+    return new Set();
+  }
+  try {
+    const { data, error } = await supabase
+      .from('friend_messages')
+      .select('sender_id')
+      .eq('receiver_id', userId)
+      .in('sender_id', friendIds)
+      .is('read_at', null);
+
+    if (error || !data) return new Set();
+    return new Set(data.map((r: any) => r.sender_id));
+  } catch {
+    return new Set();
+  }
+};

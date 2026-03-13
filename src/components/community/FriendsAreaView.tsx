@@ -28,6 +28,9 @@ import {
   CommunityTask,
 } from '../../types/community';
 import { FriendCard } from '../ui/FriendCard';
+import { BadgeAwardModal } from '../badges/BadgeAwardModal';
+import { getBadgeForFriend } from '../../services/badgeService';
+import { FriendBadge } from '../../types/badges';
 import { TimerBadge } from './TimerBadge';
 import { CelebrationBanner } from './CelebrationBanner';
 import { PendingProposalCard } from './proposal/PendingProposalCard';
@@ -46,7 +49,6 @@ import { SHADOWS } from '../../theme/shadows';
 import { createLogger } from '../../utils/secureLogger';
 import { showToast } from '../../utils/toast';
 import { successHaptic, warningHaptic, errorHaptic } from '../../utils/haptics';
-import { sendNudge } from '../../services/nudgeService';
 import { getPreviousStreaks, saveCurrentStreaks, detectStreakChanges } from '../../services/streakTrackingService';
 
 const logger = createLogger('FriendsAreaView');
@@ -72,6 +74,20 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
   const [pendingProposals, setPendingProposals] = useState<MatchProposal[]>([]);
   const [activeMatch, setActiveMatch] = useState<ActiveMatch | null>(null);
   const [showEndMatchModal, setShowEndMatchModal] = useState(false);
+
+  // Badge award modal state
+  const [badgeModalVisible, setBadgeModalVisible] = useState(false);
+  const [badgeTargetFriend, setBadgeTargetFriend] = useState<{ id: string; name: string } | null>(null);
+  const [existingBadge, setExistingBadge] = useState<FriendBadge | null>(null);
+
+  const handleBadgePress = useCallback(async (friendId: string, friendName: string) => {
+    const result = await getBadgeForFriend(friendId);
+    if (result.ok) {
+      setExistingBadge(result.data || null);
+    }
+    setBadgeTargetFriend({ id: friendId, name: friendName });
+    setBadgeModalVisible(true);
+  }, []);
 
   // DEV: Test state control (disabled for real user testing)
   const [timeRemaining, setTimeRemaining] = useState('');
@@ -207,18 +223,6 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
       showToast.info('Streak growing!', `You and ${friendName} hit ${days} days!`);
     }
   }, []);
-
-  // Nudge handler — sends push notification via edge function
-  const handleNudgeFriend = useCallback(async (friendId: string) => {
-    const friend = friends.find(f => f.friendId === friendId);
-    const friendName = friend?.friend?.firstName || 'Your friend';
-    const result = await sendNudge(friendId);
-    if (result.ok) {
-      showToast.success('Nudge sent!', `${friendName} will be reminded to vote.`);
-    } else {
-      showToast.error('Could not send nudge', 'Check your connection and try again.');
-    }
-  }, [friends]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -515,8 +519,8 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                       onHelpMatch={() => handleHelpFriend(friendItem.friendId)}
                       onMessage={() => handleChatWithFriend(friendItem.friendId)}
                       onViewProfile={() => handleViewFriendProfile(friendItem.friendId)}
-                      onNudge={friendItem.variant === 'completed' ? handleNudgeFriend : undefined}
                       onStreakMilestone={handleStreakMilestone}
+                      onBadgePress={() => handleBadgePress(friendItem.friendId, friendItem.friend?.firstName || 'Friend')}
                     />
                   );
 
@@ -632,6 +636,24 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
         onClose={() => setShowEndMatchModal(false)}
         onSubmit={handleEndMatchSubmit}
       />
+
+      {/* Badge Award Modal */}
+      {badgeTargetFriend && (
+        <BadgeAwardModal
+          visible={badgeModalVisible}
+          onClose={() => {
+            setBadgeModalVisible(false);
+            setBadgeTargetFriend(null);
+            setExistingBadge(null);
+          }}
+          friendId={badgeTargetFriend.id}
+          friendName={badgeTargetFriend.name}
+          existingBadge={existingBadge}
+          onSuccess={() => {
+            showToast.success('Badge saved!');
+          }}
+        />
+      )}
     </>
   );
 }

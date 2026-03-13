@@ -2,7 +2,7 @@
  * Tests for notification service V2
  *
  * Covers: realtime fallback notifications (notifyMatchNotice, notifyNewMessage,
- * notifyProposalDeciding, notifyFriendNudge, notifySharedCelebration),
+ * notifyProposalDeciding, notifySharedCelebration),
  * scheduleAppOpenChecks, cancelLegacyScheduledNotifications
  */
 
@@ -61,13 +61,13 @@ jest.mock('../../src/services/notificationPreferencesService', () => ({
     getPreferences: jest.fn().mockResolvedValue({
       matchesEnabled: true,
       messagesEnabled: true,
-      nudgesEnabled: true,
+
       showNameIfWinner: true,
     }),
     syncFromServer: jest.fn().mockResolvedValue({
       matchesEnabled: true,
       messagesEnabled: true,
-      nudgesEnabled: true,
+
       showNameIfWinner: true,
     }),
   },
@@ -107,7 +107,7 @@ describe('notifyMatchNotice', () => {
 
   it('skips when matchesEnabled is false', async () => {
     (notificationPreferencesService.getPreferences as jest.Mock).mockResolvedValueOnce({
-      matchesEnabled: false, messagesEnabled: true, nudgesEnabled: true, showNameIfWinner: true,
+      matchesEnabled: false, messagesEnabled: true, showNameIfWinner: true,
     });
     await notificationService.notifyMatchNotice('Alice');
     expect(mockScheduleNotification).not.toHaveBeenCalled();
@@ -131,7 +131,7 @@ describe('notifyNewMessage', () => {
 
   it('skips when messagesEnabled is false', async () => {
     (notificationPreferencesService.getPreferences as jest.Mock).mockResolvedValueOnce({
-      matchesEnabled: true, messagesEnabled: false, nudgesEnabled: true, showNameIfWinner: true,
+      matchesEnabled: true, messagesEnabled: false, showNameIfWinner: true,
     });
     await notificationService.notifyNewMessage('Bob', 'Hey');
     expect(mockScheduleNotification).not.toHaveBeenCalled();
@@ -145,23 +145,6 @@ describe('notifyProposalDeciding', () => {
     expect(call.content.title).toBe('Your community has spoken');
     expect(call.content.body).toContain('Carol');
     expect(call.content.data.proposalId).toBe('proposal-123');
-  });
-});
-
-describe('notifyFriendNudge', () => {
-  it('includes nudger name', async () => {
-    await notificationService.notifyFriendNudge('Bob');
-    const call = mockScheduleNotification.mock.calls[0][0];
-    expect(call.content.title).toContain('Bob');
-    expect(call.content.data.type).toBe('friend_nudge');
-  });
-
-  it('skips when nudgesEnabled is false', async () => {
-    (notificationPreferencesService.getPreferences as jest.Mock).mockResolvedValueOnce({
-      matchesEnabled: true, messagesEnabled: true, nudgesEnabled: false, showNameIfWinner: true,
-    });
-    await notificationService.notifyFriendNudge('Bob');
-    expect(mockScheduleNotification).not.toHaveBeenCalled();
   });
 });
 

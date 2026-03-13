@@ -315,6 +315,8 @@ export const addFriendByCode = async (
       .eq('user_id', result.friend_user_id)
       .single();
 
+    friendCountCache = null; // invalidate on successful add
+
     return {
       ok: true,
       data: {
@@ -499,6 +501,8 @@ export const removeFriend = async (
       return createErrorResponse('DELETE_ERROR', error2.message);
     }
 
+    friendCountCache = null; // invalidate on removal
+
     return {
       ok: true,
     };
@@ -510,9 +514,18 @@ export const removeFriend = async (
 /**
  * Get friend count for a user
  * SECURITY FIX: Gets userId from authenticated session, not from client
+ * Cached in-memory for 60s to avoid redundant DB hits on tab switches.
  */
+let friendCountCache: { value: number; at: number } | null = null;
+const FRIEND_COUNT_TTL = 60_000; // 60 seconds
+
 export const getFriendCount = async (): Promise<ApiResponse<number>> => {
   try {
+    // Return cached value if fresh
+    if (friendCountCache && Date.now() - friendCountCache.at < FRIEND_COUNT_TTL) {
+      return { ok: true, data: friendCountCache.value };
+    }
+
     // SECURITY: Get user ID from authenticated session
     const userId = await requireAuth();
 
@@ -532,9 +545,12 @@ export const getFriendCount = async (): Promise<ApiResponse<number>> => {
       return createErrorResponse('COUNT_ERROR', error.message);
     }
 
+    const result = count || 0;
+    friendCountCache = { value: result, at: Date.now() };
+
     return {
       ok: true,
-      data: count || 0,
+      data: result,
     };
   } catch (error: any) {
     return createErrorResponse('COUNT_ERROR', error.message || 'Failed to count friends');

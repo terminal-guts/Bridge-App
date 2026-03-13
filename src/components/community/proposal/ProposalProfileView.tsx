@@ -8,6 +8,7 @@ import { FONTS, FONT_SIZES } from '../../../constants/typography';
 import { COLORS } from '../../../theme/colors';
 import { EvaIcon, IconScoutIcon } from '../../icons';
 import { WineGlassIcon, LeafIcon, CigaretteIcon } from '../../icons/Icons';
+import { ProfileBadgesSection } from '../../badges/ProfileBadgesSection';
 import { formatProfileValue } from '../../../utils/formatProfileValue';
 
 const StyledView = styled(View);
@@ -54,6 +55,11 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                         contentFit="cover"
                     />
                 </StyledView>
+            )}
+
+            {/* Friend Badges (no author reveal in voting context) */}
+            {user.userId && (
+                <ProfileBadgesSection userId={user.userId} revealAuthor={false} />
             )}
 
             {/* Basic Info Row */}

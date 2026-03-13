@@ -171,19 +171,6 @@ export const notificationService = {
     },
 
     /**
-     * Notify when a friend nudges the user (realtime fallback)
-     */
-    notifyFriendNudge: async (nudgerName: string) => {
-        const prefs = await notificationPreferencesService.getPreferences();
-        if (!prefs.nudgesEnabled) return;
-        await notificationService.scheduleLocalNotification(
-            `${nudgerName} nudged you`,
-            `They're waiting for your vote. Don't leave them hanging.`,
-            { type: 'friend_nudge', screen: 'Community' },
-        );
-    },
-
-    /**
      * Notify when friends helped make a match happen (realtime fallback)
      */
     notifySharedCelebration: async (friendNames: string[], personAName: string, personBName: string) => {

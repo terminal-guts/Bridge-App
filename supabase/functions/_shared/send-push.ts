@@ -23,7 +23,6 @@ const TOTAL_DAILY_CAP = 6;
 
 // Cooldown hours by notification type
 const COOLDOWN_HOURS: Record<string, number> = {
-  friend_nudge: 24,
   streak_at_risk: 24,
   vote_reminder: 20,       // slightly less than 24h so it doesn't drift
   ice_breaker: 0,           // no cooldown, dedup via metadata (once per match per user)
@@ -40,7 +39,6 @@ const PREFERENCE_GATE: Record<string, 'pref_matches_enabled' | 'pref_messages_en
   deciding: 'pref_matches_enabled',
   match_expiring: 'pref_matches_enabled',
   vote_reminder: 'pref_nudges_enabled',
-  friend_nudge: 'pref_nudges_enabled',
   shared_celebration: 'pref_matches_enabled',
   ice_breaker: 'pref_matches_enabled',
   morning_leaderboard: 'pref_nudges_enabled',

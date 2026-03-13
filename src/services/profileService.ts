@@ -401,6 +401,7 @@ export const createUserProfile = async (
 
 /**
  * Get the current user's profile directly from Supabase tables.
+ * Uses stale-while-revalidate: returns stale cache immediately + refreshes in background.
  */
 export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
   // Return cached profile if still fresh
@@ -408,7 +409,16 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
     return { ok: true, data: profileCache.data };
   }
 
-  // Deduplicate in-flight requests — if a fetch is already running, reuse its promise
+  // Stale-while-revalidate: if cache exists but expired, return stale + refresh
+  if (profileCache) {
+    // Trigger background refresh (deduplicated)
+    if (!pendingProfileFetch) {
+      pendingProfileFetch = _fetchUserProfile().finally(() => { pendingProfileFetch = null; });
+    }
+    return { ok: true, data: profileCache.data };
+  }
+
+  // No cache at all — must wait for network
   if (pendingProfileFetch) {
     return pendingProfileFetch;
   }

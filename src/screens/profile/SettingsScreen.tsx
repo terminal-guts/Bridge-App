@@ -35,7 +35,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
   // Notification Preferences
   const [matchesEnabled, setMatchesEnabled] = useState(true);
   const [messagesEnabled, setMessagesEnabled] = useState(true);
-  const [nudgesEnabled, setNudgesEnabled] = useState(true);
   const [showNameIfWinner, setShowNameIfWinner] = useState(true);
   const [leaderboardVisible, setLeaderboardVisible] = useState(false);
 
@@ -48,17 +47,15 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
     const prefs = await notificationPreferencesService.getPreferences();
     setMatchesEnabled(prefs.matchesEnabled);
     setMessagesEnabled(prefs.messagesEnabled);
-    setNudgesEnabled(prefs.nudgesEnabled);
     setShowNameIfWinner(prefs.showNameIfWinner);
     setLeaderboardVisible(prefs.leaderboardVisible);
   };
 
-  const updatePreference = async (key: 'matchesEnabled' | 'messagesEnabled' | 'nudgesEnabled' | 'showNameIfWinner' | 'leaderboardVisible', value: boolean) => {
+  const updatePreference = async (key: 'matchesEnabled' | 'messagesEnabled' | 'showNameIfWinner' | 'leaderboardVisible', value: boolean) => {
     selectionHaptic();
     // Optimistic UI update
     if (key === 'matchesEnabled') setMatchesEnabled(value);
     if (key === 'messagesEnabled') setMessagesEnabled(value);
-    if (key === 'nudgesEnabled') setNudgesEnabled(value);
     if (key === 'showNameIfWinner') setShowNameIfWinner(value);
     if (key === 'leaderboardVisible') setLeaderboardVisible(value);
 
@@ -227,15 +224,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               toggle
               toggleValue={messagesEnabled}
               onToggle={() => updatePreference('messagesEnabled', !messagesEnabled)}
-              showArrow={false}
-            />
-            <SettingRow
-              icon="bell"
-              title="Streaks & Reminders"
-              subtitle="Streak alerts and friend nudges"
-              toggle
-              toggleValue={nudgesEnabled}
-              onToggle={() => updatePreference('nudgesEnabled', !nudgesEnabled)}
               showArrow={false}
             />
             <SettingRow

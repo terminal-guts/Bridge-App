@@ -10,6 +10,7 @@ import ReanimatedAnimated, {
     Easing,
 } from 'react-native-reanimated';
 
+import LottieView from 'lottie-react-native';
 import { UserRow } from '../../components/community/UserRow';
 import { StaggerItem } from '../../hooks/useStaggeredList';
 import { ProposalReviewView } from '../../components/community/proposal/ProposalReviewView';
@@ -35,11 +36,9 @@ import { OVERLAYS } from '../../theme/shadows';
 import { ScreenWrapper } from '../../components/ui';
 import { getLast7PMCentral } from '../../utils/centralTime';
 import { lightHaptic, successHaptic } from '../../utils/haptics';
-import { getFriendUnreadCount } from '../../services/messageService';
+import { getFriendUnreadCount, getBatchUnreadFriendIds } from '../../services/messageService';
 import { getActiveSuggestions } from '../../services/friendProposalService';
-import { sendNudge } from '../../services/nudgeService';
 import { showToast } from '../../utils/toast';
-import { Confetti } from '../../components/effects/Confetti';
 
 // ── Mock leaderboard karma thresholds for rank interpolation ─────────────────
 // Sorted descending — same values as LeaderboardScreen MOCK_WEEKLY
@@ -268,8 +267,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [addingCode, setAddingCode] = useState(false);
   const [unreadMap, setUnreadMap] = useState<Record<string, boolean>>({});
   const [suggestionsMap, setSuggestionsMap] = useState<Map<string, { suggestedForName: string; status: 'queued' | 'stashed' }>>(new Map());
-  const [showConfetti, setShowConfetti] = useState(false);
-
   const handleEnterCode = useCallback(async () => {
     const code = enterCodeValue.trim().toUpperCase();
     if (!code) { setEnterCodeError('Enter a friend code'); return; }
@@ -297,15 +294,14 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const loadUnreadCounts = useCallback(async (friends: FriendWithGridStatus[]) => {
     if (!profile?.userId || friends.length === 0) return;
     try {
-      const results = await Promise.all(
-        friends.map(f => getFriendUnreadCount(profile.userId, f.friendId).then(r => ({
-          friendId: f.friendId,
-          hasUnread: r.ok && (r.data ?? 0) > 0,
-        })))
+      // Single query for all friends instead of N parallel queries
+      const unreadSet = await getBatchUnreadFriendIds(
+        profile.userId,
+        friends.map(f => f.friendId),
       );
       const map: Record<string, boolean> = {};
-      for (const r of results) {
-        if (r.hasUnread) map[r.friendId] = true;
+      for (const id of unreadSet) {
+        map[id] = true;
       }
       setUnreadMap(map);
     } catch {
@@ -411,11 +407,15 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       });
 
       await communityService.ready;
-      const task = await communityService.getCommunityTaskProgress();
+      // Fire both in parallel — getProposalsToVote is only needed if not voted,
+      // but it's cheaper to speculatively fetch than to wait sequentially.
+      const [task, available] = await Promise.all([
+        communityService.getCommunityTaskProgress(),
+        communityService.getProposalsToVote(),
+      ]);
       let votingDone = task.hasVotedOnProposals;
 
       if (!votingDone) {
-        const available = await communityService.getProposalsToVote();
         if (available.length === 0) {
           votingDone = true;
         }
@@ -463,16 +463,26 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       initializedRef.current = true;
       return; // skip first focus (handled by the init useEffect)
     }
+
+    // Skip refetch if data was loaded very recently (rapid tab switching)
+    const lastLoad = 'getLastFriendsAreaLoadTime' in communityService
+      ? (communityService as any).getLastFriendsAreaLoadTime() : 0;
+    if (Date.now() - lastLoad < 10_000) {
+      // Still refresh profile (lightweight, cached) but skip heavy friends reload
+      getUserProfile().then(result => {
+        if (result.ok && result.data) setProfile(result.data);
+      });
+      return;
+    }
+
     // Invalidate friends cache when returning from stack screens (e.g. ContactInvite)
     if ('invalidateFriendsCache' in communityService) {
       (communityService as any).invalidateFriendsCache();
     }
-    // Refresh profile on each tab focus so the completion banner stays current
+    // Refresh profile + friends in parallel
     getUserProfile().then(result => {
       if (result.ok && result.data) setProfile(result.data);
     });
-    // Refresh friends data on every focus — covers return from FriendProposalScreen,
-    // tab switches, and any background changes (recommendations, votes).
     loadFriendsData();
   }, [hasCompletedVoting, loadFriendsData, startGuideIfNeeded]));
 
@@ -482,9 +492,8 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     await new Promise(resolve => setTimeout(resolve, 800));
     await loadFriendsData();
     setHasCompletedVoting(true);
-    // #7: Haptic reward on unlocking friends area + T2 celebration confetti (15 particles for routine)
+    // #7: Haptic reward on unlocking friends area
     successHaptic();
-    setShowConfetti(true);
     // Cache so next cold open skips the voting gate
     const cycleId = String(getLast7PMCentral());
     communityService.cacheVotingComplete(true, cycleId).catch(() => {});
@@ -544,17 +553,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     return { viewProfile, chatHandlers };
   }, [alreadyHelped, navigation]);
 
-  const handleNudge = useCallback(async (friendId: string) => {
-    const friend = alreadyHelped.find(f => f.friendId === friendId);
-    const friendName = friend?.friend?.firstName || 'Your friend';
-    const result = await sendNudge(friendId);
-    if (result.ok) {
-      showToast.success('Nudge sent!', `${friendName} will be reminded to vote.`);
-    } else {
-      showToast.error('Could not send nudge', 'Check your connection and try again.');
-    }
-  }, [alreadyHelped]);
-
   if (loading || hasCompletedVoting === null) {
     return (
       <ScreenWrapper>
@@ -577,11 +575,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   return (
     <ScreenWrapper>
-      <Confetti
-        trigger={showConfetti}
-        particleCount={15}
-        onComplete={() => setShowConfetti(false)}
-      />
       <OfflineBanner />
       <ProfileCompletionBanner
         profile={profile}
@@ -621,74 +614,77 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           }
         >
           <View style={styles.emptyContainer}>
-            {/* Illustration-like icon section */}
-            <View style={styles.emptyIconCircle}>
-              <EvaIcon name="people" variant="outline" size={48} color="#2B65F9" />
-            </View>
-            {/* Hero text */}
+            {/* Lottie animation centerpiece */}
+            <LottieView
+              source={require('../../../assets/Icons/AnimatedIcons/add-account.json')}
+              autoPlay
+              loop
+              style={styles.emptyLottie}
+            />
+
             <Text style={styles.emptyHeroText}>
-              Bridge works best with your real friends
+              Add your crew
             </Text>
-            {/* Secondary explanation */}
             <Text style={styles.emptySubtext}>
-              Add your crew and they'll help find your perfect match. The more friends you have, the better your matches get.
+              Your friends pick your matches. Share your code or invite from contacts to get started.
             </Text>
 
+            {/* Primary CTA — Invite from Contacts */}
+            <TouchableOpacity
+              style={styles.inviteContactsButton}
+              activeOpacity={0.85}
+              onPress={() => (navigation as any).navigate('ContactInvite')}
+            >
+              <EvaIcon name="people" variant="outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.inviteContactsButtonText}>Invite from Contacts</Text>
+            </TouchableOpacity>
+
+            {/* Secondary — Share code or enter code */}
             {friendCode ? (
-              <>
-                <View style={styles.codeContainer}>
-                  <Text style={styles.codeLabel}>YOUR FRIEND CODE</Text>
-                  <Text style={styles.codeValue}>{friendCode}</Text>
-                  <View style={styles.codeButtonRow}>
+              <View style={styles.codeContainer}>
+                <Text style={styles.codeLabel}>YOUR FRIEND CODE</Text>
+                <Text style={styles.codeValue}>{friendCode}</Text>
+                <View style={styles.codeButtonRow}>
+                  <TouchableOpacity
+                    style={styles.enterCodeButton}
+                    onPress={async () => { const msg = await buildInviteMessage(friendCode, profile?.firstName); Share.share({ message: msg }); }}
+                  >
+                    <EvaIcon name="share" variant="outline" size={18} color="#2B65F9" style={{ marginRight: 6 }} />
+                    <Text style={styles.enterCodeButtonText}>Share Code</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.enterCodeButton}
+                    activeOpacity={0.85}
+                    onPress={() => { setShowEnterCode(!showEnterCode); setEnterCodeError(''); }}
+                  >
+                    <Text style={styles.enterCodeButtonText}>Enter a Code</Text>
+                  </TouchableOpacity>
+                </View>
+                {showEnterCode && (
+                  <View style={styles.enterCodeRow}>
+                    <TextInput
+                      style={styles.enterCodeInput}
+                      placeholder="BRIDGE-XXXX-XXXX"
+                      placeholderTextColor={COLORS.text.disabled}
+                      value={enterCodeValue}
+                      onChangeText={(t) => { setEnterCodeValue(t); setEnterCodeError(''); }}
+                      autoCapitalize="characters"
+                      autoCorrect={false}
+                      autoFocus
+                    />
                     <TouchableOpacity
-                      style={styles.enterCodeButton}
-                      onPress={async () => { const msg = await buildInviteMessage(friendCode, profile?.firstName); Share.share({ message: msg }); }}
+                      style={[styles.enterCodeAddBtn, addingCode && { opacity: 0.5 }]}
+                      onPress={handleEnterCode}
+                      disabled={addingCode}
                     >
-                      <EvaIcon name="share" variant="outline" size={18} color="#2B65F9" style={{ marginRight: 6 }} />
-                      <Text style={styles.enterCodeButtonText}>Share Code</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.enterCodeButton}
-                      activeOpacity={0.85}
-                      onPress={() => { setShowEnterCode(!showEnterCode); setEnterCodeError(''); }}
-                    >
-                      <Text style={styles.enterCodeButtonText}>Enter Code</Text>
+                      <Text style={styles.enterCodeAddBtnText}>{addingCode ? '...' : 'Add'}</Text>
                     </TouchableOpacity>
                   </View>
-                  {showEnterCode && (
-                    <View style={styles.enterCodeRow}>
-                      <TextInput
-                        style={styles.enterCodeInput}
-                        placeholder="BRIDGE-XXXX-XXXX"
-                        placeholderTextColor={COLORS.text.disabled}
-                        value={enterCodeValue}
-                        onChangeText={(t) => { setEnterCodeValue(t); setEnterCodeError(''); }}
-                        autoCapitalize="characters"
-                        autoCorrect={false}
-                        autoFocus
-                      />
-                      <TouchableOpacity
-                        style={[styles.enterCodeAddBtn, addingCode && { opacity: 0.5 }]}
-                        onPress={handleEnterCode}
-                        disabled={addingCode}
-                      >
-                        <Text style={styles.enterCodeAddBtnText}>{addingCode ? '...' : 'Add'}</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                  {enterCodeError ? (
-                    <Text style={styles.enterCodeErrorText}>{enterCodeError}</Text>
-                  ) : null}
-                </View>
-                <TouchableOpacity
-                  style={styles.inviteContactsButton}
-                  activeOpacity={0.85}
-                  onPress={() => (navigation as any).navigate('ContactInvite')}
-                >
-                  <EvaIcon name="people" variant="outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-                  <Text style={styles.inviteContactsButtonText}>Invite from Contacts</Text>
-                </TouchableOpacity>
-              </>
+                )}
+                {enterCodeError ? (
+                  <Text style={styles.enterCodeErrorText}>{enterCodeError}</Text>
+                ) : null}
+              </View>
             ) : null}
           </View>
         </ScrollView>
@@ -750,6 +746,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                     item={user}
                     index={index}
                     showVoteRing
+
                     onViewProfile={voteHandlers.viewProfile[user.friendId]}
                     onMatch={voteHandlers.matchHandlers[user.friendId]}
                   />
@@ -774,9 +771,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                     index={index}
                     statusLine={getFriendStatusLine(user, suggestionsMap)}
                     hasUnread={!!unreadMap[user.friendId]}
+
                     onViewProfile={crewHandlers.viewProfile[user.friendId]}
                     onChat={crewHandlers.chatHandlers[user.friendId]}
-                    onNudge={handleNudge}
                   />
                 </StaggerItem>
             ))}
@@ -808,23 +805,17 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingBottom: 80, width: '100%' },
-  emptyIconCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: COLORS.backgroundFriendActive,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#D1DEFF',
+  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingBottom: 40, width: '100%' },
+  emptyLottie: {
+    width: 200,
+    height: 200,
+    marginBottom: 8,
   },
   emptyHeroText: {
     fontFamily: FONTS.bold,
     fontWeight: '700',
-    fontSize: FONT_SIZES['4xl'],
-    lineHeight: 28,
+    fontSize: FONT_SIZES['5xl'],
+    lineHeight: 34,
     color: '#0B1226',
     textAlign: 'center',
     marginBottom: 8,
@@ -836,7 +827,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: '#667085',
     textAlign: 'center',
-    marginBottom: 28,
+    marginBottom: 24,
     width: '100%',
   },
   tagline: { fontFamily: FONTS.semiBold, fontSize: FONT_SIZES['3xl'], lineHeight: 26, color: '#0B1226', textAlign: 'center', marginBottom: 12 },

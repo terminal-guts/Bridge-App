@@ -17,6 +17,7 @@ import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { EvaIcon, IconScoutIcon } from '../icons';
 import { WineGlassIcon, LeafIcon, CigaretteIcon } from '../icons/Icons';
+import { ProfileBadgesSection } from '../badges/ProfileBadgesSection';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -196,6 +197,11 @@ export function ProfileView({
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: actionButton ? 120 : 40 }}
         >
+          {/* Friend Badges */}
+          {profile?.userId && (
+            <ProfileBadgesSection userId={profile.userId} revealAuthor={true} />
+          )}
+
           {/* Compatibility Section (if shown) */}
           {showCompatibility && compatibilityScore !== undefined && (
             <StyledView style={{ marginBottom: 24 }}>

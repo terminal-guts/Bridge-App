@@ -13,7 +13,6 @@
  * - Section cards: Questions, Interests, Values, Lifestyle, Beliefs
  * - Vote buttons: Yes (primary) + No / For Friend / Not Sure (secondary)
  * - Auto-advances after each vote, navigates to Friends Area after 3rd vote
- * - +1 Karma popup on vote
  */
 
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../../constants/typography';
@@ -40,11 +39,10 @@ import Animated, {
   withSequence,
   runOnJS,
 } from 'react-native-reanimated';
-import { DURATIONS, SPRINGS } from '../../../constants/animations';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { Confetti } from '../Confetti';
+
 import { GuideTarget } from '../../guides';
 import { UserProfile } from '../../../types';
 import { Proposal, CommunityTask } from '../../../types/community';
@@ -126,22 +124,9 @@ export function ProposalReviewView({
   const [loading, setLoading] = useState(!initialProposals);
   const [voting, setVoting] = useState(false);
 
-  // +1 Karma popup animation
-  const karmaOpacity = useSharedValue(0);
-  const karmaTranslateY = useSharedValue(0);
-  const [showKarmaPopup, setShowKarmaPopup] = useState(false);
-
-  // Confetti on yes votes
-  const [showConfetti, setShowConfetti] = useState(false);
-
   // Vote flash overlay
   const [voteFlashColor, setVoteFlashColor] = useState<string | null>(null);
   const flashOpacity = useSharedValue(0);
-
-  // Post-vote crowd reveal
-  const [crowdReveal, setCrowdReveal] = useState<{ message: string; subMessage: string; color: string } | null>(null);
-  const crowdRevealOpacity = useSharedValue(0);
-  const crowdRevealTranslateY = useSharedValue(20);
 
   // Entrance animation for new proposals
   const entranceOpacity = useSharedValue(1);
@@ -154,19 +139,9 @@ export function ProposalReviewView({
   const unsureButtonScale = useSharedValue(1);
 
   // ── Animated styles ────────────────────────────────────────────────────────
-  const karmaAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: karmaOpacity.value,
-    transform: [{ translateY: karmaTranslateY.value }],
-  }));
-
   const entranceAnimatedStyle = useAnimatedStyle(() => ({
     opacity: entranceOpacity.value,
     transform: [{ translateX: entranceTranslateX.value }],
-  }));
-
-  const crowdRevealAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: crowdRevealOpacity.value,
-    transform: [{ translateY: crowdRevealTranslateY.value }],
   }));
 
   const flashAnimatedStyle = useAnimatedStyle(() => ({
@@ -238,62 +213,6 @@ export function ProposalReviewView({
       }
     };
     load();
-  }, []);
-
-  // Trigger +1 Karma popup animation
-  const triggerKarmaPopup = useCallback(() => {
-    setShowKarmaPopup(true);
-    karmaTranslateY.value = 0;
-    karmaTranslateY.value = withTiming(-40, { duration: DURATIONS.emphasis });
-    karmaOpacity.value = 1;
-    karmaOpacity.value = withTiming(0, { duration: DURATIONS.emphasis }, (finished) => {
-      if (finished) runOnJS(setShowKarmaPopup)(false);
-    });
-  }, []);
-
-  // Post-vote crowd reveal animation
-  const triggerCrowdReveal = useCallback((vote: 'yes' | 'no' | 'unsure', proposal: any) => {
-    const totalVotes = (proposal.totalVotes ?? 0) + 1;
-    const yesVotes = vote === 'yes' ? (proposal.yesVotes ?? 0) + 1 : (proposal.yesVotes ?? 0);
-    const noVotes = vote === 'no' ? (proposal.noVotes ?? 0) + 1 : (proposal.noVotes ?? 0);
-
-    if (totalVotes < 2) {
-      // First voter — no crowd data yet
-      setCrowdReveal({ message: 'First vote!', subMessage: 'You set the tone', color: COLORS.primaryButton });
-    } else if (vote === 'yes') {
-      const yesPct = Math.round((yesVotes / totalVotes) * 100);
-      if (yesPct >= 70) {
-        setCrowdReveal({ message: `${yesPct}% agree with you`, subMessage: `${yesVotes - 1} other${yesVotes - 1 === 1 ? '' : 's'} voted Yes`, color: COLORS.emerald });
-      } else if (yesPct <= 35) {
-        setCrowdReveal({ message: 'Bold call!', subMessage: `Only ${yesPct}% voted Yes`, color: COLORS.warning.icon });
-      } else {
-        setCrowdReveal({ message: `You and ${yesVotes - 1} other${yesVotes - 1 === 1 ? '' : 's'}`, subMessage: 'voted Yes', color: COLORS.emerald });
-      }
-    } else if (vote === 'no') {
-      const noPct = Math.round((noVotes / totalVotes) * 100);
-      if (noPct >= 50) {
-        setCrowdReveal({ message: `${noPct}% agree`, subMessage: 'Most people voted No too', color: COLORS.navInactiveIcon });
-      } else {
-        setCrowdReveal({ message: 'Going against the crowd', subMessage: `Only ${noPct}% voted No`, color: COLORS.warning.icon });
-      }
-    } else {
-      setCrowdReveal({ message: 'On the fence', subMessage: `${totalVotes} votes so far`, color: COLORS.navInactiveIcon });
-    }
-
-    crowdRevealOpacity.value = 0;
-    crowdRevealTranslateY.value = 20;
-    crowdRevealOpacity.value = withSequence(
-      withTiming(1, { duration: DURATIONS.normal }),
-      withTiming(1, { duration: 1800 }),
-      withTiming(0, { duration: 400 }, (finished) => {
-        if (finished) runOnJS(setCrowdReveal)(null);
-      }),
-    );
-    crowdRevealTranslateY.value = withSequence(
-      withSpring(0, SPRINGS.gentle),
-      withTiming(0, { duration: 1800 }),
-      withTiming(-10, { duration: 400 }),
-    );
   }, []);
 
   // Vote button press animation
@@ -368,7 +287,6 @@ export function ProposalReviewView({
     // Haptics — distinct feel per vote type, fire and forget
     if (vote === 'yes') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      setShowConfetti(true);
     } else if (vote === 'no') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     } else {
@@ -405,15 +323,9 @@ export function ProposalReviewView({
       };
     }));
 
-    // Trigger +1 Karma popup
-    triggerKarmaPopup();
-
-    // Trigger crowd reveal overlay
-    triggerCrowdReveal(vote, current);
-
     // Advance after confirmed
     advanceProposal();
-  }, [voting, currentIndex, proposals, advanceProposal, triggerKarmaPopup, triggerVoteFlash, triggerCrowdReveal]);
+  }, [voting, currentIndex, proposals, advanceProposal, triggerVoteFlash]);
 
   // ── For Friend handlers ───────────────────────────────────────────────────
   const handleForFriendPress = useCallback(() => {
@@ -736,33 +648,6 @@ export function ProposalReviewView({
               totalVotes={proposal.totalVotes ?? 0}
             />
 
-            {/* +1 Karma popup */}
-            {showKarmaPopup && (
-              <Animated.View style={[{
-                position: 'absolute',
-                top: -10,
-                alignSelf: 'center',
-                left: 0,
-                right: 0,
-                alignItems: 'center',
-              }, karmaAnimatedStyle]}>
-                <View style={{
-                  backgroundColor: COLORS.success,
-                  paddingHorizontal: 12,
-                  paddingVertical: 4,
-                  borderRadius: 12,
-                }}>
-                  <Text style={{
-                    fontFamily: FONTS.semiBold,
-                    fontWeight: '600',
-                    fontSize: FONT_SIZES.md,
-                    color: COLORS.card,
-                  }}>
-                    +1 Karma
-                  </Text>
-                </View>
-              </Animated.View>
-            )}
           </View>
         </View>
 
@@ -1154,30 +1039,6 @@ export function ProposalReviewView({
         </View>
       </Modal>
 
-      {/* Post-vote crowd reveal */}
-      {crowdReveal && (
-        <Animated.View
-          style={[{
-            position: 'absolute',
-            top: '35%',
-            left: 0,
-            right: 0,
-            alignItems: 'center',
-            pointerEvents: 'none',
-            zIndex: 9997,
-          }, crowdRevealAnimatedStyle]}
-        >
-          <View style={styles.crowdRevealContainer}>
-            <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: FONT_SIZES['2xl'], color: crowdReveal.color, textAlign: 'center' }}>
-              {crowdReveal.message}
-            </Text>
-            <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.md, color: '#CCCCCC', textAlign: 'center', marginTop: 4 }}>
-              {crowdReveal.subMessage}
-            </Text>
-          </View>
-        </Animated.View>
-      )}
-
       {/* Vote flash overlay */}
       {voteFlashColor && (
         <Animated.View
@@ -1191,8 +1052,6 @@ export function ProposalReviewView({
         />
       )}
 
-      {/* Confetti on yes votes */}
-      <Confetti trigger={showConfetti} onComplete={() => setShowConfetti(false)} />
 
     </View>
   );
@@ -1282,16 +1141,6 @@ const styles = StyleSheet.create({
     fontWeight: '500' as const,
     fontSize: FONT_SIZES.md,
     color: COLORS.navInactiveIcon,
-  },
-
-  // Crowd reveal overlay
-  crowdRevealContainer: {
-    backgroundColor: 'rgba(0,0,0,0.75)',
-    borderRadius: 16,
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    alignItems: 'center' as const,
-    maxWidth: 280,
   },
 
   // Modal

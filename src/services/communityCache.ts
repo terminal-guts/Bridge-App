@@ -72,17 +72,25 @@ export async function invalidateCachedFriendsData(): Promise<void> {
 // Photo Signed URL Cache
 // ============================================================================
 
+// In-memory mirror of photo URL cache — avoids AsyncStorage reads on hot path
+let inMemoryPhotoUrls: Record<string, string> | null = null;
+
 /** Get cached signed URL map (storagePath → signedUrl) */
 export async function getCachedPhotoUrls(): Promise<Record<string, string>> {
+  // Return in-memory mirror instantly if available
+  if (inMemoryPhotoUrls) return inMemoryPhotoUrls;
+
   const entry = await getEntry<Record<string, string>>(KEY_PHOTO_URLS, PHOTO_URL_TTL_MS);
   if (!entry || entry.stale) return {};
+  inMemoryPhotoUrls = entry.data;
   return entry.data;
 }
 
 /** Merge new signed URLs into the cache */
 export async function mergeCachedPhotoUrls(newUrls: Record<string, string>): Promise<void> {
-  const existing = await getCachedPhotoUrls();
+  const existing = inMemoryPhotoUrls || await getCachedPhotoUrls();
   const merged = { ...existing, ...newUrls };
+  inMemoryPhotoUrls = merged;
   await setEntry(KEY_PHOTO_URLS, merged);
 }
 

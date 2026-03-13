@@ -124,12 +124,6 @@ export const SHIMMER_DURATION = 1500; // 1.5 seconds
 export const HEART_ANIMATION_DURATION = 2000; // 2 seconds
 
 /**
- * Confetti animation duration
- * Celebration confetti effect
- */
-export const CONFETTI_DURATION = 3000; // 3 seconds
-
-/**
  * Spring animation tension
  * Bounciness of spring animations (higher = stiffer)
  */
@@ -156,12 +150,6 @@ export const STAGGER_DELAY = 50; // ms
  * Delay between individual hearts in celebration
  */
 export const HEART_STAGGER_DELAY = 80; // ms
-
-/**
- * Confetti stagger delay
- * Delay between confetti pieces
- */
-export const CONFETTI_STAGGER_DELAY = 100; // ms
 
 /**
  * Initial animation delay

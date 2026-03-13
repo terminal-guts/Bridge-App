@@ -26,6 +26,7 @@ import {
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { SHADOWS } from '../../theme/shadows';
 import { COLORS as THEME_COLORS } from '../../theme/colors';
+import { EvaIcon } from '../icons';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -54,8 +55,8 @@ interface FriendCardProps {
     onHelpMatch?: () => void;
     onMessage?: () => void;
     onViewProfile?: () => void;
-    onNudge?: (friendId: string) => void;
     onStreakMilestone?: (days: number, friendName: string) => void;
+    onBadgePress?: () => void;
 }
 
 export const FriendCard = React.memo<FriendCardProps>(({
@@ -67,8 +68,8 @@ export const FriendCard = React.memo<FriendCardProps>(({
     onHelpMatch,
     onMessage,
     onViewProfile,
-    onNudge,
     onStreakMilestone,
+    onBadgePress,
 }) => {
     // Normalize data
     const name = friend.friend?.firstName || friend.name || 'Friend';
@@ -112,6 +113,8 @@ export const FriendCard = React.memo<FriendCardProps>(({
                             styles.avatar,
                             { borderColor: variant === 'pending' ? '#EFF6FF' : '#F0FDF4' }
                         ]}
+                        cachePolicy="disk"
+                        transition={200}
                     />
                 </StyledView>
             </StyledTouchable>
@@ -141,6 +144,20 @@ export const FriendCard = React.memo<FriendCardProps>(({
 
                 </StyledView>
             </StyledTouchable>
+
+            {/* Badge Button */}
+            {onBadgePress && (
+                <StyledTouchable
+                    onPress={() => {
+                        lightHaptic();
+                        onBadgePress();
+                    }}
+                    activeOpacity={0.7}
+                    style={styles.badgeButton}
+                >
+                    <EvaIcon name="award" variant="outline" size={20} color={THEME_COLORS.text.muted} />
+                </StyledTouchable>
+            )}
 
             {/* Action/Score Area */}
             <StyledView style={styles.actionContainer}>
@@ -235,6 +252,10 @@ const styles = StyleSheet.create({
         fontFamily: FONTS.bold,
         letterSpacing: 0.2,
         textTransform: 'uppercase',
+    },
+    badgeButton: {
+        padding: 6,
+        marginLeft: 4,
     },
     actionContainer: {
         marginLeft: 12,

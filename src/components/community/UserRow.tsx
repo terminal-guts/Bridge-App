@@ -16,7 +16,6 @@ import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { FriendWithGridStatus } from '../../types/community';
 import { FireIcon, StarIcon } from '../icons/Icons';
 import { KarmaInfoModal } from './karma/KarmaInfoModal';
-import { NudgeButton } from './NudgeButton';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
@@ -33,7 +32,6 @@ interface UserRowProps {
     statusLine?: string;
     showVoteRing?: boolean;
     hasUnread?: boolean;
-    onNudge?: (friendId: string) => void;
     onStreakMilestone?: (days: number, friendName: string) => void;
     previousStreakDays?: number;
 }
@@ -54,7 +52,7 @@ function getStreakTier(days: number) {
     return STREAK_TIERS.find(t => days >= t.min) ?? DEFAULT_STREAK_TIER;
 }
 
-export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onViewProfile, onChat, rank, onRankPress, statusLine, showVoteRing, hasUnread, onNudge, onStreakMilestone, previousStreakDays }) => {
+export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onViewProfile, onChat, rank, onRankPress, statusLine, showVoteRing, hasUnread, onStreakMilestone, previousStreakDays }) => {
     const name = item.friend.firstName || 'User';
     const rawImageUrl = item.friend.photos?.[0]?.url || 'https://via.placeholder.com/150';
     const imageUrl = useMemo(() => getOptimizedImageUrl(rawImageUrl, 68), [rawImageUrl]);
@@ -240,13 +238,6 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                 {infoBlock}
             </View>
             <View style={styles.rightActions}>
-                {onNudge && (
-                    <NudgeButton
-                        friendId={item.friend.id || ''}
-                        friendName={name}
-                        onNudge={onNudge}
-                    />
-                )}
                 <TouchableOpacity style={styles.pointsBtn} activeOpacity={0.75} onPress={handleKarmaTap} accessibilityLabel={`${name}'s karma: ${points} points`} accessibilityRole="button">
                     <StarIcon size={15} color={COLORS.successAlt} />
                     <Text style={styles.pointsBtnText}>{points} pts</Text>
