@@ -44,6 +44,10 @@ From the engagement research (Hook Model, variable reinforcement, network effect
 | `streakTrackingService.ts` | AsyncStorage persistence for cross-session streak detection (was built but reverted, needs re-creation) | Not done |
 | Streak callback wiring | Wire `onStreakMilestone`/`previousStreakDays` props from `FriendsAreaView`/`CommunityScreen` into `UserRow` | Not done |
 | Settings notification subtitles | Update `SettingsScreen.tsx` notification toggle subtitles to reflect tier system | Not done |
+| Friend edge 2x callout | "Your vote counts 2x" when voting on a friend's proposal | Not done (held) |
+| Reframe percentages as vibes | Replace "25% Match" with labels like "Different vibes" / "Good match" / "Soulmates" with color coding | Not done (held) |
+| Animated proposal entrance | Photos slide in from left/right with parallax when proposal loads | Not done (held) |
+| Live real-time vote count | Supabase Realtime subscriptions so vote bar updates live when others vote | Not done (held) |
 
 ### What's Already Done (Engagement)
 - Streak visual overhaul (4-tier system in `UserRow.tsx`: legendary/hot/warm/new/none with sublabels, glow, pulse)
@@ -117,7 +121,7 @@ Also consider: defer children, political beliefs, lifestyle to post-first-vote p
 
 Priority order. Use established design system (4px grid, COLORS constants, FONTS/TEXT_STYLES, 44px touch targets, WCAG contrast).
 
-1. **ProposalReviewView** — card transitions, photo layout, smart pills, vote buttons, karma popup
+1. **ProposalReviewView** — detailed refinement plan below
 2. **MatchRevealScreen** — animation polish, partner info layout, reveal drama
 3. **MatchesScreen** — active match card, past matches, empty states, expiry timer
 4. **ChatScreen** — bubbles, input bar, audio messages, typing indicators
@@ -127,6 +131,40 @@ Priority order. Use established design system (4px grid, COLORS constants, FONTS
 8. **SettingsScreen** — section cards, navigation items, destructive actions
 9. **LeaderboardScreen** — rank display, prize callout, user rows (mock data Phase 1)
 10. **StatsScreen** — stat cards, data visualization, empty states
+
+### ProposalReviewView Refinement Plan
+
+Target: `src/components/community/proposal/ProposalReviewView.tsx` (~2082 lines). Constraints: uses Animated API (not Reanimated), compatibility badge is LOCKED, do NOT touch icons.
+
+**Tier 1 — High-Impact, Low-Effort:**
+| Item | What |
+|------|------|
+| Vote button hierarchy | Yes button too short (46px) vs secondary (63px). Fix: Yes→52px with glow, secondary→48px horizontal layout |
+| Hardcoded colors → tokens | Replace `BLUE=#2563EB` etc. with `COLORS.primary`, `COLORS.success`, `COLORS.rejectRed` from theme |
+| Typography tokens | Replace hardcoded font sizes with `FONT_SIZES` / `TEXT_STYLES` from typography constants |
+| Empty state | Use existing `EmptyState` component with illustration instead of plain text |
+| Progress dots | Active dot pulse animation, clearer completed color, "1 of 3" label |
+
+**Tier 2 — High-Impact, Medium-Effort:**
+| Item | What |
+|------|------|
+| Photo responsive sizing | `PHOTO_HEIGHT = Math.max(220, Math.min(screenHeight * 0.36, 340))` — test SE through Pro Max |
+| Extract StyleSheet | ~150 inline styles → `StyleSheet.create` in 4 phases (sub-components → main render). Keep Animated styles inline |
+| Section card accents | 3px colored left-border per section type (blue/emerald/purple/amber), padding 12→16 |
+| Smart pill spacing | Gap 6→8px, add column headers, increase divider margin. Fix colorblind accessibility |
+| Scroll-to-top after vote | `scrollTo({ y: 0 })` on advance timeout |
+| Badge positioning | Sit in divider gap between photos, fix "87 %" → "87%" |
+
+**Tier 3 — Medium-Impact, Higher-Effort:**
+| Item | What |
+|------|------|
+| Sub-component extraction | Split into `proposal/` directory: PhotoCard, LiveVoteBar, QuestionCarousel, SmartPillCloud, SectionCard, ComparisonRows, ForFriendModal, proposalUtils |
+| Entrance animation | Opacity 0→1 + translateX 30→0 over 250ms |
+| Vote micro-interactions | Scale spring on press. Yes: pulse 1.03. No: horizontal shake. Not Sure: tilt |
+
+**Cross-cutting:** Spacing audit (off-grid values → `SPACING` constants). WCAG contrast fixes (secondary button opacity 0.5→0.6, LiveVoteBar label color).
+
+**Implementation order:** Colors+typography → Buttons+empty+dots → StyleSheet A+B → Photo+badge+scroll → Section cards+pills → StyleSheet C+D → Sub-component extraction → Animations.
 
 ---
 

@@ -231,13 +231,6 @@ A user in an active match is **removed** from proposal generation (cannot appear
 
 ---
 
-### **Daily Grid — REMOVED**
-The 3-candidate grid model has been fully removed from the product (March 2026). There is no grid logic anywhere in the system. Each user receives one proposal at a time — a single candidate pairing.
-
-All grid-era UI components have been deleted from the codebase.
-
----
-
 ### **Endorsers**
 Anyone who proposed the same pairing.
 Displayed as:
@@ -470,11 +463,6 @@ Day 5: auto-send (bypass threshold — proposal passes regardless)
 
 ---
 
-## Friend Superpowers — SCRAPPED
-Type-flagging superpowers ("good type" / "avoid type") have been removed. The only friend action during voting is **Recommend to Friend** — you can recommend any person you see to a friend at any time.
-
----
-
 ## Karma System (Detailed)
 
 Karma is a **single numeric point value** displayed prominently on your profile, beside your name, and in the Friends Area. All locations use the same calculated value from `karma_scores.karma_points`.
@@ -638,11 +626,6 @@ Friend chats contain:
 - All answered questions are used by the matching algorithm for better match quality
 - Users can answer additional questions beyond the 3 minimum to improve match quality
 - Questions are displayed on user profiles to help potential matches understand them better
-
-### Non-Negotiables System — SCRAPPED
-Non-negotiables have been completely removed from the product. There are no hard dealbreaker filters in proposal generation.
-
----
 
 ## Friend Features
 
@@ -884,98 +867,9 @@ The Rice University beta launch is **100% free** — no payments, no pay-per-mat
 
 ---
 
-## V3 Future Features
+## V3+ Roadmap
 
-1. **Dynamic pricing** display and implementation
-2. Bridge Break freeze system
-3. Mini-games and conversation starters
-4. Bridge Stories
-5. Restaurant partnership integration
-6. Advanced analytics and algorithm refinement
-7. Match countdown dashboard (shows decreasing pool)
-
----
-
-## V4 Polish & Accessibility
-
-### 1. Accessibility Implementation
-**Goal:** Make Bridge fully accessible to users with disabilities, following WCAG 2.1 AA guidelines.
-
-**Key Components:**
-- **Screen Reader Support:**
-  - Add `accessibilityLabel` to all interactive components (buttons, touchables, inputs)
-  - Add `accessibilityRole` to identify component types (button, link, image, etc.)
-  - Add `accessibilityHint` for complex interactions
-  - Ensure logical focus order for keyboard/screen reader navigation
-
-- **Touch Targets:**
-  - Ensure all interactive elements meet minimum 44x44px touch target (already defined in constants)
-  - Add spacing or hit slop areas for small icons
-
-- **Color & Contrast:**
-  - Verify all text meets WCAG contrast ratios
-  - Don't rely on color alone for critical information
-
-- **High Priority Areas:**
-  - Main navigation (tab bar, back buttons)
-  - All form inputs (onboarding, profile editing, match preferences)
-  - Critical actions (accept/decline matches, send proposals, friend codes)
-  - Match proposal cards and voting interface
-
-**Example Implementation:**
-```typescript
-<TouchableOpacity
-  accessibilityLabel="Accept match with Sarah"
-  accessibilityRole="button"
-  accessibilityHint="Double tap to accept this match and start chatting"
-  style={{ minHeight: MIN_TOUCH_TARGET }}
->
-  <Text>Accept</Text>
-</TouchableOpacity>
-```
-
----
-
-### 2. Skeleton Loading Screens
-**Goal:** Replace loading spinners with content-aware skeleton screens to improve perceived performance and reduce user anxiety.
-
-**Core Screens to Implement:**
-1. **ProfileScreen** - Profile photo, name, stats, questions
-2. **CommunityScreen** - Friend cards, proposal cards
-3. **MatchProposalScreen** - Match reveal card structure
-4. **ChatScreen** - Message bubbles
-5. **ProfileEditScreen** - Form fields
-
-**Skeleton Components to Build:**
-- `SkeletonAvatar` - Circular shimmer for profile photos
-- `SkeletonText` - Lines with varying widths
-- `SkeletonCard` - Card-shaped container with shimmer
-- `SkeletonButton` - Button-shaped placeholder
-
-**Animation Style:**
-- Subtle shimmer/pulse effect (use FADE_DURATION from constants)
-- Light gray base with white shimmer overlay
-- Matches existing card/component shapes
-
-**Benefits:**
-- Users see immediate visual feedback that content is loading
-- Reduces perceived wait time
-- Creates professional, polished feel
-- Maintains layout structure during loading (no layout shift)
-
-**Example:**
-```
-┌─────────────────────────┐
-│  ┌───┐  ████████████   │  <- Avatar + Name skeleton
-│  └───┘  ████████       │
-│                         │
-│  ████████████████████  │  <- Stats skeleton
-│  ████████  ████████    │
-│                         │
-│  ████████████████      │  <- Question skeleton
-│  ████████████████████  │
-└─────────────────────────┘
-```
+See `TODO.md` for detailed V3 feature status, deferred features, screen polish queue, and accessibility/skeleton loading plans.
 
 ---
 

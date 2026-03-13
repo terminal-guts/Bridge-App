@@ -80,6 +80,14 @@
 - [Design Tip: Filled vs. Outlined Icons (UXD World)](https://uxdworld.com/design-tip-25/) — Quick reference for when to use each style
 - [Custom Iconography for Dating Apps (Medium)](https://medium.com/@shane.cornerus/best-ui-ux-design-practices-for-dating-app-development-in-2026-164b8a4c5e18) — 2026 dating app UI/UX trends: custom icon sets reinforce branding over generic libraries
 
+## Mobile Animation & Motion Design
+
+- [Mobile App Animations Guide (Justinmind)](https://www.justinmind.com/ui-design/mobile-app-animations) — Comprehensive guide to mobile animation types: micro-interactions, transitions, loading, gestural feedback, state changes, and onboarding flows
+- [Mobile-First Animation: Finding the Sweet Spot (Medium)](https://medium.com/@Alekseidesign/mobile-first-animation-finding-the-sweet-spot-0ca99999b1e1) — Duration sweet spots, performance tips, when animations help vs hurt UX, and easing function recommendations
+- [Mobile UI Animations: Types & Best Practices (SVGator)](https://www.svgator.com/blog/what-are-mobile-ui-animations/) — Animation taxonomy with timing recommendations: micro-interactions (100-200ms), transitions (250-350ms), emphasis (400-600ms). When to animate vs when not to. Accessibility considerations including iOS "Reduce Motion" and Android animation scale
+- [7 Rules for Mobile UI Button Design (UX Planet)](https://uxplanet.org/7-rules-for-mobile-ui-button-design-e9cf2ea54556) — Button sizing (minimum 44pt touch targets), visual feedback (scale, color, haptics), states, spacing, and micro-interaction patterns for mobile buttons
+- [Transition Animations: A Practical Guide (UX Design)](https://uxdesign.cc/transition-animations-a-practical-guide-5dba4d42f659) — Screen transition choreography: slide vs fade vs scale, entrance/exit patterns, staggered reveals, easing curves (ease-out for enter, ease-in for exit), and performance optimization
+
 ## React Native, Expo & Mobile Performance
 
 - [React Native Performance (Official Docs)](https://reactnative.dev/docs/performance) — 60 FPS targets, JS/UI thread profiling, FlatList optimization, native driver animations
@@ -123,3 +131,18 @@
 - [Dating App QA Challenges](https://ubertesters.com/blog/dating-app-glitches-kill-matches-functional-ux-and-performance-challenges/) — Functional, UX, and performance testing strategies for dating apps
 - [Dating App UX Testing](https://testlio.com/blog/6-ways-to-optimize-dating-app-ux-through-testing/) — 6 UX testing strategies specific to dating apps
 - [Full-Stack Testing Strategy 2026](https://www.nucamp.co/blog/testing-in-2026-jest-react-testing-library-and-full-stack-testing-strategies) — Jest, RTL, MSW, layered testing approach
+
+## Icon Design Resources
+
+- [SF Symbols (Apple)](https://developer.apple.com/sf-symbols/) — Apple's official icon library with 5,000+ symbols designed for iOS, macOS, and Apple platforms
+- [SF Symbols Guide (Hacking with Swift)](https://www.hackingwithswift.com/articles/237/complete-guide-to-sf-symbols) — Complete walkthrough of SF Symbols: rendering modes, variable color, weight matching, and usage in SwiftUI/UIKit
+- [Hinge Design Analysis](https://gregorydocherty.substack.com/p/shag-marry-kill-part-1-hinge-design) — Deep dive into Hinge's visual design system, iconography choices, and UX patterns
+- [Bumble Design Analysis](https://gregorydocherty.substack.com/p/shag-marry-kill-part-2-bumble-design) — Breakdown of Bumble's design language, icon style, and brand consistency
+- [Icon Grid Guide (Font Awesome)](https://blog.fontawesome.com/icon-grid-ensures-consistent-design/) — How icon grids ensure consistent sizing, alignment, and visual weight across an icon set
+- [Iconography Guide (Design Systems)](https://www.designsystems.com/iconography-guide/) — Comprehensive guide to building an icon system: style, sizing, naming conventions, and design tokens
+- [Icon Grid & Key Shapes (Streamline)](https://blog.streamlinehq.com/grids-and-keyshapes/) — Technical guide to icon grids, key shapes (circle, square, landscape, portrait), and optical alignment
+- [Accessible SVGs (React)](https://koenvangilst.nl/lab/accessible-svgs) — Patterns for making SVG icons accessible in React apps — ARIA roles, titles, and screen reader support
+- [Eva Icons Official](https://akveo.github.io/eva-icons/) — Open-source icon library with outline and fill variants — Bridge's primary icon set
+- [Eva Icons Figma](https://www.figma.com/community/file/1037713680282700724/icon-design-system-eva-icons) — Figma community file for the Eva Icons design system — useful for icon customization and design exploration
+- [UseAnimations (Lottie)](https://useanimations.com/) — Animated micro-interaction icons built with Lottie — useful for loading states, toggles, and engagement feedback
+- [Phosphor Icons](https://phosphoricons.com/) — Flexible icon family with six weights (thin to fill) — good alternative/supplement to Eva Icons
