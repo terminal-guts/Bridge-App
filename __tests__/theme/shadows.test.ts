@@ -120,7 +120,7 @@ describe('SHADOWS', () => {
       // mockSelect records calls made during module initialization.
       // Since the mock is hoisted, all calls during SHADOWS init are tracked.
       const callsWithAndroid = mockSelect.mock.calls.filter(
-        (call: [{ android?: { elevation: number } }]) => call[0]?.android,
+        (call: unknown[]) => (call[0] as { android?: unknown })?.android,
       );
 
       // If the mock didn't capture calls (timing), verify via the source structure:
@@ -143,8 +143,9 @@ describe('SHADOWS', () => {
       // If mock did capture calls, also verify android elevation values
       if (callsWithAndroid.length > 0) {
         for (const call of callsWithAndroid) {
-          expect(call[0].android).toHaveProperty('elevation');
-          expect(typeof call[0].android!.elevation).toBe('number');
+          const arg = (call as unknown[])[0] as { android?: { elevation: number } };
+          expect(arg.android).toHaveProperty('elevation');
+          expect(typeof arg.android!.elevation).toBe('number');
         }
       }
     });
