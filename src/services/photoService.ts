@@ -68,6 +68,7 @@ const generatePhotoId = (): string => {
 /**
  * Extract file extension from URI
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getFileExtension = (uri: string): string => {
   const extension = uri.split('.').pop()?.toLowerCase() || 'jpg';
   return SUPPORTED_FORMATS.includes(extension) ? extension : 'jpg';
@@ -92,6 +93,7 @@ const compressImage = async (
   try {
     const {
       maxWidth = MAX_PHOTO_WIDTH,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       maxHeight = MAX_PHOTO_HEIGHT,
       quality = JPEG_QUALITY,
     } = options;
@@ -182,6 +184,7 @@ const uploadPhotoInternal = async (
     logger.debug('Uploading to Supabase Storage:', storagePath);
 
     // Step 4: Upload to Supabase Storage using decoded base64
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(storagePath, decode(base64Data), {
@@ -384,12 +387,16 @@ export const deleteMultiplePhotos = async (
     // SECURITY: Auth check performed in deletePhoto() for each photo
     const errors: string[] = [];
 
-    for (const photoId of photoIds) {
-      const result = await deletePhoto(photoId);
+    // Run deletions concurrently using Promise.all to improve performance
+    const results = await Promise.all(
+      photoIds.map(photoId => deletePhoto(photoId))
+    );
+
+    results.forEach((result, index) => {
       if (!result.ok) {
-        errors.push(`${photoId}: ${result.error?.message}`);
+        errors.push(`${photoIds[index]}: ${result.error?.message}`);
       }
-    }
+    });
 
     if (errors.length > 0) {
       return createErrorResponse('PARTIAL_DELETE_FAILED', errors.join('; '));

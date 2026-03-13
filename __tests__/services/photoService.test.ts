@@ -48,6 +48,7 @@ import {
 // Since generatePhotoId, getFileExtension, generateStoragePath are module-scoped `const`,
 // we test them indirectly or pull them via require.
 // We'll use a workaround: require the raw module and inspect.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-require-imports
 const photoServiceModule = require('../../src/services/photoService');
 
 // ─── Helper factories ───────────────────────────────────────────────────────
@@ -295,5 +296,67 @@ describe('storage path generation (replicating module logic)', () => {
 
   it('preserves extension as given', () => {
     expect(generateStoragePath('u', 'p', 'webp')).toBe('u/p.webp');
+  });
+});
+
+import { deleteMultiplePhotos } from '../../src/services/photoService';
+
+// ─── deleteMultiplePhotos (Performance Benchmark) ──────────────────────────
+
+describe('deleteMultiplePhotos benchmark', () => {
+  it('measures execution time for multiple photo deletions', async () => {
+    // Mock the requireAuth dependency and supabase storage list/remove
+    // The auth mock is already configured at the top of the file
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { supabase } = require('../../src/lib/supabase');
+
+    // Simulate list returning some files
+    supabase.storage = {
+      from: jest.fn().mockReturnThis(),
+      list: jest.fn().mockImplementation(async () => {
+        // Delay to simulate network
+        await new Promise(resolve => setTimeout(resolve, 50));
+        return { data: [{ name: 'photo_1.jpg' }, { name: 'photo_2.jpg' }, { name: 'photo_3.jpg' }, { name: 'photo_4.jpg' }, { name: 'photo_5.jpg' }], error: null };
+      }),
+      remove: jest.fn().mockImplementation(async () => {
+        // Delay to simulate network
+        await new Promise(resolve => setTimeout(resolve, 50));
+        return { error: null };
+      })
+    };
+
+    // Use more IDs to show scaling difference better
+    const photoIds = ['photo_1', 'photo_2', 'photo_3', 'photo_4', 'photo_5'];
+
+    const start = performance.now();
+    const result = await deleteMultiplePhotos(photoIds);
+    const end = performance.now();
+
+    // eslint-disable-next-line no-console
+    console.log(`deleteMultiplePhotos took ${end - start} ms`);
+    expect(result.ok).toBe(true);
+  });
+
+  it('accumulates errors for failed deletions and returns them', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { supabase } = require('../../src/lib/supabase');
+
+    supabase.storage = {
+      from: jest.fn().mockReturnThis(),
+      list: jest.fn().mockImplementation(async () => {
+        return { data: [{ name: 'photo_success.jpg' }, { name: 'photo_fail.jpg' }], error: null };
+      }),
+      remove: jest.fn()
+        .mockResolvedValueOnce({ error: null }) // First call (success)
+        .mockResolvedValueOnce({ error: { message: 'Network error' } }) // Second call (failure)
+    };
+
+    const photoIds = ['photo_success', 'photo_fail'];
+    const result = await deleteMultiplePhotos(photoIds);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toBeDefined();
+    expect(result.error?.code).toBe('PARTIAL_DELETE_FAILED');
+    expect(result.error?.message).toContain('photo_fail');
   });
 });
