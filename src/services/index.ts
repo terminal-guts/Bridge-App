@@ -8,6 +8,6 @@ export * from './authService';
 export * from './profileService';
 export * from './photoService';
 export * from './blockService';
-export * from './settingsService';
-export * from './matchService';
+// settingsService: not imported by any consumer — skipped to avoid barrel bloat
+// matchService: not imported by any consumer — skipped to avoid barrel bloat
 export * from './messageService';

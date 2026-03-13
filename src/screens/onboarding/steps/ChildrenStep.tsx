@@ -23,9 +23,9 @@ const CHILDREN_STATUS_OPTIONS = [
 ];
 
 const FAMILY_PLANS_OPTIONS = [
-  { value: 'want_children', label: 'Want children' },
-  { value: 'dont_want_children', label: "Don't want children" },
-  { value: 'not_sure', label: 'Not sure yet' },
+  { value: 'want_children', label: 'Want Children' },
+  { value: 'dont_want_children', label: "Don't Want Children" },
+  { value: 'not_sure', label: 'Not Sure Yet' },
 ];
 
 export const ChildrenStep: React.FC<ChildrenStepProps> = ({

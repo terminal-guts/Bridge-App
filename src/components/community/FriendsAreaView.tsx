@@ -18,7 +18,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, FlatList, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { EvaIcon } from '../icons';
+import { EvaIcon, IconScoutIcon } from '../icons';
 import { RootStackParamList } from '../../types';
 import {
   FriendWithGridStatus,
@@ -39,7 +39,8 @@ import { GuideTarget } from '../guides';
 import { useGuide } from '../../hooks/useGuide';
 import { friendsAreaGuide } from '../../config/guides';
 import { SEPARATOR } from '../../constants/friendsArea';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { UNIVERSAL_PROPOSAL_RELEASE_HOUR } from '../../constants/timings';
 import { SHADOWS } from '../../theme/shadows';
 import { createLogger } from '../../utils/secureLogger';
@@ -342,7 +343,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
   if (loading) {
     return (
       <StyledView className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" color="#1E293B" />
+        <ActivityIndicator size="large" color={COLORS.text.heading} />
         <StyledText className="mt-4 text-neutral-600">Loading Friends Area...</StyledText>
       </StyledView>
     );
@@ -441,7 +442,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                         ...SHADOWS.accentRed,
                       }}
                     >
-                      <EvaIcon name="star" variant="outline" size={32} color="#7C3AED" />
+                      <EvaIcon name="heart" variant="outline" size={32} color="#7C3AED" />
                     </StyledView>
                   </StyledView>
 
@@ -481,19 +482,19 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
               <StyledView className="flex-row items-center justify-between mb-3">
                 <StyledView>
                   <StyledText style={{
-                    fontSize: 28,
+                    fontSize: FONT_SIZES['5xl'],
                     fontWeight: '800',
                     fontFamily: FONTS.extraBold,
-                    color: '#0F172A',
+                    color: COLORS.text.primary,
                     letterSpacing: -0.5,
                   }}>
                     Friends
                   </StyledText>
                   <StyledText style={{
-                    fontSize: 13,
+                    fontSize: FONT_SIZES.md,
                     fontWeight: '500',
                     fontFamily: FONTS.medium,
-                    color: '#64748B',
+                    color: COLORS.text.secondary,
                     marginTop: 2,
                   }}>
                     Help your crew find matches
@@ -507,7 +508,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
 
             {/* Friends List (plain map — no virtualization cap inside ScrollView) */}
             <GuideTarget id="help-friends-section">
-              <StyledView style={{ backgroundColor: '#FFFFFF' }}>
+              <StyledView style={{ backgroundColor: COLORS.card }}>
                 {combinedFriends.map((friendItem, index) => {
                   const friendCard = (
                     <FriendCard
@@ -533,7 +534,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                             height: 56,
                             justifyContent: 'center',
                             alignItems: 'center',
-                            backgroundColor: '#F9FAFB',
+                            backgroundColor: COLORS.backgroundSubtle,
                             paddingVertical: 16,
                           }}
                         >
@@ -541,22 +542,22 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                             <StyledView style={{
                               flex: 1,
                               height: 1.5,
-                              backgroundColor: '#E5E7EB',
+                              backgroundColor: COLORS.backgroundGrayMedium,
                               opacity: 0.6,
                             }} />
                             <StyledView style={{
-                              backgroundColor: '#F3F4F6',
+                              backgroundColor: COLORS.backgroundGray,
                               paddingHorizontal: 14,
                               paddingVertical: 6,
                               borderRadius: 12,
                               marginHorizontal: 12,
                               borderWidth: 1,
-                              borderColor: '#E5E7EB',
+                              borderColor: COLORS.backgroundGrayMedium,
                             }}>
                               <StyledText
                                 style={{
-                                  fontSize: 11,
-                                  color: '#6B7280',
+                                  fontSize: FONT_SIZES.xs,
+                                  color: COLORS.text.label,
                                   fontWeight: '700',
                                   fontFamily: FONTS.bold,
                                   letterSpacing: 0.8,
@@ -569,7 +570,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                             <StyledView style={{
                               flex: 1,
                               height: 1.5,
-                              backgroundColor: '#E5E7EB',
+                              backgroundColor: COLORS.backgroundGrayMedium,
                               opacity: 0.6,
                             }} />
                           </StyledView>
@@ -596,7 +597,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
           /* Empty State - No friends at all */
           <StyledView className="px-4 pt-4 pb-4">
             <StyledView className="bg-blue-50 rounded-2xl p-6 items-center">
-              <EvaIcon name="smiling-face" variant="outline" size={32} color="#437FFF" style={{ marginBottom: 8 }} />
+              <IconScoutIcon name="kindness" size={40} style={{ marginBottom: 8 }} />
               <StyledText className="text-base font-medium text-neutral-700 text-center mb-4">
                 Add friends to help them find matches
               </StyledText>
@@ -616,7 +617,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
           friends.length === 0 &&
           !activeMatch && (
             <StyledView className="flex-1 items-center justify-center px-6" style={{ minHeight: 400 }}>
-              <EvaIcon name="star" variant="outline" size={48} color="#F59E0B" style={{ marginBottom: 16 }} />
+              <IconScoutIcon name="friendship-first" size={48} style={{ marginBottom: 16 }} />
               <StyledText className="text-xl font-semibold text-neutral-900 mb-2 text-center">
                 All Caught Up
               </StyledText>

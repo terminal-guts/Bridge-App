@@ -7,7 +7,8 @@ import { FireIcon, StarIcon } from '../icons/Icons';
 import { KarmaInfoModal } from './karma/KarmaInfoModal';
 import { NudgeButton } from './NudgeButton';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { SHADOWS, glowShadow } from '../../theme/shadows';
 
 interface UserRowProps {
@@ -31,9 +32,9 @@ const STREAK_TIERS = [
     { min: 30, color: '#EF4444', ringColor: '#EF4444', size: 18, label: 'legendary' as const, sublabel: 'Legendary!' },
     { min: 14, color: '#F97316', ringColor: '#D97706', size: 17, label: 'hot' as const, sublabel: 'Hot streak!' },
     { min: 7,  color: '#F59E0B', ringColor: '#F59E0B', size: 16, label: 'warm' as const, sublabel: null },
-    { min: 1,  color: '#2B65F9', ringColor: '#2B65F9', size: 15, label: 'new' as const, sublabel: null },
+    { min: 1,  color: COLORS.primaryButton, ringColor: COLORS.primaryButton, size: 15, label: 'new' as const, sublabel: null },
 ] as const;
-const DEFAULT_STREAK_TIER = { color: '#9CA3AF', ringColor: '#F0F0F0', size: 14, label: 'none' as const, sublabel: null };
+const DEFAULT_STREAK_TIER = { color: COLORS.text.disabled, ringColor: '#F0F0F0', size: 14, label: 'none' as const, sublabel: null };
 
 // Milestone thresholds for streak celebrations
 const STREAK_MILESTONES = [30, 14, 7] as const;
@@ -92,7 +93,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
         setShowKarmaModal(true);
     }, []);
 
-    const rankColor = rank === 1 ? '#FFD700' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : '#2B65F9';
+    const rankColor = rank === 1 ? '#FFD700' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : COLORS.primaryButton;
 
     const avatarShadow = useMemo(() => streak >= 14
         ? glowShadow(streakTier.ringColor, 'strong')
@@ -235,7 +236,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                     />
                 )}
                 <TouchableOpacity style={styles.pointsBtn} activeOpacity={0.75} onPress={handleKarmaTap} accessibilityLabel={`${name}'s karma: ${points} points`} accessibilityRole="button">
-                    <StarIcon size={15} color="#3ECC62" />
+                    <StarIcon size={15} color={COLORS.successAlt} />
                     <Text style={styles.pointsBtnText}>{points} pts</Text>
                 </TouchableOpacity>
             </View>
@@ -251,7 +252,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 24,
         paddingVertical: 16,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: '#E8EDFB',
     },
@@ -270,7 +271,7 @@ const styles = StyleSheet.create({
         height: 32,
         borderRadius: 16,
         borderWidth: 1.5,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 8,
@@ -278,24 +279,24 @@ const styles = StyleSheet.create({
     rankText: {
         fontFamily: FONTS.bold,
         fontWeight: '700',
-        fontSize: 12,
+        fontSize: FONT_SIZES.sm,
     },
     // #3: Glowing vote button styles
     voteBtnGlow: {
         ...SHADOWS.accentBlue,
     },
     matchBtnGlow: {
-        backgroundColor: '#2B65F9',
-        borderColor: '#2B65F9',
+        backgroundColor: COLORS.primaryButton,
+        borderColor: COLORS.primaryButton,
     },
     matchBtnTextGlow: {
-        color: '#FFFFFF',
+        color: COLORS.card,
     },
     avatar: {
         width: 68,
         height: 68,
         borderRadius: 34,
-        backgroundColor: '#E5E7EB',
+        backgroundColor: COLORS.backgroundGrayMedium,
         borderWidth: 2,
         borderColor: '#F0F0F0',
     },
@@ -313,9 +314,9 @@ const styles = StyleSheet.create({
     name: {
         fontFamily: FONTS.bold,
         fontWeight: '700',
-        fontSize: 18,
+        fontSize: FONT_SIZES['2xl'],
         lineHeight: 23,
-        color: '#111111',
+        color: COLORS.text.dark,
     },
     streakRow: {
         flexDirection: 'row',
@@ -324,9 +325,9 @@ const styles = StyleSheet.create({
     },
     streakText: {
         fontFamily: FONTS.regular,
-        fontSize: 14,
+        fontSize: FONT_SIZES.base,
         lineHeight: 18,
-        color: '#737373',
+        color: COLORS.text.dimmed,
     },
     // #1: Streak text color upgrades at tiers
     streakTextWarm: {
@@ -343,29 +344,29 @@ const styles = StyleSheet.create({
     },
     streakSublabel: {
         fontFamily: FONTS.semiBold,
-        fontSize: 11,
+        fontSize: FONT_SIZES.xs,
         marginTop: 1,
     },
     // #2: Contextual status line
     statusLine: {
         fontFamily: FONTS.regular,
-        fontSize: 12,
+        fontSize: FONT_SIZES.sm,
         color: '#667085',
         marginTop: 2,
     },
     statusLineActive: {
-        color: '#3ECC62',
+        color: COLORS.successAlt,
         fontFamily: FONTS.medium,
     },
     statusLineSuggestion: {
-        color: '#437FFF',
+        color: COLORS.primaryAccent,
         fontFamily: FONTS.medium,
     },
     unreadDot: {
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#2B65F9',
+        backgroundColor: COLORS.primaryButton,
         marginLeft: 2,
     },
     matchBtn: {
@@ -373,21 +374,21 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         borderRadius: 999,
         borderWidth: 1.5,
-        borderColor: '#2B65F9',
-        backgroundColor: '#EEF3FF',
+        borderColor: COLORS.primaryButton,
+        backgroundColor: COLORS.backgroundFriendActive,
     },
     matchBtnText: {
         fontFamily: FONTS.bold,
         fontWeight: '700',
-        fontSize: 15,
-        color: '#2B65F9',
+        fontSize: FONT_SIZES.lg,
+        color: COLORS.primaryButton,
     },
     matchBtnDisabled: {
-        borderColor: '#D1D5DB',
-        backgroundColor: '#F3F4F6',
+        borderColor: COLORS.borderGray,
+        backgroundColor: COLORS.backgroundGray,
     },
     matchBtnTextDisabled: {
-        color: '#9CA3AF',
+        color: COLORS.text.disabled,
     },
     pointsBtn: {
         flexDirection: 'row',
@@ -396,15 +397,15 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         borderRadius: 999,
         borderWidth: 1.5,
-        borderColor: '#3ECC62',
-        backgroundColor: '#EDFCF2',
+        borderColor: COLORS.successAlt,
+        backgroundColor: COLORS.backgroundSuccessBadge,
         gap: 6,
         ...SHADOWS.accentGreen,
     },
     pointsBtnText: {
         fontFamily: FONTS.bold,
         fontWeight: '700',
-        fontSize: 15,
-        color: '#3ECC62',
+        fontSize: FONT_SIZES.lg,
+        color: COLORS.successAlt,
     },
 });

@@ -12,10 +12,12 @@ import {
 } from 'react-native';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { EvaIcon } from '../../components/icons';
+import { StaggerItem } from '../../hooks/useStaggeredList';
 import { RootStackParamList } from '../../types';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
 import { ScreenWrapper } from '../../components/ui';
 import { getCentralOffsetHours } from '../../utils/centralTime';
@@ -78,7 +80,7 @@ const getInitialColor = (name: string): string => {
 // ─── Karma Pill ──────────────────────────────────────────────────────────────
 
 const KarmaPill = ({ karma, size = 'medium' }: { karma: number; size?: 'small' | 'medium' | 'large' }) => {
-  const fontSize = size === 'large' ? 16 : size === 'medium' ? 14 : 13;
+  const fontSize = size === 'large' ? FONT_SIZES.xl : size === 'medium' ? FONT_SIZES.base : FONT_SIZES.md;
   const iconSize = size === 'large' ? 15 : size === 'medium' ? 13 : 12;
   const paddingV = size === 'large' ? 6 : 4;
   const paddingH = size === 'large' ? 14 : size === 'medium' ? 12 : 10;
@@ -96,7 +98,7 @@ const KarmaPill = ({ karma, size = 'medium' }: { karma: number; size?: 'small' |
 
 const FriendBadge = () => (
   <View style={s.friendBadge}>
-    <EvaIcon name="people" variant="outline" size={10} color="#FFFFFF" />
+    <EvaIcon name="people" variant="outline" size={12} color="#FFFFFF" />
   </View>
 );
 
@@ -123,7 +125,7 @@ const RankChangeArrow = ({ change }: { change: number }) => {
       <EvaIcon
         name={isUp ? 'arrow-upward' : 'arrow-downward'}
         variant="outline"
-        size={10}
+        size={12}
         color={isUp ? '#16A34A' : '#DC2626'}
       />
       <Text style={[s.rankChangeText, { color: isUp ? '#16A34A' : '#DC2626' }]}>
@@ -232,7 +234,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
   const handleInfo = useCallback(() => {
     Alert.alert(
       'Weekly Karma',
-      'This page tracks karma earned this week only. Your total karma stays the same — this resets every Sunday at 7 PM.',
+      'Tracks karma earned this week only. Resets every Sunday at 7 PM.',
     );
   }, []);
 
@@ -249,31 +251,33 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
     const globalIndex = index + 3;
     const gap = getGapAbove(globalIndex);
     return (
-      <View style={[s.listCard, isMe && s.listCardHighlighted]}>
-        <View style={[s.rankPill, isMe && s.rankPillHighlighted]}>
-          <Text style={[s.rankPillText, isMe && s.rankPillTextHighlighted]}>{rank}</Text>
-        </View>
-        <View style={s.listAvatarWrap}>
-          {item.avatarUrl ? (
-            <Image source={{ uri: item.avatarUrl }} style={s.listAvatar} />
-          ) : (
-            <InitialAvatar name={item.firstName} size={48} />
-          )}
-          {item.isFriend && <FriendBadge />}
-        </View>
-        <View style={s.listNameCol}>
-          <View style={s.nameRow}>
-            <Text style={[s.listName, isMe && s.listNameHighlighted]} numberOfLines={1}>
-              {item.firstName}
-            </Text>
-            <RankChangeArrow change={item.rankChange} />
+      <StaggerItem index={index} staggerDelay={40} maxAnimated={20}>
+        <View style={[s.listCard, isMe && s.listCardHighlighted]}>
+          <View style={[s.rankPill, isMe && s.rankPillHighlighted]}>
+            <Text style={[s.rankPillText, isMe && s.rankPillTextHighlighted]}>{rank}</Text>
           </View>
-          {isMe && gap > 0 && (
-            <Text style={s.gapText}>{gap} pts behind #{rank - 1}</Text>
-          )}
+          <View style={s.listAvatarWrap}>
+            {item.avatarUrl ? (
+              <Image source={{ uri: item.avatarUrl }} style={s.listAvatar} />
+            ) : (
+              <InitialAvatar name={item.firstName} size={48} />
+            )}
+            {item.isFriend && <FriendBadge />}
+          </View>
+          <View style={s.listNameCol}>
+            <View style={s.nameRow}>
+              <Text style={[s.listName, isMe && s.listNameHighlighted]} numberOfLines={1}>
+                {item.firstName}
+              </Text>
+              <RankChangeArrow change={item.rankChange} />
+            </View>
+            {isMe && gap > 0 && (
+              <Text style={s.gapText}>{gap} pts behind #{rank - 1}</Text>
+            )}
+          </View>
+          <KarmaPill karma={item.karma} />
         </View>
-        <KarmaPill karma={item.karma} />
-      </View>
+      </StaggerItem>
     );
   }, [getGapAbove]);
 
@@ -302,7 +306,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
       <ScreenWrapper>
         {renderHeader()}
         <View style={s.loadingWrap}>
-          <ActivityIndicator size="large" color="#437FFF" />
+          <ActivityIndicator size="large" color={COLORS.primaryAccent} />
         </View>
       </ScreenWrapper>
     );
@@ -471,8 +475,8 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#437FFF"
-              colors={['#437FFF']}
+              tintColor={COLORS.primaryAccent}
+              colors={[COLORS.primaryAccent]}
             />
           }
           onViewableItemsChanged={onViewableItemsChanged}
@@ -525,7 +529,7 @@ const s = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 28,
+    fontSize: FONT_SIZES['5xl'],
     color: '#101828',
   },
 
@@ -545,8 +549,8 @@ const s = StyleSheet.create({
   },
   bannerText: {
     fontFamily: FONTS.regular,
-    fontSize: 13,
-    color: '#437FFF',
+    fontSize: FONT_SIZES.md,
+    color: COLORS.primaryAccent,
     textAlign: 'center',
   },
   bannerBold: {
@@ -563,7 +567,7 @@ const s = StyleSheet.create({
   },
   countdownText: {
     fontFamily: FONTS.semiBold,
-    fontSize: 13,
+    fontSize: FONT_SIZES.md,
     color: '#667085',
   },
 
@@ -579,13 +583,13 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#34C759',
+    borderColor: COLORS.success,
     borderRadius: 999,
     backgroundColor: 'rgba(52, 199, 89, 0.08)',
   },
   karmaPillText: {
     fontFamily: FONTS.semiBold,
-    color: '#34C759',
+    color: COLORS.success,
   },
 
   // Friend badge
@@ -596,11 +600,11 @@ const s = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#437FFF',
+    backgroundColor: COLORS.primaryAccent,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: COLORS.card,
     zIndex: 1,
     ...SHADOWS.accentBlue,
   },
@@ -612,7 +616,7 @@ const s = StyleSheet.create({
   },
   initialAvatarText: {
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
+    color: COLORS.card,
   },
 
   // Layer 3 — Podium (hero card)
@@ -641,7 +645,7 @@ const s = StyleSheet.create({
   },
   podiumSide: { alignItems: 'center', flex: 1 },
   podiumCenter: { alignItems: 'center', flex: 1, marginBottom: 8 },
-  crownEmoji: { fontSize: 32, marginBottom: 6 },
+  crownEmoji: { fontSize: FONT_SIZES['6xl'], marginBottom: 6 },
 
   // Avatar wrappers
   avatarWrapperLarge: { position: 'relative', marginBottom: 10 },
@@ -652,7 +656,7 @@ const s = StyleSheet.create({
     borderWidth: 3,
     borderRadius: 999,
     padding: 3,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
   },
   avatarRingGold: {
     borderWidth: 4,
@@ -684,25 +688,25 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: COLORS.card,
     ...SHADOWS.sm,
   },
   rankBadgeLarge: { width: 30, height: 30, borderRadius: 15 },
-  rankBadgeText: { fontFamily: FONTS.bold, fontSize: 12, color: '#FFFFFF' },
-  rankBadgeTextLarge: { fontSize: 14 },
+  rankBadgeText: { fontFamily: FONTS.bold, fontSize: FONT_SIZES.sm, color: COLORS.card },
+  rankBadgeTextLarge: { fontSize: FONT_SIZES.base },
 
   // Podium text
   podiumName: {
     fontFamily: FONTS.semiBold,
-    fontSize: 14,
+    fontSize: FONT_SIZES.base,
     color: '#101828',
     maxWidth: 100,
     textAlign: 'center',
     marginBottom: 6,
   },
   podiumNameFirst: {
-    color: '#437FFF',
-    fontSize: 16,
+    color: COLORS.primaryAccent,
+    fontSize: FONT_SIZES.xl,
     fontFamily: FONTS.bold,
   },
 
@@ -720,12 +724,12 @@ const s = StyleSheet.create({
   },
   howToEarnItem: {
     fontFamily: FONTS.regular,
-    fontSize: 12,
+    fontSize: FONT_SIZES.sm,
     color: '#667085',
   },
   howToEarnBold: {
     fontFamily: FONTS.semiBold,
-    color: '#437FFF',
+    color: COLORS.primaryAccent,
   },
   howToEarnDot: {
     width: 3,
@@ -747,7 +751,7 @@ const s = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 14,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
     ...SHADOWS.sm,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.03)',
@@ -755,31 +759,31 @@ const s = StyleSheet.create({
   listCardHighlighted: {
     backgroundColor: 'rgba(67, 127, 255, 0.06)',
     borderLeftWidth: 3,
-    borderLeftColor: '#437FFF',
+    borderLeftColor: COLORS.primaryAccent,
     borderColor: 'rgba(67, 127, 255, 0.15)',
-    shadowColor: '#437FFF',
+    shadowColor: COLORS.primaryAccent,
     shadowOpacity: 0.12,
   },
   rankPill: {
     width: 36,
     height: 28,
     borderRadius: 999,
-    backgroundColor: '#F2F4F7',
+    backgroundColor: COLORS.backgroundProgressTrack,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   rankPillHighlighted: {
-    backgroundColor: '#437FFF',
+    backgroundColor: COLORS.primaryAccent,
     ...SHADOWS.accentBlue,
   },
   rankPillText: {
     fontFamily: FONTS.bold,
-    fontSize: 13,
+    fontSize: FONT_SIZES.md,
     color: '#667085',
   },
   rankPillTextHighlighted: {
-    color: '#FFFFFF',
+    color: COLORS.card,
   },
 
   // Layer 8 — List avatars with ring shadow
@@ -798,16 +802,16 @@ const s = StyleSheet.create({
   listNameCol: { flex: 1 },
   listName: {
     fontFamily: FONTS.semiBold,
-    fontSize: 16,
+    fontSize: FONT_SIZES.xl,
     color: '#101828',
   },
   listNameHighlighted: {
-    color: '#437FFF',
+    color: COLORS.primaryAccent,
     fontFamily: FONTS.bold,
   },
   gapText: {
     fontFamily: FONTS.regular,
-    fontSize: 12,
+    fontSize: FONT_SIZES.sm,
     color: '#667085',
     marginTop: 2,
   },
@@ -823,7 +827,7 @@ const s = StyleSheet.create({
   stickyBarInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
     borderRadius: 16,
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -832,7 +836,7 @@ const s = StyleSheet.create({
     ...SHADOWS.md,
   },
   stickyRankPill: {
-    backgroundColor: '#437FFF',
+    backgroundColor: COLORS.primaryAccent,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -841,8 +845,8 @@ const s = StyleSheet.create({
   },
   stickyRankText: {
     fontFamily: FONTS.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FONT_SIZES.md,
+    color: COLORS.card,
   },
   stickyAvatar: {
     width: 36,
@@ -853,12 +857,12 @@ const s = StyleSheet.create({
   stickyNameCol: { flex: 1 },
   stickyName: {
     fontFamily: FONTS.bold,
-    fontSize: 15,
-    color: '#437FFF',
+    fontSize: FONT_SIZES.lg,
+    color: COLORS.primaryAccent,
   },
   stickyGapText: {
     fontFamily: FONTS.regular,
-    fontSize: 11,
+    fontSize: FONT_SIZES.xs,
     color: '#667085',
     marginTop: 1,
   },
@@ -872,20 +876,20 @@ const s = StyleSheet.create({
   },
   emptyTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 20,
+    fontSize: FONT_SIZES['3xl'],
     color: '#101828',
     marginTop: 16,
   },
   emptyBody: {
     fontFamily: FONTS.regular,
-    fontSize: 15,
+    fontSize: FONT_SIZES.lg,
     color: '#667085',
     textAlign: 'center',
     marginTop: 8,
   },
   retryBtn: {
     marginTop: 20,
-    backgroundColor: '#437FFF',
+    backgroundColor: COLORS.primaryAccent,
     borderRadius: 12,
     paddingHorizontal: 24,
     paddingVertical: 12,
@@ -893,8 +897,8 @@ const s = StyleSheet.create({
   },
   retryBtnText: {
     fontFamily: FONTS.semiBold,
-    fontSize: 15,
-    color: '#FFFFFF',
+    fontSize: FONT_SIZES.lg,
+    color: COLORS.card,
   },
 
   // Rank change arrows

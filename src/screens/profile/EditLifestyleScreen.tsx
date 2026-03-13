@@ -7,6 +7,7 @@ import { H3, Body } from '../../components/ui/Typography';
 import { Card, ScreenWrapper } from '../../components/ui';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { FONTS } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { SectionScreenWrapper } from './sections/SectionScreenWrapper';
 import { useEditProfile } from './sections/useEditProfile';
 import { LifestyleSection } from './sections/LifestyleSection';
@@ -22,9 +23,9 @@ const CHILDREN_STATUS_OPTIONS = [
 ];
 
 const FAMILY_PLANS_OPTIONS = [
-  { value: 'want_children', label: 'Want children' },
-  { value: 'dont_want_children', label: "Don't want children" },
-  { value: 'not_sure', label: 'Not sure yet' },
+  { value: 'want_children', label: 'Want Children' },
+  { value: 'dont_want_children', label: "Don't Want Children" },
+  { value: 'not_sure', label: 'Not Sure Yet' },
 ];
 
 interface EditLifestyleScreenProps {
@@ -86,7 +87,7 @@ export const EditLifestyleScreen: React.FC<EditLifestyleScreenProps> = ({ naviga
         <H3 className="mb-4">Family & Children</H3>
 
         <Body className="text-xs font-medium text-neutral-700 mb-2">
-          Do you have children? <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText>
+          Do you have children? <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText>
         </Body>
         <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
           {CHILDREN_STATUS_OPTIONS.map((option) => (
@@ -111,7 +112,7 @@ export const EditLifestyleScreen: React.FC<EditLifestyleScreenProps> = ({ naviga
         </StyledView>
 
         <Body className="text-xs font-medium text-neutral-700 mb-2">
-          Family Plans <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText>
+          Family Plans <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText>
         </Body>
         <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
           {FAMILY_PLANS_OPTIONS.map((option) => (

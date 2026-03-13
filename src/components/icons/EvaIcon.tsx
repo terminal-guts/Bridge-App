@@ -72,7 +72,7 @@ interface EvaIconProps {
 export function EvaIcon({
   name,
   variant = 'outline',
-  color = 'text',
+  color = '#667085',
   size = 24,
   style,
 }: EvaIconProps) {

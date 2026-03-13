@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { supabase } from '../../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
 import type { RootStackParamList } from '../../types';
@@ -62,7 +63,7 @@ export default function SuspendedScreen({ reason }: SuspendedScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
   },
   content: {
     flex: 1,
@@ -83,7 +84,7 @@ const styles = StyleSheet.create({
   description: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.md,
-    color: '#667085',
+    color: COLORS.text.label,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 16,
@@ -98,7 +99,7 @@ const styles = StyleSheet.create({
   reasonLabel: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.sm,
-    color: '#FF383C',
+    color: COLORS.rejectRed,
     marginBottom: 4,
   },
   reasonText: {
@@ -109,14 +110,14 @@ const styles = StyleSheet.create({
   helpText: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.sm,
-    color: '#667085',
+    color: COLORS.text.label,
     textAlign: 'center',
     marginBottom: 24,
   },
   supportButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#437FFF',
+    backgroundColor: COLORS.primaryAccent,
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 12,
@@ -128,7 +129,7 @@ const styles = StyleSheet.create({
   supportButtonText: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.md,
-    color: '#FFFFFF',
+    color: COLORS.card,
   },
   signOutButton: {
     paddingVertical: 14,
@@ -140,6 +141,6 @@ const styles = StyleSheet.create({
   signOutButtonText: {
     fontFamily: FONTS.medium,
     fontSize: FONT_SIZES.md,
-    color: '#FF383C',
+    color: COLORS.rejectRed,
   },
 });

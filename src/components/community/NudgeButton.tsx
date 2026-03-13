@@ -1,10 +1,18 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { TouchableOpacity, StyleSheet, Text } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { mediumHaptic } from '../../utils/haptics';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { EvaIcon } from '../icons';
+import { SPRINGS } from '../../constants/animations';
 
 interface NudgeButtonProps {
     friendId: string;
@@ -22,6 +30,9 @@ export const NudgeButton: React.FC<NudgeButtonProps> = React.memo(({ friendId, f
     const [nudged, setNudged] = useState(false);
     const [loading, setLoading] = useState(false);
 
+    const iconScale = useSharedValue(1);
+    const iconRotation = useSharedValue(0);
+
     // Check on mount if already nudged today
     React.useEffect(() => {
         AsyncStorage.getItem(getTodayKey(friendId)).then(val => {
@@ -33,6 +44,21 @@ export const NudgeButton: React.FC<NudgeButtonProps> = React.memo(({ friendId, f
         if (nudged || loading || disabled) return;
         setLoading(true);
         mediumHaptic();
+
+        // Bell ring animation: rotate back and forth, then scale down + up for icon swap
+        iconRotation.value = withSequence(
+            withTiming(15, { duration: 60 }),
+            withTiming(-15, { duration: 60 }),
+            withTiming(10, { duration: 50 }),
+            withTiming(-10, { duration: 50 }),
+            withTiming(0, { duration: 40 }),
+        );
+        iconScale.value = withSequence(
+            withTiming(0.6, { duration: 150 }),
+            withSpring(1.15, SPRINGS.bouncy),
+            withSpring(1, SPRINGS.snappy),
+        );
+
         try {
             await AsyncStorage.setItem(getTodayKey(friendId), 'true');
             onNudge(friendId);
@@ -44,6 +70,13 @@ export const NudgeButton: React.FC<NudgeButtonProps> = React.memo(({ friendId, f
 
     const isDisabled = nudged || disabled || loading;
 
+    const iconAnimStyle = useAnimatedStyle(() => ({
+        transform: [
+            { scale: iconScale.value },
+            { rotate: `${iconRotation.value}deg` },
+        ],
+    }));
+
     return (
         <TouchableOpacity
             onPress={handleNudge}
@@ -54,12 +87,14 @@ export const NudgeButton: React.FC<NudgeButtonProps> = React.memo(({ friendId, f
             accessibilityRole="button"
             accessibilityState={{ disabled: isDisabled }}
         >
-            <EvaIcon
-                name={nudged ? 'checkmark' : 'bell'}
-                variant="outline"
-                size={14}
-                color={isDisabled ? COLORS.text.disabled : COLORS.primaryButton}
-            />
+            <Animated.View style={iconAnimStyle}>
+                <EvaIcon
+                    name={nudged ? 'checkmark' : 'bell'}
+                    variant="outline"
+                    size={14}
+                    color={isDisabled ? COLORS.text.disabled : COLORS.primaryButton}
+                />
+            </Animated.View>
             {nudged && <Text style={styles.sentText}>Sent</Text>}
         </TouchableOpacity>
     );
@@ -74,7 +109,7 @@ const styles = StyleSheet.create({
         borderRadius: 999,
         borderWidth: 1,
         borderColor: COLORS.primaryButton,
-        backgroundColor: '#EEF3FF',
+        backgroundColor: COLORS.backgroundFriendActive,
         gap: 4,
     },
     buttonDisabled: {
@@ -83,7 +118,7 @@ const styles = StyleSheet.create({
     },
     sentText: {
         fontFamily: FONTS.medium,
-        fontSize: 11,
+        fontSize: FONT_SIZES.xs,
         color: COLORS.text.disabled,
     },
 });

@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, TouchableOpacity, ViewStyle } from 'react-native';
+import { View, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
 import { SHADOWS } from '../../theme/shadows';
+import { AnimatedPressable } from './AnimatedPressable';
 
 /**
  * Elevation levels for visual hierarchy:
@@ -32,7 +33,6 @@ interface CardProps {
 }
 
 const StyledView = styled(View);
-const StyledTouchableOpacity = styled(TouchableOpacity);
 
 /** Map Card elevation levels → centralized SHADOWS presets */
 const ELEVATION_MAP: Record<ElevationLevel, ViewStyle> = {
@@ -110,14 +110,14 @@ export const Card: React.FC<CardProps> = ({
 
   if (onPress) {
     return (
-      <StyledTouchableOpacity
+      <AnimatedPressable
         onPress={onPress}
-        activeOpacity={0.7}
-        className={`${baseStyles} active:scale-[0.99] ${className}`}
-        style={combinedStyle}
+        scale="subtle"
+        className={`${baseStyles} ${className}`}
+        style={combinedStyle as unknown as ViewStyle}
       >
         {renderContent()}
-      </StyledTouchableOpacity>
+      </AnimatedPressable>
     );
   }
 

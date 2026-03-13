@@ -190,7 +190,7 @@ export function PendingProposalCard({ proposal, onViewProfile }: PendingProposal
 
       {/* Expiration Timer - Compact */}
       <StyledView className="flex-row items-center mb-2">
-        <EvaIcon name="clock" variant="outline" size={12} color="getUrgencyColor(expirationData.urgencyLevel)" />
+        <EvaIcon name="clock" variant="outline" size={12} color={getUrgencyColor(expirationData.urgencyLevel)} />
         <StyledText
           className="text-xs ml-1 font-medium"
           style={{ color: getUrgencyColor(expirationData.urgencyLevel), fontFamily: FONTS.medium }}

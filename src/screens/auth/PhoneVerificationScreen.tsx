@@ -8,7 +8,8 @@ import { verifyEmail, sendOtpToEmail, signInWithPassword, isReviewerBypassEmail 
 import { fetchAndSetUserProfile } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
 import { EvaIcon } from '../../components/icons';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 
 const logger = createLogger('PhoneVerificationScreen');
 
@@ -198,7 +199,7 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
                     styles.otpInput,
                     focusedIndex === index && styles.otpInputFocused
                   ]}
-                  selectionColor="#437FFF"
+                  selectionColor={COLORS.primaryAccent}
                 />
               ))}
             </StyledView>
@@ -242,17 +243,17 @@ const styles = StyleSheet.create({
     width: 48,
     height: 56,
     marginHorizontal: 4,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
     borderWidth: 2,
     borderColor: '#D0D5DD',
     borderRadius: 8,
     textAlign: 'center',
-    fontSize: 20,
+    fontSize: FONT_SIZES['3xl'],
     fontWeight: '600',
     fontFamily: FONTS.semiBold,
     color: '#101828',
   },
   otpInputFocused: {
-    borderColor: '#437FFF',
+    borderColor: COLORS.primaryAccent,
   },
 });

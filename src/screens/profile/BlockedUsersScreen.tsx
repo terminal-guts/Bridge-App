@@ -8,6 +8,7 @@ import { getBlockedUsers, blockUser, unblockUser, BlockedUser as BlockedUserType
 import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';
 import { FONTS } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { EvaIcon } from '../../components/icons';
 
 const logger = createLogger('BlockedUsersScreen');
@@ -199,7 +200,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                 value={emailInput}
                 onChangeText={setEmailInput}
                 placeholder="email@example.com"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={COLORS.text.disabled}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -214,13 +215,13 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                 className="px-4 py-3.5"
               >
                 {blocking ? (
-                  <ActivityIndicator size="small" color="#437FFF" />
+                  <ActivityIndicator size="small" color={COLORS.primaryAccent} />
                 ) : (
                   <EvaIcon
                     name="arrow-circle-right"
                     variant="outline"
                     size={26}
-                    color={emailInput.trim() ? '#437FFF' : '#D1D5DB'}
+                    color={emailInput.trim() ? COLORS.primaryAccent : COLORS.borderGray}
                   />
                 )}
               </StyledTouchableOpacity>
@@ -230,7 +231,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
           {/* Blocked Users List */}
           {loading ? (
             <StyledView className="items-center py-12">
-              <ActivityIndicator size="large" color="#437FFF" />
+              <ActivityIndicator size="large" color={COLORS.primaryAccent} />
             </StyledView>
           ) : blockedUsers.length > 0 ? (
             <>

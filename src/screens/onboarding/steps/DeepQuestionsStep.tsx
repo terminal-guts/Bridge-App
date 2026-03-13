@@ -5,6 +5,7 @@ import { H1, H2, H3, Body } from '../../../components/ui';
 import { OnboardingData, DeepQuestionAnswer } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import { FONTS } from '../../../constants/typography';
+import { COLORS } from '../../../theme/colors';
 import { EvaIcon } from '../../../components/icons';
 
 interface DeepQuestionsStepProps {
@@ -223,7 +224,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
               : 'bg-white border-neutral-200'
           }`}
           style={{
-            shadowColor: isAnswered ? '#437FFF' : '#000',
+            shadowColor: isAnswered ? COLORS.primaryAccent : '#000',
             shadowOffset: { width: 0, height: 1 },
             shadowOpacity: isAnswered ? 0.1 : 0.05,
             shadowRadius: 4,
@@ -233,7 +234,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
           <StyledView className="flex-row items-start">
             {isAnswered && (
               <StyledView className="mr-3 mt-1">
-                <EvaIcon name="checkmark-circle-2" variant="outline" size={20} color="#437FFF" />
+                <EvaIcon name="checkmark-circle-2" variant="outline" size={20} color={COLORS.primaryAccent} />
               </StyledView>
             )}
             <StyledView className="flex-1">
@@ -258,7 +259,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
                 }}
                 className="flex-row items-center"
               >
-                <EvaIcon name="trash-2" variant="outline" size={16} color="#EF4444" />
+                <EvaIcon name="trash-2" variant="outline" size={16} color={COLORS.error} />
                 <Body className="ml-1 text-xs text-error">Delete</Body>
               </StyledTouchableOpacity>
             </StyledView>
@@ -305,7 +306,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
                 variant={hasAnswerInTier ? 'fill' : 'outline'}
                 size={28}
                 color={hasAnswerInTier
-                  ? '#10B981'
+                  ? COLORS.emerald
                   : tier === 1 ? '#2563EB' : tier === 2 ? '#9333EA' : '#EC4899'}
               />
             </StyledView>

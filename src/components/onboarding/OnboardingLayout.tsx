@@ -12,6 +12,7 @@ import { styled } from 'nativewind';
 import { Button } from '../ui';
 import { TouchableOpacity as RNTouchableOpacity } from 'react-native';
 import { EvaIcon } from '../icons';
+import { COLORS } from '../../theme/colors';
 
 interface OnboardingLayoutProps {
   children: React.ReactNode;
@@ -137,7 +138,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
                   paddingTop: 16,
                   paddingBottom: 16,  // Let KeyboardAvoidingView handle positioning naturally
                   borderTopWidth: 1,
-                  borderTopColor: '#F3F4F6',
+                  borderTopColor: COLORS.backgroundGray,
                 }}
               >
                 <Button
@@ -207,7 +208,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
             className="px-6 py-6 bg-neutral-50"
             style={{
               borderTopWidth: 1,
-              borderTopColor: '#F3F4F6',
+              borderTopColor: COLORS.backgroundGray,
             }}
           >
             <Button

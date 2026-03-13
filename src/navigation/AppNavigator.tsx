@@ -4,7 +4,9 @@ import * as Linking from 'expo-linking';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { UsersTabIcon, HandshakeTabIcon, ProfileTabIcon } from '../components/icons/Icons';
-import { ActivityIndicator, AppState, View, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, AppState, View, TouchableOpacity, useWindowDimensions, LayoutChangeEvent } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { SPRINGS } from '../constants/animations';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GuideTarget, useGuideContext } from '../components/guides';
 import { supabase } from '../lib/supabase';
@@ -27,16 +29,14 @@ import {
 
 // Main Screens
 import {
-  ProfileScreen,
   CommunityScreen,
 } from '../screens/main';
+import { ProfileScreen } from '../screens/main/ProfileScreen';
 import { FriendProposalScreen } from '../screens/community/FriendProposalScreen';
 
 // Onboarding
 import { OnboardingScreen } from '../screens/onboarding/OnboardingScreen';
 
-// Match Screens (eagerly loaded — part of main tab flow)
-import { MatchesScreen } from '../screens/match/MatchesScreen';
 import ChatScreen from '../screens/match/ChatScreen';
 
 // Profile Screens (eagerly loaded)
@@ -54,6 +54,9 @@ function withSuspense<P extends object>(LazyComponent: React.LazyExoticComponent
     );
   };
 }
+
+// Match Screens (eagerly loaded — part of main tab flow)
+const MatchesScreen = withSuspense(React.lazy(() => import('../screens/match/MatchesScreen').then(m => ({ default: m.MatchesScreen }))));
 
 // Match sub-screens
 const MatchRevealScreen = withSuspense(React.lazy(() => import('../screens/match/MatchRevealScreen').then(m => ({ default: m.MatchRevealScreen }))));
@@ -94,9 +97,13 @@ const ContactInviteScreen = withSuspense(React.lazy(() => import('../screens/fri
 
 // Types
 import { RootStackParamList, MainTabParamList } from '../types';
-import { createDevelopmentData } from '../services/developmentDataService';
-import { DevStateToggle } from '../components/dev/DevStateToggle';
 import { createLogger } from '../utils/secureLogger';
+import { slideWithFade, modalSlideUp, fadeTransition } from '../utils/screenTransitions';
+
+// Dev tools — lazy-loaded only when feature flags are on
+const LazyDevStateToggle = FEATURES.ENABLE_DEV_STATE_TOGGLE
+  ? withSuspense(React.lazy(() => import('../components/dev/DevStateToggle').then(m => ({ default: m.DevStateToggle }))))
+  : () => null;
 
 const logger = createLogger('AppNavigator');
 
@@ -108,7 +115,7 @@ const TAB_ICONS = [UsersTabIcon, HandshakeTabIcon, ProfileTabIcon];
 const TAB_TARGET_IDS = ['tab-community', 'tab-matches', 'tab-profile'];
 
 const CustomTabBar = ({ state, navigation }: any) => {
-  const { height: screenHeight } = useWindowDimensions();
+  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { activeGuide, currentStep, nextStep } = useGuideContext();
   // Content height (above home indicator) scales with device
@@ -116,6 +123,22 @@ const CustomTabBar = ({ state, navigation }: any) => {
   // Icon size and vertical offset are both proportional to content height
   const iconSize = Math.round(contentHeight * 0.65);
   const iconPaddingTop = Math.round(contentHeight * 0.25);
+
+  // ── Animated indicator ────────────────────────────────────────────────────
+  // Each tab is 1/3 of screen width; indicator centers within the active tab.
+  const tabWidth = screenWidth / state.routes.length;
+  const indicatorX = useSharedValue(state.index * tabWidth + (tabWidth - 40) / 2);
+
+  useEffect(() => {
+    indicatorX.value = withSpring(
+      state.index * tabWidth + (tabWidth - 40) / 2,
+      SPRINGS.responsive,
+    );
+  }, [state.index, tabWidth]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorX.value }],
+  }));
 
   return (
     <View style={{
@@ -131,6 +154,19 @@ const CustomTabBar = ({ state, navigation }: any) => {
       shadowRadius: 3,
       elevation: 5,
     }}>
+      {/* Sliding indicator — sits flush at the very top of the bar */}
+      <Animated.View style={[indicatorStyle, {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: 40,
+        height: 3,
+        backgroundColor: '#437FFF',
+        borderBottomLeftRadius: 2,
+        borderBottomRightRadius: 2,
+        zIndex: 1,
+      }]} />
+
       {state.routes.map((route: any, index: number) => {
         const focused = state.index === index;
         const Icon = TAB_ICONS[index];
@@ -160,18 +196,6 @@ const CustomTabBar = ({ state, navigation }: any) => {
               onPress={onPress}
               activeOpacity={0.7}
             >
-              {/* Indicator sits flush at the very top of the touchable area */}
-              {focused && (
-                <View style={{
-                  position: 'absolute',
-                  top: 0,
-                  width: 40,
-                  height: 3,
-                  backgroundColor: '#437FFF',
-                  borderBottomLeftRadius: 2,
-                  borderBottomRightRadius: 2,
-                }} />
-              )}
               <Icon size={iconSize} color={focused ? '#437FFF' : '#667085'} />
             </TouchableOpacity>
           </GuideTarget>
@@ -417,7 +441,7 @@ export const AppNavigator = () => {
         setCachedUserId(session.user.id);
         setupNotifications();
         if (FEATURES.DEVELOPMENT_CREATE_MOCK_DATA) {
-          createDevelopmentData(session.user.id);
+          import('../services/developmentDataService').then(m => m.createDevelopmentData(session.user.id));
         }
       } else if (event === 'SIGNED_OUT' && wasAuthenticated) {
         clearCachedUserId();
@@ -467,18 +491,20 @@ export const AppNavigator = () => {
           screenOptions={{
             headerShown: false,
             cardStyle: { backgroundColor: '#F9FAFB' },
+            gestureEnabled: true,
+            ...slideWithFade,
           }}
         >
-          {/* Auth Stack */}
-          <Stack.Screen name="Welcome" component={WelcomeScreen} />
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="PhoneVerification" component={PhoneVerificationScreen} />
+          {/* Auth Stack — fade transitions for state changes */}
+          <Stack.Screen name="Welcome" component={WelcomeScreen} options={fadeTransition} />
+          <Stack.Screen name="Login" component={LoginScreen} options={fadeTransition} />
+          <Stack.Screen name="PhoneVerification" component={PhoneVerificationScreen} options={fadeTransition} />
 
-          {/* Onboarding */}
-          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+          {/* Onboarding — fade in from auth flow */}
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} options={fadeTransition} />
 
-          {/* Main App */}
-          <Stack.Screen name="MainTabs" component={MainTabs} />
+          {/* Main App — fade in from auth/onboarding */}
+          <Stack.Screen name="MainTabs" component={MainTabs} options={fadeTransition} />
 
           {/* Community Screens */}
           <Stack.Screen name="FriendProposal" component={FriendProposalScreen} />
@@ -486,10 +512,10 @@ export const AppNavigator = () => {
           {/* Match Screens */}
           <Stack.Screen name="MatchReveal" component={MatchRevealScreen} />
           <Stack.Screen name="MatchProposal" component={MatchProposalScreen} />
-          <Stack.Screen name="ProposalProfile" component={ProfileMatchScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ProposalProfile" component={ProfileMatchScreen} options={{ headerShown: false, ...modalSlideUp }} />
 
-          {/* Chat */}
-          <Stack.Screen name="Chat" component={ChatScreen} />
+          {/* Chat — slides up as modal overlay */}
+          <Stack.Screen name="Chat" component={ChatScreen} options={modalSlideUp} />
 
           {/* Profile & Settings */}
           <Stack.Screen name="Settings" component={SettingsScreen} />
@@ -499,8 +525,8 @@ export const AppNavigator = () => {
           <Stack.Screen name="EditAbout" component={EditAboutScreen} />
           <Stack.Screen name="EditInterests" component={EditInterestsScreen} />
           <Stack.Screen name="EditLifestyle" component={EditLifestyleScreen} />
-          <Stack.Screen name="ProfilePreview" component={ProfileMatchScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="ProfileView" component={ProfileMatchScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ProfilePreview" component={ProfileMatchScreen} options={{ headerShown: false, ...modalSlideUp }} />
+          <Stack.Screen name="ProfileView" component={ProfileMatchScreen} options={{ headerShown: false, ...modalSlideUp }} />
           <Stack.Screen name="MatchPreferences" component={MatchPreferencesScreen} />
           <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} />
           <Stack.Screen name="PauseProfile" component={PauseProfileScreen} />
@@ -522,7 +548,7 @@ export const AppNavigator = () => {
           <Stack.Screen name="Suspended" component={SuspendedScreen} options={{ gestureEnabled: false }} />
         </Stack.Navigator>
         {/* Dev State Toggle - quick UI state switcher */}
-        {FEATURES.ENABLE_DEV_STATE_TOGGLE && <DevStateToggle />}
+        {FEATURES.ENABLE_DEV_STATE_TOGGLE && <LazyDevStateToggle />}
       </ErrorBoundary>
     </NavigationContainer>
   );

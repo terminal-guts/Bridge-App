@@ -5,6 +5,7 @@ import { H1, H3, Body, Card } from '../../../components/ui';
 import { OnboardingData, LifestylePreferences } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import { EvaIcon } from '../../../components/icons';
+import { WineGlassIcon, LeafIcon, CigaretteIcon, PillIcon } from '../../../components/icons/Icons';
 
 interface LifestyleStepProps {
   data: Partial<OnboardingData>;
@@ -119,15 +120,17 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
   const QuestionSection = ({
     title,
     field,
-    icon
+    icon,
+    customIcon
   }: {
     title: string;
     field: 'drinking' | 'cannabis' | 'tobacco' | 'otherDrugs';
-    icon: keyof typeof Record<string, number>;
+    icon?: string;
+    customIcon?: React.ReactNode;
   }) => (
     <StyledView className="mb-8">
       <StyledView className="flex-row items-center mb-4">
-        <EvaIcon name={icon} variant="outline" size={24} color="#437FFF" style={{ marginRight: 10 }} />
+        {customIcon || <EvaIcon name={icon!} variant="outline" size={24} color="#437FFF" style={{ marginRight: 10 }} />}
         <H3 className="text-neutral-900">{title}</H3>
       </StyledView>
 
@@ -184,25 +187,25 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
         <QuestionSection
           title="Drinking"
           field="drinking"
-          icon="droplet"
+          customIcon={<WineGlassIcon size={24} color="#437FFF" style={{ marginRight: 10 }} />}
         />
 
         <QuestionSection
           title="Cannabis"
           field="cannabis"
-          icon="activity"
+          customIcon={<LeafIcon size={24} color="#437FFF" style={{ marginRight: 10 }} />}
         />
 
         <QuestionSection
           title="Tobacco"
           field="tobacco"
-          icon="flash"
+          customIcon={<CigaretteIcon size={24} color="#437FFF" style={{ marginRight: 10 }} />}
         />
 
         <QuestionSection
           title="Other Drugs"
           field="otherDrugs"
-          icon="plus-circle"
+          customIcon={<PillIcon size={24} color="#437FFF" style={{ marginRight: 10 }} />}
         />
 
         {error && (

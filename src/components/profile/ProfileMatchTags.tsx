@@ -19,7 +19,7 @@ export default function ProfileMatchTags({ title, tags }: ProfileMatchTagsProps)
                         key={index}
                         className="flex flex-row items-center justify-center py-1.5 px-2.5 bg-black/2 rounded-full min-h-[30px]"
                     >
-                        <Text className="text-[#010101]/80 text-sm" style={{ fontFamily: FONTS.regular }}>
+                        <Text className="text-[#101828]/80 text-sm" style={{ fontFamily: FONTS.regular }}>
                             {tag.emoji} {tag.text}
                         </Text>
                     </View>

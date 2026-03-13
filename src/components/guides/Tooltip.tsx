@@ -19,6 +19,7 @@ import { H3, Body } from '../ui/Typography';
 import { Button } from '../ui/Button';
 import { TooltipPosition, TooltipDimensions } from '../../types/guides';
 import { lightHaptic } from '../../utils/haptics';
+import { COLORS } from '../../theme/colors';
 
 interface TooltipProps {
   /** Optional title */
@@ -263,7 +264,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
               borderBottomWidth: ARROW_SIZE,
               borderLeftColor: 'transparent',
               borderRightColor: 'transparent',
-              borderBottomColor: '#437FFF',
+              borderBottomColor: COLORS.primaryAccent,
             },
           ]}
         />
@@ -283,7 +284,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
               borderTopWidth: ARROW_SIZE,
               borderLeftColor: 'transparent',
               borderRightColor: 'transparent',
-              borderTopColor: '#437FFF',
+              borderTopColor: COLORS.primaryAccent,
             },
           ]}
         />

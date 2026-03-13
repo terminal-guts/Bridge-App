@@ -3,8 +3,11 @@ import { View, Text, Image, ScrollView, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { UserProfile } from '../../../types/community';
 import { valueIconName, interestIconName } from '../../../utils/emojiMaps';
-import { FONTS } from '../../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../../constants/typography';
+import { COLORS } from '../../../theme/colors';
 import { EvaIcon, IconScoutIcon } from '../../icons';
+import { WineGlassIcon, LeafIcon, CigaretteIcon } from '../../icons/Icons';
+import { formatProfileValue } from '../../../utils/formatProfileValue';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -13,11 +16,6 @@ const StyledScrollView = styled(ScrollView);
 interface ProposalProfileViewProps {
     user: UserProfile;
 }
-
-const capitalize = (str: string | undefined): string => {
-    if (!str) return '';
-    return str.charAt(0).toUpperCase() + str.slice(1);
-};
 
 const formatHeight = (inches: number | undefined): string => {
     if (!inches) return 'Not specified';
@@ -69,14 +67,14 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                     <StyledView style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        backgroundColor: '#F3F4F6',
+                        backgroundColor: COLORS.backgroundGray,
                         paddingHorizontal: 12,
                         paddingVertical: 8,
                         borderRadius: 20,
                     }}>
                         <EvaIcon name="person" variant="outline" size={16} color="#7C3AED" style={{ marginRight: 6 }} />
-                        <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
-                            {capitalize(user.gender[0])}
+                        <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.warmNeutral, fontWeight: '500', fontFamily: FONTS.medium }}>
+                            {formatProfileValue(user.gender[0])}
                         </StyledText>
                     </StyledView>
                 )}
@@ -86,13 +84,13 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                     <StyledView style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        backgroundColor: '#F3F4F6',
+                        backgroundColor: COLORS.backgroundGray,
                         paddingHorizontal: 12,
                         paddingVertical: 8,
                         borderRadius: 20,
                     }}>
                         <EvaIcon name="message-circle" variant="outline" size={16} color="#EC4899" style={{ marginRight: 6 }} />
-                        <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
+                        <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.warmNeutral, fontWeight: '500', fontFamily: FONTS.medium }}>
                             {user.pronouns.replace('_', '/')}
                         </StyledText>
                     </StyledView>
@@ -102,13 +100,13 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                 <StyledView style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    backgroundColor: '#F3F4F6',
+                    backgroundColor: COLORS.backgroundGray,
                     paddingHorizontal: 12,
                     paddingVertical: 8,
                     borderRadius: 20,
                 }}>
                     <EvaIcon name="calendar" variant="outline" size={16} color="#EC4899" style={{ marginRight: 6 }} />
-                    <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
+                    <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.warmNeutral, fontWeight: '500', fontFamily: FONTS.medium }}>
                         {user.age}
                     </StyledText>
                 </StyledView>
@@ -118,13 +116,13 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                     <StyledView style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        backgroundColor: '#F3F4F6',
+                        backgroundColor: COLORS.backgroundGray,
                         paddingHorizontal: 12,
                         paddingVertical: 8,
                         borderRadius: 20,
                     }}>
                         <EvaIcon name="maximize" variant="outline" size={16} color="#10B981" style={{ marginRight: 6 }} />
-                        <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
+                        <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.warmNeutral, fontWeight: '500', fontFamily: FONTS.medium }}>
                             {formatHeight(user.height as any)}
                         </StyledText>
                     </StyledView>
@@ -135,13 +133,13 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                     <StyledView style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        backgroundColor: '#F3F4F6',
+                        backgroundColor: COLORS.backgroundGray,
                         paddingHorizontal: 12,
                         paddingVertical: 8,
                         borderRadius: 20,
                     }}>
                         <EvaIcon name="briefcase" variant="outline" size={16} color="#3B82F6" style={{ marginRight: 6 }} />
-                        <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
+                        <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.warmNeutral, fontWeight: '500', fontFamily: FONTS.medium }}>
                             {user.currentJob}
                         </StyledText>
                     </StyledView>
@@ -153,13 +151,13 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                     <StyledView style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        backgroundColor: '#F3F4F6',
+                        backgroundColor: COLORS.backgroundGray,
                         paddingHorizontal: 12,
                         paddingVertical: 8,
                         borderRadius: 20,
                     }}>
                         <EvaIcon name="globe" variant="outline" size={16} color="#8B5CF6" style={{ marginRight: 6 }} />
-                        <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
+                        <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.warmNeutral, fontWeight: '500', fontFamily: FONTS.medium }}>
                             {user.ethnicity}
                         </StyledText>
                     </StyledView>
@@ -170,13 +168,13 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                     <StyledView style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        backgroundColor: '#F3F4F6',
+                        backgroundColor: COLORS.backgroundGray,
                         paddingHorizontal: 12,
                         paddingVertical: 8,
                         borderRadius: 20,
                     }}>
                         <EvaIcon name="moon" variant="outline" size={16} color="#6366F1" style={{ marginRight: 6 }} />
-                        <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
+                        <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.warmNeutral, fontWeight: '500', fontFamily: FONTS.medium }}>
                             {user.religion}
                         </StyledText>
                     </StyledView>
@@ -187,14 +185,14 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                     <StyledView style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        backgroundColor: '#F3F4F6',
+                        backgroundColor: COLORS.backgroundGray,
                         paddingHorizontal: 12,
                         paddingVertical: 8,
                         borderRadius: 20,
                     }}>
                         <EvaIcon name="flag" variant="outline" size={16} color="#EF4444" style={{ marginRight: 6 }} />
-                        <StyledText style={{ fontSize: 13, color: '#4A4540', fontWeight: '500', fontFamily: FONTS.medium }}>
-                            {capitalize(user.politicalLeaning.replace(/_/g, ' '))}
+                        <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.warmNeutral, fontWeight: '500', fontFamily: FONTS.medium }}>
+                            {formatProfileValue(user.politicalLeaning)}
                         </StyledText>
                     </StyledView>
                 )}
@@ -205,7 +203,7 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                 <StyledView style={{ marginBottom: 20 }}>
                     <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                         <EvaIcon name="star" variant="outline" size={18} color="#3B82F6" style={{ marginRight: 6 }} />
-                        <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600', fontFamily: FONTS.semiBold }}>Interests</StyledText>
+                        <StyledText style={{ fontSize: FONT_SIZES.lg, color: COLORS.text.warmNeutral, fontWeight: '600', fontFamily: FONTS.semiBold }}>Interests</StyledText>
                     </StyledView>
                     <StyledView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                         {user.interests.map((interest: string, index: number) => (
@@ -214,14 +212,14 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                                 style={{
                                     flexDirection: 'row',
                                     alignItems: 'center',
-                                    backgroundColor: '#DBEAFE',
+                                    backgroundColor: COLORS.backgroundInterestTag,
                                     paddingHorizontal: 12,
                                     paddingVertical: 6,
                                     borderRadius: 16,
                                 }}
                             >
-                                <IconScoutIcon name={interestIconName(interest)} size={14} style={{ marginRight: 3 }} />
-                                <StyledText style={{ fontSize: 13, color: '#1E40AF', fontWeight: '500', fontFamily: FONTS.medium }}>
+                                <IconScoutIcon name={interestIconName(interest) ?? ''} size={14} style={{ marginRight: 3 }} />
+                                <StyledText style={{ fontSize: FONT_SIZES.md, color: '#1E40AF', fontWeight: '500', fontFamily: FONTS.medium }}>
                                     {interest}
                                 </StyledText>
                             </StyledView>
@@ -235,7 +233,7 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                 <StyledView style={{ marginBottom: 20 }}>
                     <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                         <EvaIcon name="award" variant="outline" size={18} color="#10B981" style={{ marginRight: 6 }} />
-                        <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600', fontFamily: FONTS.semiBold }}>Values</StyledText>
+                        <StyledText style={{ fontSize: FONT_SIZES.lg, color: COLORS.text.warmNeutral, fontWeight: '600', fontFamily: FONTS.semiBold }}>Values</StyledText>
                     </StyledView>
                     <StyledView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                         {user.values.map((value: string, index: number) => (
@@ -244,14 +242,14 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                                 style={{
                                     flexDirection: 'row',
                                     alignItems: 'center',
-                                    backgroundColor: '#D1FAE5',
+                                    backgroundColor: COLORS.backgroundValuesTag,
                                     paddingHorizontal: 12,
                                     paddingVertical: 6,
                                     borderRadius: 16,
                                 }}
                             >
-                                <IconScoutIcon name={valueIconName(value)} size={14} style={{ marginRight: 3 }} />
-                                <StyledText style={{ fontSize: 13, color: '#065F46', fontWeight: '500', fontFamily: FONTS.medium }}>
+                                <IconScoutIcon name={valueIconName(value) ?? ''} size={14} style={{ marginRight: 3 }} />
+                                <StyledText style={{ fontSize: FONT_SIZES.md, color: '#065F46', fontWeight: '500', fontFamily: FONTS.medium }}>
                                     {value}
                                 </StyledText>
                             </StyledView>
@@ -264,21 +262,21 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
             <StyledView style={{ marginBottom: 20 }}>
                 <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                     <EvaIcon name="people" variant="outline" size={18} color="#F59E0B" style={{ marginRight: 6 }} />
-                    <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600', fontFamily: FONTS.semiBold }}>Family</StyledText>
+                    <StyledText style={{ fontSize: FONT_SIZES.lg, color: COLORS.text.warmNeutral, fontWeight: '600', fontFamily: FONTS.semiBold }}>Family</StyledText>
                 </StyledView>
                 <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                     <EvaIcon name="person" variant="outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
-                    <StyledText style={{ fontSize: 14, color: '#4A4540', fontFamily: FONTS.regular }}>
-                        {user.hasChildren === 'no' ? 'No children' : user.hasChildren === 'yes' ? 'Has children' : 'Prefer not to say'}
+                    <StyledText style={{ fontSize: FONT_SIZES.base, color: COLORS.text.warmNeutral, fontFamily: FONTS.regular }}>
+                        {user.hasChildren === 'no' ? 'No Children' : user.hasChildren === 'yes' ? 'Has Children' : 'Prefer Not to Say'}
                     </StyledText>
                 </StyledView>
                 {user.familyPlans && (
                     <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <EvaIcon name="heart" variant="outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
-                        <StyledText style={{ fontSize: 14, color: '#4A4540', fontFamily: FONTS.regular }}>
-                            {user.familyPlans === 'want_children' ? 'Want children someday' :
-                                user.familyPlans === 'open_to_children' ? 'Open to children' :
-                                    user.familyPlans === 'dont_want_children' ? 'Don\'t want children' : 'Not sure yet'}
+                        <StyledText style={{ fontSize: FONT_SIZES.base, color: COLORS.text.warmNeutral, fontFamily: FONTS.regular }}>
+                            {user.familyPlans === 'want_children' ? 'Want Children Someday' :
+                                user.familyPlans === 'open_to_children' ? 'Open to Children' :
+                                    user.familyPlans === 'dont_want_children' ? "Don't Want Children" : 'Not Sure Yet'}
                         </StyledText>
                     </StyledView>
                 )}
@@ -287,8 +285,8 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
             {/* Lifestyle */}
             <StyledView style={{ marginBottom: 20 }}>
                 <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                    <EvaIcon name="activity" variant="outline" size={18} color="#8B5CF6" style={{ marginRight: 6 }} />
-                    <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600', fontFamily: FONTS.semiBold }}>Lifestyle</StyledText>
+                    <EvaIcon name="trending-up" variant="outline" size={18} color="#8B5CF6" style={{ marginRight: 6 }} />
+                    <StyledText style={{ fontSize: FONT_SIZES.lg, color: COLORS.text.warmNeutral, fontWeight: '600', fontFamily: FONTS.semiBold }}>Lifestyle</StyledText>
                 </StyledView>
 
                 {user.drinkingFrequency && (
@@ -299,11 +297,11 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                         marginBottom: 10,
                     }}>
                         <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <EvaIcon name="droplet" variant="outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
-                            <StyledText style={{ fontSize: 14, color: '#4A4540', fontFamily: FONTS.regular }}>Drinking</StyledText>
+                            <WineGlassIcon size={16} color="#78716C" style={{ marginRight: 8 }} />
+                            <StyledText style={{ fontSize: FONT_SIZES.base, color: COLORS.text.warmNeutral, fontFamily: FONTS.regular }}>Drinking</StyledText>
                         </StyledView>
-                        <StyledText style={{ fontSize: 14, color: '#78716C', fontWeight: '500', fontFamily: FONTS.medium }}>
-                            {capitalize(user.drinkingFrequency)}
+                        <StyledText style={{ fontSize: FONT_SIZES.base, color: COLORS.text.subtle, fontWeight: '500', fontFamily: FONTS.medium }}>
+                            {formatProfileValue(user.drinkingFrequency)}
                         </StyledText>
                     </StyledView>
                 )}
@@ -316,11 +314,11 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                         marginBottom: 10,
                     }}>
                         <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <EvaIcon name="activity" variant="outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
-                            <StyledText style={{ fontSize: 14, color: '#4A4540', fontFamily: FONTS.regular }}>Cannabis</StyledText>
+                            <LeafIcon size={16} color="#78716C" style={{ marginRight: 8 }} />
+                            <StyledText style={{ fontSize: FONT_SIZES.base, color: COLORS.text.warmNeutral, fontFamily: FONTS.regular }}>Cannabis</StyledText>
                         </StyledView>
-                        <StyledText style={{ fontSize: 14, color: '#78716C', fontWeight: '500', fontFamily: FONTS.medium }}>
-                            {capitalize(user.cannabisFrequency)}
+                        <StyledText style={{ fontSize: FONT_SIZES.base, color: COLORS.text.subtle, fontWeight: '500', fontFamily: FONTS.medium }}>
+                            {formatProfileValue(user.cannabisFrequency)}
                         </StyledText>
                     </StyledView>
                 )}
@@ -332,11 +330,11 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                         alignItems: 'center',
                     }}>
                         <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <EvaIcon name="activity" variant="outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
-                            <StyledText style={{ fontSize: 14, color: '#4A4540', fontFamily: FONTS.regular }}>Tobacco</StyledText>
+                            <CigaretteIcon size={16} color="#78716C" style={{ marginRight: 8 }} />
+                            <StyledText style={{ fontSize: FONT_SIZES.base, color: COLORS.text.warmNeutral, fontFamily: FONTS.regular }}>Tobacco</StyledText>
                         </StyledView>
-                        <StyledText style={{ fontSize: 14, color: '#78716C', fontWeight: '500', fontFamily: FONTS.medium }}>
-                            {capitalize(user.tobaccoFrequency)}
+                        <StyledText style={{ fontSize: FONT_SIZES.base, color: COLORS.text.subtle, fontWeight: '500', fontFamily: FONTS.medium }}>
+                            {formatProfileValue(user.tobaccoFrequency)}
                         </StyledText>
                     </StyledView>
                 )}
@@ -347,11 +345,11 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                 <StyledView style={{ marginBottom: 20 }}>
                     <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                         <EvaIcon name="question-mark-circle" variant="outline" size={18} color="#F43F5E" style={{ marginRight: 6 }} />
-                        <StyledText style={{ fontSize: 15, color: '#4A4540', fontWeight: '600', fontFamily: FONTS.semiBold }}>Bio</StyledText>
+                        <StyledText style={{ fontSize: FONT_SIZES.lg, color: COLORS.text.warmNeutral, fontWeight: '600', fontFamily: FONTS.semiBold }}>Bio</StyledText>
                     </StyledView>
                     {user.deepQuestions.filter(q => q.tier === 1).map((q, i) => (
                         <StyledView key={i} style={{ marginBottom: 12 }}>
-                            <StyledText style={{ fontSize: 14, color: '#4A4540', lineHeight: 20, fontFamily: FONTS.regular }}>
+                            <StyledText style={{ fontSize: FONT_SIZES.base, color: COLORS.text.warmNeutral, lineHeight: 20, fontFamily: FONTS.regular }}>
                                 {q.answer}
                             </StyledText>
                         </StyledView>

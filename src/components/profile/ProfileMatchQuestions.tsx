@@ -29,10 +29,10 @@ export default function ProfileMatchQuestions() {
                         key={index}
                         className="bg-white border border-black/10 shadow-sm rounded-xl p-3 w-full max-w-[343px]"
                     >
-                        <Text className="font-medium text-[#010101]/30 text-sm leading-[18px] mb-1" style={{ fontFamily: FONTS.medium }}>
+                        <Text className="font-medium text-[#101828]/30 text-sm leading-[18px] mb-1" style={{ fontFamily: FONTS.medium }}>
                             {index + 1}. {item.q}
                         </Text>
-                        <Text className="text-[#010101]/15 text-[13px] leading-5" style={{ fontFamily: FONTS.regular }}>
+                        <Text className="text-[#101828]/15 text-[13px] leading-5" style={{ fontFamily: FONTS.regular }}>
                             {item.a}
                         </Text>
                     </View>

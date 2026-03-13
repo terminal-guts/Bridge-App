@@ -1,9 +1,15 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useEffect } from 'react';
 import { TouchableOpacity, Text, View } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { styled } from 'nativewind';
 import { lightHaptic } from '../../utils/haptics';
 import { FONTS } from '../../constants/typography';
 import { IconScoutIcon } from '../icons';
+import { SPRINGS } from '../../constants/animations';
 
 interface ChipProps {
   label: string;
@@ -22,7 +28,7 @@ const StyledText = styled(Text);
 // Move constant style objects outside component to prevent recreation
 const SIZE_STYLES = {
   sm: 'px-2.5 py-1',
-  md: 'px-3 py-1.5',
+  md: 'px-3 py-2',
 } as const;
 
 const TEXT_SIZE_STYLES = {
@@ -42,6 +48,22 @@ const ChipComponent: React.FC<ChipProps> = ({
   iconName,
 }) => {
   const iconSize = size === 'sm' ? 14 : 16;
+  const scale = useSharedValue(1);
+
+  // Bounce on selection change
+  useEffect(() => {
+    if (selected) {
+      scale.value = withSpring(1, {
+        ...SPRINGS.bouncy,
+        // Start from a slightly larger scale to create a "pop" effect
+        velocity: 8,
+      });
+    }
+  }, [selected]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   // Memoize style calculations
   const baseStyles = useMemo(() => `rounded-full border ${SIZE_STYLES[size]}`, [size]);
@@ -77,6 +99,10 @@ const ChipComponent: React.FC<ChipProps> = ({
 
   const handlePress = useCallback(() => {
     lightHaptic();
+    // Trigger press bounce
+    scale.value = withSpring(0.92, SPRINGS.snappy, () => {
+      scale.value = withSpring(1, SPRINGS.bouncy);
+    });
     onPress?.();
   }, [onPress]);
 
@@ -95,29 +121,33 @@ const ChipComponent: React.FC<ChipProps> = ({
 
   if (!onPress) {
     return (
-      <StyledTouchableOpacity
-        disabled
-        className={`${baseStyles} ${variantStyles} ${className}`}
-        accessibilityRole="text"
-        accessibilityLabel={label}
-      >
-        {content}
-      </StyledTouchableOpacity>
+      <Animated.View style={animatedStyle}>
+        <StyledTouchableOpacity
+          disabled
+          className={`${baseStyles} ${variantStyles} ${className}`}
+          accessibilityRole="text"
+          accessibilityLabel={label}
+        >
+          {content}
+        </StyledTouchableOpacity>
+      </Animated.View>
     );
   }
 
   return (
-    <StyledTouchableOpacity
-      onPress={handlePress}
-      activeOpacity={1}
-      delayPressIn={0}
-      className={`${baseStyles} ${variantStyles} ${className}`}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ selected }}
-    >
-      {content}
-    </StyledTouchableOpacity>
+    <Animated.View style={animatedStyle}>
+      <StyledTouchableOpacity
+        onPress={handlePress}
+        activeOpacity={1}
+        delayPressIn={0}
+        className={`${baseStyles} ${variantStyles} ${className}`}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ selected }}
+      >
+        {content}
+      </StyledTouchableOpacity>
+    </Animated.View>
   );
 };
 

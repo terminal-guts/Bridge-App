@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { BaseToast, ErrorToast, InfoToast } from 'react-native-toast-message';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 
 /**
  * Custom Toast Configuration
@@ -15,7 +16,7 @@ export const toastConfig = {
       style={{
         borderLeftColor: '#12B981',
         borderLeftWidth: 6,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         borderRadius: 12,
         paddingVertical: 12,
         paddingHorizontal: 16,
@@ -30,14 +31,14 @@ export const toastConfig = {
         paddingHorizontal: 12,
       }}
       text1Style={{
-        fontSize: 16,
+        fontSize: FONT_SIZES.xl,
         fontWeight: '600',
         fontFamily: FONTS.bold,
         color: '#171717',
         marginBottom: 2,
       }}
       text2Style={{
-        fontSize: 14,
+        fontSize: FONT_SIZES.base,
         fontFamily: FONTS.regular,
         color: '#525252',
         lineHeight: 18,
@@ -49,9 +50,9 @@ export const toastConfig = {
     <ErrorToast
       {...props}
       style={{
-        borderLeftColor: '#EF4444',
+        borderLeftColor: COLORS.error,
         borderLeftWidth: 6,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         borderRadius: 12,
         paddingVertical: 12,
         paddingHorizontal: 16,
@@ -66,14 +67,14 @@ export const toastConfig = {
         paddingHorizontal: 12,
       }}
       text1Style={{
-        fontSize: 16,
+        fontSize: FONT_SIZES.xl,
         fontWeight: '600',
         fontFamily: FONTS.bold,
         color: '#171717',
         marginBottom: 2,
       }}
       text2Style={{
-        fontSize: 14,
+        fontSize: FONT_SIZES.base,
         fontFamily: FONTS.regular,
         color: '#525252',
         lineHeight: 18,
@@ -85,9 +86,9 @@ export const toastConfig = {
     <InfoToast
       {...props}
       style={{
-        borderLeftColor: '#437FFF',
+        borderLeftColor: COLORS.primaryAccent,
         borderLeftWidth: 6,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         borderRadius: 12,
         paddingVertical: 12,
         paddingHorizontal: 16,
@@ -102,14 +103,14 @@ export const toastConfig = {
         paddingHorizontal: 12,
       }}
       text1Style={{
-        fontSize: 16,
+        fontSize: FONT_SIZES.xl,
         fontWeight: '600',
         fontFamily: FONTS.bold,
         color: '#171717',
         marginBottom: 2,
       }}
       text2Style={{
-        fontSize: 14,
+        fontSize: FONT_SIZES.base,
         fontFamily: FONTS.regular,
         color: '#525252',
         lineHeight: 18,
@@ -120,7 +121,7 @@ export const toastConfig = {
   premiumToast: (props: any) => (
     <View
       style={{
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         borderRadius: 12,
         paddingVertical: 16,
         paddingHorizontal: 20,
@@ -138,7 +139,7 @@ export const toastConfig = {
     >
       <Text
         style={{
-          fontSize: 16,
+          fontSize: FONT_SIZES.xl,
           fontWeight: '600',
           fontFamily: FONTS.bold,
           color: '#171717',
@@ -150,7 +151,7 @@ export const toastConfig = {
       {props.text2 && (
         <Text
           style={{
-            fontSize: 14,
+            fontSize: FONT_SIZES.base,
             fontFamily: FONTS.regular,
             color: '#525252',
             lineHeight: 18,

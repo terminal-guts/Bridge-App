@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { getEligibleFriends, createFriendSuggestion } from '../../services/friendProposalService';
 import { showToast } from '../../utils/toast';
 import type { UserProfile } from '../../types';
@@ -134,7 +135,7 @@ export default function SuggestMatchScreen() {
 
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#437FFF" />
+          <ActivityIndicator size="large" color={COLORS.primaryAccent} />
         </View>
       ) : step === 'confirm' && friendA && friendB ? (
         /* Confirmation screen */
@@ -207,7 +208,7 @@ export default function SuggestMatchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
   },
   header: {
     flexDirection: 'row',
@@ -216,7 +217,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F2F4F7',
+    borderBottomColor: COLORS.backgroundProgressTrack,
   },
   headerTitle: {
     fontFamily: FONTS.semiBold,
@@ -233,7 +234,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.md,
-    color: '#667085',
+    color: COLORS.text.label,
     textAlign: 'center',
   },
   listContent: {
@@ -245,7 +246,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F9FAFB',
+    borderBottomColor: COLORS.backgroundSubtle,
   },
   friendPhoto: {
     width: 48,
@@ -253,7 +254,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   photoPlaceholder: {
-    backgroundColor: '#F2F4F7',
+    backgroundColor: COLORS.backgroundProgressTrack,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -269,7 +270,7 @@ const styles = StyleSheet.create({
   friendJob: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.sm,
-    color: '#667085',
+    color: COLORS.text.label,
     marginTop: 2,
   },
   confirmContainer: {
@@ -304,13 +305,13 @@ const styles = StyleSheet.create({
   confirmSubtext: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.sm,
-    color: '#667085',
+    color: COLORS.text.label,
     textAlign: 'center',
     marginBottom: 32,
     lineHeight: 20,
   },
   submitButton: {
-    backgroundColor: '#437FFF',
+    backgroundColor: COLORS.primaryAccent,
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 14,
@@ -323,6 +324,6 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.md,
-    color: '#FFFFFF',
+    color: COLORS.card,
   },
 });

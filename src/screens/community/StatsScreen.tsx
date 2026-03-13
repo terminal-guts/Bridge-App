@@ -28,7 +28,8 @@ import Svg, { Circle } from 'react-native-svg';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { lightHaptic, mediumHaptic, successHaptic } from '../../utils/haptics';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import {
   fetchStats,
   getArchetype,
@@ -78,7 +79,7 @@ const EMPTY_CAMPUS_STATS: CampusStats = {
 
 // ─── Dynamic Fun Facts ──────────────────────────────────────────────────────
 
-type FunFact = { icon: keyof typeof Record<string, number>; color: string; text: string };
+type FunFact = { icon: string; color: string; text: string };
 
 const buildFunFacts = (user: UserStats, campus: CampusStats): FunFact[] => {
   const facts: FunFact[] = [];
@@ -115,7 +116,7 @@ const buildFunFacts = (user: UserStats, campus: CampusStats): FunFact[] => {
 
   // Campus context
   if (cat.active_matchmakers > 1) {
-    facts.push({ icon: 'school', color: '#AF52DE', text: `${cat.active_matchmakers} matchmakers are active on campus this week` });
+    facts.push({ icon: 'home', color: '#AF52DE', text: `${cat.active_matchmakers} matchmakers are active on campus this week` });
   }
 
   // Campus busiest day
@@ -125,7 +126,7 @@ const buildFunFacts = (user: UserStats, campus: CampusStats): FunFact[] => {
 
   // Fallback — always show at least one
   if (facts.length === 0) {
-    facts.push({ icon: 'sparkles', color: '#437FFF', text: 'Keep voting on proposals to unlock personalized fun facts!' });
+    facts.push({ icon: 'bulb', color: '#437FFF', text: 'Keep voting on proposals to unlock personalized fun facts!' });
   }
 
   return facts.slice(0, 3);
@@ -222,14 +223,14 @@ const TrendArrow = React.memo(({ value }: { value: number }) => {
   if (value === 0) return null;
   const isUp = value > 0;
   return (
-    <View style={[st.trendPill, { backgroundColor: isUp ? '#EDFCF2' : '#FEF2F2' }]}>
+    <View style={[st.trendPill, { backgroundColor: isUp ? COLORS.backgroundSuccessBadge : '#FEF2F2' }]}>
       <EvaIcon
         name={isUp ? 'arrow-upward' : 'arrow-downward'}
         variant="outline"
         size={10}
-        color={isUp ? '#10B981' : '#EF4444'}
+        color={isUp ? COLORS.emerald : COLORS.error}
       />
-      <Text style={[st.trendText, { color: isUp ? '#10B981' : '#EF4444' }]}>
+      <Text style={[st.trendText, { color: isUp ? COLORS.emerald : COLORS.error }]}>
         {Math.abs(value)}%
       </Text>
     </View>
@@ -263,7 +264,7 @@ const PeriodToggle = React.memo(({ period, onToggle }: {
 // ─── Stat Card ───────────────────────────────────────────────────────────────
 
 const StatCard = React.memo(({ icon, iconColor, label, value, suffix, trend, index }: {
-  icon: keyof typeof Record<string, number>;
+  icon: string;
   iconColor: string;
   label: string;
   value: number;
@@ -294,7 +295,7 @@ const StatCard = React.memo(({ icon, iconColor, label, value, suffix, trend, ind
 // ─── Highlight Row ───────────────────────────────────────────────────────────
 
 const HighlightRow = React.memo(({ icon, iconColor, label, value, index }: {
-  icon: keyof typeof Record<string, number>;
+  icon: string;
   iconColor: string;
   label: string;
   value: string | number;
@@ -389,10 +390,10 @@ const CampusTab = React.memo(({ period, onPeriodChange, data }: {
         <Text style={s.sectionTitle}>Campus Activity</Text>
       </Animated.View>
       <View style={s.statGrid}>
-        <StatCard icon="thumbs-up" iconColor="#34C759" label="Votes Cast" value={d.total_votes_cast} index={0} />
-        <StatCard icon="checkmark-circle" iconColor="#437FFF" label="Approval Rate" value={d.avg_approval_rate} suffix="%" index={1} />
+        <StatCard icon="checkmark-circle-2" iconColor="#34C759" label="Votes Cast" value={d.total_votes_cast} index={0} />
+        <StatCard icon="checkmark-circle-2" iconColor="#437FFF" label="Approval Rate" value={d.avg_approval_rate} suffix="%" index={1} />
         <StatCard icon="people" iconColor="#AF52DE" label="Active Voters" value={d.active_matchmakers} index={2} />
-        <StatCard icon="document-text" iconColor="#FF9500" label="Proposals / Week" value={d.proposals_this_week} index={3} />
+        <StatCard icon="file-text" iconColor="#FF9500" label="Proposals / Week" value={d.proposals_this_week} index={3} />
       </View>
 
       {/* Highlights */}
@@ -400,7 +401,7 @@ const CampusTab = React.memo(({ period, onPeriodChange, data }: {
         <Text style={s.sectionTitle}>Highlights</Text>
       </Animated.View>
       <Animated.View entering={FadeInUp.delay(550).springify().damping(18)} style={s.highlightCard}>
-        <HighlightRow icon="trophy" iconColor="#FFD700" label="Top Matchmaker" value={d.top_matchmaker_name} index={0} />
+        <HighlightRow icon="award" iconColor="#FFD700" label="Top Matchmaker" value={d.top_matchmaker_name} index={0} />
         <View style={s.highlightDivider} />
         <HighlightRow icon="star" iconColor="#FF9500" label="Most Assists" value={d.top_matchmaker_assists} index={1} />
         <View style={s.highlightDivider} />
@@ -408,7 +409,7 @@ const CampusTab = React.memo(({ period, onPeriodChange, data }: {
         <View style={s.highlightDivider} />
         <HighlightRow icon="flash" iconColor="#FF3B30" label="Streak Record" value={`${d.streak_record} days`} index={3} />
         <View style={s.highlightDivider} />
-        <HighlightRow icon="analytics" iconColor="#34C759" label="Match Rate" value={`${d.match_rate}%`} index={4} />
+        <HighlightRow icon="bar-chart" iconColor="#34C759" label="Match Rate" value={`${d.match_rate}%`} index={4} />
       </Animated.View>
 
       <View style={{ height: 40 }} />
@@ -501,10 +502,10 @@ const YourStatsTab = React.memo(({ period, onPeriodChange, navigation, data, cam
         <Text style={s.sectionTitle}>Voting</Text>
       </Animated.View>
       <View style={s.statGrid}>
-        <StatCard icon="thumbs-up" iconColor="#437FFF" label="Votes Cast" value={d.total_votes_cast} trend={showTrends ? weekData.votes_trend : undefined} index={0} />
-        <StatCard icon="checkmark-done" iconColor="#34C759" label="Yes Rate" value={d.yes_rate} suffix="%" index={1} />
+        <StatCard icon="checkmark-circle-2" iconColor="#437FFF" label="Votes Cast" value={d.total_votes_cast} trend={showTrends ? weekData.votes_trend : undefined} index={0} />
+        <StatCard icon="done-all" iconColor="#34C759" label="Yes Rate" value={d.yes_rate} suffix="%" index={1} />
         <StatCard icon="people" iconColor="#AF52DE" label="Friends Helped" value={d.friends_helped} index={2} />
-        <StatCard icon="diamond" iconColor="#FF9500" label="Karma" value={d.karma_points} trend={showTrends ? weekData.karma_trend : undefined} index={3} />
+        <StatCard icon="star" iconColor="#FF9500" label="Karma" value={d.karma_points} trend={showTrends ? weekData.karma_trend : undefined} index={3} />
       </View>
 
       {/* Streaks */}
@@ -513,7 +514,7 @@ const YourStatsTab = React.memo(({ period, onPeriodChange, navigation, data, cam
       </Animated.View>
       <View style={s.statGrid}>
         <StatCard icon="flash" iconColor="#FF3B30" label="Current Streak" value={d.current_streak} suffix="d" index={4} />
-        <StatCard icon="ribbon" iconColor="#FF9500" label="Best Streak" value={d.longest_streak} suffix="d" index={5} />
+        <StatCard icon="award" iconColor="#FF9500" label="Best Streak" value={d.longest_streak} suffix="d" index={5} />
       </View>
 
       {/* Rank card */}
@@ -777,7 +778,7 @@ const STAT_CARD_WIDTH = (SCREEN_WIDTH - 48 - CARD_GAP) / 2;
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.background,
   },
   centered: {
     flex: 1,
@@ -787,13 +788,13 @@ const s = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 15,
+    fontSize: FONT_SIZES.lg,
     fontFamily: FONTS.medium,
     color: '#667085',
   },
   errorText: {
     marginTop: 12,
-    fontSize: 15,
+    fontSize: FONT_SIZES.lg,
     fontFamily: FONTS.medium,
     color: '#344054',
     textAlign: 'center',
@@ -802,15 +803,15 @@ const s = StyleSheet.create({
   retryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#437FFF',
+    backgroundColor: COLORS.primaryAccent,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 10,
   },
   retryText: {
-    fontSize: 15,
+    fontSize: FONT_SIZES.lg,
     fontFamily: FONTS.semiBold,
-    color: '#FFFFFF',
+    color: COLORS.card,
   },
   offscreen: {
     position: 'absolute',
@@ -830,7 +831,7 @@ const s = StyleSheet.create({
     paddingVertical: 14,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: FONT_SIZES['2xl'],
     fontFamily: FONTS.bold,
     color: '#101828',
   },
@@ -839,7 +840,7 @@ const s = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     marginHorizontal: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: COLORS.backgroundGray,
     borderRadius: 12,
     padding: 4,
     marginBottom: 16,
@@ -853,8 +854,8 @@ const s = StyleSheet.create({
     borderRadius: 10,
   },
   tabButtonActive: {
-    backgroundColor: '#437FFF',
-    shadowColor: '#437FFF',
+    backgroundColor: COLORS.primaryAccent,
+    shadowColor: COLORS.primaryAccent,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -864,12 +865,12 @@ const s = StyleSheet.create({
     marginRight: 6,
   },
   tabText: {
-    fontSize: 15,
+    fontSize: FONT_SIZES.lg,
     fontFamily: FONTS.semiBold,
     color: '#667085',
   },
   tabTextActive: {
-    color: '#FFFFFF',
+    color: COLORS.card,
   },
 
   // Tab content
@@ -904,18 +905,18 @@ const s = StyleSheet.create({
   heroValue: {
     fontSize: 52,
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
+    color: COLORS.card,
     lineHeight: 60,
   },
   heroLabel: {
-    fontSize: 16,
+    fontSize: FONT_SIZES.xl,
     fontFamily: FONTS.semiBold,
     color: 'rgba(255,255,255,0.9)',
     marginTop: 4,
     textAlign: 'center',
   },
   heroSublabel: {
-    fontSize: 13,
+    fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
     color: 'rgba(255,255,255,0.6)',
     marginTop: 2,
@@ -938,7 +939,7 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
   archetypeLabel: {
-    fontSize: 12,
+    fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.semiBold,
     color: 'rgba(255,255,255,0.6)',
     letterSpacing: 1.5,
@@ -946,13 +947,13 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
   archetypeName: {
-    fontSize: 28,
+    fontSize: FONT_SIZES['5xl'],
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
+    color: COLORS.card,
     marginBottom: 8,
   },
   archetypeDesc: {
-    fontSize: 14,
+    fontSize: FONT_SIZES.base,
     fontFamily: FONTS.regular,
     color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
@@ -964,7 +965,7 @@ const s = StyleSheet.create({
   impactCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
@@ -978,7 +979,7 @@ const s = StyleSheet.create({
     flex: 1,
   },
   impactLabel: {
-    fontSize: 13,
+    fontSize: FONT_SIZES.md,
     fontFamily: FONTS.semiBold,
     color: '#667085',
     marginBottom: 4,
@@ -990,9 +991,9 @@ const s = StyleSheet.create({
     lineHeight: 48,
   },
   impactSubtext: {
-    fontSize: 12,
+    fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
-    color: '#94A3B8',
+    color: COLORS.text.light,
     marginTop: 4,
   },
   impactRight: {
@@ -1003,7 +1004,7 @@ const s = StyleSheet.create({
   accuracyCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
@@ -1025,9 +1026,9 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   accuracyValue: {
-    fontSize: 22,
+    fontSize: FONT_SIZES['4xl'],
     fontFamily: FONTS.bold,
-    color: '#34C759',
+    color: COLORS.success,
   },
   accuracyText: {
     flex: 1,
@@ -1039,23 +1040,23 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
   accuracyDesc: {
-    fontSize: 13,
+    fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
     color: '#667085',
     lineHeight: 18,
     marginBottom: 8,
   },
   accuracyHint: {
-    fontSize: 12,
+    fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
-    color: '#94A3B8',
+    color: COLORS.text.light,
     lineHeight: 16,
     marginTop: 6,
   },
 
   // Section title
   sectionTitle: {
-    fontSize: 16,
+    fontSize: FONT_SIZES.xl,
     fontFamily: FONTS.bold,
     color: '#101828',
     marginBottom: 12,
@@ -1070,7 +1071,7 @@ const s = StyleSheet.create({
   },
   statCard: {
     width: STAT_CARD_WIDTH,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
     borderRadius: 16,
     padding: 16,
     shadowColor: '#000',
@@ -1093,20 +1094,20 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   statValue: {
-    fontSize: 22,
+    fontSize: FONT_SIZES['4xl'],
     fontFamily: FONTS.bold,
     color: '#101828',
     marginBottom: 2,
   },
   statLabel: {
-    fontSize: 13,
+    fontSize: FONT_SIZES.md,
     fontFamily: FONTS.semiBold,
     color: '#667085',
   },
 
   // Highlight card
   highlightCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
     borderRadius: 16,
     padding: 16,
     shadowColor: '#000',
@@ -1134,24 +1135,25 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   highlightLabel: {
-    fontSize: 14,
+    fontSize: FONT_SIZES.base,
     fontFamily: FONTS.semiBold,
-    color: '#475569',
+    color: COLORS.text.muted,
   },
   highlightValue: {
-    fontSize: 14,
+    fontSize: FONT_SIZES.base,
     fontFamily: FONTS.bold,
     color: '#101828',
   },
   highlightDivider: {
     height: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: COLORS.borderSubtle,
   },
 
   // Rank card
   rankCard: {
     borderRadius: 16,
     overflow: 'hidden',
+    marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -1176,26 +1178,26 @@ const s = StyleSheet.create({
     marginLeft: 14,
   },
   rankTitle: {
-    fontSize: 16,
+    fontSize: FONT_SIZES.xl,
     fontFamily: FONTS.bold,
     color: '#101828',
   },
   rankDesc: {
-    fontSize: 13,
+    fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
     color: '#667085',
     marginTop: 2,
   },
   rankBadge: {
-    backgroundColor: '#437FFF',
+    backgroundColor: COLORS.primaryAccent,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 12,
   },
   rankValue: {
-    fontSize: 20,
+    fontSize: FONT_SIZES['3xl'],
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
+    color: COLORS.card,
   },
 });
 
@@ -1212,19 +1214,19 @@ const st = StyleSheet.create({
     gap: 2,
   },
   trendText: {
-    fontSize: 11,
+    fontSize: FONT_SIZES.xs,
     fontFamily: FONTS.semiBold,
   },
 
   // Period toggle
   periodBar: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
     borderRadius: 10,
     padding: 3,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORS.border,
   },
   periodBtn: {
     flex: 1,
@@ -1236,17 +1238,17 @@ const st = StyleSheet.create({
     backgroundColor: '#F0F4FF',
   },
   periodText: {
-    fontSize: 13,
+    fontSize: FONT_SIZES.md,
     fontFamily: FONTS.semiBold,
-    color: '#94A3B8',
+    color: COLORS.text.light,
   },
   periodTextActive: {
-    color: '#437FFF',
+    color: COLORS.primaryAccent,
   },
 
   // Fun facts
   funFactCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
     borderRadius: 16,
     padding: 16,
     shadowColor: '#000',
@@ -1270,9 +1272,9 @@ const st = StyleSheet.create({
   },
   funFactText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: FONT_SIZES.base,
     fontFamily: FONTS.regular,
-    color: '#475569',
+    color: COLORS.text.muted,
     lineHeight: 20,
   },
 
@@ -1286,19 +1288,19 @@ const st = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#EEF3FF',
+    backgroundColor: COLORS.backgroundFriendActive,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: FONT_SIZES['3xl'],
     fontFamily: FONTS.bold,
     color: '#101828',
     marginBottom: 8,
   },
   emptyDesc: {
-    fontSize: 15,
+    fontSize: FONT_SIZES.lg,
     fontFamily: FONTS.regular,
     color: '#667085',
     textAlign: 'center',
@@ -1308,21 +1310,21 @@ const st = StyleSheet.create({
   emptyCta: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#437FFF',
+    backgroundColor: COLORS.primaryAccent,
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 14,
     gap: 8,
-    shadowColor: '#437FFF',
+    shadowColor: COLORS.primaryAccent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   emptyCtaText: {
-    fontSize: 16,
+    fontSize: FONT_SIZES.xl,
     fontFamily: FONTS.semiBold,
-    color: '#FFFFFF',
+    color: COLORS.card,
   },
 });
 
@@ -1347,7 +1349,7 @@ const shareStyles = StyleSheet.create({
     marginBottom: 24,
   },
   topBadgeText: {
-    fontSize: 11,
+    fontSize: FONT_SIZES.xs,
     fontFamily: FONTS.bold,
     color: 'rgba(255,255,255,0.7)',
     letterSpacing: 2,
@@ -1357,13 +1359,13 @@ const shareStyles = StyleSheet.create({
     marginBottom: 8,
   },
   archetypeName: {
-    fontSize: 28,
+    fontSize: FONT_SIZES['5xl'],
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
+    color: COLORS.card,
     marginBottom: 8,
   },
   archetypeDesc: {
-    fontSize: 13,
+    fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
     color: 'rgba(255,255,255,0.7)',
     textAlign: 'center',
@@ -1389,18 +1391,18 @@ const shareStyles = StyleSheet.create({
   statNum: {
     fontSize: 24,
     fontFamily: FONTS.bold,
-    color: '#FFFFFF',
+    color: COLORS.card,
     marginBottom: 2,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: FONT_SIZES.xs,
     fontFamily: FONTS.semiBold,
     color: 'rgba(255,255,255,0.5)',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   campusText: {
-    fontSize: 13,
+    fontSize: FONT_SIZES.md,
     fontFamily: FONTS.semiBold,
     color: 'rgba(255,255,255,0.35)',
     letterSpacing: 1,
@@ -1411,7 +1413,7 @@ const shareStyles = StyleSheet.create({
     bottom: 30,
   },
   watermarkText: {
-    fontSize: 16,
+    fontSize: FONT_SIZES.xl,
     fontFamily: FONTS.bold,
     color: 'rgba(255,255,255,0.15)',
     letterSpacing: 4,

@@ -67,7 +67,7 @@ export function AwaitingResponseCard({ proposal }: AwaitingResponseCardProps) {
     >
       {/* Header */}
       <StyledView className="flex-row items-center mb-4">
-        <EvaIcon name="clock" variant="outline" size={24} color="COLORS.warning.icon" style={{ marginRight: 8 }} />
+        <EvaIcon name="clock" variant="outline" size={24} color={COLORS.warning.icon} style={{ marginRight: 8 }} />
         <StyledText
           className="text-xl font-semibold"
           style={{ color: COLORS.warning.text, fontFamily: FONTS.semiBold }}
@@ -102,7 +102,7 @@ export function AwaitingResponseCard({ proposal }: AwaitingResponseCardProps) {
         style={{ backgroundColor: COLORS.warning.bg }}
       >
         <StyledView className="flex-row items-center mb-2">
-          <EvaIcon name="checkmark-circle-2" variant="outline" size={24} color="COLORS.emerald" style={{ marginRight: 8 }} />
+          <EvaIcon name="checkmark-circle-2" variant="outline" size={24} color={COLORS.emerald} style={{ marginRight: 8 }} />
           <StyledText className="text-base font-semibold" style={{ color: COLORS.warning.text, fontFamily: FONTS.semiBold }}>
             You accepted {acceptedTimeAgo}
           </StyledText>
@@ -118,7 +118,7 @@ export function AwaitingResponseCard({ proposal }: AwaitingResponseCardProps) {
 
       {/* Expiration Timer */}
       <StyledView className="flex-row items-center justify-center">
-        <EvaIcon name="clock" variant="outline" size={18} color="COLORS.warning.icon" />
+        <EvaIcon name="clock" variant="outline" size={18} color={COLORS.warning.icon} />
         <StyledText
           className="text-sm ml-2 font-medium"
           style={{ color: COLORS.darkAmber, fontFamily: FONTS.medium }}

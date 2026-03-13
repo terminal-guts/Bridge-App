@@ -14,6 +14,7 @@ import { Body, H3 } from '../ui';
 import { lightHaptic, mediumHaptic, successHaptic } from '../../utils/haptics';
 import { SHADOWS } from '../../theme/shadows';
 import { EvaIcon } from '../icons';
+import { COLORS } from '../../theme/colors';
 
 interface AnswerQuestionModalProps {
   visible: boolean;
@@ -173,7 +174,7 @@ export const AnswerQuestionModal: React.FC<AnswerQuestionModalProps> = ({
               value={answer}
               onChangeText={setAnswer}
               placeholder="Share your authentic thoughts..."
-              placeholderTextColor="#98A2B3"
+              placeholderTextColor={COLORS.text.placeholder}
               multiline
               maxLength={500}
               className="text-neutral-900 text-base leading-6 p-4 pb-10 bg-neutral-50 rounded-xl border border-neutral-200"
@@ -184,7 +185,7 @@ export const AnswerQuestionModal: React.FC<AnswerQuestionModalProps> = ({
             <StyledView className="absolute bottom-3 right-3 bg-white/90 px-2 py-1 rounded-full">
               <Body
                 className="text-xs font-semibold"
-                style={{ color: answer.length === 0 ? '#EF4444' : '#98A2B3' }}
+                style={{ color: answer.length === 0 ? COLORS.error : COLORS.text.placeholder }}
               >
                 {answer.length}/500
               </Body>

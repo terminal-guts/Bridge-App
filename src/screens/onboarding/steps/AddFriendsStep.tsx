@@ -39,6 +39,7 @@ import {
 import { showToast } from '../../../utils/toast';
 import { createLogger } from '../../../utils/secureLogger';
 import { FONTS } from '../../../constants/typography';
+import { COLORS } from '../../../theme/colors';
 
 const logger = createLogger('AddFriendsStep');
 
@@ -550,14 +551,14 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
                 onPress={handleCopyCode}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               >
-                <EvaIcon name="copy" variant="outline" size={16} color="#437FFF" />
+                <EvaIcon name="copy" variant="outline" size={16} color={COLORS.primaryAccent} />
               </StyledTouchableOpacity>
               <StyledTouchableOpacity
                 className="p-1.5 rounded-full bg-primary-50 ml-1"
                 onPress={handleShareCode}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               >
-                <EvaIcon name="share" variant="outline" size={16} color="#437FFF" />
+                <EvaIcon name="share" variant="outline" size={16} color={COLORS.primaryAccent} />
               </StyledTouchableOpacity>
             </StyledView>
             <StyledView className="flex-row items-center">
@@ -565,7 +566,7 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
                 <StyledTextInput
                   className="flex-1 text-sm text-neutral-900"
                   placeholder="Enter friend code"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={COLORS.text.disabled}
                   value={enterCodeValue}
                   onChangeText={(t: string) => { setEnterCodeValue(t); setEnterCodeError(''); }}
                   autoCapitalize="characters"
@@ -660,7 +661,7 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
         {/* Bottom Continue / Skip */}
         <StyledView
           className="px-6 bg-neutral-50"
-          style={{ paddingTop: 12, paddingBottom: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6' }}
+          style={{ paddingTop: 12, paddingBottom: 12, borderTopWidth: 1, borderTopColor: COLORS.backgroundGray }}
         >
           <Button onPress={handleContinue} variant="primary" size="lg" fullWidth>
             Continue
@@ -694,7 +695,7 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
           {/* Loading state */}
           {loading && (
             <StyledView className="items-center py-6">
-              <ActivityIndicator size="small" color="#437FFF" />
+              <ActivityIndicator size="small" color={COLORS.primaryAccent} />
             </StyledView>
           )}
 
@@ -771,7 +772,7 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
               onPress={handleRequestPermission}
               className="flex-row items-center justify-center py-3 mb-1"
             >
-              <EvaIcon name="people" variant="outline" size={18} color="#437FFF" />
+              <EvaIcon name="people" variant="outline" size={18} color={COLORS.primaryAccent} />
               <Body className="text-primary-500 font-semibold ml-2">Access Contacts</Body>
             </StyledTouchableOpacity>
           )}
@@ -780,7 +781,7 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
         {/* Bottom Continue / Skip */}
         <StyledView
           className="px-6 bg-neutral-50"
-          style={{ paddingTop: 16, paddingBottom: 16, borderTopWidth: 1, borderTopColor: '#F3F4F6' }}
+          style={{ paddingTop: 16, paddingBottom: 16, borderTopWidth: 1, borderTopColor: COLORS.backgroundGray }}
         >
           <Button onPress={handleContinue} variant="primary" size="lg" fullWidth>
             Continue

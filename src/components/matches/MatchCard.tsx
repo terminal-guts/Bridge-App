@@ -4,8 +4,8 @@ import { Image, ImageBackground } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
-import { CheckmarkIcon, HourglassIcon, ChatIcon, HeartsIcon, ArrowRightIcon, QuestionIcon } from '../icons/Icons';
-import { FONTS } from '../../constants/typography';
+import { CheckmarkIcon, HourglassIcon, ChatIcon, HeartsIcon, ArrowRightIcon, QuestionIcon, GiftIcon } from '../icons/Icons';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS, glowShadow } from '../../theme/shadows';
 import { EvaIcon } from '../icons';
@@ -22,26 +22,26 @@ export type MatchStatus =
 
 // Top-left badge — always GREEN (state confirmation)
 const TOP_BADGE_CONFIG: Record<MatchStatus, { label: string; bg: string; Icon?: React.FC<any> }> = {
-    active_match:  { label: 'Active Match',   bg: '#34C759', Icon: CheckmarkIcon },
-    awaiting_you:  { label: 'They said yes!', bg: '#34C759', Icon: CheckmarkIcon },
-    awaiting_them: { label: 'You said yes',   bg: '#34C759', Icon: CheckmarkIcon },
-    new_match:     { label: 'New Match',      bg: '#34C759', Icon: HeartsIcon },
+    active_match:  { label: 'Active Match',   bg: COLORS.success, Icon: CheckmarkIcon },
+    awaiting_you:  { label: 'They said yes!', bg: COLORS.success, Icon: CheckmarkIcon },
+    awaiting_them: { label: 'You said yes',   bg: COLORS.success, Icon: CheckmarkIcon },
+    new_match:     { label: 'New Match',      bg: COLORS.success, Icon: HeartsIcon },
     no_match:      { label: 'No match',       bg: '#8E8E93', Icon: HourglassIcon },
 };
 
 // Bottom pill — always BLUE (action/context)
 const BOTTOM_PILLS: Record<MatchStatus, Array<{ label: string; bg: string; Icon?: React.FC<any> }>> = {
     active_match:  [
-        { label: 'Start the conversation', bg: 'rgba(43, 101, 249, 0.75)', Icon: ChatIcon },
+        { label: 'Start the conversation', bg: 'rgba(43, 101, 249, 0.75)', Icon: ({ size = 14, color = '#FFF' }: { size?: number; color?: string }) => <EvaIcon name="message-square" variant="outline" size={size} color={color} /> },
     ],
     awaiting_you:  [
-        { label: "It's your turn to decide", bg: 'rgba(43, 101, 249, 0.75)', Icon: ArrowRightIcon },
+        { label: "It's your turn to decide", bg: 'rgba(43, 101, 249, 0.75)', Icon: ({ size = 14, color = '#FFF' }: { size?: number; color?: string }) => <EvaIcon name="bulb" variant="outline" size={size} color={color} /> },
     ],
     awaiting_them: [
         { label: 'Waiting on their answer', bg: 'rgba(43, 101, 249, 0.75)', Icon: HourglassIcon },
     ],
     new_match:     [
-        { label: 'Your friends picked someone', bg: 'rgba(43, 101, 249, 0.75)', Icon: HeartsIcon },
+        { label: 'Your friends picked someone', bg: 'rgba(43, 101, 249, 0.75)', Icon: GiftIcon },
     ],
     no_match:      [
         { label: 'No match', bg: 'rgba(142, 142, 147, 0.35)', Icon: HourglassIcon },
@@ -115,6 +115,8 @@ export const MatchCard: React.FC<MatchCardProps> = ({
     const gradient = GRADIENT_CONFIG[status];
     const isActiveMatch = status === 'active_match';
     const isAwaitingYou = status === 'awaiting_you';
+
+
     const endorserLabel = ENDORSER_LABEL[status];
     const optimizedImageUrl = useMemo(() => getOptimizedImageUrl(imageUrl, 400), [imageUrl]);
 
@@ -131,10 +133,13 @@ export const MatchCard: React.FC<MatchCardProps> = ({
         return () => { loop.stop(); pulseAnim.setValue(1); };
     }, [pulseAnim]);
 
-    // Entrance animation — fade + slide-up, re-triggers on status change
-    const slideAnim = useRef(new Animated.Value(40)).current;
-    const fadeAnim = useRef(new Animated.Value(0)).current;
+    // Entrance animation — fade + slide-up, only on status *changes* (not initial mount)
+    const slideAnim = useRef(new Animated.Value(0)).current;
+    const fadeAnim = useRef(new Animated.Value(1)).current;
+    const prevStatusRef = useRef(status);
     useEffect(() => {
+        if (prevStatusRef.current === status) return; // skip initial mount
+        prevStatusRef.current = status;
         slideAnim.setValue(40);
         fadeAnim.setValue(0);
         Animated.parallel([
@@ -211,7 +216,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                                 )}
                                 {onDismiss && (
                                     <TouchableOpacity onPress={onDismiss} style={styles.topActionBtn} activeOpacity={0.7}>
-                                        <Text style={styles.dismissX}>✕</Text>
+                                        <EvaIcon name="close" variant="outline" size={18} color="#FFFFFF" />
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -274,7 +279,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                 <Pressable onPress={onPress} onPressIn={onActionPressIn} onPressOut={onActionPressOut}>
                     <View style={[styles.actionButton, styles.actionButtonBlue]}>
                         {isActiveMatch ? (
-                            <ChatIcon size={24} color="#FFFFFF" />
+                            <EvaIcon name="paper-plane" variant="outline" size={24} color="#FFFFFF" />
                         ) : (
                             <ArrowRightIcon size={22} color="#FFFFFF" />
                         )}
@@ -355,9 +360,9 @@ const styles = StyleSheet.create({
         gap: 5,
     },
     topBadgeText: {
-        color: '#FFFFFF',
+        color: COLORS.card,
         fontFamily: FONTS.bold,
-        fontSize: 14,
+        fontSize: FONT_SIZES.base,
         lineHeight: 18,
     },
     // Grouped share + dismiss buttons for active match
@@ -377,8 +382,8 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(255, 255, 255, 0.12)',
     },
     dismissX: {
-        color: '#FFFFFF',
-        fontSize: 15,
+        color: COLORS.card,
+        fontSize: FONT_SIZES.lg,
         fontFamily: FONTS.bold,
         lineHeight: 17,
     },
@@ -402,17 +407,17 @@ const styles = StyleSheet.create({
     },
     // #2 — Pill text: 13px for visual hierarchy
     pillText: {
-        color: '#FFFFFF',
+        color: COLORS.card,
         fontFamily: FONTS.semiBold,
-        fontSize: 13,
+        fontSize: FONT_SIZES.md,
         lineHeight: 17,
     },
     // #2 — Name: tighter letter spacing (-0.8), strong shadow
     nameText: {
-        color: '#FFFFFF',
+        color: COLORS.card,
         fontFamily: FONTS.extraBold,
         fontWeight: '700',
-        fontSize: 32,
+        fontSize: FONT_SIZES['6xl'],
         lineHeight: 36,
         letterSpacing: -0.8,
         textShadowColor: 'rgba(0, 0, 0, 0.45)',
@@ -428,7 +433,7 @@ const styles = StyleSheet.create({
     matchedByText: {
         color: 'rgba(255, 255, 255, 0.9)',
         fontFamily: FONTS.medium,
-        fontSize: 13,
+        fontSize: FONT_SIZES.md,
         lineHeight: 17,
     },
     avatarRow: {
@@ -457,7 +462,7 @@ const styles = StyleSheet.create({
     dateText: {
         color: 'rgba(255, 255, 255, 0.55)',
         fontFamily: FONTS.medium,
-        fontSize: 12,
+        fontSize: FONT_SIZES.sm,
         lineHeight: 16,
     },
     actionButtonWrap: {
@@ -470,7 +475,7 @@ const styles = StyleSheet.create({
         width: 56,
         height: 56,
         borderRadius: 28,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: '#000000',

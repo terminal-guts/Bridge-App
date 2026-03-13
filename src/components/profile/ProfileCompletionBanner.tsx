@@ -17,6 +17,7 @@ import { lightHaptic } from '../../utils/haptics';
 import { calculateOverallProfileStrength } from '../../utils/profileCompleteness';
 import { createLogger } from '../../utils/secureLogger';
 import { EvaIcon } from '../icons';
+import { COLORS } from '../../theme/colors';
 
 const logger = createLogger('ProfileCompletionBanner');
 
@@ -87,7 +88,7 @@ export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = (
 
   return (
     <LinearGradient
-      colors={['#3B82F6', '#2563EB']} // Blue gradient: blue-500 to blue-600
+      colors={['#3B82F6', COLORS.primary]} // Blue gradient: blue-500 to blue-600
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 0 }}
       style={{

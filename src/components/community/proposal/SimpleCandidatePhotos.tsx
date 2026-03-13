@@ -19,6 +19,8 @@ import { UserProfile, Photo } from '../../../types';
 import { Body } from '../../ui';
 import { createLogger } from '../../../utils/secureLogger';
 import { SHADOWS } from '../../../theme/shadows';
+import { COLORS } from '../../../theme/colors';
+import { FONT_SIZES } from '../../../constants/typography';
 
 const logger = createLogger('SimpleCandidatePhotos');
 
@@ -91,7 +93,7 @@ function CandidatePhoto({ candidate, onPress, disabled = false }: CandidatePhoto
         height: '85%', // Fill most of the bottom half height
         borderRadius: 28, // Large, inviting rounded corners
         overflow: 'visible', // Changed to show badge
-        backgroundColor: '#FBF9F6', // Warm cream background
+        backgroundColor: COLORS.backgroundWarmCream, // Warm cream background
         ...SHADOWS.xl,
         elevation: 6,
         borderWidth: 2,
@@ -138,7 +140,7 @@ export function SimpleCandidatePhotos({
       paddingHorizontal: 18,
       paddingTop: 18,
       paddingBottom: 8,
-      backgroundColor: '#FBF9F6', // Warm cream background
+      backgroundColor: COLORS.backgroundWarmCream, // Warm cream background
     }}>
       {/* Candidates Row */}
       <StyledView style={{
@@ -173,8 +175,8 @@ export function SimpleCandidatePhotos({
             }}
           >
             <Body style={{
-              fontSize: 13,
-              color: '#A8A29E',
+              fontSize: FONT_SIZES.md,
+              color: COLORS.text.ghost,
               textDecorationLine: 'underline',
             }}>
               None of these work

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text } from 'react-native';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { EvaIcon } from '../icons';
 
 interface MatchExpiryTimerProps {
@@ -72,8 +72,8 @@ export function MatchExpiryTimer({ expiresAt }: MatchExpiryTimerProps) {
             height: 34,
             gap: 5,
         }}>
-            <EvaIcon name="clock" variant="outline" size={13} color="color" />
-            <Text style={{ fontSize: 13, fontWeight: '600', fontFamily: FONTS.semiBold, color }}>{label}</Text>
+            <EvaIcon name="clock" variant="outline" size={13} color={color} />
+            <Text style={{ fontSize: FONT_SIZES.md, fontWeight: '600', fontFamily: FONTS.semiBold, color }}>{label}</Text>
         </View>
     );
 }

@@ -6,4 +6,5 @@
 export { CommunityScreen } from './CommunityScreen';
 // MatchesScreen is not used in navigation - matches are shown in ProfileScreen
 // export { MatchesScreen } from './MatchesScreen';
-export { ProfileScreen } from './ProfileScreen';
+// ProfileScreen is lazy-loaded directly in AppNavigator
+// export { ProfileScreen } from './ProfileScreen';

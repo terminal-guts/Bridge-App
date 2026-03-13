@@ -15,6 +15,7 @@ import * as Haptics from 'expo-haptics';
 import { Proposal, UserProfile, Endorsement } from '../../../types/community';
 import { KarmaBadge } from '../karma/KarmaBadge';
 import { FONTS } from '../../../constants/typography';
+import { COLORS } from '../../../theme/colors';
 import { EvaIcon } from '../../icons';
 
 const StyledView = styled(View) as typeof View;
@@ -239,7 +240,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
         <StyledTouchableOpacity
           className="flex-1 py-3 rounded-lg justify-center items-center"
           style={{
-            backgroundColor: hasVoted ? (yourVote === false ? '#EF4444' : '#F3F4F6') : '#EF4444',
+            backgroundColor: hasVoted ? (yourVote === false ? COLORS.error : COLORS.backgroundGray) : COLORS.error,
             opacity: hasVoted ? (yourVote === false ? 1 : 0.5) : 1,
             marginRight: 12,
           }}
@@ -250,7 +251,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
           <StyledText
             className="font-semibold"
             style={{
-              color: hasVoted ? (yourVote === false ? '#FFFFFF' : '#9CA3AF') : '#FFFFFF',
+              color: hasVoted ? (yourVote === false ? COLORS.card : COLORS.text.disabled) : COLORS.card,
               fontFamily: FONTS.semiBold,
             }}
           >
@@ -262,7 +263,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
         <StyledTouchableOpacity
           className="flex-1 py-3 rounded-lg justify-center items-center"
           style={{
-            backgroundColor: hasVoted ? (yourVote === true ? '#10B981' : '#F3F4F6') : '#10B981',
+            backgroundColor: hasVoted ? (yourVote === true ? COLORS.emerald : COLORS.backgroundGray) : COLORS.emerald,
             opacity: hasVoted ? (yourVote === true ? 1 : 0.5) : 1,
           }}
           onPress={() => handleVote(true)}
@@ -272,7 +273,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
           <StyledText
             className="font-semibold"
             style={{
-              color: hasVoted ? (yourVote === true ? '#FFFFFF' : '#9CA3AF') : '#FFFFFF',
+              color: hasVoted ? (yourVote === true ? COLORS.card : COLORS.text.disabled) : COLORS.card,
               fontFamily: FONTS.semiBold,
             }}
           >

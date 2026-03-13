@@ -1,143 +1,104 @@
-# Eva Icons Integration
+# Bridge Icon System
 
-Bridge uses Eva Icons throughout the app with our custom color scheme.
+Bridge uses a 3-tier icon architecture. All icon assets live in `assets/Icons/`.
 
-## Usage
+## Folder Structure
+
+```
+assets/Icons/
+├── NeatIcons/          # 70+ premium SVGs for interests & values
+│   ├── tennis.svg
+│   ├── honesty.svg
+│   └── ...
+├── GeneralIcons/       # Eva Icons for all UI buttons & navigation
+│   └── outline/
+│       ├── svg/        # Source SVGs (used by registry generator)
+│       └── png/128/    # PNG fallbacks
+└── AnimatedIcons/      # Statement pieces (not yet implemented)
+```
+
+## Components
+
+### EvaIcon — General UI icons
+
+Renders icons from `iconRegistry.ts` (Eva Icons). Used for buttons, navigation, status indicators.
 
 ```tsx
 import { EvaIcon } from '@/components/icons';
 
-// Basic usage
-<EvaIcon name="arrow-back" />
-
-// With variant and color
-<EvaIcon
-  name="checkmark"
-  variant="fill"
-  color="success"
-  size={24}
-/>
-
-// With custom hex color
-<EvaIcon
-  name="heart"
-  variant="fill"
-  color="#FF7A5C"
-  size={32}
-/>
+<EvaIcon name="arrow-back" variant="outline" color="text" size={24} />
+<EvaIcon name="heart" variant="fill" color="#FF7A5C" size={32} />
 ```
-
-## Props
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `name` | `string` | required | Icon name (without file extension) |
-| `variant` | `'fill' \| 'outline'` | `'outline'` | Icon style variant |
-| `color` | `BridgeColor \| string` | `'text'` | Icon color (Bridge color name or hex) |
-| `size` | `number` | `24` | Icon size in pixels |
+| `name` | `string` | required | Icon name (without variant suffix) |
+| `variant` | `'fill' \| 'outline'` | `'outline'` | Icon style |
+| `color` | `BridgeColor \| string` | `'text'` | Bridge color name or hex |
+| `size` | `number` | `24` | Size in pixels |
 | `style` | `ViewStyle` | - | Additional styles |
+
+### IconScoutIcon — Interest & value icons
+
+Renders icons from `iconScoutRegistry.ts` (NeatIcons). Used on profile pills for interests and values.
+
+```tsx
+import { IconScoutIcon } from '@/components/icons';
+
+<IconScoutIcon name="tennis" size={14} />
+<IconScoutIcon name="honesty" size={10} style={{ marginRight: 2 }} />
+```
+
+Icon names are mapped from interest/value strings via `src/utils/emojiMaps.ts` (`valueIconName()`, `interestIconName()`).
 
 ## Bridge Colors
 
-Use these color names for consistent theming:
+Use these color names with EvaIcon for consistent theming:
 
-### Primary Colors
-- `primary` - `#437FFF` - Main brand blue (used across the app)
-- `primary-light` - `#7BA8FF` - Lighter blue
-- `primary-dark` - `#2B65F9` - Darker blue (buttons, badges)
+### Primary
+- `primary` — `#437FFF` (main brand blue)
+- `primary-light` — `#7BA8FF`
+- `primary-dark` — `#2B65F9`
 
-### Text Colors
-- `text` - `#2A1F1A` - Primary text (warm dark)
-- `text-secondary` - `#5A524A` - Secondary text
-- `text-light` - `#736B63` - Light text
+### Text
+- `text` — `#2A1F1A` (primary text)
+- `text-secondary` — `#5A524A`
+- `text-light` — `#736B63`
 
-### Background Colors
-- `background` - `#FDFAF7` - App background (warm off-white)
-- `background-cream` - `#F8F4F0` - Card backgrounds
-- `white` - `#FFFFFF` - Pure white
-- `black` - `#000000` - Pure black
+### Background
+- `background` — `#FDFAF7`
+- `background-cream` — `#F8F4F0`
+- `white` / `black`
 
-### Accent Colors
-- `coral` - `#FF7A5C` - Romantic/important elements
-- `peach` - `#FF9966` - Highlights
-- `romantic` - `#FF8B7C` - Soft coral-pink for matches
+### Accent
+- `coral` — `#FF7A5C` (romantic/important)
+- `peach` — `#FF9966`
+- `romantic` — `#FF8B7C`
 
-### Semantic Colors
-- `success` - `#52C797` - Success states (mint-green)
-- `warning` - `#F59E0B` - Warning states (amber)
-- `error` - `#FF7A5C` - Error states (coral-red)
+### Semantic
+- `success` — `#52C797`
+- `warning` — `#F59E0B`
+- `error` — `#FF7A5C`
 
-### Neutral Colors
-- `neutral` - `#A8A099` - Neutral gray
-- `neutral-light` - `#E0D7CE` - Light neutral
-- `neutral-dark` - `#3D362F` - Dark neutral
+### Neutral
+- `neutral` — `#A8A099`
+- `neutral-light` — `#E0D7CE`
+- `neutral-dark` — `#3D362F`
 
-## Common Icon Examples
+## Icon Variants (EvaIcon)
 
-```tsx
-// Navigation
-<EvaIcon name="arrow-back" variant="outline" color="text" size={24} />
-<EvaIcon name="arrow-forward" variant="outline" color="text" size={24} />
-<EvaIcon name="home" variant="outline" color="primary" size={24} />
+- **Outline** (default) — clean line style, used for most UI elements
+- **Fill** — more prominent, used for active states, success, CTAs, love/romantic elements
 
-// Actions
-<EvaIcon name="checkmark" variant="fill" color="success" size={20} />
-<EvaIcon name="close" variant="outline" color="text" size={24} />
-<EvaIcon name="edit" variant="outline" color="primary" size={20} />
-<EvaIcon name="trash" variant="outline" color="error" size={20} />
+## Regenerating Registries
 
-// Social/Love
-<EvaIcon name="heart" variant="fill" color="coral" size={24} />
-<EvaIcon name="people" variant="outline" color="text" size={24} />
-<EvaIcon name="person" variant="outline" color="text" size={24} />
-<EvaIcon name="message-circle" variant="outline" color="primary" size={24} />
-
-// UI Feedback
-<EvaIcon name="alert-circle" variant="outline" color="warning" size={24} />
-<EvaIcon name="alert-triangle" variant="outline" color="error" size={24} />
-<EvaIcon name="info" variant="outline" color="primary" size={24} />
-<EvaIcon name="checkmark-circle" variant="fill" color="success" size={24} />
-
-// Settings/Profile
-<EvaIcon name="settings" variant="outline" color="text" size={24} />
-<EvaIcon name="lock" variant="outline" color="text" size={20} />
-<EvaIcon name="eye" variant="outline" color="text" size={20} />
-<EvaIcon name="eye-off" variant="outline" color="text" size={20} />
-```
-
-## Icon Variants
-
-### Outline (Default)
-Outline icons have a clean, minimal line style. Use for most UI elements.
-
-### Fill
-Filled icons are more prominent. Use for:
-- Active states (e.g., selected tab)
-- Success confirmations
-- Important call-to-actions
-- Love/romantic elements
-
-## Available Icons (490 total)
-
-See the full list of available icons in `assets/eva-icons/`:
-- 246 fill icons in `fill/svg/`
-- 244 outline icons in `outline/svg/`
-
-Common categories:
-- Arrows & Navigation
-- UI Controls (close, menu, settings)
-- Social (people, heart, share)
-- Media (play, pause, volume)
-- Communication (message, phone, email)
-- File & Document
-- And many more...
-
-## Regenerating the Icon Registry
-
-If you add new icons to `assets/eva-icons/`, regenerate the registry:
+After adding icons to `assets/Icons/`:
 
 ```bash
-node scripts/generate-icon-registry.js
-```
+# NeatIcons → iconScoutRegistry.ts (interests & values)
+node scripts/generate-iconscout-registry.js
 
-This will update `src/components/icons/iconRegistry.ts` with all available icons.
+# GeneralIcons → iconRegistry.ts (Eva UI icons)
+# Registry was originally generated by scripts/generate-icon-registry.js
+# If adding new Eva icons, add entries manually to iconRegistry.ts
+```

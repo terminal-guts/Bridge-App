@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, H3, Body, Card } from '../../../components/ui';
+import { COLORS } from '../../../theme/colors';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import Slider from '@react-native-community/slider';
@@ -108,7 +109,7 @@ export const HeightStep: React.FC<HeightStepProps> = ({
             maximumValue={MAX_HEIGHT}
             step={1}
             minimumTrackTintColor="#7C3AED"
-            maximumTrackTintColor="#E5E7EB"
+            maximumTrackTintColor={COLORS.backgroundGrayMedium}
             thumbTintColor="#7C3AED"
           />
           <StyledView className="flex-row justify-between mt-2">

@@ -9,7 +9,6 @@
  *   import communityService from '@/services/communityServiceIndex';
  */
 
-import { communityService as mockService } from './communityService';
 import { communityBackendService as realService } from './communityBackendService';
 import { FEATURES } from '../config/features';
 import { createLogger } from '../utils/secureLogger';
@@ -26,9 +25,20 @@ logger.info('[CommunityService] COMMUNITY_BACKEND_ENABLED:', FEATURES.COMMUNITY_
 logger.info('[CommunityService] Using:', useMockService ? 'MOCK SERVICE' : 'REAL BACKEND');
 
 /**
- * Export the appropriate service implementation
+ * Export the appropriate service implementation.
+ * Mock service is dynamically imported only when needed to keep it out of the prod bundle.
  */
-export const communityService = useMockService ? mockService : realService;
+let communityServiceInstance: typeof realService;
+
+if (useMockService) {
+  // Dynamic import — mock service (1866 lines) only loads when flag is off
+  const { communityService: mockService } = require('./communityService');
+  communityServiceInstance = mockService;
+} else {
+  communityServiceInstance = realService;
+}
+
+export const communityService = communityServiceInstance;
 
 /**
  * Default export

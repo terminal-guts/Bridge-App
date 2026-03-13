@@ -11,6 +11,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { styled } from 'nativewind';
 import { KarmaInfoModal } from './KarmaInfoModal';
 import { FONTS } from '../../../constants/typography';
+import { COLORS } from '../../../theme/colors';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -36,13 +37,13 @@ export function KarmaBadge({ points = 0 }: KarmaBadgeProps) {
           flexDirection: 'row', alignItems: 'center',
           paddingHorizontal: 9, paddingVertical: 4,
           backgroundColor: 'rgba(52, 199, 89, 0.1)',
-          borderWidth: 1, borderColor: '#34C759',
+          borderWidth: 1, borderColor: COLORS.success,
           borderRadius: 999,
         }}
       >
         <StyledText
           className="text-xs font-semibold"
-          style={{ color: '#34C759', fontFamily: FONTS.semiBold }}
+          style={{ color: COLORS.success, fontFamily: FONTS.semiBold }}
         >
           {points} pts
         </StyledText>

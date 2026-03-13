@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
-import { X, Heart } from 'lucide-react-native';
+import { X, Heart } from '../icons/LucideReplacements';
 
 export default function ProfileMatchActions() {
     return (

@@ -5,12 +5,13 @@ import { H2, Body, Caption } from './Typography';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EvaIcon } from '../icons';
+import { COLORS } from '../../theme/colors';
 
 interface InfoModalProps {
   visible: boolean;
   onClose: () => void;
   title: string;
-  icon?: keyof typeof Record<string, number>;
+  icon?: string;
   iconColor?: string;
   iconBackground?: string;
   children: React.ReactNode;
@@ -74,7 +75,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
         >
           {/* Top gradient accent */}
           <LinearGradient
-            colors={['#437FFF', '#6B9FFF']}
+            colors={[COLORS.primaryAccent, '#6B9FFF']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{
@@ -158,7 +159,7 @@ export const InfoSection: React.FC<{
  * Styled bullet point for use within InfoModal
  */
 export const InfoBullet: React.FC<{
-  icon?: keyof typeof Record<string, number>;
+  icon?: string;
   children: React.ReactNode;
 }> = ({ icon = 'checkmark-circle', children }) => {
   return (

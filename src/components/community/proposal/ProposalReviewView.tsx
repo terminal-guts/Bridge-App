@@ -16,7 +16,9 @@
  * - +1 Karma popup on vote
  */
 
-import { FONTS } from '../../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../../constants/typography';
+import { COLORS } from '../../../theme/colors';
+import { EmptyState } from '../../ui/EmptyState';
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   View,
@@ -29,15 +31,16 @@ import {
   Modal,
   ActivityIndicator,
   Animated,
+  StyleSheet,
 } from 'react-native';
-import { Image, ImageBackground } from 'expo-image';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Confetti } from '../Confetti';
 import { GuideTarget } from '../../guides';
 import { UserProfile } from '../../../types';
 import { Proposal, CommunityTask } from '../../../types/community';
-import { MatchResult, MatchStatus } from '../../../utils/proposalMatching';
+import { MatchResult } from '../../../utils/proposalMatching';
 import { RateLimiter } from '../../../utils/inputValidation';
 import { showToast } from '../../../utils/toast';
 import {
@@ -59,959 +62,31 @@ import { OVERLAYS } from '../../../theme/shadows';
 import { getQuestionById } from '../../../utils/deepQuestions';
 import { EvaIcon } from '../../icons';
 
-const logger = createLogger('ProposalReviewView');
+// Sub-components (extracted)
+import { countMatch, countKnown, computeSmartPills, INTERESTS_SIMILARITY, VALUES_SIMILARITY } from './proposalHelpers';
+import type { DeepQuestionData, SmartPillResult } from './proposalHelpers';
+export type { DeepQuestionData } from './proposalHelpers';
+import { SectionCard, MatchIcon, ValueBox, ComparisonValueRow, EthnicityComparisonRow, SmartPillCloudSection } from './SmartPillCloud';
+import { ProposalPhotoCard, PHOTO_HEIGHT, PHOTO_RADIUS } from './ProposalPhotoCard';
+import { QuestionCarousel } from './QuestionCarousel';
+import { LiveVoteBar } from './LiveVoteBar';
 
-// ─── Pure helpers (no component state) ────────────────────────────────────────
-const countMatch = (results: MatchResult[]) =>
-  results.filter(r => r.status === 'both_happy').length;
-const countKnown = (results: MatchResult[]) =>
-  results.filter(r => r.status !== 'unknown').length;
+const logger = createLogger('ProposalReviewView');
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
+// ─── Layout constants ────────────────────────────────────────────────────────
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const DIVIDER_WIDTH = 13;
 const PHOTO_WIDTH = (SCREEN_WIDTH - 32 - DIVIDER_WIDTH) / 2;
-const PHOTO_HEIGHT = 300;
-const PHOTO_RADIUS = 16;
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
-const BLUE = '#2563EB';
-const GREEN = '#34C759';
-const RED = '#FF383C';
-const AMBER = '#FFCC00';
-const GREEN_BG = 'rgba(52, 199, 89, 0.1)';
-const RED_BG = 'rgba(255, 56, 60, 0.1)';
-const AMBER_BG = 'rgba(255, 204, 0, 0.1)';
+// ─── Design tokens (aliased from theme) ──────────────────────────────────────
+const BLUE = COLORS.primary;
 const BOX_BG = 'rgba(1, 1, 1, 0.02)';
 const BOX_BORDER = 'rgba(1, 1, 1, 0.04)';
-const CARD_BORDER = 'rgba(1, 1, 1, 0.1)';
 const SCROLL_CONTENT_STYLE = { paddingHorizontal: 16, paddingBottom: 160 } as const;
-const TAG_BG = 'rgba(1, 1, 1, 0.02)';
-const GREY_VOTE = '#9CA3AF';
-
-// ─── Similarity maps for smart pill matching ──────────────────────────────────
-const INTERESTS_SIMILARITY: Record<string, string[]> = {
-  'Baking': ['Cooking'],
-  'Cooking': ['Baking'],
-  'Lifting': ['Yoga', 'Pilates', 'Climbing', 'Swimming', 'Running', 'Cycling', 'Fitness'],
-  'Yoga': ['Lifting', 'Pilates', 'Wellness', 'Fitness'],
-  'Pilates': ['Lifting', 'Yoga', 'Wellness', 'Fitness'],
-  'Climbing': ['Lifting', 'Hiking', 'Skiing', 'Fitness'],
-  'Swimming': ['Lifting', 'Fitness'],
-  'Running': ['Lifting', 'Cycling', 'Fitness'],
-  'Cycling': ['Lifting', 'Running', 'Fitness'],
-  'Fitness': ['Lifting', 'Yoga', 'Pilates', 'Climbing', 'Swimming', 'Running', 'Cycling'],
-  'Live Sports': ['Watching Sports', 'Soccer', 'Basketball', 'Tennis', 'Golf'],
-  'Watching Sports': ['Live Sports', 'Soccer', 'Basketball', 'Tennis', 'Golf'],
-  'Soccer': ['Live Sports', 'Watching Sports', 'Basketball', 'Tennis', 'Golf'],
-  'Basketball': ['Live Sports', 'Watching Sports', 'Soccer', 'Tennis', 'Golf'],
-  'Tennis': ['Live Sports', 'Watching Sports', 'Soccer', 'Basketball', 'Golf'],
-  'Golf': ['Live Sports', 'Watching Sports', 'Soccer', 'Basketball', 'Tennis'],
-  'Coffee': ['Fine Dining', 'Dinner Parties'],
-  'Fine Dining': ['Coffee', 'Dinner Parties'],
-  'Dinner Parties': ['Coffee', 'Fine Dining'],
-  'Travel': ['International Travel', 'Weekend Trips', 'Camping', 'Hiking'],
-  'International Travel': ['Travel', 'Weekend Trips', 'Camping', 'Hiking'],
-  'Weekend Trips': ['Travel', 'International Travel', 'Camping', 'Hiking'],
-  'Camping': ['Travel', 'International Travel', 'Weekend Trips', 'Hiking'],
-  'Hiking': ['Travel', 'International Travel', 'Weekend Trips', 'Camping', 'Skiing', 'Climbing'],
-  'Karaoke': ['Live Music', 'Concerts', 'Music', 'Dancing'],
-  'Live Music': ['Karaoke', 'Concerts', 'Music', 'Dancing'],
-  'Concerts': ['Karaoke', 'Live Music', 'Music', 'Dancing'],
-  'Music': ['Karaoke', 'Live Music', 'Concerts', 'Dancing'],
-  'Dancing': ['Karaoke', 'Live Music', 'Concerts', 'Music'],
-  'Game Nights': ['Video Games', 'Poker'],
-  'Video Games': ['Game Nights', 'Poker'],
-  'Poker': ['Game Nights', 'Video Games'],
-  'Art Galleries': ['Museums', 'Photography', 'Film'],
-  'Museums': ['Art Galleries', 'Photography', 'Film'],
-  'Photography': ['Art Galleries', 'Museums', 'Film'],
-  'Film': ['Art Galleries', 'Museums', 'Photography'],
-  'Reading': ['Writing'],
-  'Writing': ['Reading'],
-  'Wellness': ['Yoga', 'Pilates'],
-  'Skiing': ['Hiking', 'Climbing'],
-};
-
-const VALUES_SIMILARITY: Record<string, string[]> = {
-  'Honesty': ['Integrity', 'Authenticity', 'Trust', 'Respect'],
-  'Integrity': ['Honesty', 'Authenticity', 'Trust', 'Respect'],
-  'Authenticity': ['Honesty', 'Integrity', 'Trust'],
-  'Trust': ['Honesty', 'Integrity', 'Authenticity', 'Loyalty'],
-  'Loyalty': ['Commitment', 'Trust', 'Friendship First'],
-  'Commitment': ['Loyalty', 'Trust', 'Stability', 'Friendship First'],
-  'Friendship First': ['Loyalty', 'Commitment', 'Community', 'Kindness'],
-  'Independence': ['Ambition', 'Career', 'Leadership'],
-  'Ambition': ['Independence', 'Career', 'Leadership', 'Growth Mindset', 'Success'],
-  'Career': ['Independence', 'Ambition', 'Leadership', 'Success'],
-  'Leadership': ['Independence', 'Ambition', 'Career'],
-  'Empathy': ['Kindness', 'Emotional Intelligence', 'Communication'],
-  'Kindness': ['Empathy', 'Emotional Intelligence', 'Communication', 'Community', 'Friendship First'],
-  'Emotional Intelligence': ['Empathy', 'Kindness', 'Communication'],
-  'Communication': ['Empathy', 'Kindness', 'Emotional Intelligence', 'Romance'],
-  'Growth Mindset': ['Self-Improvement', 'Ambition'],
-  'Self-Improvement': ['Growth Mindset', 'Ambition'],
-  'Stability': ['Work-Life Balance', 'Health', 'Commitment'],
-  'Work-Life Balance': ['Stability', 'Health'],
-  'Health': ['Stability', 'Work-Life Balance'],
-  'Community': ['Friendship First', 'Kindness'],
-  'Adventure': ['Creativity'],
-  'Creativity': ['Adventure', 'Innovation'],
-  'Romance': ['Communication'],
-  'Success': ['Ambition', 'Career'],
-  'Respect': ['Integrity', 'Honesty'],
-  'Innovation': ['Creativity'],
-};
-
-// ─── Deep Question Data interface ─────────────────────────────────────────────
-export interface DeepQuestionData {
-  questionId: number;
-  questionText: string;
-  userAAnswer?: string;
-  userBAnswer?: string;
-}
-
-// ─── Smart pill matching helper ───────────────────────────────────────────────
-interface SmartPillResult {
-  greenPairs: { item: string }[];
-  yellowPairs: { itemA: string; itemB: string }[];
-  greyA: string[];
-  greyB: string[];
-  percentMatch: number;
-}
-
-function computeSmartPills(
-  tagsA: string[],
-  tagsB: string[],
-  similarityMap: Record<string, string[]>,
-): SmartPillResult {
-  const setB = new Set(tagsB);
-  const setA = new Set(tagsA);
-
-  // Green: exact matches
-  const greenPairs: { item: string }[] = [];
-  const usedA = new Set<string>();
-  const usedB = new Set<string>();
-
-  for (const item of tagsA) {
-    if (setB.has(item)) {
-      greenPairs.push({ item });
-      usedA.add(item);
-      usedB.add(item);
-    }
-  }
-
-  // Yellow: similar matches (only for items not already green-matched)
-  const yellowPairs: { itemA: string; itemB: string }[] = [];
-  for (const itemA of tagsA) {
-    if (usedA.has(itemA)) continue;
-    const similars = similarityMap[itemA] || [];
-    for (const sim of similars) {
-      if (setB.has(sim) && !usedB.has(sim)) {
-        yellowPairs.push({ itemA, itemB: sim });
-        usedA.add(itemA);
-        usedB.add(sim);
-        break;
-      }
-    }
-  }
-
-  // Grey: unmatched items
-  const greyA = tagsA.filter(t => !usedA.has(t));
-  const greyB = tagsB.filter(t => !usedB.has(t));
-
-  // Percentage
-  const maxLen = Math.max(tagsA.length, tagsB.length, 1);
-  const score = (greenPairs.length * 1.0 + yellowPairs.length * 0.5) / maxLen * 100;
-  const percentMatch = Math.round(score);
-
-  return { greenPairs, yellowPairs, greyA, greyB, percentMatch };
-}
-
-// ─── Helper: icon for match status ────────────────────────────────────────────
-function MatchIcon({ status }: { status: MatchStatus }) {
-  if (status === 'both_happy') {
-    return <EvaIcon name="checkmark" variant="outline" size={20} color="GREEN" />;
-  }
-  if (status === 'neither_happy') {
-    return <EvaIcon name="close" variant="outline" size={20} color="RED" />;
-  }
-  if (status === 'left_happy' || status === 'right_happy') {
-    return <EvaIcon name="alert-triangle" variant="outline" size={18} color="#FFA629" />;
-  }
-  return null;
-}
-
-// ─── Helper: badge for section match score ─────────────────────────────────────
-const MatchBadge = React.memo(function MatchBadge({ matched, total }: { matched: number; total: number }) {
-  const allMatch = matched === total;
-  const noneMatch = matched === 0;
-  const bg = allMatch ? GREEN_BG : noneMatch ? RED_BG : AMBER_BG;
-  const color = allMatch ? GREEN : noneMatch ? RED : AMBER;
-  const label = total === 1
-    ? allMatch ? 'Match' : 'No Match'
-    : `${matched}/${total} Match`;
-
-  return (
-    <View style={{
-      backgroundColor: bg,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 6,
-    }}>
-      <Text style={{
-        fontFamily: FONTS.medium,
-        fontWeight: '500',
-        fontSize: 12,
-        color,
-      }}>
-        {label}
-      </Text>
-    </View>
-  );
-});
-
-// ─── Helper: percentage match badge ───────────────────────────────────────────
-const PercentBadge = React.memo(function PercentBadge({ percent }: { percent: number }) {
-  const allMatch = percent >= 80;
-  const noneMatch = percent === 0;
-  const bg = allMatch ? GREEN_BG : noneMatch ? RED_BG : AMBER_BG;
-  const color = allMatch ? GREEN : noneMatch ? RED : AMBER;
-
-  return (
-    <View style={{
-      backgroundColor: bg,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 6,
-    }}>
-      <Text style={{
-        fontFamily: FONTS.medium,
-        fontWeight: '500',
-        fontSize: 12,
-        color,
-      }}>
-        {percent}% Match
-      </Text>
-    </View>
-  );
-});
-
-// ─── Helper: section card wrapper ─────────────────────────────────────────────
-const SectionCard = React.memo(function SectionCard({
-  title,
-  matched,
-  total,
-  percentBadge,
-  children,
-}: {
-  title: string;
-  matched?: number;
-  total?: number;
-  percentBadge?: number;
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={{
-      backgroundColor: '#FFFFFF',
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: CARD_BORDER,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.05,
-      shadowRadius: 4,
-      elevation: 2,
-      padding: 12,
-      marginBottom: 16,
-    }}>
-      {/* Section header */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: 16, color: BLUE }}>{title}</Text>
-        {percentBadge !== undefined ? (
-          <PercentBadge percent={percentBadge} />
-        ) : matched !== undefined && total !== undefined ? (
-          <MatchBadge matched={matched} total={total} />
-        ) : null}
-      </View>
-      {children}
-    </View>
-  );
-});
-
-// ─── Helper: value box (138px, shows label + value) ───────────────────────────
-function ValueBox({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={{
-      flex: 1,
-      height: 58,
-      backgroundColor: BOX_BG,
-      borderWidth: 1,
-      borderColor: BOX_BORDER,
-      borderRadius: 12,
-      padding: 10,
-      justifyContent: 'space-between',
-    }}>
-      <Text style={{ fontFamily: FONTS.regular, fontWeight: '400', fontSize: 13, color: '#6B7280' }}>{label}</Text>
-      <Text style={{ fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: 15, color: '#010101' }} numberOfLines={1}>{value || '—'}</Text>
-    </View>
-  );
-}
-
-// ─── Helper: single comparison row (value + icon + value) ─────────────────────
-function ComparisonValueRow({ result, label }: { result: MatchResult; label: string }) {
-  if (result.status === 'unknown') return null;
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-      <ValueBox label={label} value={result.leftValue} />
-      <MatchIcon status={result.status} />
-      <ValueBox label={label} value={result.rightValue} />
-    </View>
-  );
-}
-
-// ─── Helper: tag pill ─────────────────────────────────────────────────────────
-function TagPill({ label }: { label: string }) {
-  return (
-    <View style={{
-      backgroundColor: TAG_BG,
-      borderWidth: 1,
-      borderColor: BOX_BORDER,
-      borderRadius: 40,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      alignSelf: 'flex-start',
-    }}>
-      <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.85 }}>{label}</Text>
-    </View>
-  );
-}
-
-// ─── Helper: green pill (exact match) ─────────────────────────────────────────
-function GreenPill({ label }: { label: string }) {
-  return (
-    <View style={{
-      backgroundColor: '#EDFCF2',
-      borderWidth: 1,
-      borderColor: GREEN,
-      borderRadius: 40,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      alignSelf: 'flex-start',
-    }}>
-      <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 14, color: GREEN }}>{label}</Text>
-    </View>
-  );
-}
-
-// ─── Helper: yellow pill (similar match) ──────────────────────────────────────
-function YellowPill({ label }: { label: string }) {
-  return (
-    <View style={{
-      backgroundColor: '#FFFBEB',
-      borderWidth: 1,
-      borderColor: '#F59E0B',
-      borderRadius: 40,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      alignSelf: 'flex-start',
-    }}>
-      <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 14, color: '#92400E' }}>{label}</Text>
-    </View>
-  );
-}
-
-// ─── Helper: ethnicity comparison row (tag pills + icon + tag pills) ───────────
-function EthnicityComparisonRow({ result }: { result: MatchResult }) {
-  if (result.status === 'unknown') return null;
-  const leftTags = result.leftValue ? [result.leftValue] : [];
-  const rightTags = result.rightValue ? [result.rightValue] : [];
-
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-      <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap' }}>
-        {leftTags.map((t) => <TagPill key={t} label={t} />)}
-      </View>
-      <MatchIcon status={result.status} />
-      <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap' }}>
-        {rightTags.map((t) => <TagPill key={t} label={t} />)}
-      </View>
-    </View>
-  );
-}
-
-// ─── Helper: tag cloud section (two columns with vertical stacking + divider) ──
-function TagCloudSection({ leftTags, rightTags }: { leftTags: string[]; rightTags: string[] }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 0 }}>
-      {/* Left Column */}
-      <View style={{ flex: 1, gap: 6 }}>
-        {leftTags.map((t) => <TagPill key={t} label={t} />)}
-      </View>
-
-      {/* Divider */}
-      <View style={{ width: 1, backgroundColor: '#E2E8F0', marginHorizontal: 10 }} />
-
-      {/* Right Column */}
-      <View style={{ flex: 1, gap: 6 }}>
-        {rightTags.map((t) => <TagPill key={t} label={t} />)}
-      </View>
-    </View>
-  );
-}
-
-// ─── Helper: Smart pill cloud section ─────────────────────────────────────────
-function SmartPillCloudSection({
-  pillResult,
-  userAName,
-  userBName,
-}: {
-  pillResult: SmartPillResult;
-  userAName: string;
-  userBName: string;
-}) {
-  const { greenPairs, yellowPairs, greyA, greyB } = pillResult;
-
-  return (
-    <View>
-      {/* Green pairs (exact matches) */}
-      {greenPairs.length > 0 && (
-        <View style={{ marginBottom: greenPairs.length > 0 && (yellowPairs.length > 0 || greyA.length > 0 || greyB.length > 0) ? 10 : 0 }}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-            {greenPairs.map(p => (
-              <GreenPill key={`green-${p.item}`} label={p.item} />
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Yellow pairs (similar matches) */}
-      {yellowPairs.length > 0 && (
-        <View style={{ marginBottom: yellowPairs.length > 0 && (greyA.length > 0 || greyB.length > 0) ? 10 : 0 }}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-            {yellowPairs.map(p => (
-              <YellowPill
-                key={`yellow-${p.itemA}-${p.itemB}`}
-                label={`${p.itemA} \u2194 ${p.itemB}`}
-              />
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Grey pills (unique to each person) */}
-      {(greyA.length > 0 || greyB.length > 0) && (
-        <View style={{ flexDirection: 'row', gap: 0 }}>
-          <View style={{ flex: 1, gap: 6 }}>
-            {greyA.length > 0 && (
-              <Text style={{ fontFamily: FONTS.regular, fontSize: 11, color: '#9CA3AF', marginBottom: 4 }}>{userAName}</Text>
-            )}
-            {greyA.map(t => <TagPill key={`greyA-${t}`} label={t} />)}
-          </View>
-          <View style={{ width: 1, backgroundColor: '#E2E8F0', marginHorizontal: 10 }} />
-          <View style={{ flex: 1, gap: 6 }}>
-            {greyB.length > 0 && (
-              <Text style={{ fontFamily: FONTS.regular, fontSize: 11, color: '#9CA3AF', marginBottom: 4 }}>{userBName}</Text>
-            )}
-            {greyB.map(t => <TagPill key={`greyB-${t}`} label={t} />)}
-          </View>
-        </View>
-      )}
-    </View>
-  );
-}
-
-// ─── Helper: Photo card with optional carousel ──────────────────────────────
-function ProposalPhotoCard({
-  photos,
-  name,
-  age,
-  width,
-  height,
-  side,
-  proposalId,
-}: {
-  photos: Array<{ url?: string; isMain?: boolean }>;
-  name: string;
-  age?: number;
-  width: number;
-  height: number;
-  side: 'left' | 'right';
-  proposalId: string;
-}) {
-  const [currentPage, setCurrentPage] = useState(0);
-  const validPhotos = (photos || []).filter((p: any) => p.url);
-  const showCarousel = validPhotos.length > 1;
-  const mainPhoto = validPhotos.find((p: any) => p.isMain) || validPhotos[0];
-
-  const handleScroll = useCallback((e: any) => {
-    const page = Math.round(e.nativeEvent.contentOffset.x / width);
-    setCurrentPage(page);
-  }, [width]);
-
-  const borderRadiusStyle = side === 'left'
-    ? { borderTopLeftRadius: PHOTO_RADIUS, borderBottomLeftRadius: PHOTO_RADIUS, borderTopRightRadius: 0, borderBottomRightRadius: 0 }
-    : { borderTopLeftRadius: 0, borderBottomLeftRadius: 0, borderTopRightRadius: PHOTO_RADIUS, borderBottomRightRadius: PHOTO_RADIUS };
-
-  return (
-    <View style={{ width, height, ...borderRadiusStyle, overflow: 'hidden' }}>
-      {showCarousel ? (
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={handleScroll}
-          bounces={false}
-          style={{ width, height }}
-        >
-          {validPhotos.map((photo: any, i: number) => (
-            <Image
-              key={`${proposalId}-${side}-${i}`}
-              source={{ uri: photo.url }}
-              style={{ width, height }}
-              contentFit="cover"
-              transition={200}
-              cachePolicy="disk"
-              recyclingKey={`${proposalId}-${side}-${i}`}
-            />
-          ))}
-        </ScrollView>
-      ) : (
-        <Image
-          source={{ uri: mainPhoto?.url || 'https://via.placeholder.com/200' }}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, ...borderRadiusStyle }}
-          contentFit="cover"
-          transition={200}
-          cachePolicy="disk"
-          recyclingKey={`${proposalId}-${side}`}
-        />
-      )}
-      <LinearGradient
-        colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.92)']}
-        locations={[0.45, 0.75, 1]}
-        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 130 }}
-        pointerEvents="none"
-      />
-      {showCarousel && (
-        <View
-          style={{
-            position: 'absolute',
-            top: 10,
-            left: 0,
-            right: 0,
-            flexDirection: 'row',
-            justifyContent: 'center',
-            gap: 4,
-          }}
-          pointerEvents="none"
-        >
-          {validPhotos.map((_: any, i: number) => (
-            <View
-              key={`dot-${side}-${i}`}
-              style={{
-                width: i === currentPage ? 18 : 6,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: i === currentPage ? '#FFFFFF' : 'rgba(255,255,255,0.45)',
-              }}
-            />
-          ))}
-        </View>
-      )}
-      <View style={{ position: 'absolute', bottom: 14, left: 14 }} pointerEvents="none">
-        <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: 28, color: '#FFF', letterSpacing: -0.3 }}>
-          {name}{age ? `, ${age}` : ''}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-// ─── Helper: Single reveal card inside a carousel page ───────────────────────
-function RevealCardInline({
-  name,
-  answer,
-  revealed,
-  onReveal,
-  scale,
-  side,
-}: {
-  name: string;
-  answer: string;
-  revealed: boolean;
-  onReveal: () => void;
-  scale: Animated.Value;
-  side: 'left' | 'right' | 'solo';
-}) {
-  const minH = side === 'solo' ? 70 : 90;
-  return (
-    <TouchableOpacity
-      onPress={onReveal}
-      activeOpacity={revealed ? 1 : 0.7}
-      style={{ flex: side === 'solo' ? undefined : 1 }}
-    >
-      <Animated.View style={{
-        minHeight: minH,
-        borderRadius: 10,
-        padding: 12,
-        justifyContent: 'center',
-        transform: [{ scale }],
-        ...(revealed
-          ? { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBD5E1' }
-          : { backgroundColor: '#0F172A', borderWidth: 1, borderColor: 'rgba(99, 131, 255, 0.2)' }),
-      }}>
-        {revealed ? (
-          <>
-            <Text style={{
-              fontFamily: FONTS.medium, fontWeight: '500', fontSize: 11,
-              color: BLUE, marginBottom: 6,
-            }}>{name}</Text>
-            <Text style={{
-              fontFamily: FONTS.regular, fontSize: 13,
-              color: '#334155', lineHeight: 18,
-            }}>{answer}</Text>
-          </>
-        ) : side === 'solo' ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={{
-              width: 36, height: 36, borderRadius: 18,
-              backgroundColor: 'rgba(99, 131, 255, 0.2)',
-              alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Text style={{ fontFamily: FONTS.bold, fontSize: 16, color: '#93A8FF' }}>?</Text>
-            </View>
-            <View>
-              <Text style={{ fontFamily: FONTS.medium, fontSize: 13, color: '#FFFFFF' }}>{name}</Text>
-              <Text style={{ fontFamily: FONTS.regular, fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Tap to reveal</Text>
-            </View>
-          </View>
-        ) : (
-          <View style={{ alignItems: 'center' }}>
-            <View style={{
-              width: 38, height: 38, borderRadius: 19,
-              backgroundColor: 'rgba(99, 131, 255, 0.2)',
-              alignItems: 'center', justifyContent: 'center', marginBottom: 8,
-            }}>
-              <Text style={{ fontFamily: FONTS.bold, fontSize: 18, color: '#93A8FF' }}>?</Text>
-            </View>
-            <Text style={{ fontFamily: FONTS.medium, fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>{name}</Text>
-          </View>
-        )}
-      </Animated.View>
-    </TouchableOpacity>
-  );
-}
-
-// ─── Helper: Question Carousel — swipeable card deck ─────────────────────────
-const CAROUSEL_CONTENT_WIDTH = SCREEN_WIDTH - 32 - 24; // SectionCard padding (12*2) + outer padding (16*2)
-
-function QuestionCarousel({
-  questions,
-  userAName,
-  userBName,
-}: {
-  questions: DeepQuestionData[];
-  userAName: string;
-  userBName: string;
-}) {
-  const [currentPage, setCurrentPage] = useState(0);
-  const total = questions.length;
-
-  const onScroll = useCallback((e: any) => {
-    const page = Math.round(e.nativeEvent.contentOffset.x / CAROUSEL_CONTENT_WIDTH);
-    setCurrentPage(page);
-  }, []);
-
-  return (
-    <View>
-      {/* Carousel */}
-      <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={onScroll}
-        decelerationRate="fast"
-        snapToInterval={CAROUSEL_CONTENT_WIDTH}
-        contentContainerStyle={{ gap: 0 }}
-      >
-        {questions.map((q, idx) => (
-          <QuestionPage
-            key={`qp-${q.questionId}`}
-            question={q}
-            userAName={userAName}
-            userBName={userBName}
-            width={CAROUSEL_CONTENT_WIDTH}
-          />
-        ))}
-      </ScrollView>
-
-      {/* Dots + counter */}
-      {total > 1 && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, gap: 6 }}>
-          {questions.map((_, i) => (
-            <View
-              key={`qdot-${i}`}
-              style={{
-                width: i === currentPage ? 18 : 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: i === currentPage ? BLUE : '#D1D5DB',
-              }}
-            />
-          ))}
-          <Text style={{
-            fontFamily: FONTS.medium, fontSize: 11,
-            color: '#9CA3AF', marginLeft: 6,
-          }}>
-            {currentPage + 1}/{total}
-          </Text>
-        </View>
-      )}
-    </View>
-  );
-}
-
-// ─── Helper: Single page inside question carousel ────────────────────────────
-function QuestionPage({
-  question,
-  userAName,
-  userBName,
-  width,
-}: {
-  question: DeepQuestionData;
-  userAName: string;
-  userBName: string;
-  width: number;
-}) {
-  const hasA = !!question.userAAnswer;
-  const hasB = !!question.userBAnswer;
-  const bothAnswered = hasA && hasB;
-  const [revealedA, setRevealedA] = useState(false);
-  const [revealedB, setRevealedB] = useState(false);
-
-  const scaleA = useRef(new Animated.Value(1)).current;
-  const scaleB = useRef(new Animated.Value(1)).current;
-
-  const revealA = useCallback(() => {
-    if (revealedA || !hasA) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    Animated.sequence([
-      Animated.timing(scaleA, { toValue: 0.92, duration: 80, useNativeDriver: true }),
-      Animated.spring(scaleA, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }),
-    ]).start();
-    setRevealedA(true);
-  }, [revealedA, hasA, scaleA]);
-
-  const revealB = useCallback(() => {
-    if (revealedB || !hasB) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    Animated.sequence([
-      Animated.timing(scaleB, { toValue: 0.92, duration: 80, useNativeDriver: true }),
-      Animated.spring(scaleB, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }),
-    ]).start();
-    setRevealedB(true);
-  }, [revealedB, hasB, scaleB]);
-
-  return (
-    <View style={{ width, paddingRight: 0 }}>
-      <View style={{
-        backgroundColor: '#F8FAFC',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        padding: 14,
-      }}>
-          <Text style={{
-            fontFamily: FONTS.semiBold, fontWeight: '600',
-            fontSize: 14, color: '#1E293B', marginBottom: 12, lineHeight: 20,
-          }}>
-            {question.questionText}
-          </Text>
-
-          {bothAnswered ? (
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <RevealCardInline name={userAName} answer={question.userAAnswer!} revealed={revealedA} onReveal={revealA} scale={scaleA} side="left" />
-              <RevealCardInline name={userBName} answer={question.userBAnswer!} revealed={revealedB} onReveal={revealB} scale={scaleB} side="right" />
-            </View>
-          ) : hasA ? (
-            <RevealCardInline name={userAName} answer={question.userAAnswer!} revealed={revealedA} onReveal={revealA} scale={scaleA} side="solo" />
-          ) : (
-            <RevealCardInline name={userBName} answer={question.userBAnswer!} revealed={revealedB} onReveal={revealB} scale={scaleB} side="solo" />
-          )}
-      </View>
-    </View>
-  );
-}
-
-// ─── Helper: Live Vote Bar ────────────────────────────────────────────────────
-function LiveVoteBar({
-  yesVotes,
-  noVotes,
-  totalVotes,
-}: {
-  yesVotes: number;
-  noVotes: number;
-  totalVotes: number;
-}) {
-  const unsureVotes = Math.max(0, totalVotes - yesVotes - noVotes);
-  const total = yesVotes + noVotes + unsureVotes;
-
-  // Animated widths (JS-driven, not native driver)
-  const yesWidth = useRef(new Animated.Value(0)).current;
-  const noWidth = useRef(new Animated.Value(0)).current;
-  const unsureWidth = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (total === 0) return;
-    const yesPct = (yesVotes / total) * 100;
-    const noPct = (noVotes / total) * 100;
-    const unsurePct = (unsureVotes / total) * 100;
-
-    Animated.parallel([
-      Animated.timing(yesWidth, { toValue: yesPct, duration: 400, useNativeDriver: false }),
-      Animated.timing(noWidth, { toValue: noPct, duration: 400, useNativeDriver: false }),
-      Animated.timing(unsureWidth, { toValue: unsurePct, duration: 400, useNativeDriver: false }),
-    ]).start();
-  }, [yesVotes, noVotes, unsureVotes, total, yesWidth, noWidth, unsureWidth]);
-
-  if (total === 0) {
-    return (
-      <View style={{ marginTop: 10, marginBottom: 4, alignItems: 'center' }}>
-        {/* Empty capsule bar */}
-        <View style={{
-          height: 14, borderRadius: 7, width: '100%', marginBottom: 8,
-          backgroundColor: '#F1F5F9',
-          shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.06, shadowRadius: 2, elevation: 1,
-          overflow: 'hidden',
-        }}>
-          {/* Top highlight for 3D capsule */}
-          <LinearGradient
-            colors={['rgba(255,255,255,0.8)', 'rgba(255,255,255,0)', 'rgba(0,0,0,0.03)']}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-          />
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: BLUE }} />
-          <Text style={{ fontFamily: FONTS.medium, fontSize: 12, color: BLUE }}>
-            Be the first to weigh in!
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={{ marginTop: 10, marginBottom: 4 }}>
-      {/* Liquid 3D capsule bar */}
-      <View style={{
-        height: 14, borderRadius: 7, overflow: 'hidden',
-        backgroundColor: '#F1F5F9',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08, shadowRadius: 3, elevation: 2,
-      }}>
-        {/* Inner shadow (bottom darkening for depth) */}
-        <LinearGradient
-          colors={['rgba(0,0,0,0.04)', 'transparent', 'rgba(0,0,0,0.06)']}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}
-        />
-        {/* Colored segments */}
-        <View style={{ flexDirection: 'row', height: 14, zIndex: 1 }}>
-          {yesVotes > 0 && (
-            <Animated.View style={{
-              height: 14,
-              overflow: 'hidden',
-              width: yesWidth.interpolate({
-                inputRange: [0, 100],
-                outputRange: ['0%', '100%'],
-              }),
-            }}>
-              <LinearGradient
-                colors={['#4ADE80', GREEN, '#22C55E']}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={{ flex: 1 }}
-              />
-            </Animated.View>
-          )}
-          {noVotes > 0 && (
-            <Animated.View style={{
-              height: 14,
-              overflow: 'hidden',
-              width: noWidth.interpolate({
-                inputRange: [0, 100],
-                outputRange: ['0%', '100%'],
-              }),
-            }}>
-              <LinearGradient
-                colors={['#FF6B6B', RED, '#E11D48']}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={{ flex: 1 }}
-              />
-            </Animated.View>
-          )}
-          {unsureVotes > 0 && (
-            <Animated.View style={{
-              height: 14,
-              overflow: 'hidden',
-              width: unsureWidth.interpolate({
-                inputRange: [0, 100],
-                outputRange: ['0%', '100%'],
-              }),
-            }}>
-              <LinearGradient
-                colors={['#C4C9D4', GREY_VOTE, '#8B93A1']}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={{ flex: 1 }}
-              />
-            </Animated.View>
-          )}
-        </View>
-        {/* Top glossy highlight sheen */}
-        <LinearGradient
-          colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.1)', 'transparent']}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 7, zIndex: 2 }}
-          pointerEvents="none"
-        />
-      </View>
-
-      {/* Vote counts + sentiment */}
-      <View style={{ alignItems: 'center', marginTop: 8, gap: 2 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12 }}>
-          <Text style={{ fontFamily: FONTS.medium, fontSize: 12, color: GREEN }}>
-            {yesVotes} Yes
-          </Text>
-          <Text style={{ fontFamily: FONTS.medium, fontSize: 12, color: '#CBD5E1' }}>&middot;</Text>
-          <Text style={{ fontFamily: FONTS.medium, fontSize: 12, color: RED }}>
-            {noVotes} No
-          </Text>
-          <Text style={{ fontFamily: FONTS.medium, fontSize: 12, color: '#CBD5E1' }}>&middot;</Text>
-          <Text style={{ fontFamily: FONTS.medium, fontSize: 12, color: GREY_VOTE }}>
-            {unsureVotes} Unsure
-          </Text>
-        </View>
-        <Text style={{ fontFamily: FONTS.regular, fontSize: 11, color: '#9CA3AF' }}>
-          {total} voted{' \u00b7 '}
-          {yesVotes > noVotes + unsureVotes ? 'strong yes' :
-           noVotes > yesVotes + unsureVotes ? 'strong no' :
-           yesVotes === noVotes && unsureVotes === 0 ? 'evenly split' :
-           'community is split'}
-        </Text>
-      </View>
-    </View>
-  );
-}
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface ProposalReviewViewProps {
@@ -1060,6 +135,16 @@ export function ProposalReviewView({
   const crowdRevealOpacity = useRef(new Animated.Value(0)).current;
   const crowdRevealTranslateY = useRef(new Animated.Value(20)).current;
 
+  // Entrance animation for new proposals
+  const entranceOpacity = useRef(new Animated.Value(1)).current;
+  const entranceTranslateX = useRef(new Animated.Value(0)).current;
+
+  // Vote button micro-interaction scales
+  const yesButtonScale = useRef(new Animated.Value(1)).current;
+  const noButtonScale = useRef(new Animated.Value(1)).current;
+  const recommendButtonScale = useRef(new Animated.Value(1)).current;
+  const unsureButtonScale = useRef(new Animated.Value(1)).current;
+
   // For Friend modal state
   const [showForFriendModal, setShowForFriendModal] = useState(false);
   const [forFriendStep, setForFriendStep] = useState<1 | 2>(1);
@@ -1071,6 +156,7 @@ export function ProposalReviewView({
   const rateLimiterRef = useRef(new RateLimiter());
   const isMountedRef = useRef(true);
   const voteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     return () => {
@@ -1078,6 +164,16 @@ export function ProposalReviewView({
       if (voteTimeoutRef.current) clearTimeout(voteTimeoutRef.current);
     };
   }, []);
+
+  // Trigger entrance animation when advancing to a new proposal
+  useEffect(() => {
+    entranceOpacity.setValue(0);
+    entranceTranslateX.setValue(30);
+    Animated.parallel([
+      Animated.timing(entranceOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+      Animated.timing(entranceTranslateX, { toValue: 0, duration: 250, useNativeDriver: true }),
+    ]).start();
+  }, [currentIndex, entranceOpacity, entranceTranslateX]);
 
   useEffect(() => {
     if (initialProposals) return; // skip fetch if proposals provided externally
@@ -1129,25 +225,25 @@ export function ProposalReviewView({
 
     if (totalVotes < 2) {
       // First voter — no crowd data yet
-      setCrowdReveal({ message: 'First vote!', subMessage: 'You set the tone', color: '#2B65F9' });
+      setCrowdReveal({ message: 'First vote!', subMessage: 'You set the tone', color: COLORS.primaryButton });
     } else if (vote === 'yes') {
       const yesPct = Math.round((yesVotes / totalVotes) * 100);
       if (yesPct >= 70) {
-        setCrowdReveal({ message: `${yesPct}% agree with you`, subMessage: `${yesVotes - 1} other${yesVotes - 1 === 1 ? '' : 's'} voted Yes`, color: '#10B981' });
+        setCrowdReveal({ message: `${yesPct}% agree with you`, subMessage: `${yesVotes - 1} other${yesVotes - 1 === 1 ? '' : 's'} voted Yes`, color: COLORS.emerald });
       } else if (yesPct <= 35) {
-        setCrowdReveal({ message: 'Bold call!', subMessage: `Only ${yesPct}% voted Yes`, color: '#F59E0B' });
+        setCrowdReveal({ message: 'Bold call!', subMessage: `Only ${yesPct}% voted Yes`, color: COLORS.warning.icon });
       } else {
-        setCrowdReveal({ message: `You and ${yesVotes - 1} other${yesVotes - 1 === 1 ? '' : 's'}`, subMessage: 'voted Yes', color: '#10B981' });
+        setCrowdReveal({ message: `You and ${yesVotes - 1} other${yesVotes - 1 === 1 ? '' : 's'}`, subMessage: 'voted Yes', color: COLORS.emerald });
       }
     } else if (vote === 'no') {
       const noPct = Math.round((noVotes / totalVotes) * 100);
       if (noPct >= 50) {
-        setCrowdReveal({ message: `${noPct}% agree`, subMessage: 'Most people voted No too', color: '#667085' });
+        setCrowdReveal({ message: `${noPct}% agree`, subMessage: 'Most people voted No too', color: COLORS.navInactiveIcon });
       } else {
-        setCrowdReveal({ message: 'Going against the crowd', subMessage: `Only ${noPct}% voted No`, color: '#F59E0B' });
+        setCrowdReveal({ message: 'Going against the crowd', subMessage: `Only ${noPct}% voted No`, color: COLORS.warning.icon });
       }
     } else {
-      setCrowdReveal({ message: 'On the fence', subMessage: `${totalVotes} votes so far`, color: '#667085' });
+      setCrowdReveal({ message: 'On the fence', subMessage: `${totalVotes} votes so far`, color: COLORS.navInactiveIcon });
     }
 
     crowdRevealOpacity.setValue(0);
@@ -1164,6 +260,24 @@ export function ProposalReviewView({
       }, 1800);
     });
   }, [crowdRevealOpacity, crowdRevealTranslateY]);
+
+  // Vote button press animation
+  const animateButtonPress = useCallback((scale: Animated.Value, type: 'yes' | 'no' | 'unsure' | 'recommend') => {
+    if (type === 'yes') {
+      // Pulse up then settle
+      Animated.sequence([
+        Animated.spring(scale, { toValue: 0.95, useNativeDriver: true, speed: 50, bounciness: 0 }),
+        Animated.spring(scale, { toValue: 1.03, useNativeDriver: true, speed: 14, bounciness: 8 }),
+        Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 0 }),
+      ]).start();
+    } else {
+      // Quick press down and back
+      Animated.sequence([
+        Animated.spring(scale, { toValue: 0.93, useNativeDriver: true, speed: 50, bounciness: 0 }),
+        Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 6 }),
+      ]).start();
+    }
+  }, []);
 
   // Vote flash overlay animation
   const triggerVoteFlash = useCallback((color: string) => {
@@ -1193,6 +307,7 @@ export function ProposalReviewView({
           setTimeout(() => onVotesComplete?.(), 500);
         }
       } else {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         setCurrentIndex(prev => prev + 1);
       }
     }, 1000);
@@ -1210,6 +325,11 @@ export function ProposalReviewView({
 
     setVoting(true);
 
+    // Button micro-interaction
+    if (vote === 'yes') animateButtonPress(yesButtonScale, 'yes');
+    else if (vote === 'no') animateButtonPress(noButtonScale, 'no');
+    else animateButtonPress(unsureButtonScale, 'unsure');
+
     // Haptics — distinct feel per vote type, fire and forget
     if (vote === 'yes') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -1221,9 +341,9 @@ export function ProposalReviewView({
     }
 
     // Vote flash
-    if (vote === 'yes') triggerVoteFlash('#10B981');      // green
-    else if (vote === 'no') triggerVoteFlash('#EF4444');   // red
-    else triggerVoteFlash('#F59E0B');                       // amber for unsure
+    if (vote === 'yes') triggerVoteFlash(COLORS.emerald);
+    else if (vote === 'no') triggerVoteFlash(COLORS.error);
+    else triggerVoteFlash(COLORS.warning.icon);
 
     // Submit vote — wait for server confirmation before advancing
     try {
@@ -1263,6 +383,7 @@ export function ProposalReviewView({
   // ── For Friend handlers ───────────────────────────────────────────────────
   const handleForFriendPress = useCallback(() => {
     if (voting) return;
+    animateButtonPress(recommendButtonScale, 'recommend');
     setShowForFriendModal(true);
     setForFriendStep(1);
     setSelectedPersonSide(null);
@@ -1387,27 +508,32 @@ export function ProposalReviewView({
     };
   }, [currentIndex, proposals]);
 
-  const progressDots = useMemo(() =>
-    proposals.map((_, i) => (
-      <View
-        key={`dot-${i}`}
-        style={{
-          height: 8,
-          width: 40,
-          borderRadius: 4,
-          marginHorizontal: 6,
-          backgroundColor: i === currentIndex ? BLUE : i < currentIndex ? '#93C5FD' : '#DBEAFE',
-        }}
-      />
-    )),
-    [proposals, currentIndex],
-  );
+  const progressDots = useMemo(() => (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      {proposals.map((_, i) => (
+        <View
+          key={`dot-${i}`}
+          style={{
+            height: 10,
+            width: 40,
+            borderRadius: 5,
+            backgroundColor: i === currentIndex ? BLUE : i < currentIndex ? COLORS.primaryAccent : COLORS.tier1.bg,
+          }}
+        />
+      ))}
+      {proposals.length > 1 && (
+        <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.xs, color: COLORS.text.disabled, marginLeft: 4 }}>
+          {currentIndex + 1} of {proposals.length}
+        </Text>
+      )}
+    </View>
+  ), [proposals, currentIndex]);
 
   // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF' }}>
-        <Text style={{ fontSize: 16, color: '#78716C', fontFamily: FONTS.regular }}>Loading proposals...</Text>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.card }}>
+        <Text style={{ fontSize: FONT_SIZES.xl, color: COLORS.text.subtle, fontFamily: FONTS.regular }}>Loading proposals...</Text>
       </View>
     );
   }
@@ -1415,13 +541,13 @@ export function ProposalReviewView({
   // ── Empty ────────────────────────────────────────────────────────────────
   if (proposals.length === 0 || currentIndex >= proposals.length) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 24 }}>
-        <Text style={{ fontSize: 24, fontFamily: FONTS.bold, color: '#010101', marginBottom: 12, textAlign: 'center' }}>
-          No proposals today
-        </Text>
-        <Text style={{ fontSize: 16, fontFamily: FONTS.regular, color: '#6B7280', textAlign: 'center', lineHeight: 22 }}>
-          Check back tomorrow — your friends will propose new matches for you.
-        </Text>
+      <View style={{ flex: 1, justifyContent: 'center', backgroundColor: COLORS.card }}>
+        <EmptyState
+          variant="illustrated"
+          icon={<EvaIcon name="heart" variant="outline" size={40} color={COLORS.primary} />}
+          title="No proposals today"
+          description="Check back tomorrow — your friends will propose new matches for you."
+        />
       </View>
     );
   }
@@ -1439,10 +565,10 @@ export function ProposalReviewView({
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.card }}>
       {!showBackButton && !loading && proposals.length > 0 && (
-        <View style={{ backgroundColor: '#F4F7FF', paddingVertical: 10, paddingHorizontal: 20, alignItems: 'center' }}>
-          <Text style={{ fontFamily: FONTS.semiBold, fontSize: 13, color: '#2B65F9', textAlign: 'center' }}>
+        <View style={{ backgroundColor: COLORS.backgroundBlueTint, paddingVertical: 10, paddingHorizontal: 20, alignItems: 'center' }}>
+          <Text style={{ fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.md, color: COLORS.primaryButton, textAlign: 'center' }}>
             Vote on {proposals.length} proposal{proposals.length > 1 ? 's' : ''} to unlock the Friends Area
           </Text>
         </View>
@@ -1461,7 +587,7 @@ export function ProposalReviewView({
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             activeOpacity={0.7}
           >
-            <EvaIcon name="arrow-back" variant="outline" size={24} color="#010101" />
+            <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.heading} />
           </TouchableOpacity>
         </View>
       ) : (
@@ -1476,9 +602,7 @@ export function ProposalReviewView({
           <View style={{ width: 40 }} />
           <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
             <GuideTarget id="matching-gates">
-              <View style={{ flexDirection: 'row' }}>
-                {progressDots}
-              </View>
+              {progressDots}
             </GuideTarget>
           </View>
           <View style={{ width: 40 }} />
@@ -1486,7 +610,9 @@ export function ProposalReviewView({
       )}
 
       {/* Scrollable content */}
+      <Animated.View style={{ flex: 1, opacity: entranceOpacity, transform: [{ translateX: entranceTranslateX }] }}>
       <ScrollView
+        ref={scrollViewRef}
         key={proposal.id}
         style={{ flex: 1 }}
         contentContainerStyle={SCROLL_CONTENT_STYLE}
@@ -1531,10 +657,12 @@ export function ProposalReviewView({
             {/* Compatibility badge — centered between photos */}
             <View style={{
               position: 'absolute',
-              top: '40%',
+              top: '50%',
               left: 0,
               right: 0,
               alignItems: 'center',
+              zIndex: 10,
+              transform: [{ translateY: -18 }],
             }}>
               <View style={{
                 backgroundColor: BLUE,
@@ -1545,11 +673,11 @@ export function ProposalReviewView({
                 alignItems: 'center',
                 gap: 6,
                 borderWidth: 3,
-                borderColor: '#FFFFFF',
+                borderColor: COLORS.card,
               }}>
-                <EvaIcon name="star" variant="outline" size={16} color="#FFFFFF" />
-                <Text style={{ fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: 16, color: '#FFFFFF' }}>
-                  {compatScore} %
+                <EvaIcon name="star" variant="outline" size={16} color={COLORS.card} />
+                <Text style={{ fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: FONT_SIZES.xl, color: COLORS.card }}>
+                  {compatScore}%
                 </Text>
               </View>
             </View>
@@ -1558,8 +686,8 @@ export function ProposalReviewView({
           {/* Friend suggestion banner — anonymous, never reveals who suggested */}
           {proposal.creationType === 'friend_proposal' && (
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6 }}>
-              <EvaIcon name="people" variant="outline" size={14} color="#437FFF" />
-              <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 13, color: '#437FFF' }}>
+              <EvaIcon name="people" variant="outline" size={14} color={COLORS.primaryAccent} />
+              <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.md, color: COLORS.primaryAccent }}>
                 A friend suggested this match
               </Text>
             </View>
@@ -1586,7 +714,7 @@ export function ProposalReviewView({
                 transform: [{ translateY: karmaTranslateY }],
               }}>
                 <View style={{
-                  backgroundColor: GREEN,
+                  backgroundColor: COLORS.success,
                   paddingHorizontal: 12,
                   paddingVertical: 4,
                   borderRadius: 12,
@@ -1594,8 +722,8 @@ export function ProposalReviewView({
                   <Text style={{
                     fontFamily: FONTS.semiBold,
                     fontWeight: '600',
-                    fontSize: 13,
-                    color: '#FFFFFF',
+                    fontSize: FONT_SIZES.md,
+                    color: COLORS.card,
                   }}>
                     +1 Karma
                   </Text>
@@ -1607,7 +735,7 @@ export function ProposalReviewView({
 
         {/* ── Questions (Deep Questions with card reveal) ─────────────── */}
         {deepQuestions && deepQuestions.length > 0 && (
-          <SectionCard title="Questions" matched={undefined} total={undefined}>
+          <SectionCard title="Questions" matched={undefined} total={undefined} accentColor={COLORS.primary}>
             <QuestionCarousel
               questions={deepQuestions}
               userAName={userA.firstName}
@@ -1621,6 +749,7 @@ export function ProposalReviewView({
           <SectionCard
             title="Interests"
             percentBadge={interestsPillResult.percentMatch}
+            accentColor={COLORS.emerald}
           >
             <SmartPillCloudSection
               pillResult={interestsPillResult}
@@ -1635,6 +764,7 @@ export function ProposalReviewView({
           <SectionCard
             title="Values"
             percentBadge={valuesPillResult.percentMatch}
+            accentColor={COLORS.purple}
           >
             <SmartPillCloudSection
               pillResult={valuesPillResult}
@@ -1649,6 +779,7 @@ export function ProposalReviewView({
           title="Lifestyle"
           matched={countMatch(lifestyleResults.filter(r => r.status !== 'unknown'))}
           total={countKnown(lifestyleResults)}
+          accentColor={COLORS.warning.icon}
         >
           {drinkResult.status !== 'unknown' && (
             <ComparisonValueRow result={drinkResult} label="Drink" />
@@ -1677,6 +808,7 @@ export function ProposalReviewView({
           title="Beliefs"
           matched={countMatch(beliefsResults.filter(r => r.status !== 'unknown'))}
           total={countKnown(beliefsResults)}
+          accentColor={COLORS.primary}
         >
           {politicsResult.status !== 'unknown' && (
             <ComparisonValueRow result={politicsResult} label="Politics" />
@@ -1691,104 +823,76 @@ export function ProposalReviewView({
         </SectionCard>
 
       </ScrollView>
+      </Animated.View>
 
       {/* ── Fixed bottom vote buttons ───────────────────────────────── */}
-      <View style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: '#FFFFFF',
-        paddingHorizontal: 16,
-        paddingTop: 12,
-        paddingBottom: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#F0F0F0',
-        gap: 12,
-      }}>
-        {/* Yes button */}
-        <TouchableOpacity
-          onPress={() => handleVote('yes')}
-          disabled={voting}
-          activeOpacity={0.85}
-          style={{
-            backgroundColor: voting ? '#93C5FD' : BLUE,
-            borderRadius: 10,
-            height: 46,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-          }}
-        >
-          <EvaIcon name="checkmark" variant="outline" size={18} color="#FFFFFF" />
-          <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 16, color: '#FFFFFF' }}>Yes</Text>
-        </TouchableOpacity>
+      <View style={styles.voteContainer}>
+        {/* Yes button — primary action, largest touch target */}
+        <Animated.View style={{ transform: [{ scale: yesButtonScale }] }}>
+          <TouchableOpacity
+            onPress={() => handleVote('yes')}
+            disabled={voting}
+            activeOpacity={0.85}
+            style={{
+              backgroundColor: voting ? COLORS.tier1.border : BLUE,
+              borderRadius: 12,
+              height: 52,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              shadowColor: BLUE,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: voting ? 0 : 0.3,
+              shadowRadius: 8,
+              elevation: voting ? 0 : 4,
+            }}
+          >
+            <EvaIcon name="checkmark" variant="outline" size={20} color={COLORS.card} />
+            <Text style={{ fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: FONT_SIZES.xl, color: COLORS.card }}>Yes</Text>
+          </TouchableOpacity>
+        </Animated.View>
 
-        {/* No / For Friend / Not Sure */}
+        {/* No / Recommend / Not Sure — secondary row, horizontal layout */}
         <View style={{ flexDirection: 'row', gap: 12 }}>
           {/* No */}
-          <TouchableOpacity
-            onPress={() => handleVote('no')}
-            disabled={voting}
-            activeOpacity={0.8}
-            style={{
-              flex: 1,
-              height: 63,
-              backgroundColor: BOX_BG,
-              borderWidth: 1,
-              borderColor: BOX_BORDER,
-              borderRadius: 12,
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: 10,
-            }}
-          >
-            <EvaIcon name="close" variant="outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
-            <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>No</Text>
-          </TouchableOpacity>
+          <Animated.View style={{ flex: 1, transform: [{ scale: noButtonScale }] }}>
+            <TouchableOpacity
+              onPress={() => handleVote('no')}
+              disabled={voting}
+              activeOpacity={0.8}
+              style={styles.secondaryButton}
+            >
+              <EvaIcon name="close" variant="outline" size={16} color={COLORS.navInactiveIcon} />
+              <Text style={styles.secondaryButtonText}>No</Text>
+            </TouchableOpacity>
+          </Animated.View>
 
           {/* Recommend */}
-          <TouchableOpacity
-            onPress={handleForFriendPress}
-            disabled={voting}
-            activeOpacity={0.8}
-            style={{
-              flex: 1,
-              height: 63,
-              backgroundColor: BOX_BG,
-              borderWidth: 1,
-              borderColor: BOX_BORDER,
-              borderRadius: 12,
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: 10,
-            }}
-          >
-            <EvaIcon name="person-add" variant="outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
-            <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>Recommend</Text>
-          </TouchableOpacity>
+          <Animated.View style={{ flex: 1, transform: [{ scale: recommendButtonScale }] }}>
+            <TouchableOpacity
+              onPress={handleForFriendPress}
+              disabled={voting}
+              activeOpacity={0.8}
+              style={styles.secondaryButton}
+            >
+              <EvaIcon name="person-add" variant="outline" size={16} color={COLORS.navInactiveIcon} />
+              <Text style={styles.secondaryButtonText}>Recommend</Text>
+            </TouchableOpacity>
+          </Animated.View>
 
           {/* Not Sure */}
-          <TouchableOpacity
-            onPress={() => handleVote('unsure')}
-            disabled={voting}
-            activeOpacity={0.8}
-            style={{
-              flex: 1,
-              height: 63,
-              backgroundColor: BOX_BG,
-              borderWidth: 1,
-              borderColor: BOX_BORDER,
-              borderRadius: 12,
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: 10,
-            }}
+          <Animated.View style={{ flex: 1, transform: [{ scale: unsureButtonScale }] }}>
+            <TouchableOpacity
+              onPress={() => handleVote('unsure')}
+              disabled={voting}
+              activeOpacity={0.8}
+              style={styles.secondaryButton}
           >
-            <EvaIcon name="info" variant="outline" size={18} color="#010101" style={{ opacity: 0.5 }} />
-            <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: 14, color: '#010101', opacity: 0.5 }}>Not Sure</Text>
+            <EvaIcon name="info" variant="outline" size={16} color={COLORS.navInactiveIcon} />
+            <Text style={styles.secondaryButtonText}>Not Sure</Text>
           </TouchableOpacity>
+          </Animated.View>
         </View>
       </View>
 
@@ -1800,26 +904,18 @@ export function ProposalReviewView({
         onRequestClose={handleForFriendCancel}
       >
         <View style={{
-          flex: 1,
+          ...styles.modalOverlay,
           backgroundColor: OVERLAYS.medium,
-          justifyContent: 'center',
-          alignItems: 'center',
-          paddingHorizontal: 20,
         }}>
-          <View style={{
-            backgroundColor: '#FFFFFF',
-            borderRadius: 20,
-            width: '100%',
-            overflow: 'hidden',
-          }}>
+          <View style={styles.modalCard}>
 
             {forFriendStep === 1 ? (
               /* ── Step 1: Pick which person to recommend ── */
               <View style={{ padding: 24 }}>
-                <Text style={{ fontFamily: FONTS.semiBold, fontSize: 20, color: '#010101', textAlign: 'center', marginBottom: 6 }}>
+                <Text style={{ fontFamily: FONTS.semiBold, fontSize: FONT_SIZES['3xl'], color: COLORS.text.black, textAlign: 'center', marginBottom: 6 }}>
                   Recommend
                 </Text>
-                <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: '#010101', opacity: 0.6, textAlign: 'center', marginBottom: 20 }}>
+                <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.base, color: COLORS.text.black, opacity: 0.6, textAlign: 'center', marginBottom: 20 }}>
                   Who would you like to recommend?
                 </Text>
 
@@ -1843,11 +939,11 @@ export function ProposalReviewView({
                       style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 90 }}
                     />
                     <View style={{ position: 'absolute', bottom: 12, left: 12 }}>
-                      <Text style={{ fontFamily: FONTS.semiBold, fontSize: 16, color: '#FFF' }}>
+                      <Text style={{ fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.xl, color: COLORS.card }}>
                         {userA.firstName}
                       </Text>
                       {userA.age ? (
-                        <Text style={{ fontFamily: FONTS.regular, fontSize: 12, color: '#FFF', opacity: 0.85 }}>
+                        <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.sm, color: COLORS.card, opacity: 0.85 }}>
                           {userA.age} yrs
                         </Text>
                       ) : null}
@@ -1873,11 +969,11 @@ export function ProposalReviewView({
                       style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 90 }}
                     />
                     <View style={{ position: 'absolute', bottom: 12, left: 12 }}>
-                      <Text style={{ fontFamily: FONTS.semiBold, fontSize: 16, color: '#FFF' }}>
+                      <Text style={{ fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.xl, color: COLORS.card }}>
                         {userB.firstName}
                       </Text>
                       {userB.age ? (
-                        <Text style={{ fontFamily: FONTS.regular, fontSize: 12, color: '#FFF', opacity: 0.85 }}>
+                        <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.sm, color: COLORS.card, opacity: 0.85 }}>
                           {userB.age} yrs
                         </Text>
                       ) : null}
@@ -1889,7 +985,7 @@ export function ProposalReviewView({
                   onPress={handleForFriendCancel}
                   style={{ marginTop: 16, alignItems: 'center', paddingVertical: 12 }}
                 >
-                  <Text style={{ fontFamily: FONTS.medium, fontSize: 15, color: '#010101', opacity: 0.45 }}>Cancel</Text>
+                  <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.lg, color: COLORS.text.black, opacity: 0.6 }}>Cancel</Text>
                 </TouchableOpacity>
               </View>
 
@@ -1897,10 +993,10 @@ export function ProposalReviewView({
               /* ── Step 2: Pick a friend ── */
               <View>
                 <View style={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 12 }}>
-                  <Text style={{ fontFamily: FONTS.semiBold, fontSize: 20, color: '#010101', textAlign: 'center', marginBottom: 6 }}>
+                  <Text style={{ fontFamily: FONTS.semiBold, fontSize: FONT_SIZES['3xl'], color: COLORS.text.black, textAlign: 'center', marginBottom: 6 }}>
                     Send to a Friend
                   </Text>
-                  <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: '#010101', opacity: 0.6, textAlign: 'center' }}>
+                  <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.base, color: COLORS.text.black, opacity: 0.6, textAlign: 'center' }}>
                     Recommend {selectedPersonSide === 'userA' ? userA.firstName : userB.firstName} to...
                   </Text>
                 </View>
@@ -1947,11 +1043,11 @@ export function ProposalReviewView({
                             cachePolicy="disk"
                           />
                           <View style={{ flex: 1 }}>
-                            <Text style={{ fontFamily: FONTS.semiBold, fontSize: 15, color: '#010101' }}>
+                            <Text style={{ fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.lg, color: COLORS.text.black }}>
                               {item.friend?.firstName}
                             </Text>
                             {item.friend?.currentJob ? (
-                              <Text style={{ fontFamily: FONTS.regular, fontSize: 13, color: '#010101', opacity: 0.55 }} numberOfLines={1}>
+                              <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.md, color: COLORS.text.black, opacity: 0.55 }} numberOfLines={1}>
                                 {item.friend.currentJob}
                               </Text>
                             ) : null}
@@ -1965,7 +1061,7 @@ export function ProposalReviewView({
                               alignItems: 'center',
                               justifyContent: 'center',
                             }}>
-                              <EvaIcon name="checkmark" variant="outline" size={14} color="#FFF" />
+                              <EvaIcon name="checkmark" variant="outline" size={14} color={COLORS.card} />
                             </View>
                           )}
                         </TouchableOpacity>
@@ -1982,7 +1078,7 @@ export function ProposalReviewView({
                   paddingTop: 16,
                   paddingBottom: 24,
                   borderTopWidth: 1,
-                  borderTopColor: '#F0F0F0',
+                  borderTopColor: COLORS.borderLight,
                   marginTop: 8,
                 }}>
                   <TouchableOpacity
@@ -1999,7 +1095,7 @@ export function ProposalReviewView({
                       backgroundColor: BOX_BG,
                     }}
                   >
-                    <Text style={{ fontFamily: FONTS.medium, fontSize: 15, color: '#010101', opacity: 0.7 }}>Cancel</Text>
+                    <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.lg, color: COLORS.text.black, opacity: 0.7 }}>Cancel</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -2010,12 +1106,12 @@ export function ProposalReviewView({
                       flex: 1,
                       height: 46,
                       borderRadius: 10,
-                      backgroundColor: selectedFriendId ? BLUE : '#DBEAFE',
+                      backgroundColor: selectedFriendId ? BLUE : COLORS.tier1.bg,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
                   >
-                    <Text style={{ fontFamily: FONTS.medium, fontSize: 15, color: '#FFFFFF' }}>Confirm</Text>
+                    <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.lg, color: COLORS.card }}>Confirm</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -2040,18 +1136,11 @@ export function ProposalReviewView({
             zIndex: 9997,
           }}
         >
-          <View style={{
-            backgroundColor: 'rgba(0,0,0,0.75)',
-            borderRadius: 16,
-            paddingHorizontal: 24,
-            paddingVertical: 16,
-            alignItems: 'center',
-            maxWidth: 280,
-          }}>
-            <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: 18, color: crowdReveal.color, textAlign: 'center' }}>
+          <View style={styles.crowdRevealContainer}>
+            <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: FONT_SIZES['2xl'], color: crowdReveal.color, textAlign: 'center' }}>
               {crowdReveal.message}
             </Text>
-            <Text style={{ fontFamily: FONTS.regular, fontSize: 13, color: '#CCCCCC', textAlign: 'center', marginTop: 4 }}>
+            <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.md, color: '#CCCCCC', textAlign: 'center', marginTop: 4 }}>
               {crowdReveal.subMessage}
             </Text>
           </View>
@@ -2078,5 +1167,116 @@ export function ProposalReviewView({
     </View>
   );
 }
+
+// ─── Static styles (extracted from inline to avoid re-creation) ──────────────
+const styles = StyleSheet.create({
+  // Badge styles (MatchBadge, PercentBadge)
+  badgeContainer: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  badgeText: {
+    fontFamily: FONTS.medium,
+    fontWeight: '500' as const,
+    fontSize: FONT_SIZES.sm,
+  },
+
+  // SectionCard
+  sectionHeader: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontFamily: FONTS.bold,
+    fontWeight: '700' as const,
+    fontSize: FONT_SIZES.xl,
+    color: COLORS.primary,
+  },
+
+  // ValueBox
+  valueBox: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(1, 1, 1, 0.1)',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    alignItems: 'center' as const,
+  },
+  valueBoxLabel: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.text.label,
+    marginBottom: 2,
+  },
+  valueBoxText: {
+    fontFamily: FONTS.medium,
+    fontWeight: '500' as const,
+    fontSize: FONT_SIZES.lg,
+    color: COLORS.text.black,
+    textAlign: 'center' as const,
+  },
+
+  // Vote button container
+  voteContainer: {
+    position: 'absolute' as const,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.card,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    gap: 12,
+  },
+
+  // Secondary vote button
+  secondaryButton: {
+    height: 48,
+    backgroundColor: BOX_BG,
+    borderWidth: 1,
+    borderColor: BOX_BORDER,
+    borderRadius: 12,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 6,
+  },
+  secondaryButtonText: {
+    fontFamily: FONTS.medium,
+    fontWeight: '500' as const,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.navInactiveIcon,
+  },
+
+  // Crowd reveal overlay
+  crowdRevealContainer: {
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    borderRadius: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    alignItems: 'center' as const,
+    maxWidth: 280,
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    paddingHorizontal: 20,
+  },
+  modalCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 20,
+    width: '100%' as const,
+    overflow: 'hidden' as const,
+  },
+});
 
 export default ProposalReviewView;

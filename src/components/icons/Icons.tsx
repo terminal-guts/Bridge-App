@@ -1,9 +1,11 @@
 import React from 'react';
+import { ViewStyle } from 'react-native';
 import Svg, { Path, Circle, Ellipse, G } from 'react-native-svg';
 
 interface IconProps {
     size?: number;
     color?: string;
+    style?: ViewStyle;
 }
 
 /**
@@ -128,11 +130,12 @@ export const ChatIcon: React.FC<IconProps> = ({ size = 24, color = '#2563EB' }) 
  * Two overlapping hearts — used for "Matched by" row on MatchCard
  */
 export const HeartsIcon: React.FC<IconProps> = ({ size = 20, color = '#00C8B3' }) => {
-    const heartD = "M12 20c-4.5-4-7-6.5-7-9 0-3 2-4.5 4.5-4.5 1.5 0 3 .8 4 2 1-1.2 2.5-2 4-2 2.5 0 4.5 1.5 4.5 4.5 0 2.5-2.5 5-7 9z";
+    // Two overlapping hearts scaled to fit within viewBox with no clipping
+    const heartD = "M10 16c-3.6-3.2-5.6-5.2-5.6-7.2 0-2.4 1.6-3.6 3.6-3.6 1.2 0 2.4.64 3.2 1.6.8-.96 2-1.6 3.2-1.6 2 0 3.6 1.2 3.6 3.6 0 2-2 4-5.6 7.2z";
     return (
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-            <Path d={heartD} transform="translate(-3, -3)" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-            <Path d={heartD} transform="translate(3, 3)" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+            <Path d={heartD} transform="translate(-1.5, -1)" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+            <Path d={heartD} transform="translate(3.5, 3)" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
     );
 };
@@ -155,6 +158,125 @@ export const ProfileTabIcon: React.FC<IconProps> = ({ size = 24, color = '#8D8D8
         <Path
             fill="white"
             d="M12 13c-2.76 0-4.5.93-4.5 2.08V15.5h9v-.42C16.5 13.93 14.76 13 12 13z"
+        />
+    </Svg>
+);
+
+/**
+ * Gift box — used for "friends picked someone" badge
+ */
+export const GiftIcon: React.FC<IconProps> = ({ size = 16, color = '#FFFFFF' }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path d="M20 12v10H4V12M2 7h20v5H2V7zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+);
+
+/**
+ * Wine glass — simple outline style
+ * Used for substance-related preference icons
+ */
+export const WineGlassIcon: React.FC<IconProps> = ({ size = 24, color = '#667085', style }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+        <Path
+            d="M8 2h8v6c0 2.21-1.79 4-4 4s-4-1.79-4-4V2z"
+            stroke={color}
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+        <Path
+            d="M12 12v5"
+            stroke={color}
+            strokeWidth={1.8}
+            strokeLinecap="round"
+        />
+        <Path
+            d="M8 22h8"
+            stroke={color}
+            strokeWidth={1.8}
+            strokeLinecap="round"
+        />
+        <Path
+            d="M12 17v5"
+            stroke={color}
+            strokeWidth={1.8}
+            strokeLinecap="round"
+        />
+    </Svg>
+);
+
+/**
+ * Leaf — simple stylized leaf outline
+ * Used for substance-related preference icons
+ */
+export const LeafIcon: React.FC<IconProps> = ({ size = 24, color = '#667085', style }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+        <Path
+            d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66c.85-2.15 2.08-4.38 3.97-5.9C11.86 14.28 14.2 13.5 17 13.5V17l5-6.5L17 4v4z"
+            stroke={color}
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+    </Svg>
+);
+
+/**
+ * Cigarette with smoke wisp — simple outline style
+ * Used for substance-related preference icons
+ */
+export const CigaretteIcon: React.FC<IconProps> = ({ size = 24, color = '#667085', style }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+        {/* Cigarette body */}
+        <Path
+            d="M2 16h16v3H2z"
+            stroke={color}
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+        {/* Filter section */}
+        <Path
+            d="M14 16v3"
+            stroke={color}
+            strokeWidth={1.8}
+            strokeLinecap="round"
+        />
+        {/* Smoke wisps */}
+        <Path
+            d="M19 15c0-1.5 1.5-2 1.5-3.5S19 9.5 19 8"
+            stroke={color}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+        />
+        <Path
+            d="M22 15c0-1.5 1-1.5 1-3s-1-1.5-1-3"
+            stroke={color}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+        />
+    </Svg>
+);
+
+/**
+ * Pill capsule — simple outline style
+ * Used for substance-related preference icons
+ */
+export const PillIcon: React.FC<IconProps> = ({ size = 24, color = '#667085', style }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+        <Path
+            d="M10.5 3.5a5.5 5.5 0 0 0-7.78 7.78l10 10a5.5 5.5 0 0 0 7.78-7.78l-10-10z"
+            stroke={color}
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+        {/* Dividing line across the capsule center */}
+        <Path
+            d="M8.11 15.89L15.89 8.11"
+            stroke={color}
+            strokeWidth={1.8}
+            strokeLinecap="round"
         />
     </Svg>
 );

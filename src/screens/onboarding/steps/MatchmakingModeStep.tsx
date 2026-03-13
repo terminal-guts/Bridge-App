@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, Animated, Image } from 'react-native';
 import { styled } from 'nativewind';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { H1, Body, H3 } from '../../../components/ui';
+import { H1, Body, H3, AnimatedPressable } from '../../../components/ui';
+import { COLORS } from '../../../theme/colors';
 import { EvaIcon } from '../../../components/icons';
 
 interface MatchmakingModeStepProps {
@@ -74,7 +75,7 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
 
   const renderOption = (
     mode: Mode,
-    icon: keyof typeof Record<string, number>,
+    icon: string,
     title: string,
     description: string,
     animValue: Animated.Value,
@@ -101,7 +102,7 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
                 name={icon}
                 variant="outline"
                 size={20}
-                color={isSelected ? '#FFFFFF' : '#667085'}
+                color={isSelected ? '#FFFFFF' : COLORS.text.label}
               />
             </StyledView>
             <StyledView className="flex-1">
@@ -117,7 +118,7 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
                 name={isSelected ? 'checkmark-circle-2' : 'radio-button-off'}
                 variant={isSelected ? 'fill' : 'outline'}
                 size={24}
-                color={isSelected ? '#437FFF' : '#D0D5DD'}
+                color={isSelected ? COLORS.primaryAccent : '#D0D5DD'}
               />
             </StyledView>
           </StyledView>
@@ -174,15 +175,15 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
             paddingBottom: 24,
           }}
         >
-          <StyledTouchableOpacity
+          <AnimatedPressable
             onPress={handleContinue}
-            className="bg-primary-500 rounded-full py-4 px-8 active:scale-[0.98]"
-            activeOpacity={0.9}
+            scale="standard"
+            className="bg-primary-500 rounded-full py-4 px-8 items-center"
           >
             <Body className="text-white text-center text-lg font-semibold">
               Continue
             </Body>
-          </StyledTouchableOpacity>
+          </AnimatedPressable>
         </Animated.View>
       </StyledView>
     </StyledSafeAreaView>

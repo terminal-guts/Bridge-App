@@ -9,6 +9,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated } from 'react-native';
 import { styled } from 'nativewind';
 import { FONTS } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { EvaIcon } from '../icons';
 
 const StyledView = styled(View);
@@ -85,19 +86,19 @@ export function Toast({
 
   const typeConfig = {
     success: {
-      bg: '#10B981',
+      bg: COLORS.emerald,
       icon: 'checkmark-circle',
     },
     info: {
-      bg: '#437FFF',
+      bg: COLORS.primaryAccent,
       icon: 'information-circle',
     },
     warning: {
-      bg: '#F59E0B',
+      bg: COLORS.warning.icon,
       icon: 'warning',
     },
     error: {
-      bg: '#EF4444',
+      bg: COLORS.error,
       icon: 'close-circle',
     },
   };

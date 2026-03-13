@@ -1,20 +1,23 @@
 /**
  * CollapsibleCard Component
  *
- * A card that can be expanded/collapsed with smooth animations
- * Features:
- * - Spring-based expand/collapse animation
- * - Customizable header
- * - Optional default expanded state
- * - Haptic feedback on toggle
+ * A card that can be expanded/collapsed with smooth animations.
+ * Uses Reanimated for buttery 120fps chevron rotation on the UI thread,
+ * and LayoutAnimation for height transitions.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, Animated, LayoutAnimation, Platform, UIManager } from 'react-native';
+import React, { useState } from 'react';
+import { View, TouchableOpacity, LayoutAnimation, Platform, UIManager } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { styled } from 'nativewind';
 import { Card } from './Card';
 import { lightHaptic } from '../../utils/haptics';
 import { EvaIcon } from '../icons';
+import { SPRINGS } from '../../constants/animations';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -46,16 +49,11 @@ export const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
   icon,
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const rotateAnim = useRef(new Animated.Value(defaultExpanded ? 1 : 0)).current;
+  const rotation = useSharedValue(defaultExpanded ? 180 : 0);
 
-  useEffect(() => {
-    Animated.spring(rotateAnim, {
-      toValue: expanded ? 1 : 0,
-      useNativeDriver: true,
-      tension: 100,
-      friction: 10,
-    }).start();
-  }, [expanded]);
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
 
   const handleToggle = () => {
     lightHaptic();
@@ -70,14 +68,10 @@ export const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
     );
 
     const newExpanded = !expanded;
+    rotation.value = withSpring(newExpanded ? 180 : 0, SPRINGS.responsive);
     setExpanded(newExpanded);
     onToggle?.(newExpanded);
   };
-
-  const rotate = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '180deg'],
-  });
 
   return (
     <Card elevation={elevation} variant={variant} className={`mb-4 ${className}`}>
@@ -103,7 +97,7 @@ export const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
             </StyledView>
           </StyledView>
 
-          <Animated.View style={{ transform: [{ rotate }] }}>
+          <Animated.View style={chevronStyle}>
             <EvaIcon name="arrow-ios-downward" variant="outline" size={20} color="#667085" />
           </Animated.View>
         </StyledView>

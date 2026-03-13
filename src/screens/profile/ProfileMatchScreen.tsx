@@ -1,25 +1,40 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-    View, Text, ScrollView, TouchableOpacity, TouchableWithoutFeedback,
-    ImageBackground, ActivityIndicator, Dimensions, StyleSheet, PanResponder,
+    View, Text, ScrollView, TouchableOpacity,
+    ImageBackground, ActivityIndicator, StyleSheet,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Check, Star, Heart, X, Sparkles, Users } from 'lucide-react-native';
+import { ArrowLeft, Heart, X, Sparkles, Users, Star, Eye } from '../../components/icons/LucideReplacements';
 import { communityService } from '../../services/communityServiceIndex';
 import { getUserProfile, getFullUserProfileById } from '../../services/profileService';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { KarmaInfoModal } from '../../components/community/karma/KarmaInfoModal';
-import { VALUES_EMOJI, INTERESTS_EMOJI, getEmoji } from '../../utils/emojiMaps';
+import { valueIconName, interestIconName } from '../../utils/emojiMaps';
+import { IconScoutIcon } from '../../components/icons';
+import { WineGlassIcon, LeafIcon, CigaretteIcon } from '../../components/icons/Icons';
+import { formatProfileValue } from '../../utils/formatProfileValue';
 import { showToast } from '../../utils/toast';
 import { COLORS } from '../../theme/colors';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { SHADOWS } from '../../theme/shadows';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
+// ── Helpers (module-level, no re-creation) ─────────────────────────
 
-const PROFILE_CONTENT_STYLE = { paddingBottom: 150 } as const;
+const formatHeight = (height: any): string | null => {
+    if (!height) return null;
+    if (typeof height === 'string') return height;
+    if (typeof height === 'number') {
+        const feet = Math.floor(height / 12);
+        const inches = height % 12;
+        return `${feet}'${inches}"`;
+    }
+    return null;
+};
+
+// ════════════════════════════════════════════════════════════════════
 
 export default function ProfileMatchScreen() {
     const navigation = useNavigation<any>();
@@ -27,17 +42,15 @@ export default function ProfileMatchScreen() {
     const params = route.params || {};
     const insets = useSafeAreaInsets();
 
-    // isProposal = navigated from MatchesScreen with full proposal context (show "Matched by" + community score)
-    // isPreview  = navigated from ProfilePreview with no profile passed (load own profile)
-    // isView     = navigated from ChatScreen / FriendsAreaView with a plain profile object
+    // Mode detection
     const isProposal = !!params.partnerProfile;
     const isPreview = !params.partnerProfile && !params.profile;
 
-    const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
     const [submitting, setSubmitting] = useState(false);
     const [profileData, setProfileData] = useState<any>(params.partnerProfile || params.profile || null);
     const [loading, setLoading] = useState(isPreview);
     const [showKarmaModal, setShowKarmaModal] = useState(false);
+    const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
     const isMountedRef = React.useRef(true);
 
     useEffect(() => {
@@ -45,24 +58,32 @@ export default function ProfileMatchScreen() {
         return () => { isMountedRef.current = false; };
     }, []);
 
+    // Fetch the profile being viewed
     useEffect(() => {
         if (isPreview) {
             getUserProfile().then(result => {
                 if (isMountedRef.current && result.ok && result.data) setProfileData(result.data);
             }).finally(() => { if (isMountedRef.current) setLoading(false); });
         } else if (!isProposal && params.profile?.userId) {
-            // isView — profile passed from friends list lacks deep questions; re-fetch full profile
             setLoading(true);
             getFullUserProfileById(params.profile.userId).then(full => {
                 if (isMountedRef.current && full) setProfileData(full);
-            }).catch(() => { /* show whatever profile data was passed */ }).finally(() => { if (isMountedRef.current) setLoading(false); });
+            }).catch(() => { /* keep whatever was passed */ }).finally(() => { if (isMountedRef.current) setLoading(false); });
         } else if (isProposal && params.partnerProfile?.userId) {
-            // isProposal — background re-fetch to populate karma + deep questions without blocking UI
             getFullUserProfileById(params.partnerProfile.userId).then(full => {
                 if (isMountedRef.current && full) setProfileData(full);
-            }).catch(() => { /* profile already visible from params — silently ignore */ });
+            }).catch(() => { /* profile already visible from params */ });
         }
     }, [isPreview, isProposal, params.profile?.userId, params.partnerProfile?.userId]);
+
+    // Fetch current user's profile for "in common" highlighting
+    useEffect(() => {
+        if (!isPreview) {
+            getUserProfile().then(result => {
+                if (isMountedRef.current && result.ok && result.data) setCurrentUserProfile(result.data);
+            });
+        }
+    }, [isPreview]);
 
     const partnerProfile = profileData;
     const communityScore: number = params.communityScore ?? 0;
@@ -71,16 +92,13 @@ export default function ProfileMatchScreen() {
     const proposalId: string = params.proposalId ?? '';
     const canRespond = isProposal && (screenState === 'awaiting_you' || screenState === 'neither_voted');
 
-    // All hooks must be called before any early returns
+    // ── Derived data (all hooks before early return) ────────────────
+
     const endorserAvatars = useMemo<string[]>(() =>
         (endorsers ?? [])
             .map((e: any) => {
-                // Try multiple paths for the photo URL
                 const profile = e.endorserProfile ?? e;
-                const photoUrl = profile?.photos?.[0]?.url
-                    ?? profile?.photoUrl
-                    ?? profile?.photo;
-                return photoUrl || null;
+                return profile?.photos?.[0]?.url ?? profile?.photoUrl ?? profile?.photo ?? null;
             })
             .filter(Boolean),
         [endorsers]
@@ -96,17 +114,64 @@ export default function ProfileMatchScreen() {
 
         const fromDisplayed = displayedIds
             .map((id: number) =>
-                ((partnerProfile as any)?.deepQuestions ?? []).find(
-                    (q: any) => q.questionId === id
-                )
+                ((partnerProfile as any)?.deepQuestions ?? []).find((q: any) => q.questionId === id)
             )
             .filter(Boolean)
             .map((q: any) => ({ question: q.question, answer: q.answer }));
 
-        // If the displayedIds didn't match anything, fall back to all answered
         const result = fromDisplayed.length > 0 ? fromDisplayed : allAnswered;
         return result.filter((q: { question: string; answer: string }) => q.question && q.answer);
     }, [partnerProfile]);
+
+    const inCommon = useMemo(() => {
+        if (!currentUserProfile || !partnerProfile) return { interests: [] as string[], values: [] as string[] };
+        const myInterests = new Set((currentUserProfile.interests ?? []).map((i: string) => i.toLowerCase()));
+        const myValues = new Set((currentUserProfile.values ?? []).map((v: string) => v.toLowerCase()));
+        return {
+            interests: (partnerProfile.interests ?? []).filter((i: string) => myInterests.has(i.toLowerCase())),
+            values: (partnerProfile.values ?? []).filter((v: string) => myValues.has(v.toLowerCase())),
+        };
+    }, [currentUserProfile, partnerProfile]);
+
+    // Photos: hero = first, inline = rest (for photo-prompt interleave)
+    const allPhotos = useMemo(() => partnerProfile?.photos ?? [], [partnerProfile]);
+    const inlinePhotos = useMemo(() => allPhotos.slice(1), [allPhotos]);
+
+    // Interleave: photo, question, photo, question...
+    const interleavedContent = useMemo(() => {
+        const items: { type: 'photo' | 'question'; data: any }[] = [];
+        let pIdx = 0;
+        let qIdx = 0;
+        while (pIdx < inlinePhotos.length || qIdx < deepQuestions.length) {
+            if (pIdx < inlinePhotos.length) {
+                items.push({ type: 'photo', data: inlinePhotos[pIdx] });
+                pIdx++;
+            }
+            if (qIdx < deepQuestions.length) {
+                items.push({ type: 'question', data: deepQuestions[qIdx] });
+                qIdx++;
+            }
+        }
+        return items;
+    }, [inlinePhotos, deepQuestions]);
+
+    const lifestyleItems = useMemo(() => {
+        if (!partnerProfile) return [];
+        const items: { label: string; value: string; icon: 'wine' | 'leaf' | 'cigarette' }[] = [];
+        const { drinkingFrequency, cannabisFrequency, tobaccoFrequency } = partnerProfile;
+        if (drinkingFrequency && drinkingFrequency !== 'never' && drinkingFrequency !== 'irrelevant') {
+            items.push({ label: 'Drinking', value: formatProfileValue(drinkingFrequency), icon: 'wine' });
+        }
+        if (cannabisFrequency && cannabisFrequency !== 'never' && cannabisFrequency !== 'irrelevant') {
+            items.push({ label: 'Cannabis', value: formatProfileValue(cannabisFrequency), icon: 'leaf' });
+        }
+        if (tobaccoFrequency && tobaccoFrequency !== 'never' && tobaccoFrequency !== 'irrelevant') {
+            items.push({ label: 'Tobacco', value: formatProfileValue(tobaccoFrequency), icon: 'cigarette' });
+        }
+        return items;
+    }, [partnerProfile]);
+
+    // ── Actions ─────────────────────────────────────────────────────
 
     const handlePass = useCallback(async () => {
         if (submitting) return;
@@ -121,7 +186,7 @@ export default function ProfileMatchScreen() {
             setSubmitting(false);
             showToast.error('Could not submit response', 'Check your connection and try again.');
         }
-    }, [submitting, canRespond, proposalId, navigation]);
+    }, [submitting, canRespond, proposalId, partnerProfile, navigation]);
 
     const handleAccept = useCallback(async () => {
         if (submitting || !canRespond) return;
@@ -135,19 +200,7 @@ export default function ProfileMatchScreen() {
         }
     }, [submitting, canRespond, proposalId, navigation]);
 
-    // Must be before early return — hooks cannot be called after a conditional return
-    const photoCount = profileData?.photos?.length ?? 0;
-    const panResponder = useMemo(() => PanResponder.create({
-        onStartShouldSetPanResponder: () => false,
-        onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 && Math.abs(g.dy) < 40,
-        onPanResponderRelease: (_, g) => {
-            if (g.dx < -40) {
-                setCurrentPhotoIndex(i => (i + 1) % photoCount);
-            } else if (g.dx > 40) {
-                setCurrentPhotoIndex(i => (i - 1 + photoCount) % photoCount);
-            }
-        },
-    }), [photoCount]);
+    // ── Early return ────────────────────────────────────────────────
 
     if (loading || !partnerProfile) {
         return (
@@ -157,156 +210,249 @@ export default function ProfileMatchScreen() {
         );
     }
 
-    const photos = partnerProfile.photos || [];
-    const photoUrl = photos[currentPhotoIndex]?.url || '';
+    const heroPhoto = allPhotos[0]?.url ?? '';
     const karmaPts = partnerProfile.karma?.karma_points ?? 0;
+    const heightStr = formatHeight(partnerProfile.height);
+    const hasInCommon = !isPreview && (inCommon.interests.length > 0 || inCommon.values.length > 0);
+    const sharedInterestsSet = new Set(inCommon.interests.map((i: string) => i.toLowerCase()));
+    const sharedValuesSet = new Set(inCommon.values.map((v: string) => v.toLowerCase()));
+    const totalInCommon = inCommon.interests.length + inCommon.values.length;
+
+    // Build hero subtitle: "School · Education · Job" (only non-empty parts)
+    const subtitleParts: string[] = [];
+    if (partnerProfile.school) subtitleParts.push(partnerProfile.school);
+    if (partnerProfile.education) subtitleParts.push(partnerProfile.education);
+    if (partnerProfile.currentJob) subtitleParts.push(partnerProfile.currentJob);
+    const heroSubtitleStr = subtitleParts.join(' \u00B7 ');
+
+    // ════════════════════════════════════════════════════════════════
+    // RENDER
+    // ════════════════════════════════════════════════════════════════
 
     return (
         <View style={styles.container}>
             <ScrollView
                 style={{ flex: 1 }}
-                contentContainerStyle={PROFILE_CONTENT_STYLE}
+                contentContainerStyle={{ paddingBottom: isProposal ? 150 : 40 }}
                 showsVerticalScrollIndicator={false}
             >
-                {/* ── Hero Image Section ────────────────────────── */}
-                <View style={styles.heroContainer} {...panResponder.panHandlers}>
+                {/* ── Hero Photo ───────────────────────────────────── */}
+                <View style={styles.heroContainer}>
                     <ImageBackground
-                        source={photoUrl ? { uri: photoUrl } : require('../../../assets/favicon.png')}
+                        source={heroPhoto ? { uri: heroPhoto } : require('../../../assets/favicon.png')}
                         style={styles.heroImage}
-                        imageStyle={styles.heroImageStyle}
                         resizeMode="cover"
                     >
-                        {/* Left / right tap zones for photo navigation */}
-                        {photos.length > 1 && (
-                            <>
-                                <TouchableWithoutFeedback onPress={() => setCurrentPhotoIndex(i => (i - 1 + photos.length) % photos.length)}>
-                                    <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: SCREEN_WIDTH * 0.35 }} />
-                                </TouchableWithoutFeedback>
-                                <TouchableWithoutFeedback onPress={() => setCurrentPhotoIndex(i => (i + 1) % photos.length)}>
-                                    <View style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: SCREEN_WIDTH * 0.35 }} />
-                                </TouchableWithoutFeedback>
-                            </>
-                        )}
+                        <LinearGradient
+                            colors={['rgba(0,0,0,0.35)', 'transparent', 'rgba(0,0,0,0.65)']}
+                            locations={[0, 0.35, 1]}
+                            style={StyleSheet.absoluteFillObject}
+                        />
 
-                        {/* Status Bar / Header */}
-                        <View style={styles.header}>
+                        {/* Header row — back button + photo count */}
+                        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
                             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
                                 <ArrowLeft size={24} color="#FFFFFF" strokeWidth={2} />
                             </TouchableOpacity>
-
-                            {/* Pagination Indicators — driven by actual photo count */}
-                            {photos.length > 1 && (
-                                <View style={styles.paginationContainer}>
-                                    {photos.map((_: any, i: number) => (
-                                        <View
-                                            key={i}
-                                            style={[styles.paginationDot, i === currentPhotoIndex && styles.dotActive]}
-                                        />
-                                    ))}
+                            {allPhotos.length > 1 && (
+                                <View style={styles.photoCountPill}>
+                                    <Text style={styles.photoCountText}>1 / {allPhotos.length}</Text>
                                 </View>
                             )}
                         </View>
 
-                        {/* Profile Info Overlay (Bottom Left of Hero) */}
-                        <View style={[styles.heroOverlayName, !isProposal && { top: 403 }]}>
-                            <Text style={styles.heroName}>{partnerProfile.firstName}, {partnerProfile.age}</Text>
-                        </View>
+                        {/* Bottom overlay — name, subtitle, matched-by */}
+                        <View style={styles.heroBottom}>
+                            <View style={styles.heroInfoLeft}>
+                                <Text style={styles.heroName}>
+                                    {partnerProfile.firstName}, {partnerProfile.age}
+                                    {heightStr ? <Text style={styles.heroDetail}>{`  ${heightStr}`}</Text> : null}
+                                </Text>
 
-                        {isProposal && (
-                            <View style={styles.heroOverlayMatched}>
-                                <Sparkles size={14} color="#FFFFFF" fill="#FFFFFF" />
-                                <Text style={styles.matchedByText}>Matched by</Text>
-                                <View style={styles.avatarStack}>
-                                    {endorserAvatars.length > 0
-                                        ? endorserAvatars.map((uri, i) => (
-                                            <View key={`endorser-${i}`} style={[styles.stackAvatarContainer, { marginLeft: i === 0 ? 0 : -8 }]}>
-                                                <Image
-                                                    source={{ uri: getOptimizedImageUrl(uri, 24) }}
-                                                    style={styles.stackAvatar}
-                                                    contentFit="cover"
-                                                    transition={200}
-                                                    cachePolicy="disk"
-                                                    placeholder={require('../../../assets/favicon.png')}
-                                                />
-                                            </View>
-                                        ))
-                                        : [0, 1, 2].map((_, i) => (
-                                            <View key={i} style={[styles.stackAvatarContainer, { marginLeft: i === 0 ? 0 : -8, backgroundColor: COLORS.paginationInactive }]} />
-                                        ))
-                                    }
-                                </View>
+                                {heroSubtitleStr.length > 0 && (
+                                    <Text style={styles.heroSubtitle} numberOfLines={2}>
+                                        {heroSubtitleStr}
+                                    </Text>
+                                )}
+
+                                {isProposal && (
+                                    <View style={styles.matchedByRow}>
+                                        <Sparkles size={12} color="#FFFFFF" fill="#FFFFFF" />
+                                        <Text style={styles.matchedByText}>Matched by</Text>
+                                        <View style={styles.avatarStack}>
+                                            {endorserAvatars.length > 0
+                                                ? endorserAvatars.map((uri, i) => (
+                                                    <View key={`endorser-${i}`} style={[styles.stackAvatarWrap, { marginLeft: i === 0 ? 0 : -8 }]}>
+                                                        <Image
+                                                            source={{ uri: getOptimizedImageUrl(uri, 24) }}
+                                                            style={styles.stackAvatar}
+                                                            contentFit="cover"
+                                                            transition={200}
+                                                            cachePolicy="disk"
+                                                        />
+                                                    </View>
+                                                ))
+                                                : [0, 1, 2].map((_, i) => (
+                                                    <View key={i} style={[styles.stackAvatarWrap, { marginLeft: i === 0 ? 0 : -8, backgroundColor: COLORS.paginationInactive }]} />
+                                                ))
+                                            }
+                                        </View>
+                                    </View>
+                                )}
                             </View>
-                        )}
 
-                        {/* Karma Badge (Bottom Right of Hero) */}
-                        <TouchableOpacity style={styles.karmaBadge} onPress={() => setShowKarmaModal(true)} activeOpacity={0.8}>
-                            <Star size={14} color="#FFFFFF" strokeWidth={2} />
-                            <Text style={styles.karmaText}>Karma points {karmaPts}</Text>
-                        </TouchableOpacity>
+                            {/* Karma — subtle pill */}
+                            <TouchableOpacity style={styles.karmaPill} onPress={() => setShowKarmaModal(true)} activeOpacity={0.8}>
+                                <Star size={12} color="#FFFFFF" strokeWidth={2.5} />
+                                <Text style={styles.karmaText}>{karmaPts}</Text>
+                            </TouchableOpacity>
+                        </View>
                     </ImageBackground>
                 </View>
 
-                {/* ── Content Container ──────────────────────────── */}
+                {/* ── Content Below Hero ────────────────────────────── */}
                 <View style={styles.content}>
 
-                    {/* Community Validation Card — only shown when viewing a match proposal */}
-                    {isProposal && <View style={styles.validationCard}>
-                        <View style={styles.cardHeader}>
-                            <View style={styles.cardHeaderLeft}>
+                    {/* Preview Mode Banner */}
+                    {isPreview && (
+                        <View style={styles.previewBanner}>
+                            <Eye size={16} color={COLORS.primary} strokeWidth={2} />
+                            <Text style={styles.previewBannerText}>This is how others see your profile</Text>
+                        </View>
+                    )}
+
+                    {/* Community Validation — match proposals only */}
+                    {isProposal && (
+                        <View style={styles.validationCard}>
+                            <View style={styles.cardHeaderRow}>
                                 <View style={styles.iconCircle}>
-                                    <Users size={18} color="#053763" />
+                                    <Users size={16} color={COLORS.primary} />
                                 </View>
                                 <Text style={styles.cardTitle}>Community validation</Text>
                             </View>
-                        </View>
-
-                        <Text style={styles.scoreValue}>{communityScore}%</Text>
-
-                        <View style={styles.progressContainer}>
-                            <View style={[styles.progressBackground]}>
+                            <Text style={styles.scoreValue}>{communityScore}%</Text>
+                            <View style={styles.progressBg}>
                                 <View style={[styles.progressFill, { width: `${communityScore}%` }]} />
                             </View>
                         </View>
-                    </View>}
+                    )}
 
-                    {/* Values Section */}
-                    <View style={styles.sectionCard}>
-                        <Text style={styles.sectionHeading}>Values</Text>
-                        <View style={styles.tagGrid}>
-                            {(partnerProfile.values ?? []).map((v: string) => (
-                                <View key={v} style={styles.tag}>
-                                    <Text style={styles.tagText}>{getEmoji(v, VALUES_EMOJI)} {v}</Text>
+                    {/* "What You Have in Common" */}
+                    {hasInCommon && (
+                        <View style={styles.inCommonCard}>
+                            <View style={styles.inCommonHeader}>
+                                <View style={styles.inCommonIconCircle}>
+                                    <Sparkles size={14} color="#166534" />
                                 </View>
-                            ))}
-                        </View>
-                    </View>
-
-                    {/* Interests Section */}
-                    <View style={styles.sectionCard}>
-                        <Text style={styles.sectionHeading}>Interests</Text>
-                        <View style={styles.tagGrid}>
-                            {(partnerProfile.interests ?? []).map((v: string) => (
-                                <View key={v} style={styles.tag}>
-                                    <Text style={styles.tagText}>{getEmoji(v, INTERESTS_EMOJI)} {v}</Text>
+                                <View>
+                                    <Text style={styles.inCommonTitle}>What you have in common</Text>
+                                    <Text style={styles.inCommonCount}>{totalInCommon} shared trait{totalInCommon !== 1 ? 's' : ''}</Text>
                                 </View>
-                            ))}
-                        </View>
-                    </View>
-
-                    {/* Deep Questions Section */}
-                    <View style={styles.section}>
-                        <Text style={styles.sectionHeading}>Deep questions</Text>
-                        {deepQuestions.map((q, i) => (
-                            <View key={i} style={styles.questionBox}>
-                                <Text style={styles.questionTitle}>{i + 1}. {q.question}</Text>
-                                <Text style={styles.answerText}>{q.answer}</Text>
                             </View>
-                        ))}
-                    </View>
-                </View>
-            </ScrollView >
+                            <View style={styles.chipRow}>
+                                {inCommon.values.map((v: string) => (
+                                    <View key={`cv-${v}`} style={styles.inCommonChip}>
+                                        {valueIconName(v) && <IconScoutIcon name={valueIconName(v)!} size={14} style={{ marginRight: 4 }} />}
+                                        <Text style={styles.inCommonChipText}>{v}</Text>
+                                    </View>
+                                ))}
+                                {inCommon.interests.map((i: string) => (
+                                    <View key={`ci-${i}`} style={styles.inCommonChip}>
+                                        {interestIconName(i) && <IconScoutIcon name={interestIconName(i)!} size={14} style={{ marginRight: 4 }} />}
+                                        <Text style={styles.inCommonChipText}>{i}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                    )}
 
-            {/* ── Action Buttons ─────────────────────────────── */}
+                    {/* ── Photo + Prompt Interleave ────────────────── */}
+                    {interleavedContent.map((item, idx) => {
+                        if (item.type === 'photo') {
+                            return (
+                                <View key={`il-${idx}`} style={styles.inlinePhotoWrap}>
+                                    <Image
+                                        source={{ uri: item.data.url }}
+                                        style={styles.inlinePhoto}
+                                        contentFit="cover"
+                                        transition={300}
+                                    />
+                                </View>
+                            );
+                        }
+                        return (
+                            <View key={`il-${idx}`} style={styles.promptCard}>
+                                <View style={styles.promptAccent} />
+                                <View style={styles.promptContent}>
+                                    <Text style={styles.promptQuestion}>{item.data.question}</Text>
+                                    <Text style={styles.promptAnswer}>{item.data.answer}</Text>
+                                </View>
+                            </View>
+                        );
+                    })}
+
+                    {/* ── Interests & Values ────────────────────────── */}
+                    {((partnerProfile.values?.length > 0) || (partnerProfile.interests?.length > 0)) && (
+                        <View style={styles.card}>
+                            {partnerProfile.values?.length > 0 && (
+                                <>
+                                    <Text style={styles.chipSectionLabel}>VALUES</Text>
+                                    <View style={styles.chipRow}>
+                                        {partnerProfile.values.map((v: string) => {
+                                            const shared = sharedValuesSet.has(v.toLowerCase());
+                                            return (
+                                                <View key={v} style={[styles.tag, shared && styles.tagShared]}>
+                                                    {valueIconName(v) && <IconScoutIcon name={valueIconName(v)!} size={15} style={{ marginRight: 5 }} />}
+                                                    <Text style={[styles.tagText, shared && styles.tagTextShared]}>{v}</Text>
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                </>
+                            )}
+                            {partnerProfile.interests?.length > 0 && (
+                                <>
+                                    <Text style={[styles.chipSectionLabel, partnerProfile.values?.length > 0 && { marginTop: 18 }]}>INTERESTS</Text>
+                                    <View style={styles.chipRow}>
+                                        {partnerProfile.interests.map((i: string) => {
+                                            const shared = sharedInterestsSet.has(i.toLowerCase());
+                                            return (
+                                                <View key={i} style={[styles.tag, shared && styles.tagShared]}>
+                                                    {interestIconName(i) && <IconScoutIcon name={interestIconName(i)!} size={15} style={{ marginRight: 5 }} />}
+                                                    <Text style={[styles.tagText, shared && styles.tagTextShared]}>{i}</Text>
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                </>
+                            )}
+                        </View>
+                    )}
+
+                    {/* ── Lifestyle ─────────────────────────────────── */}
+                    {lifestyleItems.length > 0 && (
+                        <View style={styles.card}>
+                            <Text style={styles.cardSectionTitle}>Lifestyle</Text>
+                            {lifestyleItems.map((item, idx) => (
+                                <View
+                                    key={idx}
+                                    style={[styles.lifestyleRow, idx < lifestyleItems.length - 1 && styles.lifestyleRowBorder]}
+                                >
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        {item.icon === 'wine' && <WineGlassIcon size={16} color={COLORS.text.secondary} />}
+                                        {item.icon === 'leaf' && <LeafIcon size={16} color={COLORS.text.secondary} />}
+                                        {item.icon === 'cigarette' && <CigaretteIcon size={16} color={COLORS.text.secondary} />}
+                                        <Text style={styles.lifestyleLabel}>{item.label}</Text>
+                                    </View>
+                                    <Text style={styles.lifestyleValue}>{item.value}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+                </View>
+            </ScrollView>
+
+            {/* ── Floating Action Buttons (match proposals only) ───── */}
             {isProposal && (
                 canRespond ? (
                     <View style={[styles.floatingActions, { bottom: Math.max(insets.bottom + 20, 64) }]}>
@@ -322,7 +468,9 @@ export default function ProfileMatchScreen() {
                             onPress={handleAccept}
                             disabled={submitting}
                         >
-                            {submitting ? <ActivityIndicator size="small" color="#FFF" /> : <Heart size={28} color="#FFFFFF" fill="#FFFFFF" />}
+                            {submitting
+                                ? <ActivityIndicator size="small" color="#FFF" />
+                                : <Heart size={28} color="#FFFFFF" fill="#FFFFFF" />}
                         </TouchableOpacity>
                     </View>
                 ) : (
@@ -335,184 +483,189 @@ export default function ProfileMatchScreen() {
             )}
 
             <KarmaInfoModal visible={showKarmaModal} onClose={() => setShowKarmaModal(false)} />
-        </View >
+        </View>
     );
 }
+
+// ════════════════════════════════════════════════════════════════════
+// STYLES
+// ════════════════════════════════════════════════════════════════════
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.card,
-    },
-    waitingBadge: {
-        alignSelf: 'center',
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        backgroundColor: 'rgba(212,170,1,0.1)',
-        borderWidth: 1,
-        borderColor: 'rgba(212,170,1,0.4)',
-        borderRadius: 40,
-        marginBottom: 10,
-    },
-    waitingText: {
-        fontFamily: FONTS.medium,
-        fontSize: 14,
-        color: COLORS.waitingAmber,
+        backgroundColor: COLORS.screenBackground,
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: COLORS.card,
+        backgroundColor: COLORS.screenBackground,
     },
+
+    // ── Hero ──────────────────────────────────────────────────────
+
     heroContainer: {
         width: '100%',
-        height: 451,
-        paddingTop: 0,
+        height: 480,
     },
     heroImage: {
         width: '100%',
         height: '100%',
     },
-    heroImageStyle: {
-        borderBottomLeftRadius: 40,
-        borderBottomRightRadius: 40,
-        borderTopLeftRadius: 0,
-        borderTopRightRadius: 0,
-    },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         paddingHorizontal: 16,
-        paddingTop: 64,
     },
     backButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: 'rgba(0,0,0,0.35)',
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(0,0,0,0.3)',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    paginationContainer: {
+    heroBottom: {
         position: 'absolute',
-        top: 54,
+        bottom: 0,
         left: 0,
         right: 0,
         flexDirection: 'row',
-        gap: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        paddingHorizontal: 20,
+        paddingBottom: 24,
     },
-    paginationDot: {
-        width: 16,
-        height: 4,
-        backgroundColor: COLORS.paginationInactive,
-        opacity: 0.2,
-        borderRadius: 20,
-    },
-    dotActive: {
-        backgroundColor: COLORS.card,
-        opacity: 1,
-    },
-    heroOverlayName: {
-        position: 'absolute',
-        left: 18,
-        top: 360,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        backgroundColor: 'rgba(15, 23, 42, 0.75)',
-        borderRadius: 9999,
-        paddingHorizontal: 14,
-        paddingVertical: 6,
-    },
-    heroOverlayMatched: {
-        position: 'absolute',
-        left: 15,
-        top: 403,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        backgroundColor: 'rgba(15, 23, 42, 0.75)',
-        borderRadius: 9999,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
+    heroInfoLeft: {
+        flex: 1,
+        marginRight: 12,
     },
     heroName: {
         fontFamily: FONTS.bold,
-        fontSize: 24,
+        fontSize: FONT_SIZES['5xl'],
         color: '#FFFFFF',
+        textShadowColor: 'rgba(0,0,0,0.4)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 6,
     },
-    verifyBadge: {
-        width: 20,
-        height: 20,
-        backgroundColor: COLORS.primary,
-        borderRadius: 10,
+    heroDetail: {
+        fontFamily: FONTS.regular,
+        fontSize: FONT_SIZES['3xl'],
+        color: 'rgba(255,255,255,0.9)',
+    },
+    heroSubtitle: {
+        fontFamily: FONTS.medium,
+        fontSize: FONT_SIZES.lg,
+        color: 'rgba(255,255,255,0.9)',
+        marginTop: 3,
+        textShadowColor: 'rgba(0,0,0,0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
+    },
+    matchedByRow: {
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        marginTop: 10,
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        alignSelf: 'flex-start',
+        borderRadius: 20,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        gap: 6,
     },
     matchedByText: {
         fontFamily: FONTS.medium,
-        fontSize: 13,
+        fontSize: FONT_SIZES.md,
         color: '#FFFFFF',
     },
     avatarStack: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginLeft: 4,
+        marginLeft: 2,
     },
-    stackAvatarContainer: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+    stackAvatarWrap: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
         borderWidth: 2,
-        borderColor: COLORS.card,
+        borderColor: 'rgba(255,255,255,0.6)',
         overflow: 'hidden',
     },
     stackAvatar: {
         width: '100%',
         height: '100%',
     },
-    karmaBadge: {
-        position: 'absolute',
-        right: 9.34,
-        top: 403,
+    karmaPill: {
         flexDirection: 'row',
         alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        borderRadius: 16,
         paddingHorizontal: 10,
-        paddingVertical: 6,
-        backgroundColor: 'rgba(15, 23, 42, 0.75)',
-        borderRadius: 9999,
-        gap: 6,
+        paddingVertical: 5,
+        gap: 4,
+        marginBottom: 4,
     },
     karmaText: {
+        fontFamily: FONTS.semiBold,
+        fontSize: FONT_SIZES.md,
+        color: '#FFFFFF',
+    },
+    photoCountPill: {
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        borderRadius: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+    },
+    photoCountText: {
         fontFamily: FONTS.medium,
-        fontSize: 13,
-        color: COLORS.backgroundSubtle,
+        fontSize: FONT_SIZES.sm,
+        color: '#FFFFFF',
     },
+
+    // ── Content Area ─────────────────────────────────────────────
+
     content: {
-        paddingHorizontal: 13,
-        paddingTop: 13,
+        paddingHorizontal: 16,
+        paddingTop: 16,
     },
-    validationCard: {
-        backgroundColor: COLORS.card,
-        borderRadius: 24,
-        padding: 18,
-        ...SHADOWS.lg,
-        marginBottom: 16,
-    },
-    cardHeader: {
+
+    // ── Preview Banner ───────────────────────────────────────────
+
+    previewBanner: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 10,
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: COLORS.backgroundInfoBlue,
+        borderRadius: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: COLORS.borderBlue,
     },
-    cardHeaderLeft: {
+    previewBannerText: {
+        fontFamily: FONTS.medium,
+        fontSize: FONT_SIZES.base,
+        color: COLORS.primary,
+    },
+
+    // ── Community Validation Card ────────────────────────────────
+
+    validationCard: {
+        backgroundColor: COLORS.card,
+        borderRadius: 20,
+        padding: 18,
+        ...SHADOWS.md,
+        marginBottom: 16,
+    },
+    cardHeaderRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
+        marginBottom: 10,
     },
     iconCircle: {
         width: 32,
@@ -524,96 +677,208 @@ const styles = StyleSheet.create({
     },
     cardTitle: {
         fontFamily: FONTS.semiBold,
-        fontSize: 15,
-        color: COLORS.cardTitleDark,
+        fontSize: FONT_SIZES.lg,
+        color: COLORS.text.heading,
     },
     scoreValue: {
         fontFamily: FONTS.bold,
-        fontSize: 36,
-        lineHeight: 36,
+        fontSize: FONT_SIZES['6xl'],
         color: COLORS.scoreBlue,
         marginBottom: 8,
     },
-    progressContainer: {
-        marginTop: 8,
-    },
-    progressBackground: {
+    progressBg: {
         width: '100%',
-        height: 8,
+        height: 6,
         backgroundColor: COLORS.backgroundProgressTrack,
-        borderRadius: 9999,
+        borderRadius: 3,
     },
     progressFill: {
         height: '100%',
         backgroundColor: COLORS.scoreBlue,
-        borderRadius: 9999,
+        borderRadius: 3,
     },
-    sectionCard: {
-        backgroundColor: COLORS.card,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(1, 1, 1, 0.1)',
-        padding: 16,
-        ...SHADOWS.sm,
+
+    // ── "What You Have in Common" ────────────────────────────────
+
+    inCommonCard: {
+        backgroundColor: '#F0FDF4',
+        borderRadius: 20,
+        padding: 18,
         marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
     },
-    section: {
-        marginBottom: 20,
+    inCommonHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 14,
     },
-    sectionHeading: {
+    inCommonIconCircle: {
+        width: 32,
+        height: 32,
+        backgroundColor: '#DCFCE7',
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    inCommonTitle: {
+        fontFamily: FONTS.semiBold,
+        fontSize: FONT_SIZES.lg,
+        color: '#166534',
+    },
+    inCommonCount: {
+        fontFamily: FONTS.regular,
+        fontSize: FONT_SIZES.sm,
+        color: '#15803D',
+        marginTop: 1,
+    },
+
+    // ── Inline Photo ─────────────────────────────────────────────
+
+    inlinePhotoWrap: {
+        marginBottom: 16,
+        borderRadius: 20,
+        overflow: 'hidden',
+        ...SHADOWS.sm,
+    },
+    inlinePhoto: {
+        width: '100%',
+        height: 420,
+        borderRadius: 20,
+    },
+
+    // ── Prompt Card ──────────────────────────────────────────────
+
+    promptCard: {
+        backgroundColor: COLORS.card,
+        borderRadius: 20,
+        padding: 20,
+        paddingLeft: 0,
+        marginBottom: 16,
+        flexDirection: 'row',
+        overflow: 'hidden',
+        ...SHADOWS.sm,
+    },
+    promptAccent: {
+        width: 4,
+        borderTopLeftRadius: 20,
+        borderBottomLeftRadius: 20,
+        backgroundColor: COLORS.primary,
+        marginRight: 16,
+    },
+    promptContent: {
+        flex: 1,
+        paddingVertical: 0,
+    },
+    promptQuestion: {
         fontFamily: FONTS.medium,
-        fontSize: 16,
-        lineHeight: 20,
+        fontSize: FONT_SIZES.base,
         color: COLORS.primary,
+        marginBottom: 8,
+        lineHeight: 18,
+    },
+    promptAnswer: {
+        fontFamily: FONTS.regular,
+        fontSize: 17,
+        color: COLORS.text.heading,
+        lineHeight: 26,
+    },
+
+    // ── Generic Card ─────────────────────────────────────────────
+
+    card: {
+        backgroundColor: COLORS.card,
+        borderRadius: 20,
+        padding: 18,
+        marginBottom: 16,
+        ...SHADOWS.sm,
+    },
+    cardSectionTitle: {
+        fontFamily: FONTS.semiBold,
+        fontSize: FONT_SIZES.xl,
+        color: COLORS.text.heading,
         marginBottom: 12,
     },
-    tagGrid: {
+
+    // ── Chip Rows (shared between In Common + Values/Interests) ──
+
+    chipRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 8,
     },
+    chipSectionLabel: {
+        fontFamily: FONTS.semiBold,
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.text.secondary,
+        marginBottom: 10,
+        letterSpacing: 1,
+    },
+    inCommonChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#DCFCE7',
+        paddingHorizontal: 12,
+        paddingVertical: 7,
+        borderRadius: 20,
+    },
+    inCommonChipText: {
+        fontFamily: FONTS.medium,
+        fontSize: FONT_SIZES.md,
+        color: '#166534',
+    },
     tag: {
-        backgroundColor: 'rgba(1, 1, 1, 0.02)',
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: COLORS.backgroundGray,
         paddingHorizontal: 12,
         paddingVertical: 8,
-        borderRadius: 40,
+        borderRadius: 20,
+    },
+    tagShared: {
+        backgroundColor: '#DCFCE7',
         borderWidth: 1,
-        borderColor: 'rgba(1, 1, 1, 0.05)',
-        alignItems: 'center',
-        justifyContent: 'center',
+        borderColor: '#86EFAC',
     },
     tagText: {
         fontFamily: FONTS.regular,
-        fontSize: 14,
-        color: COLORS.text.black,
-        opacity: 0.8,
+        fontSize: FONT_SIZES.base,
+        color: COLORS.text.primary,
     },
-    questionBox: {
-        backgroundColor: COLORS.card,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(1, 1, 1, 0.1)',
-        padding: 12,
-        ...SHADOWS.sm,
-        marginBottom: 14,
-    },
-    questionTitle: {
+    tagTextShared: {
+        color: '#166534',
         fontFamily: FONTS.medium,
-        fontSize: 16,
-        lineHeight: 22,
-        color: COLORS.text.black,
-        marginBottom: 4,
     },
-    answerText: {
+
+    // ── Lifestyle ────────────────────────────────────────────────
+
+    lifestyleRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 10,
+    },
+    lifestyleRowBorder: {
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.borderSubtle,
+    },
+    lifestyleLabel: {
         fontFamily: FONTS.regular,
-        fontSize: 15,
-        lineHeight: 24,
-        color: COLORS.text.black,
-        opacity: 0.5,
+        fontSize: FONT_SIZES.lg,
+        color: COLORS.text.primary,
+        marginLeft: 10,
     },
+    lifestyleValue: {
+        fontFamily: FONTS.medium,
+        fontSize: FONT_SIZES.lg,
+        color: COLORS.text.secondary,
+    },
+
+    // ── Floating Actions ─────────────────────────────────────────
+
     floatingActions: {
         position: 'absolute',
-        bottom: 64,
         flexDirection: 'row',
         alignSelf: 'center',
         gap: 28,
@@ -626,11 +891,7 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.passButton,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: 'rgba(0, 0, 0, 0.28)',
-        shadowOffset: { width: 0, height: -5 },
-        shadowOpacity: 1,
-        shadowRadius: 24,
-        elevation: 8,
+        ...SHADOWS.lg,
     },
     btnHeart: {
         width: 62,
@@ -639,20 +900,22 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.primary,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: 'rgba(0, 0, 0, 0.28)',
-        shadowOffset: { width: 0, height: -5 },
-        shadowOpacity: 1,
-        shadowRadius: 24,
-        elevation: 8,
+        ...SHADOWS.lg,
     },
-    homeIndicator: {
-        position: 'absolute',
-        bottom: 8,
-        width: 134,
-        height: 5,
-        backgroundColor: '#010101',
-        borderRadius: 100,
+    waitingBadge: {
         alignSelf: 'center',
-        opacity: 0.3,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        backgroundColor: 'rgba(212,170,1,0.1)',
+        borderWidth: 1,
+        borderColor: 'rgba(212,170,1,0.4)',
+        borderRadius: 40,
+    },
+    waitingText: {
+        fontFamily: FONTS.medium,
+        fontSize: FONT_SIZES.base,
+        color: COLORS.waitingAmber,
     },
 });

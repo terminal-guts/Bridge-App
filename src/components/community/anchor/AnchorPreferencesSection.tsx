@@ -10,7 +10,8 @@ import React from 'react';
 import { View, Text, Image, ScrollView } from 'react-native';
 import { styled } from 'nativewind';
 import { UserProfile, Photo } from '../../../types';
-import { FONTS } from '../../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../../constants/typography';
+import { COLORS } from '../../../theme/colors';
 import { EvaIcon } from '../../icons';
 
 const StyledView = styled(View);
@@ -78,13 +79,13 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
             width: 130,
             height: 130,
             borderRadius: 65,
-            backgroundColor: '#E5E7EB'
+            backgroundColor: COLORS.backgroundGrayMedium
           }}
           resizeMode="cover"
         />
         <StyledText style={{
-          fontSize: 16,
-          color: '#6B7280',
+          fontSize: FONT_SIZES.xl,
+          color: COLORS.text.label,
           marginTop: 12,
           textAlign: 'center'
         }}>
@@ -170,7 +171,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
 
               {anchor.partnerLifestylePreferences?.cannabis && (
                 <StyledView className="flex-row items-center py-2">
-                  <EvaIcon name="activity" variant="outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
+                  <EvaIcon name="trending-up" variant="outline" size={18} color="#64748B" style={{ marginRight: 12 }} />
                   <StyledText className="text-neutral-900 flex-1">
                     Cannabis: {formatFrequency(toSingleValue(anchor.partnerLifestylePreferences.cannabis))}
                   </StyledText>

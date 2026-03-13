@@ -8,9 +8,11 @@ import { getCurrentUser, signOut } from '../../services/authService';
 import { getUserProfile } from '../../services/profileService';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { lightHaptic } from '../../utils/haptics';
+import { formatProfileValue } from '../../utils/formatProfileValue';
 import { calculateEditProfileCompleteness } from '../../utils/profileCompleteness';
 import { createLogger } from '../../utils/secureLogger';
 import { FONTS } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
 import { EvaIcon } from '../../components/icons';
 
@@ -37,11 +39,16 @@ const getBasicsSummary = (profile: UserProfile): string => {
   if (profile.firstName) parts.push(profile.firstName);
   if (profile.age) parts.push(`${profile.age}`);
   if (profile.height) {
-    const h = parseInt(profile.height, 10);
-    if (h > 0) {
-      const ft = Math.floor(h / 12);
-      const inches = h % 12;
-      parts.push(`${ft}'${inches}"`);
+    // height may already be formatted as "6'1\"" or be raw inches like "73"
+    if (profile.height.includes("'")) {
+      parts.push(profile.height);
+    } else {
+      const h = parseInt(profile.height, 10);
+      if (h > 0) {
+        const ft = Math.floor(h / 12);
+        const inches = h % 12;
+        parts.push(`${ft}'${inches}"`);
+      }
     }
   }
   return parts.length > 0 ? parts.join(', ') : 'Not set';
@@ -51,7 +58,7 @@ const getAboutSummary = (profile: UserProfile): string => {
   const parts: string[] = [];
   if (profile.religion) parts.push(profile.religion);
   if (profile.currentJob) parts.push(profile.currentJob);
-  if (profile.educationLevel) parts.push(profile.educationLevel.replace(/_/g, ' '));
+  if (profile.educationLevel) parts.push(formatProfileValue(profile.educationLevel));
   return parts.length > 0 ? parts.join(', ') : 'Not set';
 };
 
@@ -63,8 +70,9 @@ const getInterestsSummary = (profile: UserProfile): string => {
 
 const getLifestyleSummary = (profile: UserProfile): string => {
   const parts: string[] = [];
-  if (profile.drinkingFrequency) parts.push(`Drinking: ${profile.drinkingFrequency}`);
-  if (profile.familyPlans) parts.push(profile.familyPlans.replace(/_/g, ' '));
+  if (profile.drinkingFrequency) parts.push(formatProfileValue(profile.drinkingFrequency));
+  if (profile.cannabisFrequency) parts.push(formatProfileValue(profile.cannabisFrequency));
+  if (profile.familyPlans) parts.push(formatProfileValue(profile.familyPlans));
   return parts.length > 0 ? parts.join(', ') : 'Not set';
 };
 
@@ -208,7 +216,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               <Body className="text-xs text-neutral-600">
                 {profileCompletion.completedCount} of {profileCompletion.totalCount} completed
               </Body>
-              <Body className="text-xs font-semibold" style={{ color: '#437FFF' }}>
+              <Body className="text-xs font-semibold" style={{ color: COLORS.primaryAccent }}>
                 {profileCompletion.percentage}%
               </Body>
             </StyledView>
@@ -217,7 +225,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
                 className="h-full rounded-full transition-all"
                 style={{
                   width: `${profileCompletion.percentage}%`,
-                  backgroundColor: '#437FFF',
+                  backgroundColor: COLORS.primaryAccent,
                 }}
               />
             </StyledView>
@@ -260,21 +268,21 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
 
           <SectionCard
             title="About Me"
-            icon="file-text"
+            icon="book-open"
             summary={getAboutSummary(profile)}
             onPress={() => navigation.navigate('EditAbout')}
           />
 
           <SectionCard
             title="Interests & Values"
-            icon="heart"
+            icon="color-palette"
             summary={getInterestsSummary(profile)}
             onPress={() => navigation.navigate('EditInterests')}
           />
 
           <SectionCard
             title="Lifestyle & Family"
-            icon="activity"
+            icon="home"
             summary={getLifestyleSummary(profile)}
             onPress={() => navigation.navigate('EditLifestyle')}
           />

@@ -22,8 +22,9 @@ import {
     STREAK_TIERS,
     KARMA_TIERS,
 } from '../../constants/friendsArea';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { SHADOWS } from '../../theme/shadows';
+import { COLORS as THEME_COLORS } from '../../theme/colors';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -152,7 +153,7 @@ export const FriendCard = React.memo<FriendCardProps>(({
                     </StyledTouchable>
                 ) : (
                     <StyledView style={styles.karmaContainer}>
-                        <StyledText style={[styles.karmaText, { color: '#34C759' }]}>
+                        <StyledText style={[styles.karmaText, { color: THEME_COLORS.success }]}>
                             {points} pts
                         </StyledText>
                     </StyledView>
@@ -169,7 +170,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
+        borderBottomColor: THEME_COLORS.borderSubtle,
         minHeight: 84,
     },
     avatarContainer: {
@@ -180,7 +181,7 @@ const styles = StyleSheet.create({
         height: 60,
         borderRadius: 30,
         borderWidth: 2,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: THEME_COLORS.backgroundGray,
     },
     infoContainer: {
         flex: 1,
@@ -194,7 +195,7 @@ const styles = StyleSheet.create({
         fontSize: 17,
         fontWeight: '700',
         fontFamily: FONTS.bold,
-        color: '#0F172A',
+        color: THEME_COLORS.text.primary,
         letterSpacing: -0.3,
     },
     metaRow: {
@@ -208,17 +209,17 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     streakEmoji: {
-        fontSize: 13,
+        fontSize: FONT_SIZES.md,
     },
     streakCount: {
-        fontSize: 13,
+        fontSize: FONT_SIZES.md,
         fontWeight: '600',
         fontFamily: FONTS.semiBold,
-        color: '#475569',
+        color: THEME_COLORS.text.muted,
         marginLeft: 3,
     },
     streakSuffix: {
-        fontSize: 13,
+        fontSize: FONT_SIZES.md,
         marginLeft: 2,
     },
     tierBadge: {
@@ -247,8 +248,8 @@ const styles = StyleSheet.create({
         ...SHADOWS.accentBlue,
     },
     voteButtonText: {
-        color: '#FFFFFF',
-        fontSize: 14,
+        color: THEME_COLORS.card,
+        fontSize: FONT_SIZES.base,
         fontWeight: '700',
         fontFamily: FONTS.bold,
     },
@@ -256,7 +257,7 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end',
     },
     karmaText: {
-        fontSize: 18,
+        fontSize: FONT_SIZES['2xl'],
         fontWeight: '800',
         fontFamily: FONTS.extraBold,
         letterSpacing: -0.5,

@@ -19,7 +19,8 @@ import { transformBackendProposal } from '../../services/proposalApiService';
 import { mapProfileRow, resolveProfilePhotos } from '../../services/communityBackendService';
 import { createLogger } from '../../utils/secureLogger';
 import { getQuestionById } from '../../utils/deepQuestions';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { ScreenWrapper } from '../../components/ui';
 
 const logger = createLogger('FriendProposalScreen');
@@ -194,8 +195,8 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
     return (
       <ScreenWrapper>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#437FFF" />
-          <Text style={{ marginTop: 12, color: '#667085', fontSize: 14 }}>
+          <ActivityIndicator size="large" color={COLORS.primaryAccent} />
+          <Text style={{ marginTop: 12, color: COLORS.text.label, fontSize: FONT_SIZES.base }}>
             Loading {friendName}'s proposal...
           </Text>
         </View>
@@ -207,19 +208,19 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
     return (
       <ScreenWrapper>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
-          <Text style={{ fontSize: 16, color: '#344054', textAlign: 'center', marginBottom: 16 }}>
+          <Text style={{ fontSize: FONT_SIZES.xl, color: '#344054', textAlign: 'center', marginBottom: 16 }}>
             {error || 'No proposal found'}
           </Text>
           <TouchableOpacity
             onPress={handleBack}
             style={{
-              backgroundColor: '#437FFF',
+              backgroundColor: COLORS.primaryAccent,
               paddingHorizontal: 24,
               paddingVertical: 12,
               borderRadius: 8,
             }}
           >
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold }}>Go Back</Text>
+            <Text style={{ color: '#fff', fontSize: FONT_SIZES.xl, fontWeight: '600', fontFamily: FONTS.semiBold }}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </ScreenWrapper>

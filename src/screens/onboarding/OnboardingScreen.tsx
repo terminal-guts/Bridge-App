@@ -1,8 +1,19 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { View, StatusBar, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+  SlideInRight,
+  SlideOutLeft,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { NavigationProp } from '@react-navigation/native';
+import { DURATIONS } from '../../constants/animations';
 import { RootStackParamList, OnboardingData } from '../../types';
 import { createUserProfile, saveOnboardingStep } from '../../services/profileService';
 import { supabase } from '../../lib/supabase';
@@ -49,6 +60,27 @@ interface StepDefinition {
 
 const StyledView = styled(View);
 const StyledSafeAreaView = styled(SafeAreaView);
+
+/** Individual progress bar segment with smooth fill animation */
+const AnimatedProgressSegment: React.FC<{ active: boolean }> = ({ active }) => {
+  const progress = useSharedValue(active ? 1 : 0);
+
+  useEffect(() => {
+    progress.value = withTiming(active ? 1 : 0, {
+      duration: DURATIONS.normal,
+      easing: Easing.bezier(0.25, 0.1, 0.25, 1.0),
+    });
+  }, [active]);
+
+  const segmentStyle = useAnimatedStyle(() => ({
+    flex: 1,
+    height: 4,
+    backgroundColor: progress.value > 0.5 ? '#437FFF' : '#E5E7EB',
+    opacity: 0.3 + progress.value * 0.7,
+  }));
+
+  return <Animated.View style={segmentStyle} />;
+};
 
 // Profile steps shared by both signup paths
 const PROFILE_STEPS: StepDefinition[] = [
@@ -328,32 +360,36 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
         </StyledView>
       )}
 
-      {/* Progress Bar - Absolute positioned at top */}
+      {/* Animated Progress Bar - Absolute positioned at top */}
       <StyledSafeAreaView
         edges={['top']}
         className="absolute top-0 left-0 right-0 z-50 bg-neutral-50"
       >
         <StyledView className="flex-row items-center">
           {Array.from({ length: totalSteps }).map((_, index) => (
-            <StyledView
+            <AnimatedProgressSegment
               key={index}
-              className={`flex-1 h-1 ${
-                index <= currentStep ? 'bg-primary-500' : 'bg-neutral-200'
-              }`}
+              active={index <= currentStep}
             />
           ))}
         </StyledView>
       </StyledSafeAreaView>
 
-      {/* Step Content */}
-      <CurrentStepComponent
-        data={onboardingData}
-        updateData={updateData}
-        onNext={goNext}
-        onBack={goBack}
-        isFirstStep={currentStep === 0}
-        isLastStep={currentStep === totalSteps - 1}
-      />
+      {/* Step Content — keyed by step index for entrance/exit animations */}
+      <Animated.View
+        key={currentStep}
+        entering={FadeIn.duration(DURATIONS.normal)}
+        style={{ flex: 1 }}
+      >
+        <CurrentStepComponent
+          data={onboardingData}
+          updateData={updateData}
+          onNext={goNext}
+          onBack={goBack}
+          isFirstStep={currentStep === 0}
+          isLastStep={currentStep === totalSteps - 1}
+        />
+      </Animated.View>
     </StyledView>
   );
 };

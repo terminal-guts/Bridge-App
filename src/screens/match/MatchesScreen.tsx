@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback, RefreshControl, KeyboardAvoidingView, Platform, Animated, Easing } from 'react-native';
 import { Image } from 'expo-image';
+import LottieView from 'lottie-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MatchCard } from '../../components/matches/MatchCard';
 import { communityService } from '../../services/communityServiceIndex';
@@ -23,11 +24,11 @@ import { ScreenWrapper } from '../../components/ui';
 import ViewShot from 'react-native-view-shot';
 import * as FileSystem from 'expo-file-system';
 import { MatchesSkeleton } from '../../components/ui/SkeletonLoader';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 
-// Pre-register the illustration asset at module load time so it is available
-// before the screen mounts (avoids a first-render blank on fresh installs).
-const NO_MATCH_ILLUSTRATION = require('../../../assets/no_match_illustration.jpg');
+// Lottie animation for the empty-state illustration
+const VALENTINE_COUPLE_ANIM = require('../../../assets/Icons/AnimatedIcons/valentine-couple.json');
 
 // One of five mutually exclusive states the screen can be in
 type ScreenState =
@@ -55,8 +56,8 @@ const END_MATCH_REASONS = [
 ];
 
 function timerColor(hoursLeft: number): string {
-    if (hoursLeft >= 24) return '#34C759';
-    if (hoursLeft >= 12) return '#D4AA01';
+    if (hoursLeft >= 24) return COLORS.success;
+    if (hoursLeft >= 12) return COLORS.waitingAmber;
     if (hoursLeft >= 4)  return '#FF8D28';
     return '#FF3B30';
 }
@@ -133,7 +134,7 @@ const popupStyles = StyleSheet.create({
         alignItems: 'center',
     },
     card: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         borderRadius: 20,
         paddingHorizontal: 28,
         paddingTop: 28,
@@ -141,16 +142,16 @@ const popupStyles = StyleSheet.create({
         marginHorizontal: 32,
     },
     content: { alignItems: 'center' },
-    icon: { fontSize: 32, marginBottom: 10 },
+    icon: { fontSize: FONT_SIZES['6xl'], marginBottom: 10 },
     headline: {
         fontFamily: FONTS.bold,
-        fontSize: 20,
+        fontSize: FONT_SIZES['3xl'],
         color: '#101828',
         textAlign: 'center',
         marginBottom: 12,
     },
     reasonBox: {
-        backgroundColor: '#F9FAFB',
+        backgroundColor: COLORS.backgroundSubtle,
         borderRadius: 10,
         borderWidth: 1,
         borderColor: '#E4E7EC',
@@ -161,21 +162,21 @@ const popupStyles = StyleSheet.create({
     },
     reasonLabel: {
         fontFamily: FONTS.semiBold,
-        fontSize: 12,
-        color: '#98A2B3',
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.text.placeholder,
         marginBottom: 4,
         letterSpacing: 0.4,
     },
     reasonText: {
         fontFamily: FONTS.regular,
-        fontSize: 14,
+        fontSize: FONT_SIZES.base,
         color: '#344054',
         fontStyle: 'italic',
         lineHeight: 20,
     },
     body: {
         fontFamily: FONTS.regular,
-        fontSize: 14,
+        fontSize: FONT_SIZES.base,
         color: '#667085',
         textAlign: 'center',
         lineHeight: 20,
@@ -183,30 +184,26 @@ const popupStyles = StyleSheet.create({
         marginBottom: 20,
     },
     continueBtn: {
-        backgroundColor: '#2B65F9',
+        backgroundColor: COLORS.primaryButton,
         borderRadius: 12,
         paddingVertical: 14,
         alignItems: 'center',
     },
     continueBtnText: {
         fontFamily: FONTS.semiBold,
-        fontSize: 16,
-        color: '#FFFFFF',
+        fontSize: FONT_SIZES.xl,
+        color: COLORS.card,
     },
 });
 
-// Wraps the illustration so it can retry on error (handles first-mount blank)
-function IllustrationImage() {
-    const [key, setKey] = React.useState(0);
+// Animated illustration for the empty state
+function IllustrationAnimation() {
     return (
-        <Image
-            key={key}
-            source={NO_MATCH_ILLUSTRATION}
+        <LottieView
+            source={VALENTINE_COUPLE_ANIM}
+            autoPlay
+            loop
             style={styles.illustration}
-            contentFit="contain"
-            transition={200}
-            cachePolicy="disk"
-            onError={() => setKey(k => k + 1)}
         />
     );
 }
@@ -236,6 +233,7 @@ export function MatchesScreen() {
     const [shareLoading, setShareLoading] = useState(false);
     const viewShotRef = useRef<ViewShot>(null);
     const cardEntrance = useRef(new Animated.Value(0)).current;
+    const hasAnimatedEntrance = useRef(false);
     const navigation = useNavigation<any>();
     const { height: windowHeight } = useWindowDimensions();
     const insets = useSafeAreaInsets();
@@ -287,8 +285,11 @@ export function MatchesScreen() {
         } finally {
             if (isMountedRef.current) {
                 setLoading(false);
-                cardEntrance.setValue(0);
-                Animated.timing(cardEntrance, { toValue: 1, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+                if (!hasAnimatedEntrance.current) {
+                    hasAnimatedEntrance.current = true;
+                    cardEntrance.setValue(0);
+                    Animated.timing(cardEntrance, { toValue: 1, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+                }
             }
         }
     };
@@ -500,20 +501,12 @@ export function MatchesScreen() {
                 <ScrollView
                     contentContainerStyle={styles.emptyContainer}
                     refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#2B65F9" />
+                        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.primaryButton} />
                     }
                 >
+                    <IllustrationAnimation />
                     <Text style={styles.tagline}>Your friends are on it</Text>
-                    <IllustrationImage />
-                    <Text style={styles.subtitle}>
-                        Your crew is out there finding someone great for you. The more you vote, the faster they'll vote for you.
-                    </Text>
-                    {emptyCountdown && (
-                        <View style={stateStyles.countdownContainer}>
-                            <ClockIcon size={14} color="#437FFF" />
-                            <Text style={stateStyles.countdownText}>Next proposals in {emptyCountdown}</Text>
-                        </View>
-                    )}
+                    <Text style={styles.subtitle}>Help them out and they'll return the favor</Text>
                     <TouchableOpacity
                         style={styles.ctaButton}
                         activeOpacity={0.85}
@@ -521,7 +514,12 @@ export function MatchesScreen() {
                     >
                         <Text style={styles.ctaText}>Vote for Your Friends</Text>
                     </TouchableOpacity>
-                    <Text style={stateStyles.proposalDropText}>New proposals drop at 7 PM every day</Text>
+                    {emptyCountdown && (
+                        <View style={stateStyles.countdownRow}>
+                            <ClockIcon size={13} color={COLORS.text.light} />
+                            <Text style={stateStyles.countdownText}>New proposals in {emptyCountdown}</Text>
+                        </View>
+                    )}
                 </ScrollView>
 
                 {/* Ended Match Popup — must render here so it persists over empty state */}
@@ -554,7 +552,7 @@ export function MatchesScreen() {
     })();
 
     let timerLabel: string | null = null;
-    let timerClr = '#34C759';
+    let timerClr = COLORS.success;
     let timerBg = 'rgba(52, 199, 89, 0.08)';
     let timerBdrClr = 'rgba(52, 199, 89, 0.25)';
     if (expiryTs) {
@@ -628,9 +626,9 @@ export function MatchesScreen() {
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#FDFAF7' }}>
+        <View style={{ flex: 1, backgroundColor: COLORS.screenBackground }}>
             {/* Safe area spacer so OfflineBanner sits below the status bar */}
-            <View style={{ paddingTop: insets.top, backgroundColor: '#FDFAF7' }}>
+            <View style={{ paddingTop: insets.top, backgroundColor: COLORS.screenBackground }}>
                 <OfflineBanner />
             </View>
             {screenState !== 'active_match' && (
@@ -655,7 +653,7 @@ export function MatchesScreen() {
             <ScrollView
                 style={{ flex: 1, paddingHorizontal: 16, marginTop: scrollMargin }}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#2B65F9" />
+                    <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.primaryButton} />
                 }
             >
                 <Animated.View style={{ marginBottom: cardMB, height: adjustedCardHeight, opacity: cardEntrance, transform: [{ translateY: cardEntrance.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }] }}>
@@ -712,11 +710,11 @@ export function MatchesScreen() {
                             }}
                             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                         >
-                            <Text style={{ fontSize: 18, color: '#667085' }}>✕</Text>
+                            <Text style={{ fontSize: FONT_SIZES['2xl'], color: '#667085' }}>✕</Text>
                         </TouchableOpacity>
 
                         <View style={[tsStyles.iconWrap, { backgroundColor: '#FFF4ED' }]}>
-                            <Text style={{ fontSize: 26 }}>close-circle</Text>
+                            <Text style={{ fontSize: FONT_SIZES['5xl'] }}>close-circle</Text>
                         </View>
                         <Text style={tsStyles.title}>End this match?</Text>
                         <Text style={tsStyles.subtitle}>
@@ -740,7 +738,7 @@ export function MatchesScreen() {
                         <TextInput
                             style={tsStyles.textArea}
                             placeholder={endMatchReason === 'Other' ? 'Tell us a bit more...' : 'Additional details (optional)'}
-                            placeholderTextColor="#98A2B3"
+                            placeholderTextColor={COLORS.text.placeholder}
                             value={endMatchCustomReason}
                             onChangeText={setEndMatchCustomReason}
                             multiline
@@ -748,7 +746,7 @@ export function MatchesScreen() {
                         />
 
                         <TouchableOpacity
-                            style={[tsStyles.submitBtn, { backgroundColor: '#EF4444' }, (!endMatchReason || endMatchSubmitting) && tsStyles.submitBtnDisabled]}
+                            style={[tsStyles.submitBtn, { backgroundColor: COLORS.error }, (!endMatchReason || endMatchSubmitting) && tsStyles.submitBtnDisabled]}
                             onPress={handleEndMatchConfirm}
                             disabled={!endMatchReason || endMatchSubmitting}
                         >
@@ -818,7 +816,7 @@ export function MatchesScreen() {
 }
 
 const styles = StyleSheet.create({
-    root: { flex: 1, backgroundColor: '#FDFAF7' },
+    root: { flex: 1, backgroundColor: COLORS.screenBackground },
     header: { paddingTop: 16, paddingHorizontal: 24, paddingBottom: 8 },
     headerRow: {
         flexDirection: 'row',
@@ -827,8 +825,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingBottom: 4,
     },
-    headerTitle: { fontFamily: FONTS.bold, fontWeight: '700', fontSize: 32, lineHeight: 38, color: '#010101', letterSpacing: -0.5 },
-    headerSubtitle: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 18, color: '#667085', paddingHorizontal: 24, paddingBottom: 4 },
+    headerTitle: { fontFamily: FONTS.bold, fontWeight: '700', fontSize: FONT_SIZES['6xl'], lineHeight: 38, color: COLORS.text.black, letterSpacing: -0.5 },
+    headerSubtitle: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.base, lineHeight: 18, color: '#667085', paddingHorizontal: 24, paddingBottom: 4 },
     timerBadge: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -839,27 +837,27 @@ const styles = StyleSheet.create({
         height: 34,
     },
     timerText: {
-        fontSize: 13,
+        fontSize: FONT_SIZES.md,
         fontWeight: '600',
     },
-    emptyContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-    tagline: { fontFamily: FONTS.semiBold, fontSize: 20, lineHeight: 26, color: '#0B1226', textAlign: 'center', marginBottom: 12 },
-    illustration: { width: 300, height: 300, marginBottom: 32 },
-    subtitle: { fontFamily: FONTS.medium, fontSize: 14, lineHeight: 17, color: '#6B7280', textAlign: 'center', marginBottom: 16 },
+    emptyContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 24 },
+    illustration: { width: 260, height: 260, marginBottom: 2 },
+    tagline: { fontFamily: FONTS.bold, fontSize: FONT_SIZES['4xl'], lineHeight: LINE_HEIGHTS['4xl'], color: COLORS.text.heading, textAlign: 'center', marginBottom: 6, letterSpacing: -0.3 },
+    subtitle: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.base, lineHeight: LINE_HEIGHTS.base, color: COLORS.text.light, textAlign: 'center', marginBottom: 28 },
     ctaButton: {
-        backgroundColor: '#007AFF',
-        width: 250,
-        height: 47,
+        backgroundColor: COLORS.primaryButton,
+        width: 260,
+        height: 50,
         borderRadius: 9999,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: 'rgba(0, 122, 255, 0.2)',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 1,
-        shadowRadius: 12,
+        shadowColor: COLORS.primaryButton,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 14,
         elevation: 4,
     },
-    ctaText: { fontFamily: FONTS.semiBold, fontSize: 15, color: '#FFFFFF' },
+    ctaText: { fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.xl, color: COLORS.card },
 
     // Modal
     modalOverlay: {
@@ -868,7 +866,7 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-start',
     },
     modalCard: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         borderBottomLeftRadius: 24,
         borderBottomRightRadius: 24,
         paddingHorizontal: 24,
@@ -877,14 +875,14 @@ const styles = StyleSheet.create({
     },
     modalTitle: {
         fontFamily: FONTS.semiBold,
-        fontSize: 20,
+        fontSize: FONT_SIZES['3xl'],
         color: '#101828',
         marginBottom: 6,
         textAlign: 'center',
     },
     modalSubtitle: {
         fontFamily: FONTS.regular,
-        fontSize: 14,
+        fontSize: FONT_SIZES.base,
         color: '#667085',
         textAlign: 'center',
         marginBottom: 20,
@@ -896,7 +894,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingVertical: 12,
         fontFamily: FONTS.regular,
-        fontSize: 14,
+        fontSize: FONT_SIZES.base,
         color: '#101828',
         minHeight: 100,
         textAlignVertical: 'top',
@@ -904,8 +902,8 @@ const styles = StyleSheet.create({
     },
     charCount: {
         fontFamily: FONTS.regular,
-        fontSize: 12,
-        color: '#98A2B3',
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.text.placeholder,
         textAlign: 'right',
         marginBottom: 20,
     },
@@ -923,20 +921,20 @@ const styles = StyleSheet.create({
     },
     cancelBtnText: {
         fontFamily: FONTS.semiBold,
-        fontSize: 15,
+        fontSize: FONT_SIZES.lg,
         color: '#344054',
     },
     destructiveBtn: {
         flex: 1,
         paddingVertical: 14,
         borderRadius: 12,
-        backgroundColor: '#EF4444',
+        backgroundColor: COLORS.error,
         alignItems: 'center',
     },
     destructiveBtnText: {
         fontFamily: FONTS.semiBold,
-        fontSize: 15,
-        color: '#FFFFFF',
+        fontSize: FONT_SIZES.lg,
+        color: COLORS.card,
     },
     btnDisabled: {
         opacity: 0.4,
@@ -949,7 +947,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
     },
     centeredModalCard: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         borderRadius: 20,
         paddingHorizontal: 24,
         paddingTop: 24,
@@ -968,31 +966,31 @@ const styles = StyleSheet.create({
         borderRadius: 999,
         borderWidth: 1.5,
         borderColor: '#E4E7EC',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
     },
     reasonPillActive: {
-        borderColor: '#437FFF',
-        backgroundColor: '#EEF3FF',
+        borderColor: COLORS.primaryAccent,
+        backgroundColor: COLORS.backgroundFriendActive,
     },
     reasonText: {
         fontFamily: FONTS.regular,
-        fontSize: 12,
+        fontSize: FONT_SIZES.sm,
         color: '#667085',
     },
     reasonTextActive: {
         fontFamily: FONTS.semiBold,
-        color: '#437FFF',
+        color: COLORS.primaryAccent,
     },
     continueBtn: {
-        backgroundColor: '#437FFF',
+        backgroundColor: COLORS.primaryAccent,
         borderRadius: 12,
         paddingVertical: 15,
         alignItems: 'center',
     },
     continueBtnText: {
         fontFamily: FONTS.semiBold,
-        fontSize: 16,
-        color: '#FFFFFF',
+        fontSize: FONT_SIZES.xl,
+        color: COLORS.card,
     },
 
     // Timer info modal
@@ -1003,7 +1001,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     timerInfoCard: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         borderRadius: 20,
         paddingHorizontal: 28,
         paddingTop: 28,
@@ -1013,29 +1011,29 @@ const styles = StyleSheet.create({
     },
     timerInfoTitle: {
         fontFamily: FONTS.bold,
-        fontSize: 18,
+        fontSize: FONT_SIZES['2xl'],
         color: '#101828',
         marginBottom: 8,
         textAlign: 'center',
     },
     timerInfoBody: {
         fontFamily: FONTS.regular,
-        fontSize: 14,
+        fontSize: FONT_SIZES.base,
         color: '#667085',
         textAlign: 'center',
         lineHeight: 20,
         marginBottom: 20,
     },
     timerInfoBtn: {
-        backgroundColor: '#2B65F9',
+        backgroundColor: COLORS.primaryButton,
         borderRadius: 12,
         paddingVertical: 12,
         paddingHorizontal: 32,
     },
     timerInfoBtnText: {
         fontFamily: FONTS.semiBold,
-        fontSize: 15,
-        color: '#FFFFFF',
+        fontSize: FONT_SIZES.lg,
+        color: COLORS.card,
     },
 });
 
@@ -1047,7 +1045,7 @@ const tsStyles = StyleSheet.create({
         justifyContent: 'flex-start',
     },
     card: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         borderBottomLeftRadius: 24,
         borderBottomRightRadius: 24,
         paddingHorizontal: 24,
@@ -1066,7 +1064,7 @@ const tsStyles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: '#F2F4F7',
+        backgroundColor: COLORS.backgroundProgressTrack,
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1,
@@ -1082,14 +1080,14 @@ const tsStyles = StyleSheet.create({
     },
     title: {
         fontFamily: FONTS.semiBold,
-        fontSize: 20,
+        fontSize: FONT_SIZES['3xl'],
         color: '#101828',
         textAlign: 'center',
         marginBottom: 6,
     },
     subtitle: {
         fontFamily: FONTS.regular,
-        fontSize: 14,
+        fontSize: FONT_SIZES.base,
         color: '#667085',
         textAlign: 'center',
         marginBottom: 20,
@@ -1107,20 +1105,20 @@ const tsStyles = StyleSheet.create({
         borderRadius: 999,
         borderWidth: 1.5,
         borderColor: '#E4E7EC',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
     },
     pillActive: {
-        borderColor: '#437FFF',
-        backgroundColor: '#EEF3FF',
+        borderColor: COLORS.primaryAccent,
+        backgroundColor: COLORS.backgroundFriendActive,
     },
     pillText: {
         fontFamily: FONTS.medium,
-        fontSize: 13,
+        fontSize: FONT_SIZES.md,
         color: '#667085',
     },
     pillTextActive: {
         fontFamily: FONTS.semiBold,
-        color: '#437FFF',
+        color: COLORS.primaryAccent,
     },
     textArea: {
         borderWidth: 1.5,
@@ -1129,7 +1127,7 @@ const tsStyles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 14,
         fontFamily: FONTS.regular,
-        fontSize: 15,
+        fontSize: FONT_SIZES.lg,
         color: '#101828',
         minHeight: 64,
         textAlignVertical: 'top',
@@ -1139,7 +1137,7 @@ const tsStyles = StyleSheet.create({
     submitBtn: {
         paddingVertical: 16,
         borderRadius: 14,
-        backgroundColor: '#437FFF',
+        backgroundColor: COLORS.primaryAccent,
         alignItems: 'center',
     },
     submitBtnDisabled: {
@@ -1147,8 +1145,8 @@ const tsStyles = StyleSheet.create({
     },
     submitBtnText: {
         fontFamily: FONTS.semiBold,
-        fontSize: 16,
-        color: '#FFFFFF',
+        fontSize: FONT_SIZES.xl,
+        color: COLORS.card,
     },
 });
 
@@ -1168,40 +1166,26 @@ const stateStyles = StyleSheet.create({
     },
     votedCheckmark: {
         fontFamily: FONTS.bold,
-        fontSize: 12,
-        color: '#34C759',
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.success,
         marginRight: 4,
     },
     votedText: {
         fontFamily: FONTS.medium,
-        fontSize: 12,
-        color: '#34C759',
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.success,
     },
-    // empty state — countdown timer
-    countdownContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(67, 127, 255, 0.08)',
-        borderWidth: 1,
-        borderColor: 'rgba(67, 127, 255, 0.2)',
-        borderRadius: 10,
-        paddingHorizontal: 14,
-        paddingVertical: 6,
-        marginBottom: 16,
-        gap: 6,
+    // empty state — countdown below CTA
+    countdownRow: {
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
+        marginTop: 16,
+        gap: 5,
     },
     countdownText: {
-        fontFamily: FONTS.semiBold,
-        fontSize: 13,
-        color: '#437FFF',
-    },
-    // empty state — secondary text below CTA
-    proposalDropText: {
         fontFamily: FONTS.regular,
-        fontSize: 12,
-        color: '#98A2B3',
-        textAlign: 'center',
-        marginTop: 12,
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.text.light,
     },
 });
 

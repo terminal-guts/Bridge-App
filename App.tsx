@@ -1,4 +1,5 @@
 import React from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, ActivityIndicator } from 'react-native';
 import { AppNavigator } from './src/navigation/AppNavigator';
@@ -69,16 +70,18 @@ export default function App() {
   }
 
   return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <GuideProvider>
-          <View style={{ flex: 1 }}>
-            <AppNavigator />
-            <GuideOverlay />
-          </View>
-          <Toast config={toastConfig} />
-        </GuideProvider>
-      </SafeAreaProvider>
-    </ErrorBoundary>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ErrorBoundary>
+        <SafeAreaProvider>
+          <GuideProvider>
+            <View style={{ flex: 1 }}>
+              <AppNavigator />
+              <GuideOverlay />
+            </View>
+            <Toast config={toastConfig} />
+          </GuideProvider>
+        </SafeAreaProvider>
+      </ErrorBoundary>
+    </GestureHandlerRootView>
   );
 }

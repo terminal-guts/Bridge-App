@@ -7,6 +7,7 @@ import { H3, Body } from '../../components/ui/Typography';
 import { Card, Input, ScreenWrapper } from '../../components/ui';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { FONTS } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { SectionScreenWrapper } from './sections/SectionScreenWrapper';
 import { useEditProfile } from './sections/useEditProfile';
 import { CustomInputModal } from './sections/CustomInputModal';
@@ -81,7 +82,7 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
 
         {/* Religion */}
         <Body className="text-xs font-medium text-neutral-700 mb-2">
-          Religion <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText>
+          Religion <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText>
         </Body>
         <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
           {RELIGION_OPTIONS.map((option) => (
@@ -113,7 +114,7 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
 
         {/* Political Leaning */}
         <Body className="text-xs font-medium text-neutral-700 mb-2">
-          Political Leaning <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText>
+          Political Leaning <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText>
         </Body>
         <StyledView className="flex-row flex-wrap gap-2.5">
           {POLITICAL_OPTIONS.map((option) => (
@@ -163,7 +164,7 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
 
         <StyledView className="mb-4">
           <Body className="text-xs font-medium text-neutral-700 mb-2">
-            Occupation <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText>
+            Occupation <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText>
           </Body>
           <Input
             value={profile.currentJob || ''}

@@ -37,7 +37,8 @@ import { AudioRecorder } from '../../components/chat/AudioRecorder';
 import { communityService } from '../../services/communityServiceIndex';
 import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { OVERLAYS } from '../../theme/shadows';
 import { EvaIcon } from '../../components/icons';
 
@@ -700,7 +701,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
                     {sendingMessage ? (
                       <ActivityIndicator size="small" color="white" />
                     ) : (
-                      <EvaIcon name="paper-plane" variant="outline" size={20} color="newMessage.trim()" />
+                      <EvaIcon name="paper-plane" variant="outline" size={20} color={newMessage.trim() ? COLORS.card : COLORS.text.placeholder} />
                     )}
                   </StyledTouchableOpacity>
                 ) : null}
@@ -770,7 +771,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
               <EvaIcon name="close" variant="outline" size={22} color="#667085" />
             </TouchableOpacity>
 
-            <View style={[ts.iconWrap, { backgroundColor: '#EEF3FF' }]}>
+            <View style={[ts.iconWrap, { backgroundColor: COLORS.backgroundFriendActive }]}>
               <EvaIcon name="calendar" variant="outline" size={26} color="#437FFF" />
             </View>
             <Text style={ts.title}>Propose a Date</Text>
@@ -963,12 +964,12 @@ const dateProposalStyles = StyleSheet.create({
   },
   headerText: {
     fontFamily: FONTS.semiBold,
-    fontSize: 14,
-    color: '#437FFF',
+    fontSize: FONT_SIZES.base,
+    color: COLORS.primaryAccent,
   },
   body: {
     fontFamily: FONTS.regular,
-    fontSize: 15,
+    fontSize: FONT_SIZES.lg,
     color: '#101828',
     lineHeight: 22,
   },
@@ -984,7 +985,7 @@ const cs = StyleSheet.create({
     position: 'absolute',
     top: 96,
     right: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
     borderRadius: 12,
     width: 220,
     shadowColor: '#000',
@@ -1002,13 +1003,13 @@ const cs = StyleSheet.create({
     gap: 10,
   },
   menuItemText: {
-    fontSize: 15,
+    fontSize: FONT_SIZES.lg,
     fontFamily: FONTS.medium,
     color: '#101828',
   },
   menuDivider: {
     height: 1,
-    backgroundColor: '#F2F4F7',
+    backgroundColor: COLORS.backgroundProgressTrack,
     marginHorizontal: 16,
   },
 });
@@ -1021,7 +1022,7 @@ const ts = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     paddingHorizontal: 24,
@@ -1040,7 +1041,7 @@ const ts = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F2F4F7',
+    backgroundColor: COLORS.backgroundProgressTrack,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
@@ -1056,14 +1057,14 @@ const ts = StyleSheet.create({
   },
   title: {
     fontFamily: FONTS.semiBold,
-    fontSize: 20,
+    fontSize: FONT_SIZES['3xl'],
     color: '#101828',
     textAlign: 'center',
     marginBottom: 6,
   },
   subtitle: {
     fontFamily: FONTS.regular,
-    fontSize: 14,
+    fontSize: FONT_SIZES.base,
     color: '#667085',
     textAlign: 'center',
     marginBottom: 20,
@@ -1081,20 +1082,20 @@ const ts = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1.5,
     borderColor: '#E4E7EC',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
   },
   pillActive: {
-    borderColor: '#437FFF',
-    backgroundColor: '#EEF3FF',
+    borderColor: COLORS.primaryAccent,
+    backgroundColor: COLORS.backgroundFriendActive,
   },
   pillText: {
     fontFamily: FONTS.medium,
-    fontSize: 13,
+    fontSize: FONT_SIZES.md,
     color: '#667085',
   },
   pillTextActive: {
     fontFamily: FONTS.semiBold,
-    color: '#437FFF',
+    color: COLORS.primaryAccent,
   },
   textArea: {
     borderWidth: 1.5,
@@ -1103,7 +1104,7 @@ const ts = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontFamily: FONTS.regular,
-    fontSize: 15,
+    fontSize: FONT_SIZES.lg,
     color: '#101828',
     minHeight: 64,
     textAlignVertical: 'top',
@@ -1113,7 +1114,7 @@ const ts = StyleSheet.create({
   submitBtn: {
     paddingVertical: 16,
     borderRadius: 14,
-    backgroundColor: '#437FFF',
+    backgroundColor: COLORS.primaryAccent,
     alignItems: 'center',
   },
   submitBtnDisabled: {
@@ -1121,7 +1122,7 @@ const ts = StyleSheet.create({
   },
   submitBtnText: {
     fontFamily: FONTS.semiBold,
-    fontSize: 16,
-    color: '#FFFFFF',
+    fontSize: FONT_SIZES.xl,
+    color: COLORS.card,
   },
 });

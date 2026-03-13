@@ -16,6 +16,7 @@ import { UserProfile } from '../../types';
 import { calculateProfileStrengthBreakdown } from '../../utils/profileCompleteness';
 import { createLogger } from '../../utils/secureLogger';
 import { EvaIcon } from '../icons';
+import { COLORS } from '../../theme/colors';
 
 const logger = createLogger('ProfileStrengthDashboard');
 
@@ -27,7 +28,7 @@ interface ProfileStrengthDashboardProps {
 
 interface SectionScore {
   name: string;
-  icon: keyof typeof Record<string, number>;
+  icon: string;
   score: number;
   maxScore: number;
   suggestions: string[];
@@ -85,7 +86,7 @@ const calculateStrength = (profile: UserProfile): {
     score: breakdown.sections.aboutMe.score,
     maxScore: breakdown.sections.aboutMe.maxScore,
     suggestions: aboutSuggestions.slice(0, 2),
-    color: '#437FFF',
+    color: COLORS.primaryAccent,
     displayPercentage: breakdown.sections.aboutMe.percentage,
   });
 
@@ -129,7 +130,7 @@ const calculateStrength = (profile: UserProfile): {
     score: breakdown.sections.photos.score,
     maxScore: breakdown.sections.photos.maxScore,
     suggestions: photosSuggestions,
-    color: '#10B981',
+    color: COLORS.emerald,
     displayPercentage: breakdown.sections.photos.percentage,
   });
 
@@ -163,8 +164,8 @@ const calculateStrength = (profile: UserProfile): {
  * Get strength level and message
  */
 const getStrengthLevel = (score: number): { level: string; message: string; color: string } => {
-  if (score >= 90) return { level: 'Excellent', message: 'Your profile stands out!', color: '#10B981' };
-  if (score >= 75) return { level: 'Great', message: 'You\'re doing well!', color: '#437FFF' };
+  if (score >= 90) return { level: 'Excellent', message: 'Your profile stands out!', color: COLORS.emerald };
+  if (score >= 75) return { level: 'Great', message: 'You\'re doing well!', color: COLORS.primaryAccent };
   if (score >= 60) return { level: 'Good', message: 'Keep improving!', color: '#F59E0B' };
   if (score >= 40) return { level: 'Fair', message: 'Needs some work', color: '#DC2626' };
   return { level: 'Weak', message: 'Complete your profile', color: '#B91C1C' };
@@ -192,8 +193,8 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
           <StyledView
             className="w-9 h-9 rounded-lg items-center justify-center mr-2.5"
             style={{
-              backgroundColor: isComplete ? '#D1FAE5' : '#EBF2FF',
-              shadowColor: isComplete ? '#10B981' : '#437FFF',
+              backgroundColor: isComplete ? COLORS.backgroundValuesTag : '#EBF2FF',
+              shadowColor: isComplete ? COLORS.emerald : COLORS.primaryAccent,
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.3,
               shadowRadius: 6,

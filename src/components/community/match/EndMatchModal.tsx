@@ -19,6 +19,7 @@ import { styled } from 'nativewind';
 import { lightHaptic, mediumHaptic } from '../../../utils/haptics';
 import { SHADOWS, OVERLAYS } from '../../../theme/shadows';
 import { FONTS } from '../../../constants/typography';
+import { COLORS } from '../../../theme/colors';
 import { EvaIcon } from '../../icons';
 
 const StyledView = styled(View);
@@ -127,14 +128,14 @@ export function EndMatchModal({ visible, onClose, onSubmit }: EndMatchModalProps
                 <EvaIcon name="close-circle" variant="outline" size={32} color="#EF4444" style={{ marginBottom: 12 }} />
                 <StyledText
                   className="text-2xl font-bold text-center mb-2"
-                  style={{ color: '#78716C' }}
+                  style={{ color: COLORS.text.subtle }}
                 >
                   End This Match?
                 </StyledText>
                 <StyledView className="h-1 w-16 bg-neutral-200 rounded-full mb-4" />
                 <StyledText
                   className="text-base text-center"
-                  style={{ color: '#78716C', lineHeight: 22 }}
+                  style={{ color: COLORS.text.subtle, lineHeight: 22 }}
                 >
                   We're sorry it didn't work out.{'\n'}
                   Help us learn — why are you ending?
@@ -150,10 +151,10 @@ export function EndMatchModal({ visible, onClose, onSubmit }: EndMatchModalProps
                       className="flex-row items-center py-3 px-4 rounded-2xl"
                       style={{
                         backgroundColor:
-                          selectedReason === reason.id ? '#FFF0F0' : '#F9FAFB',
+                          selectedReason === reason.id ? '#FFF0F0' : COLORS.backgroundSubtle,
                         borderWidth: 2,
                         borderColor:
-                          selectedReason === reason.id ? '#FFB8B8' : '#E5E7EB',
+                          selectedReason === reason.id ? '#FFB8B8' : COLORS.backgroundGrayMedium,
                       }}
                       activeOpacity={0.7}
                     >
@@ -163,9 +164,9 @@ export function EndMatchModal({ visible, onClose, onSubmit }: EndMatchModalProps
                         style={{
                           borderWidth: 2,
                           borderColor:
-                            selectedReason === reason.id ? '#FF6B6B' : '#D1D5DB',
+                            selectedReason === reason.id ? '#FF6B6B' : COLORS.borderGray,
                           backgroundColor:
-                            selectedReason === reason.id ? '#FF6B6B' : '#FFFFFF',
+                            selectedReason === reason.id ? '#FF6B6B' : COLORS.card,
                         }}
                       >
                         {selectedReason === reason.id && (
@@ -197,14 +198,14 @@ export function EndMatchModal({ visible, onClose, onSubmit }: EndMatchModalProps
                           numberOfLines={3}
                           className="rounded-xl p-3 text-base"
                           style={{
-                            backgroundColor: '#FFFFFF',
+                            backgroundColor: COLORS.card,
                             borderWidth: 2,
-                            borderColor: '#E5E7EB',
+                            borderColor: COLORS.backgroundGrayMedium,
                             color: '#1F2937',
                             textAlignVertical: 'top',
                             minHeight: 80,
                           }}
-                          placeholderTextColor="#9CA3AF"
+                          placeholderTextColor={COLORS.text.disabled}
                           maxLength={200}
                         />
                       </StyledView>
@@ -229,13 +230,13 @@ export function EndMatchModal({ visible, onClose, onSubmit }: EndMatchModalProps
                   onPress={handleCancel}
                   className="flex-1 py-4 rounded-2xl items-center justify-center mr-2"
                   style={{
-                    backgroundColor: '#F3F4F6',
+                    backgroundColor: COLORS.backgroundGray,
                     borderWidth: 2,
-                    borderColor: '#E5E7EB',
+                    borderColor: COLORS.backgroundGrayMedium,
                   }}
                   activeOpacity={0.7}
                 >
-                  <StyledText className="text-base font-semibold" style={{ color: '#6B7280' }}>
+                  <StyledText className="text-base font-semibold" style={{ color: COLORS.text.label }}>
                     Cancel
                   </StyledText>
                 </StyledTouchable>

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ICONSCOUT_DIR = path.join(__dirname, '../assets/iconscout');
+const ICONSCOUT_DIR = path.join(__dirname, '../assets/Icons/NeatIcons');
 const REGISTRY_PATH = path.join(__dirname, '../src/components/icons/iconScoutRegistry.ts');
 
 function normalizeName(file) {
@@ -26,23 +26,6 @@ function generateRegistry() {
     console.log(`  + ${name}`);
   });
 
-  // Also scan subdirectories for SVGs
-  const subdirs = ['sport-215', 'stay-at-home-14', 'mental-health-143'];
-  subdirs.forEach(subdir => {
-    const svgDir = path.join(ICONSCOUT_DIR, subdir, 'svg');
-    if (fs.existsSync(svgDir)) {
-      const subFiles = fs.readdirSync(svgDir).filter(f => f.endsWith('.svg'));
-      subFiles.forEach(file => {
-        const filePath = path.join(svgDir, file);
-        const content = fs.readFileSync(filePath, 'utf-8').trim();
-        const name = normalizeName(file);
-        if (!entries[name]) {
-          entries[name] = content;
-          console.log(`  + ${name} (${subdir})`);
-        }
-      });
-    }
-  });
 
   const sortedKeys = Object.keys(entries).sort();
 

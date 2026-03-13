@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase';
 import { resetGuide } from '../../services/guideService';
 import { createLogger } from '../../utils/secureLogger';
 import { FONTS } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { deleteAccount } from '../../services/accountService';
 import { notificationPreferencesService } from '../../services/notificationPreferencesService';
 import { notificationService } from '../../services/notificationService';
@@ -112,7 +113,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
           <StyledSwitch
             value={toggleValue}
             onValueChange={onToggle}
-            trackColor={{ false: '#D0D5DD', true: '#437FFF' }}
+            trackColor={{ false: '#D0D5DD', true: COLORS.primaryAccent }}
             thumbColor="white"
             ios_backgroundColor="#D0D5DD"
           />
@@ -158,7 +159,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
             <SettingRow
               icon="bar-chart"
               title="Your Stats"
-              subtitle="See your matchmaking stats & share them"
+              subtitle="See your matchmaking stats"
               onPress={() => navigation.navigate('Stats')}
             />
           </Card>
@@ -178,28 +179,21 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               subtitle="Manage blocked profiles"
               onPress={() => navigation.navigate('BlockedUsers')}
             />
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
-                  <EvaIcon name="book" variant="outline" size={20} color="#94A3B8" />
-                </View>
-                <View>
-                  <Body style={{ color: '#1E293B' }}>Tutorial</Body>
-                  <Body style={{ fontSize: 12, color: '#94A3B8', fontFamily: FONTS.regular }}>Replay the app walkthrough</Body>
-                </View>
-              </View>
-              <Switch
-                value={tutorialEnabled}
-                onValueChange={async (value) => {
-                  setTutorialEnabled(value);
-                  if (value) {
-                    await resetGuide('beginner_tour' as any);
-                  }
-                }}
-                trackColor={{ false: '#E2E8F0', true: '#437FFF' }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
+            <SettingRow
+              icon="book"
+              title="Tutorial"
+              subtitle="Replay the app walkthrough"
+              toggle
+              toggleValue={tutorialEnabled}
+              onToggle={async () => {
+                const newValue = !tutorialEnabled;
+                setTutorialEnabled(newValue);
+                if (newValue) {
+                  await resetGuide('beginner_tour' as any);
+                }
+              }}
+              showArrow={false}
+            />
           </Card>
 
           {/* Notifications */}
@@ -208,7 +202,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
             <SettingRow
               icon="heart"
               title="Matches & Proposals"
-              subtitle="Matches, voting, accuracy bonuses, 6:55 PM heads-up"
+              subtitle="Matches, voting, accuracy bonuses"
               toggle
               toggleValue={matchesEnabled}
               onToggle={() => updatePreference('matchesEnabled', !matchesEnabled)}
@@ -226,7 +220,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
             <SettingRow
               icon="bell"
               title="Streaks & Reminders"
-              subtitle="Streak alerts, friend nudges, 8 AM recap"
+              subtitle="Streak alerts and friend nudges"
               toggle
               toggleValue={nudgesEnabled}
               onToggle={() => updatePreference('nudgesEnabled', !nudgesEnabled)}
@@ -240,7 +234,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
             <SettingRow
               icon="email"
               title="Help & Support"
-              subtitle="Get help or report an issue"
+              subtitle=""
               onPress={() => navigation.navigate('HelpSupport')}
             />
             <SettingRow
@@ -290,7 +284,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
             <SettingRow
               icon="trash"
               title="Delete Account"
-              subtitle="Permanently delete your account and data"
+              subtitle="Permanently delete your account"
               onPress={() => {
                 Alert.alert(
                   'Delete Account',

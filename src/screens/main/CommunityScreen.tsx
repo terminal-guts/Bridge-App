@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useReducer, useMemo } 
 import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Share, Alert, RefreshControl, Modal, Animated, Easing } from 'react-native';
 
 import { UserRow } from '../../components/community/UserRow';
+import { StaggerItem } from '../../hooks/useStaggeredList';
 import { ProposalReviewView } from '../../components/community/proposal/ProposalReviewView';
 import { GuideTarget } from '../../components/guides';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
@@ -19,7 +20,8 @@ import { ProfileCompletionBanner } from '../../components/profile/ProfileComplet
 import { useGuide } from '../../hooks/useGuide';
 import { beginnerTourGuide } from '../../config/guides';
 import { CommunitySkeleton } from '../../components/ui/SkeletonLoader';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { OVERLAYS } from '../../theme/shadows';
 import { ScreenWrapper } from '../../components/ui';
 import { getLast7PMCentral } from '../../utils/centralTime';
@@ -169,7 +171,7 @@ function MatchResetTimer() {
           transform: [{ scale: pulseAnim }],
         }}>
           <EvaIcon name="clock" variant="outline" size={13} color={color} />
-          <Text style={{ fontSize: 13, fontFamily: FONTS.semiBold, color }}>{label}</Text>
+          <Text style={{ fontSize: FONT_SIZES.md, fontFamily: FONTS.semiBold, color }}>{label}</Text>
         </Animated.View>
       </TouchableOpacity>
 
@@ -198,7 +200,7 @@ const timerInfoStyles = StyleSheet.create({
     alignItems: 'center',
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
     borderRadius: 20,
     paddingHorizontal: 28,
     paddingTop: 28,
@@ -208,29 +210,29 @@ const timerInfoStyles = StyleSheet.create({
   },
   title: {
     fontFamily: FONTS.bold,
-    fontSize: 18,
+    fontSize: FONT_SIZES['2xl'],
     color: '#101828',
     marginBottom: 8,
     textAlign: 'center',
   },
   body: {
     fontFamily: FONTS.regular,
-    fontSize: 14,
+    fontSize: FONT_SIZES.base,
     color: '#667085',
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 20,
   },
   btn: {
-    backgroundColor: '#2B65F9',
+    backgroundColor: COLORS.primaryButton,
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 32,
   },
   btnText: {
     fontFamily: FONTS.semiBold,
-    fontSize: 15,
-    color: '#FFFFFF',
+    fontSize: FONT_SIZES.lg,
+    color: COLORS.card,
   },
 });
 
@@ -607,7 +609,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           contentContainerStyle={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2B65F9" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primaryButton} />
           }
         >
           <View style={styles.emptyContainer}>
@@ -650,7 +652,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                       <TextInput
                         style={styles.enterCodeInput}
                         placeholder="BRIDGE-XXXX-XXXX"
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor={COLORS.text.disabled}
                         value={enterCodeValue}
                         onChangeText={(t) => { setEnterCodeValue(t); setEnterCodeError(''); }}
                         autoCapitalize="characters"
@@ -687,7 +689,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           className="flex-1"
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2B65F9" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primaryButton} />
           }
         >
           {/* #5: Invite nudge when <5 friends; #10: Impact card when >=5 friends */}
@@ -724,7 +726,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
           {usersToMatch.length > 0 && (
             <View style={styles.sectionHeader}>
-              <View style={[styles.sectionAccent, { backgroundColor: '#2B65F9' }]} />
+              <View style={[styles.sectionAccent, { backgroundColor: COLORS.primaryButton }]} />
               <Text style={styles.sectionTitle}>Help your friends</Text>
               <View style={styles.helpCountBadge}>
                 <Text style={styles.helpCountText}>{usersToMatch.length}</Text>
@@ -735,14 +737,15 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           {usersToMatch.length > 0 && (
             <View style={styles.voteListBg}>
               {usersToMatch.map((user, index) => (
-                <UserRow
-                  key={user.friendId}
-                  item={user}
-                  index={index}
-                  showVoteRing
-                  onViewProfile={voteHandlers.viewProfile[user.friendId]}
-                  onMatch={voteHandlers.matchHandlers[user.friendId]}
-                />
+                <StaggerItem key={user.friendId} index={index}>
+                  <UserRow
+                    item={user}
+                    index={index}
+                    showVoteRing
+                    onViewProfile={voteHandlers.viewProfile[user.friendId]}
+                    onMatch={voteHandlers.matchHandlers[user.friendId]}
+                  />
+                </StaggerItem>
               ))}
             </View>
           )}
@@ -750,23 +753,24 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           {/* Already Helped section */}
           {alreadyHelped.length > 0 && (
             <View style={[styles.sectionHeader, usersToMatch.length > 0 && { marginTop: 20 }]}>
-              <View style={[styles.sectionAccent, { backgroundColor: '#3ECC62' }]} />
+              <View style={[styles.sectionAccent, { backgroundColor: COLORS.successAlt }]} />
               <Text style={styles.sectionTitle}>Your crew</Text>
             </View>
           )}
 
           <View className="pb-8">
             {alreadyHelped.map((user, index) => (
-                <UserRow
-                  key={user.friendId}
-                  item={user}
-                  index={index}
-                  statusLine={getFriendStatusLine(user, suggestionsMap)}
-                  hasUnread={!!unreadMap[user.friendId]}
-                  onViewProfile={crewHandlers.viewProfile[user.friendId]}
-                  onChat={crewHandlers.chatHandlers[user.friendId]}
-                  onNudge={handleNudge}
-                />
+                <StaggerItem key={user.friendId} index={index}>
+                  <UserRow
+                    item={user}
+                    index={index}
+                    statusLine={getFriendStatusLine(user, suggestionsMap)}
+                    hasUnread={!!unreadMap[user.friendId]}
+                    onViewProfile={crewHandlers.viewProfile[user.friendId]}
+                    onChat={crewHandlers.chatHandlers[user.friendId]}
+                    onNudge={handleNudge}
+                  />
+                </StaggerItem>
             ))}
 
             {/* Suggest a Match — inline row at bottom of crew list */}
@@ -801,7 +805,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: '#EEF3FF',
+    backgroundColor: COLORS.backgroundFriendActive,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
@@ -811,7 +815,7 @@ const styles = StyleSheet.create({
   emptyHeroText: {
     fontFamily: FONTS.bold,
     fontWeight: '700',
-    fontSize: 22,
+    fontSize: FONT_SIZES['4xl'],
     lineHeight: 28,
     color: '#0B1226',
     textAlign: 'center',
@@ -820,14 +824,14 @@ const styles = StyleSheet.create({
   },
   emptySubtext: {
     fontFamily: FONTS.regular,
-    fontSize: 15,
+    fontSize: FONT_SIZES.lg,
     lineHeight: 22,
     color: '#667085',
     textAlign: 'center',
     marginBottom: 28,
     width: '100%',
   },
-  tagline: { fontFamily: FONTS.semiBold, fontSize: 20, lineHeight: 26, color: '#0B1226', textAlign: 'center', marginBottom: 12 },
+  tagline: { fontFamily: FONTS.semiBold, fontSize: FONT_SIZES['3xl'], lineHeight: 26, color: '#0B1226', textAlign: 'center', marginBottom: 12 },
   illustration: { width: 300, height: 300, marginBottom: 32 },
   subtitle: { fontFamily: FONTS.semiBold, fontSize: 17, lineHeight: 24, color: '#0B1226', textAlign: 'center', marginBottom: 20, width: '100%' },
   ctaButton: {
@@ -843,7 +847,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 4,
   },
-  ctaText: { fontFamily: FONTS.semiBold, fontSize: 15, color: '#FFFFFF' },
+  ctaText: { fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.lg, color: COLORS.card },
   codeContainer: {
     backgroundColor: '#F4F7FF',
     borderRadius: 16,
@@ -856,15 +860,15 @@ const styles = StyleSheet.create({
   },
   codeLabel: {
     fontFamily: FONTS.semiBold,
-    fontSize: 12,
-    color: '#2B65F9',
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.primaryButton,
     letterSpacing: 1,
     marginBottom: 8,
   },
   codeValue: {
     fontFamily: FONTS.bold,
     fontSize: 24,
-    color: '#010101',
+    color: COLORS.text.black,
     marginBottom: 16,
   },
   codeButtonRow: {
@@ -874,9 +878,9 @@ const styles = StyleSheet.create({
   },
   enterCodeButton: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
     borderWidth: 1.5,
-    borderColor: '#2B65F9',
+    borderColor: COLORS.primaryButton,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -885,8 +889,8 @@ const styles = StyleSheet.create({
   },
   enterCodeButtonText: {
     fontFamily: FONTS.semiBold,
-    fontSize: 14,
-    color: '#2B65F9',
+    fontSize: FONT_SIZES.base,
+    color: COLORS.primaryButton,
   },
   enterCodeRow: {
     flexDirection: 'row',
@@ -896,35 +900,35 @@ const styles = StyleSheet.create({
   },
   enterCodeInput: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: COLORS.backgroundGray,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontFamily: FONTS.medium,
-    fontSize: 14,
-    color: '#010101',
+    fontSize: FONT_SIZES.base,
+    color: COLORS.text.black,
     marginRight: 8,
   },
   enterCodeAddBtn: {
-    backgroundColor: '#2B65F9',
+    backgroundColor: COLORS.primaryButton,
     borderRadius: 10,
     paddingHorizontal: 18,
     paddingVertical: 10,
   },
   enterCodeAddBtnText: {
     fontFamily: FONTS.semiBold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FONT_SIZES.base,
+    color: COLORS.card,
   },
   enterCodeErrorText: {
     fontFamily: FONTS.medium,
-    fontSize: 12,
-    color: '#EF4444',
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.error,
     marginTop: 4,
     width: '100%',
   },
   crewBanner: {
-    backgroundColor: '#EEF3FF',
+    backgroundColor: COLORS.backgroundFriendActive,
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 16,
@@ -936,7 +940,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    shadowColor: '#2B65F9',
+    shadowColor: COLORS.primaryButton,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -951,23 +955,23 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#EEF3FF',
-    backgroundColor: '#E5E7EB',
+    borderColor: COLORS.backgroundFriendActive,
+    backgroundColor: COLORS.backgroundGrayMedium,
   },
   crewAddCircle: {
     width: 32,
     height: 32,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#2B65F9',
+    borderColor: COLORS.primaryButton,
     borderStyle: 'dashed',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
   },
   crewBannerHeadline: {
     fontFamily: FONTS.bold,
-    fontSize: 14,
+    fontSize: FONT_SIZES.base,
     color: '#101828',
     flex: 1,
   },
@@ -984,7 +988,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D1DEFF',
     gap: 10,
-    shadowColor: '#2B65F9',
+    shadowColor: COLORS.primaryButton,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
@@ -992,12 +996,12 @@ const styles = StyleSheet.create({
   },
   impactText: {
     fontFamily: FONTS.semiBold,
-    fontSize: 13,
-    color: '#2B65F9',
+    fontSize: FONT_SIZES.md,
+    color: COLORS.primaryButton,
     flex: 1,
   },
   inviteContactsButton: {
-    backgroundColor: '#2B65F9',
+    backgroundColor: COLORS.primaryButton,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1008,15 +1012,15 @@ const styles = StyleSheet.create({
   },
   inviteContactsButtonText: {
     fontFamily: FONTS.semiBold,
-    fontSize: 15,
-    color: '#FFFFFF',
+    fontSize: FONT_SIZES.lg,
+    color: COLORS.card,
   },
   headerTitle: {
     fontFamily: FONTS.bold,
     fontWeight: '700',
-    fontSize: 32,
+    fontSize: FONT_SIZES['6xl'],
     lineHeight: 38,
-    color: '#010101',
+    color: COLORS.text.black,
     letterSpacing: -0.5,
   },
   headerRight: {
@@ -1033,7 +1037,7 @@ const styles = StyleSheet.create({
     borderColor: '#D1DEFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#2B65F9',
+    shadowColor: COLORS.primaryButton,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.12,
     shadowRadius: 4,
@@ -1053,7 +1057,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: FONTS.semiBold,
-    fontSize: 14,
+    fontSize: FONT_SIZES.base,
     color: '#667085',
     letterSpacing: 0.3,
     textTransform: 'uppercase',
@@ -1073,12 +1077,12 @@ const styles = StyleSheet.create({
   suggestMatchText: {
     flex: 1,
     fontFamily: FONTS.semiBold,
-    fontSize: 15,
-    color: '#437FFF',
+    fontSize: FONT_SIZES.lg,
+    color: COLORS.primaryAccent,
   },
   // ── Help count badge ──────────────────────────────────────────
   helpCountBadge: {
-    backgroundColor: '#2B65F9',
+    backgroundColor: COLORS.primaryButton,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -1089,14 +1093,14 @@ const styles = StyleSheet.create({
   },
   helpCountText: {
     fontFamily: FONTS.semiBold,
-    fontSize: 11,
-    color: '#FFFFFF',
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.card,
   },
   // ── Caught up footer ──────────────────────────────────────────────
   caughtUpFooter: {
     fontFamily: FONTS.regular,
-    fontSize: 13,
-    color: '#98A2B3',
+    fontSize: FONT_SIZES.md,
+    color: COLORS.text.placeholder,
     textAlign: 'center',
     paddingVertical: 16,
     paddingHorizontal: 24,

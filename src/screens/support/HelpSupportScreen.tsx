@@ -2,6 +2,7 @@ import React from 'react';
 import { View, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
 import { styled } from 'nativewind';
 import { H2, H3, Body, Card, ScreenWrapper } from '../../components/ui';
+import { COLORS } from '../../theme/colors';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { EvaIcon } from '../../components/icons';
@@ -89,7 +90,7 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
                 onPress={handleEmailSupport}
                 className="bg-primary-500 px-6 py-3 rounded-lg flex-row items-center"
                 style={{
-                  shadowColor: '#437FFF',
+                  shadowColor: COLORS.primaryAccent,
                   shadowOffset: { width: 0, height: 4 },
                   shadowOpacity: 0.3,
                   shadowRadius: 8,

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Image } from 'react-native';
-import { Check } from 'lucide-react-native';
+import { Check } from '../icons/LucideReplacements';
 import { EvaIcon } from '../icons';
 import { FONTS } from '../../constants/typography';
 
@@ -8,7 +8,7 @@ export default function ProfileMatchInfo() {
   return (
     <View className="bg-white border border-black/10 shadow-sm rounded-xl p-3 w-full max-w-[343px] self-center mb-3 flex flex-col gap-2">
       <View className="flex flex-row items-center gap-2">
-        <Text className="font-semibold text-[#010101] text-2xl" style={{ fontFamily: FONTS.semiBold }}>
+        <Text className="font-semibold text-[#101828] text-2xl" style={{ fontFamily: FONTS.semiBold }}>
           Brooklyn, 26
         </Text>
         <Check size={22} color="#2563EB" fill="#2563EB" />
@@ -20,7 +20,7 @@ export default function ProfileMatchInfo() {
             <EvaIcon name="heart" variant="outline" size={10} color="#FF7A5C" />
           </View>
         </View>
-        <Text className="text-sm text-[#010101]/70" style={{ fontFamily: FONTS.regular }}>
+        <Text className="text-sm text-[#101828]/70" style={{ fontFamily: FONTS.regular }}>
           Matched by :
         </Text>
         <View className="flex flex-row items-center ml-1">

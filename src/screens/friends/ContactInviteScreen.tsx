@@ -38,7 +38,8 @@ import {
 } from '../../services/contactsService';
 import { createLogger } from '../../utils/secureLogger';
 import { showToast } from '../../utils/toast';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 
 const logger = createLogger('ContactInviteScreen');
 
@@ -606,7 +607,7 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
       {/* Loading */}
       {loading && (
         <StyledView className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#437FFF" />
+          <ActivityIndicator size="large" color={COLORS.primaryAccent} />
           <Body className="text-neutral-500 mt-4">Loading contacts...</Body>
         </StyledView>
       )}
@@ -670,7 +671,7 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
               <StyledTextInput
                 className="flex-1 ml-2 text-sm text-neutral-900"
                 placeholder="Search contacts..."
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={COLORS.text.disabled}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 autoCorrect={false}
@@ -711,7 +712,7 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
                   <StyledTextInput
                     className="flex-1 text-sm text-neutral-900"
                     placeholder="Enter friend code"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={COLORS.text.disabled}
                     value={enterCodeValue}
                     onChangeText={(t: string) => { setEnterCodeValue(t); setEnterCodeError(''); }}
                     autoCapitalize="characters"
@@ -760,7 +761,7 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
             <StyledView
               className="absolute left-4 right-4 bottom-8"
               style={{
-                shadowColor: '#437FFF',
+                shadowColor: COLORS.primaryAccent,
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.3,
                 shadowRadius: 8,
@@ -789,13 +790,13 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
           pointerEvents="none"
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: OVERLAYS.medium, alignItems: 'center', justifyContent: 'center', zIndex: 999 }}
         >
-          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 20, paddingHorizontal: 40, paddingVertical: 32, alignItems: 'center', ...SHADOWS.xxl }}>
-            <EvaIcon name="award" variant="outline" size={48} color="#437FFF" />
+          <View style={{ backgroundColor: COLORS.card, borderRadius: 20, paddingHorizontal: 40, paddingVertical: 32, alignItems: 'center', ...SHADOWS.xxl }}>
+            <EvaIcon name="award" variant="outline" size={48} color={COLORS.primaryAccent} />
             <View style={{ marginBottom: 8 }} />
-            <Text style={{ fontSize: 20, fontWeight: '700', fontFamily: FONTS.bold, color: '#0B1226', marginBottom: 4 }}>
+            <Text style={{ fontSize: FONT_SIZES['3xl'], fontWeight: '700', fontFamily: FONTS.bold, color: '#0B1226', marginBottom: 4 }}>
               {celebrationCount} invite{celebrationCount === 1 ? '' : 's'} sent!
             </Text>
-            <Text style={{ fontSize: 14, color: '#667085', textAlign: 'center', fontFamily: FONTS.regular }}>
+            <Text style={{ fontSize: FONT_SIZES.base, color: COLORS.text.label, textAlign: 'center', fontFamily: FONTS.regular }}>
               Your friends are going to love Bridge
             </Text>
           </View>

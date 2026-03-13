@@ -12,7 +12,8 @@ import { View, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { MatchStatusIcon } from '../match/MatchStatusIcon';
 import { MatchResult } from '../../../utils/proposalMatching';
-import { FONTS } from '../../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../../constants/typography';
+import { COLORS } from '../../../theme/colors';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -28,10 +29,10 @@ export function ComparisonRow({ label, result, isLast = false }: ComparisonRowPr
     <StyledView style={{ marginBottom: isLast ? 0 : 12 }}>
       {/* Label */}
       <StyledText style={{
-        fontSize: 11,
+        fontSize: FONT_SIZES.xs,
         fontWeight: '600',
         fontFamily: FONTS.semiBold,
-        color: '#94A3B8',
+        color: COLORS.text.light,
         marginBottom: 6,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
@@ -55,8 +56,8 @@ export function ComparisonRow({ label, result, isLast = false }: ComparisonRowPr
           marginRight: 8,
         }}>
           <StyledText style={{
-            fontSize: 14,
-            color: '#1E293B',
+            fontSize: FONT_SIZES.base,
+            color: COLORS.text.heading,
             fontWeight: '500',
             fontFamily: FONTS.medium,
             textAlign: 'center',
@@ -78,8 +79,8 @@ export function ComparisonRow({ label, result, isLast = false }: ComparisonRowPr
           marginLeft: 8,
         }}>
           <StyledText style={{
-            fontSize: 14,
-            color: '#1E293B',
+            fontSize: FONT_SIZES.base,
+            color: COLORS.text.heading,
             fontWeight: '500',
             fontFamily: FONTS.medium,
             textAlign: 'center',
@@ -92,9 +93,9 @@ export function ComparisonRow({ label, result, isLast = false }: ComparisonRowPr
       {/* Optional Details */}
       {result.details && (
         <StyledText style={{
-          fontSize: 11,
+          fontSize: FONT_SIZES.xs,
           fontFamily: FONTS.regular,
-          color: '#64748B',
+          color: COLORS.text.secondary,
           marginTop: 4,
           textAlign: 'center',
           fontStyle: 'italic',

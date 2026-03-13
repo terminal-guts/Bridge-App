@@ -11,7 +11,8 @@ import { getUserProfile, updateUserProfile } from '../../services/profileService
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { calculateMatchPreferencesCompleteness } from '../../utils/profileCompleteness';
 import { createLogger } from '../../utils/secureLogger';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { EvaIcon } from '../../components/icons';
 
 const logger = createLogger('MatchPreferencesScreen');
@@ -116,10 +117,10 @@ const POLITICAL_OPTIONS = [
 
 // Stable sub-components for RangeSlider (prevent re-mounting on each render)
 const Thumb = () => (
-  <StyledView className="w-6 h-6 rounded-full border-2 border-white shadow-md" style={{ backgroundColor: '#437FFF' }} />
+  <StyledView className="w-6 h-6 rounded-full border-2 border-white shadow-md" style={{ backgroundColor: COLORS.primaryAccent }} />
 );
 const Rail = () => <StyledView className="flex-1 h-1 rounded-full bg-neutral-200" />;
-const RailSelected = () => <StyledView className="h-1 rounded-full" style={{ backgroundColor: '#437FFF' }} />;
+const RailSelected = () => <StyledView className="h-1 rounded-full" style={{ backgroundColor: COLORS.primaryAccent }} />;
 
 export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ navigation }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -522,7 +523,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Interested In Genders */}
           <Card className="mb-6">
-            <H3 className="mb-2">Gender <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText></H3>
+            <H3 className="mb-2">Gender <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
             <Body className="text-neutral-600 text-sm mb-4">
               Select all gender identities you're open to matching with
             </Body>
@@ -585,7 +586,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Age Range */}
           <Card className="mb-6">
-            <H3 className="mb-4">Age Range <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText></H3>
+            <H3 className="mb-4">Age Range <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
             <StyledView className="flex-row justify-between mb-3">
               <Body className="text-neutral-600">Min: <Body className="text-neutral-900 font-semibold">{preferences.ageMin}</Body></Body>
               <Body className="text-neutral-600">Max: <Body className="text-neutral-900 font-semibold">{preferences.ageMax}</Body></Body>
@@ -610,7 +611,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Height Preference */}
           <Card className="mb-6">
-            <H3 className="mb-3">Height <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText></H3>
+            <H3 className="mb-3">Height <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
             <Body className="text-neutral-600 text-sm mb-4">
               Set your height preferences for potential matches
             </Body>
@@ -639,7 +640,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Preferred Ethnicities */}
           <Card className="mb-6">
-            <H3 className="mb-2">Ethnicity <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText></H3>
+            <H3 className="mb-2">Ethnicity <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
             <Body className="text-neutral-600 text-sm mb-4">
               Select the ethnicities you're interested in for potential matches
             </Body>
@@ -700,7 +701,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Preferred Politics */}
           <Card className="mb-6">
-            <H3 className="mb-2">Politics <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText></H3>
+            <H3 className="mb-2">Politics <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
             <Body className="text-neutral-600 text-sm mb-4">
               Select the political views you're open to matching with
             </Body>
@@ -738,7 +739,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           {/* Lifestyle */}
           <Card className="mb-6">
-            <H3 className="mb-2">Lifestyle <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText></H3>
+            <H3 className="mb-2">Lifestyle <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
             <Body className="text-neutral-600 text-sm mb-4">
               What lifestyle habits do you prefer in a partner?
             </Body>
@@ -960,7 +961,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                 onChangeText={setCustomInputValue}
                 placeholder={getCustomModalPlaceholder()}
                 className="bg-neutral-50 border border-neutral-200 rounded-lg px-4 py-3 text-base text-neutral-900"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={COLORS.text.disabled}
                 autoFocus
                 returnKeyType="done"
                 onSubmitEditing={saveCustomModalValue}

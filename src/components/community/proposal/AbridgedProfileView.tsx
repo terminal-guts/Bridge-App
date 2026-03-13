@@ -17,6 +17,8 @@ import { Body } from '../../ui';
 import { CompatibilityResult } from '../../../utils/compatibilityHelpers';
 import { valueIconName, interestIconName } from '../../../utils/emojiMaps';
 import { EvaIcon, IconScoutIcon } from '../../icons';
+import { formatProfileValue } from '../../../utils/formatProfileValue';
+import { COLORS } from '../../../theme/colors';
 
 const StyledView = styled(View);
 const StyledImage = styled(Image);
@@ -29,12 +31,6 @@ interface AbridgedProfileViewProps {
 export function AbridgedProfileView({ user, compatibility }: AbridgedProfileViewProps) {
   // Get primary photo
   const mainPhoto = user.photos?.find((p: Photo) => p.isMain) || user.photos?.[0];
-
-  // Helper to capitalize
-  const capitalize = (str: string | undefined): string => {
-    if (!str) return '';
-    return str.charAt(0).toUpperCase() + str.slice(1);
-  };
 
   // Get frequency level for visual indicator (0-4 scale)
   const getFrequencyLevel = (value: string | undefined): number => {
@@ -112,7 +108,7 @@ export function AbridgedProfileView({ user, compatibility }: AbridgedProfileView
             key={i}
             className="w-1.5 h-1.5 rounded-full mx-0.5"
             style={{
-              backgroundColor: i <= level ? colors[level] : '#E5E7EB',
+              backgroundColor: i <= level ? colors[level] : COLORS.backgroundGrayMedium,
             }}
           />
         ))}
@@ -180,9 +176,9 @@ export function AbridgedProfileView({ user, compatibility }: AbridgedProfileView
 
         {/* Compatibility Factors */}
         {user.religion && <Field label="Religion" value={user.religion} />}
-        {user.politicalLeaning && <Field label="Politics" value={capitalize(user.politicalLeaning)} />}
-        {user.familyPlans && <Field label="Family Plans" value={user.familyPlans} />}
-        {user.hasChildren && <Field label="Has Children" value={user.hasChildren} />}
+        {user.politicalLeaning && <Field label="Politics" value={formatProfileValue(user.politicalLeaning)} />}
+        {user.familyPlans && <Field label="Family Plans" value={formatProfileValue(user.familyPlans)} />}
+        {user.hasChildren && <Field label="Has Children" value={formatProfileValue(user.hasChildren)} />}
 
         {/* Lifestyle - Visual Dots */}
         {(user.drinkingFrequency || user.cannabisFrequency) && (
@@ -194,7 +190,7 @@ export function AbridgedProfileView({ user, compatibility }: AbridgedProfileView
                 <Body className="text-[9px] text-neutral-700">Drinking</Body>
                 <StyledView className="flex-row items-center">
                   <FrequencyDots value={user.drinkingFrequency} />
-                  <Body className="text-[8px] text-neutral-600 ml-1">{capitalize(user.drinkingFrequency)}</Body>
+                  <Body className="text-[8px] text-neutral-600 ml-1">{formatProfileValue(user.drinkingFrequency)}</Body>
                 </StyledView>
               </StyledView>
             )}
@@ -204,7 +200,7 @@ export function AbridgedProfileView({ user, compatibility }: AbridgedProfileView
                 <Body className="text-[9px] text-neutral-700">Cannabis</Body>
                 <StyledView className="flex-row items-center">
                   <FrequencyDots value={user.cannabisFrequency} />
-                  <Body className="text-[8px] text-neutral-600 ml-1">{capitalize(user.cannabisFrequency)}</Body>
+                  <Body className="text-[8px] text-neutral-600 ml-1">{formatProfileValue(user.cannabisFrequency)}</Body>
                 </StyledView>
               </StyledView>
             )}

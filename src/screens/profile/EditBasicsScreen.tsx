@@ -7,6 +7,7 @@ import { H3, Body } from '../../components/ui/Typography';
 import { Card, Input, ScreenWrapper } from '../../components/ui';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { FONTS } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { SectionScreenWrapper } from './sections/SectionScreenWrapper';
 import { useEditProfile } from './sections/useEditProfile';
 import { CustomInputModal } from './sections/CustomInputModal';
@@ -178,7 +179,7 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
 
         {/* Ethnicity */}
         <Body className="text-xs font-medium text-neutral-700 mb-2 mt-4">
-          Ethnicity <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText> (Select all that apply)
+          Ethnicity <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText> (Select all that apply)
         </Body>
         <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
           {ETHNICITY_OPTIONS.map((option) => {
@@ -240,7 +241,7 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
 
         {/* Pronouns */}
         <Body className="text-xs font-medium text-neutral-700 mb-2">
-          Pronouns <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText> (Select up to {MAX_PRONOUNS})
+          Pronouns <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText> (Select up to {MAX_PRONOUNS})
         </Body>
         <Body className="text-primary-500 text-xs font-semibold mb-2">
           {(profile.pronounsList?.length || 0)}/{MAX_PRONOUNS} selected
@@ -283,7 +284,7 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
 
         {/* Gender Identity */}
         <Body className="text-xs font-medium text-neutral-700 mb-2 mt-4">
-          Gender <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText> (Select all that apply)
+          Gender <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText> (Select all that apply)
         </Body>
         <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
           {GENDER_OPTIONS.map((option) => {

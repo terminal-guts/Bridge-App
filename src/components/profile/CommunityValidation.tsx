@@ -15,7 +15,7 @@ export default function CommunityValidation() {
                 <View className="relative h-2 w-[270px] bg-black/5 rounded-full overflow-hidden flex-1">
                     <View className="absolute left-0 top-0 h-full w-[75%] bg-[#2563EB]/20 rounded-full" />
                 </View>
-                <Text className="font-semibold text-[#010101]/30 text-xl leading-relaxed" style={{ fontFamily: FONTS.semiBold }}>
+                <Text className="font-semibold text-[#101828]/30 text-xl leading-relaxed" style={{ fontFamily: FONTS.semiBold }}>
                     75%
                 </Text>
             </View>

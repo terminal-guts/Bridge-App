@@ -1,10 +1,13 @@
-import React, { useEffect, useRef } from 'react';
-import { View, SafeAreaView, StatusBar, Text, TouchableOpacity, Animated } from 'react-native';
+import React from 'react';
+import { View, SafeAreaView, StatusBar, Text, Image } from 'react-native';
+import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
 import { styled } from 'nativewind';
 import { FONTS } from '../../constants/typography';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
+import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
+import { lightHaptic } from '../../utils/haptics';
 
 
 interface WelcomeScreenProps {
@@ -15,63 +18,10 @@ const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledLinearGradient = styled(LinearGradient);
 const StyledText = styled(Text);
-const StyledTouchableOpacity = styled(TouchableOpacity);
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
-  // Animation values
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const logoTranslateY = useRef(new Animated.Value(-20)).current;
-  const textOpacity = useRef(new Animated.Value(0)).current;
-  const textTranslateY = useRef(new Animated.Value(20)).current;
-  const buttonsOpacity = useRef(new Animated.Value(0)).current;
-  const buttonsTranslateY = useRef(new Animated.Value(20)).current;
-
-  useEffect(() => {
-    // Staggered animation sequence
-    Animated.sequence([
-      // 1. Logo fades in first (medium speed - 600ms)
-      Animated.parallel([
-        Animated.timing(logoOpacity, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(logoTranslateY, {
-          toValue: 0,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ]),
-      // 2. Small delay, then subheading and buttons fade in together
-      Animated.delay(200),
-      Animated.parallel([
-        Animated.timing(textOpacity, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(textTranslateY, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(buttonsOpacity, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(buttonsTranslateY, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start();
-  }, []);
-
   const handleGetStarted = () => {
-    // Phone verification during onboarding creates the real Supabase session;
-    // no anonymous pre-session is needed here.
+    lightHaptic();
     navigation.navigate('Onboarding');
   };
 
@@ -89,22 +39,16 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
           <StyledView className="flex-1 px-8 justify-between pt-12">
             {/* Hero Section - Left Aligned */}
             <StyledView className="flex-1 justify-center">
+              {/* Logo — drops in from above */}
               <Animated.Image
+                entering={FadeInUp.duration(600).delay(100)}
                 source={require('../../../assets/BridgeAppLogo.png')}
                 className="w-48 h-24 mb-2"
                 resizeMode="contain"
-                style={{
-                  tintColor: '#FFFFFF',
-                  opacity: logoOpacity,
-                  transform: [{ translateY: logoTranslateY }],
-                }}
+                style={{ tintColor: '#FFFFFF' }}
               />
-              <Animated.View
-                style={{
-                  opacity: textOpacity,
-                  transform: [{ translateY: textTranslateY }],
-                }}
-              >
+              {/* Tagline — fades up after logo */}
+              <Animated.View entering={FadeInUp.duration(500).delay(800)}>
                 <StyledText className="text-white/90 text-base font-normal leading-relaxed mb-2" style={{ fontFamily: FONTS.regular }}>
                   The community finds the fit.
                 </StyledText>
@@ -114,35 +58,35 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
               </Animated.View>
             </StyledView>
 
-            {/* CTA Section */}
+            {/* CTA Section — slides up from bottom */}
             <Animated.View
-              style={{
-                opacity: buttonsOpacity,
-                transform: [{ translateY: buttonsTranslateY }],
-              }}
+              entering={FadeInDown.duration(500).delay(800)}
               className="mb-8"
             >
               {/* Primary Button - Large White Pill */}
-              <StyledTouchableOpacity
+              <AnimatedPressable
                 onPress={handleGetStarted}
-                className="bg-white rounded-full py-4 px-8 mb-4 shadow-lg active:scale-[0.98]"
-                activeOpacity={0.9}
+                scale="standard"
+                className="bg-white rounded-full py-4 px-8 mb-4 shadow-lg items-center"
               >
                 <StyledText className="text-neutral-900 text-center text-lg font-semibold" style={{ fontFamily: FONTS.semiBold }}>
                   Get started
                 </StyledText>
-              </StyledTouchableOpacity>
+              </AnimatedPressable>
 
               {/* Secondary Action - Text Button */}
-              <StyledTouchableOpacity
-                onPress={() => navigation.navigate('Login')}
-                className="py-3 active:opacity-70"
-                activeOpacity={0.7}
+              <AnimatedPressable
+                onPress={() => {
+                  lightHaptic();
+                  navigation.navigate('Login');
+                }}
+                scale="pronounced"
+                className="py-3 items-center"
               >
                 <StyledText className="text-white/80 text-center text-base font-medium" style={{ fontFamily: FONTS.medium }}>
                   Sign in
                 </StyledText>
-              </StyledTouchableOpacity>
+              </AnimatedPressable>
             </Animated.View>
           </StyledView>
         </StyledSafeAreaView>

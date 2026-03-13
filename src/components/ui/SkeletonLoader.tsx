@@ -1,12 +1,22 @@
 /**
  * Skeleton Loader Component
  *
- * Provides skeleton loading states for dashboard components
+ * Provides skeleton loading states for dashboard components.
+ * Uses Reanimated for 120fps pulse animation on the UI thread.
  */
 
-import React, { useEffect, useRef } from 'react';
-import { View, Animated } from 'react-native';
+import React, { useEffect } from 'react';
+import { View } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { styled } from 'nativewind';
+import { COLORS } from '../../theme/colors';
 
 const StyledView = styled(View);
 
@@ -23,36 +33,25 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
   borderRadius = 'rounded-lg',
   className = '',
 }) => {
-  const opacity = useRef(new Animated.Value(0.3)).current;
+  const opacity = useSharedValue(0.3);
 
   useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0.3,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ])
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.3, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+      ),
+      -1, // infinite
     );
-
-    animation.start();
-
-    return () => animation.stop();
   }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
 
   return (
     <Animated.View
-      style={{
-        width,
-        height,
-        opacity,
-      } as any}
+      style={[{ width: width as number, height: height as number }, animatedStyle]}
       className={`bg-neutral-200 ${borderRadius} ${className}`}
     />
   );
@@ -268,7 +267,7 @@ export const MatchesSkeleton: React.FC<DashboardSkeletonProps> = ({ className = 
 
       {/* Match card placeholder */}
       <StyledView className="px-6">
-        <StyledView className="rounded-2xl overflow-hidden" style={{ backgroundColor: '#F2F4F7' }}>
+        <StyledView className="rounded-2xl overflow-hidden" style={{ backgroundColor: COLORS.backgroundProgressTrack }}>
           {/* Photo area */}
           <SkeletonLoader height={280} width="100%" borderRadius="rounded-none" />
           {/* Info area */}

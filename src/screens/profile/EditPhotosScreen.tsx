@@ -8,6 +8,7 @@ import { H3, Body } from '../../components/ui/Typography';
 import { Card, ScreenWrapper } from '../../components/ui';
 import { mediumHaptic } from '../../utils/haptics';
 import { FONTS } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { SectionScreenWrapper } from './sections/SectionScreenWrapper';
 import { useEditProfile } from './sections/useEditProfile';
 import { createLogger } from '../../utils/secureLogger';
@@ -185,7 +186,7 @@ export const EditPhotosScreen: React.FC<EditPhotosScreenProps> = ({ navigation }
       <Card className="mb-6">
         <StyledView className="flex-row items-center justify-between mb-2">
           <StyledView className="flex-row items-center">
-            <H3>Photos <StyledText style={{ color: '#EF4444', fontFamily: FONTS.regular }}>*</StyledText></H3>
+            <H3>Photos <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
           </StyledView>
           <Body className={`text-sm font-semibold ${profile.photos.length === 0 ? 'text-error' : 'text-neutral-400'}`}>
             {profile.photos.length}/3
@@ -222,7 +223,7 @@ export const EditPhotosScreen: React.FC<EditPhotosScreenProps> = ({ navigation }
                     disabled={index === 0}
                     className="px-2 py-1"
                   >
-                    <EvaIcon name="arrow-ios-back" variant="outline" size={18} color="index" />
+                    <EvaIcon name="arrow-ios-back" variant="outline" size={18} color="white" />
                   </StyledTouchableOpacity>
 
                   <StyledTouchableOpacity
@@ -242,7 +243,7 @@ export const EditPhotosScreen: React.FC<EditPhotosScreenProps> = ({ navigation }
                     disabled={index === profile.photos.length - 1}
                     className="px-2 py-1"
                   >
-                    <EvaIcon name="arrow-ios-forward" variant="outline" size={18} color="index" />
+                    <EvaIcon name="arrow-ios-forward" variant="outline" size={18} color="white" />
                   </StyledTouchableOpacity>
                 </StyledView>
               </StyledView>

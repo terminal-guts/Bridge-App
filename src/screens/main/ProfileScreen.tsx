@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PROFILE_CACHE_DURATION, NAVIGATION_DELAY, AVATAR_SIZE_XL } from '../../constants';
 import { FONTS } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
 import { H2, H3, Body, Card, Button, ProfileSkeleton, ScreenWrapper, Display } from '../../components/ui';
@@ -77,7 +78,7 @@ const QuestionsSkeleton: React.FC = () => {
     <StyledView className="px-4 py-6 bg-neutral-50">
       {/* Hero Card Skeleton */}
       <Animated.View style={{ opacity: pulseAnim }}>
-        <Card className="mb-6" style={{ backgroundColor: '#E5E7EB' }}>
+        <Card className="mb-6" style={{ backgroundColor: COLORS.backgroundGrayMedium }}>
           <StyledView className="flex-row items-center p-4">
             <StyledView className="w-20 h-20 rounded-full bg-neutral-300 mr-5" />
             <StyledView className="flex-1">
@@ -91,7 +92,7 @@ const QuestionsSkeleton: React.FC = () => {
 
       {/* Tier Stepper Skeleton */}
       <Animated.View style={{ opacity: pulseAnim }}>
-        <Card className="mb-6" style={{ backgroundColor: '#E5E7EB' }}>
+        <Card className="mb-6" style={{ backgroundColor: COLORS.backgroundGrayMedium }}>
           <StyledView className="p-4">
             <StyledView className="h-4 bg-neutral-300 rounded mb-4 w-32 mx-auto" />
             <StyledView className="flex-row items-center justify-between">
@@ -109,7 +110,7 @@ const QuestionsSkeleton: React.FC = () => {
 
       {/* CTA Skeleton */}
       <Animated.View style={{ opacity: pulseAnim }}>
-        <Card className="mb-6" style={{ backgroundColor: '#E5E7EB' }}>
+        <Card className="mb-6" style={{ backgroundColor: COLORS.backgroundGrayMedium }}>
           <StyledView className="p-4 flex-row items-center">
             <StyledView className="w-14 h-14 rounded-xl bg-neutral-300 mr-4" />
             <StyledView className="flex-1">
@@ -127,7 +128,7 @@ const QuestionsSkeleton: React.FC = () => {
           <StyledView className="h-3 bg-neutral-300 rounded w-56" />
         </StyledView>
         {[1, 2, 3].map((i) => (
-          <Card key={i} className="mb-4" style={{ backgroundColor: '#E5E7EB' }}>
+          <Card key={i} className="mb-4" style={{ backgroundColor: COLORS.backgroundGrayMedium }}>
             <StyledView className="p-4">
               <StyledView className="flex-row justify-between mb-3">
                 <StyledView className="h-4 bg-neutral-300 rounded w-24" />
@@ -784,13 +785,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                         fontFamily: FONTS.regular,
                         fontSize: 14,
                         color: '#374151',
-                        backgroundColor: '#F9FAFB',
+                        backgroundColor: COLORS.backgroundSubtle,
                         borderRadius: 8,
                         padding: 12,
                         minHeight: 80,
                         textAlignVertical: 'top',
                         borderWidth: 1,
-                        borderColor: '#D1D5DB',
+                        borderColor: COLORS.borderGray,
                       }}
                     />
                     <StyledView className="flex-row justify-end mt-3" style={{ gap: 8 }}>
@@ -835,7 +836,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                         }}
                         className="w-6 h-6 items-center justify-center"
                       >
-                        <EvaIcon name="more-horizontal" variant="outline" size={20} color="#6B7280" />
+                        <EvaIcon name="more-horizontal" variant="outline" size={20} color="#667085" />
                       </StyledTouchableOpacity>
                     </StyledView>
                     <Body className="text-neutral-900 font-semibold text-base mb-2">{question.question}</Body>
@@ -1153,7 +1154,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               accessibilityLabel="Settings"
               accessibilityRole="button"
             >
-              <EvaIcon name="settings-2" variant="outline" size={24} color="#475467" />
+              <EvaIcon name="settings-2" variant="outline" size={24} color="#667085" />
             </StyledTouchableOpacity>
           </StyledView>
         </StyledView>
@@ -1208,11 +1209,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                   flexDirection: 'row', alignItems: 'center',
                   paddingHorizontal: 9, paddingVertical: 4,
                   backgroundColor: 'rgba(52, 199, 89, 0.1)',
-                  borderWidth: 1, borderColor: '#34C759',
+                  borderWidth: 1, borderColor: COLORS.success,
                   borderRadius: 999, gap: 4,
                 }}>
                 <EvaIcon name="star" variant="outline" size={12} color="#34C759" />
-                <H2 className="text-xs" style={{ color: '#34C759', fontWeight: '600', fontFamily: FONTS.semiBold }}>
+                <H2 className="text-xs" style={{ color: COLORS.success, fontWeight: '600', fontFamily: FONTS.semiBold }}>
                   {profile.karma?.karma_points ?? 0} pts
                 </H2>
               </StyledTouchableOpacity>
@@ -1233,7 +1234,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                 accessibilityLabel={`View ${friendCount} friend${friendCount !== 1 ? 's' : ''}`}
                 accessibilityRole="button"
               >
-                <EvaIcon name="people" variant="outline" size={16} color="#475467" />
+                <EvaIcon name="people" variant="outline" size={16} color="#667085" />
                 <Body className="text-neutral-700 text-sm font-medium ml-1.5">
                   {friendCount} {friendCount === 1 ? 'Friend' : 'Friends'}
                 </Body>

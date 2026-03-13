@@ -5,6 +5,7 @@ import { styled } from 'nativewind';
 import * as FileSystem from 'expo-file-system/legacy';
 import { BodySmall } from '../ui/Typography';
 import { createLogger } from '../../utils/secureLogger';
+import { COLORS } from '../../theme/colors';
 import { EvaIcon } from '../icons';
 
 const logger = createLogger('AudioPlayer');
@@ -106,7 +107,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ uri, duration, isOwnMe
                     }`}
             >
                 {isLoading ? (
-                    <ActivityIndicator size="small" color={isOwnMessage ? 'white' : '#437FFF'} />
+                    <ActivityIndicator size="small" color={isOwnMessage ? 'white' : COLORS.primaryAccent} />
                 ) : (
                     <EvaIcon
                         name={isPlaying ? 'pause-circle' : 'play-circle'}

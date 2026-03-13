@@ -1,7 +1,8 @@
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
-import { FONTS } from '../../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../../constants/typography';
 import { OVERLAYS } from '../../../theme/shadows';
+import { COLORS } from '../../../theme/colors';
 import { EvaIcon } from '../../icons';
 
 interface KarmaInfoModalProps {
@@ -21,7 +22,7 @@ export function KarmaInfoModal({ visible, onClose }: KarmaInfoModalProps) {
           </View>
 
           <Text style={styles.body}>
-            Your Karma score reflects how much you've helped others find matches. The higher your score, the more frequently you'll receive matches.
+            Your Karma reflects how much you've helped others find matches. The higher your score, the more matches you'll receive.
           </Text>
 
           <TouchableOpacity style={styles.btn} onPress={onClose} activeOpacity={0.85}>
@@ -43,7 +44,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
     borderRadius: 20,
     padding: 20,
     width: '100%',
@@ -62,20 +63,20 @@ const styles = StyleSheet.create({
   },
   body: {
     fontFamily: FONTS.regular,
-    fontSize: 14,
+    fontSize: FONT_SIZES.base,
     lineHeight: 22,
     color: '#4A5568',
     marginBottom: 18,
   },
   btn: {
-    backgroundColor: '#437FFF',
+    backgroundColor: COLORS.primaryAccent,
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',
   },
   btnText: {
     fontFamily: FONTS.semiBold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FONT_SIZES.base,
+    color: COLORS.card,
   },
 });

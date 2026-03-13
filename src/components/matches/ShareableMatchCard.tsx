@@ -5,7 +5,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import ViewShot from 'react-native-view-shot';
 import Svg, { Circle } from 'react-native-svg';
 import { HeartsIcon } from '../icons/Icons';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -37,22 +38,22 @@ const MAX_AVATARS = 5;
 
 // Confetti dots — larger, bolder, more festive
 const CONFETTI_DOTS = [
-  { top: 100, left: 70, size: 12, color: '#2B65F9', opacity: 0.65 },
-  { top: 180, right: 100, size: 10, color: '#34C759', opacity: 0.55 },
+  { top: 100, left: 70, size: 12, color: COLORS.primaryButton, opacity: 0.65 },
+  { top: 180, right: 100, size: 10, color: COLORS.success, opacity: 0.55 },
   { top: 340, left: 140, size: 14, color: '#FF6B6B', opacity: 0.5 },
   { top: 480, right: 180, size: 11, color: '#FFD700', opacity: 0.6 },
   { top: 620, left: 50, size: 8, color: '#A78BFA', opacity: 0.5 },
   { top: 780, right: 60, size: 13, color: '#F472B6', opacity: 0.45 },
-  { top: 1250, left: 90, size: 12, color: '#2B65F9', opacity: 0.5 },
-  { top: 1380, right: 130, size: 10, color: '#34C759', opacity: 0.55 },
+  { top: 1250, left: 90, size: 12, color: COLORS.primaryButton, opacity: 0.5 },
+  { top: 1380, right: 130, size: 10, color: COLORS.success, opacity: 0.55 },
   { top: 1500, left: 220, size: 11, color: '#FF6B6B', opacity: 0.45 },
   { top: 1620, right: 260, size: 9, color: '#FFD700', opacity: 0.5 },
   { top: 1100, left: 40, size: 10, color: '#A78BFA', opacity: 0.45 },
   { top: 950, right: 70, size: 14, color: '#F472B6', opacity: 0.5 },
   // Smaller accent dots for depth
-  { top: 240, left: 300, size: 6, color: '#FFFFFF', opacity: 0.2 },
-  { top: 700, right: 300, size: 5, color: '#FFFFFF', opacity: 0.15 },
-  { top: 1450, left: 350, size: 7, color: '#FFFFFF', opacity: 0.18 },
+  { top: 240, left: 300, size: 6, color: COLORS.card, opacity: 0.2 },
+  { top: 700, right: 300, size: 5, color: COLORS.card, opacity: 0.15 },
+  { top: 1450, left: 350, size: 7, color: COLORS.card, opacity: 0.18 },
 ];
 
 /** Format endorser names: "Alex, Sam & Jordan" or "Alex, Sam & 3 others" */
@@ -143,7 +144,7 @@ export const ShareableMatchCard = React.forwardRef<ViewShot, ShareableMatchCardP
                   cachePolicy="disk"
                 />
               ) : (
-                <LinearGradient colors={['#2B65F9', '#162850']} style={styles.photo} />
+                <LinearGradient colors={[COLORS.primaryButton, '#162850']} style={styles.photo} />
               )}
             </View>
 
@@ -162,7 +163,7 @@ export const ShareableMatchCard = React.forwardRef<ViewShot, ShareableMatchCardP
                   cachePolicy="disk"
                 />
               ) : (
-                <LinearGradient colors={['#2B65F9', '#162850']} style={styles.photo} />
+                <LinearGradient colors={[COLORS.primaryButton, '#162850']} style={styles.photo} />
               )}
             </View>
           </View>
@@ -251,7 +252,7 @@ const styles = StyleSheet.create({
     height: PHOTO_SIZE + PHOTO_BORDER * 2,
     borderRadius: (PHOTO_SIZE + PHOTO_BORDER * 2) / 2,
     borderWidth: PHOTO_BORDER,
-    borderColor: '#FFFFFF',
+    borderColor: COLORS.card,
     overflow: 'hidden',
     backgroundColor: '#162850',
   },
@@ -264,19 +265,19 @@ const styles = StyleSheet.create({
     width: ICON_CIRCLE_SIZE,
     height: ICON_CIRCLE_SIZE,
     borderRadius: ICON_CIRCLE_SIZE / 2,
-    backgroundColor: '#2B65F9',
+    backgroundColor: COLORS.primaryButton,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 3,
     marginHorizontal: -ICON_CIRCLE_SIZE / 2 + 6,
-    shadowColor: '#2B65F9',
+    shadowColor: COLORS.primaryButton,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
     shadowRadius: 20,
     elevation: 12,
   },
   namesText: {
-    color: '#FFFFFF',
+    color: COLORS.card,
     fontFamily: FONTS.bold,
     fontSize: 72,
     lineHeight: 88,
@@ -288,19 +289,19 @@ const styles = StyleSheet.create({
     textShadowRadius: 12,
   },
   approvalPill: {
-    backgroundColor: '#34C759',
+    backgroundColor: COLORS.success,
     borderRadius: 32,
     paddingHorizontal: 44,
     paddingVertical: 20,
     marginTop: 36,
-    shadowColor: '#34C759',
+    shadowColor: COLORS.success,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 8,
   },
   approvalText: {
-    color: '#FFFFFF',
+    color: COLORS.card,
     fontFamily: FONTS.semiBold,
     fontSize: 34,
     lineHeight: 42,
@@ -321,7 +322,7 @@ const styles = StyleSheet.create({
     height: AVATAR_SIZE,
     borderRadius: AVATAR_SIZE / 2,
     borderWidth: 3,
-    borderColor: '#FFFFFF',
+    borderColor: COLORS.card,
     backgroundColor: '#667085',
   },
   matchedByText: {

@@ -13,6 +13,7 @@ import { View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
 import { MatchStatus } from '../../../utils/proposalMatching';
+import { COLORS } from '../../../theme/colors';
 import { EvaIcon } from '../../icons';
 
 const StyledView = styled(View);
@@ -30,7 +31,7 @@ export function MatchStatusIcon({ status, size = 20 }: MatchStatusIconProps) {
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: '#10B981',
+          backgroundColor: COLORS.emerald,
           alignItems: 'center',
           justifyContent: 'center',
         }}>
@@ -94,7 +95,7 @@ export function MatchStatusIcon({ status, size = 20 }: MatchStatusIconProps) {
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: '#EF4444',
+          backgroundColor: COLORS.error,
           alignItems: 'center',
           justifyContent: 'center',
         }}>
@@ -109,7 +110,7 @@ export function MatchStatusIcon({ status, size = 20 }: MatchStatusIconProps) {
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: '#94A3B8',
+          backgroundColor: COLORS.text.light,
           alignItems: 'center',
           justifyContent: 'center',
         }}>

@@ -15,7 +15,8 @@ import { SHADOWS } from '../../../theme/shadows';
 import { UserProfile } from '../../../types';
 import { ProfileView } from '../../profile/ProfileView';
 import { valueIconName, interestIconName } from '../../../utils/emojiMaps';
-import { FONTS } from '../../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../../constants/typography';
+import { COLORS } from '../../../theme/colors';
 import { EvaIcon, IconScoutIcon } from '../../icons';
 
 const StyledView = styled(View);
@@ -76,7 +77,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
     <StyledView
       style={{
         flex: 1,
-        backgroundColor: '#FBF9F6', // Warm cream background
+        backgroundColor: COLORS.backgroundWarmCream, // Warm cream background
         borderRadius: 24,
         margin: 8,
         marginLeft: 4,
@@ -89,23 +90,23 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
       <StyledView style={{ flex: 1, marginBottom: 12 }}>
         <StyledScrollView showsVerticalScrollIndicator={false}>
           {/* Section Header */}
-          <StyledText style={{ fontSize: 13, fontWeight: '700', fontFamily: FONTS.bold, color: '#4A4540', marginBottom: 10 }}>
+          <StyledText style={{ fontSize: FONT_SIZES.md, fontWeight: '700', fontFamily: FONTS.bold, color: COLORS.text.warmNeutral, marginBottom: 10 }}>
             Profile
           </StyledText>
 
           {/* Age */}
           <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-            <StyledText style={{ fontSize: 20, fontWeight: '700', fontFamily: FONTS.bold, color: '#4A4540', marginRight: 6 }}>
+            <StyledText style={{ fontSize: FONT_SIZES['3xl'], fontWeight: '700', fontFamily: FONTS.bold, color: COLORS.text.warmNeutral, marginRight: 6 }}>
               {anchor.age}
             </StyledText>
-            <StyledText style={{ fontSize: 13, color: '#78716C', fontWeight: '500', fontFamily: FONTS.medium }}>years old</StyledText>
+            <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.subtle, fontWeight: '500', fontFamily: FONTS.medium }}>years old</StyledText>
           </StyledView>
 
           {/* Height */}
           {anchor.height && (
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
               <EvaIcon name="maximize" variant="outline" size={14} color="#10B981" style={{ marginRight: 6 }} />
-              <StyledText style={{ fontSize: 12, color: '#6B5B4F', fontWeight: '500', fontFamily: FONTS.medium }}>
+              <StyledText style={{ fontSize: FONT_SIZES.sm, color: COLORS.text.warmInfo, fontWeight: '500', fontFamily: FONTS.medium }}>
                 {formatHeight(anchor.height)}
               </StyledText>
             </StyledView>
@@ -115,7 +116,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
           {anchor.ethnicity && (
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
               <EvaIcon name="globe" variant="outline" size={14} color="#8B5CF6" style={{ marginRight: 6 }} />
-              <StyledText style={{ fontSize: 12, color: '#6B5B4F', fontWeight: '500', fontFamily: FONTS.medium }}>
+              <StyledText style={{ fontSize: FONT_SIZES.sm, color: COLORS.text.warmInfo, fontWeight: '500', fontFamily: FONTS.medium }}>
                 {anchor.ethnicity}
               </StyledText>
             </StyledView>
@@ -125,7 +126,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
           {anchor.currentJob && (
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
               <EvaIcon name="briefcase" variant="outline" size={14} color="#3B82F6" style={{ marginRight: 6 }} />
-              <StyledText style={{ fontSize: 12, color: '#6B5B4F', fontWeight: '500', fontFamily: FONTS.medium }}>
+              <StyledText style={{ fontSize: FONT_SIZES.sm, color: COLORS.text.warmInfo, fontWeight: '500', fontFamily: FONTS.medium }}>
                 {anchor.currentJob}
               </StyledText>
             </StyledView>
@@ -134,7 +135,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
           {/* Values */}
           {anchor.values && anchor.values.length > 0 && (
             <StyledView style={{ marginBottom: 6, marginTop: 4 }}>
-              <StyledText style={{ fontSize: 11, color: '#78716C', fontWeight: '600', fontFamily: FONTS.semiBold, marginBottom: 3 }}>
+              <StyledText style={{ fontSize: FONT_SIZES.xs, color: COLORS.text.subtle, fontWeight: '600', fontFamily: FONTS.semiBold, marginBottom: 3 }}>
                 Values
               </StyledText>
               <StyledView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
@@ -150,7 +151,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
                       borderRadius: 10,
                     }}
                   >
-                    <IconScoutIcon name={valueIconName(value)} size={14} style={{ marginRight: 3 }} />
+                    <IconScoutIcon name={valueIconName(value) ?? ''} size={14} style={{ marginRight: 3 }} />
                     <StyledText style={{ fontSize: 10, color: '#7C3AED', fontWeight: '600', fontFamily: FONTS.semiBold }}>
                       {value}
                     </StyledText>
@@ -163,7 +164,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
           {/* Interests */}
           {anchor.interests && anchor.interests.length > 0 && (
             <StyledView style={{ marginBottom: 6 }}>
-              <StyledText style={{ fontSize: 11, color: '#78716C', fontWeight: '600', fontFamily: FONTS.semiBold, marginBottom: 3 }}>
+              <StyledText style={{ fontSize: FONT_SIZES.xs, color: COLORS.text.subtle, fontWeight: '600', fontFamily: FONTS.semiBold, marginBottom: 3 }}>
                 Interests
               </StyledText>
               <StyledView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
@@ -179,8 +180,8 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
                       borderRadius: 10,
                     }}
                   >
-                    <IconScoutIcon name={interestIconName(interest)} size={14} style={{ marginRight: 3 }} />
-                    <StyledText style={{ fontSize: 10, color: '#D97706', fontWeight: '600', fontFamily: FONTS.semiBold }}>
+                    <IconScoutIcon name={interestIconName(interest) ?? ''} size={14} style={{ marginRight: 3 }} />
+                    <StyledText style={{ fontSize: 10, color: COLORS.darkAmber, fontWeight: '600', fontFamily: FONTS.semiBold }}>
                       {interest}
                     </StyledText>
                   </StyledView>
@@ -195,20 +196,20 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
       <StyledView style={{
         width: '100%',
         height: 1,
-        backgroundColor: '#E7DED4',
+        backgroundColor: COLORS.borderWarm,
         marginVertical: 8,
       }} />
 
       {/* BOTTOM HALF: Match Preferences */}
       <StyledView style={{ flex: 1 }}>
-        <StyledText style={{ fontSize: 13, fontWeight: '700', fontFamily: FONTS.bold, color: '#4A4540', marginBottom: 6 }}>
+        <StyledText style={{ fontSize: FONT_SIZES.md, fontWeight: '700', fontFamily: FONTS.bold, color: COLORS.text.warmNeutral, marginBottom: 6 }}>
           Match Preferences
         </StyledText>
 
         {/* Age Preference */}
         <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
           <EvaIcon name="calendar" variant="outline" size={12} color="#EC4899" style={{ marginRight: 6 }} />
-          <StyledText style={{ fontSize: 11, color: '#6B5B4F', fontWeight: '500', fontFamily: FONTS.medium }}>
+          <StyledText style={{ fontSize: FONT_SIZES.xs, color: COLORS.text.warmInfo, fontWeight: '500', fontFamily: FONTS.medium }}>
             Ages {anchor.preferences?.ageMin || 18}-{anchor.preferences?.ageMax || 99}
           </StyledText>
         </StyledView>
@@ -216,7 +217,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
         {/* Height Preference */}
         <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
           <EvaIcon name="maximize" variant="outline" size={12} color="#10B981" style={{ marginRight: 6 }} />
-          <StyledText style={{ fontSize: 11, color: '#6B5B4F', fontWeight: '500', fontFamily: FONTS.medium }}>
+          <StyledText style={{ fontSize: FONT_SIZES.xs, color: COLORS.text.warmInfo, fontWeight: '500', fontFamily: FONTS.medium }}>
             {formatHeightRange()}
           </StyledText>
         </StyledView>
@@ -224,7 +225,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
         {/* Preferred Ethnicities */}
         <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
           <EvaIcon name="globe" variant="outline" size={12} color="#8B5CF6" style={{ marginRight: 6 }} />
-          <StyledText style={{ fontSize: 11, color: '#6B5B4F', fontWeight: '500', fontFamily: FONTS.medium }}>
+          <StyledText style={{ fontSize: FONT_SIZES.xs, color: COLORS.text.warmInfo, fontWeight: '500', fontFamily: FONTS.medium }}>
             {anchor.preferredEthnicities && anchor.preferredEthnicities.length > 0
               ? anchor.preferredEthnicities.join(', ')
               : 'Open to all'}
@@ -243,7 +244,7 @@ export function AnchorInfoSection({ anchor }: AnchorInfoSectionProps) {
             marginTop: 2,
           }}
         >
-          <StyledText style={{ color: '#FFF', fontSize: 11, fontWeight: '600', fontFamily: FONTS.semiBold }}>
+          <StyledText style={{ color: '#FFF', fontSize: FONT_SIZES.xs, fontWeight: '600', fontFamily: FONTS.semiBold }}>
             View Full Profile
           </StyledText>
         </StyledTouchableOpacity>

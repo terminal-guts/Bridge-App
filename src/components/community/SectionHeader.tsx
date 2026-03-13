@@ -11,7 +11,8 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { SectionCompatibility } from '../../utils/proposalMatching';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -24,17 +25,17 @@ interface SectionHeaderProps {
 export function SectionHeader({ title, compatibility }: SectionHeaderProps) {
   // Determine dot color based on compatibility status
   const getDotColor = (): string => {
-    if (!compatibility) return '#94A3B8'; // Grey if no compatibility data
+    if (!compatibility) return COLORS.text.light; // Grey if no compatibility data
 
     switch (compatibility.status) {
       case 'high':
-        return '#10B981'; // Green
+        return COLORS.emerald; // Green
       case 'medium':
-        return '#F59E0B'; // Yellow
+        return COLORS.warning.icon; // Yellow
       case 'low':
-        return '#EF4444'; // Red
+        return COLORS.error; // Red
       default:
-        return '#94A3B8'; // Grey
+        return COLORS.text.light; // Grey
     }
   };
 
@@ -57,10 +58,10 @@ export function SectionHeader({ title, compatibility }: SectionHeaderProps) {
 
       {/* Section Title */}
       <StyledText style={{
-        fontSize: 14,
+        fontSize: FONT_SIZES.base,
         fontWeight: '700',
         fontFamily: FONTS.bold,
-        color: '#475569',
+        color: COLORS.text.muted,
         flex: 1,
       }}>
         {title}
@@ -69,10 +70,10 @@ export function SectionHeader({ title, compatibility }: SectionHeaderProps) {
       {/* Compatibility Count */}
       {compatibility && (
         <StyledText style={{
-          fontSize: 13,
+          fontSize: FONT_SIZES.md,
           fontWeight: '600',
           fontFamily: FONTS.semiBold,
-          color: '#94A3B8',
+          color: COLORS.text.light,
         }}>
           ({compatibility.compatible}/{compatibility.total})
         </StyledText>

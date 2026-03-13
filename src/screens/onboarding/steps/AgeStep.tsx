@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Platform } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
+import { COLORS } from '../../../theme/colors';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -25,7 +26,7 @@ const MAX_AGE = 80;
 const Thumb = () => (
   <StyledView
     className="w-6 h-6 rounded-full border-2 border-white shadow-md"
-    style={{ backgroundColor: '#437FFF' }}
+    style={{ backgroundColor: COLORS.primaryAccent }}
   />
 );
 
@@ -36,7 +37,7 @@ const Rail = () => (
 const RailSelected = () => (
   <StyledView
     className="h-1 rounded-full"
-    style={{ backgroundColor: '#437FFF' }}
+    style={{ backgroundColor: COLORS.primaryAccent }}
   />
 );
 
@@ -147,8 +148,8 @@ export const BirthdayStep: React.FC<BirthdayStepProps> = ({
               onChange={handleDateChange}
               maximumDate={maxDate}
               minimumDate={minDate}
-              textColor="#437FFF"
-              accentColor="#437FFF"
+              textColor={COLORS.primaryAccent}
+              accentColor={COLORS.primaryAccent}
               themeVariant="light"
               style={{ height: 160 }}
             />

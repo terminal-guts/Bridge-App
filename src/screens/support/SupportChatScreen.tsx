@@ -15,7 +15,8 @@ import {
 import { NavigationProp } from '@react-navigation/native';
 import { EvaIcon } from '../../components/icons';
 import { RootStackParamList } from '../../types';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import {
   getSupportMessages,
   sendSupportMessage,
@@ -197,7 +198,7 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
       <SafeAreaView style={s.container}>
         <StatusBar barStyle="dark-content" />
         <View style={s.loadingWrap}>
-          <ActivityIndicator size="large" color="#437FFF" />
+          <ActivityIndicator size="large" color={COLORS.primaryAccent} />
         </View>
       </SafeAreaView>
     );
@@ -246,7 +247,7 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
               value={input}
               onChangeText={setInput}
               placeholder="Type a message..."
-              placeholderTextColor="#98A2B3"
+              placeholderTextColor={COLORS.text.placeholder}
               multiline
               maxLength={1000}
               editable={!sending}
@@ -279,7 +280,7 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
 };
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flex: 1, backgroundColor: COLORS.card },
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   // Header
@@ -294,7 +295,7 @@ const s = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: FONTS.semiBold,
-    fontSize: 18,
+    fontSize: FONT_SIZES['2xl'],
     color: '#101828',
   },
 
@@ -302,8 +303,8 @@ const s = StyleSheet.create({
   listContent: { padding: 16, paddingBottom: 8, flexGrow: 1 },
 
   dateSep: { alignItems: 'center', marginVertical: 16 },
-  dateSepPill: { backgroundColor: '#F2F4F7', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999 },
-  dateSepText: { fontFamily: FONTS.regular, fontSize: 12, color: '#667085' },
+  dateSepPill: { backgroundColor: COLORS.backgroundProgressTrack, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999 },
+  dateSepText: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.sm, color: '#667085' },
 
   bubbleRow: { marginBottom: 12 },
   bubbleRowRight: { alignItems: 'flex-end' },
@@ -311,24 +312,24 @@ const s = StyleSheet.create({
 
   autoReplyLabel: {
     fontFamily: FONTS.regular,
-    fontSize: 11,
-    color: '#98A2B3',
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.text.placeholder,
     marginBottom: 2,
     marginLeft: 4,
   },
 
   bubble: { maxWidth: '80%', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 18 },
-  bubbleUser: { backgroundColor: '#437FFF', borderBottomRightRadius: 4 },
-  bubbleAdmin: { backgroundColor: '#F2F4F7', borderBottomLeftRadius: 4 },
+  bubbleUser: { backgroundColor: COLORS.primaryAccent, borderBottomRightRadius: 4 },
+  bubbleAdmin: { backgroundColor: COLORS.backgroundProgressTrack, borderBottomLeftRadius: 4 },
 
-  bubbleText: { fontFamily: FONTS.regular, fontSize: 15, lineHeight: 22 },
-  bubbleTextUser: { color: '#FFFFFF' },
+  bubbleText: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.lg, lineHeight: 22 },
+  bubbleTextUser: { color: COLORS.card },
   bubbleTextAdmin: { color: '#101828' },
 
   timestamp: {
     fontFamily: FONTS.regular,
-    fontSize: 11,
-    color: '#98A2B3',
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.text.placeholder,
     marginTop: 2,
     marginHorizontal: 4,
   },
@@ -341,7 +342,7 @@ const s = StyleSheet.create({
   },
   failedBannerText: {
     fontFamily: FONTS.medium,
-    fontSize: 13,
+    fontSize: FONT_SIZES.md,
     color: '#D92D20',
   },
 
@@ -353,11 +354,11 @@ const s = StyleSheet.create({
     paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: '#E4E7EC',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
   },
   inputWrap: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.backgroundSubtle,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -365,17 +366,17 @@ const s = StyleSheet.create({
   },
   textInput: {
     fontFamily: FONTS.regular,
-    fontSize: 15,
+    fontSize: FONT_SIZES.lg,
     color: '#101828',
     maxHeight: 96,
   },
   sendBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  sendBtnActive: { backgroundColor: '#437FFF' },
+  sendBtnActive: { backgroundColor: COLORS.primaryAccent },
   sendBtnDisabled: { backgroundColor: '#E4E7EC' },
 
   // Char count
-  charCountWrap: { paddingHorizontal: 24, paddingBottom: 4, alignItems: 'flex-end', backgroundColor: '#FFFFFF' },
-  charCount: { fontFamily: FONTS.regular, fontSize: 11, color: '#98A2B3' },
+  charCountWrap: { paddingHorizontal: 24, paddingBottom: 4, alignItems: 'flex-end', backgroundColor: COLORS.card },
+  charCount: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.xs, color: COLORS.text.placeholder },
   charCountRed: { color: '#D92D20' },
 });
 

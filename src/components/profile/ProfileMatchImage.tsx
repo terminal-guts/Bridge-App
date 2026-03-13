@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, ImageBackground, TouchableOpacity } from 'react-native';
-import { ArrowLeft, Star } from 'lucide-react-native';
+import { ArrowLeft, Star } from '../icons/LucideReplacements';
 import { FONTS } from '../../constants/typography';
 
 export default function ProfileMatchImage() {

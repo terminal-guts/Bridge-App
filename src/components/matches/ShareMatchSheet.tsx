@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { OVERLAYS } from '../../theme/shadows';
 import { EvaIcon } from '../icons';
 
@@ -18,7 +19,7 @@ interface ShareMatchSheetProps {
 
 const SHARE_TARGETS = [
     { key: 'snapchat', label: 'Snapchat', icon: 'share' as const, color: '#FFFC00', iconColor: '#000000', action: 'onShareSnapchat' },
-    { key: 'message', label: 'iMessage', icon: 'message-circle' as const, color: '#2B65F9', iconColor: '#FFFFFF', action: 'onShareMessages' },
+    { key: 'message', label: 'iMessage', icon: 'message-circle' as const, color: COLORS.primaryButton, iconColor: '#FFFFFF', action: 'onShareMessages' },
     { key: 'more', label: 'More...', icon: 'share' as const, color: '#667085', iconColor: '#FFFFFF', action: 'onShareMore' },
 ] as const;
 
@@ -62,7 +63,7 @@ export const ShareMatchSheet: React.FC<ShareMatchSheetProps> = ({
                     <View style={styles.previewWrap}>
                         {loading ? (
                             <View style={styles.previewPlaceholder}>
-                                <ActivityIndicator size="small" color="#2B65F9" />
+                                <ActivityIndicator size="small" color={COLORS.primaryButton} />
                                 <Text style={styles.previewLoadingText}>Creating your card...</Text>
                             </View>
                         ) : imageUri ? (
@@ -121,7 +122,7 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     sheet: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.card,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         paddingHorizontal: 20,
@@ -138,14 +139,14 @@ const styles = StyleSheet.create({
     },
     sheetTitle: {
         fontFamily: FONTS.bold,
-        fontSize: 20,
+        fontSize: FONT_SIZES['3xl'],
         color: '#101828',
         textAlign: 'center',
         marginBottom: 4,
     },
     sheetSubtitle: {
         fontFamily: FONTS.regular,
-        fontSize: 14,
+        fontSize: FONT_SIZES.base,
         color: '#667085',
         textAlign: 'center',
         marginBottom: 16,
@@ -163,13 +164,13 @@ const styles = StyleSheet.create({
         width: 180,
         height: 320,
         borderRadius: 16,
-        backgroundColor: '#F2F4F7',
+        backgroundColor: COLORS.backgroundProgressTrack,
         alignItems: 'center',
         justifyContent: 'center',
     },
     previewLoadingText: {
         fontFamily: FONTS.medium,
-        fontSize: 12,
+        fontSize: FONT_SIZES.sm,
         color: '#667085',
         marginTop: 8,
     },
@@ -192,7 +193,7 @@ const styles = StyleSheet.create({
     },
     targetLabel: {
         fontFamily: FONTS.medium,
-        fontSize: 11,
+        fontSize: FONT_SIZES.xs,
         color: '#344054',
         textAlign: 'center',
     },
@@ -203,13 +204,13 @@ const styles = StyleSheet.create({
         gap: 8,
         paddingVertical: 14,
         borderRadius: 14,
-        backgroundColor: '#EEF3FF',
+        backgroundColor: COLORS.backgroundFriendActive,
         marginBottom: 10,
     },
     saveBtnText: {
         fontFamily: FONTS.semiBold,
-        fontSize: 15,
-        color: '#2B65F9',
+        fontSize: FONT_SIZES.lg,
+        color: COLORS.primaryButton,
     },
     doneBtn: {
         paddingVertical: 14,
@@ -220,7 +221,7 @@ const styles = StyleSheet.create({
     },
     doneBtnText: {
         fontFamily: FONTS.semiBold,
-        fontSize: 16,
+        fontSize: FONT_SIZES.xl,
         color: '#667085',
     },
 });

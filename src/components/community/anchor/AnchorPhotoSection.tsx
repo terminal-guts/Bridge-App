@@ -12,6 +12,7 @@ import { styled } from 'nativewind';
 import { UserProfile, Photo } from '../../../types';
 import { createLogger } from '../../../utils/secureLogger';
 import { SHADOWS } from '../../../theme/shadows';
+import { COLORS } from '../../../theme/colors';
 
 const logger = createLogger('AnchorPhotoSection');
 
@@ -34,7 +35,7 @@ export function AnchorPhotoSection({ anchor }: AnchorPhotoSectionProps) {
   return (
     <StyledView style={{
       flex: 1,
-      backgroundColor: '#FBF9F6', // Warm cream background
+      backgroundColor: COLORS.backgroundWarmCream, // Warm cream background
       borderRadius: 24, // Generous rounded corners
       overflow: 'hidden',
       margin: 8,

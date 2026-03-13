@@ -3,7 +3,8 @@ import { View, TouchableOpacity, Animated, Alert, Text, StyleSheet } from 'react
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { createLogger } from '../../utils/secureLogger';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 import { EvaIcon } from '../icons';
 
 const logger = createLogger('AudioRecorder');
@@ -230,7 +231,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
 const styles = StyleSheet.create({
     micButton: {
         width: 42, height: 42, borderRadius: 21,
-        backgroundColor: '#437FFF', alignItems: 'center', justifyContent: 'center',
+        backgroundColor: COLORS.primaryAccent, alignItems: 'center', justifyContent: 'center',
     },
     micButtonDisabled: { opacity: 0.5 },
     recordingBar: {
@@ -249,19 +250,19 @@ const styles = StyleSheet.create({
     },
     recordingDot: {
         width: 8, height: 8, borderRadius: 4,
-        backgroundColor: '#EF4444', marginRight: 8,
+        backgroundColor: COLORS.error, marginRight: 8,
     },
     timerText: {
-        fontSize: 14, fontWeight: '600', fontFamily: FONTS.semiBold, color: '#B91C1C',
+        fontSize: FONT_SIZES.base, fontWeight: '600', fontFamily: FONTS.semiBold, color: '#B91C1C',
         marginRight: 10, minWidth: 36, fontVariant: ['tabular-nums'],
     },
     waveformBars: {
         flex: 1, flexDirection: 'row', alignItems: 'center',
         justifyContent: 'space-between', height: 32,
     },
-    waveformBar: { width: 3, borderRadius: 1.5, backgroundColor: '#EF4444' },
+    waveformBar: { width: 3, borderRadius: 1.5, backgroundColor: COLORS.error },
     sendButton: {
         width: 36, height: 36, borderRadius: 18,
-        backgroundColor: '#437FFF', alignItems: 'center', justifyContent: 'center',
+        backgroundColor: COLORS.primaryAccent, alignItems: 'center', justifyContent: 'center',
     },
 });
