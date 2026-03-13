@@ -48,7 +48,6 @@ import { showToast } from '../../utils/toast';
 import { successHaptic, warningHaptic, errorHaptic } from '../../utils/haptics';
 import { sendNudge } from '../../services/nudgeService';
 import { getPreviousStreaks, saveCurrentStreaks, detectStreakChanges } from '../../services/streakTrackingService';
-import { notificationService } from '../../services/notificationService';
 
 const logger = createLogger('FriendsAreaView');
 
@@ -142,7 +141,6 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
           if (change.type === 'death') {
             errorHaptic();
             showToast.error('Streak ended', `Your ${change.previousDays}-day streak with ${change.friendName} ended.`);
-            notificationService.notifyStreakDeath(change.friendName, change.previousDays);
           }
         }
 

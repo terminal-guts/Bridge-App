@@ -186,7 +186,7 @@ const uploadPhotoInternal = async (
       .from(STORAGE_BUCKET)
       .upload(storagePath, decode(base64Data), {
         contentType: 'image/jpeg',
-        cacheControl: '3600',
+        cacheControl: '31536000',
         upsert: false,
       });
 
@@ -465,21 +465,20 @@ export const getMultiplePhotoSignedUrls = async (
       };
     }
 
-    const urlMap: Record<string, string> = {};
-    const errors: string[] = [];
+    // Batch API: one network call for all paths instead of N sequential calls
+    const { data: signedUrls, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .createSignedUrls(storagePaths, expiresIn);
 
-    // Generate signed URLs for each path
-    for (const path of storagePaths) {
-      const result = await getPhotoSignedUrl(path, expiresIn);
-      if (result.ok && result.data) {
-        urlMap[path] = result.data;
-      } else {
-        errors.push(`Failed to generate URL for ${path}`);
-      }
+    if (error || !signedUrls) {
+      return createErrorResponse('ALL_URLS_FAILED', error?.message || 'Failed to generate signed URLs');
     }
 
-    if (errors.length > 0 && Object.keys(urlMap).length === 0) {
-      return createErrorResponse('ALL_URLS_FAILED', errors.join('; '));
+    const urlMap: Record<string, string> = {};
+    for (const item of signedUrls) {
+      if (item.signedUrl) {
+        urlMap[item.path!] = item.signedUrl;
+      }
     }
 
     return {

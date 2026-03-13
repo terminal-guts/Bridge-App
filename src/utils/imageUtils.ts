@@ -12,14 +12,20 @@
 export const getOptimizedImageUrl = (url: string | undefined, size: number): string | undefined => {
   if (!url || typeof url !== 'string') return url;
 
-  // If it's a Supabase public URL, we can use the built-in image transformation service
-  if (url.includes('supabase.co') && url.includes('/object/public/')) {
-    // Use double the requested size for high-density displays (retina)
-    const targetSize = Math.round(size * 2);
+  // Use double the requested size for high-density displays (retina)
+  const targetSize = Math.round(size * 2);
+  const transformParams = `width=${targetSize}&height=${targetSize}&resize=cover&quality=80`;
 
-    // Transform from /object/public/ to /render/image/public/ which supports transformations
+  // Public URLs: use the render/image transform endpoint
+  if (url.includes('supabase.co') && url.includes('/object/public/')) {
     return url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') +
-           `?width=${targetSize}&height=${targetSize}&resize=cover&quality=80`;
+           `?${transformParams}`;
+  }
+
+  // Signed URLs: append transform params (Supabase Storage supports this)
+  if (url.includes('supabase.co') && url.includes('/object/sign/')) {
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}${transformParams}`;
   }
 
   return url;

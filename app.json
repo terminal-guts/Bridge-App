@@ -12,7 +12,10 @@
       "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": [
-      "**/*"
+      "assets/Icons/**",
+      "assets/*.png",
+      "assets/*.jpg",
+      "assets/*.json"
     ],
     "ios": {
       "supportsTablet": false,

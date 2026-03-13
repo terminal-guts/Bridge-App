@@ -1,13 +1,22 @@
 /**
  * LiveVoteBar — Animated vote percentage bar with yes/no/unsure segments.
- * Extracted from ProposalReviewView.tsx.
+ * Migrated to Reanimated for UI-thread performance (no useNativeDriver: false).
  */
 
-import React, { useRef, useEffect } from 'react';
-import { View, Text, Animated } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, LayoutChangeEvent } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  runOnJS,
+  interpolate,
+} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS, FONT_SIZES } from '../../../constants/typography';
 import { COLORS } from '../../../theme/colors';
+import { DURATIONS } from '../../../constants/animations';
+import { lightHaptic } from '../../../utils/haptics';
 
 const BLUE = COLORS.primary;
 const GREEN = COLORS.success;
@@ -26,22 +35,50 @@ export function LiveVoteBar({
   const unsureVotes = Math.max(0, totalVotes - yesVotes - noVotes);
   const total = yesVotes + noVotes + unsureVotes;
 
-  const yesWidth = useRef(new Animated.Value(0)).current;
-  const noWidth = useRef(new Animated.Value(0)).current;
-  const unsureWidth = useRef(new Animated.Value(0)).current;
+  const [barWidth, setBarWidth] = useState(0);
+  const hasMountedRef = useRef(false);
+
+  const yesPct = useSharedValue(0);
+  const noPct = useSharedValue(0);
+  const unsurePct = useSharedValue(0);
 
   useEffect(() => {
     if (total === 0) return;
-    const yesPct = (yesVotes / total) * 100;
-    const noPct = (noVotes / total) * 100;
-    const unsurePct = (unsureVotes / total) * 100;
+    const yp = (yesVotes / total) * 100;
+    const np = (noVotes / total) * 100;
+    const up = (unsureVotes / total) * 100;
 
-    Animated.parallel([
-      Animated.timing(yesWidth, { toValue: yesPct, duration: 400, useNativeDriver: false }),
-      Animated.timing(noWidth, { toValue: noPct, duration: 400, useNativeDriver: false }),
-      Animated.timing(unsureWidth, { toValue: unsurePct, duration: 400, useNativeDriver: false }),
-    ]).start();
-  }, [yesVotes, noVotes, unsureVotes, total, yesWidth, noWidth, unsureWidth]);
+    yesPct.value = withTiming(yp, { duration: DURATIONS.slow });
+    noPct.value = withTiming(np, { duration: DURATIONS.slow });
+    unsurePct.value = withTiming(up, { duration: DURATIONS.slow }, (finished) => {
+      // Only fire haptic on user-initiated vote changes, not initial mount
+      if (finished && hasMountedRef.current) runOnJS(lightHaptic)();
+    });
+    hasMountedRef.current = true;
+  }, [yesVotes, noVotes, unsureVotes, total]);
+
+  const onBarLayout = (e: LayoutChangeEvent) => {
+    setBarWidth(e.nativeEvent.layout.width);
+  };
+
+  // Use pixel widths (not %) for Reanimated UI-thread compatibility
+  const yesStyle = useAnimatedStyle(() => ({
+    width: barWidth > 0 ? interpolate(yesPct.value, [0, 100], [0, barWidth]) : 0,
+    height: 14,
+    overflow: 'hidden' as const,
+  }));
+
+  const noStyle = useAnimatedStyle(() => ({
+    width: barWidth > 0 ? interpolate(noPct.value, [0, 100], [0, barWidth]) : 0,
+    height: 14,
+    overflow: 'hidden' as const,
+  }));
+
+  const unsureStyle = useAnimatedStyle(() => ({
+    width: barWidth > 0 ? interpolate(unsurePct.value, [0, 100], [0, barWidth]) : 0,
+    height: 14,
+    overflow: 'hidden' as const,
+  }));
 
   if (total === 0) {
     return (
@@ -84,28 +121,19 @@ export function LiveVoteBar({
           end={{ x: 0.5, y: 1 }}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}
         />
-        <View style={{ flexDirection: 'row', height: 14, zIndex: 1 }}>
+        <View style={{ flexDirection: 'row', height: 14, zIndex: 1 }} onLayout={onBarLayout}>
           {yesVotes > 0 && (
-            <Animated.View style={{
-              height: 14, overflow: 'hidden',
-              width: yesWidth.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
-            }}>
+            <Animated.View style={yesStyle}>
               <LinearGradient colors={['#4ADE80', GREEN, '#22C55E']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={{ flex: 1 }} />
             </Animated.View>
           )}
           {noVotes > 0 && (
-            <Animated.View style={{
-              height: 14, overflow: 'hidden',
-              width: noWidth.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
-            }}>
+            <Animated.View style={noStyle}>
               <LinearGradient colors={['#FF6B6B', RED, '#E11D48']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={{ flex: 1 }} />
             </Animated.View>
           )}
           {unsureVotes > 0 && (
-            <Animated.View style={{
-              height: 14, overflow: 'hidden',
-              width: unsureWidth.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
-            }}>
+            <Animated.View style={unsureStyle}>
               <LinearGradient colors={['#C4C9D4', GREY_VOTE, '#8B93A1']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={{ flex: 1 }} />
             </Animated.View>
           )}

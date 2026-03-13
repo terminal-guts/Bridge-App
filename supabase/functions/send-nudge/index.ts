@@ -2,7 +2,8 @@
  * send-nudge edge function
  *
  * Sends a push notification nudge from one friend to another,
- * reminding them to vote. Rate-limited to 1 nudge per friend pair per day.
+ * reminding them to vote. Uses shared sendPush utility for
+ * cap enforcement, cooldowns, and logging.
  *
  * POST body: { friendId: string }
  * Auth: requires valid JWT (nudger = authenticated user)
@@ -12,6 +13,22 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { sendPush, getNextCopyVariant } from '../_shared/send-push.ts';
+
+const COPY_VARIANTS = [
+  {
+    title: (name: string) => `${name} nudged you`,
+    body: (_name: string) => `They're waiting for your vote. Don't leave them hanging.`,
+  },
+  {
+    title: (_name: string) => 'Incoming nudge',
+    body: (name: string) => `👉 ${name} wants you to vote. Take 30 seconds.`,
+  },
+  {
+    title: (name: string) => `Hey, ${name} called you out`,
+    body: (_name: string) => `They nudged you to vote. Your move.`,
+  },
+];
 
 Deno.serve(async (req) => {
   // CORS preflight
@@ -79,12 +96,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Rate limit: 1 nudge per friend pair per day
-    // Use a simple approach: check if a nudge was sent in the last 20 hours
-    // (using a nudge_log table or inline check)
-    // For now, we trust the client-side AsyncStorage cooldown and just send.
-    // TODO: Add server-side nudge_log table for strict rate limiting.
-
     // Get nudger's name
     const { data: nudgerProfile } = await admin
       .from('user_profiles')
@@ -94,39 +105,23 @@ Deno.serve(async (req) => {
 
     const nudgerName = nudgerProfile?.first_name || 'A friend';
 
-    // Get friend's push token
-    const { data: friendSettings } = await admin
-      .from('user_settings')
-      .select('push_token, push_enabled')
-      .eq('user_id', friendId)
-      .maybeSingle();
+    // Use shared sendPush — handles token lookup, preferences, caps, cooldowns, logging
+    const variant = await getNextCopyVariant(admin, friendId, 'friend_nudge', COPY_VARIANTS.length);
+    const copy = COPY_VARIANTS[variant];
 
-    if (!friendSettings?.push_token || friendSettings.push_enabled === false) {
-      // Friend doesn't have push enabled — still return success (nudge "sent")
-      return new Response(
-        JSON.stringify({ status: 'sent', push_delivered: false }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
-    // Send push via Expo
-    const pushResponse = await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: friendSettings.push_token,
-        title: 'You got nudged!',
-        body: `${nudgerName} nudged you to vote — don't leave them hanging!`,
-        data: { screen: 'Community', type: 'friend_nudge', nudgerId },
-        sound: 'default',
-      }),
+    const result = await sendPush(admin, {
+      userId: friendId,
+      notificationType: 'friend_nudge',
+      category: 'engagement',
+      title: copy.title(nudgerName),
+      body: copy.body(nudgerName),
+      data: { screen: 'Community', type: 'friend_nudge', nudgerId },
+      copyVariant: variant,
+      metadata: { nudger_id: nudgerId },
     });
 
-    const pushResult = await pushResponse.json();
-    const delivered = pushResponse.ok && !pushResult?.data?.[0]?.status?.includes('error');
-
     return new Response(
-      JSON.stringify({ status: 'sent', push_delivered: delivered }),
+      JSON.stringify({ status: 'sent', push_delivered: result.sent, reason: result.reason }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err) {

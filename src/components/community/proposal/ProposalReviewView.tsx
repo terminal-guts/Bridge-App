@@ -30,9 +30,17 @@ import {
   Dimensions,
   Modal,
   ActivityIndicator,
-  Animated,
   StyleSheet,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  withSequence,
+  runOnJS,
+} from 'react-native-reanimated';
+import { DURATIONS, SPRINGS } from '../../../constants/animations';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -119,8 +127,8 @@ export function ProposalReviewView({
   const [voting, setVoting] = useState(false);
 
   // +1 Karma popup animation
-  const karmaOpacity = useRef(new Animated.Value(0)).current;
-  const karmaTranslateY = useRef(new Animated.Value(0)).current;
+  const karmaOpacity = useSharedValue(0);
+  const karmaTranslateY = useSharedValue(0);
   const [showKarmaPopup, setShowKarmaPopup] = useState(false);
 
   // Confetti on yes votes
@@ -128,22 +136,61 @@ export function ProposalReviewView({
 
   // Vote flash overlay
   const [voteFlashColor, setVoteFlashColor] = useState<string | null>(null);
-  const flashOpacity = useRef(new Animated.Value(0)).current;
+  const flashOpacity = useSharedValue(0);
 
   // Post-vote crowd reveal
   const [crowdReveal, setCrowdReveal] = useState<{ message: string; subMessage: string; color: string } | null>(null);
-  const crowdRevealOpacity = useRef(new Animated.Value(0)).current;
-  const crowdRevealTranslateY = useRef(new Animated.Value(20)).current;
+  const crowdRevealOpacity = useSharedValue(0);
+  const crowdRevealTranslateY = useSharedValue(20);
 
   // Entrance animation for new proposals
-  const entranceOpacity = useRef(new Animated.Value(1)).current;
-  const entranceTranslateX = useRef(new Animated.Value(0)).current;
+  const entranceOpacity = useSharedValue(1);
+  const entranceTranslateX = useSharedValue(0);
 
   // Vote button micro-interaction scales
-  const yesButtonScale = useRef(new Animated.Value(1)).current;
-  const noButtonScale = useRef(new Animated.Value(1)).current;
-  const recommendButtonScale = useRef(new Animated.Value(1)).current;
-  const unsureButtonScale = useRef(new Animated.Value(1)).current;
+  const yesButtonScale = useSharedValue(1);
+  const noButtonScale = useSharedValue(1);
+  const recommendButtonScale = useSharedValue(1);
+  const unsureButtonScale = useSharedValue(1);
+
+  // ── Animated styles ────────────────────────────────────────────────────────
+  const karmaAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: karmaOpacity.value,
+    transform: [{ translateY: karmaTranslateY.value }],
+  }));
+
+  const entranceAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: entranceOpacity.value,
+    transform: [{ translateX: entranceTranslateX.value }],
+  }));
+
+  const crowdRevealAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: crowdRevealOpacity.value,
+    transform: [{ translateY: crowdRevealTranslateY.value }],
+  }));
+
+  const flashAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: flashOpacity.value,
+  }));
+
+  const yesButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: yesButtonScale.value }],
+  }));
+
+  const noButtonAnimatedStyle = useAnimatedStyle(() => ({
+    flex: 1,
+    transform: [{ scale: noButtonScale.value }],
+  }));
+
+  const recommendButtonAnimatedStyle = useAnimatedStyle(() => ({
+    flex: 1,
+    transform: [{ scale: recommendButtonScale.value }],
+  }));
+
+  const unsureButtonAnimatedStyle = useAnimatedStyle(() => ({
+    flex: 1,
+    transform: [{ scale: unsureButtonScale.value }],
+  }));
 
   // For Friend modal state
   const [showForFriendModal, setShowForFriendModal] = useState(false);
@@ -167,13 +214,11 @@ export function ProposalReviewView({
 
   // Trigger entrance animation when advancing to a new proposal
   useEffect(() => {
-    entranceOpacity.setValue(0);
-    entranceTranslateX.setValue(30);
-    Animated.parallel([
-      Animated.timing(entranceOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
-      Animated.timing(entranceTranslateX, { toValue: 0, duration: 250, useNativeDriver: true }),
-    ]).start();
-  }, [currentIndex, entranceOpacity, entranceTranslateX]);
+    entranceOpacity.value = 0;
+    entranceTranslateX.value = 30;
+    entranceOpacity.value = withTiming(1, { duration: 250 });
+    entranceTranslateX.value = withTiming(0, { duration: 250 });
+  }, [currentIndex]);
 
   useEffect(() => {
     if (initialProposals) return; // skip fetch if proposals provided externally
@@ -198,24 +243,13 @@ export function ProposalReviewView({
   // Trigger +1 Karma popup animation
   const triggerKarmaPopup = useCallback(() => {
     setShowKarmaPopup(true);
-    karmaOpacity.setValue(1);
-    karmaTranslateY.setValue(0);
-
-    Animated.parallel([
-      Animated.timing(karmaOpacity, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(karmaTranslateY, {
-        toValue: -40,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setShowKarmaPopup(false);
+    karmaTranslateY.value = 0;
+    karmaTranslateY.value = withTiming(-40, { duration: DURATIONS.emphasis });
+    karmaOpacity.value = 1;
+    karmaOpacity.value = withTiming(0, { duration: DURATIONS.emphasis }, (finished) => {
+      if (finished) runOnJS(setShowKarmaPopup)(false);
     });
-  }, [karmaOpacity, karmaTranslateY]);
+  }, []);
 
   // Post-vote crowd reveal animation
   const triggerCrowdReveal = useCallback((vote: 'yes' | 'no' | 'unsure', proposal: any) => {
@@ -246,49 +280,50 @@ export function ProposalReviewView({
       setCrowdReveal({ message: 'On the fence', subMessage: `${totalVotes} votes so far`, color: COLORS.navInactiveIcon });
     }
 
-    crowdRevealOpacity.setValue(0);
-    crowdRevealTranslateY.setValue(20);
-    Animated.parallel([
-      Animated.timing(crowdRevealOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-      Animated.timing(crowdRevealTranslateY, { toValue: 0, duration: 300, useNativeDriver: true }),
-    ]).start(() => {
-      setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(crowdRevealOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
-          Animated.timing(crowdRevealTranslateY, { toValue: -10, duration: 400, useNativeDriver: true }),
-        ]).start(() => setCrowdReveal(null));
-      }, 1800);
-    });
-  }, [crowdRevealOpacity, crowdRevealTranslateY]);
+    crowdRevealOpacity.value = 0;
+    crowdRevealTranslateY.value = 20;
+    crowdRevealOpacity.value = withSequence(
+      withTiming(1, { duration: DURATIONS.normal }),
+      withTiming(1, { duration: 1800 }),
+      withTiming(0, { duration: 400 }, (finished) => {
+        if (finished) runOnJS(setCrowdReveal)(null);
+      }),
+    );
+    crowdRevealTranslateY.value = withSequence(
+      withSpring(0, SPRINGS.gentle),
+      withTiming(0, { duration: 1800 }),
+      withTiming(-10, { duration: 400 }),
+    );
+  }, []);
 
   // Vote button press animation
-  const animateButtonPress = useCallback((scale: Animated.Value, type: 'yes' | 'no' | 'unsure' | 'recommend') => {
+  const animateButtonPress = useCallback((scale: { value: number }, type: 'yes' | 'no' | 'unsure' | 'recommend') => {
     if (type === 'yes') {
       // Pulse up then settle
-      Animated.sequence([
-        Animated.spring(scale, { toValue: 0.95, useNativeDriver: true, speed: 50, bounciness: 0 }),
-        Animated.spring(scale, { toValue: 1.03, useNativeDriver: true, speed: 14, bounciness: 8 }),
-        Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 0 }),
-      ]).start();
+      scale.value = withSequence(
+        withSpring(0.95, { damping: 20, stiffness: 400, mass: 0.8 }),
+        withSpring(1.03, { damping: 10, stiffness: 200, mass: 0.8 }),
+        withSpring(1, { damping: 15, stiffness: 300, mass: 0.8 }),
+      );
     } else {
       // Quick press down and back
-      Animated.sequence([
-        Animated.spring(scale, { toValue: 0.93, useNativeDriver: true, speed: 50, bounciness: 0 }),
-        Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 6 }),
-      ]).start();
+      scale.value = withSequence(
+        withSpring(0.93, { damping: 20, stiffness: 400, mass: 0.8 }),
+        withSpring(1, { damping: 12, stiffness: 300, mass: 0.8 }),
+      );
     }
   }, []);
 
   // Vote flash overlay animation
   const triggerVoteFlash = useCallback((color: string) => {
     setVoteFlashColor(color);
-    flashOpacity.setValue(0.3);
-    Animated.timing(flashOpacity, {
-      toValue: 0,
-      duration: 400,
-      useNativeDriver: true,
-    }).start(() => setVoteFlashColor(null));
-  }, [flashOpacity]);
+    flashOpacity.value = withSequence(
+      withTiming(0.5, { duration: 0 }),
+      withTiming(0, { duration: 400 }, (finished) => {
+        if (finished) runOnJS(setVoteFlashColor)(null);
+      }),
+    );
+  }, []);
 
   // Advance to the next proposal or trigger completion callbacks.
   // Used by both handleVote and handleForFriendConfirm.
@@ -610,7 +645,7 @@ export function ProposalReviewView({
       )}
 
       {/* Scrollable content */}
-      <Animated.View style={{ flex: 1, opacity: entranceOpacity, transform: [{ translateX: entranceTranslateX }] }}>
+      <Animated.View style={[{ flex: 1 }, entranceAnimatedStyle]}>
       <ScrollView
         ref={scrollViewRef}
         key={proposal.id}
@@ -703,16 +738,14 @@ export function ProposalReviewView({
 
             {/* +1 Karma popup */}
             {showKarmaPopup && (
-              <Animated.View style={{
+              <Animated.View style={[{
                 position: 'absolute',
                 top: -10,
                 alignSelf: 'center',
                 left: 0,
                 right: 0,
                 alignItems: 'center',
-                opacity: karmaOpacity,
-                transform: [{ translateY: karmaTranslateY }],
-              }}>
+              }, karmaAnimatedStyle]}>
                 <View style={{
                   backgroundColor: COLORS.success,
                   paddingHorizontal: 12,
@@ -828,7 +861,7 @@ export function ProposalReviewView({
       {/* ── Fixed bottom vote buttons ───────────────────────────────── */}
       <View style={styles.voteContainer}>
         {/* Yes button — primary action, largest touch target */}
-        <Animated.View style={{ transform: [{ scale: yesButtonScale }] }}>
+        <Animated.View style={yesButtonAnimatedStyle}>
           <TouchableOpacity
             onPress={() => handleVote('yes')}
             disabled={voting}
@@ -856,7 +889,7 @@ export function ProposalReviewView({
         {/* No / Recommend / Not Sure — secondary row, horizontal layout */}
         <View style={{ flexDirection: 'row', gap: 12 }}>
           {/* No */}
-          <Animated.View style={{ flex: 1, transform: [{ scale: noButtonScale }] }}>
+          <Animated.View style={noButtonAnimatedStyle}>
             <TouchableOpacity
               onPress={() => handleVote('no')}
               disabled={voting}
@@ -869,7 +902,7 @@ export function ProposalReviewView({
           </Animated.View>
 
           {/* Recommend */}
-          <Animated.View style={{ flex: 1, transform: [{ scale: recommendButtonScale }] }}>
+          <Animated.View style={recommendButtonAnimatedStyle}>
             <TouchableOpacity
               onPress={handleForFriendPress}
               disabled={voting}
@@ -882,7 +915,7 @@ export function ProposalReviewView({
           </Animated.View>
 
           {/* Not Sure */}
-          <Animated.View style={{ flex: 1, transform: [{ scale: unsureButtonScale }] }}>
+          <Animated.View style={unsureButtonAnimatedStyle}>
             <TouchableOpacity
               onPress={() => handleVote('unsure')}
               disabled={voting}
@@ -1124,17 +1157,15 @@ export function ProposalReviewView({
       {/* Post-vote crowd reveal */}
       {crowdReveal && (
         <Animated.View
-          style={{
+          style={[{
             position: 'absolute',
             top: '35%',
             left: 0,
             right: 0,
             alignItems: 'center',
-            opacity: crowdRevealOpacity,
-            transform: [{ translateY: crowdRevealTranslateY }],
             pointerEvents: 'none',
             zIndex: 9997,
-          }}
+          }, crowdRevealAnimatedStyle]}
         >
           <View style={styles.crowdRevealContainer}>
             <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: FONT_SIZES['2xl'], color: crowdReveal.color, textAlign: 'center' }}>
@@ -1150,14 +1181,13 @@ export function ProposalReviewView({
       {/* Vote flash overlay */}
       {voteFlashColor && (
         <Animated.View
-          style={{
+          style={[{
             position: 'absolute',
             top: 0, left: 0, right: 0, bottom: 0,
             backgroundColor: voteFlashColor,
-            opacity: flashOpacity,
             pointerEvents: 'none',
             zIndex: 9998,
-          }}
+          }, flashAnimatedStyle]}
         />
       )}
 

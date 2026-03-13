@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { View, ScrollView, FlatList, TouchableOpacity, Alert, RefreshControl, Modal, Switch, Animated, Platform, TextInput, ActionSheetIOS } from 'react-native';
+import { View, ScrollView, FlatList, TouchableOpacity, Alert, RefreshControl, Modal, Switch, Platform, TextInput, ActionSheetIOS } from 'react-native';
+import ReanimatedAnimated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withRepeat,
+    withSequence,
+    withTiming,
+    cancelAnimation,
+} from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PROFILE_CACHE_DURATION, NAVIGATION_DELAY, AVATAR_SIZE_XL } from '../../constants';
@@ -53,31 +61,24 @@ const StyledTouchableOpacity = styled(TouchableOpacity) as typeof TouchableOpaci
 
 // Loading Skeleton for Questions Tab - with animation cleanup
 const QuestionsSkeleton: React.FC = () => {
-  const pulseAnim = useRef(new Animated.Value(0.3)).current;
+  const pulseAnim = useSharedValue(0.3);
 
   useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 0.3,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
+    pulseAnim.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1000 }),
+        withTiming(0.3, { duration: 1000 }),
+      ), -1, false
     );
-    animation.start();
-    return () => animation.stop(); // Cleanup on unmount
-  }, [pulseAnim]);
+    return () => cancelAnimation(pulseAnim);
+  }, []);
+
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: pulseAnim.value }));
 
   return (
     <StyledView className="px-4 py-6 bg-neutral-50">
       {/* Hero Card Skeleton */}
-      <Animated.View style={{ opacity: pulseAnim }}>
+      <ReanimatedAnimated.View style={pulseStyle}>
         <Card className="mb-6" style={{ backgroundColor: COLORS.backgroundGrayMedium }}>
           <StyledView className="flex-row items-center p-4">
             <StyledView className="w-20 h-20 rounded-full bg-neutral-300 mr-5" />
@@ -88,10 +89,10 @@ const QuestionsSkeleton: React.FC = () => {
             </StyledView>
           </StyledView>
         </Card>
-      </Animated.View>
+      </ReanimatedAnimated.View>
 
       {/* Tier Stepper Skeleton */}
-      <Animated.View style={{ opacity: pulseAnim }}>
+      <ReanimatedAnimated.View style={pulseStyle}>
         <Card className="mb-6" style={{ backgroundColor: COLORS.backgroundGrayMedium }}>
           <StyledView className="p-4">
             <StyledView className="h-4 bg-neutral-300 rounded mb-4 w-32 mx-auto" />
@@ -106,10 +107,10 @@ const QuestionsSkeleton: React.FC = () => {
             </StyledView>
           </StyledView>
         </Card>
-      </Animated.View>
+      </ReanimatedAnimated.View>
 
       {/* CTA Skeleton */}
-      <Animated.View style={{ opacity: pulseAnim }}>
+      <ReanimatedAnimated.View style={pulseStyle}>
         <Card className="mb-6" style={{ backgroundColor: COLORS.backgroundGrayMedium }}>
           <StyledView className="p-4 flex-row items-center">
             <StyledView className="w-14 h-14 rounded-xl bg-neutral-300 mr-4" />
@@ -119,10 +120,10 @@ const QuestionsSkeleton: React.FC = () => {
             </StyledView>
           </StyledView>
         </Card>
-      </Animated.View>
+      </ReanimatedAnimated.View>
 
       {/* Question Cards Skeleton */}
-      <Animated.View style={{ opacity: pulseAnim }}>
+      <ReanimatedAnimated.View style={pulseStyle}>
         <StyledView className="mb-4">
           <StyledView className="h-5 bg-neutral-300 rounded mb-2 w-40" />
           <StyledView className="h-3 bg-neutral-300 rounded w-56" />
@@ -139,7 +140,7 @@ const QuestionsSkeleton: React.FC = () => {
             </StyledView>
           </Card>
         ))}
-      </Animated.View>
+      </ReanimatedAnimated.View>
     </StyledView>
   );
 };

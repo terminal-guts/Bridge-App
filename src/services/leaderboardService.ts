@@ -11,6 +11,7 @@ export interface LeaderboardEntry {
   rankChange: number;
   photoUrl: string | null;
   isFriend: boolean;
+  isAnonymous?: boolean;
 }
 
 export interface LeaderboardCurrentUser extends LeaderboardEntry {

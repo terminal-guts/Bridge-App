@@ -7,7 +7,8 @@
  */
 
 import React from 'react';
-import { View, Image, Pressable } from 'react-native';
+import { View, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { styled } from 'nativewind';
 import Animated, {
   useAnimatedStyle,
@@ -25,7 +26,7 @@ import { FONT_SIZES } from '../../../constants/typography';
 const logger = createLogger('SimpleCandidatePhotos');
 
 const StyledView = styled(View);
-const StyledImage = styled(Image);
+const StyledImage = Image;
 const StyledPressable = styled(Pressable);
 const AnimatedPressable = Animated.createAnimatedComponent(StyledPressable);
 
@@ -111,7 +112,7 @@ function CandidatePhoto({ candidate, onPress, disabled = false }: CandidatePhoto
               width: '100%',
               height: '100%',
             }}
-            resizeMode="cover"
+            contentFit="cover"
           />
         </StyledView>
       </StyledView>

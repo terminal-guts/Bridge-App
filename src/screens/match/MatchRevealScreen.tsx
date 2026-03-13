@@ -1,17 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
   Image,
-  Animated,
   Dimensions,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  useReducedMotion,
+  runOnJS,
+} from 'react-native-reanimated';
 import { styled } from 'nativewind';
 import { H1, H2, H3, Body, Button, Card, Chip, ScreenWrapper } from '../../components/ui';
 import { valueIconName, interestIconName } from '../../utils/emojiMaps';
 import { PartialMatch } from '../../types';
 import { mockPartialMatch } from '../../services/mockData';
 import { EvaIcon } from '../../components/icons';
+import { SPRINGS, DURATIONS } from '../../constants/animations';
+import { successHaptic, heavyHaptic, lightHaptic } from '../../utils/haptics';
 
 const { width } = Dimensions.get('window');
 
@@ -29,8 +38,11 @@ export const MatchRevealScreen: React.FC<MatchRevealScreenProps> = ({
   onReject,
 }) => {
   const [match] = useState<PartialMatch>(mockPartialMatch);
-  const [fadeAnim] = useState(new Animated.Value(0));
-  const [scaleAnim] = useState(new Animated.Value(0.9));
+  const reduceMotion = useReducedMotion();
+
+  const fadeAnim = useSharedValue(reduceMotion ? 1 : 0);
+  const scaleAnim = useSharedValue(reduceMotion ? 1 : 0.9);
+
   const [timeLeft, setTimeLeft] = useState(() => {
     const diff = new Date(match.expiresAt).getTime() - Date.now();
     if (diff <= 0) return 'Expired';
@@ -40,20 +52,17 @@ export const MatchRevealScreen: React.FC<MatchRevealScreenProps> = ({
   });
 
   useEffect(() => {
-    // Animate in
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    if (!reduceMotion) {
+      // Animate in
+      fadeAnim.value = withTiming(1, { duration: DURATIONS.emphasis });
+      scaleAnim.value = withSpring(1, SPRINGS.bouncy);
+    }
+
+    // Haptics on appear
+    heavyHaptic();
+    const hapticTimer = setTimeout(() => {
+      successHaptic();
+    }, 100);
 
     // Update countdown timer
     const interval = setInterval(() => {
@@ -71,39 +80,40 @@ export const MatchRevealScreen: React.FC<MatchRevealScreenProps> = ({
       }
     }, 60000); // Update every minute
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(hapticTimer);
+    };
   }, [match.expiresAt]);
 
-  const handleAccept = () => {
-    // Animate out and accept
-    Animated.timing(scaleAnim, {
-      toValue: 1.1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => {
-      onAccept?.();
-    });
-  };
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: fadeAnim.value,
+    transform: [{ scale: scaleAnim.value }],
+  }));
 
-  const handleReject = () => {
-    // Animate out and reject
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => {
-      onReject?.();
+  const handleAccept = useCallback(() => {
+    successHaptic();
+    scaleAnim.value = withSpring(1.05, SPRINGS.bouncy, (finished) => {
+      if (finished && onAccept) {
+        runOnJS(onAccept)();
+      }
     });
-  };
+  }, [onAccept]);
+
+  const handleReject = useCallback(() => {
+    lightHaptic();
+    fadeAnim.value = withTiming(0, { duration: DURATIONS.normal }, (finished) => {
+      if (finished && onReject) {
+        runOnJS(onReject)();
+      }
+    });
+  }, [onReject]);
 
   return (
     <ScreenWrapper>
       <StyledScrollView className="flex-1">
         <Animated.View
-          style={{
-            opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
-          }}
+          style={animatedStyle}
         >
           {/* Header with celebration */}
           <StyledView className="bg-primary-500 px-6 py-8">

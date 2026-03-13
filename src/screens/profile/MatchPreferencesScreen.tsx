@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { View, ScrollView, TouchableOpacity, Alert, Modal, Animated, Keyboard, TextInput, Text } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Alert, Modal, Keyboard, TextInput, Text } from 'react-native';
+import ReanimatedAnimated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withSpring,
+    interpolate,
+} from 'react-native-reanimated';
+import { SPRINGS } from '../../constants/animations';
 import { styled } from 'nativewind';
 import { H3, Body, Card, Button, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
@@ -25,7 +32,7 @@ const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledTextInput = styled(TextInput);
-const StyledAnimatedView = styled(Animated.View);
+const StyledAnimatedView = styled(ReanimatedAnimated.View);
 const StyledText = styled(Text);
 
 // Gender options - values must match database storage format (male/female, not man/woman)
@@ -151,7 +158,11 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [customModalType, setCustomModalType] = useState<'gender' | 'values' | 'interests' | 'ethnicity'>('gender');
   const [customInputValue, setCustomInputValue] = useState('');
-  const customModalAnim = useRef(new Animated.Value(0)).current;
+  const customModalAnim = useSharedValue(0);
+  const modalOverlayStyle = useAnimatedStyle(() => ({ opacity: customModalAnim.value }));
+  const modalScaleStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(customModalAnim.value, [0, 1], [0.9, 1]) }],
+  }));
 
 
   // Helper function to convert inches to feet and inches
@@ -167,12 +178,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
   // Animation for the reusable custom modal
   useEffect(() => {
-    Animated.spring(customModalAnim, {
-      toValue: showCustomModal ? 1 : 0,
-      useNativeDriver: true,
-      tension: 65,
-      friction: 11,
-    }).start();
+    customModalAnim.value = withSpring(showCustomModal ? 1 : 0, SPRINGS.responsive);
   }, [showCustomModal]);
 
   // Helper to open custom modal for different types
@@ -921,9 +927,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
       >
         <StyledAnimatedView
           className="flex-1 bg-black/50 justify-start items-center px-6 pt-24"
-          style={{
-            opacity: customModalAnim,
-          }}
+          style={modalOverlayStyle}
         >
           <StyledTouchableOpacity
             activeOpacity={1}
@@ -937,14 +941,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
           <StyledAnimatedView
             className="bg-white rounded-2xl w-full max-w-md"
-            style={{
-              transform: [{
-                scale: customModalAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.9, 1],
-                }),
-              }],
-            }}
+            style={modalScaleStyle}
           >
             {/* Header */}
             <StyledView className="px-6 pt-6 pb-4 border-b border-neutral-100">

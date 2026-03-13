@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback, RefreshControl, KeyboardAvoidingView, Platform, Animated, Easing } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions, Modal, TextInput, Keyboard, TouchableWithoutFeedback, RefreshControl, KeyboardAvoidingView, Platform } from 'react-native';
+import ReanimatedAnimated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withTiming,
+    Easing,
+} from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import LottieView from 'lottie-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +25,7 @@ import { shareToMessages, shareGeneric } from '../../utils/shareMatch';
 import { ShareMatchSheet } from '../../components/matches/ShareMatchSheet';
 import { ShareableMatchCard } from '../../components/matches/ShareableMatchCard';
 import { computeApprovalPercent } from '../../utils/matchCardGenerator';
+import { getUnreadCount } from '../../services/messageService';
 import { OVERLAYS } from '../../theme/shadows';
 import { ScreenWrapper } from '../../components/ui';
 import ViewShot from 'react-native-view-shot';
@@ -231,9 +238,14 @@ export function MatchesScreen() {
     const [shareSheetVisible, setShareSheetVisible] = useState(false);
     const [shareImageUri, setShareImageUri] = useState<string | null>(null);
     const [shareLoading, setShareLoading] = useState(false);
+    const [hasUnreadMatch, setHasUnreadMatch] = useState(false);
     const viewShotRef = useRef<ViewShot>(null);
-    const cardEntrance = useRef(new Animated.Value(0)).current;
+    const cardEntrance = useSharedValue(0);
     const hasAnimatedEntrance = useRef(false);
+    const cardEntranceStyle = useAnimatedStyle(() => ({
+        opacity: cardEntrance.value,
+        transform: [{ translateY: (1 - cardEntrance.value) * 24 }],
+    }));
     const navigation = useNavigation<any>();
     const { height: windowHeight } = useWindowDimensions();
     const insets = useSafeAreaInsets();
@@ -270,6 +282,18 @@ export function MatchesScreen() {
             setActiveMatch(data.activeMatch);
             setPendingProposals(data.pendingProposals || []);
 
+            // Check for unread messages on active match
+            if (data.activeMatch) {
+                const matchId = data.activeMatch.matchId ?? data.activeMatch.id;
+                if (matchId && profile?.userId) {
+                    getUnreadCount(matchId, profile.userId).then(result => {
+                        if (isMountedRef.current) setHasUnreadMatch(result.ok && (result.data ?? 0) > 0);
+                    }).catch(() => {});
+                }
+            } else {
+                setHasUnreadMatch(false);
+            }
+
             // Check for ended-match event after data load (detection runs inside getFriendsAreaData)
             const event = communityService.getEndedMatchEvent();
             if (event) {
@@ -287,8 +311,8 @@ export function MatchesScreen() {
                 setLoading(false);
                 if (!hasAnimatedEntrance.current) {
                     hasAnimatedEntrance.current = true;
-                    cardEntrance.setValue(0);
-                    Animated.timing(cardEntrance, { toValue: 1, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+                    cardEntrance.value = 0;
+                    cardEntrance.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
                 }
             }
         }
@@ -656,7 +680,7 @@ export function MatchesScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.primaryButton} />
                 }
             >
-                <Animated.View style={{ marginBottom: cardMB, height: adjustedCardHeight, opacity: cardEntrance, transform: [{ translateY: cardEntrance.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }] }}>
+                <ReanimatedAnimated.View style={[{ marginBottom: cardMB, height: adjustedCardHeight }, cardEntranceStyle]}>
                     <MatchCard
                         status={CARD_STATUS[screenState as Exclude<ScreenState, 'empty'>]}
                         name={partnerName}
@@ -664,11 +688,12 @@ export function MatchesScreen() {
                         matchDate={matchDate}
                         imageUrl={partnerPhoto}
                         matchedByAvatars={endorserAvatars}
+                        hasUnread={hasUnreadMatch}
                         onPress={handleCardPress}
                         onDismiss={screenState === 'active_match' ? () => setEndMatchModalVisible(true) : undefined}
                         onShare={screenState === 'active_match' ? handleSharePress : undefined}
                     />
-                </Animated.View>
+                </ReanimatedAnimated.View>
             </ScrollView>
 
             {/* ── Ended Match Popup ────────────────────────────────────────── */}

@@ -9,7 +9,8 @@
  */
 
 import React from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, TextInput } from 'react-native';
+import Animated, { useAnimatedProps } from 'react-native-reanimated';
 import { styled } from 'nativewind';
 import { H2, H3, Body, Card } from '../ui';
 import { UserProfile } from '../../types';
@@ -17,6 +18,11 @@ import { calculateProfileStrengthBreakdown } from '../../utils/profileCompletene
 import { createLogger } from '../../utils/secureLogger';
 import { EvaIcon } from '../icons';
 import { COLORS } from '../../theme/colors';
+import { FONTS } from '../../constants/typography';
+import { useCountUp } from '../../hooks/useCountUp';
+import { successHaptic } from '../../utils/haptics';
+
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 const logger = createLogger('ProfileStrengthDashboard');
 
@@ -180,6 +186,26 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
   const { level, color } = getStrengthLevel(overall);
   const isComplete = overall === 100;
 
+  // Animated count-up for the overall percentage
+  const { animatedProps: countUpProps, value: countValue } = useCountUp({
+    end: overall,
+    enabled: !isComplete,
+  });
+
+  // Fire success haptic when crossing milestone thresholds
+  const prevOverallRef = React.useRef(overall);
+  React.useEffect(() => {
+    const prev = prevOverallRef.current;
+    prevOverallRef.current = overall;
+    const thresholds = [25, 50, 75, 100];
+    for (const t of thresholds) {
+      if (prev < t && overall >= t) {
+        successHaptic();
+        break;
+      }
+    }
+  }, [overall]);
+
   // Hide the card entirely when profile is 100% complete
   if (isComplete) {
     return null;
@@ -210,7 +236,22 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
           </StyledView>
           <H3 className="text-base">Profile Strength</H3>
         </StyledView>
-        <Body className="text-3xl font-bold" style={{ color }}>{overall}%</Body>
+        <StyledView className="flex-row items-center">
+          <AnimatedTextInput
+            animatedProps={countUpProps}
+            editable={false}
+            style={{
+              fontSize: 30,
+              fontWeight: '700',
+              fontFamily: FONTS.bold,
+              color,
+              padding: 0,
+              margin: 0,
+              minWidth: 30,
+            }}
+          />
+          <Body className="text-3xl font-bold" style={{ color }}>%</Body>
+        </StyledView>
       </StyledView>
 
       {/* Compact 4-Category Grid */}

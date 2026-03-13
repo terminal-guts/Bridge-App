@@ -4,6 +4,20 @@ Everything remaining across all planning docs, consolidated here. Completed item
 
 ---
 
+## Priority Screens
+
+These are the most important screens in the app. All work (polish, bugs, features) should prioritize these first.
+
+| Priority | Screen | File |
+|----------|--------|------|
+| 1 | Community | `src/screens/main/CommunityScreen.tsx` |
+| 2 | Match Proposal | `src/screens/match/MatchProposalScreen.tsx` |
+| 3 | Matches | `src/screens/match/MatchesScreen.tsx` |
+| 4 | Onboarding | `src/screens/onboarding/OnboardingScreen.tsx` |
+| 5 | Friend Proposal | `src/screens/community/FriendProposalScreen.tsx` |
+
+---
+
 ## Beta Feedback (Unresolved)
 
 ### In Progress
@@ -88,6 +102,40 @@ Compress 20 onboarding steps → 8-10 screens (2-4 related fields per screen). N
 10. Welcome (keep)
 
 Also consider: defer children, political beliefs, lifestyle to post-first-vote profile completion prompt.
+
+---
+
+## Engagement Ideas — Brainstorm (Not Approved)
+
+Creative engagement concepts organized by implementation effort. These are ideas only — none are approved or scheduled.
+
+### Tier 1 — High-Impact, Buildable Now
+
+| # | Idea | Description |
+|---|------|-------------|
+| 1 | **"The Reveal" — Cinematic Match Delivery** | When a proposal passes, don't just show a card. Full-screen cinematic: blur → pulse → slow photo reveal with haptics. Make receiving a match feel like opening a gift. The 3-second delay before showing who it is creates anticipation dopamine. |
+| 2 | **"Accuracy Reveal" — Post-Match Scoreboard** | After a match is accepted/rejected, show voters their accuracy: "You voted Yes — and they matched! +3 karma." Delayed feedback loop keeps voters invested in outcomes days after voting. |
+| 3 | **"The Ripple" — Social Proof Voting Feedback** | After casting a vote, show a ripple animation with: "You and 4 others voted Yes" or "Bold call — only 23% agree." Variable social validation — sometimes you're with the crowd, sometimes you're the outlier. Both feel rewarding. |
+| 4 | **"Friend Accuracy Rankings"** | In the Friends Area, show each friend's voting accuracy on YOUR proposals: "Carter: 3/4 accurate." Creates friendly competition and makes friends care more about voting thoughtfully. |
+| 5 | **"Matchmaker Moments" — In-App Stories** | When a match happens, generate a shareable story card: "[Friend] helped match [Name]! 🎉 They voted Yes on Day 2." Celebrates the matchmaker, not just the couple. Drives word-of-mouth when shared outside the app. |
+
+### Tier 2 — Medium Effort, High Payoff
+
+| # | Idea | Description |
+|---|------|-------------|
+| 6 | **"The Drop" — 7PM Countdown Theater** | 60-second countdown on Community tab before new proposals drop. Screen dims, countdown pulses, haptic ticks at 10s. When it hits zero: confetti burst + new proposal slides in. Turns the daily cycle into an event. |
+| 7 | **"Blind Spot" — Hidden Question Reveal** | One deep question answer is hidden behind a blur. To reveal it, you must answer the same question about yourself first. Creates reciprocity and curiosity gap — "What did they say about their biggest fear?" |
+| 8 | **"Vote Streak Multiplier"** | Voting on all 3 daily proposals triggers a "Perfect Day" badge + 2x karma for the next day's first vote. Rewards completionism without punishing casual users. |
+| 9 | **"What Happened While You Were Gone"** | Return screen after 24h+ absence: "While you were away: 2 friends got proposals, Carter's streak hit 7 days, 47 votes were cast in your circle." FOMO-driven re-engagement without guilt-tripping. |
+
+### Tier 3 — Wild / Unconventional
+
+| # | Idea | Description |
+|---|------|-------------|
+| 10 | **"The Whisper" — Anonymous Micro-Feedback** | After voting, optionally leave a 1-word anonymous note for the person: "adventurous", "genuine", "funny." Recipient sees: "A voter called you 'genuine'." Tiny ego boost that makes people check back. |
+| 11 | **"Gut Check" — Speed Round Voting** | Optional 10-second speed round: see just the photo + name, vote purely on gut feeling. Then see the full profile and vote again. If your votes match, bonus karma. Tests and rewards intuition. |
+| 12 | **"The Coin Flip" — Deadlocked Proposal Tiebreaker** | When votes are exactly split at expiry, show a dramatic coin flip animation instead of auto-resolving. Both outcomes feel earned rather than algorithmic. |
+| 13 | **"First Impression Flash" — 1-Second Photo Reaction** | Before the full proposal loads, flash the main photo for exactly 1 second then blur it. Ask: "First impression?" with emoji reactions (🔥 😊 🤔). Creates a priming moment and gives the proposee anonymous crowd sentiment. |
 
 ---
 

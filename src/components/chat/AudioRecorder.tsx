@@ -1,5 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, Animated, Alert, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Alert, Text, StyleSheet } from 'react-native';
+import ReanimatedAnimated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withRepeat,
+    withSequence,
+    withTiming,
+    cancelAnimation,
+} from 'react-native-reanimated';
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { createLogger } from '../../utils/secureLogger';
@@ -36,7 +44,8 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const meteringRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const waveformDataRef = useRef<number[]>(new Array(WAVEFORM_BAR_COUNT).fill(3));
-    const pulseAnim = useRef(new Animated.Value(1)).current;
+    const pulseAnim = useSharedValue(1);
+    const pulseAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulseAnim.value }] }));
 
     useEffect(() => {
         return () => {
@@ -109,12 +118,12 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
             }, METERING_POLL_MS);
 
             // Pulse animation
-            Animated.loop(
-                Animated.sequence([
-                    Animated.timing(pulseAnim, { toValue: 1.3, duration: 800, useNativeDriver: true }),
-                    Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
-                ])
-            ).start();
+            pulseAnim.value = withRepeat(
+                withSequence(
+                    withTiming(1.3, { duration: 800 }),
+                    withTiming(1, { duration: 800 }),
+                ), -1, false
+            );
 
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
             logger.info('[AudioRecorder] Recording started');
@@ -131,8 +140,8 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
         recordingRef.current = null;
 
         clearTimers();
-        pulseAnim.stopAnimation();
-        pulseAnim.setValue(1);
+        cancelAnimation(pulseAnim);
+        pulseAnim.value = 1;
         setIsRecording(false);
         onRecordingStateChange?.(false);
 
@@ -166,8 +175,8 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
         recordingRef.current = null;
 
         clearTimers();
-        pulseAnim.stopAnimation();
-        pulseAnim.setValue(1);
+        cancelAnimation(pulseAnim);
+        pulseAnim.value = 1;
         setIsRecording(false);
         onRecordingStateChange?.(false);
 
@@ -205,7 +214,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
 
             {/* Waveform + Timer */}
             <View style={styles.waveformContainer}>
-                <Animated.View style={[styles.recordingDot, { transform: [{ scale: pulseAnim }] }]} />
+                <ReanimatedAnimated.View style={[styles.recordingDot, pulseAnimStyle]} />
                 <Text style={styles.timerText}>{formatElapsed(elapsed)}</Text>
                 <View style={styles.waveformBars}>
                     {waveformBars.map((height, i) => (

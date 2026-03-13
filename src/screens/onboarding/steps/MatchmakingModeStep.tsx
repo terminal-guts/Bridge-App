@@ -1,5 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, Animated, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, TouchableOpacity, Image } from 'react-native';
+import Animated, { FadeInUp, FadeIn } from 'react-native-reanimated';
+import { DURATIONS } from '../../../constants/animations';
 import { styled } from 'nativewind';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { H1, Body, H3, AnimatedPressable } from '../../../components/ui';
@@ -26,47 +28,6 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
 }) => {
   const [selectedMode, setSelectedMode] = useState<Mode>('full');
 
-  // Animations
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const card1Anim = useRef(new Animated.Value(0)).current;
-  const card2Anim = useRef(new Animated.Value(0)).current;
-  const buttonAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.stagger(150, [
-        Animated.timing(card1Anim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(card2Anim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.timing(buttonAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
-
   const handleContinue = () => {
     // matchmakingOnly = true means "match others only" (NOT in the pool to be matched themselves)
     updateData({ matchmakingOnly: selectedMode === 'match_others_only' });
@@ -78,11 +39,11 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
     icon: string,
     title: string,
     description: string,
-    animValue: Animated.Value,
+    delayMs: number,
   ) => {
     const isSelected = selectedMode === mode;
     return (
-      <Animated.View style={{ opacity: animValue }}>
+      <Animated.View entering={FadeInUp.duration(DURATIONS.normal).delay(delayMs)}>
         <StyledTouchableOpacity
           onPress={() => setSelectedMode(mode)}
           className={`rounded-2xl p-5 mb-4 border-2 ${
@@ -132,12 +93,7 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
       <StyledView className="flex-1 px-6 justify-between">
         {/* Header */}
         <StyledView className="flex-1 justify-center">
-          <Animated.View
-            style={{
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            }}
-          >
+          <Animated.View entering={FadeInUp.duration(DURATIONS.slow)}>
             <StyledView className="items-center mb-2">
               <StyledImage
                 source={require('../../../../assets/favicon.png')}
@@ -156,7 +112,7 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
             'people',
             'Find My Match',
             'Enter the matching pool so the community can find your match. You\'ll also vote on matches for others.',
-            card1Anim,
+            500,
           )}
 
           {renderOption(
@@ -164,16 +120,14 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
             'hand-left',
             'Match Others Only',
             'Help the community by voting on matches for others. You won\'t appear in the matching pool yourself.',
-            card2Anim,
+            650,
           )}
         </StyledView>
 
         {/* Continue Button */}
         <Animated.View
-          style={{
-            opacity: buttonAnim,
-            paddingBottom: 24,
-          }}
+          entering={FadeIn.duration(DURATIONS.normal).delay(800)}
+          style={{ paddingBottom: 24 }}
         >
           <AnimatedPressable
             onPress={handleContinue}

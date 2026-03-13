@@ -61,8 +61,26 @@ async function getWeeklyStats(supabase: ReturnType<typeof createAdminClient>): P
 
   if (leaderboard && leaderboard.length > 0) {
     const top = leaderboard[0];
-    winnerName = top.first_name || 'a Bridge matchmaker';
     winnerKarma = top.weekly_karma || 0;
+
+    // Check if the winner wants their name shown
+    const winnerId = top.user_id;
+    if (winnerId) {
+      const { data: winnerSettings } = await supabase
+        .from('user_settings')
+        .select('pref_show_name_if_winner, pref_leaderboard_visible')
+        .eq('user_id', winnerId)
+        .maybeSingle();
+
+      // Show name if either the winner notification pref OR leaderboard visibility is on
+      const showName = winnerSettings?.pref_show_name_if_winner !== false
+        || winnerSettings?.pref_leaderboard_visible === true;
+      winnerName = showName
+        ? (top.first_name || 'a Bridge matchmaker')
+        : 'a Bridge matchmaker';
+    } else {
+      winnerName = top.first_name || 'a Bridge matchmaker';
+    }
   }
 
   return {

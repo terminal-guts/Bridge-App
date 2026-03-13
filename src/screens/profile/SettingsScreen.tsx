@@ -12,9 +12,9 @@ import { FONTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { deleteAccount } from '../../services/accountService';
 import { notificationPreferencesService } from '../../services/notificationPreferencesService';
-import { notificationService } from '../../services/notificationService';
 import { showToast } from '../../utils/toast';
 import { EvaIcon } from '../../components/icons';
+import { selectionHaptic } from '../../utils/haptics';
 
 const logger = createLogger('SettingsScreen');
 
@@ -36,6 +36,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
   const [matchesEnabled, setMatchesEnabled] = useState(true);
   const [messagesEnabled, setMessagesEnabled] = useState(true);
   const [nudgesEnabled, setNudgesEnabled] = useState(true);
+  const [showNameIfWinner, setShowNameIfWinner] = useState(true);
+  const [leaderboardVisible, setLeaderboardVisible] = useState(false);
 
   useEffect(() => {
     loadCurrentUser();
@@ -47,20 +49,20 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
     setMatchesEnabled(prefs.matchesEnabled);
     setMessagesEnabled(prefs.messagesEnabled);
     setNudgesEnabled(prefs.nudgesEnabled);
+    setShowNameIfWinner(prefs.showNameIfWinner);
+    setLeaderboardVisible(prefs.leaderboardVisible);
   };
 
-  const updatePreference = async (key: 'matchesEnabled' | 'messagesEnabled' | 'nudgesEnabled', value: boolean) => {
+  const updatePreference = async (key: 'matchesEnabled' | 'messagesEnabled' | 'nudgesEnabled' | 'showNameIfWinner' | 'leaderboardVisible', value: boolean) => {
+    selectionHaptic();
     // Optimistic UI update
     if (key === 'matchesEnabled') setMatchesEnabled(value);
     if (key === 'messagesEnabled') setMessagesEnabled(value);
     if (key === 'nudgesEnabled') setNudgesEnabled(value);
+    if (key === 'showNameIfWinner') setShowNameIfWinner(value);
+    if (key === 'leaderboardVisible') setLeaderboardVisible(value);
 
     await notificationPreferencesService.updatePreferences({ [key]: value });
-
-    // Re-evaluate engagement notifications if matches/nudges preference changed
-    if (key === 'matchesEnabled' || key === 'nudgesEnabled') {
-      await notificationService.setupEngagementCadence();
-    }
   };
 
   const loadCurrentUser = async () => {
@@ -180,12 +182,22 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               onPress={() => navigation.navigate('BlockedUsers')}
             />
             <SettingRow
+              icon="eye"
+              title="Show me on Leaderboard"
+              subtitle="Friends always see you regardless"
+              toggle
+              toggleValue={leaderboardVisible}
+              onToggle={() => updatePreference('leaderboardVisible', !leaderboardVisible)}
+              showArrow={false}
+            />
+            <SettingRow
               icon="book"
               title="Tutorial"
               subtitle="Replay the app walkthrough"
               toggle
               toggleValue={tutorialEnabled}
               onToggle={async () => {
+                selectionHaptic();
                 const newValue = !tutorialEnabled;
                 setTutorialEnabled(newValue);
                 if (newValue) {
@@ -224,6 +236,15 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               toggle
               toggleValue={nudgesEnabled}
               onToggle={() => updatePreference('nudgesEnabled', !nudgesEnabled)}
+              showArrow={false}
+            />
+            <SettingRow
+              icon="trophy"
+              title="Include my name if I win"
+              subtitle="Show your name in weekly winner announcements"
+              toggle
+              toggleValue={showNameIfWinner}
+              onToggle={() => updatePreference('showNameIfWinner', !showNameIfWinner)}
               showArrow={false}
             />
           </Card>

@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef, useReducer, useMemo } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Share, Alert, RefreshControl, Modal, Animated, Easing } from 'react-native';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Share, Alert, RefreshControl, Modal } from 'react-native';
+import ReanimatedAnimated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withRepeat,
+    withSequence,
+    withTiming,
+    cancelAnimation,
+    Easing,
+} from 'react-native-reanimated';
 
 import { UserRow } from '../../components/community/UserRow';
 import { StaggerItem } from '../../hooks/useStaggeredList';
@@ -30,6 +39,7 @@ import { getFriendUnreadCount } from '../../services/messageService';
 import { getActiveSuggestions } from '../../services/friendProposalService';
 import { sendNudge } from '../../services/nudgeService';
 import { showToast } from '../../utils/toast';
+import { Confetti } from '../../components/effects/Confetti';
 
 // ── Mock leaderboard karma thresholds for rank interpolation ─────────────────
 // Sorted descending — same values as LeaderboardScreen MOCK_WEEKLY
@@ -79,8 +89,9 @@ function MatchResetTimer() {
   // Incrementing counter just to force a re-render every second
   const [, tick] = useReducer((n: number) => n + 1, 0);
   const [infoVisible, setInfoVisible] = useState(false);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useSharedValue(1);
   const pulsingRef = useRef(false);
+  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulseAnim.value }] }));
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -94,16 +105,16 @@ function MatchResetTimer() {
       const shouldPulse = ms > 0 && ms < 30 * 60 * 1000;
       if (shouldPulse && !pulsingRef.current) {
         pulsingRef.current = true;
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(pulseAnim, { toValue: 1.08, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-            Animated.timing(pulseAnim, { toValue: 1, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          ])
-        ).start();
+        pulseAnim.value = withRepeat(
+          withSequence(
+            withTiming(1.08, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+            withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+          ), -1, false
+        );
       } else if (!shouldPulse && pulsingRef.current) {
         pulsingRef.current = false;
-        pulseAnim.stopAnimation();
-        pulseAnim.setValue(1);
+        cancelAnimation(pulseAnim);
+        pulseAnim.value = 1;
       }
 
       tick(); // force re-render
@@ -118,8 +129,9 @@ function MatchResetTimer() {
     return () => {
       clearInterval(id);
       unsub();
+      cancelAnimation(pulseAnim);
     };
-  }, [pulseAnim]);
+  }, []);
 
   // Computed fresh every render — never stale
   const remaining = Math.max(0, targetRef.current - Date.now());
@@ -158,7 +170,7 @@ function MatchResetTimer() {
   return (
     <>
       <TouchableOpacity activeOpacity={0.7} onPress={() => setInfoVisible(true)}>
-        <Animated.View style={{
+        <ReanimatedAnimated.View style={[pulseStyle, {
           flexDirection: 'row',
           alignItems: 'center',
           backgroundColor: bgColor,
@@ -168,11 +180,10 @@ function MatchResetTimer() {
           paddingHorizontal: 9,
           height: 34,
           gap: 5,
-          transform: [{ scale: pulseAnim }],
-        }}>
+        }]}>
           <EvaIcon name="clock" variant="outline" size={13} color={color} />
           <Text style={{ fontSize: FONT_SIZES.md, fontFamily: FONTS.semiBold, color }}>{label}</Text>
-        </Animated.View>
+        </ReanimatedAnimated.View>
       </TouchableOpacity>
 
       <Modal visible={infoVisible} transparent animationType="fade" onRequestClose={() => setInfoVisible(false)}>
@@ -257,6 +268,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [addingCode, setAddingCode] = useState(false);
   const [unreadMap, setUnreadMap] = useState<Record<string, boolean>>({});
   const [suggestionsMap, setSuggestionsMap] = useState<Map<string, { suggestedForName: string; status: 'queued' | 'stashed' }>>(new Map());
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const handleEnterCode = useCallback(async () => {
     const code = enterCodeValue.trim().toUpperCase();
@@ -442,21 +454,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       initialize();
     });
   }, [initialize]);
-  // Invalidate friends cache + reload when returning from stack screens (e.g. ContactInvite)
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (!initializedRef.current) return;
-      if ('invalidateFriendsCache' in communityService) {
-        (communityService as any).invalidateFriendsCache();
-      }
-      getUserProfile().then(result => {
-        if (result.ok && result.data) setProfile(result.data);
-      });
-      loadFriendsData();
-    });
-    return unsubscribe;
-  }, [navigation, loadFriendsData]);
-
+  // Single focus handler: refresh profile + friends + guide on every tab/screen focus
   useFocusEffect(useCallback(() => {
     // Check if beginner tour should play (first visit or re-enabled from Settings)
     startGuideIfNeeded(beginnerTourGuide);
@@ -464,6 +462,10 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     if (!initializedRef.current) {
       initializedRef.current = true;
       return; // skip first focus (handled by the init useEffect)
+    }
+    // Invalidate friends cache when returning from stack screens (e.g. ContactInvite)
+    if ('invalidateFriendsCache' in communityService) {
+      (communityService as any).invalidateFriendsCache();
     }
     // Refresh profile on each tab focus so the completion banner stays current
     getUserProfile().then(result => {
@@ -480,8 +482,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     await new Promise(resolve => setTimeout(resolve, 800));
     await loadFriendsData();
     setHasCompletedVoting(true);
-    // #7: Haptic reward on unlocking friends area
+    // #7: Haptic reward on unlocking friends area + T2 celebration confetti (15 particles for routine)
     successHaptic();
+    setShowConfetti(true);
     // Cache so next cold open skips the voting gate
     const cycleId = String(getLast7PMCentral());
     communityService.cacheVotingComplete(true, cycleId).catch(() => {});
@@ -574,6 +577,11 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   return (
     <ScreenWrapper>
+      <Confetti
+        trigger={showConfetti}
+        particleCount={15}
+        onComplete={() => setShowConfetti(false)}
+      />
       <OfflineBanner />
       <ProfileCompletionBanner
         profile={profile}

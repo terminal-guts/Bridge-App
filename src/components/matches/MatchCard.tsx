@@ -1,5 +1,16 @@
 import React, { useMemo, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
+import Animated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withRepeat,
+    withSequence,
+    withTiming,
+    withSpring,
+    cancelAnimation,
+    Easing,
+} from 'react-native-reanimated';
+import { SPRINGS } from '../../constants/animations';
 import { Image, ImageBackground } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -82,6 +93,7 @@ interface MatchCardProps {
     matchDate?: string;
     imageUrl: string;
     matchedByAvatars: string[];
+    hasUnread?: boolean;
     onPress?: () => void;
     onDismiss?: () => void;
     onShare?: () => void;
@@ -106,6 +118,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
     matchDate,
     imageUrl,
     matchedByAvatars,
+    hasUnread,
     onPress,
     onDismiss,
     onShare,
@@ -121,56 +134,62 @@ export const MatchCard: React.FC<MatchCardProps> = ({
     const optimizedImageUrl = useMemo(() => getOptimizedImageUrl(imageUrl, 400), [imageUrl]);
 
     // #5 — Slower pulse (1600ms) on the action button
-    const pulseAnim = useRef(new Animated.Value(1)).current;
+    const pulseAnim = useSharedValue(1);
     useEffect(() => {
-        const loop = Animated.loop(
-            Animated.sequence([
-                Animated.timing(pulseAnim, { toValue: 1.08, duration: 1600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-                Animated.timing(pulseAnim, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-            ])
+        pulseAnim.value = withRepeat(
+            withSequence(
+                withTiming(1.08, { duration: 1600, easing: Easing.inOut(Easing.ease) }),
+                withTiming(1, { duration: 1600, easing: Easing.inOut(Easing.ease) }),
+            ), -1, false
         );
-        loop.start();
-        return () => { loop.stop(); pulseAnim.setValue(1); };
-    }, [pulseAnim]);
+        return () => cancelAnimation(pulseAnim);
+    }, []);
 
     // Entrance animation — fade + slide-up, only on status *changes* (not initial mount)
-    const slideAnim = useRef(new Animated.Value(0)).current;
-    const fadeAnim = useRef(new Animated.Value(1)).current;
+    const slideAnim = useSharedValue(0);
+    const fadeAnim = useSharedValue(1);
     const prevStatusRef = useRef(status);
     useEffect(() => {
-        if (prevStatusRef.current === status) return; // skip initial mount
+        if (prevStatusRef.current === status) return;
         prevStatusRef.current = status;
-        slideAnim.setValue(40);
-        fadeAnim.setValue(0);
-        Animated.parallel([
-            Animated.spring(slideAnim, { toValue: 0, damping: 18, stiffness: 120, useNativeDriver: true }),
-            Animated.timing(fadeAnim, { toValue: 1, duration: 450, useNativeDriver: true }),
-        ]).start();
-    }, [status, slideAnim, fadeAnim]);
+        slideAnim.value = 40;
+        fadeAnim.value = 0;
+        slideAnim.value = withSpring(0, { damping: 18, stiffness: 120 });
+        fadeAnim.value = withTiming(1, { duration: 450 });
+    }, [status]);
 
-    // #5 — Press scale with spring (0.88 scale)
-    const pressScale = useRef(new Animated.Value(1)).current;
+    // #5 — Press scale with spring
+    const pressScale = useSharedValue(1);
     const onPressIn = useCallback(() => {
-        Animated.spring(pressScale, { toValue: 0.96, damping: 12, stiffness: 200, useNativeDriver: true }).start();
-    }, [pressScale]);
+        pressScale.value = withSpring(0.96, { damping: 12, stiffness: 200 });
+    }, []);
     const onPressOut = useCallback(() => {
-        Animated.spring(pressScale, { toValue: 1, damping: 12, stiffness: 200, useNativeDriver: true }).start();
-    }, [pressScale]);
+        pressScale.value = withSpring(1, { damping: 12, stiffness: 200 });
+    }, []);
 
     // #5 — Action button press scale (deeper bounce)
-    const actionPressScale = useRef(new Animated.Value(1)).current;
+    const actionPressScale = useSharedValue(1);
     const onActionPressIn = useCallback(() => {
-        Animated.spring(actionPressScale, { toValue: 0.88, damping: 12, stiffness: 250, useNativeDriver: true }).start();
-    }, [actionPressScale]);
+        actionPressScale.value = withSpring(0.88, { damping: 12, stiffness: 250 });
+    }, []);
     const onActionPressOut = useCallback(() => {
-        Animated.spring(actionPressScale, { toValue: 1, damping: 12, stiffness: 250, useNativeDriver: true }).start();
-    }, [actionPressScale]);
+        actionPressScale.value = withSpring(1, { damping: 12, stiffness: 250 });
+    }, []);
+
+    // Animated styles
+    const cardAnimStyle = useAnimatedStyle(() => ({
+        opacity: fadeAnim.value,
+        transform: [{ translateY: slideAnim.value }, { scale: pressScale.value }],
+    }));
+    const actionBtnAnimStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: pulseAnim.value * actionPressScale.value }],
+    }));
 
     // Top accent line color — matches the topBadge background
     const accentColor = topBadge.bg;
 
     return (
-        <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }, { scale: pressScale }] }}>
+        <Animated.View style={[{ flex: 1 }, cardAnimStyle]}>
         <Pressable style={{ flex: 1 }} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
         <View style={[styles.card, isActiveMatch && styles.cardActive, isAwaitingYou && styles.cardAwaitingYou, status === 'new_match' && styles.cardNewMatch]}>
             {/* Top accent line — state color bar */}
@@ -274,7 +293,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
             {/* #5 + #6 — Action button with press state, neutral shadow, slow pulse */}
             <Animated.View style={[
                 styles.actionButtonWrap,
-                { transform: [{ scale: Animated.multiply(pulseAnim, actionPressScale) }] },
+                actionBtnAnimStyle,
             ]}>
                 <Pressable onPress={onPress} onPressIn={onActionPressIn} onPressOut={onActionPressOut}>
                     <View style={[styles.actionButton, styles.actionButtonBlue]}>
@@ -284,6 +303,10 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                             <ArrowRightIcon size={22} color="#FFFFFF" />
                         )}
                     </View>
+                    {/* Unread message indicator */}
+                    {hasUnread && (
+                        <View style={styles.unreadDot} />
+                    )}
                 </Pressable>
             </Animated.View>
         </View>
@@ -492,5 +515,18 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.4,
         shadowRadius: 16,
         elevation: 10,
+    },
+    // Unread message dot — top-right of action button
+    unreadDot: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        backgroundColor: '#EF4444',
+        borderWidth: 2.5,
+        borderColor: '#FFFFFF',
+        zIndex: 10,
     },
 });

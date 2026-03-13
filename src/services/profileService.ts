@@ -422,23 +422,44 @@ const _fetchUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
     const userId = await getCurrentUserId();
     logger.info('[ProfileService] getUserProfile:', userId);
 
-    // Query all tables in parallel
-    const [profileResult, prefsResult, dqResult, karmaResult] = await Promise.all([
-      supabase.from('user_profiles').select('*').eq('user_id', userId).single(),
-      supabase.from('user_preferences').select('*').eq('user_id', userId).single(),
-      supabase.from('deep_question_answers').select('*').eq('user_id', userId),
-      supabase.from('karma_scores').select('*').eq('user_id', userId).maybeSingle(),
-    ]);
+    // Fire profile query first — we need it to identify photo paths for signing
+    const profilePromise = supabase.from('user_profiles').select('*').eq('user_id', userId).single();
+
+    // Fire the other queries in parallel (don't await yet)
+    const prefsPromise = supabase.from('user_preferences').select('*').eq('user_id', userId).single();
+    const dqPromise = supabase.from('deep_question_answers').select('*').eq('user_id', userId);
+    const karmaPromise = supabase.from('karma_scores').select('*').eq('user_id', userId).maybeSingle();
+
+    // Wait for profile first to start photo signing ASAP
+    const profileResult = await profilePromise;
 
     if (profileResult.error) {
       if (profileResult.error.code === 'PGRST116') {
-        // No row found — profile doesn't exist yet
         return createErrorResponse('PROFILE_NOT_FOUND', 'Profile not found');
       }
       throw new Error(profileResult.error.message);
     }
 
-    // Combine data for the mapper
+    // Extract photo storage paths and start signing in parallel with remaining queries
+    const rawPhotos: Array<{ url: string }> = profileResult.data?.photos || [];
+    const validPhotos = rawPhotos.filter((p: any) => p.url && !p.url.startsWith('file://'));
+    const storagePaths = validPhotos
+      .map((p: any) => p.url)
+      .filter((url: string) => url && !url.startsWith('http'));
+
+    // Start photo signing NOW — runs in parallel with prefs/dq/karma queries
+    const signedUrlsPromise = storagePaths.length > 0
+      ? getMultiplePhotoSignedUrls(storagePaths, 86400)
+      : Promise.resolve(null);
+
+    // Wait for everything else
+    const [prefsResult, dqResult, karmaResult, urlMapRes] = await Promise.all([
+      prefsPromise,
+      dqPromise,
+      karmaPromise,
+      signedUrlsPromise,
+    ]);
+
     const combinedData = {
       ...profileResult.data,
       preferences: prefsResult.data || {},
@@ -448,26 +469,17 @@ const _fetchUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
 
     const profile = mapBackendToUserProfile(combinedData);
 
-    // Filter out invalid local file:// URIs that were incorrectly saved to the database
+    // Filter out invalid local file:// URIs
     if (profile.photos && profile.photos.length > 0) {
       profile.photos = profile.photos.filter(p => p.url && !p.url.startsWith('file://'));
     }
 
-    // Resolve storage paths to signed URLs.
-    if (profile.photos && profile.photos.length > 0) {
-      const storagePaths = profile.photos
-        .map(p => p.url)
-        .filter(url => url && !url.startsWith('http'));
-
-      if (storagePaths.length > 0) {
-        const urlMapRes = await getMultiplePhotoSignedUrls(storagePaths, 86400);
-        if (urlMapRes.ok && urlMapRes.data) {
-          profile.photos = profile.photos.map(p => ({
-            ...p,
-            url: urlMapRes.data![p.url] || p.url,
-          }));
-        }
-      }
+    // Apply signed URLs (already resolved in parallel)
+    if (urlMapRes && urlMapRes.ok && urlMapRes.data && profile.photos) {
+      profile.photos = profile.photos.map(p => ({
+        ...p,
+        url: urlMapRes.data![p.url] || p.url,
+      }));
     }
 
     profileCache = { data: profile, ts: Date.now() };

@@ -6,7 +6,6 @@
  */
 
 import { ApiResponse } from '../types';
-import { cleanupSubscriptions } from './messageService';
 import { invalidateProfileCache } from './profileService';
 import { supabase } from '../lib/supabase';
 import { createLogger } from '../utils/secureLogger';
@@ -164,7 +163,7 @@ export const signOut = async (): Promise<ApiResponse<void>> => {
     _intentionalSignOut = true;
 
     // Clean up message subscriptions and cached profile data
-    cleanupSubscriptions();
+    import('./messageService').then(m => m.cleanupSubscriptions());
     invalidateProfileCache();
 
     // Sign out from Supabase (clears session from AsyncStorage automatically)

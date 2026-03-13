@@ -137,19 +137,20 @@ export default function ProfileMatchScreen() {
     const allPhotos = useMemo(() => partnerProfile?.photos ?? [], [partnerProfile]);
     const inlinePhotos = useMemo(() => allPhotos.slice(1), [allPhotos]);
 
-    // Interleave: photo, question, photo, question...
+    // Interleave: question first (to avoid photo-after-hero), then alternate
     const interleavedContent = useMemo(() => {
         const items: { type: 'photo' | 'question'; data: any }[] = [];
         let pIdx = 0;
         let qIdx = 0;
         while (pIdx < inlinePhotos.length || qIdx < deepQuestions.length) {
-            if (pIdx < inlinePhotos.length) {
-                items.push({ type: 'photo', data: inlinePhotos[pIdx] });
-                pIdx++;
-            }
+            // Lead with a question so we don't get photo-right-after-hero
             if (qIdx < deepQuestions.length) {
                 items.push({ type: 'question', data: deepQuestions[qIdx] });
                 qIdx++;
+            }
+            if (pIdx < inlinePhotos.length) {
+                items.push({ type: 'photo', data: inlinePhotos[pIdx] });
+                pIdx++;
             }
         }
         return items;
@@ -254,11 +255,8 @@ export default function ProfileMatchScreen() {
                             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
                                 <ArrowLeft size={24} color="#FFFFFF" strokeWidth={2} />
                             </TouchableOpacity>
-                            {allPhotos.length > 1 && (
-                                <View style={styles.photoCountPill}>
-                                    <Text style={styles.photoCountText}>1 / {allPhotos.length}</Text>
-                                </View>
-                            )}
+                            {/* Photo count removed — scroll down to see more */}
+                            <View />
                         </View>
 
                         {/* Bottom overlay — name, subtitle, matched-by */}
@@ -266,12 +264,11 @@ export default function ProfileMatchScreen() {
                             <View style={styles.heroInfoLeft}>
                                 <Text style={styles.heroName}>
                                     {partnerProfile.firstName}, {partnerProfile.age}
-                                    {heightStr ? <Text style={styles.heroDetail}>{`  ${heightStr}`}</Text> : null}
                                 </Text>
 
-                                {heroSubtitleStr.length > 0 && (
+                                {(heightStr || heroSubtitleStr.length > 0) && (
                                     <Text style={styles.heroSubtitle} numberOfLines={2}>
-                                        {heroSubtitleStr}
+                                        {[heightStr, heroSubtitleStr].filter(Boolean).join(' · ')}
                                     </Text>
                                 )}
 
@@ -337,34 +334,7 @@ export default function ProfileMatchScreen() {
                         </View>
                     )}
 
-                    {/* "What You Have in Common" */}
-                    {hasInCommon && (
-                        <View style={styles.inCommonCard}>
-                            <View style={styles.inCommonHeader}>
-                                <View style={styles.inCommonIconCircle}>
-                                    <Sparkles size={14} color="#166534" />
-                                </View>
-                                <View>
-                                    <Text style={styles.inCommonTitle}>What you have in common</Text>
-                                    <Text style={styles.inCommonCount}>{totalInCommon} shared trait{totalInCommon !== 1 ? 's' : ''}</Text>
-                                </View>
-                            </View>
-                            <View style={styles.chipRow}>
-                                {inCommon.values.map((v: string) => (
-                                    <View key={`cv-${v}`} style={styles.inCommonChip}>
-                                        {valueIconName(v) && <IconScoutIcon name={valueIconName(v)!} size={14} style={{ marginRight: 4 }} />}
-                                        <Text style={styles.inCommonChipText}>{v}</Text>
-                                    </View>
-                                ))}
-                                {inCommon.interests.map((i: string) => (
-                                    <View key={`ci-${i}`} style={styles.inCommonChip}>
-                                        {interestIconName(i) && <IconScoutIcon name={interestIconName(i)!} size={14} style={{ marginRight: 4 }} />}
-                                        <Text style={styles.inCommonChipText}>{i}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
-                    )}
+                    {/* "What You Have in Common" section removed — shared items are now highlighted inline */}
 
                     {/* ── Photo + Prompt Interleave ────────────────── */}
                     {interleavedContent.map((item, idx) => {
@@ -401,9 +371,9 @@ export default function ProfileMatchScreen() {
                                         {partnerProfile.values.map((v: string) => {
                                             const shared = sharedValuesSet.has(v.toLowerCase());
                                             return (
-                                                <View key={v} style={[styles.tag, shared && styles.tagShared]}>
+                                                <View key={v} style={[styles.tag, styles.tagValue, shared && styles.tagSharedValue]}>
                                                     {valueIconName(v) && <IconScoutIcon name={valueIconName(v)!} size={15} style={{ marginRight: 5 }} />}
-                                                    <Text style={[styles.tagText, shared && styles.tagTextShared]}>{v}</Text>
+                                                    <Text style={[styles.tagText, styles.tagTextValue, shared && styles.tagTextSharedValue]}>{v}</Text>
                                                 </View>
                                             );
                                         })}
@@ -417,9 +387,9 @@ export default function ProfileMatchScreen() {
                                         {partnerProfile.interests.map((i: string) => {
                                             const shared = sharedInterestsSet.has(i.toLowerCase());
                                             return (
-                                                <View key={i} style={[styles.tag, shared && styles.tagShared]}>
+                                                <View key={i} style={[styles.tag, styles.tagInterest, shared && styles.tagSharedInterest]}>
                                                     {interestIconName(i) && <IconScoutIcon name={interestIconName(i)!} size={15} style={{ marginRight: 5 }} />}
-                                                    <Text style={[styles.tagText, shared && styles.tagTextShared]}>{i}</Text>
+                                                    <Text style={[styles.tagText, styles.tagTextInterest, shared && styles.tagTextSharedInterest]}>{i}</Text>
                                                 </View>
                                             );
                                         })}
@@ -550,11 +520,6 @@ const styles = StyleSheet.create({
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 6,
     },
-    heroDetail: {
-        fontFamily: FONTS.regular,
-        fontSize: FONT_SIZES['3xl'],
-        color: 'rgba(255,255,255,0.9)',
-    },
     heroSubtitle: {
         fontFamily: FONTS.medium,
         fontSize: FONT_SIZES.lg,
@@ -610,17 +575,6 @@ const styles = StyleSheet.create({
     karmaText: {
         fontFamily: FONTS.semiBold,
         fontSize: FONT_SIZES.md,
-        color: '#FFFFFF',
-    },
-    photoCountPill: {
-        backgroundColor: 'rgba(0,0,0,0.4)',
-        borderRadius: 12,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-    },
-    photoCountText: {
-        fontFamily: FONTS.medium,
-        fontSize: FONT_SIZES.sm,
         color: '#FFFFFF',
     },
 
@@ -698,41 +652,7 @@ const styles = StyleSheet.create({
         borderRadius: 3,
     },
 
-    // ── "What You Have in Common" ────────────────────────────────
-
-    inCommonCard: {
-        backgroundColor: '#F0FDF4',
-        borderRadius: 20,
-        padding: 18,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: '#BBF7D0',
-    },
-    inCommonHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        marginBottom: 14,
-    },
-    inCommonIconCircle: {
-        width: 32,
-        height: 32,
-        backgroundColor: '#DCFCE7',
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    inCommonTitle: {
-        fontFamily: FONTS.semiBold,
-        fontSize: FONT_SIZES.lg,
-        color: '#166534',
-    },
-    inCommonCount: {
-        fontFamily: FONTS.regular,
-        fontSize: FONT_SIZES.sm,
-        color: '#15803D',
-        marginTop: 1,
-    },
+    // ── (in-common card removed — shared items highlighted inline) ──
 
     // ── Inline Photo ─────────────────────────────────────────────
 
@@ -815,40 +735,50 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         letterSpacing: 1,
     },
-    inCommonChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#DCFCE7',
-        paddingHorizontal: 12,
-        paddingVertical: 7,
-        borderRadius: 20,
-    },
-    inCommonChipText: {
-        fontFamily: FONTS.medium,
-        fontSize: FONT_SIZES.md,
-        color: '#166534',
-    },
     tag: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: COLORS.backgroundGray,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 20,
-    },
-    tagShared: {
-        backgroundColor: '#DCFCE7',
+        backgroundColor: '#F8F7F5',
+        paddingHorizontal: 14,
+        paddingVertical: 9,
+        borderRadius: 24,
         borderWidth: 1,
+        borderColor: '#E8E5E0',
+    },
+    tagValue: {
+        backgroundColor: '#F0FDF4',
+        borderColor: '#D1FAE5',
+    },
+    tagInterest: {
+        backgroundColor: '#FFF7ED',
+        borderColor: '#FED7AA',
+    },
+    tagSharedValue: {
+        backgroundColor: '#DCFCE7',
         borderColor: '#86EFAC',
     },
+    tagSharedInterest: {
+        backgroundColor: '#FFEDD5',
+        borderColor: '#FB923C',
+    },
     tagText: {
-        fontFamily: FONTS.regular,
+        fontFamily: FONTS.medium,
         fontSize: FONT_SIZES.base,
         color: COLORS.text.primary,
     },
-    tagTextShared: {
+    tagTextValue: {
         color: '#166534',
-        fontFamily: FONTS.medium,
+    },
+    tagTextInterest: {
+        color: '#9A3412',
+    },
+    tagTextSharedValue: {
+        color: '#14532D',
+        fontFamily: FONTS.bold,
+    },
+    tagTextSharedInterest: {
+        color: '#7C2D12',
+        fontFamily: FONTS.bold,
     },
 
     // ── Lifestyle ────────────────────────────────────────────────

@@ -8,39 +8,20 @@ import { ActivityIndicator, AppState, View, TouchableOpacity, useWindowDimension
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { SPRINGS } from '../constants/animations';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GuideTarget, useGuideContext } from '../components/guides';
+import { useGuideContext } from '../contexts/GuideContext';
+import { GuideTarget } from '../components/guides/GuideTarget';
 import { supabase } from '../lib/supabase';
 import { FEATURES } from '../config/features';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { Sentry } from '../lib/sentry';
 import { fetchAndSetUserProfile, invalidateProfileCache, checkSuspensionStatus } from '../services/profileService';
 import { isIntentionalSignOut, resetIntentionalSignOut } from '../services/authService';
-import * as Notifications from 'expo-notifications';
-import { notificationService } from '../services/notificationService';
+// expo-notifications is imported dynamically to defer 84KB from startup
 import { setCachedUserId, clearCachedUserId } from '../utils/auth';
 import { showToast } from '../utils/toast';
+import { selectionHaptic } from '../utils/haptics';
 
-// Auth Screens
-import {
-  WelcomeScreen,
-  LoginScreen,
-  PhoneVerificationScreen,
-} from '../screens/auth';
-
-// Main Screens
-import {
-  CommunityScreen,
-} from '../screens/main';
-import { ProfileScreen } from '../screens/main/ProfileScreen';
-import { FriendProposalScreen } from '../screens/community/FriendProposalScreen';
-
-// Onboarding
-import { OnboardingScreen } from '../screens/onboarding/OnboardingScreen';
-
-import ChatScreen from '../screens/match/ChatScreen';
-
-// Profile Screens (eagerly loaded)
-import { SettingsScreen } from '../screens/profile/SettingsScreen';
+// ── All screens are lazy-loaded to minimize startup parsing ──
 
 // ── Lazy-loaded screens (only evaluated when navigated to) ──────────────────
 const LazyFallback = () => <ActivityIndicator style={{ flex: 1 }} color="#437FFF" />;
@@ -55,8 +36,21 @@ function withSuspense<P extends object>(LazyComponent: React.LazyExoticComponent
   };
 }
 
-// Match Screens (eagerly loaded — part of main tab flow)
+// Auth screens — lazy (only parsed when unauthenticated)
+const WelcomeScreen = withSuspense(React.lazy(() => import('../screens/auth/WelcomeScreen').then(m => ({ default: m.WelcomeScreen }))));
+const LoginScreen = withSuspense(React.lazy(() => import('../screens/auth/LoginScreen').then(m => ({ default: m.LoginScreen }))));
+const PhoneVerificationScreen = withSuspense(React.lazy(() => import('../screens/auth/PhoneVerificationScreen').then(m => ({ default: m.PhoneVerificationScreen }))));
+
+// Main tab screens — all lazy (parsed on first navigation, not at startup)
+const CommunityScreen = withSuspense(React.lazy(() => import('../screens/main/CommunityScreen').then(m => ({ default: m.CommunityScreen }))));
+const ProfileScreen = withSuspense(React.lazy(() => import('../screens/main/ProfileScreen').then(m => ({ default: m.ProfileScreen }))));
 const MatchesScreen = withSuspense(React.lazy(() => import('../screens/match/MatchesScreen').then(m => ({ default: m.MatchesScreen }))));
+
+// Stack screens — lazy (navigated to on demand)
+const OnboardingScreen = withSuspense(React.lazy(() => import('../screens/onboarding/OnboardingScreen').then(m => ({ default: m.OnboardingScreen }))));
+const FriendProposalScreen = withSuspense(React.lazy(() => import('../screens/community/FriendProposalScreen').then(m => ({ default: m.FriendProposalScreen }))));
+const ChatScreen = withSuspense(React.lazy(() => import('../screens/match/ChatScreen')));
+const SettingsScreen = withSuspense(React.lazy(() => import('../screens/profile/SettingsScreen').then(m => ({ default: m.SettingsScreen }))));
 
 // Match sub-screens
 const MatchRevealScreen = withSuspense(React.lazy(() => import('../screens/match/MatchRevealScreen').then(m => ({ default: m.MatchRevealScreen }))));
@@ -100,8 +94,8 @@ import { RootStackParamList, MainTabParamList } from '../types';
 import { createLogger } from '../utils/secureLogger';
 import { slideWithFade, modalSlideUp, fadeTransition } from '../utils/screenTransitions';
 
-// Dev tools — lazy-loaded only when feature flags are on
-const LazyDevStateToggle = FEATURES.ENABLE_DEV_STATE_TOGGLE
+// Dev tools — only bundled in __DEV__ builds, lazy-loaded when feature flag is on
+const LazyDevStateToggle = __DEV__ && FEATURES.ENABLE_DEV_STATE_TOGGLE
   ? withSuspense(React.lazy(() => import('../components/dev/DevStateToggle').then(m => ({ default: m.DevStateToggle }))))
   : () => null;
 
@@ -172,6 +166,7 @@ const CustomTabBar = ({ state, navigation }: any) => {
         const Icon = TAB_ICONS[index];
 
         const onPress = () => {
+          selectionHaptic();
           const event = navigation.emit({
             type: 'tabPress',
             target: route.key,
@@ -264,6 +259,10 @@ export const AppNavigator = () => {
       nav.navigate('SupportChat');
       return;
     }
+    if (screen === 'Chat' && data?.matchId) {
+      nav.navigate('Chat', { matchId: data.matchId });
+      return;
+    }
     if (screen === 'Chat') {
       nav.navigate('MainTabs', { screen: 'Matches' });
       return;
@@ -282,7 +281,7 @@ export const AppNavigator = () => {
     }
 
     // Fallback: route by notification type
-    if (type === 'match' || type === 'pending_decision' || type === 'proposal_deciding') {
+    if (type === 'match' || type === 'pending_decision' || type === 'proposal_deciding' || type === 'match_expiring') {
       nav.navigate('MainTabs', { screen: 'Matches' });
       return;
     }
@@ -290,11 +289,19 @@ export const AppNavigator = () => {
       nav.navigate('MainTabs', { screen: 'Matches' });
       return;
     }
-    if (type === 'new_proposals') {
+    if (type === 'ice_breaker') {
+      if (data?.matchId) {
+        nav.navigate('Chat', { matchId: data.matchId });
+      } else {
+        nav.navigate('MainTabs', { screen: 'Matches' });
+      }
+      return;
+    }
+    if (type === 'new_proposals' || type === 'vote_reminder' || type === 'streak_at_risk' || type === 'friend_nudge' || type === 'shared_celebration' || type === 'dormant') {
       nav.navigate('MainTabs', { screen: 'Community' });
       return;
     }
-    if (type === 'weekly_summary' || type === 'leaderboard') {
+    if (type === 'weekly_summary' || type === 'leaderboard' || type === 'morning_leaderboard') {
       nav.navigate('Leaderboard');
       return;
     }
@@ -318,22 +325,25 @@ export const AppNavigator = () => {
 
   // Route to the correct screen when a push notification is tapped
   useEffect(() => {
-    // Handle taps on notifications that arrive while app is running
-    const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data || {};
-      handleNotificationNavigation(data);
-    });
+    let responseSubscription: { remove(): void } | undefined;
 
-    // Handle the case where the app was opened from a killed state by a notification tap
-    Notifications.getLastNotificationResponseAsync().then((response) => {
-      if (response) {
+    import('expo-notifications').then((Notifications) => {
+      // Handle taps on notifications that arrive while app is running
+      responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
         const data = response.notification.request.content.data || {};
-        // Small delay to ensure navigation container is ready
-        setTimeout(() => handleNotificationNavigation(data), 500);
-      }
+        handleNotificationNavigation(data);
+      });
+
+      // Handle the case where the app was opened from a killed state by a notification tap
+      Notifications.getLastNotificationResponseAsync().then((response) => {
+        if (response) {
+          const data = response.notification.request.content.data || {};
+          setTimeout(() => handleNotificationNavigation(data), 500);
+        }
+      });
     });
 
-    return () => responseSubscription.remove();
+    return () => responseSubscription?.remove();
   }, [handleNotificationNavigation]);
 
   // Process pending invite code once authenticated
@@ -356,7 +366,9 @@ export const AppNavigator = () => {
     // Use ref object instead of closure variable to avoid staleness in async callbacks
     const isMountedRef = { current: true };
 
-    // Check for existing Supabase session on app start
+    // Check for existing Supabase session on app start.
+    // Strategy: confirm auth + lightweight suspension check → render MainTabs ASAP,
+    // then fetch full profile in background so screens have data when needed.
     const initializeAuth = async () => {
       try {
         if (FEATURES.DEVELOPMENT_FORCE_FRESH_SESSION) {
@@ -364,7 +376,6 @@ export const AppNavigator = () => {
         }
 
         // Read cached session from AsyncStorage (no network call) for fast startup.
-        // The onAuthStateChange listener handles expired sessions automatically.
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (!isMountedRef.current) return;
@@ -379,16 +390,22 @@ export const AppNavigator = () => {
           const user = session.user;
           setCachedUserId(user.id);
           logger.info('[AppNavigator] Authenticated user:', user.id);
-          const profileResult = await fetchAndSetUserProfile(user.id);
-          if (!profileResult.ok && profileResult.error?.code !== 'PROFILE_NOT_FOUND') {
-            logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
-          }
-          // Check suspension status
+
+          // Lightweight suspension check (2 columns only) — unblocks navigation fast
           const suspStatus = await checkSuspensionStatus();
           if (!isMountedRef.current) return;
           setIsSuspended(suspStatus.isSuspended);
           setSuspensionReason(suspStatus.reason);
+
+          // Render MainTabs NOW — don't wait for full profile
           setIsAuthenticated(true);
+
+          // Full profile fetch runs in background — populates cache for screens
+          fetchAndSetUserProfile(user.id).then(profileResult => {
+            if (!profileResult.ok && profileResult.error?.code !== 'PROFILE_NOT_FOUND') {
+              logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
+            }
+          });
         }
       } catch (err) {
         logger.error('Error initializing auth:', err);
@@ -406,6 +423,7 @@ export const AppNavigator = () => {
 
     const setupNotifications = async () => {
       try {
+        const { notificationService } = await import('../services/notificationService');
         await notificationService.registerForPushNotifications();
         cleanupNotifications = await notificationService.subscribeToRealtimeNotifications();
 
@@ -440,7 +458,7 @@ export const AppNavigator = () => {
         invalidateProfileCache();
         setCachedUserId(session.user.id);
         setupNotifications();
-        if (FEATURES.DEVELOPMENT_CREATE_MOCK_DATA) {
+        if (__DEV__ && FEATURES.DEVELOPMENT_CREATE_MOCK_DATA) {
           import('../services/developmentDataService').then(m => m.createDevelopmentData(session.user.id));
         }
       } else if (event === 'SIGNED_OUT' && wasAuthenticated) {

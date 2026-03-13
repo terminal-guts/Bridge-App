@@ -13,7 +13,8 @@
  */
 
 import React from 'react';
-import { View, Text, Image, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { styled } from 'nativewind';
 import { ActiveMatch } from '../../../types/community';
 import { mediumHaptic, lightHaptic } from '../../../utils/haptics';
@@ -29,7 +30,7 @@ import { EvaIcon } from '../../icons';
 
 const StyledView = styled(View) as typeof View;
 const StyledText = styled(Text) as typeof Text;
-const StyledImage = styled(Image) as typeof Image;
+const StyledImage = Image;
 const StyledTouchable = styled(TouchableOpacity) as typeof TouchableOpacity;
 
 interface ActiveMatchCardProps {

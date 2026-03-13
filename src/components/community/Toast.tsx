@@ -5,15 +5,20 @@
  * Used for vote confirmations and other brief notifications
  */
 
-import React, { useEffect, useRef } from 'react';
-import { View, Text, Animated } from 'react-native';
-import { styled } from 'nativewind';
+import React, { useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  runOnJS,
+  useReducedMotion,
+} from 'react-native-reanimated';
 import { FONTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { EvaIcon } from '../icons';
-
-const StyledView = styled(View);
-const StyledText = styled(Text);
+import { SPRINGS, DURATIONS } from '../../constants/animations';
 
 interface ToastProps {
   message: string;
@@ -24,6 +29,13 @@ interface ToastProps {
   onHide?: () => void;
 }
 
+const TYPE_CONFIG = {
+  success: { bg: COLORS.emerald, icon: 'checkmark-circle' },
+  info: { bg: COLORS.primaryAccent, icon: 'info' },
+  warning: { bg: COLORS.warning.icon, icon: 'alert-triangle' },
+  error: { bg: COLORS.error, icon: 'close-circle' },
+} as const;
+
 export function Toast({
   message,
   visible,
@@ -32,103 +44,83 @@ export function Toast({
   duration = 2000,
   onHide,
 }: ToastProps) {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
+  const reducedMotion = useReducedMotion();
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(50);
+
+  const hideToast = useCallback(() => {
+    if (reducedMotion) {
+      opacity.value = 0;
+      translateY.value = 50;
+      if (onHide) onHide();
+    } else {
+      opacity.value = withTiming(0, { duration: DURATIONS.normal });
+      translateY.value = withTiming(50, { duration: DURATIONS.normal }, (finished) => {
+        if (finished && onHide) runOnJS(onHide)();
+      });
+    }
+  }, [onHide, reducedMotion]);
 
   useEffect(() => {
     if (visible) {
-      // Animate in
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          damping: 15,
-          stiffness: 150,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      if (reducedMotion) {
+        opacity.value = 1;
+        translateY.value = 0;
+      } else {
+        opacity.value = withTiming(1, { duration: DURATIONS.micro });
+        translateY.value = withSpring(0, SPRINGS.responsive);
+      }
 
-      // Auto-hide after duration
-      const timer = setTimeout(() => {
-        hideToast();
-      }, duration);
-
+      const timer = setTimeout(hideToast, duration);
       return () => clearTimeout(timer);
     } else {
       hideToast();
     }
   }, [visible]);
 
-  const hideToast = () => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 50,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      if (onHide) onHide();
-    });
-  };
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
 
-  if (!visible && (fadeAnim as any)._value === 0) {
-    return null;
-  }
-
-  const typeConfig = {
-    success: {
-      bg: COLORS.emerald,
-      icon: 'checkmark-circle',
-    },
-    info: {
-      bg: COLORS.primaryAccent,
-      icon: 'information-circle',
-    },
-    warning: {
-      bg: COLORS.warning.icon,
-      icon: 'warning',
-    },
-    error: {
-      bg: COLORS.error,
-      icon: 'close-circle',
-    },
-  };
-
-  const config = typeConfig[type];
+  const config = TYPE_CONFIG[type];
 
   return (
-    <Animated.View
-      className="absolute bottom-24 left-4 right-4 z-50"
-      style={{
-        opacity: fadeAnim,
-        transform: [{ translateY: slideAnim }],
-      }}
-    >
-      <StyledView
-        className="flex-row items-center px-4 py-3 rounded-xl shadow-lg"
-        style={{
-          backgroundColor: config.bg,
-        }}
-      >
-        {/* Icon */}
+    <Animated.View style={[styles.container, animStyle]}>
+      <View style={[styles.inner, { backgroundColor: config.bg }]}>
         <EvaIcon name={icon || config.icon} variant="outline" size={24} color="#FFFFFF" />
-
-        {/* Message */}
-        <StyledText className="flex-1 text-white font-medium ml-3" style={{ fontFamily: FONTS.medium }}>
-          {message}
-        </StyledText>
-      </StyledView>
+        <Text style={styles.message}>{message}</Text>
+      </View>
     </Animated.View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    bottom: 96,
+    left: 16,
+    right: 16,
+    zIndex: 50,
+  },
+  inner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  message: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontFamily: FONTS.medium,
+    marginLeft: 12,
+  },
+});
 
 export default Toast;

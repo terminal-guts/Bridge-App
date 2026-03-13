@@ -5,18 +5,24 @@
  * Can be used at the top of any screen to indicate network status.
  */
 
-import React from 'react';
-import { View, Animated } from 'react-native';
+import React, { useEffect } from 'react';
+import { View } from 'react-native';
 import { styled } from 'nativewind';
 import { Body } from '.';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
+import { errorHaptic } from '../../utils/haptics';
 import { EvaIcon } from '../icons';
 
 const StyledView = styled(View);
-const StyledAnimatedView = styled(Animated.View);
 
 export const OfflineBanner: React.FC = () => {
   const { isOffline } = useNetworkStatus();
+
+  useEffect(() => {
+    if (isOffline) {
+      errorHaptic();
+    }
+  }, [isOffline]);
 
   if (!isOffline) {
     return null;

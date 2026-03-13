@@ -20,6 +20,7 @@ import { supabase } from '../../lib/supabase';
 import { Body } from '../../components/ui';
 import { ONBOARDING_STEP_MAPPING } from '../../config/onboardingMapping';
 import { createLogger } from '../../utils/secureLogger';
+import { successHaptic } from '../../utils/haptics';
 import { assignNewUserProposals, generateProposalForUser } from '../../services/proposalApiService';
 
 const logger = createLogger('OnboardingScreen');
@@ -322,6 +323,10 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
           logger.warn('Fallback assignment also failed (non-blocking):', e.message);
         }
       }
+
+      // Celebration haptics
+      successHaptic();
+      setTimeout(() => successHaptic(), 300);
 
       // Navigate to main app after proposals are assigned
       (navigation as any).navigate('MainTabs');

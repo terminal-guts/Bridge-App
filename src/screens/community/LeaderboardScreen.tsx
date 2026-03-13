@@ -37,6 +37,7 @@ interface LeaderboardUser {
   avatarUrl: string | null;
   isCurrentUser: boolean;
   isFriend: boolean;
+  isAnonymous: boolean;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -69,6 +70,7 @@ const toLeaderboardUser = (
   avatarUrl: entry.photoUrl,
   isCurrentUser,
   isFriend: entry.isFriend,
+  isAnonymous: entry.isAnonymous ?? false,
 });
 
 const INITIAL_COLORS = ['#437FFF', '#34C759', '#FF9500', '#AF52DE', '#FF3B30', '#5AC8FA', '#FF2D55', '#667085'];
@@ -104,10 +106,17 @@ const FriendBadge = () => (
 
 // ─── Initial Avatar ──────────────────────────────────────────────────────────
 
-const InitialAvatar = ({ name, size }: { name: string; size: number }) => {
-  const initial = (name && name !== 'You' ? name[0] : '?').toUpperCase();
-  const bg = getInitialColor(name);
+const InitialAvatar = ({ name, size, isAnonymous }: { name: string; size: number; isAnonymous?: boolean }) => {
+  const bg = isAnonymous ? '#D0D5DD' : getInitialColor(name);
   const fontSize = size * 0.42;
+  if (isAnonymous) {
+    return (
+      <View style={[s.initialAvatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }]}>
+        <EvaIcon name="eye-off" variant="outline" size={fontSize} color="#FFFFFF" />
+      </View>
+    );
+  }
+  const initial = (name && name !== 'You' ? name[0] : '?').toUpperCase();
   return (
     <View style={[s.initialAvatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }]}>
       <Text style={[s.initialAvatarText, { fontSize }]}>{initial}</Text>
@@ -260,7 +269,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
             {item.avatarUrl ? (
               <Image source={{ uri: item.avatarUrl }} style={s.listAvatar} />
             ) : (
-              <InitialAvatar name={item.firstName} size={48} />
+              <InitialAvatar name={item.firstName} size={48} isAnonymous={item.isAnonymous} />
             )}
             {item.isFriend && <FriendBadge />}
           </View>
@@ -393,7 +402,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
                         {top3[1]?.avatarUrl ? (
                           <Image source={{ uri: top3[1].avatarUrl }} style={s.avatarMedium} />
                         ) : (
-                          <InitialAvatar name={top3[1]?.firstName ?? ''} size={72} />
+                          <InitialAvatar name={top3[1]?.firstName ?? ''} size={72} isAnonymous={top3[1]?.isAnonymous} />
                         )}
                         {top3[1]?.isFriend && <FriendBadge />}
                       </View>
@@ -413,7 +422,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
                         {top3[0]?.avatarUrl ? (
                           <Image source={{ uri: top3[0].avatarUrl }} style={s.avatarLarge} />
                         ) : (
-                          <InitialAvatar name={top3[0]?.firstName ?? ''} size={88} />
+                          <InitialAvatar name={top3[0]?.firstName ?? ''} size={88} isAnonymous={top3[0]?.isAnonymous} />
                         )}
                         {top3[0]?.isFriend && <FriendBadge />}
                       </View>
@@ -432,7 +441,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
                         {top3[2]?.avatarUrl ? (
                           <Image source={{ uri: top3[2].avatarUrl }} style={s.avatarSmall} />
                         ) : (
-                          <InitialAvatar name={top3[2]?.firstName ?? ''} size={64} />
+                          <InitialAvatar name={top3[2]?.firstName ?? ''} size={64} isAnonymous={top3[2]?.isAnonymous} />
                         )}
                         {top3[2]?.isFriend && <FriendBadge />}
                       </View>

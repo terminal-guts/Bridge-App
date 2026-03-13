@@ -1,5 +1,16 @@
-import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import Animated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withRepeat,
+    withSequence,
+    withTiming,
+    withSpring,
+    Easing,
+    cancelAnimation,
+} from 'react-native-reanimated';
+import { SPRINGS } from '../../constants/animations';
 import { Image } from 'expo-image';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { FriendWithGridStatus } from '../../types/community';
@@ -66,26 +77,27 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
     }, [streak, previousStreakDays, onStreakMilestone, name]);
 
     // #3+#7: Vote button pulse glow animation
-    const voteScale = useRef(new Animated.Value(1)).current;
+    const voteScale = useSharedValue(1);
     useEffect(() => {
-        if (!showVoteRing) return;
-        const loop = Animated.loop(
-            Animated.sequence([
-                Animated.timing(voteScale, { toValue: 1.07, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-                Animated.timing(voteScale, { toValue: 1, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-            ])
+        if (!showVoteRing) { voteScale.value = 1; return; }
+        voteScale.value = withRepeat(
+            withSequence(
+                withTiming(1.07, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+                withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+            ), -1, false
         );
-        loop.start();
-        return () => { loop.stop(); voteScale.setValue(1); };
-    }, [showVoteRing, voteScale]);
+        return () => cancelAnimation(voteScale);
+    }, [showVoteRing]);
+    const voteAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: voteScale.value }] }));
     const handleVotePress = useCallback(() => {
         if (!friendProfileComplete || !onMatch) return;
         mediumHaptic();
-        Animated.sequence([
-            Animated.timing(voteScale, { toValue: 0.92, duration: 80, useNativeDriver: true }),
-            Animated.timing(voteScale, { toValue: 1, duration: 80, useNativeDriver: true }),
-        ]).start(() => onMatch());
-    }, [friendProfileComplete, onMatch, voteScale]);
+        voteScale.value = withSequence(
+            withTiming(0.92, { duration: 80 }),
+            withSpring(1, SPRINGS.snappy),
+        );
+        onMatch();
+    }, [friendProfileComplete, onMatch]);
 
     // #7: Karma tap haptic
     const handleKarmaTap = useCallback(() => {
@@ -102,21 +114,21 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
             : {}, [streak, streakTier.ringColor]);
 
     // Legendary pulse animation (30+ day streaks)
-    const pulseAnim = useRef(new Animated.Value(1)).current;
+    const pulseAnim = useSharedValue(1);
     useEffect(() => {
-        if (streak < 30) return;
-        const loop = Animated.loop(
-            Animated.sequence([
-                Animated.timing(pulseAnim, { toValue: 1.05, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-                Animated.timing(pulseAnim, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-            ])
+        if (streak < 30) { pulseAnim.value = 1; return; }
+        pulseAnim.value = withRepeat(
+            withSequence(
+                withTiming(1.05, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+                withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+            ), -1, false
         );
-        loop.start();
-        return () => { loop.stop(); pulseAnim.setValue(1); };
-    }, [streak, pulseAnim]);
+        return () => cancelAnimation(pulseAnim);
+    }, [streak]);
 
+    const pulseAnimStyle = useAnimatedStyle(() => streak >= 30 ? { transform: [{ scale: pulseAnim.value }] } : {});
     const avatarContent = (
-        <Animated.View style={streak >= 30 ? { transform: [{ scale: pulseAnim }] } : undefined}>
+        <Animated.View style={pulseAnimStyle}>
             <TouchableOpacity onPress={onViewProfile} activeOpacity={onViewProfile ? 0.8 : 1} disabled={!onViewProfile} accessibilityLabel={`View ${name}'s profile`} accessibilityRole="button" style={avatarShadow}>
                 <Image
                     source={{ uri: imageUrl }}
@@ -176,7 +188,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                     {infoBlock}
                 </View>
                 <Animated.View style={[
-                    { transform: [{ scale: voteScale }] },
+                    voteAnimStyle,
                     showVoteRing && friendProfileComplete && styles.voteBtnGlow,
                 ]}>
                     <TouchableOpacity

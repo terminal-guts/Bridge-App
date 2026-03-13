@@ -8,8 +8,18 @@
  * - Voted state indicator
  */
 
-import React, { useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Image, Animated } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
+import ReanimatedAnimated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withSequence,
+    withSpring,
+    withTiming,
+    interpolateColor,
+} from 'react-native-reanimated';
+import { SPRINGS } from '../../../constants/animations';
 import { styled } from 'nativewind';
 import * as Haptics from 'expo-haptics';
 import { Proposal, UserProfile, Endorsement } from '../../../types/community';
@@ -21,7 +31,7 @@ import { EvaIcon } from '../../icons';
 const StyledView = styled(View) as typeof View;
 const StyledText = styled(Text) as typeof Text;
 const StyledTouchableOpacity = styled(TouchableOpacity) as typeof TouchableOpacity;
-const StyledImage = styled(Image) as typeof Image;
+const StyledImage = Image;
 
 interface ProposalCardProps {
   proposal: Proposal;
@@ -41,49 +51,24 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
   const hasVoted = yourVote !== undefined;
   const highlyRecommended = false;
 
-  // Animation refs
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  // Animation values
+  const scaleAnim = useSharedValue(1);
+  const glowAnim = useSharedValue(0);
 
   // Trigger animation when voted
   useEffect(() => {
     if (hasVoted) {
-      // Card pulse and glow animation
-      Animated.sequence([
-        // Pulse out
-        Animated.parallel([
-          Animated.spring(scaleAnim, {
-            toValue: 1.02,
-            friction: 5,
-            tension: 40,
-            useNativeDriver: true,
-          }),
-          Animated.timing(glowAnim, {
-            toValue: 1,
-            duration: 200,
-            useNativeDriver: false,
-          }),
-        ]),
-        // Pulse in
-        Animated.parallel([
-          Animated.spring(scaleAnim, {
-            toValue: 1,
-            friction: 7,
-            tension: 40,
-            useNativeDriver: true,
-          }),
-          Animated.timing(glowAnim, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: false,
-          }),
-        ]),
-      ]).start(() => {
-        if (onVoteAnimationComplete) {
-          onVoteAnimationComplete();
-        }
-      });
+      scaleAnim.value = withSequence(
+        withSpring(1.02, SPRINGS.bouncy),
+        withSpring(1, SPRINGS.responsive),
+      );
+      glowAnim.value = withSequence(
+        withTiming(1, { duration: 200 }),
+        withTiming(0, { duration: 300 }),
+      );
+      if (onVoteAnimationComplete) {
+        setTimeout(onVoteAnimationComplete, 500);
+      }
     }
   }, [hasVoted]);
 
@@ -114,7 +99,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
           source={{ uri: user.photos?.[0]?.url || 'https://via.placeholder.com/60' }}
           className="rounded-full mb-2"
           style={{ width: 60, height: 60 }}
-          resizeMode="cover"
+          contentFit="cover"
         />
 
         {/* Name & Age */}
@@ -163,7 +148,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
                   }}
                   className="rounded-full"
                   style={{ width: 24, height: 24, marginRight: 8 }}
-                  resizeMode="cover"
+                  contentFit="cover"
                 />
               )}
               <StyledText className="text-xs text-neutral-700">
@@ -185,24 +170,26 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
     );
   };
 
-  // Interpolate glow color (using warmer primary blue)
-  const glowColor = glowAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['rgba(91, 143, 255, 0)', 'rgba(91, 143, 255, 0.15)'],
-  });
+  // Animated style for card pulse + glow
+  const cardAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scaleAnim.value }],
+    backgroundColor: interpolateColor(
+      glowAnim.value,
+      [0, 1],
+      ['rgba(91, 143, 255, 0)', 'rgba(91, 143, 255, 0.15)'],
+    ),
+  }));
 
   return (
-    <Animated.View
+    <ReanimatedAnimated.View
       className="bg-neutral-50 rounded-xl p-4 mb-4"
-      style={{
+      style={[{
         elevation: 2,
         shadowColor: '#FF9678',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.12,
         shadowRadius: 2,
-        transform: [{ scale: scaleAnim }],
-        backgroundColor: glowColor,
-      }}
+      }, cardAnimStyle]}
     >
       {/* Highly Recommended Badge */}
       {highlyRecommended && (
@@ -281,7 +268,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
           </StyledText>
         </StyledTouchableOpacity>
       </StyledView>
-    </Animated.View>
+    </ReanimatedAnimated.View>
   );
 });
 

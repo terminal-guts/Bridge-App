@@ -10,7 +10,8 @@
  */
 
 import React from 'react';
-import { View, Image } from 'react-native';
+import { View } from 'react-native';
+import { Image } from 'expo-image';
 import { styled } from 'nativewind';
 import { UserProfile, Photo } from '../../../types';
 import { Body } from '../../ui';
@@ -21,7 +22,7 @@ import { formatProfileValue } from '../../../utils/formatProfileValue';
 import { COLORS } from '../../../theme/colors';
 
 const StyledView = styled(View);
-const StyledImage = styled(Image);
+const StyledImage = Image;
 
 interface AbridgedProfileViewProps {
   user: UserProfile;
@@ -148,7 +149,7 @@ export function AbridgedProfileView({ user, compatibility }: AbridgedProfileView
             source={{ uri: mainPhoto?.url || 'https://via.placeholder.com/85' }}
             className="rounded-full bg-white"
             style={{ width: 85, height: 85 }}
-            resizeMode="cover"
+            contentFit="cover"
           />
         </StyledView>
       </StyledView>

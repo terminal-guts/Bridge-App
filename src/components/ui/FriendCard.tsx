@@ -13,7 +13,8 @@
  */
 
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { styled } from 'nativewind';
 import { FriendWithGridStatus } from '../../types/community';
 import { lightHaptic } from '../../utils/haptics';
@@ -28,7 +29,7 @@ import { COLORS as THEME_COLORS } from '../../theme/colors';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
-const StyledImage = styled(Image);
+const StyledImage = Image;
 const StyledTouchable = styled(TouchableOpacity);
 
 

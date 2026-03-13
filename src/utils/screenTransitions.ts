@@ -7,7 +7,7 @@
  */
 
 import { StackCardInterpolationProps, TransitionPresets } from '@react-navigation/stack';
-import { Animated, Easing } from 'react-native';
+import { Easing } from 'react-native';
 
 /**
  * Horizontal slide with subtle fade — the primary push/pop transition.

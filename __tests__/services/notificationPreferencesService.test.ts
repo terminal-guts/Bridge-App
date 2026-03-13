@@ -9,6 +9,19 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   removeItem: jest.fn((key: string) => { delete mockStorage[key]; return Promise.resolve(); }),
 }));
 
+// Mock supabase (needed for syncToServer)
+jest.mock('../../src/lib/supabase', () => ({
+  supabase: {
+    auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) },
+    from: jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+      upsert: jest.fn().mockResolvedValue({ data: null }),
+    }),
+  },
+}));
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { notificationPreferencesService, NotificationPreferences } from '../../src/services/notificationPreferencesService';
 
@@ -18,6 +31,8 @@ const defaultPreferences: NotificationPreferences = {
   matchesEnabled: true,
   messagesEnabled: true,
   nudgesEnabled: true,
+  showNameIfWinner: true,
+  leaderboardVisible: false,
 };
 
 beforeEach(() => {
@@ -41,6 +56,8 @@ describe('getPreferences', () => {
       matchesEnabled: false,
       messagesEnabled: true,
       nudgesEnabled: false,
+      showNameIfWinner: true,
+      leaderboardVisible: false,
     };
     mockStorage[PREFS_KEY] = JSON.stringify(stored);
 
@@ -58,6 +75,8 @@ describe('getPreferences', () => {
       matchesEnabled: false,
       messagesEnabled: true,
       nudgesEnabled: true,
+      showNameIfWinner: true,
+      leaderboardVisible: false,
     });
   });
 
@@ -83,6 +102,8 @@ describe('updatePreferences', () => {
       matchesEnabled: true,
       messagesEnabled: true,
       nudgesEnabled: false,
+      showNameIfWinner: true,
+      leaderboardVisible: false,
     });
 
     const stored = JSON.parse(mockStorage[PREFS_KEY]);
@@ -95,6 +116,8 @@ describe('updatePreferences', () => {
       matchesEnabled: false,
       messagesEnabled: false,
       nudgesEnabled: true,
+      showNameIfWinner: true,
+      leaderboardVisible: false,
     });
 
     const result = await notificationPreferencesService.updatePreferences({
@@ -105,6 +128,8 @@ describe('updatePreferences', () => {
       matchesEnabled: false,
       messagesEnabled: true,
       nudgesEnabled: true,
+      showNameIfWinner: true,
+      leaderboardVisible: false,
     });
   });
 
@@ -113,12 +138,16 @@ describe('updatePreferences', () => {
       matchesEnabled: true,
       messagesEnabled: true,
       nudgesEnabled: true,
+      showNameIfWinner: true,
+      leaderboardVisible: false,
     });
 
     const fullUpdate: NotificationPreferences = {
       matchesEnabled: false,
       messagesEnabled: false,
       nudgesEnabled: false,
+      showNameIfWinner: false,
+      leaderboardVisible: true,
     };
 
     const result = await notificationPreferencesService.updatePreferences(fullUpdate);
@@ -135,5 +164,15 @@ describe('updatePreferences', () => {
       PREFS_KEY,
       expect.any(String),
     );
+  });
+
+  it('updates showNameIfWinner preference', async () => {
+    const result = await notificationPreferencesService.updatePreferences({
+      showNameIfWinner: false,
+    });
+
+    expect(result.showNameIfWinner).toBe(false);
+    const stored = JSON.parse(mockStorage[PREFS_KEY]);
+    expect(stored.showNameIfWinner).toBe(false);
   });
 });

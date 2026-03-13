@@ -13,7 +13,15 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, Image, TouchableOpacity } from 'react-native';
+import ReanimatedAnimated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withRepeat,
+    withSequence,
+    withTiming,
+    cancelAnimation,
+} from 'react-native-reanimated';
 import { styled } from 'nativewind';
 import { SHADOWS } from '../../../theme/shadows';
 import { MatchProposal } from '../../../types/community';
@@ -40,7 +48,7 @@ export function PendingProposalCard({ proposal, onViewProfile }: PendingProposal
   const [expirationData, setExpirationData] = useState(
     formatExpirationTime(proposal.expiresAt)
   );
-  const [pulseAnim] = useState(new Animated.Value(1));
+  const pulseAnim = useSharedValue(1);
 
   // Update expiration time
   useEffect(() => {
@@ -57,24 +65,18 @@ export function PendingProposalCard({ proposal, onViewProfile }: PendingProposal
   // Pulsing animation for urgent proposals
   useEffect(() => {
     if (expirationData.urgencyLevel === 'urgent') {
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ])
+      pulseAnim.value = withRepeat(
+        withSequence(
+          withTiming(1.05, { duration: 1000 }),
+          withTiming(1, { duration: 1000 }),
+        ), -1, false
       );
-      pulse.start();
-      return () => pulse.stop();
+      return () => cancelAnimation(pulseAnim);
+    } else {
+      pulseAnim.value = 1;
     }
-  }, [expirationData.urgencyLevel, pulseAnim]);
+  }, [expirationData.urgencyLevel]);
+  const pulseAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulseAnim.value }] }));
 
   const handleViewProfile = () => {
     lightHaptic();
@@ -130,16 +132,15 @@ export function PendingProposalCard({ proposal, onViewProfile }: PendingProposal
       : '#FFFBFB';
 
   return (
-    <Animated.View
-      style={{
-        transform: [{ scale: pulseAnim }],
+    <ReanimatedAnimated.View
+      style={[pulseAnimStyle, {
         backgroundColor: bgColor,
         borderRadius: 16,
         borderWidth: 2,
         borderColor,
-        padding: 16, // Standardized padding
+        padding: 16,
         ...SHADOWS.accentRed,
-      }}
+      }]}
     >
       {/* Top Row: Photo + Info + Badge */}
       <StyledView className="flex-row items-start mb-2">
@@ -213,7 +214,7 @@ export function PendingProposalCard({ proposal, onViewProfile }: PendingProposal
           View Profile
         </StyledText>
       </StyledTouchable>
-    </Animated.View>
+    </ReanimatedAnimated.View>
   );
 }
 

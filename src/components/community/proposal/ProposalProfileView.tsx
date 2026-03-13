@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Image, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { styled } from 'nativewind';
 import { UserProfile } from '../../../types/community';
 import { valueIconName, interestIconName } from '../../../utils/emojiMaps';
@@ -50,7 +51,7 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
                             height: 400,
                             borderRadius: 16,
                         }}
-                        resizeMode="cover"
+                        contentFit="cover"
                     />
                 </StyledView>
             )}

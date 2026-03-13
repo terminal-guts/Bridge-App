@@ -45,7 +45,7 @@ import { styled } from 'nativewind';
 import { Body } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile, DeepQuestionAnswer, Match } from '../../types';
-import { lightHaptic, mediumHaptic, successHaptic, warningHaptic } from '../../utils/haptics';
+import { lightHaptic, mediumHaptic, successHaptic, warningHaptic, selectionHaptic } from '../../utils/haptics';
 import { showToast } from '../../utils/toast';
 import { valueIconName, interestIconName } from '../../utils/emojiMaps';
 import { TIER_CONFIG } from '../../utils/questionTiers';
@@ -808,6 +808,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   const swipeX = useRef(new Animated.Value(0)).current;
   const swipeOpacity = useRef(new Animated.Value(1)).current;
   const navigationTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasPassedThresholdRef = useRef(false);
 
   const profile = effectiveProfile;
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
@@ -870,8 +871,18 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   const panResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => false,
     onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 10 && Math.abs(gs.dy) < 50,
-    onPanResponderMove: (_, gs) => swipeX.setValue(gs.dx),
+    onPanResponderMove: (_, gs) => {
+      swipeX.setValue(gs.dx);
+      const pastThreshold = Math.abs(gs.dx) > SWIPE_THRESHOLD;
+      if (pastThreshold && !hasPassedThresholdRef.current) {
+        hasPassedThresholdRef.current = true;
+        lightHaptic();
+      } else if (!pastThreshold && hasPassedThresholdRef.current) {
+        hasPassedThresholdRef.current = false;
+      }
+    },
     onPanResponderRelease: (_, gs) => {
+      hasPassedThresholdRef.current = false;
       if (gs.dx > SWIPE_THRESHOLD) {
         Animated.parallel([
           Animated.timing(swipeX, { toValue: SCREEN_WIDTH, duration: 200, useNativeDriver: true }),
@@ -890,7 +901,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
 
   const handlePhotoScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-    if (index !== currentPhotoIndex) setCurrentPhotoIndex(index);
+    if (index !== currentPhotoIndex) { setCurrentPhotoIndex(index); selectionHaptic(); }
   }, [currentPhotoIndex]);
 
   const goToPhoto = useCallback((index: number) => { flatListRef.current?.scrollToIndex({ index, animated: true }); setCurrentPhotoIndex(index); lightHaptic(); }, []);

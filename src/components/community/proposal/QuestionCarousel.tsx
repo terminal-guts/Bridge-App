@@ -4,8 +4,17 @@
  * Extracted from ProposalReviewView.tsx.
  */
 
-import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Animated, Dimensions } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withTiming,
+  withSpring,
+  SharedValue,
+} from 'react-native-reanimated';
+import { SPRINGS } from '../../../constants/animations';
 import * as Haptics from 'expo-haptics';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../../constants/typography';
 import { COLORS } from '../../../theme/colors';
@@ -23,33 +32,33 @@ function RevealCardInline({
   answer,
   revealed,
   onReveal,
-  scale,
+  scaleValue,
   side,
 }: {
   name: string;
   answer: string;
   revealed: boolean;
   onReveal: () => void;
-  scale: Animated.Value;
+  scaleValue: SharedValue<number>;
   side: 'left' | 'right' | 'solo';
 }) {
   const minH = side === 'solo' ? 70 : 90;
+  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scaleValue.value }] }));
   return (
     <TouchableOpacity
       onPress={onReveal}
       activeOpacity={revealed ? 1 : 0.7}
       style={{ flex: side === 'solo' ? undefined : 1 }}
     >
-      <Animated.View style={{
+      <Animated.View style={[scaleStyle, {
         minHeight: minH,
         borderRadius: 10,
         padding: 12,
-        justifyContent: 'center',
-        transform: [{ scale }],
+        justifyContent: 'center' as const,
         ...(revealed
           ? { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBD5E1' }
           : { backgroundColor: '#0F172A', borderWidth: 1, borderColor: 'rgba(99, 131, 255, 0.2)' }),
-      }}>
+      }]}>
         {revealed ? (
           <>
             <Text style={{
@@ -110,28 +119,28 @@ function QuestionPage({
   const [revealedA, setRevealedA] = useState(false);
   const [revealedB, setRevealedB] = useState(false);
 
-  const scaleA = useRef(new Animated.Value(1)).current;
-  const scaleB = useRef(new Animated.Value(1)).current;
+  const scaleA = useSharedValue(1);
+  const scaleB = useSharedValue(1);
 
   const revealA = useCallback(() => {
     if (revealedA || !hasA) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    Animated.sequence([
-      Animated.timing(scaleA, { toValue: 0.92, duration: 80, useNativeDriver: true }),
-      Animated.spring(scaleA, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }),
-    ]).start();
+    scaleA.value = withSequence(
+      withTiming(0.92, { duration: 80 }),
+      withSpring(1, SPRINGS.bouncy),
+    );
     setRevealedA(true);
-  }, [revealedA, hasA, scaleA]);
+  }, [revealedA, hasA]);
 
   const revealB = useCallback(() => {
     if (revealedB || !hasB) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    Animated.sequence([
-      Animated.timing(scaleB, { toValue: 0.92, duration: 80, useNativeDriver: true }),
-      Animated.spring(scaleB, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }),
-    ]).start();
+    scaleB.value = withSequence(
+      withTiming(0.92, { duration: 80 }),
+      withSpring(1, SPRINGS.bouncy),
+    );
     setRevealedB(true);
-  }, [revealedB, hasB, scaleB]);
+  }, [revealedB, hasB]);
 
   return (
     <View style={{ width, paddingRight: 0 }}>
@@ -151,13 +160,13 @@ function QuestionPage({
 
           {bothAnswered ? (
             <View style={{ flexDirection: 'row', gap: 10 }}>
-              <RevealCardInline name={userAName} answer={question.userAAnswer!} revealed={revealedA} onReveal={revealA} scale={scaleA} side="left" />
-              <RevealCardInline name={userBName} answer={question.userBAnswer!} revealed={revealedB} onReveal={revealB} scale={scaleB} side="right" />
+              <RevealCardInline name={userAName} answer={question.userAAnswer!} revealed={revealedA} onReveal={revealA} scaleValue={scaleA} side="left" />
+              <RevealCardInline name={userBName} answer={question.userBAnswer!} revealed={revealedB} onReveal={revealB} scaleValue={scaleB} side="right" />
             </View>
           ) : hasA ? (
-            <RevealCardInline name={userAName} answer={question.userAAnswer!} revealed={revealedA} onReveal={revealA} scale={scaleA} side="solo" />
+            <RevealCardInline name={userAName} answer={question.userAAnswer!} revealed={revealedA} onReveal={revealA} scaleValue={scaleA} side="solo" />
           ) : (
-            <RevealCardInline name={userBName} answer={question.userBAnswer!} revealed={revealedB} onReveal={revealB} scale={scaleB} side="solo" />
+            <RevealCardInline name={userBName} answer={question.userBAnswer!} revealed={revealedB} onReveal={revealB} scaleValue={scaleB} side="solo" />
           )}
       </View>
     </View>

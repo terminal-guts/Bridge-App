@@ -1,8 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, TextInput, Modal, Animated, Keyboard } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, TouchableOpacity, TextInput, Modal, Keyboard } from 'react-native';
 import { styled } from 'nativewind';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  interpolate,
+} from 'react-native-reanimated';
 import { H3, Body } from '../../../components/ui/Typography';
 import { lightHaptic } from '../../../utils/haptics';
+import { SPRINGS } from '../../../constants/animations';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -27,16 +34,16 @@ export const CustomInputModal: React.FC<CustomInputModalProps> = ({
   onSubmit,
 }) => {
   const [inputValue, setInputValue] = useState('');
-  const animValue = useRef(new Animated.Value(0)).current;
+  const animValue = useSharedValue(0);
 
   useEffect(() => {
-    Animated.spring(animValue, {
-      toValue: visible ? 1 : 0,
-      useNativeDriver: true,
-      tension: 65,
-      friction: 11,
-    }).start();
+    animValue.value = withSpring(visible ? 1 : 0, SPRINGS.responsive);
   }, [visible]);
+
+  const overlayStyle = useAnimatedStyle(() => ({ opacity: animValue.value }));
+  const modalScaleStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(animValue.value, [0, 1], [0.9, 1]) }],
+  }));
 
   const handleClose = () => {
     Keyboard.dismiss();
@@ -61,7 +68,7 @@ export const CustomInputModal: React.FC<CustomInputModalProps> = ({
     >
       <StyledAnimatedView
         className="flex-1 bg-black/50 justify-start items-center px-6 pt-24"
-        style={{ opacity: animValue }}
+        style={overlayStyle}
       >
         <StyledTouchableOpacity
           activeOpacity={1}
@@ -71,14 +78,7 @@ export const CustomInputModal: React.FC<CustomInputModalProps> = ({
 
         <StyledAnimatedView
           className="bg-white rounded-2xl w-full max-w-md"
-          style={{
-            transform: [{
-              scale: animValue.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.9, 1],
-              }),
-            }],
-          }}
+          style={modalScaleStyle}
         >
           {/* Header */}
           <StyledView className="px-6 pt-6 pb-4 border-b border-neutral-100">

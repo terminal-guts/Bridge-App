@@ -14,7 +14,8 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image } from 'react-native';
+import { View, Text } from 'react-native';
+import { Image } from 'expo-image';
 import { styled } from 'nativewind';
 import { MatchProposal } from '../../../types/community';
 import {
@@ -28,7 +29,7 @@ import { EvaIcon } from '../../icons';
 
 const StyledView = styled(View) as typeof View;
 const StyledText = styled(Text) as typeof Text;
-const StyledImage = styled(Image) as typeof Image;
+const StyledImage = Image;
 
 interface AwaitingResponseCardProps {
   proposal: MatchProposal;

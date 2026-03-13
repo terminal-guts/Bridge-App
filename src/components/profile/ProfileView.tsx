@@ -6,7 +6,8 @@
  */
 
 import React, { useState, useRef } from 'react';
-import { View, Modal, ScrollView, Text, TouchableOpacity, Image, FlatList, Dimensions } from 'react-native';
+import { View, Modal, ScrollView, Text, TouchableOpacity, FlatList, Dimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { formatProfileValue } from '../../utils/formatProfileValue';
 import { styled } from 'nativewind';
 import { UserProfile } from '../../types';
@@ -21,7 +22,7 @@ const StyledView = styled(View);
 const StyledText = styled(Text);
 const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-const StyledImage = styled(Image);
+const StyledImage = Image;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -124,7 +125,7 @@ export function ProfileView({
               <StyledImage
                 source={{ uri: photos[0].url }}
                 style={{ width: '100%', height: 280, borderRadius: 16 }}
-                resizeMode="cover"
+                contentFit="cover"
               />
             ) : (
               <>
@@ -156,7 +157,7 @@ export function ProfileView({
                       <StyledImage
                         source={{ uri: photo.url }}
                         style={{ width: '100%', height: 280, borderRadius: 16 }}
-                        resizeMode="cover"
+                        contentFit="cover"
                       />
                     </StyledView>
                   ))}

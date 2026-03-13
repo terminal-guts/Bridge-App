@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
 
     const participantIdList = Array.from(participantIds);
 
-    const [profilesResult, friendsAsUser, friendsAsFriend] = await Promise.all([
+    const [profilesResult, friendsAsUser, friendsAsFriend, visibilityResult] = await Promise.all([
       supabase
         .from('user_profiles')
         .select('user_id, photos')
@@ -84,6 +84,10 @@ Deno.serve(async (req: Request) => {
         .from('friends')
         .select('user_id')
         .eq('friend_id', userId)
+        .in('user_id', participantIdList),
+      supabase
+        .from('user_settings')
+        .select('user_id, pref_leaderboard_visible')
         .in('user_id', participantIdList)
     ]);
 
@@ -101,6 +105,13 @@ Deno.serve(async (req: Request) => {
       ...(friendsAsUser.data || []).map(f => f.friend_id),
       ...(friendsAsFriend.data || []).map(f => f.user_id),
     ]);
+
+    // Build set of users who opted in to leaderboard visibility
+    const visibleUserIds = new Set(
+      (visibilityResult.data || [])
+        .filter(v => v.pref_leaderboard_visible === true)
+        .map(v => v.user_id)
+    );
 
     // Resolve Signed URLs for photos
     const storagePaths = Object.values(photosMap);
@@ -124,16 +135,25 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const finalLeaderboard = topEntries.map(e => ({
-      ...e,
-      photoUrl: signedUrlsMap[e.userId] || null,
-      isFriend: friendIds.has(e.userId)
-    }));
+    // Anonymize users who haven't opted in and aren't friends of the viewer
+    const finalLeaderboard = topEntries.map(e => {
+      const isFriend = friendIds.has(e.userId);
+      const isSelf = e.userId === userId;
+      const isVisible = isSelf || isFriend || visibleUserIds.has(e.userId);
+      return {
+        ...e,
+        firstName: isVisible ? e.firstName : 'Bridger',
+        photoUrl: isVisible ? (signedUrlsMap[e.userId] || null) : null,
+        isFriend,
+        isAnonymous: !isVisible,
+      };
+    });
 
     const finalCurrentUser = currentUserEntry ? {
       ...currentUserEntry,
       photoUrl: signedUrlsMap[currentUserEntry.userId] || null,
-      isFriend: false, // current user is not their own friend in this context
+      isFriend: false,
+      isAnonymous: false,
       spotsBehindFirst: entries.length > 0 ? entries[0].weeklyKarma - currentUserEntry.weeklyKarma : 0
     } : null;
 

@@ -88,6 +88,45 @@
 - [7 Rules for Mobile UI Button Design (UX Planet)](https://uxplanet.org/7-rules-for-mobile-ui-button-design-e9cf2ea54556) — Button sizing (minimum 44pt touch targets), visual feedback (scale, color, haptics), states, spacing, and micro-interaction patterns for mobile buttons
 - [Transition Animations: A Practical Guide (UX Design)](https://uxdesign.cc/transition-animations-a-practical-guide-5dba4d42f659) — Screen transition choreography: slide vs fade vs scale, entrance/exit patterns, staggered reveals, easing curves (ease-out for enter, ease-in for exit), and performance optimization
 
+## Motion Design & Effects System
+
+### Psychology & Engagement
+- [Nir Eyal — Hooked: How to Build Habit-Forming Products](https://www.nirandfar.com/hooked/) — The Hook Model (Trigger → Action → Variable Reward → Investment) — foundational for Bridge's karma/streak reward loops
+- [Amplitude — The Hook Model Guide](https://amplitude.com/blog/hook-model) — Practical guide to implementing Nir Eyal's Hook Model in product design
+- [UND — Addictive App Design Research](https://commons.und.edu/theses/2584/) — Academic research on psychological mechanisms in app engagement
+- [Push Notification Psychology (Braze)](https://www.braze.com/resources/articles/the-psychology-behind-push-notifications) — Behavioral science behind notification timing and variable reinforcement
+- [Hinge + Braze Case Study](https://www.braze.com/customers/hinge) — How Hinge uses multi-channel engagement to drive meaningful connections
+- [Variable Reinforcement in Digital Interfaces (PMC)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6502660/) — Research on how variable reward schedules drive engagement in digital products
+
+### Animation Design Patterns
+- [Duolingo Streak Animation Engineering](https://blog.duolingo.com/how-we-built-streaks/) — Technical deep dive into Duolingo's streak system and animations
+- [Duolingo Micro-Interactions Breakdown (Mobbin)](https://mobbin.com/apps/duolingo) — Frame-by-frame analysis of Duolingo's celebration and feedback animations
+- [Duolingo Gamification Secrets (Product School)](https://productschool.com/blog/strategy/duolingo-gamification) — How Duolingo uses motion to reinforce habit loops
+- [Apple WWDC23 — Animate with Springs](https://developer.apple.com/videos/play/wwdc2023/10158/) — Apple's definitive guide to spring animations in native apps
+- [SwiftUI Spring Animation Masterclass](https://www.swiftanytime.com/blog/swiftui-spring-animation) — Spring parameter tuning guide (damping, stiffness, mass) — translates to Reanimated springs
+- [Transition Animations: A Practical Guide (UX Design)](https://uxdesign.cc/transition-animations-a-practical-guide-5dba4d42f659) — Screen transition choreography patterns
+
+### React Native Animation Tools
+- [Reanimated Documentation](https://docs.swmansion.com/react-native-reanimated/) — Official Reanimated docs — shared values, worklets, layout animations
+- [Reanimated Performance Best Practices](https://docs.swmansion.com/react-native-reanimated/docs/guides/best-practices) — UI thread animation, avoiding JS bridge, measuring performance
+- [Reanimated Accessibility (useReducedMotion)](https://docs.swmansion.com/react-native-reanimated/docs/device/useReducedMotion) — Hook for respecting system reduced motion preferences
+- [withSpring API Reference](https://docs.swmansion.com/react-native-reanimated/docs/animations/withSpring) — Spring configuration: damping, stiffness, mass, velocity
+- [React Native Gesture Handler](https://docs.swmansion.com/react-native-gesture-handler/docs/) — Pan, Tap, Pinch gesture handling with Reanimated integration
+- [expo-haptics Documentation](https://docs.expo.dev/versions/latest/sdk/haptics/) — Haptic feedback API for iOS and Android
+
+### Haptics & Accessibility
+- [Apple HIG — Playing Haptics](https://developer.apple.com/design/human-interface-guidelines/playing-haptics) — Apple's guidelines for haptic feedback design patterns
+- [React Native AccessibilityInfo](https://reactnative.dev/docs/accessibilityinfo) — Detecting screen reader, reduced motion, and other accessibility preferences
+- [Building Accessible Animations (Medium)](https://medium.com/accessibility-in-ux/accessible-animations-in-react-native-are-easier-than-you-think-4479e6a02e3e) — Patterns for graceful animation degradation
+- [motion.dev Accessibility Guide](https://motion.dev/docs/accessibility) — Framework-agnostic guide to accessible motion design
+
+### Inspiration & Analysis
+- [Hinge Design Deep Dive](https://gregorydocherty.substack.com/p/shag-marry-kill-part-1-hinge-design) — Comprehensive analysis of Hinge's visual design system and interaction patterns
+- [Bumble Design Deep Dive](https://gregorydocherty.substack.com/p/shag-marry-kill-part-2-bumble-design) — Breakdown of Bumble's design language, animation style, and brand consistency
+- [Cash App Design System](https://cash.app/design) — Cash App's design system — exemplary motion and celebration patterns in fintech
+- [Duolingo 60fps Animation Captures](https://60fps.design/duolingo.html) — Frame-by-frame captures of Duolingo's celebration and reward animations
+- [Duolingo Streak System Breakdown](https://www.gamerefinery.com/duolingo-engagement/) — Analysis of Duolingo's streak mechanics and reward timing
+
 ## React Native, Expo & Mobile Performance
 
 - [React Native Performance (Official Docs)](https://reactnative.dev/docs/performance) — 60 FPS targets, JS/UI thread profiling, FlatList optimization, native driver animations

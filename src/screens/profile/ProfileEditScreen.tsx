@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, ScrollView, TouchableOpacity, Image, Alert, Text } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Alert, Text } from 'react-native';
+import { Image } from 'expo-image';
 import { styled } from 'nativewind';
 import { H3, Body, Card, Button, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
@@ -25,7 +26,7 @@ interface ProfileEditScreenProps {
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-const StyledImage = styled(Image);
+const StyledImage = Image;
 const StyledText = styled(Text);
 
 // Helper to get a summary string for a section
@@ -95,7 +96,7 @@ const SectionCard: React.FC<SectionCardProps> = React.memo(({ title, icon, summa
   >
     {photoUrl ? (
       <StyledView className="w-10 h-10 rounded-lg overflow-hidden mr-3">
-        <StyledImage source={{ uri: photoUrl }} className="w-full h-full" resizeMode="cover" />
+        <StyledImage source={{ uri: photoUrl }} className="w-full h-full" contentFit="cover" />
       </StyledView>
     ) : (
       <StyledView className="w-10 h-10 rounded-lg bg-primary-50 items-center justify-center mr-3">

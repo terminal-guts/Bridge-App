@@ -1,8 +1,9 @@
 /**
- * Tests for engagement notification methods in notificationService
+ * Tests for notification service V2
  *
- * Covers: notifyStreakAtRisk, notifyAccuracyBonus, notifyFriendNudge,
- * notifySharedCelebration, notifyStreakDeath, setupEngagementCadence
+ * Covers: realtime fallback notifications (notifyMatchNotice, notifyNewMessage,
+ * notifyProposalDeciding, notifyFriendNudge, notifySharedCelebration),
+ * scheduleAppOpenChecks, cancelLegacyScheduledNotifications
  */
 
 // Mock expo-notifications
@@ -29,17 +30,6 @@ jest.mock('expo-notifications', () => ({
 
 // Mock expo-device
 jest.mock('expo-device', () => ({ isDevice: true }));
-
-// Mock AsyncStorage
-const mockGetItem = jest.fn().mockResolvedValue(null);
-const mockSetItem = jest.fn().mockResolvedValue(undefined);
-jest.mock('@react-native-async-storage/async-storage', () => ({
-  __esModule: true,
-  default: {
-    getItem: (...args: any[]) => mockGetItem(...args),
-    setItem: (...args: any[]) => mockSetItem(...args),
-  },
-}));
 
 // Mock supabase
 jest.mock('../../src/lib/supabase', () => ({
@@ -72,6 +62,13 @@ jest.mock('../../src/services/notificationPreferencesService', () => ({
       matchesEnabled: true,
       messagesEnabled: true,
       nudgesEnabled: true,
+      showNameIfWinner: true,
+    }),
+    syncFromServer: jest.fn().mockResolvedValue({
+      matchesEnabled: true,
+      messagesEnabled: true,
+      nudgesEnabled: true,
+      showNameIfWinner: true,
     }),
   },
 }));
@@ -93,65 +90,61 @@ import { notificationPreferencesService } from '../../src/services/notificationP
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockGetItem.mockResolvedValue(null); // No cooldowns by default
 });
 
 // ============================================================================
-// Engagement Notifications
+// Realtime Fallback Notifications
 // ============================================================================
 
-describe('notifyStreakAtRisk', () => {
-  it('schedules a notification with friend name and streak days', async () => {
-    await notificationService.notifyStreakAtRisk('Alice', 12);
+describe('notifyMatchNotice', () => {
+  it('schedules a match notification with partner name', async () => {
+    await notificationService.notifyMatchNotice('Alice');
     expect(mockScheduleNotification).toHaveBeenCalledTimes(1);
     const call = mockScheduleNotification.mock.calls[0][0];
-    expect(call.content.title).toBe('Streak at risk!');
-    expect(call.content.body).toContain('12-day');
+    expect(call.content.title).toBe("It's official");
     expect(call.content.body).toContain('Alice');
-  });
-
-  it('respects 24h cooldown', async () => {
-    // Simulate recent nudge (1 hour ago)
-    mockGetItem.mockResolvedValue((Date.now() - 1000 * 60 * 60).toString());
-    await notificationService.notifyStreakAtRisk('Alice', 12);
-    expect(mockScheduleNotification).not.toHaveBeenCalled();
-  });
-
-  it('fires when cooldown has expired', async () => {
-    // Simulate old nudge (25 hours ago) for streak key, null for daily cap key
-    mockGetItem.mockImplementation((key: string) => {
-      if (key === '@bridge_last_streak_risk_nudge') {
-        return Promise.resolve((Date.now() - 1000 * 60 * 60 * 25).toString());
-      }
-      return Promise.resolve(null);
-    });
-    await notificationService.notifyStreakAtRisk('Alice', 12);
-    expect(mockScheduleNotification).toHaveBeenCalledTimes(1);
-  });
-
-  it('skips when nudgesEnabled is false', async () => {
-    (notificationPreferencesService.getPreferences as jest.Mock).mockResolvedValueOnce({
-      matchesEnabled: true, messagesEnabled: true, nudgesEnabled: false,
-    });
-    await notificationService.notifyStreakAtRisk('Alice', 12);
-    expect(mockScheduleNotification).not.toHaveBeenCalled();
-  });
-});
-
-describe('notifyAccuracyBonus', () => {
-  it('includes point amount in notification body', async () => {
-    await notificationService.notifyAccuracyBonus(3);
-    const call = mockScheduleNotification.mock.calls[0][0];
-    expect(call.content.title).toBe('Nice call!');
-    expect(call.content.body).toContain('+3');
   });
 
   it('skips when matchesEnabled is false', async () => {
     (notificationPreferencesService.getPreferences as jest.Mock).mockResolvedValueOnce({
-      matchesEnabled: false, messagesEnabled: true, nudgesEnabled: true,
+      matchesEnabled: false, messagesEnabled: true, nudgesEnabled: true, showNameIfWinner: true,
     });
-    await notificationService.notifyAccuracyBonus(3);
+    await notificationService.notifyMatchNotice('Alice');
     expect(mockScheduleNotification).not.toHaveBeenCalled();
+  });
+});
+
+describe('notifyNewMessage', () => {
+  it('shows sender name as title and preview as body', async () => {
+    await notificationService.notifyNewMessage('Bob', 'Hey there!');
+    const call = mockScheduleNotification.mock.calls[0][0];
+    expect(call.content.title).toBe('Bob');
+    expect(call.content.body).toBe('Hey there!');
+  });
+
+  it('truncates long previews at 100 chars', async () => {
+    const longMsg = 'a'.repeat(150);
+    await notificationService.notifyNewMessage('Bob', longMsg);
+    const call = mockScheduleNotification.mock.calls[0][0];
+    expect(call.content.body.length).toBeLessThanOrEqual(103); // 100 + '...'
+  });
+
+  it('skips when messagesEnabled is false', async () => {
+    (notificationPreferencesService.getPreferences as jest.Mock).mockResolvedValueOnce({
+      matchesEnabled: true, messagesEnabled: false, nudgesEnabled: true, showNameIfWinner: true,
+    });
+    await notificationService.notifyNewMessage('Bob', 'Hey');
+    expect(mockScheduleNotification).not.toHaveBeenCalled();
+  });
+});
+
+describe('notifyProposalDeciding', () => {
+  it('includes partner name in body', async () => {
+    await notificationService.notifyProposalDeciding('Carol', 'proposal-123');
+    const call = mockScheduleNotification.mock.calls[0][0];
+    expect(call.content.title).toBe('Your community has spoken');
+    expect(call.content.body).toContain('Carol');
+    expect(call.content.data.proposalId).toBe('proposal-123');
   });
 });
 
@@ -159,8 +152,16 @@ describe('notifyFriendNudge', () => {
   it('includes nudger name', async () => {
     await notificationService.notifyFriendNudge('Bob');
     const call = mockScheduleNotification.mock.calls[0][0];
-    expect(call.content.body).toContain('Bob');
+    expect(call.content.title).toContain('Bob');
     expect(call.content.data.type).toBe('friend_nudge');
+  });
+
+  it('skips when nudgesEnabled is false', async () => {
+    (notificationPreferencesService.getPreferences as jest.Mock).mockResolvedValueOnce({
+      matchesEnabled: true, messagesEnabled: true, nudgesEnabled: false, showNameIfWinner: true,
+    });
+    await notificationService.notifyFriendNudge('Bob');
+    expect(mockScheduleNotification).not.toHaveBeenCalled();
   });
 });
 
@@ -180,64 +181,33 @@ describe('notifySharedCelebration', () => {
   });
 });
 
-describe('notifyStreakDeath', () => {
-  it('includes previous day count', async () => {
-    await notificationService.notifyStreakDeath('Carol', 25);
-    const call = mockScheduleNotification.mock.calls[0][0];
-    expect(call.content.title).toBe('Streak ended');
-    expect(call.content.body).toContain('25-day');
-    expect(call.content.body).toContain('Carol');
-  });
-});
-
 // ============================================================================
-// setupEngagementCadence
+// Legacy Cleanup
 // ============================================================================
 
-describe('setupEngagementCadence', () => {
-  it('cancels legacy and schedules 2 new notifications', async () => {
+describe('cancelLegacyScheduledNotifications', () => {
+  it('cancels legacy client-side scheduled notifications', async () => {
     mockGetAllScheduled.mockResolvedValue([
-      { identifier: 'daily_match_nudge_7pm' },
       { identifier: 'anticipation_655pm' },
+      { identifier: 'morning_recap_8am' },
+      { identifier: 'daily_match_nudge_7pm' },
+      { identifier: 'some_other_notif' },
     ]);
 
-    await notificationService.setupEngagementCadence();
+    await notificationService.cancelLegacyScheduledNotifications();
 
-    // Should cancel the legacy and existing ones
-    expect(mockCancelScheduled).toHaveBeenCalledWith('daily_match_nudge_7pm');
     expect(mockCancelScheduled).toHaveBeenCalledWith('anticipation_655pm');
-
-    // Should schedule 2 new notifications (6:55pm + 8am)
-    expect(mockScheduleNotification).toHaveBeenCalledTimes(2);
-
-    const ids = mockScheduleNotification.mock.calls.map((c: any[]) => c[0].identifier);
-    expect(ids).toContain('anticipation_655pm');
-    expect(ids).toContain('morning_recap_8am');
+    expect(mockCancelScheduled).toHaveBeenCalledWith('morning_recap_8am');
+    expect(mockCancelScheduled).toHaveBeenCalledWith('daily_match_nudge_7pm');
+    expect(mockCancelScheduled).toHaveBeenCalledTimes(3);
   });
 
-  it('skips 6:55pm notification when matchesEnabled is false', async () => {
-    (notificationPreferencesService.getPreferences as jest.Mock).mockResolvedValueOnce({
-      matchesEnabled: false, messagesEnabled: true, nudgesEnabled: true,
-    });
-    mockGetAllScheduled.mockResolvedValue([]);
+  it('does nothing when no legacy notifications exist', async () => {
+    mockGetAllScheduled.mockResolvedValue([
+      { identifier: 'some_other_notif' },
+    ]);
 
-    await notificationService.setupEngagementCadence();
-
-    // Only 8am recap should be scheduled (nudgesEnabled is true)
-    expect(mockScheduleNotification).toHaveBeenCalledTimes(1);
-    expect(mockScheduleNotification.mock.calls[0][0].identifier).toBe('morning_recap_8am');
-  });
-
-  it('skips 8am notification when nudgesEnabled is false', async () => {
-    (notificationPreferencesService.getPreferences as jest.Mock).mockResolvedValueOnce({
-      matchesEnabled: true, messagesEnabled: true, nudgesEnabled: false,
-    });
-    mockGetAllScheduled.mockResolvedValue([]);
-
-    await notificationService.setupEngagementCadence();
-
-    // Only 6:55pm should be scheduled
-    expect(mockScheduleNotification).toHaveBeenCalledTimes(1);
-    expect(mockScheduleNotification.mock.calls[0][0].identifier).toBe('anticipation_655pm');
+    await notificationService.cancelLegacyScheduledNotifications();
+    expect(mockCancelScheduled).not.toHaveBeenCalled();
   });
 });

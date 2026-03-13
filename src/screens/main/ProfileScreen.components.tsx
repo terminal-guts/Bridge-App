@@ -5,7 +5,8 @@
  */
 
 import React from 'react';
-import { View, Image, TouchableOpacity, ScrollView } from 'react-native';
+import { View, TouchableOpacity, ScrollView } from 'react-native';
+import { Image } from 'expo-image';
 import { styled } from 'nativewind';
 import { H2, H3, Body, Card, CollapsibleCard, Chip } from '../../components/ui';
 import { UserProfile, Match } from '../../types';
@@ -15,7 +16,7 @@ import { WineGlassIcon, LeafIcon, CigaretteIcon, PillIcon } from '../../componen
 import { formatProfileValue } from '../../utils/formatProfileValue';
 
 const StyledView = styled(View);
-const StyledImage = styled(Image);
+const StyledImage = Image;
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledScrollView = styled(ScrollView);
 

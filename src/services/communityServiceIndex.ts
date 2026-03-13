@@ -15,23 +15,19 @@ import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('CommunityServiceIndex');
 
-/**
- * Determine which service to use based on feature flags.
- */
 const useMockService = !FEATURES.COMMUNITY_BACKEND_ENABLED;
 
-// Log which service is being used
 logger.info('[CommunityService] COMMUNITY_BACKEND_ENABLED:', FEATURES.COMMUNITY_BACKEND_ENABLED);
 logger.info('[CommunityService] Using:', useMockService ? 'MOCK SERVICE' : 'REAL BACKEND');
 
 /**
- * Export the appropriate service implementation.
- * Mock service is dynamically imported only when needed to keep it out of the prod bundle.
+ * In production builds (__DEV__ === false), only the real service is bundled.
+ * The mock service (1866 lines) is excluded from the JS bundle entirely.
+ * In dev builds, the feature flag controls which service is used.
  */
 let communityServiceInstance: typeof realService;
 
-if (useMockService) {
-  // Dynamic import — mock service (1866 lines) only loads when flag is off
+if (__DEV__ && useMockService) {
   const { communityService: mockService } = require('./communityService');
   communityServiceInstance = mockService;
 } else {
@@ -39,8 +35,4 @@ if (useMockService) {
 }
 
 export const communityService = communityServiceInstance;
-
-/**
- * Default export
- */
 export default communityService;
