@@ -303,9 +303,14 @@ export const buildInviteMessage = async (
   friendCode: string,
   senderName?: string,
 ): Promise<string> => {
-  const name = senderName ? `Hey it's ${senderName}! ` : '';
+  const namePrefix = senderName ? `Hey it's ${senderName}!\n\n` : '';
   const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
   const inviteLink = supabaseUrl ? `${supabaseUrl}/functions/v1/invite-redirect?code=${friendCode}` : '';
-  const linkLine = inviteLink ? `\n\nJoin here: ${inviteLink}` : `\n\nAdd me with my code: ${friendCode}`;
-  return `${name}Join me on Bridge — it's a dating app where your friends pick who you date. 100+ people are already on it.${linkLine}`;
+
+  const body = `What if someone on Bridge is actually looking for you\nand you just haven’t met yet?\n\nI joined and now my friends help choose who I should date 😅\n\nCome help pick my matches… and maybe find yours too.`;
+
+  if (inviteLink) {
+    return `${namePrefix}${body}\n\nJoin here:\n${inviteLink}`;
+  }
+  return `${namePrefix}${body}\n\nAdd me with my code: ${friendCode}`;
 };
