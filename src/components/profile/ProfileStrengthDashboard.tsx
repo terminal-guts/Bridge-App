@@ -168,13 +168,24 @@ const calculateStrength = (profile: UserProfile): {
 
 /**
  * Get strength level and message
+ * profileCompleted = true means user previously hit 100% (one-way gate) — use softer messaging
  */
-const getStrengthLevel = (score: number): { level: string; message: string; color: string } => {
-  if (score >= 90) return { level: 'Excellent', message: 'Your profile stands out!', color: COLORS.emerald };
-  if (score >= 75) return { level: 'Great', message: 'You\'re doing well!', color: COLORS.primaryAccent };
-  if (score >= 60) return { level: 'Good', message: 'Keep improving!', color: '#F59E0B' };
-  if (score >= 40) return { level: 'Fair', message: 'Needs some work', color: '#DC2626' };
-  return { level: 'Weak', message: 'Complete your profile', color: '#B91C1C' };
+const getStrengthLevel = (score: number, profileCompleted?: boolean): { level: string; message: string; color: string } => {
+  if (score >= 100) return { level: 'Complete', message: 'Your profile is at full strength', color: COLORS.emerald };
+
+  // User already completed once — softer "dropped" messaging
+  if (profileCompleted) {
+    if (score >= 90) return { level: 'Slightly Incomplete', message: 'A field was removed from your profile', color: COLORS.primaryAccent };
+    if (score >= 75) return { level: 'Dropped', message: "Your profile isn't at full strength", color: '#F59E0B' };
+    return { level: 'Needs Attention', message: 'Some profile info is missing', color: '#DC2626' };
+  }
+
+  // First-time user — motivating "build toward the pool" messaging
+  if (score >= 90) return { level: 'So Close', message: 'One more step to start receiving matches', color: COLORS.emerald };
+  if (score >= 75) return { level: 'Almost There', message: 'Just a few more fields to go', color: COLORS.primaryAccent };
+  if (score >= 60) return { level: 'Looking Good', message: "You're getting close to the matching pool", color: '#F59E0B' };
+  if (score >= 40) return { level: 'Making Progress', message: 'Your friends need more to find your match', color: '#DC2626' };
+  return { level: 'Getting Started', message: 'Fill this out to enter the matching pool', color: '#B91C1C' };
 };
 
 export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> = React.memo(({
@@ -183,7 +194,7 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
   className = '',
 }) => {
   const { overall, sections } = calculateStrength(profile);
-  const { level, color } = getStrengthLevel(overall);
+  const { level, color } = getStrengthLevel(overall, profile.profileCompleted);
   const isComplete = overall === 100;
 
   // Animated count-up for the overall percentage

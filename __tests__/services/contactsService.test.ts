@@ -49,6 +49,7 @@ const makeContact = (overrides: Partial<NormalizedContact> = {}): NormalizedCont
   isOnBridge: false,
   isAlreadyFriend: false,
   isInvited: false,
+  hasRiceEmail: false,
   ...overrides,
 });
 
@@ -115,20 +116,29 @@ describe('buildInviteMessage', () => {
     process.env.EXPO_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     const msg = await buildInviteMessage('XYZ');
     expect(msg).toContain('https://example.supabase.co/functions/v1/invite-redirect?code=XYZ');
-    expect(msg).toContain('Join here:');
   });
 
   it('falls back to plain code when SUPABASE_URL is empty', async () => {
     process.env.EXPO_PUBLIC_SUPABASE_URL = '';
     const msg = await buildInviteMessage('XYZ');
-    expect(msg).toContain('Add me with my code: XYZ');
-    expect(msg).not.toContain('Join here:');
+    expect(msg).toContain('Use my code: XYZ');
   });
 
-  it('includes the app description', async () => {
+  it('mentions Bridge and friends', async () => {
     process.env.EXPO_PUBLIC_SUPABASE_URL = '';
     const msg = await buildInviteMessage('CODE');
-    expect(msg).toContain('dating app where your friends pick who you date');
+    expect(msg).toContain('Bridge');
+    expect(msg).toContain('friend');
+  });
+
+  it('rotates message variants across calls', async () => {
+    process.env.EXPO_PUBLIC_SUPABASE_URL = '';
+    const msg1 = await buildInviteMessage('CODE1');
+    const msg2 = await buildInviteMessage('CODE2');
+    // Messages should differ (different variants) — compare body before the link
+    const body1 = msg1.split('\n\n')[0];
+    const body2 = msg2.split('\n\n')[0];
+    expect(body1).not.toEqual(body2);
   });
 });
 
@@ -244,7 +254,7 @@ describe('contact deduplication by normalized phone', () => {
 describe('getSuggestedContacts', () => {
   it('returns up to 10 contacts', () => {
     const contacts = Array.from({ length: 20 }, (_, i) =>
-      makeContact({ id: String(i), name: `First Last${i}` })
+      makeContact({ id: String(i), name: `First Last${i}`, hasRiceEmail: true })
     );
     const result = getSuggestedContacts(contacts);
     expect(result.length).toBeLessThanOrEqual(10);
@@ -252,8 +262,8 @@ describe('getSuggestedContacts', () => {
 
   it('excludes contacts already on Bridge', () => {
     const contacts = [
-      makeContact({ name: 'John Doe', isOnBridge: true }),
-      makeContact({ name: 'Jane Smith', isOnBridge: false }),
+      makeContact({ name: 'John Doe', isOnBridge: true, hasRiceEmail: true }),
+      makeContact({ name: 'Jane Smith', isOnBridge: false, hasRiceEmail: true }),
     ];
     const result = getSuggestedContacts(contacts);
     expect(result.every(c => !c.isOnBridge)).toBe(true);
@@ -261,8 +271,8 @@ describe('getSuggestedContacts', () => {
 
   it('excludes already invited contacts', () => {
     const contacts = [
-      makeContact({ name: 'John Doe', isInvited: true }),
-      makeContact({ name: 'Jane Smith', isInvited: false }),
+      makeContact({ name: 'John Doe', isInvited: true, hasRiceEmail: true }),
+      makeContact({ name: 'Jane Smith', isInvited: false, hasRiceEmail: true }),
     ];
     const result = getSuggestedContacts(contacts);
     expect(result.every(c => !c.isInvited)).toBe(true);
@@ -270,8 +280,8 @@ describe('getSuggestedContacts', () => {
 
   it('excludes single-word names (likely businesses)', () => {
     const contacts = [
-      makeContact({ name: 'Madonna' }),
-      makeContact({ name: 'Jane Smith' }),
+      makeContact({ name: 'Madonna', hasRiceEmail: true }),
+      makeContact({ name: 'Jane Smith', hasRiceEmail: true }),
     ];
     const result = getSuggestedContacts(contacts);
     expect(result.find(c => c.name === 'Madonna')).toBeUndefined();
@@ -279,8 +289,8 @@ describe('getSuggestedContacts', () => {
 
   it('excludes names with more than 4 words', () => {
     const contacts = [
-      makeContact({ name: 'Sir Doctor John William Smith Jr' }),
-      makeContact({ name: 'Jane Smith' }),
+      makeContact({ name: 'Sir Doctor John William Smith Jr', hasRiceEmail: true }),
+      makeContact({ name: 'Jane Smith', hasRiceEmail: true }),
     ];
     const result = getSuggestedContacts(contacts);
     expect(result.find(c => c.name.includes('Sir Doctor'))).toBeUndefined();
@@ -288,8 +298,8 @@ describe('getSuggestedContacts', () => {
 
   it('excludes ALL-CAPS names (likely businesses)', () => {
     const contacts = [
-      makeContact({ name: 'DOMINOS PIZZA' }),
-      makeContact({ name: 'Jane Smith' }),
+      makeContact({ name: 'DOMINOS PIZZA', hasRiceEmail: true }),
+      makeContact({ name: 'Jane Smith', hasRiceEmail: true }),
     ];
     const result = getSuggestedContacts(contacts);
     expect(result.find(c => c.name === 'DOMINOS PIZZA')).toBeUndefined();
@@ -297,8 +307,8 @@ describe('getSuggestedContacts', () => {
 
   it('ranks contacts with photos higher', () => {
     const contacts = [
-      makeContact({ id: 'no-photo', name: 'No Photo Person', imageUri: undefined }),
-      makeContact({ id: 'has-photo', name: 'Has Photo Person', imageUri: 'file:///photo.jpg' }),
+      makeContact({ id: 'no-photo', name: 'No Photo Person', imageUri: undefined, hasRiceEmail: true }),
+      makeContact({ id: 'has-photo', name: 'Has Photo Person', imageUri: 'file:///photo.jpg', hasRiceEmail: true }),
     ];
     const result = getSuggestedContacts(contacts);
     expect(result.length).toBe(2);
@@ -308,12 +318,21 @@ describe('getSuggestedContacts', () => {
 
   it('returns empty array when all contacts are filtered out', () => {
     const contacts = [
-      makeContact({ name: 'OnBridge User', isOnBridge: true }),
-      makeContact({ name: 'Invited Friend', isInvited: true }),
-      makeContact({ name: 'SingleName' }),
+      makeContact({ name: 'OnBridge User', isOnBridge: true, hasRiceEmail: true }),
+      makeContact({ name: 'Invited Friend', isInvited: true, hasRiceEmail: true }),
+      makeContact({ name: 'SingleName', hasRiceEmail: true }),
     ];
     const result = getSuggestedContacts(contacts);
     expect(result).toEqual([]);
+  });
+
+  it('only suggests contacts with rice.edu emails', () => {
+    const contacts = [
+      makeContact({ name: 'No Rice Email', hasRiceEmail: false }),
+      makeContact({ name: 'Has Rice Email', hasRiceEmail: true }),
+    ];
+    const result = getSuggestedContacts(contacts);
+    expect(result.every(c => c.hasRiceEmail)).toBe(true);
   });
 
   it('handles empty input', () => {
@@ -322,8 +341,8 @@ describe('getSuggestedContacts', () => {
 
   it('prefers shorter names (2-3 words) over 4-word names', () => {
     const contacts = [
-      makeContact({ id: 'long', name: 'Mary Jane Watson Parker' }),
-      makeContact({ id: 'short', name: 'Jane Smith' }),
+      makeContact({ id: 'long', name: 'Mary Jane Watson Parker', hasRiceEmail: true }),
+      makeContact({ id: 'short', name: 'Jane Smith', hasRiceEmail: true }),
     ];
     // Both have no photos, so the shorter-name bonus (2 pts) applies to 'short'
     // 'long' has 4 words so it gets 0 for that dimension

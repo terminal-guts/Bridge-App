@@ -653,7 +653,7 @@ export const calculateMatchPreferencesCompleteness = (
     missingFields.push('Lifestyle');
   }
 
-  const percentage = Math.round((completedCount / 7) * 100);
+  const percentage = Math.round((completedCount / 8) * 100);
 
   return {
     percentage,
@@ -719,7 +719,7 @@ export const calculateProfileStrengthBreakdown = (
         deepQuestions: { score: 0, maxScore: 25, percentage: 0, displayedCount: 0, answeredCount: 0 },
       },
       totalScore: 0,
-      maxTotalScore: 94,
+      maxTotalScore: 93,
     };
   }
 

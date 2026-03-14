@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, TouchableOpacity, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { NavigationProp } from '@react-navigation/native';
@@ -10,7 +10,6 @@ import { FONTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SectionScreenWrapper } from './sections/SectionScreenWrapper';
 import { useEditProfile } from './sections/useEditProfile';
-import { CustomInputModal } from './sections/CustomInputModal';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -28,7 +27,7 @@ const POLITICAL_OPTIONS = [
   { value: 'conservative', label: 'Conservative' },
   { value: 'very_conservative', label: 'Very Conservative' },
   { value: 'not_political', label: 'Not Political' },
-  { value: 'prefer_not_to_say', label: 'Prefer Not to Say' },
+  { value: 'other', label: 'Other' },
 ];
 
 const EDUCATION_LEVELS = [
@@ -39,6 +38,7 @@ const EDUCATION_LEVELS = [
   { value: 'bachelors', label: "Bachelor's Degree" },
   { value: 'masters', label: "Master's Degree" },
   { value: 'beyond_masters', label: 'Beyond Masters' },
+  { value: 'other', label: 'Other' },
 ];
 
 const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
@@ -53,9 +53,6 @@ interface EditAboutScreenProps {
 
 export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) => {
   const { profile, setProfile, loading, updateProfile, originalProfileJson } = useEditProfile();
-  const [showCustomReligionModal, setShowCustomReligionModal] = useState(false);
-  const [showCustomPoliticalModal, setShowCustomPoliticalModal] = useState(false);
-  const [showCustomEducationModal, setShowCustomEducationModal] = useState(false);
 
   if (loading || !profile) {
     return (
@@ -83,31 +80,32 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
           Religion <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText>
         </Body>
         <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
-          {RELIGION_OPTIONS.map((option) => (
-            <StyledTouchableOpacity
-              key={option}
-              activeOpacity={1}
-              delayPressIn={0}
-              onPress={() => {
-                lightHaptic();
-                updateProfile({ religion: profile.religion === option ? '' : option });
-              }}
-              className={`px-3 py-2 rounded-full border ${profile.religion === option
-                ? 'bg-primary-500 border-primary-500'
-                : 'bg-white border-neutral-300'
-              }`}
-            >
-              <Body className={`text-sm ${profile.religion === option ? 'text-white font-medium' : 'text-neutral-700'}`}>
-                {option}
-              </Body>
-            </StyledTouchableOpacity>
-          ))}
-          <StyledTouchableOpacity
-            onPress={() => { lightHaptic(); setShowCustomReligionModal(true); }}
-            className="px-3 py-2 rounded-full border bg-white border-neutral-300"
-          >
-            <Body className="text-sm text-neutral-700">Other</Body>
-          </StyledTouchableOpacity>
+          {RELIGION_OPTIONS.map((option) => {
+            const religionArray = profile.religion ? profile.religion.split(' / ').map((s: string) => s.trim()).filter(Boolean) : [];
+            const isSelected = religionArray.includes(option);
+            return (
+              <StyledTouchableOpacity
+                key={option}
+                activeOpacity={1}
+                delayPressIn={0}
+                onPress={() => {
+                  lightHaptic();
+                  const updated = isSelected
+                    ? religionArray.filter((r: string) => r !== option)
+                    : [...religionArray, option];
+                  updateProfile({ religion: updated.join(' / ') });
+                }}
+                className={`px-3 py-2 rounded-full border ${isSelected
+                  ? 'bg-primary-500 border-primary-500'
+                  : 'bg-white border-neutral-300'
+                }`}
+              >
+                <Body className={`text-sm ${isSelected ? 'text-white font-medium' : 'text-neutral-700'}`}>
+                  {option}
+                </Body>
+              </StyledTouchableOpacity>
+            );
+          })}
         </StyledView>
 
         {/* Political Leaning */}
@@ -147,12 +145,6 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
             </StyledTouchableOpacity>
           )}
 
-          <StyledTouchableOpacity
-            onPress={() => { lightHaptic(); setShowCustomPoliticalModal(true); }}
-            className="px-3 py-2 rounded-full border bg-white border-neutral-300"
-          >
-            <Body className="text-sm text-neutral-700">Other</Body>
-          </StyledTouchableOpacity>
         </StyledView>
       </Card>
 
@@ -222,12 +214,6 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
             </StyledTouchableOpacity>
           )}
 
-          <StyledTouchableOpacity
-            onPress={() => { lightHaptic(); setShowCustomEducationModal(true); }}
-            className="px-3 py-2 rounded-full border bg-white border-neutral-300"
-          >
-            <Body className="text-sm text-neutral-700">Other</Body>
-          </StyledTouchableOpacity>
         </StyledView>
 
         <StyledView className="mb-4">
@@ -243,52 +229,6 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
       </Card>
 
       {/* Custom Modals */}
-      <CustomInputModal
-        visible={showCustomReligionModal}
-        title="Add Custom Religion"
-        subtitle="Enter your religious belief"
-        placeholder="Type your religion"
-        onClose={() => setShowCustomReligionModal(false)}
-        onSubmit={(value) => {
-          const matchingOption = RELIGION_OPTIONS.find(
-            opt => opt.toLowerCase() === value.toLowerCase()
-          );
-          updateProfile({ religion: matchingOption || value });
-          mediumHaptic();
-          setShowCustomReligionModal(false);
-        }}
-      />
-      <CustomInputModal
-        visible={showCustomPoliticalModal}
-        title="Add Custom Political Leaning"
-        subtitle="Enter your political leaning"
-        placeholder="Type your political leaning"
-        onClose={() => setShowCustomPoliticalModal(false)}
-        onSubmit={(value) => {
-          const matchingOption = POLITICAL_OPTIONS.find(
-            opt => opt.label.toLowerCase() === value.toLowerCase()
-          );
-          if (matchingOption) {
-            setProfile({ ...profile, politicalLeaning: matchingOption.value, customPoliticalLeaning: '' });
-          } else {
-            setProfile({ ...profile, politicalLeaning: 'other', customPoliticalLeaning: value });
-          }
-          mediumHaptic();
-          setShowCustomPoliticalModal(false);
-        }}
-      />
-      <CustomInputModal
-        visible={showCustomEducationModal}
-        title="Add Custom Education Level"
-        subtitle="Enter your education level"
-        placeholder="Type your education level"
-        onClose={() => setShowCustomEducationModal(false)}
-        onSubmit={(value) => {
-          setProfile({ ...profile, educationLevel: 'other', customEducationLevel: value });
-          mediumHaptic();
-          setShowCustomEducationModal(false);
-        }}
-      />
     </SectionScreenWrapper>
   );
 };

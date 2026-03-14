@@ -20,6 +20,8 @@ import { ClockIcon } from '../../components/icons/Icons';
 import { getUserProfile } from '../../services/profileService';
 import { UserProfile } from '../../types';
 import { ProfileCompletionBanner } from '../../components/profile/ProfileCompletionBanner';
+import { MatchPoolLockedView } from '../../components/matches/MatchPoolLockedView';
+import { calculateOverallProfileStrength } from '../../utils/profileCompleteness';
 import { showToast } from '../../utils/toast';
 import { lightHaptic, heavyHaptic, successHaptic } from '../../utils/haptics';
 import { shareToMessages, shareGeneric } from '../../utils/shareMatch';
@@ -540,6 +542,35 @@ export function MatchesScreen() {
         return (
             <ScreenWrapper>
                 <MatchesSkeleton />
+            </ScreenWrapper>
+        );
+    }
+
+    // ── Profile incomplete gate — show locked state ─────────────────────────
+    // One-way gate: once profileCompleted is true, user is permanently in the pool
+    const DEV_FORCE_LOCKED = __DEV__ && true; // TODO: remove after photo alignment
+    const profileStrength = profile ? calculateOverallProfileStrength(profile) : 0;
+    if (!loading && (DEV_FORCE_LOCKED || (profileStrength < 100 && !profile?.profileCompleted))) {
+        return (
+            <ScreenWrapper>
+                <MatchPoolLockedView
+                    profile={profile}
+                    onNavigateToSection={(section) => {
+                        switch (section) {
+                            case 'Match Preferences':
+                                navigation.navigate('MatchPreferences');
+                                break;
+                            case 'Questions':
+                                navigation.navigate('Profile');
+                                break;
+                            case 'Photos':
+                            case 'About Me':
+                            default:
+                                navigation.navigate('ProfileEdit');
+                                break;
+                        }
+                    }}
+                />
             </ScreenWrapper>
         );
     }

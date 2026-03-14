@@ -36,10 +36,14 @@ import {
   markMultipleAsInvited,
   getSuggestedContacts,
 } from '../../services/contactsService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createLogger } from '../../utils/secureLogger';
 import { showToast } from '../../utils/toast';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
+
+const INVITE_COUNT_KEY = '@bridge_invites_sent_count';
+const MAX_INVITES = 10;
 
 const logger = createLogger('ContactInviteScreen');
 
@@ -149,11 +153,18 @@ const ContactRow = React.memo(({ contact, isSelected, isAdding, onToggleSelect, 
 
       {/* Name + phone */}
       <StyledView className="flex-1 mr-3">
-        <StyledText className={`font-medium text-sm ${
-          contact.isInvited && !canRemind ? 'text-neutral-400' : 'text-neutral-900'
-        }`} numberOfLines={1}>
-          {contact.name}
-        </StyledText>
+        <StyledView className="flex-row items-center">
+          <StyledText className={`font-medium text-sm ${
+            contact.isInvited && !canRemind ? 'text-neutral-400' : 'text-neutral-900'
+          }`} numberOfLines={1}>
+            {contact.name}
+          </StyledText>
+          {contact.hasRiceEmail && (
+            <StyledView className="ml-1.5 bg-blue-100 px-1.5 py-0.5 rounded">
+              <StyledText className="text-blue-600" style={{ fontSize: 9, fontFamily: FONTS.semiBold }}>Rice</StyledText>
+            </StyledView>
+          )}
+        </StyledView>
         <StyledText className="text-neutral-500 text-xs" numberOfLines={1}>
           {contact.phoneNumber}
         </StyledText>
@@ -236,7 +247,6 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
   const [permissionStatus, setPermissionStatus] = useState<string | null>(null);
   const [contacts, setContacts] = useState<NormalizedContact[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
   const [friendCode, setFriendCode] = useState('');
   const [senderName, setSenderName] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -247,9 +257,14 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
   const [addingCode, setAddingCode] = useState(false);
   const [celebrationCount, setCelebrationCount] = useState(0);
   const [addingFriendId, setAddingFriendId] = useState<string | null>(null);
+  const [invitesSentCount, setInvitesSentCount] = useState(0);
+  const [suggestedPreSelected, setSuggestedPreSelected] = useState(false);
   const enterCodeInputRef = useRef<TextInput>(null);
+  const sectionListRef = useRef<SectionList>(null);
 
-  // Load friend code + sender name on mount
+  const invitesRemaining = Math.max(0, MAX_INVITES - invitesSentCount);
+
+  // Load friend code + sender name + invite count on mount
   useEffect(() => {
     getUserFriendCode().then((result) => {
       if (result.ok && result.data) setFriendCode(result.data.code);
@@ -257,7 +272,10 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
     getUserProfile().then((result) => {
       if (result.ok && result.data) setSenderName(result.data.firstName);
     });
-    getBridgeUserCount().then(setBridgeUserCount);
+    getBridgeUserCount().then((count) => setBridgeUserCount(count * 2));
+    AsyncStorage.getItem(INVITE_COUNT_KEY).then((val) => {
+      if (val) setInvitesSentCount(parseInt(val, 10) || 0);
+    });
   }, []);
 
   // Check permission and load contacts
@@ -328,6 +346,23 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   }, []);
 
+  // Pre-select up to 3 rice.edu suggested contacts (additive, doesn't overwrite manual selections)
+  useEffect(() => {
+    if (suggestedPreSelected || contacts.length === 0) return;
+    const notOnBridge = contacts.filter((c) => !c.isOnBridge);
+    const suggested = getSuggestedContacts(notOnBridge);
+    const riceOnly = suggested.filter((c) => c.hasRiceEmail);
+    if (riceOnly.length > 0) {
+      const topIds = riceOnly.slice(0, 3).map((c) => c.id);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        topIds.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+    setSuggestedPreSelected(true);
+  }, [contacts, suggestedPreSelected]);
+
   const handleToggleSelect = useCallback((contact: NormalizedContact) => {
     if (contact.isInvited) return;
     setSelectedIds((prev) => {
@@ -394,18 +429,32 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleSendInvites = useCallback(async () => {
     if (selectedIds.size === 0 || !friendCode) return;
 
+    if (invitesRemaining <= 0) {
+      Alert.alert("You've used all 10 invites", "Each invite is valuable — check back to see who joined!");
+      return;
+    }
+
+    // Cap selection to remaining invites
+    const selectedContacts = contacts.filter((c) => selectedIds.has(c.id)).slice(0, invitesRemaining);
+    if (selectedContacts.length === 0) return;
+
     setSending(true);
     try {
-      const selectedContacts = contacts.filter((c) => selectedIds.has(c.id));
       const phoneNumbers = selectedContacts.map((c) => c.phoneNumber);
-
       const sent = await composeSmsInvite(phoneNumbers, friendCode, senderName);
 
       if (sent) {
         await markMultipleAsInvited(phoneNumbers);
+        // Only mark the contacts that were actually sent (capped subset)
+        const sentIds = new Set(selectedContacts.map((c) => c.id));
+        setInvitesSentCount((prev) => {
+          const newCount = prev + selectedContacts.length;
+          AsyncStorage.setItem(INVITE_COUNT_KEY, String(newCount));
+          return newCount;
+        });
         setContacts((prev) =>
           prev.map((c) =>
-            selectedIds.has(c.id) ? { ...c, isInvited: true, invitedAt: Date.now() } : c
+            sentIds.has(c.id) ? { ...c, isInvited: true, invitedAt: Date.now() } : c
           )
         );
         setSelectedIds(new Set());
@@ -417,7 +466,7 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
     } finally {
       setSending(false);
     }
-  }, [selectedIds, contacts, friendCode, senderName]);
+  }, [selectedIds, contacts, friendCode, senderName, invitesRemaining]);
 
   const handleInviteSingle = useCallback(async (contact: NormalizedContact) => {
     if (!friendCode) {
@@ -425,15 +474,25 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
 
+    if (invitesRemaining <= 0) {
+      Alert.alert("You've used all 10 invites", "Each invite is valuable — check back to see who joined!");
+      return;
+    }
+
     const sent = await composeSmsInvite([contact.phoneNumber], friendCode, senderName);
     if (sent) {
       await markAsInvited(contact.phoneNumber);
+      setInvitesSentCount((prev) => {
+        const newCount = prev + 1;
+        AsyncStorage.setItem(INVITE_COUNT_KEY, String(newCount));
+        return newCount;
+      });
       setContacts((prev) =>
-        prev.map((c) => c.id === contact.id ? { ...c, isInvited: true } : c)
+        prev.map((c) => c.id === contact.id ? { ...c, isInvited: true, invitedAt: Date.now() } : c)
       );
       showToast.success('Sent!', `Invite sent to ${contact.name}`);
     }
-  }, [friendCode, senderName]);
+  }, [friendCode, senderName, invitesRemaining]);
 
   const handleShareCode = useCallback(async () => {
     if (!friendCode) return;
@@ -543,34 +602,24 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Build sections: "On Bridge" at top, then "Suggested", then A-Z
   const filteredSections = useMemo((): ContactSection[] => {
-    let filtered = contacts;
-    const isSearching = searchQuery.trim().length > 0;
-    if (isSearching) {
-      const q = searchQuery.trim().toLowerCase();
-      filtered = contacts.filter((c) => c.name.toLowerCase().includes(q));
-    }
-
-    const onBridge = filtered.filter((c) => c.isOnBridge);
-    const notOnBridge = filtered.filter((c) => !c.isOnBridge);
+    const onBridge = contacts.filter((c) => c.isOnBridge);
+    const notOnBridge = contacts.filter((c) => !c.isOnBridge);
 
     const sections: ContactSection[] = [];
     if (onBridge.length > 0) {
       sections.push({ title: ON_BRIDGE_SECTION, data: onBridge });
     }
 
-    // Only show Suggested when not searching
-    if (!isSearching) {
-      const suggested = getSuggestedContacts(notOnBridge);
-      if (suggested.length > 0) {
-        sections.push({ title: SUGGESTED_SECTION, data: suggested });
-      }
+    const suggested = getSuggestedContacts(notOnBridge);
+    if (suggested.length > 0) {
+      sections.push({ title: SUGGESTED_SECTION, data: suggested });
     }
 
     const alphabetical = groupContactsAlphabetically(notOnBridge);
     sections.push(...alphabetical);
 
     return sections;
-  }, [contacts, searchQuery]);
+  }, [contacts]);
 
   const renderItem = useCallback(
     ({ item }: { item: NormalizedContact }) => (
@@ -609,12 +658,35 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
     <ScreenWrapper>
 
       {/* Header */}
-      <StyledView className="flex-row items-center justify-between px-4 py-3 border-b border-neutral-200 bg-white">
-        <StyledTouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <EvaIcon name="arrow-back" variant="outline" color="text" size={24} />
-        </StyledTouchableOpacity>
-        <H3>Invite Friends</H3>
-        <StyledView className="w-6" />
+      <StyledView className="px-4 py-3 border-b border-neutral-200 bg-white">
+        <StyledView className="flex-row items-center justify-between">
+          <StyledTouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <EvaIcon name="arrow-back" variant="outline" color="text" size={24} />
+          </StyledTouchableOpacity>
+          <H3>Build Your Crew</H3>
+          <StyledView className="w-6" />
+        </StyledView>
+
+        {/* Progress bar + social proof — single compact row */}
+        <StyledView className="mt-2">
+          <StyledView className="flex-row items-center justify-between mb-1">
+            <StyledText className="text-xs text-neutral-500" style={{ fontFamily: FONTS.medium }}>
+              {bridgeUserCount > 0 ? `${bridgeUserCount}+ students on Bridge` : 'Send invites to build your crew'}
+            </StyledText>
+            <StyledText className="text-xs font-semibold" style={{ fontFamily: FONTS.semiBold, color: COLORS.primaryAccent }}>
+              {invitesRemaining} invite{invitesRemaining === 1 ? '' : 's'} left
+            </StyledText>
+          </StyledView>
+          <StyledView className="bg-neutral-200 rounded-full h-1.5 overflow-hidden">
+            <StyledView
+              className="h-full rounded-full"
+              style={{
+                width: `${Math.min(100, (invitesSentCount / MAX_INVITES) * 100)}%`,
+                backgroundColor: COLORS.primaryAccent,
+              }}
+            />
+          </StyledView>
+        </StyledView>
       </StyledView>
 
       {/* Loading */}
@@ -788,30 +860,9 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
       {/* Permission: granted — show contact list */}
       {!loading && permissionStatus === 'granted' && (
         <>
-          {/* Search bar */}
-          <StyledView className="px-4 py-3 bg-white border-b border-neutral-200">
-            <StyledView className="flex-row items-center bg-neutral-100 rounded-lg px-3 py-2">
-              <EvaIcon name="search" variant="outline" color="neutral" size={18} />
-              <StyledTextInput
-                className="flex-1 ml-2 text-sm text-neutral-900"
-                placeholder="Search contacts..."
-                placeholderTextColor={COLORS.text.disabled}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                autoCorrect={false}
-              />
-              {searchQuery.length > 0 && (
-                <StyledTouchableOpacity onPress={() => setSearchQuery('')}>
-                  <EvaIcon name="close" variant="outline" color="neutral" size={18} />
-                </StyledTouchableOpacity>
-              )}
-            </StyledView>
-          </StyledView>
-
-          {/* Friend Code Strip */}
-          {friendCode ? (
-            <StyledView className="px-4 py-3 bg-white border-b border-neutral-200">
-              {/* Your code + Copy/Share icons */}
+          {/* Friend Code + Enter Code Strip */}
+          <StyledView className="px-3 py-2 bg-white border-b border-neutral-200">
+            {friendCode ? (
               <StyledView className="flex-row items-center mb-2">
                 <StyledText className="text-xs text-neutral-500 font-medium mr-1.5">Your code</StyledText>
                 <StyledText className="text-xs font-bold text-primary-500 flex-1" numberOfLines={1}>{friendCode}</StyledText>
@@ -830,53 +881,94 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
                   <EvaIcon name="share" variant="outline" size={16} color="#437FFF" />
                 </StyledTouchableOpacity>
               </StyledView>
-              {/* Enter a code */}
-              <StyledView className="flex-row items-center">
-                <StyledView className="flex-1 flex-row items-center bg-neutral-100 rounded-lg px-3 py-2 mr-2">
-                  <StyledTextInput
-                    className="flex-1 text-sm text-neutral-900"
-                    placeholder="Enter friend code"
-                    placeholderTextColor={COLORS.text.disabled}
-                    value={enterCodeValue}
-                    onChangeText={(t: string) => { setEnterCodeValue(t); setEnterCodeError(''); }}
-                    autoCapitalize="characters"
-                    autoCorrect={false}
-                  />
-                </StyledView>
-                <StyledTouchableOpacity
-                  className={`px-4 py-2 rounded-lg ${addingCode ? 'bg-primary-300' : 'bg-primary-500'}`}
-                  onPress={handleEnterCode}
-                  disabled={addingCode}
-                >
-                  <StyledText className="text-white text-sm font-semibold">
-                    {addingCode ? '...' : 'Add'}
-                  </StyledText>
-                </StyledTouchableOpacity>
+            ) : null}
+            <StyledView className="flex-row items-center">
+              <StyledView className="flex-1 flex-row items-center bg-neutral-100 rounded-lg px-3 py-1.5 mr-2">
+                <StyledTextInput
+                  className="flex-1 text-sm text-neutral-900"
+                  placeholder="Enter friend code"
+                  placeholderTextColor={COLORS.text.disabled}
+                  value={enterCodeValue}
+                  onChangeText={(t: string) => { setEnterCodeValue(t); setEnterCodeError(''); }}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                />
               </StyledView>
-              {enterCodeError ? (
-                <StyledText className="text-red-500 text-xs mt-1">{enterCodeError}</StyledText>
-              ) : null}
+              <StyledTouchableOpacity
+                className={`px-4 py-1.5 rounded-lg ${addingCode ? 'bg-primary-300' : 'bg-primary-500'}`}
+                onPress={handleEnterCode}
+                disabled={addingCode}
+              >
+                <StyledText className="text-white text-sm font-semibold">
+                  {addingCode ? '...' : 'Add'}
+                </StyledText>
+              </StyledTouchableOpacity>
             </StyledView>
-          ) : null}
+            {enterCodeError ? (
+              <StyledText className="text-red-500 text-xs mt-1">{enterCodeError}</StyledText>
+            ) : null}
+          </StyledView>
 
-          {/* Contact list */}
+          {/* Contact list with A-Z sidebar */}
           {filteredSections.length > 0 ? (
-            <SectionList
-              sections={filteredSections}
-              keyExtractor={keyExtractor}
-              renderItem={renderItem}
-              renderSectionHeader={renderSectionHeader}
-              stickySectionHeadersEnabled
-              initialNumToRender={20}
-              maxToRenderPerBatch={30}
-              windowSize={10}
-              contentContainerStyle={selectedIds.size > 0 ? { paddingBottom: 80 } : undefined}
-            />
+            <View style={{ flex: 1, position: 'relative' }}>
+              <SectionList
+                ref={sectionListRef}
+                style={{ flex: 1 }}
+                sections={filteredSections}
+                keyExtractor={keyExtractor}
+                renderItem={renderItem}
+                renderSectionHeader={renderSectionHeader}
+                stickySectionHeadersEnabled
+                initialNumToRender={20}
+                maxToRenderPerBatch={30}
+                windowSize={10}
+                contentContainerStyle={selectedIds.size > 0 ? { paddingBottom: 80, paddingRight: 16 } : { paddingRight: 16 }}
+              />
+              {/* A-Z sidebar */}
+              <View
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 14,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((letter) => (
+                  <TouchableOpacity
+                    key={letter}
+                    onPress={() => {
+                      const sectionIndex = filteredSections.findIndex((s) => s.title === letter);
+                      if (sectionIndex >= 0 && sectionListRef.current) {
+                        sectionListRef.current.scrollToLocation({
+                          sectionIndex,
+                          itemIndex: 0,
+                          viewPosition: 0,
+                          animated: false,
+                        });
+                      }
+                    }}
+                    activeOpacity={0.5}
+                  >
+                    <Text style={{
+                      fontSize: 9,
+                      lineHeight: 13,
+                      fontFamily: FONTS.semiBold,
+                      color: filteredSections.some((s) => s.title === letter) ? COLORS.primaryAccent : '#D0D5DD',
+                      textAlign: 'center',
+                    }}>
+                      {letter}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           ) : (
             <StyledView className="flex-1 items-center justify-center px-8">
-              <Body className="text-neutral-500 text-center">
-                {searchQuery ? 'No contacts match your search' : 'No contacts found'}
-              </Body>
+              <Body className="text-neutral-500 text-center">No contacts found</Body>
             </StyledView>
           )}
 
@@ -900,7 +992,9 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
                 <StyledText className="text-white font-bold text-base">
                   {sending
                     ? 'Opening Messages...'
-                    : `Send ${selectedIds.size} Invite${selectedIds.size === 1 ? '' : 's'}`
+                    : invitesRemaining <= 0
+                    ? 'No invites remaining'
+                    : `Send ${Math.min(selectedIds.size, invitesRemaining)} Invite${Math.min(selectedIds.size, invitesRemaining) === 1 ? '' : 's'}`
                   }
                 </StyledText>
               </StyledTouchableOpacity>

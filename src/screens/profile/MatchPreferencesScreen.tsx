@@ -130,6 +130,7 @@ const POLITICAL_OPTIONS = [
   { value: 'conservative', label: 'Conservative' },
   { value: 'very_conservative', label: 'Very Conservative' },
   { value: 'not_political', label: 'Not Political' },
+  { value: 'other', label: 'Other' },
 ];
 
 // Stable sub-components for RangeSlider (prevent re-mounting on each render)
@@ -167,7 +168,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
   // "Other" custom input modal state
   const [showCustomModal, setShowCustomModal] = useState(false);
-  const [customModalType, setCustomModalType] = useState<'gender' | 'values' | 'interests' | 'ethnicity'>('gender');
+  const [customModalType, setCustomModalType] = useState<'gender'>('gender');
   const [customInputValue, setCustomInputValue] = useState('');
   const customModalAnim = useSharedValue(0);
   const modalOverlayStyle = useAnimatedStyle(() => ({ opacity: customModalAnim.value }));
@@ -193,7 +194,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   }, [showCustomModal]);
 
   // Helper to open custom modal for different types
-  const openCustomModal = (type: 'gender' | 'values' | 'interests' | 'ethnicity') => {
+  const openCustomModal = (type: 'gender') => {
     setCustomModalType(type);
     setCustomInputValue('');
     setShowCustomModal(true);
@@ -205,17 +206,10 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
     const trimmedValue = customInputValue.trim();
     if (!trimmedValue) return;
 
-    switch (customModalType) {
-      case 'gender':
-        if (!interestedInGenders.includes(trimmedValue)) {
-          setInterestedInGenders(prev => [...prev, trimmedValue]);
-        }
-        break;
-      case 'ethnicity':
-        if (!preferredEthnicities.includes(trimmedValue)) {
-          setPreferredEthnicities(prev => [...prev, trimmedValue]);
-        }
-        break;
+    if (customModalType === 'gender') {
+      if (!interestedInGenders.includes(trimmedValue)) {
+        setInterestedInGenders(prev => [...prev, trimmedValue]);
+      }
     }
 
     mediumHaptic();
@@ -226,24 +220,11 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
   // Get modal title based on type
   const getCustomModalTitle = () => {
-    switch (customModalType) {
-      case 'gender': return 'Add Custom Gender';
-      case 'values': return 'Add Custom Value';
-      case 'interests': return 'Add Custom Interest';
-      case 'ethnicity': return 'Add Custom Ethnicity';
-      default: return 'Add Custom';
-    }
+    return 'Add Custom Gender';
   };
 
-  // Get modal placeholder based on type
   const getCustomModalPlaceholder = () => {
-    switch (customModalType) {
-      case 'gender': return 'Enter gender identity';
-      case 'values': return 'Enter a value you want in a partner';
-      case 'interests': return 'Enter an interest you want in a partner';
-      case 'ethnicity': return 'Enter ethnicity preference';
-      default: return 'Enter custom value';
-    }
+    return 'Enter gender identity';
   };
 
   const loadProfile = async () => {
@@ -685,29 +666,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                   </StyledTouchableOpacity>
                 );
               })}
-              {/* Custom ethnicities (not in predefined list) */}
-              {preferredEthnicities
-                .filter(e => !ETHNICITY_OPTIONS.includes(e))
-                .map((customEthnicity) => (
-                  <StyledTouchableOpacity
-                    key={customEthnicity}
-                    activeOpacity={1}
-                    onPress={() => {
-                      lightHaptic();
-                      setPreferredEthnicities(prev => prev.filter(e => e !== customEthnicity));
-                    }}
-                    className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
-                  >
-                    <Body className="text-sm text-white font-medium">{customEthnicity}</Body>
-                  </StyledTouchableOpacity>
-                ))}
-              {/* Other button */}
-              <StyledTouchableOpacity
-                onPress={() => openCustomModal('ethnicity')}
-                className="px-3 py-2 rounded-full border border-dashed border-neutral-400 bg-neutral-50"
-              >
-                <Body className="text-sm text-neutral-600">+ Other</Body>
-              </StyledTouchableOpacity>
             </StyledView>
           </Card>
 

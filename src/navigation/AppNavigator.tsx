@@ -14,7 +14,9 @@ import { supabase } from '../lib/supabase';
 import { FEATURES } from '../config/features';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { Sentry } from '../lib/sentry';
-import { fetchAndSetUserProfile, invalidateProfileCache, checkSuspensionStatus } from '../services/profileService';
+import { fetchAndSetUserProfile, invalidateProfileCache, checkSuspensionStatus, getUserProfile } from '../services/profileService';
+import { calculateOverallProfileStrength } from '../utils/profileCompleteness';
+import Svg, { Circle } from 'react-native-svg';
 import { isIntentionalSignOut, resetIntentionalSignOut } from '../services/authService';
 // expo-notifications is imported dynamically to defer 84KB from startup
 import { setCachedUserId, clearCachedUserId } from '../utils/auth';
@@ -121,6 +123,22 @@ const CustomTabBar = ({ state, navigation }: any) => {
   const iconSize = Math.round(contentHeight * 0.65);
   const iconPaddingTop = Math.round(contentHeight * 0.25);
 
+  // ── Profile completeness ring ───────────────────────────────────────────
+  // Re-fetch on every tab change so the ring updates after editing profile sections
+  // One-way gate: once profileCompleted is true, never show the ring again
+  const [profileStrength, setProfileStrength] = useState(100);
+  const [profileCompleted, setProfileCompleted] = useState(true); // default true = hidden until loaded
+  useEffect(() => {
+    // Invalidate cache first so we get truly fresh data after profile edits
+    invalidateProfileCache();
+    getUserProfile().then(result => {
+      if (result.ok && result.data) {
+        setProfileStrength(calculateOverallProfileStrength(result.data));
+        setProfileCompleted(result.data.profileCompleted ?? false);
+      }
+    });
+  }, [state.index]);
+
   // ── Animated indicator ────────────────────────────────────────────────────
   // Each tab is 1/3 of screen width; indicator centers within the active tab.
   const tabWidth = screenWidth / state.routes.length;
@@ -167,6 +185,7 @@ const CustomTabBar = ({ state, navigation }: any) => {
       {state.routes.map((route: any, index: number) => {
         const focused = state.index === index;
         const Icon = TAB_ICONS[index];
+        const showRing = index === 2 && profileStrength < 100 && !profileCompleted;
 
         const onPress = () => {
           selectionHaptic();
@@ -187,6 +206,10 @@ const CustomTabBar = ({ state, navigation }: any) => {
           }
         };
 
+        const ringSize = iconSize + 8;
+        const ringRadius = ringSize / 2 - 2;
+        const circumference = 2 * Math.PI * ringRadius;
+
         return (
           <GuideTarget key={route.key} id={TAB_TARGET_IDS[index]} style={{ flex: 1 }}>
             <TouchableOpacity
@@ -194,7 +217,38 @@ const CustomTabBar = ({ state, navigation }: any) => {
               onPress={onPress}
               activeOpacity={0.7}
             >
-              <Icon size={iconSize} color={focused ? '#437FFF' : '#667085'} />
+              {showRing ? (
+                <View style={{ width: ringSize, height: ringSize, alignItems: 'center', justifyContent: 'center' }}>
+                  <Svg
+                    width={ringSize}
+                    height={ringSize}
+                    style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}
+                  >
+                    <Circle
+                      cx={ringSize / 2}
+                      cy={ringSize / 2}
+                      r={ringRadius}
+                      fill="none"
+                      stroke="rgba(103,112,133,0.15)"
+                      strokeWidth={2.5}
+                    />
+                    <Circle
+                      cx={ringSize / 2}
+                      cy={ringSize / 2}
+                      r={ringRadius}
+                      fill="none"
+                      stroke="#437FFF"
+                      strokeWidth={2.5}
+                      strokeLinecap="round"
+                      strokeDasharray={circumference}
+                      strokeDashoffset={circumference * (1 - profileStrength / 100)}
+                    />
+                  </Svg>
+                  <Icon size={iconSize} color={focused ? '#437FFF' : '#667085'} />
+                </View>
+              ) : (
+                <Icon size={iconSize} color={focused ? '#437FFF' : '#667085'} />
+              )}
             </TouchableOpacity>
           </GuideTarget>
         );

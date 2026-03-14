@@ -161,14 +161,14 @@ serve((req: Request) => {
 <body>
   <div class="card">
     <div class="wordmark">Bridge</div>
-    <div class="tagline">Your friends pick who you date</div>
+    <div class="tagline">Your friends help you find your person</div>
     <div class="divider"></div>
     <div class="invite-label">Your Invite Code</div>
     <div class="code">${code}</div>
     <a class="btn" href="${APP_STORE_URL}">Download Bridge</a>
-    <p class="hint">Open the app and enter your code to connect with your friend.</p>
+    <p class="hint">Download Bridge, enter your code, and join your friend's crew.</p>
   </div>
-  <p class="social-proof"><span class="dot"></span>100+ people are already on Bridge</p>
+  <p class="social-proof"><span class="dot"></span>Live at Rice University</p>
 
   <script>
     // Try deep link first (works if app is installed)

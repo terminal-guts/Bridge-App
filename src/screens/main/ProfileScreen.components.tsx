@@ -289,9 +289,9 @@ export const ValuesSection: React.FC<ValuesSectionProps> = ({ values }) => {
 interface PartnerLifestyleSectionProps {
   partnerLifestylePreferences?: {
     drinking: string;
-    weed: string;
+    cannabis: string;
     tobacco: string;
-    drugs: string;
+    otherDrugs: string;
   };
   onEdit?: () => void;
 }
@@ -303,10 +303,10 @@ interface PartnerLifestyleSectionProps {
 export const PartnerLifestyleSection: React.FC<PartnerLifestyleSectionProps> = ({ partnerLifestylePreferences, onEdit }) => {
   if (!partnerLifestylePreferences) return null;
 
-  const { drinking, weed, tobacco, drugs } = partnerLifestylePreferences;
+  const { drinking, cannabis, tobacco, otherDrugs } = partnerLifestylePreferences;
 
   // Only show if at least one preference is set
-  if (!drinking && !weed && !tobacco && !drugs) return null;
+  if (!drinking && !cannabis && !tobacco && !otherDrugs) return null;
 
   return (
     <Card className="mb-6">
@@ -335,13 +335,13 @@ export const PartnerLifestyleSection: React.FC<PartnerLifestyleSectionProps> = (
             <Body className="text-purple-900 font-medium">{formatProfileValue(drinking)}</Body>
           </StyledView>
         )}
-        {weed && (
+        {cannabis && (
           <StyledView className="flex-row justify-between items-center">
             <StyledView className="flex-row items-center">
               <LeafIcon size={18} color="#7C3AED" />
               <Body className="text-purple-700 ml-2">Weed</Body>
             </StyledView>
-            <Body className="text-purple-900 font-medium">{formatProfileValue(weed)}</Body>
+            <Body className="text-purple-900 font-medium">{formatProfileValue(cannabis)}</Body>
           </StyledView>
         )}
         {tobacco && (
@@ -353,13 +353,13 @@ export const PartnerLifestyleSection: React.FC<PartnerLifestyleSectionProps> = (
             <Body className="text-purple-900 font-medium">{formatProfileValue(tobacco)}</Body>
           </StyledView>
         )}
-        {drugs && (
+        {otherDrugs && (
           <StyledView className="flex-row justify-between items-center">
             <StyledView className="flex-row items-center">
               <PillIcon size={18} color="#7C3AED" />
               <Body className="text-purple-700 ml-2">Drugs</Body>
             </StyledView>
-            <Body className="text-purple-900 font-medium">{formatProfileValue(drugs)}</Body>
+            <Body className="text-purple-900 font-medium">{formatProfileValue(otherDrugs)}</Body>
           </StyledView>
         )}
       </StyledView>
@@ -789,7 +789,7 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
         {/* Height Preference */}
         <StyledView className="flex-row items-center justify-between py-2 border-b border-purple-100/50">
           <StyledView className="flex-row items-center">
-            <EvaIcon name="bar-chart" variant="outline" size={16} color="#7C3AED" />
+            <EvaIcon name="arrow-upward" variant="outline" size={16} color="#7C3AED" />
             <Body className="text-neutral-700 text-sm ml-2">Height</Body>
           </StyledView>
           <Body className="text-neutral-900 font-semibold text-sm">

@@ -61,3 +61,46 @@ The entire app uses **Plus Jakarta Sans** (Google Fonts, OFL license). This is a
 - **Do not** use `Outfit`, `Satoshi`, `Inter`, or any other font family — these have been fully removed.
 - **Do not** rely on `fontWeight` alone — React Native with custom fonts requires the specific font file via `fontFamily`.
 - **Tailwind config** (`tailwind.config.js`) maps `font-sans` etc. to PlusJakartaSans variants.
+
+## Shadow & Depth System
+
+The app uses a centralized shadow system at **`src/theme/shadows.ts`**. This is the single source of truth for all elevation, depth, and overlay values.
+
+### Architecture
+
+1. **`src/theme/shadows.ts`** — exports:
+   - `SHADOWS` — neutral elevation presets (`none`, `sm`, `md`, `lg`, `xl`, `xxl`) + accent glows (`accentBlue`, `accentGreen`, `accentRed`, `accentGold`, `accentSilver`, `accentBronze`)
+   - `ShadowLevel` / `ShadowKey` types — for component APIs
+   - `resolveShadow(key)` — resolves any `ShadowKey` to its `ViewStyle`
+   - `DEPTH_PARAMS` / `DEPTH_PRESS_FACTOR` — constants for animated press depth (iOS)
+   - `glowShadow(color, intensity)` — dynamic colored glow helper with caching
+   - `OVERLAYS` — modal backdrop opacity levels (`light`, `medium`, `heavy`)
+
+2. **`src/components/ui/Card.tsx`** — Card component with two shadow APIs:
+   - `shadow` prop (preferred): accepts any `ShadowKey` — e.g., `<Card shadow="lg">`, `<Card shadow="accentBlue">`
+   - `elevation` prop (legacy, still works): numeric `0|1|2|3` mapped to shadow presets
+   - `animateDepth` prop: enables animated shadow transitions on press (iOS only)
+
+3. **`src/components/ui/AnimatedPressable.tsx`** — master pressable component:
+   - `animateDepth` + `depthLevel` props: animates shadowOpacity/shadowRadius/shadowOffset on press-in (card sinks) and release (springs back)
+   - Scale animation (always active), shadow depth animation (opt-in, iOS only)
+
+### Rules for new code
+
+- **Use `SHADOWS` constants** from `src/theme/shadows` — never hardcode shadow values inline
+- **Prefer `shadow` prop** on Card over `elevation` — it's more expressive and accepts accent glows
+- **Use `OVERLAYS` constants** for modal/overlay backdrops — never hardcode `rgba(0,0,0,...)` overlay values
+- **Do not** use `src/utils/shadows.ts` — this legacy file has been removed
+- Shadow colors use warm brown palette on iOS (`#4A3428`, `#3D2817`, `#2E1810`) for natural depth
+- Android uses numeric `elevation` (no color support) — this is a platform limitation
+
+## Invite System
+
+SMS invite messages use **rotating variants** defined in `contactsService.ts`. The `buildInviteMessage()` function cycles through 4 message templates to keep batch invites from feeling copy-pasted.
+
+### Rules
+- Invite copy must align with Bridge brand voice: warm, down-to-earth, curiosity-driven
+- **Never use the word "dating"** in invite messages or the landing page — it's too intimidating. Use "find your person", "match", "connect" instead.
+- Never use words from the "DON'T" list in BRIDGE_VISION.md (exclusive, elite, premium, etc.)
+- Messages must stay under 160 chars (before link) to avoid SMS splitting
+- The invite-redirect landing page (`supabase/functions/invite-redirect/index.ts`) is the web fallback — keep it clean and aligned

@@ -62,11 +62,28 @@ Deno.serve(async (req: Request) => {
     }));
 
     const topEntries = entries.filter(e => e.rank <= limit);
-    const currentUserEntry = entries.find(e => e.userId === userId);
+    let currentUserEntry = entries.find(e => e.userId === userId);
+
+    // If current user has no karma entry yet, create a synthetic one
+    if (!currentUserEntry) {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('first_name')
+        .eq('user_id', userId)
+        .single();
+
+      currentUserEntry = {
+        userId,
+        firstName: profile?.first_name || 'You',
+        weeklyKarma: 0,
+        rank: totalParticipants + 1,
+        rankChange: 0,
+      };
+    }
 
     // 5. Enrich with photos and friendship status
     const participantIds = new Set(topEntries.map(e => e.userId));
-    if (currentUserEntry) participantIds.add(currentUserEntry.userId);
+    participantIds.add(currentUserEntry.userId);
 
     const participantIdList = Array.from(participantIds);
 
@@ -151,13 +168,13 @@ Deno.serve(async (req: Request) => {
       };
     });
 
-    const finalCurrentUser = currentUserEntry ? {
+    const finalCurrentUser = {
       ...currentUserEntry,
       photoUrl: signedUrlsMap[currentUserEntry.userId] || null,
       isFriend: false,
       isAnonymous: false,
       spotsBehindFirst: entries.length > 0 ? entries[0].weeklyKarma - currentUserEntry.weeklyKarma : 0
-    } : null;
+    };
 
     return Response.json({
       leaderboard: finalLeaderboard,

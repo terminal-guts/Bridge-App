@@ -356,6 +356,8 @@ function scoreReligion(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dic
   const bReligion = _get(profileB, 'religion');
 
   if (!aReligion || !bReligion) return 0.5;
+  // "Other" is unscored — treat as neutral
+  if (aReligion.toLowerCase() === 'other' || bReligion.toLowerCase() === 'other') return 0.5;
 
   const aPrefRel: string[] = _getPref(profileA, prefsA, 'preferred_religions', []) || [];
   const bPrefRel: string[] = _getPref(profileB, prefsB, 'preferred_religions', []) || [];
@@ -401,6 +403,8 @@ function scorePolitics(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dic
   const bPolitics = _get(profileB, 'political_leaning');
 
   if (!aPolitics || !bPolitics) return 0.5;
+  // "Other" is unscored — treat as neutral
+  if (aPolitics.toLowerCase() === 'other' || bPolitics.toLowerCase() === 'other') return 0.5;
 
   const aPrefPolitics: string[] = _getPref(profileA, prefsA, 'preferred_politics', []) || [];
   const bPrefPolitics: string[] = _getPref(profileB, prefsB, 'preferred_politics', []) || [];
@@ -488,6 +492,8 @@ function scoreEthnicity(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Di
   const bEthnicity: string | null = _get(profileB, 'ethnicity');
 
   if (!aEthnicity || !bEthnicity) return 0.5;
+  // "Other" is unscored — treat as neutral
+  if (aEthnicity.toLowerCase() === 'other' || bEthnicity.toLowerCase() === 'other') return 0.5;
 
   const aPrefEth: string[] = _getPref(profileA, prefsA, 'preferred_ethnicities', []) || [];
   const bPrefEth: string[] = _getPref(profileB, prefsB, 'preferred_ethnicities', []) || [];

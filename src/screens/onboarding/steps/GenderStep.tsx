@@ -20,8 +20,10 @@ const StyledTouchableOpacity = styled(TouchableOpacity);
 const GENDER_OPTIONS = [
   { value: 'male', label: 'Male' },
   { value: 'female', label: 'Female' },
-  { value: 'non_binary', label: 'Non-binary' },
-  { value: 'not_listed', label: 'Not Listed' },
+  { value: 'non-binary', label: 'Non-binary' },
+  { value: 'genderfluid', label: 'Genderfluid' },
+  { value: 'agender', label: 'Agender' },
+  { value: 'two_spirit', label: 'Two-Spirit' },
 ];
 
 export const GenderStep: React.FC<GenderStepProps> = ({
@@ -78,9 +80,9 @@ export const GenderStep: React.FC<GenderStepProps> = ({
 
     if (interestedIn.length === 1) {
       // Single gender selected
-      if (interestedIn[0] === 'man') {
+      if (interestedIn[0] === 'male') {
         preferredGender = 'male';
-      } else if (interestedIn[0] === 'woman') {
+      } else if (interestedIn[0] === 'female') {
         preferredGender = 'female';
       } else {
         // For non-binary, genderfluid, etc., use 'both'

@@ -27,8 +27,10 @@ const MAX_PRONOUNS = 4;
 const GENDER_OPTIONS = [
   { value: 'male', label: 'Male' },
   { value: 'female', label: 'Female' },
-  { value: 'non_binary', label: 'Non-binary' },
-  { value: 'not_listed', label: 'Not Listed' },
+  { value: 'non-binary', label: 'Non-binary' },
+  { value: 'genderfluid', label: 'Genderfluid' },
+  { value: 'agender', label: 'Agender' },
+  { value: 'two_spirit', label: 'Two-Spirit' },
 ];
 
 const ETHNICITY_OPTIONS = [
@@ -51,7 +53,6 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
   const [isHeightFocused, setIsHeightFocused] = useState(false);
   const [heightError, setHeightError] = useState('');
   const [showCustomGenderModal, setShowCustomGenderModal] = useState(false);
-  const [showCustomEthnicityModal, setShowCustomEthnicityModal] = useState(false);
 
   const ethnicityArray = useMemo(() => {
     return profile?.ethnicity
@@ -207,7 +208,7 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
             );
           })}
 
-          {/* Custom ethnicity chips */}
+          {/* Legacy custom ethnicity chips (from before standardization) */}
           {ethnicityArray.filter(e => !ETHNICITY_OPTIONS.includes(e) && e.trim() !== '').map((custom) => (
             <StyledTouchableOpacity
               key={custom}
@@ -221,13 +222,6 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
               <Body className="text-sm text-white font-medium">{custom}</Body>
             </StyledTouchableOpacity>
           ))}
-
-          <StyledTouchableOpacity
-            onPress={() => { lightHaptic(); setShowCustomEthnicityModal(true); }}
-            className="px-3 py-2 rounded-full border bg-white border-neutral-300"
-          >
-            <Body className="text-sm text-neutral-700">Other</Body>
-          </StyledTouchableOpacity>
         </StyledView>
       </Card>
 
@@ -345,19 +339,6 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
           setProfile({ ...profile, customMyGender: value });
           mediumHaptic();
           setShowCustomGenderModal(false);
-        }}
-      />
-      <CustomInputModal
-        visible={showCustomEthnicityModal}
-        title="Add Custom Ethnicity"
-        subtitle="Enter your ethnicity"
-        placeholder="Type your ethnicity"
-        onClose={() => setShowCustomEthnicityModal(false)}
-        onSubmit={(value) => {
-          const updated = [...ethnicityArray, value];
-          updateProfile({ ethnicity: updated.filter(e => e.trim() !== '').join(' / ') });
-          mediumHaptic();
-          setShowCustomEthnicityModal(false);
         }}
       />
     </SectionScreenWrapper>

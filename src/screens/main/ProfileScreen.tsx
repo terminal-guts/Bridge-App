@@ -9,6 +9,8 @@ import ReanimatedAnimated, {
     cancelAnimation,
 } from 'react-native-reanimated';
 import { Image } from 'expo-image';
+import { StyleSheet as RNStyleSheet } from 'react-native';
+import LottieView from 'lottie-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PROFILE_CACHE_DURATION, NAVIGATION_DELAY, AVATAR_SIZE_XL } from '../../constants';
 import { FONTS } from '../../constants/typography';
@@ -37,12 +39,15 @@ import {
 import { ProfileStrengthDashboard } from '../../components/profile/ProfileStrengthDashboard';
 import { PhotoCarousel } from '../../components/profile/PhotoCarousel';
 import { KarmaInfoModal } from '../../components/community/karma/KarmaInfoModal';
-import { lightHaptic, mediumHaptic, successHaptic } from '../../utils/haptics';
+import { lightHaptic, mediumHaptic, successHaptic, heavyHaptic } from '../../utils/haptics';
+import { calculateOverallProfileStrength } from '../../utils/profileCompleteness';
 import { showToast } from '../../utils/toast';
 import { DEEP_QUESTIONS, getUnansweredQuestions } from '../../utils/deepQuestions';
 import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('ProfileScreen');
+const CONFETTI_ANIM = require('../../../assets/Icons/AnimatedIcons/confetti.json');
+const PROFILE_COMPLETE_CELEBRATION_KEY = '@profile_complete_celebration_shown';
 import { AnswerQuestionModal } from '../../components/profile/AnswerQuestionModal';
 import { GuideTarget } from '../../components/guides';
 import { useGuide } from '../../hooks/useGuide';
@@ -228,6 +233,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
   const { startGuideIfNeeded } = useGuide();
   const [hasTriggeredGuide, setHasTriggeredGuide] = useState(false);
 
+  // Profile complete celebration (confetti)
+  const [celebrationActive, setCelebrationActive] = useState(false);
+  const confettiRef = useRef<LottieView>(null);
+
   // Performance: Cache timing ref to avoid redundant API calls
   const lastFetchRef = useRef<number>(0);
 
@@ -346,6 +355,27 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
       return () => clearTimeout(timer);
     }
   }, [loading, profile, hasTriggeredGuide, startGuideIfNeeded]);
+
+  // Profile complete celebration — fire confetti once when user first visits at 100%
+  useEffect(() => {
+    if (!loading && profile) {
+      const strength = calculateOverallProfileStrength(profile);
+      if (strength >= 100) {
+        AsyncStorage.getItem(PROFILE_COMPLETE_CELEBRATION_KEY).then(seen => {
+          if (!seen && isMountedRef.current) {
+            AsyncStorage.setItem(PROFILE_COMPLETE_CELEBRATION_KEY, '1');
+            setCelebrationActive(true);
+            successHaptic();
+            setTimeout(() => heavyHaptic(), 150);
+            setTimeout(() => heavyHaptic(), 300);
+            setTimeout(() => {
+              if (isMountedRef.current) setCelebrationActive(false);
+            }, 2800);
+          }
+        });
+      }
+    }
+  }, [loading, profile]);
 
   const handleRefresh = useCallback(async () => {
     if (isMountedRef.current) {
@@ -1824,6 +1854,20 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
       )}
 
       <KarmaInfoModal visible={showKarmaInfoModal} onClose={() => setShowKarmaInfoModal(false)} />
+
+      {/* Profile complete confetti celebration */}
+      {celebrationActive && (
+        <View style={RNStyleSheet.absoluteFill} pointerEvents="none">
+          <LottieView
+            ref={confettiRef}
+            source={CONFETTI_ANIM}
+            autoPlay
+            loop={false}
+            style={{ flex: 1 }}
+            speed={1}
+          />
+        </View>
+      )}
     </ScreenWrapper>
   );
 };

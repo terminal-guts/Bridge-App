@@ -422,15 +422,26 @@ def score_religion(profile_a: Dict, prefs_a: Dict, profile_b: Dict, prefs_b: Dic
 
     if not a_religion or not b_religion:
         return 0.5
+    if a_religion.lower() == "other" or b_religion.lower() == "other":
+        return 0.5
 
-    a_non_neg = _get_pref(profile_a, prefs_a, "non_negotiables", []) or []
-    b_non_neg = _get_pref(profile_b, prefs_b, "non_negotiables", []) or []
+    a_pref_rel = _get_pref(profile_a, prefs_a, "preferred_religions", []) or []
+    b_pref_rel = _get_pref(profile_b, prefs_b, "preferred_religions", []) or []
 
-    def one_direction(their_religion, my_religion, my_non_neg):
-        if "different_religion" in my_non_neg:
-            if their_religion.lower() == my_religion.lower():
+    def pref_direction(their_religion, my_pref_religions):
+        if not my_pref_religions:
+            return 1.0  # No preference set = open to all
+        pref_lower = [r.lower() for r in my_pref_religions]
+        if "no preference" in pref_lower:
+            return 1.0
+        # Check each component if multi-religion (joined with " / ")
+        components = [c.strip().lower() for c in their_religion.split(" / ")] if " / " in their_religion else [their_religion.lower()]
+        for comp in components:
+            if comp in pref_lower:
                 return 1.0
-            return 0.0
+        return 0.0
+
+    def compat_direction(their_religion, my_religion):
         if their_religion.lower() == my_religion.lower():
             return 1.0
         if _are_similar_religions(their_religion, my_religion):
@@ -439,8 +450,15 @@ def score_religion(profile_a: Dict, prefs_a: Dict, profile_b: Dict, prefs_b: Dic
             return 0.25
         return 0.50
 
-    a_to_b = one_direction(b_religion, a_religion, a_non_neg)
-    b_to_a = one_direction(a_religion, b_religion, b_non_neg)
+    # Blend preference match (if set) with compatibility score
+    a_to_b_pref = pref_direction(b_religion, a_pref_rel)
+    b_to_a_pref = pref_direction(a_religion, b_pref_rel)
+    a_to_b_compat = compat_direction(b_religion, a_religion)
+    b_to_a_compat = compat_direction(a_religion, b_religion)
+
+    # If preferences are set, weight them 60/40 with compatibility; otherwise use compatibility only
+    a_to_b = a_to_b_pref * 0.6 + a_to_b_compat * 0.4 if a_pref_rel else a_to_b_compat
+    b_to_a = b_to_a_pref * 0.6 + b_to_a_compat * 0.4 if b_pref_rel else b_to_a_compat
 
     return (a_to_b + b_to_a) / 2
 
@@ -450,6 +468,8 @@ def score_politics(profile_a: Dict, prefs_a: Dict, profile_b: Dict, prefs_b: Dic
     b_politics = _get(profile_b, "political_leaning")
 
     if not a_politics or not b_politics:
+        return 0.5
+    if a_politics.lower() == "other" or b_politics.lower() == "other":
         return 0.5
 
     a_pref_politics = _get_pref(profile_a, prefs_a, "preferred_politics", [])
@@ -536,6 +556,8 @@ def score_ethnicity(profile_a: Dict, prefs_a: Dict, profile_b: Dict, prefs_b: Di
     b_ethnicity = _get(profile_b, "ethnicity")
 
     if not a_ethnicity or not b_ethnicity:
+        return 0.5
+    if a_ethnicity.lower() == "other" or b_ethnicity.lower() == "other":
         return 0.5
 
     a_pref_eth = _get_pref(profile_a, prefs_a, "preferred_ethnicities", []) or []

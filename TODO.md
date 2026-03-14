@@ -71,6 +71,9 @@ From the engagement research (Hook Model, variable reinforcement, network effect
 - Animated proposal entrance (opacity + translateX slide-in via Reanimated)
 - Vote micro-interactions (spring scale on all vote buttons)
 - Friend badge system (42 character trait icons, badge comparison in proposal view, 50-char messages)
+- Animated press depth system (`AnimatedPressable` + `Card` — shadow sinks on press-in, springs back on release, iOS)
+- Component-level shadow API (`<Card shadow="lg">` / `<Card shadow="accentBlue">` instead of numeric elevation)
+- Invite message redesign (4 rotating curiosity-driven SMS variants, improved landing page copy)
 
 ### Friend Milestones (Proposal — Not Approved)
 
@@ -148,11 +151,13 @@ Creative engagement concepts organized by implementation effort. These are ideas
 | Hot Take Prompts | "Hot Take of the Day" card on Community tab (not in voting flow). One prompt/day, inline card with live results. Revisit once campus engagement data exists. |
 | Vote Before Profile | Let new users vote during onboarding. Needs steady proposal flow (10+ active proposals). |
 | Instagram In-App Photos | Pull via IG API (like Hinge) instead of linking out. Larger engineering effort. |
-| Anonymous Friend-to-Friend Proposals | Queued suggestion system respecting 7PM cycle. Approved with redesign — needs `friend_suggestions` table, rewritten edge function, generate-proposals integration. |
+| ~~Anonymous Friend-to-Friend Proposals~~ | ~~Implemented: `friend_suggestions` table, `suggest-friend-match` edge function, `generate-proposals` conversion at 7PM. SuggestMatchScreen UI complete.~~ |
 | Google Auth | Not started (Phase 3) |
 | Online Now Tags | On hold |
 | Import Real Badge Icons | Replace 42 placeholder character trait SVGs with real icon assets. Source from icon pack, place in `assets/icons/badges/`, run `scripts/generate-badge-registry.js`. |
 | Badge Award Notification | Push notification when someone awards you a badge (variable reward timing). Low priority — may not need. |
+| Recommend-to-Friend Visibility | "Recommend to Friend" during voting is stored as algorithmic boost but invisible to recipient. Add notification/badge: "A friend recommended someone for you!" to close the UX gap. |
+| Dark Mode | Deferred — requires ~150+ dark color variants, NativeWind dark config, conditional component styling, dark shadow palette, Figma designs. Not safe without dedicated design pass. See `scripts/agent_plan.md`. |
 
 ---
 
@@ -165,7 +170,7 @@ Creative engagement concepts organized by implementation effort. These are ideas
 | Hot Take Prompts | Deferred — don't interrupt voting flow |
 | Vote Before Profile | Deferred — no proposals for new users at small launch |
 | Instagram Link | Dropped — pulls users off-app. Future: in-app IG API integration |
-| Anonymous Friend Proposals | Approved with major redesign (queued system) — not built yet |
+| Anonymous Friend Proposals | Implemented — `friend_suggestions` table, `suggest-friend-match` edge function, `SuggestMatchScreen` UI, 7PM conversion in `generate-proposals` |
 
 ---
 
@@ -213,6 +218,9 @@ Target: `src/components/community/proposal/ProposalReviewView.tsx`. Uses Reanima
 ## Cleanup
 
 - [ ] RESOURCES.md: remove Sarah Tavel link (Medium 403) and Coffee Meets Bagel / CIO Dive link (JS-only)
+- [x] Delete legacy `src/utils/shadows.ts` (dual-layer system, zero imports — removed)
+- [x] Standardize overlay values in GuideOverlay and InfoModal to use `OVERLAYS` constants
+- [x] Invite message redesign — rotating variants with curiosity-driven copy
 
 ---
 

@@ -185,3 +185,23 @@
 - [Eva Icons Figma](https://www.figma.com/community/file/1037713680282700724/icon-design-system-eva-icons) — Figma community file for the Eva Icons design system — useful for icon customization and design exploration
 - [UseAnimations (Lottie)](https://useanimations.com/) — Animated micro-interaction icons built with Lottie — useful for loading states, toggles, and engagement feedback
 - [Phosphor Icons](https://phosphoricons.com/) — Flexible icon family with six weights (thin to fill) — good alternative/supplement to Eva Icons
+
+## Referral & Invite Psychology
+
+- [Referral Marketing Psychology (ReferralCandy)](https://www.referralcandy.com/blog/referral-marketing-psychology) — Social currency, reciprocity, and curiosity gap principles that drive word-of-mouth — directly applicable to Bridge's SMS invite copy
+- [The Psychology of Sharing (NYT Customer Insight Group)](https://www.iab.com/wp-content/uploads/2015/07/POSWhitePaper.pdf) — Research on why people share: self-expression, relationship nurturing, social currency — foundational for invite message design
+- [Dropbox Referral Program Case Study (Viral Loops)](https://viral-loops.com/blog/dropbox-referral-program) — How Dropbox's two-sided referral grew signups 60% — tactical patterns for incentive-free referral (relevant to Bridge's free beta)
+- [SMS Marketing Best Practices (Twilio)](https://www.twilio.com/blog/sms-marketing-best-practices) — 160-char limit, personalization, CTA placement, opt-out compliance — critical constraints for Bridge's SMS invite flow
+
+## Shadow, Depth & Elevation Design
+
+- [Material Design 3 — Elevation](https://m3.material.io/styles/elevation/overview) — Google's elevation system: tonal color + shadow, 5 levels, dark mode depth via surface tint rather than shadow
+- [iOS Shadow Design Patterns (Medium)](https://medium.com/lookup-design/a-guide-to-shadows-in-ios-d2e0f537a2e5) — iOS-specific shadow tuning: shadowColor warmth, offset direction, opacity ranges, layered shadows for realism
+- [Designing Depth in UI (UX Collective)](https://uxdesign.cc/the-ultimate-guide-to-shadows-in-ui-design-8e0d0b17b6a7) — Comprehensive guide to shadow psychology, depth hierarchy, ambient vs key shadows, and dark mode considerations
+- [React Native Shadow Performance](https://reactnative.dev/docs/shadow-props) — Official RN shadow props docs — iOS shadowColor/Offset/Opacity/Radius, Android elevation limitations
+
+## Animated Press Interactions
+
+- [Designing Touch Feedback (Google I/O)](https://material.io/blog/touch-feedback-design) — Why press feedback matters: 100ms response budget, visual affordance, state communication through motion
+- [Apple HIG — Responsive Design](https://developer.apple.com/design/human-interface-guidelines/buttons) — Apple's button interaction guidelines: visual feedback on press, spring animations, accessibility considerations
+- [Reanimated withSpring Deep Dive](https://docs.swmansion.com/react-native-reanimated/docs/animations/withSpring) — Spring parameter tuning for press interactions: damping (bounce), stiffness (snap), mass (weight)

@@ -160,11 +160,10 @@ serve(async (req: Request) => {
       .update({ has_unread_user: true })
       .eq('user_id', userId);
 
-    // Set this user as the current reply target so founder can just reply naturally
+    // Set this user as the current reply target so founder can just reply naturally (upsert to guarantee row exists)
     await supabaseAdmin
       .from('support_reply_context')
-      .update({ current_user_id: userId, updated_at: new Date().toISOString() })
-      .eq('id', 1);
+      .upsert({ id: 1, current_user_id: userId, updated_at: new Date().toISOString() });
 
     // Get user's first name for SMS
     let firstName = 'User';

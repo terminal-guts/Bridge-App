@@ -19,12 +19,14 @@ export interface NormalizedContact {
   id: string;
   name: string;
   phoneNumber: string;
+  emails?: string[];
   imageUri?: string;
   isOnBridge: boolean;
   bridgeUserId?: string;
   isAlreadyFriend: boolean;
   isInvited: boolean;
   invitedAt?: number; // epoch ms when invited
+  hasRiceEmail?: boolean;
 }
 
 export interface ContactSection {
@@ -111,7 +113,7 @@ export const markMultipleAsInvited = async (phoneNumbers: string[]): Promise<voi
  */
 export const fetchAndNormalizeContacts = async (): Promise<NormalizedContact[]> => {
   const { data } = await Contacts.getContactsAsync({
-    fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name, Contacts.Fields.Image],
+    fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name, Contacts.Fields.Image, Contacts.Fields.Emails],
     sort: Contacts.SortTypes.FirstName,
   });
 
@@ -135,15 +137,20 @@ export const fetchAndNormalizeContacts = async (): Promise<NormalizedContact[]> 
 
     const invitedAt = invitedMap[normalized];
 
+    const contactEmails = contact.emails?.map((e: any) => e.email).filter(Boolean) || [];
+    const hasRiceEmail = contactEmails.some((e: string) => e.toLowerCase().endsWith('@rice.edu'));
+
     contacts.push({
       id: contact.id ?? normalized,
       name,
       phoneNumber: phone,
+      emails: contactEmails.length > 0 ? contactEmails : undefined,
       imageUri: contact.image?.uri || undefined,
       isOnBridge: false,
       isAlreadyFriend: false,
       isInvited: invitedAt !== undefined,
       invitedAt: invitedAt || undefined,
+      hasRiceEmail,
     });
   }
 
@@ -260,18 +267,18 @@ export const groupContactsAlphabetically = (contacts: NormalizedContact[]): Cont
  * (multiple phone numbers = close contact), plus On Bridge users.
  */
 export const getSuggestedContacts = (contacts: NormalizedContact[]): NormalizedContact[] => {
-  // Filter to real people (not businesses, not already invited/on Bridge)
+  // Only suggest contacts with rice.edu emails (not businesses, not already invited/on Bridge)
   const candidates = contacts.filter((c) => {
+    if (!c.hasRiceEmail) return false; // rice.edu only
     const words = c.name.split(/\s+/);
-    if (words.length < 2 || words.length > 4) return false; // skip single-word or very long names
-    if (c.name === c.name.toUpperCase()) return false; // skip "DOMINOS PIZZA"
-    if (c.isOnBridge) return false; // shown in On Bridge section
-    if (c.isInvited) return false; // already invited
+    if (words.length < 2 || words.length > 4) return false;
+    if (c.name === c.name.toUpperCase()) return false;
+    if (c.isOnBridge) return false;
+    if (c.isInvited) return false;
     return true;
   });
 
-  // Score contacts: prefer those with photos (closer contact) and shorter names
-  // Contacts with photos are people you've interacted with more on your device
+  // Score: photos (closer contact), shorter names
   const scored = candidates.map((c) => ({
     contact: c,
     score: (c.imageUri ? 10 : 0) + (c.name.split(/\s+/).length <= 3 ? 2 : 0),
@@ -303,15 +310,53 @@ export const composeSmsInvite = async (
 };
 
 /**
+ * Invite message variants — rotated to keep messages feeling personal
+ * when a user sends multiple invites. Each variant is under 160 chars
+ * (before link) to avoid SMS splitting.
+ *
+ * Principles:
+ * - Lead with the friend relationship, not the app
+ * - Create a curiosity gap ("your friends help you find your person")
+ * - Feel like a text from a friend, not a referral campaign
+ * - Align with Bridge brand voice: warm, down-to-earth, community
+ * - NEVER use the word "dating" — it's too intimidating. Keep it warm.
+ */
+const INVITE_VARIANTS = [
+  (name: string) =>
+    `${name}I'm on this app called Bridge where your friends actually help you find your person. It takes like 5 min a day — join my crew`,
+  (name: string) =>
+    `${name}Ok you need to get on Bridge. Your friends vote on who'd be good for you and it's honestly fun. I want you on my team`,
+  (name: string) =>
+    `${name}Have you heard of Bridge? Your friends help match you with people instead of you swiping through strangers. I need you on mine`,
+  (name: string) =>
+    `${name}So there's this app Bridge where your friend group helps you find your person. No swiping, just your friends looking out for you. Come join`,
+];
+
+let variantIndex = 0;
+
+/**
  * Build the invite message text (shared by SMS and Share sheet)
+ *
+ * Rotates through message variants so batch invites don't feel copy-pasted.
+ * Each message is personal, curiosity-driven, and under SMS split threshold.
  */
 export const buildInviteMessage = async (
   friendCode: string,
   senderName?: string,
 ): Promise<string> => {
-  const name = senderName ? `Hey it's ${senderName}! ` : '';
+  const namePrefix = senderName ? `Hey it's ${senderName}! ` : '';
+  const variant = INVITE_VARIANTS[variantIndex % INVITE_VARIANTS.length];
+  variantIndex++;
+
+  const body = variant(namePrefix);
+
   const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-  const inviteLink = supabaseUrl ? `${supabaseUrl}/functions/v1/invite-redirect?code=${friendCode}` : '';
-  const linkLine = inviteLink ? `\n\nJoin here: ${inviteLink}` : `\n\nAdd me with my code: ${friendCode}`;
-  return `${name}Join me on Bridge — it's a dating app where your friends pick who you date. 100+ people are already on it.${linkLine}`;
+  const inviteLink = supabaseUrl
+    ? `${supabaseUrl}/functions/v1/invite-redirect?code=${friendCode}`
+    : '';
+  const linkLine = inviteLink
+    ? `\n\n${inviteLink}`
+    : `\n\nUse my code: ${friendCode}`;
+
+  return `${body}${linkLine}`;
 };

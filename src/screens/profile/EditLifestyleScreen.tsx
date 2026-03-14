@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { View, TouchableOpacity, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { NavigationProp } from '@react-navigation/native';
@@ -11,7 +11,6 @@ import { COLORS } from '../../theme/colors';
 import { SectionScreenWrapper } from './sections/SectionScreenWrapper';
 import { useEditProfile } from './sections/useEditProfile';
 import { LifestyleSection } from './sections/LifestyleSection';
-import { CustomInputModal } from './sections/CustomInputModal';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -34,8 +33,6 @@ interface EditLifestyleScreenProps {
 
 export const EditLifestyleScreen: React.FC<EditLifestyleScreenProps> = ({ navigation }) => {
   const { profile, setProfile, loading, updateProfile, originalProfileJson } = useEditProfile();
-  const [showCustomChildrenModal, setShowCustomChildrenModal] = useState(false);
-  const [showCustomFamilyPlansModal, setShowCustomFamilyPlansModal] = useState(false);
 
   const handleUpdateDrinking = useCallback((value: string) => {
     updateProfile({ drinkingFrequency: value });
@@ -137,30 +134,6 @@ export const EditLifestyleScreen: React.FC<EditLifestyleScreenProps> = ({ naviga
         </StyledView>
       </Card>
 
-      <CustomInputModal
-        visible={showCustomChildrenModal}
-        title="Custom Children Status"
-        subtitle="Enter your children status"
-        placeholder="Type your children status"
-        onClose={() => setShowCustomChildrenModal(false)}
-        onSubmit={(value) => {
-          updateProfile({ hasChildren: value });
-          mediumHaptic();
-          setShowCustomChildrenModal(false);
-        }}
-      />
-      <CustomInputModal
-        visible={showCustomFamilyPlansModal}
-        title="Custom Family Plans"
-        subtitle="Enter your family plans"
-        placeholder="Type your family plans"
-        onClose={() => setShowCustomFamilyPlansModal(false)}
-        onSubmit={(value) => {
-          updateProfile({ familyPlans: value });
-          mediumHaptic();
-          setShowCustomFamilyPlansModal(false);
-        }}
-      />
     </SectionScreenWrapper>
   );
 };

@@ -6,6 +6,7 @@ import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EvaIcon } from '../icons';
 import { COLORS } from '../../theme/colors';
+import { OVERLAYS } from '../../theme/shadows';
 
 interface InfoModalProps {
   visible: boolean;
@@ -55,7 +56,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
       statusBarTranslucent
     >
       {/* Backdrop with blur effect */}
-      <StyledView className="flex-1 justify-center items-center px-6" style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}>
+      <StyledView className="flex-1 justify-center items-center px-6" style={{ backgroundColor: OVERLAYS.heavy }}>
         <StyledTouchableOpacity
           className="absolute inset-0"
           activeOpacity={1}

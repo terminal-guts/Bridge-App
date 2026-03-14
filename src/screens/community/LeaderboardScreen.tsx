@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { EvaIcon } from '../../components/icons';
+import { IconScoutIcon } from '../../components/icons/IconScoutIcon';
 import { StaggerItem } from '../../hooks/useStaggeredList';
 import { RootStackParamList } from '../../types';
 import { Image } from 'expo-image';
@@ -70,8 +71,9 @@ const toLeaderboardUser = (
   avatarUrl: entry.photoUrl,
   isCurrentUser,
   isFriend: entry.isFriend,
-  isAnonymous: entry.isAnonymous ?? false,
+  isAnonymous: isCurrentUser ? false : (entry.isAnonymous ?? false),
 });
+
 
 const INITIAL_COLORS = ['#437FFF', '#34C759', '#FF9500', '#AF52DE', '#FF3B30', '#5AC8FA', '#FF2D55', '#667085'];
 const getInitialColor = (name: string): string => {
@@ -204,7 +206,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
   }, [loadData]);
 
   const currentUserIndex = useMemo(() => data.findIndex(u => u.isCurrentUser), [data]);
-  const currentUserRank = currentUserData?.rank ?? (currentUserIndex >= 0 ? currentUserIndex + 1 : data.length);
+  const currentUserRank = currentUserIndex >= 0 ? currentUserIndex + 1 : (currentUserData?.rank ?? data.length);
   const currentUser = currentUserIndex >= 0 ? data[currentUserIndex] : null;
   const ptsBehindFirst = currentUserData?.spotsBehindFirst ?? 0;
 
@@ -416,7 +418,9 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
 
                   {/* 1st place */}
                   <View style={s.podiumCenter}>
-                    <Text style={s.crownEmoji}>👑</Text>
+                    <View style={s.crownIconWrap}>
+                      <IconScoutIcon name="torch-5303281" size={36} />
+                    </View>
                     <View style={s.avatarWrapperLarge}>
                       <View style={[s.avatarRing, s.avatarRingGold]}>
                         {top3[0]?.avatarUrl ? (
@@ -654,7 +658,7 @@ const s = StyleSheet.create({
   },
   podiumSide: { alignItems: 'center', flex: 1 },
   podiumCenter: { alignItems: 'center', flex: 1, marginBottom: 8 },
-  crownEmoji: { fontSize: FONT_SIZES['6xl'], marginBottom: 6 },
+  crownIconWrap: { alignItems: 'center', marginBottom: 6 },
 
   // Avatar wrappers
   avatarWrapperLarge: { position: 'relative', marginBottom: 10 },
@@ -928,4 +932,5 @@ const s = StyleSheet.create({
     fontSize: 10,
     lineHeight: 12,
   },
+
 });

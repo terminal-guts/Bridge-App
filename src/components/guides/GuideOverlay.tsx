@@ -13,6 +13,7 @@ import { Spotlight } from './Spotlight';
 import { Tooltip } from './Tooltip';
 import { SpotlightDimensions } from '../../types/guides';
 import { createLogger } from '../../utils/secureLogger';
+import { OVERLAYS } from '../../theme/shadows';
 
 const logger = createLogger('GuideOverlay');
 
@@ -159,7 +160,7 @@ export const GuideOverlay: React.FC = () => {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.55)', // 55% for better visibility
+                backgroundColor: OVERLAYS.medium, // 50% — centralized overlay constant
               }}
               pointerEvents="none"
             />

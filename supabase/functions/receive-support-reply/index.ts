@@ -63,11 +63,10 @@ serve(async (req: Request) => {
 
       userId = convRows[0].user_id;
 
-      // Update reply context to this user
+      // Update reply context to this user (upsert to guarantee row exists)
       await supabaseAdmin
         .from('support_reply_context')
-        .update({ current_user_id: userId, updated_at: new Date().toISOString() })
-        .eq('id', 1);
+        .upsert({ id: 1, current_user_id: userId, updated_at: new Date().toISOString() });
 
       // If they just typed #xxxx with no message, confirm the switch
       if (!replyContent) {

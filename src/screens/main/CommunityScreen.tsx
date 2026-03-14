@@ -29,7 +29,7 @@ import { ProfileCompletionBanner } from '../../components/profile/ProfileComplet
 import { useGuide } from '../../hooks/useGuide';
 import { beginnerTourGuide } from '../../config/guides';
 import { CommunitySkeleton } from '../../components/ui/SkeletonLoader';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { OVERLAYS } from '../../theme/shadows';
 import { ScreenWrapper } from '../../components/ui';
@@ -768,7 +768,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 60, width: '100%' },
+  emptyContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 24 },
   emptyLottie: {
     width: 260,
     height: 260,
@@ -777,21 +777,21 @@ const styles = StyleSheet.create({
   emptyHeroText: {
     fontFamily: FONTS.bold,
     fontWeight: '700',
-    fontSize: FONT_SIZES['5xl'],
-    lineHeight: 34,
-    color: '#0B1226',
+    fontSize: FONT_SIZES['4xl'],
+    lineHeight: LINE_HEIGHTS['4xl'],
+    color: COLORS.text.heading,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
+    letterSpacing: -0.3,
     width: '100%',
   },
   emptySubtext: {
     fontFamily: FONTS.regular,
-    fontSize: FONT_SIZES.lg,
-    lineHeight: 22,
-    color: '#667085',
+    fontSize: FONT_SIZES.base,
+    lineHeight: LINE_HEIGHTS.base,
+    color: COLORS.text.light,
     textAlign: 'center',
-    marginBottom: 24,
-    width: '100%',
+    marginBottom: 28,
   },
   tagline: { fontFamily: FONTS.semiBold, fontSize: FONT_SIZES['3xl'], lineHeight: 26, color: '#0B1226', textAlign: 'center', marginBottom: 12 },
   illustration: { width: 300, height: 300, marginBottom: 32 },
@@ -888,14 +888,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    width: '100%',
+    width: 280,
+    height: 50,
+    borderRadius: 9999,
+    shadowColor: COLORS.primaryButton,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    elevation: 4,
     marginBottom: 24,
   },
   inviteContactsButtonText: {
     fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.lg,
+    fontSize: FONT_SIZES.xl,
     color: COLORS.card,
   },
   headerTitle: {

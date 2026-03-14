@@ -154,6 +154,35 @@ export const SHADOWS = {
   } as ViewStyle,
 } as const;
 
+// ── Shadow Level Types ──────────────────────────────────────────
+// For component-level shadow API: <Card shadow="lg">
+
+/** Neutral elevation levels */
+export type ShadowLevel = 'none' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
+
+/** All shadow keys including accent glows */
+export type ShadowKey = keyof typeof SHADOWS;
+
+/** Resolve any ShadowKey to its ViewStyle */
+export function resolveShadow(shadow: ShadowKey): ViewStyle {
+  return SHADOWS[shadow];
+}
+
+// ── Animated Depth Constants (iOS) ──────────────────────────────
+// Used by AnimatedPressable for press-in/press-out shadow transitions.
+// Values are [resting, pressed] pairs for interpolation.
+
+export const DEPTH_PARAMS = {
+  sm:  { opacity: 0.08, radius: 3, offsetY: 1 },
+  md:  { opacity: 0.12, radius: 4, offsetY: 2 },
+  lg:  { opacity: 0.18, radius: 8, offsetY: 3 },
+  xl:  { opacity: 0.22, radius: 14, offsetY: 6 },
+  xxl: { opacity: 0.26, radius: 20, offsetY: 8 },
+} as const;
+
+/** Press-in depth reduction factor (40% reduction feels like pressing into surface) */
+export const DEPTH_PRESS_FACTOR = 0.4;
+
 // ── Glow Shadow Helper ──────────────────────────────────────────
 // For one-off colored glows (streak rings, fire icons, etc.)
 
