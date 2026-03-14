@@ -27,6 +27,55 @@ const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledSwitch = styled(Switch);
 
+const SettingRow = ({
+  icon,
+  title,
+  subtitle,
+  onPress,
+  showArrow = true,
+  toggle,
+  toggleValue,
+  onToggle,
+}: {
+  icon: string;
+  title: string;
+  subtitle?: string;
+  onPress?: () => void;
+  showArrow?: boolean;
+  toggle?: boolean;
+  toggleValue?: boolean;
+  onToggle?: (value: boolean) => void;
+}) => (
+  <StyledTouchableOpacity
+    onPress={toggle ? undefined : onPress}
+    disabled={toggle && !onPress}
+    className="py-3"
+  >
+    <StyledView className="flex-row items-center">
+      <StyledView className="w-10 h-10 bg-neutral-100 rounded-lg items-center justify-center mr-3">
+        <EvaIcon name={icon} variant="outline" size={20} color="#667085" />
+      </StyledView>
+      <StyledView className="flex-1">
+        <Body className="text-neutral-900 mb-1">{title}</Body>
+        {subtitle && (
+          <Body className="text-neutral-500 text-sm">{subtitle}</Body>
+        )}
+      </StyledView>
+      {toggle ? (
+        <StyledSwitch
+          value={toggleValue}
+          onValueChange={(val: boolean) => onToggle?.(val)}
+          trackColor={{ false: '#D0D5DD', true: COLORS.primaryAccent }}
+          thumbColor="white"
+          ios_backgroundColor="#D0D5DD"
+        />
+      ) : showArrow ? (
+        <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color="#98A2B3" />
+      ) : null}
+    </StyledView>
+  </StyledTouchableOpacity>
+);
+
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [tutorialEnabled, setTutorialEnabled] = useState(false);
@@ -72,56 +121,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
       logger.error('Failed to get current user:', error);
     }
   };
-
-
-  const SettingRow = ({
-    icon,
-    title,
-    subtitle,
-    onPress,
-    showArrow = true,
-    toggle,
-    toggleValue,
-    onToggle,
-  }: {
-    icon: string;
-    title: string;
-    subtitle?: string;
-    onPress?: () => void;
-    showArrow?: boolean;
-    toggle?: boolean;
-    toggleValue?: boolean;
-    onToggle?: () => void;
-  }) => (
-    <StyledTouchableOpacity
-      onPress={toggle ? undefined : onPress}
-      disabled={toggle && !onPress}
-      className="py-3"
-    >
-      <StyledView className="flex-row items-center">
-        <StyledView className="w-10 h-10 bg-neutral-100 rounded-lg items-center justify-center mr-3">
-          <EvaIcon name={icon} variant="outline" size={20} color="#667085" />
-        </StyledView>
-        <StyledView className="flex-1">
-          <Body className="text-neutral-900 mb-1">{title}</Body>
-          {subtitle && (
-            <Body className="text-neutral-500 text-sm">{subtitle}</Body>
-          )}
-        </StyledView>
-        {toggle ? (
-          <StyledSwitch
-            value={toggleValue}
-            onValueChange={onToggle}
-            trackColor={{ false: '#D0D5DD', true: COLORS.primaryAccent }}
-            thumbColor="white"
-            ios_backgroundColor="#D0D5DD"
-          />
-        ) : showArrow ? (
-          <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color="#98A2B3" />
-        ) : null}
-      </StyledView>
-    </StyledTouchableOpacity>
-  );
 
   return (
     <ScreenWrapper>
@@ -184,7 +183,15 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               subtitle="Friends always see you regardless"
               toggle
               toggleValue={leaderboardVisible}
-              onToggle={() => updatePreference('leaderboardVisible', !leaderboardVisible)}
+              onToggle={async (newValue: boolean) => {
+                selectionHaptic();
+                setLeaderboardVisible(newValue);
+                setShowNameIfWinner(newValue);
+                await notificationPreferencesService.updatePreferences({
+                  leaderboardVisible: newValue,
+                  showNameIfWinner: newValue,
+                });
+              }}
               showArrow={false}
             />
             <SettingRow
@@ -193,9 +200,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               subtitle="Replay the app walkthrough"
               toggle
               toggleValue={tutorialEnabled}
-              onToggle={async () => {
+              onToggle={async (newValue: boolean) => {
                 selectionHaptic();
-                const newValue = !tutorialEnabled;
                 setTutorialEnabled(newValue);
                 if (newValue) {
                   await resetGuide('beginner_tour' as any);
@@ -214,7 +220,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               subtitle="Matches, voting, accuracy bonuses"
               toggle
               toggleValue={matchesEnabled}
-              onToggle={() => updatePreference('matchesEnabled', !matchesEnabled)}
+              onToggle={(val: boolean) => updatePreference('matchesEnabled', val)}
               showArrow={false}
             />
             <SettingRow
@@ -223,16 +229,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               subtitle="New messages and ghosting alerts"
               toggle
               toggleValue={messagesEnabled}
-              onToggle={() => updatePreference('messagesEnabled', !messagesEnabled)}
-              showArrow={false}
-            />
-            <SettingRow
-              icon="trophy"
-              title="Include my name if I win"
-              subtitle="Show your name in weekly winner announcements"
-              toggle
-              toggleValue={showNameIfWinner}
-              onToggle={() => updatePreference('showNameIfWinner', !showNameIfWinner)}
+              onToggle={(val: boolean) => updatePreference('messagesEnabled', val)}
               showArrow={false}
             />
           </Card>

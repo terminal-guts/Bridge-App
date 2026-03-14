@@ -12,6 +12,7 @@ import { H3, Body, Card, Button, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile } from '../../types';
 import RangeSlider from 'rn-range-slider';
+import { AgeRangeStepper } from '../../components/ui/AgeRangeStepper';
 import NetInfo from '@react-native-community/netinfo';
 import { getCurrentUser } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
@@ -43,7 +44,6 @@ const GENDER_OPTIONS = [
   { value: 'genderfluid', label: 'Genderfluid' },
   { value: 'agender', label: 'Agender' },
   { value: 'two_spirit', label: 'Two-Spirit' },
-  { value: 'genderqueer', label: 'Genderqueer' },
 ];
 
 const LIFESTYLE_FREQUENCY_OPTIONS = [
@@ -96,20 +96,30 @@ const COMMON_INTERESTS = [
 
 const ETHNICITY_OPTIONS = [
   'No Preference',
-  'Asian',
-  'Black / African Descent',
+  'Black',
+  'East Asian',
   'Hispanic',
   'Middle Eastern',
   'Native American',
   'Pacific Islander',
   'South Asian',
-  'White',
-  'Caribbean',
-  'East Asian',
   'Southeast Asian',
-  'Central Asian',
-  'North African',
-  'Sub-Saharan African',
+  'White',
+  'Other',
+];
+
+const RELIGION_PREF_OPTIONS = [
+  'No Preference',
+  'Buddhist',
+  'Catholic',
+  'Christian',
+  'Hindu',
+  'Jewish',
+  'Muslim',
+  'Spiritual',
+  'Agnostic',
+  'Atheist',
+  'Other',
 ];
 
 const POLITICAL_OPTIONS = [
@@ -146,6 +156,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
     partnerOtherDrugs: [] as string[],
   });
   const [preferredEthnicities, setPreferredEthnicities] = useState<string[]>([]);
+  const [preferredReligions, setPreferredReligions] = useState<string[]>([]);
   const [interestedInGenders, setInterestedInGenders] = useState<string[]>([]);
   const [preferredPolitics, setPreferredPolitics] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -268,6 +279,9 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         // Load preferred ethnicities
         setPreferredEthnicities(profileResult.data.preferredEthnicities || []);
 
+        // Load preferred religions
+        setPreferredReligions(profileResult.data.preferredReligions || []);
+
         // Load interested in genders
         setInterestedInGenders(profileResult.data.interestedInGenders || []);
 
@@ -292,6 +306,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             partnerOtherDrugs: Array.isArray(originalPrefs.otherDrugs) ? originalPrefs.otherDrugs : (originalPrefs.otherDrugs ? [originalPrefs.otherDrugs] : []),
           },
           preferredEthnicities: profileResult.data.preferredEthnicities || [],
+          preferredReligions: profileResult.data.preferredReligions || [],
           interestedInGenders: profileResult.data.interestedInGenders || [],
           preferredPolitics: profileResult.data.preferredPolitics || [],
         });
@@ -308,12 +323,13 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         preferences,
         partnerPreferences,
         preferredEthnicities,
+        preferredReligions,
         interestedInGenders,
         preferredPolitics,
       });
       setHasUnsavedChanges(currentData !== originalDataRef.current);
     }
-  }, [preferences, partnerPreferences, preferredEthnicities, interestedInGenders, preferredPolitics]);
+  }, [preferences, partnerPreferences, preferredEthnicities, preferredReligions, interestedInGenders, preferredPolitics]);
 
   const handleClose = () => {
     if (hasUnsavedChanges) {
@@ -410,6 +426,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
           otherDrugs: partnerPreferences.partnerOtherDrugs,
         },
         preferredEthnicities: preferredEthnicities,
+        preferredReligions: preferredReligions,
       };
 
       const result = await updateUserProfile(updatedProfile);
@@ -448,11 +465,12 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
       },
       interestedInGenders,
       preferredEthnicities,
+      preferredReligions,
       preferredPolitics,
     };
 
     return calculateMatchPreferencesCompleteness(currentProfile);
-  }, [profile, preferences, partnerPreferences, interestedInGenders, preferredEthnicities, preferredPolitics]);
+  }, [profile, preferences, partnerPreferences, interestedInGenders, preferredEthnicities, preferredReligions, preferredPolitics]);
 
   // Calculate match preferences completion for SAVED profile (for banner visibility)
   // This prevents banner from disappearing until changes are actually saved
@@ -487,7 +505,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
               <Body className="text-xs text-neutral-600">
                 {matchPrefsCompletion.completedCount} of {matchPrefsCompletion.totalCount} completed
               </Body>
-              <Body className="text-xs font-semibold text-purple-600">
+              <Body className="text-xs font-semibold text-primary-600">
                 {matchPrefsCompletion.percentage}%
               </Body>
             </StyledView>
@@ -496,7 +514,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                 className="h-full rounded-full transition-all"
                 style={{
                   width: `${matchPrefsCompletion.percentage}%`,
-                  backgroundColor: '#7C3AED',
+                  backgroundColor: COLORS.primaryAccent,
                 }}
               />
             </StyledView>
@@ -512,17 +530,17 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             <Body className="text-neutral-600 text-sm mb-4">
               Bridge promotes genuine connection
             </Body>
-            <StyledView className="p-4 rounded-lg border bg-purple-50 border-purple-500">
+            <StyledView className="p-4 rounded-lg border bg-primary-50 border-primary-500">
               <StyledView className="flex-row items-center justify-between">
                 <StyledView className="flex-1">
-                  <Body className="text-base font-semibold mb-1 text-purple-700">
+                  <Body className="text-base font-semibold mb-1 text-primary-700">
                     Relationship
                   </Body>
                   <Body className="text-sm text-neutral-600">
                     Long-term relationship
                   </Body>
                 </StyledView>
-                <EvaIcon name="checkmark-circle-2" variant="outline" size={24} color="#9333ea" />
+                <EvaIcon name="checkmark-circle-2" variant="outline" size={24} color="#437FFF" />
               </StyledView>
             </StyledView>
           </Card>
@@ -550,7 +568,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                     }}
                     className={`px-3 py-2 rounded-full border ${
                       isSelected
-                        ? 'bg-purple-500 border-purple-500'
+                        ? 'bg-primary-500 border-primary-500'
                         : 'bg-white border-neutral-300'
                     }`}
                   >
@@ -575,7 +593,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                       lightHaptic();
                       setInterestedInGenders(prev => prev.filter(g => g !== customGender));
                     }}
-                    className="px-3 py-2 rounded-full border bg-purple-500 border-purple-500"
+                    className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
                   >
                     <Body className="text-sm text-white font-medium">{customGender}</Body>
                   </StyledTouchableOpacity>
@@ -593,26 +611,14 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
           {/* Age Range */}
           <Card className="mb-6">
             <H3 className="mb-4">Age Range <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
-            <StyledView className="flex-row justify-between mb-3">
-              <Body className="text-neutral-600">Min: <Body className="text-neutral-900 font-semibold">{preferences.ageMin}</Body></Body>
-              <Body className="text-neutral-600">Max: <Body className="text-neutral-900 font-semibold">{preferences.ageMax}</Body></Body>
-            </StyledView>
-            <StyledView className="px-2">
-              <RangeSlider
-                style={{ width: '100%', height: 40 }}
-                min={18}
-                max={80}
-                step={1}
-                low={preferences.ageMin}
-                high={preferences.ageMax}
-                minRange={1}
-                floatingLabel={false}
-                renderThumb={renderThumb}
-                renderRail={renderRail}
-                renderRailSelected={renderRailSelected}
-                onValueChanged={handleAgeValueChanged}
-              />
-            </StyledView>
+            <AgeRangeStepper
+              min={preferences.ageMin}
+              max={preferences.ageMax}
+              floor={18}
+              ceiling={35}
+              onMinChange={(v) => setPreferences(prev => ({ ...prev, ageMin: v }))}
+              onMaxChange={(v) => setPreferences(prev => ({ ...prev, ageMax: v }))}
+            />
           </Card>
 
           {/* Height Preference */}
@@ -669,7 +675,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                     }}
                     className={`px-3 py-2 rounded-full border ${
                       isSelected
-                        ? 'bg-purple-500 border-purple-500'
+                        ? 'bg-primary-500 border-primary-500'
                         : 'bg-white border-neutral-300'
                     }`}
                   >
@@ -690,7 +696,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                       lightHaptic();
                       setPreferredEthnicities(prev => prev.filter(e => e !== customEthnicity));
                     }}
-                    className="px-3 py-2 rounded-full border bg-purple-500 border-purple-500"
+                    className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
                   >
                     <Body className="text-sm text-white font-medium">{customEthnicity}</Body>
                   </StyledTouchableOpacity>
@@ -702,6 +708,44 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
               >
                 <Body className="text-sm text-neutral-600">+ Other</Body>
               </StyledTouchableOpacity>
+            </StyledView>
+          </Card>
+
+          {/* Preferred Religions */}
+          <Card className="mb-6">
+            <H3 className="mb-2">Religion</H3>
+            <Body className="text-neutral-600 text-sm mb-4">
+              Select the religious beliefs you're open to matching with
+            </Body>
+            <StyledView className="flex-row flex-wrap gap-2.5">
+              {RELIGION_PREF_OPTIONS.map(religion => {
+                const isSelected = preferredReligions.includes(religion);
+                return (
+                  <StyledTouchableOpacity
+                    key={religion}
+                    activeOpacity={1}
+                    onPress={() => {
+                      lightHaptic();
+                      if (isSelected) {
+                        setPreferredReligions(prev => prev.filter(r => r !== religion));
+                      } else if (religion === 'No Preference') {
+                        setPreferredReligions(['No Preference']);
+                      } else {
+                        setPreferredReligions(prev => [...prev.filter(r => r !== 'No Preference'), religion]);
+                      }
+                    }}
+                    className={`px-3 py-2 rounded-full border ${
+                      isSelected
+                        ? 'bg-primary-500 border-primary-500'
+                        : 'bg-white border-neutral-300'
+                    }`}
+                  >
+                    <Body className={`text-sm ${
+                      isSelected ? 'text-white font-medium' : 'text-neutral-700'
+                    }`}>{religion}</Body>
+                  </StyledTouchableOpacity>
+                );
+              })}
             </StyledView>
           </Card>
 
@@ -730,7 +774,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                     }}
                     className={`px-3 py-2 rounded-full border ${
                       isSelected
-                        ? 'bg-purple-500 border-purple-500'
+                        ? 'bg-primary-500 border-primary-500'
                         : 'bg-white border-neutral-300'
                     }`}
                   >
@@ -778,7 +822,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                       }}
                       className={`px-3 py-2 rounded-full border ${
                         isSelected
-                          ? 'bg-purple-500 border-purple-500'
+                          ? 'bg-primary-500 border-primary-500'
                           : 'bg-white border-neutral-300'
                       }`}
                     >
@@ -819,7 +863,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                       }}
                       className={`px-3 py-2 rounded-full border ${
                         isSelected
-                          ? 'bg-purple-500 border-purple-500'
+                          ? 'bg-primary-500 border-primary-500'
                           : 'bg-white border-neutral-300'
                       }`}
                     >
@@ -860,7 +904,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                       }}
                       className={`px-3 py-2 rounded-full border ${
                         isSelected
-                          ? 'bg-purple-500 border-purple-500'
+                          ? 'bg-primary-500 border-primary-500'
                           : 'bg-white border-neutral-300'
                       }`}
                     >
@@ -901,7 +945,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                       }}
                       className={`px-3 py-2 rounded-full border ${
                         isSelected
-                          ? 'bg-purple-500 border-purple-500'
+                          ? 'bg-primary-500 border-primary-500'
                           : 'bg-white border-neutral-300'
                       }`}
                     >
@@ -983,7 +1027,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                 onPress={saveCustomModalValue}
                 className={`flex-1 rounded-lg py-3 items-center ${
                   customInputValue.trim()
-                    ? 'bg-purple-500'
+                    ? 'bg-primary-500'
                     : 'bg-neutral-200'
                 }`}
                 disabled={!customInputValue.trim()}

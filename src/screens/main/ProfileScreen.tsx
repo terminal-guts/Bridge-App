@@ -333,7 +333,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
         );
       });
 
-    }, [loadProfile, loadFriendCount])
+    }, [loadProfile, loadFriendCount, loadBadges])
   );
 
   // Start profile guide ONLY once per session when profile loads
@@ -362,7 +362,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
     if (isMountedRef.current) {
       setRefreshing(false);
     }
-  }, [loadProfile, loadFriendCount]);
+  }, [loadProfile, loadFriendCount, loadBadges]);
 
   // IMPROVED: Handle inline answer editing using AnswerQuestionModal
   const handleEditAnswer = useCallback((question: DeepQuestionAnswer) => {
@@ -675,87 +675,160 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
     if (badges.length === 0) {
       return (
         <StyledView className="px-6 py-12 items-center">
-          <EvaIcon name="award" variant="outline" size={48} color="#D1D5DB" />
-          <H3 style={{ fontFamily: FONTS.semiBold, color: COLORS.text.primary, marginTop: 16, marginBottom: 8 }}>
+          <StyledView style={{
+            width: 80,
+            height: 80,
+            borderRadius: 40,
+            backgroundColor: '#FEF3C7',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 16,
+          }}>
+            <EvaIcon name="award" variant="outline" size={40} color="#F59E0B" />
+          </StyledView>
+          <H3 style={{ fontFamily: FONTS.bold, color: COLORS.text.primary, marginBottom: 8 }}>
             No badges yet
           </H3>
-          <Body style={{ color: COLORS.text.muted, textAlign: 'center', lineHeight: 22 }}>
-            When friends award you badges, they'll show up here. Badges are mini-testimonials that make your profile stand out.
+          <Body style={{ color: COLORS.text.muted, textAlign: 'center', lineHeight: 22, maxWidth: 260 }}>
+            When friends award you badges, they'll appear here as mini-testimonials on your profile.
           </Body>
         </StyledView>
       );
     }
 
-    const renderBadgeRow = (badge: FriendBadgeWithGiver) => (
+    const renderBadgeCard = (badge: FriendBadgeWithGiver, isFeatured: boolean) => (
       <StyledView
         key={badge.id}
         style={{
+          backgroundColor: isFeatured ? '#FFFBEB' : '#FFFFFF',
+          borderRadius: 16,
+          borderWidth: isFeatured ? 1.5 : 1,
+          borderColor: isFeatured ? '#FDE68A' : COLORS.borderSubtle,
+          padding: 16,
+          marginBottom: 10,
           flexDirection: 'row',
           alignItems: 'center',
-          paddingVertical: 14,
-          paddingHorizontal: 4,
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.borderSubtle,
-          gap: 12,
+          gap: 14,
+          ...(isFeatured ? {
+            shadowColor: '#F59E0B',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.12,
+            shadowRadius: 8,
+            elevation: 3,
+          } : {
+            shadowColor: '#4A3428',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 4,
+            elevation: 1,
+          }),
         }}
       >
-        <BadgeIcon name={badge.iconName} size={30} />
+        {/* Icon in tinted circle */}
+        <StyledView style={{
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: isFeatured ? '#FEF3C7' : COLORS.backgroundGray,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: isFeatured ? 1 : 0,
+          borderColor: '#FDE68A',
+        }}>
+          <BadgeIcon name={badge.iconName} size={32} />
+        </StyledView>
+
+        {/* Message + Attribution */}
         <StyledView style={{ flex: 1 }}>
-          <Body style={{ fontFamily: FONTS.medium, color: COLORS.text.primary }} numberOfLines={1}>
-            {badge.message}
+          <Body style={{
+            fontFamily: FONTS.semiBold,
+            fontSize: 15,
+            color: COLORS.text.primary,
+            lineHeight: 20,
+            marginBottom: 4,
+          }} numberOfLines={2}>
+            "{badge.message}"
           </Body>
-          <Body style={{ fontFamily: FONTS.regular, fontSize: 13, color: COLORS.text.muted, marginTop: 2 }}>
-            from {badge.giverFirstName}
+          <Body style={{
+            fontFamily: FONTS.medium,
+            fontSize: 13,
+            color: isFeatured ? '#B45309' : COLORS.text.muted,
+            fontStyle: 'italic',
+          }}>
+            — {badge.giverFirstName}
           </Body>
         </StyledView>
+
+        {/* Star Toggle */}
         <StyledTouchableOpacity
           onPress={() => handleToggleFeaturedBadge(badge)}
-          style={{ padding: 8 }}
           activeOpacity={0.6}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: isFeatured ? '#FEF3C7' : COLORS.backgroundGray,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           <EvaIcon
             name="star"
-            variant={badge.isFeatured ? 'fill' : 'outline'}
+            variant={isFeatured ? 'fill' : 'outline'}
             size={22}
-            color={badge.isFeatured ? '#F59E0B' : COLORS.text.muted}
+            color={isFeatured ? '#F59E0B' : '#D1D5DB'}
           />
         </StyledTouchableOpacity>
       </StyledView>
     );
 
     return (
-      <StyledView className="px-4 py-4">
+      <StyledView className="px-4 py-5">
         {/* Featured Section */}
         {featured.length > 0 && (
-          <StyledView style={{ marginBottom: 20 }}>
-            <Body style={{
-              fontFamily: FONTS.semiBold,
-              fontSize: 13,
-              color: COLORS.text.muted,
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-              marginBottom: 8,
+          <StyledView style={{ marginBottom: 24 }}>
+            <StyledView style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              marginBottom: 12,
             }}>
-              Featured ({featured.length}/3)
-            </Body>
-            {featured.map(b => renderBadgeRow(b))}
+              <EvaIcon name="star" variant="fill" size={16} color="#F59E0B" />
+              <Body style={{
+                fontFamily: FONTS.bold,
+                fontSize: 13,
+                color: '#B45309',
+                textTransform: 'uppercase',
+                letterSpacing: 0.8,
+              }}>
+                Featured ({featured.length}/3)
+              </Body>
+            </StyledView>
+            {featured.map(b => renderBadgeCard(b, true))}
           </StyledView>
         )}
 
-        {/* Unfeatured Badges */}
+        {/* All Badges */}
         {unfeatured.length > 0 && (
           <StyledView style={{ marginBottom: 20 }}>
-            <Body style={{
-              fontFamily: FONTS.semiBold,
-              fontSize: 13,
-              color: COLORS.text.muted,
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-              marginBottom: 8,
+            <StyledView style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              marginBottom: 12,
             }}>
-              All Badges
-            </Body>
-            {unfeatured.map(b => renderBadgeRow(b))}
+              <EvaIcon name="award" variant="outline" size={16} color={COLORS.text.muted} />
+              <Body style={{
+                fontFamily: FONTS.bold,
+                fontSize: 13,
+                color: COLORS.text.muted,
+                textTransform: 'uppercase',
+                letterSpacing: 0.8,
+              }}>
+                All Badges
+              </Body>
+            </StyledView>
+            {unfeatured.map(b => renderBadgeCard(b, false))}
           </StyledView>
         )}
       </StyledView>
@@ -1465,7 +1538,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                 activeTab === 'badges' ? 'text-primary-500' : 'text-neutral-600'
               }`}
             >
-              Badges{badges.length > 0 ? ` (${badges.length})` : ''}
+              Badges
             </Body>
             {activeTab === 'badges' && (
               <StyledView className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500" />

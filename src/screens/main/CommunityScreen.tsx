@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useReducer, useMemo } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Share, Alert, RefreshControl, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, RefreshControl, Modal } from 'react-native';
 import ReanimatedAnimated, {
     useSharedValue,
     useAnimatedStyle,
@@ -21,8 +21,7 @@ import { Image } from 'expo-image';
 import { MainTabParamList } from '../../types';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { communityService } from '../../services/communityServiceIndex';
-import { getUserFriendCode, addFriendByCode } from '../../services/friendService';
-import { buildInviteMessage } from '../../services/contactsService';
+import { getUserFriendCode } from '../../services/friendService';
 import { FriendWithGridStatus } from '../../types/community';
 import { getUserProfile } from '../../services/profileService';
 import { UserProfile } from '../../types';
@@ -39,6 +38,9 @@ import { lightHaptic, successHaptic } from '../../utils/haptics';
 import { getFriendUnreadCount, getBatchUnreadFriendIds } from '../../services/messageService';
 import { getActiveSuggestions } from '../../services/friendProposalService';
 import { showToast } from '../../utils/toast';
+import { BadgeAwardModal } from '../../components/badges/BadgeAwardModal';
+import { getBadgeForFriend } from '../../services/badgeService';
+import { FriendBadge } from '../../types/badges';
 
 // ── Mock leaderboard karma thresholds for rank interpolation ─────────────────
 // Sorted descending — same values as LeaderboardScreen MOCK_WEEKLY
@@ -261,35 +263,22 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [friendCode, setFriendCode] = useState<string>('');
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [showEnterCode, setShowEnterCode] = useState(false);
-  const [enterCodeValue, setEnterCodeValue] = useState('');
-  const [enterCodeError, setEnterCodeError] = useState('');
-  const [addingCode, setAddingCode] = useState(false);
   const [unreadMap, setUnreadMap] = useState<Record<string, boolean>>({});
   const [suggestionsMap, setSuggestionsMap] = useState<Map<string, { suggestedForName: string; status: 'queued' | 'stashed' }>>(new Map());
-  const handleEnterCode = useCallback(async () => {
-    const code = enterCodeValue.trim().toUpperCase();
-    if (!code) { setEnterCodeError('Enter a friend code'); return; }
-    if (!/^BRIDGE-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)) { setEnterCodeError('Format: BRIDGE-XXXX-XXXX'); return; }
-    if (code === friendCode) { setEnterCodeError("That's your own code"); return; }
-    setAddingCode(true);
-    setEnterCodeError('');
-    try {
-      const result = await addFriendByCode(code);
-      if (result.ok) {
-        setEnterCodeValue('');
-        setShowEnterCode(false);
-        Alert.alert('Friend Added!', `${result.data?.friendProfile?.firstName || 'Friend'} is now your friend`);
-      } else {
-        const msg = result.error?.message || 'Failed';
-        setEnterCodeError(msg.includes('already friends') ? 'Already friends' : msg.includes('not found') ? 'Invalid code' : msg);
-      }
-    } catch {
-      setEnterCodeError('Something went wrong');
-    } finally {
-      setAddingCode(false);
+
+  // Badge award modal state
+  const [badgeModalVisible, setBadgeModalVisible] = useState(false);
+  const [badgeTargetFriend, setBadgeTargetFriend] = useState<{ id: string; name: string } | null>(null);
+  const [existingBadge, setExistingBadge] = useState<FriendBadge | null>(null);
+
+  const handleBadgePress = useCallback(async (friendId: string, friendName: string) => {
+    const result = await getBadgeForFriend(friendId);
+    if (result.ok) {
+      setExistingBadge(result.data || null);
     }
-  }, [enterCodeValue, friendCode]);
+    setBadgeTargetFriend({ id: friendId, name: friendName });
+    setBadgeModalVisible(true);
+  }, []);
 
   const loadUnreadCounts = useCallback(async (friends: FriendWithGridStatus[]) => {
     if (!profile?.userId || friends.length === 0) return;
@@ -406,10 +395,10 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
         if (result.ok && result.data) setProfile(result.data);
       });
 
-      await communityService.ready;
-      // Fire both in parallel — getProposalsToVote is only needed if not voted,
-      // but it's cheaper to speculatively fetch than to wait sequentially.
-      const [task, available] = await Promise.all([
+      // Fire voting gate queries in parallel with communityService.ready —
+      // they don't depend on the timer state, just on Supabase auth
+      const [, task, available] = await Promise.all([
+        communityService.ready,
         communityService.getCommunityTaskProgress(),
         communityService.getProposalsToVote(),
       ]);
@@ -538,6 +527,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const crewHandlers = useMemo(() => {
     const viewProfile: Record<string, () => void> = {};
     const chatHandlers: Record<string, () => void> = {};
+    const badgeHandlers: Record<string, () => void> = {};
     for (const user of alreadyHelped) {
       viewProfile[user.friendId] = () =>
         (navigation as any).navigate('ProfileView', { profile: user.friend });
@@ -549,9 +539,11 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           recipientPhoto: user.friend.photos?.[0]?.url,
           isFriendChat: true,
         });
+      badgeHandlers[user.friendId] = () =>
+        handleBadgePress(user.friendId, user.friend.firstName || 'Friend');
     }
-    return { viewProfile, chatHandlers };
-  }, [alreadyHelped, navigation]);
+    return { viewProfile, chatHandlers, badgeHandlers };
+  }, [alreadyHelped, navigation, handleBadgePress]);
 
   if (loading || hasCompletedVoting === null) {
     return (
@@ -619,6 +611,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
               source={require('../../../assets/Icons/AnimatedIcons/add-account.json')}
               autoPlay
               loop
+              speed={0.5}
               style={styles.emptyLottie}
             />
 
@@ -626,7 +619,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
               Add your crew
             </Text>
             <Text style={styles.emptySubtext}>
-              Your friends pick your matches. Share your code or invite from contacts to get started.
+              Your friends pick your matches.{'\n'}Invite from contacts to get started.
             </Text>
 
             {/* Primary CTA — Invite from Contacts */}
@@ -638,54 +631,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
               <EvaIcon name="people" variant="outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
               <Text style={styles.inviteContactsButtonText}>Invite from Contacts</Text>
             </TouchableOpacity>
-
-            {/* Secondary — Share code or enter code */}
-            {friendCode ? (
-              <View style={styles.codeContainer}>
-                <Text style={styles.codeLabel}>YOUR FRIEND CODE</Text>
-                <Text style={styles.codeValue}>{friendCode}</Text>
-                <View style={styles.codeButtonRow}>
-                  <TouchableOpacity
-                    style={styles.enterCodeButton}
-                    onPress={async () => { const msg = await buildInviteMessage(friendCode, profile?.firstName); Share.share({ message: msg }); }}
-                  >
-                    <EvaIcon name="share" variant="outline" size={18} color="#2B65F9" style={{ marginRight: 6 }} />
-                    <Text style={styles.enterCodeButtonText}>Share Code</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.enterCodeButton}
-                    activeOpacity={0.85}
-                    onPress={() => { setShowEnterCode(!showEnterCode); setEnterCodeError(''); }}
-                  >
-                    <Text style={styles.enterCodeButtonText}>Enter a Code</Text>
-                  </TouchableOpacity>
-                </View>
-                {showEnterCode && (
-                  <View style={styles.enterCodeRow}>
-                    <TextInput
-                      style={styles.enterCodeInput}
-                      placeholder="BRIDGE-XXXX-XXXX"
-                      placeholderTextColor={COLORS.text.disabled}
-                      value={enterCodeValue}
-                      onChangeText={(t) => { setEnterCodeValue(t); setEnterCodeError(''); }}
-                      autoCapitalize="characters"
-                      autoCorrect={false}
-                      autoFocus
-                    />
-                    <TouchableOpacity
-                      style={[styles.enterCodeAddBtn, addingCode && { opacity: 0.5 }]}
-                      onPress={handleEnterCode}
-                      disabled={addingCode}
-                    >
-                      <Text style={styles.enterCodeAddBtnText}>{addingCode ? '...' : 'Add'}</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-                {enterCodeError ? (
-                  <Text style={styles.enterCodeErrorText}>{enterCodeError}</Text>
-                ) : null}
-              </View>
-            ) : null}
           </View>
         </ScrollView>
       ) : (
@@ -774,6 +719,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
                     onViewProfile={crewHandlers.viewProfile[user.friendId]}
                     onChat={crewHandlers.chatHandlers[user.friendId]}
+                    onBadgePress={crewHandlers.badgeHandlers[user.friendId]}
                   />
                 </StaggerItem>
             ))}
@@ -800,16 +746,33 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           )}
         </ScrollView>
       )}
+      {/* Badge Award Modal */}
+      {badgeTargetFriend && (
+        <BadgeAwardModal
+          visible={badgeModalVisible}
+          onClose={() => {
+            setBadgeModalVisible(false);
+            setBadgeTargetFriend(null);
+            setExistingBadge(null);
+          }}
+          friendId={badgeTargetFriend.id}
+          friendName={badgeTargetFriend.name}
+          existingBadge={existingBadge}
+          onSuccess={() => {
+            showToast.success('Badge saved!');
+          }}
+        />
+      )}
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingBottom: 40, width: '100%' },
+  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 60, width: '100%' },
   emptyLottie: {
-    width: 200,
-    height: 200,
-    marginBottom: 8,
+    width: 260,
+    height: 260,
+    marginBottom: 16,
   },
   emptyHeroText: {
     fontFamily: FONTS.bold,
@@ -847,85 +810,6 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   ctaText: { fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.lg, color: COLORS.card },
-  codeContainer: {
-    backgroundColor: '#F4F7FF',
-    borderRadius: 16,
-    padding: 20,
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#D1DEFF',
-  },
-  codeLabel: {
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.primaryButton,
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-  codeValue: {
-    fontFamily: FONTS.bold,
-    fontSize: 24,
-    color: COLORS.text.black,
-    marginBottom: 16,
-  },
-  codeButtonRow: {
-    flexDirection: 'row',
-    gap: 10,
-    width: '100%',
-  },
-  enterCodeButton: {
-    flex: 1,
-    backgroundColor: COLORS.card,
-    borderWidth: 1.5,
-    borderColor: COLORS.primaryButton,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  enterCodeButtonText: {
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.base,
-    color: COLORS.primaryButton,
-  },
-  enterCodeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-    width: '100%',
-  },
-  enterCodeInput: {
-    flex: 1,
-    backgroundColor: COLORS.backgroundGray,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontFamily: FONTS.medium,
-    fontSize: FONT_SIZES.base,
-    color: COLORS.text.black,
-    marginRight: 8,
-  },
-  enterCodeAddBtn: {
-    backgroundColor: COLORS.primaryButton,
-    borderRadius: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-  },
-  enterCodeAddBtnText: {
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.base,
-    color: COLORS.card,
-  },
-  enterCodeErrorText: {
-    fontFamily: FONTS.medium,
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.error,
-    marginTop: 4,
-    width: '100%',
-  },
   crewBanner: {
     backgroundColor: COLORS.backgroundFriendActive,
     marginHorizontal: 16,

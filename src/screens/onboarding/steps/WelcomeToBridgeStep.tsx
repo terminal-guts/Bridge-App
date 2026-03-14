@@ -7,6 +7,7 @@ import { EvaIcon } from '../../../components/icons';
 
 interface WelcomeToBridgeStepProps {
   onNext: () => void;
+  onBack: () => void;
 }
 
 const StyledView = styled(View);
@@ -14,12 +15,13 @@ const StyledImage = styled(Image);
 
 export const WelcomeToBridgeStep: React.FC<WelcomeToBridgeStepProps> = ({
   onNext,
+  onBack,
 }) => {
   return (
     <OnboardingLayout
       onContinue={onNext}
+      onBack={onBack}
       continueLabel="Go to Bridge"
-      showBackButton={false}
       hasTextInput={false}
     >
       <StyledView>
@@ -33,46 +35,46 @@ export const WelcomeToBridgeStep: React.FC<WelcomeToBridgeStepProps> = ({
         <H1 className="text-center mt-1">Welcome to Bridge!</H1>
       </StyledView>
 
-      {/* Feature 1: Community Matching */}
+      {/* Feature 1: One Best Match */}
       <Card className="mb-5 p-5">
         <StyledView className="flex-row items-start mb-2">
           <StyledView className="bg-primary-100 p-2 rounded-full mr-3">
-            <EvaIcon name="people" variant="outline" size={24} color="#7C3AED" />
+            <EvaIcon name="sun" variant="outline" size={24} color="#437FFF" />
           </StyledView>
           <StyledView className="flex-1">
-            <H3 className="mb-2">Smarter Matches, Powered By Community</H3>
+            <H3 className="mb-2">One Best Match, Every Day</H3>
             <Body className="text-neutral-600 text-sm">
-              Daily matchmaking grids fuel Bridge's algorithm with real human insight.
+              One thoughtful pairing picked for you each evening.
             </Body>
           </StyledView>
         </StyledView>
       </Card>
 
-      {/* Feature 2: Friend Network */}
+      {/* Feature 2: Friends Vote */}
       <Card className="mb-5 p-5">
         <StyledView className="flex-row items-start mb-2">
           <StyledView className="bg-primary-100 p-2 rounded-full mr-3">
-            <EvaIcon name="link" variant="outline" size={24} color="#7C3AED" />
+            <EvaIcon name="message-circle" variant="outline" size={24} color="#437FFF" />
           </StyledView>
           <StyledView className="flex-1">
-            <H3 className="mb-2">Your People Help You Find Your Person</H3>
+            <H3 className="mb-2">Your Friends Weigh In</H3>
             <Body className="text-neutral-600 text-sm">
-              Nominate matches for friends, endorse their profile, and celebrate their wins.
+              Your community votes before a match is ever sent.
             </Body>
           </StyledView>
         </StyledView>
       </Card>
 
-      {/* Feature 3: 5 minutes a day */}
+      {/* Feature 3: Low time */}
       <Card className="mb-5 p-5">
         <StyledView className="flex-row items-start mb-2">
           <StyledView className="bg-primary-100 p-2 rounded-full mr-3">
-            <EvaIcon name="trending-up" variant="outline" size={24} color="#7C3AED" />
+            <EvaIcon name="flash" variant="outline" size={24} color="#437FFF" />
           </StyledView>
           <StyledView className="flex-1">
-            <H3 className="mb-2">5 minutes a day</H3>
+            <H3 className="mb-2">Done in 5 Minutes</H3>
             <Body className="text-neutral-600 text-sm">
-              No more endless swiping!
+              No endless feed.
             </Body>
           </StyledView>
         </StyledView>

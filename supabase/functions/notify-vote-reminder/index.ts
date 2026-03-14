@@ -50,7 +50,8 @@ Deno.serve(async (req: Request) => {
     // Get all friendships (we need to know who is friends with whom)
     const { data: friendships } = await supabase
       .from('friends')
-      .select('user_id, friend_id, streak_days');
+      .select('user_id, friend_id, streak_days')
+      .eq('status', 'accepted');
 
     if (!friendships) {
       return Response.json({ status: 'success', checked: 0, sent: 0 }, { headers: corsHeaders });

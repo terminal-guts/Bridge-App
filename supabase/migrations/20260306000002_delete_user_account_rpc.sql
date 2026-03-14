@@ -37,6 +37,13 @@ BEGIN
   DELETE FROM user_preferences WHERE user_id = target_user_id;
   DELETE FROM onboarding_progress WHERE user_id = target_user_id;
   DELETE FROM deep_question_answers WHERE user_id = target_user_id;
+
+  -- Friend badges (FKs to user_profiles without CASCADE)
+  BEGIN
+    DELETE FROM friend_badges WHERE giver_id = target_user_id OR receiver_id = target_user_id;
+  EXCEPTION WHEN undefined_table THEN NULL;
+  END;
+
   DELETE FROM user_profiles WHERE user_id = target_user_id;
 
   -- Support tables

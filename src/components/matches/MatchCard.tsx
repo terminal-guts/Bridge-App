@@ -94,6 +94,7 @@ interface MatchCardProps {
     imageUrl: string;
     matchedByAvatars: string[];
     hasUnread?: boolean;
+    celebrate?: boolean;
     onPress?: () => void;
     onDismiss?: () => void;
     onShare?: () => void;
@@ -119,6 +120,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
     imageUrl,
     matchedByAvatars,
     hasUnread,
+    celebrate,
     onPress,
     onDismiss,
     onShare,
@@ -176,10 +178,22 @@ export const MatchCard: React.FC<MatchCardProps> = ({
         actionPressScale.value = withSpring(1, { damping: 12, stiffness: 250 });
     }, []);
 
+    // Celebration bounce — starts at 0.92 and springs to 1 after entrance animation
+    const celebrateScale = useSharedValue(1);
+    useEffect(() => {
+        if (celebrate) {
+            celebrateScale.value = 0.92;
+            const timer = setTimeout(() => {
+                celebrateScale.value = withSpring(1, SPRINGS.bouncy);
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [celebrate]);
+
     // Animated styles
     const cardAnimStyle = useAnimatedStyle(() => ({
         opacity: fadeAnim.value,
-        transform: [{ translateY: slideAnim.value }, { scale: pressScale.value }],
+        transform: [{ translateY: slideAnim.value }, { scale: pressScale.value * celebrateScale.value }],
     }));
     const actionBtnAnimStyle = useAnimatedStyle(() => ({
         transform: [{ scale: pulseAnim.value * actionPressScale.value }],
@@ -196,10 +210,11 @@ export const MatchCard: React.FC<MatchCardProps> = ({
             <View style={[styles.accentLine, { backgroundColor: accentColor }]} />
             <ImageBackground
                 source={{ uri: optimizedImageUrl }}
-                style={StyleSheet.absoluteFillObject}
+                style={[StyleSheet.absoluteFillObject, { backgroundColor: '#E5E7EB' }]}
                 contentFit="cover"
                 transition={200}
                 cachePolicy="disk"
+                recyclingKey={name}
             >
                 {/* #3 — Top vignette for badge legibility on bright photos */}
                 <LinearGradient
@@ -272,7 +287,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                                             <View key={i} style={[styles.avatarShadowWrap, { marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }]}>
                                                 <Image
                                                     source={{ uri: optimizedAvatarUrl }}
-                                                    style={styles.avatarCircle}
+                                                    style={[styles.avatarCircle, { backgroundColor: '#E5E7EB' }]}
                                                     contentFit="cover"
                                                     transition={200}
                                                     cachePolicy="disk"

@@ -8,8 +8,8 @@
  */
 
 import { supabase } from '../lib/supabase';
-import { createDevelopmentData, cleanupDevelopmentData } from './developmentDataService';
-import { currentUserProfile } from './mockData';
+// developmentDataService removed — use real Supabase data
+// mockData removed — all dev helpers use real Supabase data
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAuthenticatedUserId } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
@@ -66,9 +66,7 @@ export const resetAllData = async (): Promise<void> => {
   const userId = await getCurrentUserId();
   if (!userId) return;
 
-  logger.info('[DevService] 🧹 Resetting all data...');
-  await cleanupDevelopmentData(userId);
-  logger.info('[DevService] ✅ All data reset');
+  logger.info('[DevService] 🧹 Reset not available — developmentDataService removed');
 };
 
 /**
@@ -78,9 +76,7 @@ export const generateMockData = async (): Promise<void> => {
   const userId = await getCurrentUserId();
   if (!userId) return;
 
-  logger.info('[DevService] 🚀 Generating mock data...');
-  await createDevelopmentData(userId, true);
-  logger.info('[DevService] ✅ Mock data generated');
+  logger.info('[DevService] 🚀 Mock data generation not available — developmentDataService removed');
 };
 
 /**
@@ -190,7 +186,7 @@ export const getAppState = async (): Promise<any> => {
   const [profile, matches, friends] = await Promise.all([
     supabase.from('user_profiles').select('id, first_name, is_paused, karma_score').eq('user_id', userId).single(),
     supabase.from('matches').select('id').or(`user_id_1.eq.${userId},user_id_2.eq.${userId}`),
-    supabase.from('friends').select('id').eq('user_id', userId),
+    supabase.from('friends').select('id').eq('user_id', userId).eq('status', 'accepted'),
   ]);
 
   return {
@@ -244,41 +240,6 @@ export const getMockLoveTabState = async (): Promise<MockLoveTabState | null> =>
  * once the session is established.
  */
 export const signInAsAlex = async (): Promise<{ success: boolean; error?: string }> => {
-  try {
-    const { data, error } = await supabase.auth.signInAnonymously();
-    if (error) {
-      logger.error('[DevService] signInAnonymously error:', error.message);
-      return { success: false, error: error.message };
-    }
-
-    const userId = data?.user?.id;
-    if (!userId) {
-      return { success: false, error: 'No user ID returned from sign-in' };
-    }
-
-    // Fill the profile with Alex's data
-    await supabase.from('user_profiles').upsert({
-      user_id: userId,
-      photos: currentUserProfile.photos,
-      interests: currentUserProfile.interests,
-      values: currentUserProfile.values,
-    }, { onConflict: 'user_id' });
-
-    // Fill Alex's deep question answers
-    const answers: Record<number, string> = {};
-    for (const q of currentUserProfile.deepQuestions ?? []) {
-      answers[q.questionId] = q.answer;
-    }
-    await supabase.from('deep_question_answers').upsert({
-      user_id: userId,
-      answers,
-      displayed_question_ids: currentUserProfile.displayedQuestions ?? [],
-    }, { onConflict: 'user_id' });
-
-    logger.info('[DevService] ✅ Signed in as Alex (user ID:', userId, ')');
-    return { success: true };
-  } catch (err: any) {
-    logger.error('[DevService] Error signing in as Alex:', err);
-    return { success: false, error: err.message };
-  }
+  logger.info('[DevService] signInAsAlex not available — mockData removed');
+  return { success: false, error: 'Mock data removed — use real accounts' };
 };

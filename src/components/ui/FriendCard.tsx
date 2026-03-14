@@ -13,11 +13,11 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { styled } from 'nativewind';
 import { FriendWithGridStatus } from '../../types/community';
-import { lightHaptic } from '../../utils/haptics';
+import { lightHaptic, warningHaptic } from '../../utils/haptics';
 import {
     COLORS,
     STREAK_TIERS,
@@ -57,6 +57,7 @@ interface FriendCardProps {
     onViewProfile?: () => void;
     onStreakMilestone?: (days: number, friendName: string) => void;
     onBadgePress?: () => void;
+    onRemoveFriend?: () => void;
 }
 
 export const FriendCard = React.memo<FriendCardProps>(({
@@ -70,6 +71,7 @@ export const FriendCard = React.memo<FriendCardProps>(({
     onViewProfile,
     onStreakMilestone,
     onBadgePress,
+    onRemoveFriend,
 }) => {
     // Normalize data
     const name = friend.friend?.firstName || friend.name || 'Friend';
@@ -95,10 +97,26 @@ export const FriendCard = React.memo<FriendCardProps>(({
         else if (onHelpMatch) onHelpMatch();
     };
 
+    const handleLongPress = () => {
+        if (!onRemoveFriend) return;
+        warningHaptic();
+        Alert.alert(
+            'Remove Friend',
+            `Remove ${name}? They won't be notified.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Remove', style: 'destructive', onPress: onRemoveFriend },
+            ],
+        );
+    };
+
     const streakDisplay = streak > 0 ? getStreakDisplay(streak) : null;
 
     return (
-        <StyledView
+        <StyledTouchable
+            activeOpacity={0.9}
+            onLongPress={onRemoveFriend ? handleLongPress : undefined}
+            delayLongPress={500}
             style={[
                 styles.container,
                 { backgroundColor: variant === 'completed' ? COLORS.COMPLETED_BG : COLORS.PENDING_BG }
@@ -177,7 +195,7 @@ export const FriendCard = React.memo<FriendCardProps>(({
                     </StyledView>
                 )}
             </StyledView>
-        </StyledView>
+        </StyledTouchable>
     );
 });
 

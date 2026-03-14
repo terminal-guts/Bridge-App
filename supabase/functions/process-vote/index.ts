@@ -172,6 +172,7 @@ Deno.serve(async (req: Request) => {
     const { data: friendRows } = await supabase
       .from('friends')
       .select('user_id, friend_id')
+      .eq('status', 'accepted')
       .or(`user_id.eq.${voterId},friend_id.eq.${voterId}`);
 
     const voterFriends = new Set<string>();

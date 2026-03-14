@@ -5,7 +5,7 @@ import { H1, H3, Body, Card } from '../../../components/ui';
 import { OnboardingData, LifestylePreferences } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import { EvaIcon } from '../../../components/icons';
-import { WineGlassIcon, LeafIcon, CigaretteIcon, PillIcon } from '../../../components/icons/Icons';
+import { WineGlassIcon, CigaretteIcon, PillIcon } from '../../../components/icons/Icons';
 
 interface LifestyleStepProps {
   data: Partial<OnboardingData>;
@@ -179,7 +179,7 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-        <H1 className="mb-3">Lifestyle</H1>
+        <H1 className="mb-3">What's your lifestyle?</H1>
         <Body className="text-neutral-600 mb-8">
           Share your lifestyle habits.
         </Body>
@@ -193,7 +193,7 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
         <QuestionSection
           title="Cannabis"
           field="cannabis"
-          customIcon={<LeafIcon size={24} color="#437FFF" style={{ marginRight: 10 }} />}
+          icon="smiling-face"
         />
 
         <QuestionSection

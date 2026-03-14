@@ -5,9 +5,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
+  Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { Button } from '../ui';
 import { TouchableOpacity as RNTouchableOpacity } from 'react-native';
@@ -47,6 +48,12 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   keyboardPersistent = false,
   topPadding,
 }) => {
+  const insets = useSafeAreaInsets();
+  // iPhone 13 = 844pt, footer padding that looks right there is ~24pt + 34pt safe area = 58pt (~6.9%)
+  // Scale proportionally: subtract safe area inset so we don't double-count it
+  const screenHeight = Dimensions.get('window').height;
+  const footerPaddingBottom = Math.max(16, Math.round(screenHeight * 0.069) - insets.bottom);
+
   // Start with keyboard visible for persistent keyboard pages to prevent layout shift
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(keyboardPersistent);
 
@@ -136,7 +143,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
                 className="px-6 bg-neutral-50"
                 style={{
                   paddingTop: 16,
-                  paddingBottom: 16,  // Let KeyboardAvoidingView handle positioning naturally
+                  paddingBottom: isKeyboardVisible ? 16 : footerPaddingBottom + insets.bottom,
                   borderTopWidth: 1,
                   borderTopColor: COLORS.backgroundGray,
                 }}
@@ -205,8 +212,10 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
         {/* Continue Button - Sticky footer at bottom */}
         {!hideContinueButton && (
           <StyledView
-            className="px-6 py-6 bg-neutral-50"
+            className="px-6 bg-neutral-50"
             style={{
+              paddingTop: 16,
+              paddingBottom: footerPaddingBottom,
               borderTopWidth: 1,
               borderTopColor: COLORS.backgroundGray,
             }}

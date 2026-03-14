@@ -336,14 +336,18 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
         return;
       }
       const { data: rpcData, error } = await supabase
-        .rpc('add_friend_by_code', { friend_code: codeRow.code });
+        .rpc('send_friend_request', { friend_code: codeRow.code });
       const row = rpcData?.[0];
       if (error || (!row?.success && !row?.message?.includes('already friends'))) {
         setContacts((prev) => prev.map((c) => c.id === contact.id ? { ...c, isAlreadyFriend: false } : c));
-        showToast.error('Error', row?.message || 'Could not add friend');
+        showToast.error('Error', row?.message || 'Could not send request');
         return;
       }
-      showToast.success('Friend added!', `${contact.name} is now your friend on Bridge`);
+      if (row?.was_auto_accepted) {
+        showToast.success('Friend added!', `${contact.name} is now your friend on Bridge`);
+      } else {
+        showToast.success('Request sent!', `Friend request sent to ${contact.name}`);
+      }
     } catch (err) {
       logger.error('Add friend failed:', err);
       setContacts((prev) => prev.map((c) => c.id === contact.id ? { ...c, isAlreadyFriend: false } : c));
@@ -412,7 +416,7 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
       setContacts((prev) => prev.map((c) =>
         c.bridgeUserId && addedUserIds.has(c.bridgeUserId) ? { ...c, isAlreadyFriend: true } : c
       ));
-      showToast.success('Friends added!', `Added ${addedUserIds.size} friend${addedUserIds.size === 1 ? '' : 's'}`);
+      showToast.success('Requests sent!', `Sent ${addedUserIds.size} friend request${addedUserIds.size === 1 ? '' : 's'}`);
     }
     setAddingAll(false);
   }, [contacts]);
@@ -442,7 +446,11 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
         setEnterCodeValue('');
         const name = result.data?.friendProfile?.firstName || 'Friend';
         setAddedFriends((prev) => [...prev, name]);
-        showToast.success('Friend added!', `${name} is now your friend`);
+        if (result.data?.wasAutoAccepted) {
+          showToast.success('Friend added!', `${name} is now your friend`);
+        } else {
+          showToast.success('Request sent!', `Friend request sent to ${name}`);
+        }
       } else {
         const msg = result.error?.message || 'Failed to add friend';
         setEnterCodeError(msg.includes('already friends') ? 'Already friends' : msg.includes('not found') ? 'Invalid code' : msg);
@@ -666,9 +674,6 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
           <Button onPress={handleContinue} variant="primary" size="lg" fullWidth>
             Continue
           </Button>
-          <StyledTouchableOpacity onPress={handleSkip} className="items-center py-3">
-            <Body className="text-neutral-500 text-sm">Skip for now</Body>
-          </StyledTouchableOpacity>
         </StyledView>
       </StyledSafeAreaView>
     );
@@ -786,9 +791,6 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
           <Button onPress={handleContinue} variant="primary" size="lg" fullWidth>
             Continue
           </Button>
-          <StyledTouchableOpacity onPress={handleSkip} className="items-center py-3">
-            <Body className="text-neutral-500 text-sm">Skip for now</Body>
-          </StyledTouchableOpacity>
         </StyledView>
       </KeyboardAvoidingView>
     </StyledSafeAreaView>

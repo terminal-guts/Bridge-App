@@ -93,7 +93,7 @@ export const InterestsStep: React.FC<InterestsStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-      <H1 className="mb-3">What Are Your Interests</H1>
+      <H1 className="mb-3">What are your interests?</H1>
       <Body className="text-neutral-500 text-sm mb-2">
         Select at least 3 - add custom interests later.
       </Body>

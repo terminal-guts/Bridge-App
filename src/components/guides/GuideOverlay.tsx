@@ -16,7 +16,7 @@ import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('GuideOverlay');
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const getScreenDimensions = () => Dimensions.get('window');
 
 export const GuideOverlay: React.FC = () => {
   const {
@@ -54,6 +54,8 @@ export const GuideOverlay: React.FC = () => {
    * Calculate spotlight dimensions
    */
   const spotlightDimensions = useMemo((): SpotlightDimensions | null => {
+    const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = getScreenDimensions();
+
     if (step?.highlightType === 'none') {
       logger.info('[GuideOverlay] No spotlight - highlightType:', step?.highlightType);
       return null;

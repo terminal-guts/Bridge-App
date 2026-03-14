@@ -76,6 +76,7 @@ import { SectionCard, MatchIcon, ValueBox, ComparisonValueRow, EthnicityComparis
 import { ProposalPhotoCard, PHOTO_HEIGHT, PHOTO_RADIUS } from './ProposalPhotoCard';
 import { QuestionCarousel } from './QuestionCarousel';
 import { LiveVoteBar } from './LiveVoteBar';
+import { BadgeComparisonSection } from '../../badges/BadgeComparisonSection';
 
 const logger = createLogger('ProposalReviewView');
 
@@ -650,6 +651,12 @@ export function ProposalReviewView({
 
           </View>
         </View>
+
+        {/* ── Friend Badges (side-by-side comparison) ─────────────── */}
+        <BadgeComparisonSection
+          userAId={userA.userId}
+          userBId={userB.userId}
+        />
 
         {/* ── Questions (Deep Questions with card reveal) ─────────────── */}
         {deepQuestions && deepQuestions.length > 0 && (

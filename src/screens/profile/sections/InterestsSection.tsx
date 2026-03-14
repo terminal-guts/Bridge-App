@@ -15,28 +15,15 @@ const StyledText = styled(Text);
 const MIN_INTERESTS = 3;
 const MAX_INTERESTS = 5;
 
-const AVAILABLE_INTERESTS = [
-  // Activities
-  'Tennis', 'Golf', 'Running', 'Yoga', 'Hiking', 'Skiing',
-  'Basketball', 'Lifting', 'Live Sports', 'Watching Sports',
-
-  // Culture & Entertainment
-  'Museums', 'Theater', 'Live Music', 'Comedy Shows',
-  'Film', 'Reading', 'Photography',
-
-  // Food & Drink
-  'Cooking', 'Coffee', 'Cocktails', 'Fine Dining', 'Brunch',
-
-  // Travel & Adventure
-  'Travel', 'Camping',
-
-  // Lifestyle
-  'Startups', 'Investing', 'Real Estate', 'Fashion', 'Meditation', 'Podcasts',
-
-  // Social
-  'Dinner Parties', 'Game Nights', 'Dancing', 'Trivia Nights',
-  'Poker', 'Video Games',
+const INTEREST_GROUPS = [
+  { label: 'Sports & Fitness', items: ['Tennis', 'Golf', 'Running', 'Yoga', 'Hiking', 'Skiing', 'Basketball', 'Lifting', 'Live Sports', 'Watching Sports'] },
+  { label: 'Culture', items: ['Museums', 'Theater', 'Live Music', 'Comedy Shows', 'Film', 'Reading', 'Photography'] },
+  { label: 'Food & Drink', items: ['Cooking', 'Coffee', 'Cocktails', 'Fine Dining', 'Brunch'] },
+  { label: 'Lifestyle', items: ['Travel', 'Camping', 'Startups', 'Investing', 'Real Estate', 'Fashion', 'Meditation', 'Podcasts'] },
+  { label: 'Social', items: ['Dinner Parties', 'Game Nights', 'Dancing', 'Trivia Nights', 'Poker', 'Video Games'] },
 ];
+
+const AVAILABLE_INTERESTS = INTEREST_GROUPS.flatMap(g => g.items);
 
 // Convert to Set for O(1) lookup instead of O(n)
 const AVAILABLE_INTERESTS_SET = new Set(AVAILABLE_INTERESTS);
@@ -78,41 +65,53 @@ export const InterestsSection = React.memo<InterestsSectionProps>(({
         Select or add your interests (Select {MIN_INTERESTS}-{MAX_INTERESTS})
       </Body>
 
-      {/* Available Interests Grid */}
-      <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
-        {AVAILABLE_INTERESTS.map((interest) => (
-          <SimpleChip
-            key={interest}
-            label={interest}
-            selected={interestsSet.has(interest)}
-            onPress={() => handleToggleInterest(interest)}
-          />
-        ))}
+      {/* Grouped Interests */}
+      {INTEREST_GROUPS.map((group) => (
+        <StyledView key={group.label} className="mb-5">
+          <Body className="text-neutral-400 text-xs font-semibold tracking-wider mb-2.5">{group.label}</Body>
+          <StyledView className="flex-row flex-wrap" style={{ gap: 10 }}>
+            {group.items.map((interest) => (
+              <SimpleChip
+                key={interest}
+                label={interest}
+                selected={interestsSet.has(interest)}
+                onPress={() => handleToggleInterest(interest)}
+              />
+            ))}
+          </StyledView>
+        </StyledView>
+      ))}
 
-        {/* Custom interests (not in predefined list) */}
-        {customInterests.map((customInterest) => (
-          <StyledTouchableOpacity
-            key={customInterest}
-            activeOpacity={1}
-            delayPressIn={0}
-            onPress={() => handleRemoveCustomInterest(customInterest)}
-            className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
-          >
-            <Body className="text-sm text-white font-medium">{customInterest}</Body>
-          </StyledTouchableOpacity>
-        ))}
+      {/* Custom interests */}
+      {customInterests.length > 0 && (
+        <StyledView className="mb-5">
+          <Body className="text-neutral-400 text-xs font-semibold tracking-wider mb-2.5">Custom</Body>
+          <StyledView className="flex-row flex-wrap" style={{ gap: 10 }}>
+            {customInterests.map((customInterest) => (
+              <StyledTouchableOpacity
+                key={customInterest}
+                activeOpacity={1}
+                delayPressIn={0}
+                onPress={() => handleRemoveCustomInterest(customInterest)}
+                className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
+              >
+                <Body className="text-sm text-white font-medium">{customInterest}</Body>
+              </StyledTouchableOpacity>
+            ))}
+          </StyledView>
+        </StyledView>
+      )}
 
-        {/* "Other" Button */}
-        <StyledTouchableOpacity
-          onPress={() => {
-            lightHaptic();
-            onShowCustomInterestModal();
-          }}
-          className="px-3 py-2 rounded-full border border-dashed border-neutral-400 bg-neutral-50"
-        >
-          <Body className="text-sm text-neutral-600">+ Other</Body>
-        </StyledTouchableOpacity>
-      </StyledView>
+      {/* "Other" Button */}
+      <StyledTouchableOpacity
+        onPress={() => {
+          lightHaptic();
+          onShowCustomInterestModal();
+        }}
+        className="px-3 py-2 rounded-full border border-dashed border-neutral-400 bg-neutral-50 self-start"
+      >
+        <Body className="text-sm text-neutral-600">+ Other</Body>
+      </StyledTouchableOpacity>
     </Card>
   );
 });

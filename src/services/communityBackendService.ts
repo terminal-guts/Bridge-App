@@ -353,11 +353,11 @@ class CommunityBackendService {
 
         const userA: UserProfile = raw.user_a_profile
           ? mapProfileRow(raw.user_a_profile)
-          : { id: raw.user_a_id, firstName: 'User A', photos: [] } as any;
+          : { id: raw.user_a_id, userId: raw.user_a_id, firstName: 'User A', photos: [] } as any;
 
         const userB: UserProfile = raw.user_b_profile
           ? mapProfileRow(raw.user_b_profile)
-          : { id: raw.user_b_id, firstName: 'User B', photos: [] } as any;
+          : { id: raw.user_b_id, userId: raw.user_b_id, firstName: 'User B', photos: [] } as any;
 
 
         profilesToResolve.push(userA, userB);
@@ -469,11 +469,13 @@ class CommunityBackendService {
       supabase
         .from('friends')
         .select('id, user_id, friend_id, added_at, streak_days, last_mutual_date, streak_frozen')
-        .eq('user_id', userId),
+        .eq('user_id', userId)
+        .eq('status', 'accepted'),
       supabase
         .from('friends')
         .select('id, user_id, friend_id, added_at, streak_days, last_mutual_date, streak_frozen')
-        .eq('friend_id', userId),
+        .eq('friend_id', userId)
+        .eq('status', 'accepted'),
     ]);
 
     // Merge both directions and deduplicate by friend ID (bidirectional rows exist)
@@ -732,6 +734,7 @@ class CommunityBackendService {
       ]);
       const rawProposals = result.proposals || [];
 
+
       const filteredRaw = rawProposals.filter((raw: any) => {
         const partnerId = raw.user_a_id === userId ? raw.user_b_id : raw.user_a_id;
         return !blockedIds.includes(partnerId);
@@ -872,7 +875,7 @@ class CommunityBackendService {
     // Single query for both directions using .or()
     const { data: matches } = await supabase
       .from('matches')
-      .select('*')
+      .select('id, user_id_1, user_id_2, status, proposal_id, created_at')
       .or(`user_id_1.eq.${userId},user_id_2.eq.${userId}`)
       .in('status', ['active', 'accepted'])
       .limit(1);
@@ -891,7 +894,7 @@ class CommunityBackendService {
 
     // Fire partner profile, message count, and endorser queries ALL in parallel
     const [{ data: partnerRow }, { count: messageCount }, endorserData] = await Promise.all([
-      supabase.from('user_profiles').select('*').eq('user_id', partnerId).maybeSingle(),
+      supabase.from('user_profiles').select('user_id, first_name, last_name, age, gender, pronouns, location, current_job, profile_photo_path, photos, interests, values, bio').eq('user_id', partnerId).maybeSingle(),
       supabase.from('messages').select('id', { count: 'exact', head: true }).eq('match_id', match.id),
       match.proposal_id
         ? supabase.from('proposal_votes').select('voter_user_id').eq('proposal_id', match.proposal_id).eq('vote_type', 'YES').limit(3)

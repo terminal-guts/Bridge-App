@@ -97,7 +97,7 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
             <StyledView className="items-center mb-2">
               <StyledImage
                 source={require('../../../../assets/favicon.png')}
-                style={{ width: 64, height: 64 }}
+                style={{ width: 80, height: 80 }}
                 resizeMode="contain"
               />
             </StyledView>
@@ -110,16 +110,16 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
           {renderOption(
             'full',
             'people',
-            'Find My Match',
-            'Enter the matching pool so the community can find your match. You\'ll also vote on matches for others.',
+            'Standard',
+            'Get matched and match your friends.',
             500,
           )}
 
           {renderOption(
             'match_others_only',
-            'hand-left',
-            'Match Others Only',
-            'Help the community by voting on matches for others. You won\'t appear in the matching pool yourself.',
+            'heart',
+            'In a Relationship',
+            'Match your friends without being in the pool.',
             650,
           )}
         </StyledView>

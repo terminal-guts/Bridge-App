@@ -102,10 +102,18 @@ export async function getEligibleFriends(): Promise<UserProfile[]> {
 /**
  * Get the current user's active friend suggestions (for displaying status on friend cards).
  * Returns a map of userId -> { suggestedForName, status }.
+ * Cached in-memory for 60s to avoid redundant DB hits on tab switches.
  */
+let suggestionsCache: { data: Map<string, { suggestedForName: string; status: 'queued' | 'stashed' }>; ts: number } | null = null;
+const SUGGESTIONS_CACHE_TTL = 60_000;
+
 export async function getActiveSuggestions(): Promise<
   Map<string, { suggestedForName: string; status: 'queued' | 'stashed' }>
 > {
+  if (suggestionsCache && Date.now() - suggestionsCache.ts < SUGGESTIONS_CACHE_TTL) {
+    return suggestionsCache.data;
+  }
+
   const result = new Map<string, { suggestedForName: string; status: 'queued' | 'stashed' }>();
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -117,7 +125,10 @@ export async function getActiveSuggestions(): Promise<
       .eq('suggested_by', user.id)
       .in('status', ['queued', 'stashed']);
 
-    if (!suggestions?.length) return result;
+    if (!suggestions?.length) {
+      suggestionsCache = { data: result, ts: Date.now() };
+      return result;
+    }
 
     // Get names for the suggested users
     const userIds = new Set<string>();
@@ -144,5 +155,6 @@ export async function getActiveSuggestions(): Promise<
   } catch {
     // Non-blocking
   }
+  suggestionsCache = { data: result, ts: Date.now() };
   return result;
 }

@@ -22,7 +22,7 @@ export function KarmaInfoModal({ visible, onClose }: KarmaInfoModalProps) {
           </View>
 
           <Text style={styles.body}>
-            Your Karma reflects how much you've helped others find matches. The higher your score, the more matches you'll receive.
+            Your Karma reflects how much you've helped others find matches. The higher your score, the higher quality matches you'll receive.
           </Text>
 
           <TouchableOpacity style={styles.btn} onPress={onClose} activeOpacity={0.85}>

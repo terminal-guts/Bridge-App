@@ -42,7 +42,7 @@ Deno.serve(async (req: Request) => {
     ] = await Promise.all([
       supabase.from('blocked_users').select('blocked_user_id').eq('user_id', userId),
       supabase.from('blocked_users').select('user_id').eq('blocked_user_id', userId),
-      supabase.from('friends').select('user_id, friend_id').or(`user_id.eq.${userId},friend_id.eq.${userId}`),
+      supabase.from('friends').select('user_id, friend_id').eq('status', 'accepted').or(`user_id.eq.${userId},friend_id.eq.${userId}`),
       supabase.from('proposal_votes').select('proposal_id').eq('voter_user_id', userId),
       supabase.from('friend_recommendations').select('source_proposal_id').eq('recommender_id', userId),
       supabase.from('proposals').select('*').eq('status', 'pending'),

@@ -53,7 +53,7 @@ const ChatScreen = withSuspense(React.lazy(() => import('../screens/match/ChatSc
 const SettingsScreen = withSuspense(React.lazy(() => import('../screens/profile/SettingsScreen').then(m => ({ default: m.SettingsScreen }))));
 
 // Match sub-screens
-const MatchRevealScreen = withSuspense(React.lazy(() => import('../screens/match/MatchRevealScreen').then(m => ({ default: m.MatchRevealScreen }))));
+// MatchRevealScreen removed — dead code, real flow uses MatchProposalScreen
 
 const MatchProposalScreen = withSuspense(React.lazy(() => import('../screens/match/MatchProposalScreen').then(m => ({ default: m.MatchProposalScreen }))));
 
@@ -461,9 +461,7 @@ export const AppNavigator = () => {
         invalidateProfileCache();
         setCachedUserId(session.user.id);
         setupNotifications();
-        if (__DEV__ && FEATURES.DEVELOPMENT_CREATE_MOCK_DATA) {
-          import('../services/developmentDataService').then(m => m.createDevelopmentData(session.user.id));
-        }
+        // Development mock data creation removed — use real Supabase data
       } else if (event === 'SIGNED_OUT' && wasAuthenticated) {
         clearCachedUserId();
         invalidateProfileCache();
@@ -522,7 +520,7 @@ export const AppNavigator = () => {
           <Stack.Screen name="PhoneVerification" component={PhoneVerificationScreen} options={fadeTransition} />
 
           {/* Onboarding — fade in from auth flow */}
-          <Stack.Screen name="Onboarding" component={OnboardingScreen} options={fadeTransition} />
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ ...fadeTransition, gestureEnabled: false }} />
 
           {/* Main App — fade in from auth/onboarding */}
           <Stack.Screen name="MainTabs" component={MainTabs} options={fadeTransition} />
@@ -531,7 +529,7 @@ export const AppNavigator = () => {
           <Stack.Screen name="FriendProposal" component={FriendProposalScreen} />
 
           {/* Match Screens */}
-          <Stack.Screen name="MatchReveal" component={MatchRevealScreen} />
+          {/* MatchReveal removed — dead screen, real flow uses MatchProposal */}
           <Stack.Screen name="MatchProposal" component={MatchProposalScreen} />
           <Stack.Screen name="ProposalProfile" component={ProfileMatchScreen} options={{ headerShown: false, ...modalSlideUp }} />
 

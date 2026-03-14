@@ -190,7 +190,7 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
       hasTextInput={false}
     >
       <StyledScrollView className="mt-8" showsVerticalScrollIndicator={false}>
-        <H1 className="mb-3">Add Your Photos</H1>
+        <H1 className="mb-3">What do you look like?</H1>
         <Body className="text-neutral-500 text-sm mb-6">
           Add up to {MAX_PHOTOS} photos. Your first photo will be your main profile photo.
         </Body>

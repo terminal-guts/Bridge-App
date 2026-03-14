@@ -22,12 +22,18 @@ interface BadgeCardProps {
   badge: FriendBadgeWithGiver;
   revealAuthor?: boolean;
   compact?: boolean;
+  /** Hide the giver name entirely — used in public contexts like proposal voting */
+  hideGiverName?: boolean;
+  /** Override max lines for the message text (default: compact ? 1 : 2) */
+  maxLines?: number;
 }
 
 export const BadgeCard: React.FC<BadgeCardProps> = React.memo(({
   badge,
   revealAuthor = false,
   compact = false,
+  hideGiverName = false,
+  maxLines,
 }) => {
   const [revealed, setRevealed] = useState(false);
   const translateY = useSharedValue(0);
@@ -41,8 +47,10 @@ export const BadgeCard: React.FC<BadgeCardProps> = React.memo(({
     opacity: authorOpacity.value,
   }));
 
+  const canReveal = revealAuthor && !hideGiverName;
+
   const handlePress = () => {
-    if (!revealAuthor || revealed) return;
+    if (!canReveal || revealed) return;
     lightHaptic();
     setRevealed(true);
     translateY.value = withSpring(-2, { damping: 15, stiffness: 150 });
@@ -55,19 +63,19 @@ export const BadgeCard: React.FC<BadgeCardProps> = React.memo(({
   return (
     <TouchableOpacity
       onPress={handlePress}
-      activeOpacity={revealAuthor && !revealed ? 0.7 : 1}
-      disabled={!revealAuthor || revealed}
+      activeOpacity={canReveal && !revealed ? 0.7 : 1}
+      disabled={!canReveal || revealed}
     >
       <Animated.View style={[styles.container, compact && styles.containerCompact, liftStyle]}>
         <BadgeIcon name={badge.iconName} size={iconSize} />
         <Text
           style={[styles.message, { fontSize }]}
-          numberOfLines={compact ? 1 : 2}
+          numberOfLines={maxLines ?? (compact ? 1 : 2)}
         >
           {badge.message}
         </Text>
       </Animated.View>
-      {revealAuthor && revealed && (
+      {revealAuthor && !hideGiverName && revealed && (
         <Animated.View style={[styles.authorContainer, authorStyle]}>
           <Text style={styles.authorText}>— {badge.giverFirstName}</Text>
         </Animated.View>

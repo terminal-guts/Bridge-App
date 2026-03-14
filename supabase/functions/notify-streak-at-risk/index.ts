@@ -45,6 +45,7 @@ Deno.serve(async (req: Request) => {
     const { data: streaks, error: streakErr } = await supabase
       .from('friends')
       .select('user_id, friend_id, streak_days')
+      .eq('status', 'accepted')
       .gt('streak_days', 0);
 
     if (streakErr) throw streakErr;

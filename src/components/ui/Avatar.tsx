@@ -51,11 +51,12 @@ export const Avatar: React.FC<AvatarProps> = ({
     <StyledImage
       source={{ uri: optimizedUri }}
       className={`${roundedClass} ${className}`}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, backgroundColor: '#E5E7EB' }}
       blurRadius={blurRadius}
       contentFit="cover"
       transition={200}
       cachePolicy="disk"
+      recyclingKey={uri}
       onError={(e) => {
         logger.warn('Failed to load image:', uri);
         setHasError(true);

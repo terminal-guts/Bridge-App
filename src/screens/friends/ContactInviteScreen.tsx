@@ -247,6 +247,7 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
   const [addingCode, setAddingCode] = useState(false);
   const [celebrationCount, setCelebrationCount] = useState(0);
   const [addingFriendId, setAddingFriendId] = useState<string | null>(null);
+  const enterCodeInputRef = useRef<TextInput>(null);
 
   // Load friend code + sender name on mount
   useEffect(() => {
@@ -289,14 +290,18 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
       try {
         const { supabase } = await import('../../lib/supabase');
         const { data, error } = await supabase
-          .rpc('add_friend_by_code', { friend_code: code.toUpperCase() });
+          .rpc('send_friend_request', { friend_code: code.toUpperCase() });
         const row = data?.[0];
         if (!error && (row?.success || row?.message?.includes('already friends'))) {
-          processedCodeRef.current = code; // Only mark processed on success
-          showToast.success('Friend added!', 'You were connected via invite link');
+          processedCodeRef.current = code;
+          if (row?.was_auto_accepted) {
+            showToast.success('Friend added!', 'You were connected via invite link');
+          } else {
+            showToast.success('Request sent!', 'Friend request sent via invite link');
+          }
         } else {
-          processedCodeRef.current = code; // Mark processed — server rejected it
-          showToast.error('Could not add friend', row?.message || 'Invalid code');
+          processedCodeRef.current = code;
+          showToast.error('Could not send request', row?.message || 'Invalid code');
         }
       } catch {
         // Don't mark processed — allow retry on network failure
@@ -363,16 +368,20 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
       }
 
       const { data, error } = await supabase
-        .rpc('add_friend_by_code', { friend_code: codeRow.code });
+        .rpc('send_friend_request', { friend_code: codeRow.code });
 
       const row = data?.[0];
       if (error || (!row?.success && !row?.message?.includes('already friends'))) {
         setContacts((prev) => prev.map((c) => c.id === contact.id ? { ...c, isAlreadyFriend: false } : c));
-        showToast.error('Error', row?.message || 'Could not add friend');
+        showToast.error('Error', row?.message || 'Could not send request');
         return;
       }
 
-      showToast.success('Friend added!', `${contact.name} is now your friend on Bridge`);
+      if (row?.was_auto_accepted) {
+        showToast.success('Friend added!', `${contact.name} is now your friend on Bridge`);
+      } else {
+        showToast.success('Request sent!', `Friend request sent to ${contact.name}`);
+      }
     } catch (err) {
       logger.error('Add friend failed:', err);
       setContacts((prev) => prev.map((c) => c.id === contact.id ? { ...c, isAlreadyFriend: false } : c));
@@ -459,7 +468,11 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
       if (result.ok) {
         setEnterCodeValue('');
         const name = result.data?.friendProfile?.firstName || 'Friend';
-        showToast.success('Friend added!', `${name} is now your friend`);
+        if (result.data?.wasAutoAccepted) {
+          showToast.success('Friend added!', `${name} is now your friend`);
+        } else {
+          showToast.success('Request sent!', `Friend request sent to ${name}`);
+        }
       } else {
         const msg = result.error?.message || 'Failed to add friend';
         setEnterCodeError(msg.includes('already friends') ? 'Already friends' : msg.includes('not found') ? 'Invalid code' : msg);
@@ -510,7 +523,7 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
       setContacts((prev) => prev.map((c) =>
         c.bridgeUserId && addedUserIds.has(c.bridgeUserId) ? { ...c, isAlreadyFriend: true } : c
       ));
-      showToast.success('Friends added!', `Added ${count} friend${count === 1 ? '' : 's'} from Bridge`);
+      showToast.success('Requests sent!', `Sent ${count} friend request${count === 1 ? '' : 's'}`);
     }
     setAddingAll(false);
   }, [contacts]);
@@ -614,50 +627,161 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
 
       {/* Permission: undetermined */}
       {!loading && permissionStatus !== 'granted' && permissionStatus !== 'denied' && (
-        <StyledView className="flex-1 items-center justify-center px-8">
-          <StyledView className="w-20 h-20 bg-primary-100 rounded-full items-center justify-center mb-4">
-            <EvaIcon name="people" variant="outline" color="primary" size={36} />
+        <StyledView className="flex-1 px-8 pt-12">
+          {/* Friend code card */}
+          {friendCode ? (
+            <StyledView
+              className="bg-primary-50 rounded-2xl px-6 pt-5 pb-6 items-center mb-8"
+              style={{ borderWidth: 1, borderColor: 'rgba(67, 127, 255, 0.12)' }}
+            >
+              <StyledText className="text-xs font-bold text-primary-400 tracking-widest mb-1">YOUR FRIEND CODE</StyledText>
+              <StyledText style={{ fontSize: FONT_SIZES['3xl'], fontFamily: FONTS.extraBold, color: '#0B1226', letterSpacing: -0.5, marginBottom: 16 }}>
+                {friendCode}
+              </StyledText>
+              <StyledView className="flex-row" style={{ gap: 12 }}>
+                <StyledTouchableOpacity
+                  className="flex-1 flex-row items-center justify-center py-3 rounded-xl"
+                  style={{ borderWidth: 1.5, borderColor: COLORS.primaryAccent }}
+                  onPress={handleShareCode}
+                >
+                  <EvaIcon name="share" variant="outline" size={18} color={COLORS.primaryAccent} />
+                  <StyledText className="ml-2 font-semibold text-sm" style={{ color: COLORS.primaryAccent }}>Share Code</StyledText>
+                </StyledTouchableOpacity>
+                <StyledTouchableOpacity
+                  className="flex-1 flex-row items-center justify-center py-3 rounded-xl"
+                  style={{ borderWidth: 1.5, borderColor: COLORS.primaryAccent }}
+                  onPress={() => enterCodeInputRef.current?.focus()}
+                >
+                  <StyledText className="font-semibold text-sm" style={{ color: COLORS.primaryAccent }}>Enter a Code</StyledText>
+                </StyledTouchableOpacity>
+              </StyledView>
+            </StyledView>
+          ) : null}
+
+          {/* Enter code input */}
+          <StyledView className="flex-row items-center mb-4">
+            <StyledView className="flex-1 flex-row items-center bg-neutral-100 rounded-lg px-3 py-2 mr-2">
+              <TextInput
+                ref={enterCodeInputRef}
+                style={{ flex: 1, fontSize: FONT_SIZES.base, color: '#0B1226' }}
+                placeholder="Enter friend code"
+                placeholderTextColor={COLORS.text.disabled}
+                value={enterCodeValue}
+                onChangeText={(t: string) => { setEnterCodeValue(t); setEnterCodeError(''); }}
+                autoCapitalize="characters"
+                autoCorrect={false}
+              />
+            </StyledView>
+            <StyledTouchableOpacity
+              className={`px-4 py-2 rounded-lg ${addingCode ? 'bg-primary-300' : 'bg-primary-500'}`}
+              onPress={handleEnterCode}
+              disabled={addingCode}
+            >
+              <StyledText className="text-white text-sm font-semibold">
+                {addingCode ? '...' : 'Add'}
+              </StyledText>
+            </StyledTouchableOpacity>
           </StyledView>
-          <StyledText className="text-lg font-semibold text-neutral-900 text-center mb-2">
-            Your Friends Are Waiting
-          </StyledText>
-          {bridgeUserCount > 0 ? (
-            <StyledText className="text-sm text-neutral-600 text-center mb-6">
-              {bridgeUserCount} {bridgeUserCount === 1 ? 'person is' : 'people are'} already on Bridge.
-              See which of your contacts have joined and invite the rest via SMS.
+          {enterCodeError ? (
+            <StyledText className="text-red-500 text-xs mb-4 -mt-2">{enterCodeError}</StyledText>
+          ) : null}
+
+          {/* Contacts access prompt */}
+          <StyledView className="items-center mt-6">
+            <StyledView className="w-16 h-16 bg-primary-100 rounded-full items-center justify-center mb-3">
+              <EvaIcon name="people" variant="outline" color="primary" size={30} />
+            </StyledView>
+            <StyledText className="text-base font-semibold text-neutral-900 text-center mb-1">
+              Find friends from your contacts
             </StyledText>
-          ) : (
-            <StyledText className="text-sm text-neutral-600 text-center mb-6">
-              Invite your friends to Bridge via SMS. The more friends you have, the better your matches get. We never store or upload your contacts.
+            <StyledText className="text-sm text-neutral-500 text-center mb-4">
+              {bridgeUserCount > 0
+                ? `${bridgeUserCount} ${bridgeUserCount === 1 ? 'person is' : 'people are'} already on Bridge`
+                : 'We never store or upload your contacts'}
             </StyledText>
-          )}
-          <StyledTouchableOpacity
-            className="bg-primary-500 px-6 py-3 rounded-xl"
-            onPress={handleRequestPermission}
-          >
-            <StyledText className="text-white font-semibold">Allow Access</StyledText>
-          </StyledTouchableOpacity>
+            <StyledTouchableOpacity
+              className="bg-primary-500 px-6 py-3 rounded-xl"
+              onPress={handleRequestPermission}
+            >
+              <StyledText className="text-white font-semibold">Allow Contacts Access</StyledText>
+            </StyledTouchableOpacity>
+          </StyledView>
         </StyledView>
       )}
 
       {/* Permission: denied */}
       {!loading && permissionStatus === 'denied' && (
-        <StyledView className="flex-1 items-center justify-center px-8">
-          <StyledView className="w-20 h-20 bg-neutral-200 rounded-full items-center justify-center mb-4">
-            <EvaIcon name="slash" variant="outline" color="text" size={36} />
+        <StyledView className="flex-1 px-8 pt-12">
+          {/* Friend code card */}
+          {friendCode ? (
+            <StyledView
+              className="bg-primary-50 rounded-2xl px-6 pt-5 pb-6 items-center mb-8"
+              style={{ borderWidth: 1, borderColor: 'rgba(67, 127, 255, 0.12)' }}
+            >
+              <StyledText className="text-xs font-bold text-primary-400 tracking-widest mb-1">YOUR FRIEND CODE</StyledText>
+              <StyledText style={{ fontSize: FONT_SIZES['3xl'], fontFamily: FONTS.extraBold, color: '#0B1226', letterSpacing: -0.5, marginBottom: 16 }}>
+                {friendCode}
+              </StyledText>
+              <StyledView className="flex-row" style={{ gap: 12 }}>
+                <StyledTouchableOpacity
+                  className="flex-1 flex-row items-center justify-center py-3 rounded-xl"
+                  style={{ borderWidth: 1.5, borderColor: COLORS.primaryAccent }}
+                  onPress={handleShareCode}
+                >
+                  <EvaIcon name="share" variant="outline" size={18} color={COLORS.primaryAccent} />
+                  <StyledText className="ml-2 font-semibold text-sm" style={{ color: COLORS.primaryAccent }}>Share Code</StyledText>
+                </StyledTouchableOpacity>
+                <StyledTouchableOpacity
+                  className="flex-1 flex-row items-center justify-center py-3 rounded-xl"
+                  style={{ borderWidth: 1.5, borderColor: COLORS.primaryAccent }}
+                  onPress={() => enterCodeInputRef.current?.focus()}
+                >
+                  <StyledText className="font-semibold text-sm" style={{ color: COLORS.primaryAccent }}>Enter a Code</StyledText>
+                </StyledTouchableOpacity>
+              </StyledView>
+            </StyledView>
+          ) : null}
+
+          {/* Enter code input */}
+          <StyledView className="flex-row items-center mb-4">
+            <StyledView className="flex-1 flex-row items-center bg-neutral-100 rounded-lg px-3 py-2 mr-2">
+              <TextInput
+                ref={enterCodeInputRef}
+                style={{ flex: 1, fontSize: FONT_SIZES.base, color: '#0B1226' }}
+                placeholder="Enter friend code"
+                placeholderTextColor={COLORS.text.disabled}
+                value={enterCodeValue}
+                onChangeText={(t: string) => { setEnterCodeValue(t); setEnterCodeError(''); }}
+                autoCapitalize="characters"
+                autoCorrect={false}
+              />
+            </StyledView>
+            <StyledTouchableOpacity
+              className={`px-4 py-2 rounded-lg ${addingCode ? 'bg-primary-300' : 'bg-primary-500'}`}
+              onPress={handleEnterCode}
+              disabled={addingCode}
+            >
+              <StyledText className="text-white text-sm font-semibold">
+                {addingCode ? '...' : 'Add'}
+              </StyledText>
+            </StyledTouchableOpacity>
           </StyledView>
-          <StyledText className="text-lg font-semibold text-neutral-900 text-center mb-2">
-            Contacts Access Denied
-          </StyledText>
-          <StyledText className="text-sm text-neutral-600 text-center mb-6">
-            To invite friends from your contacts, enable access in your device settings.
-          </StyledText>
-          <StyledTouchableOpacity
-            className="bg-primary-500 px-6 py-3 rounded-xl"
-            onPress={handleOpenSettings}
-          >
-            <StyledText className="text-white font-semibold">Open Settings</StyledText>
-          </StyledTouchableOpacity>
+          {enterCodeError ? (
+            <StyledText className="text-red-500 text-xs mb-4 -mt-2">{enterCodeError}</StyledText>
+          ) : null}
+
+          {/* Settings prompt */}
+          <StyledView className="items-center mt-4">
+            <StyledText className="text-sm text-neutral-500 text-center mb-3">
+              Want to invite contacts via SMS?
+            </StyledText>
+            <StyledTouchableOpacity
+              className="px-5 py-2.5 rounded-xl bg-neutral-100"
+              onPress={handleOpenSettings}
+            >
+              <StyledText className="text-neutral-700 font-semibold text-sm">Enable Contacts in Settings</StyledText>
+            </StyledTouchableOpacity>
+          </StyledView>
         </StyledView>
       )}
 

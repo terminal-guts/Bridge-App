@@ -85,7 +85,7 @@ export const EmailSignUpStep: React.FC<EmailSignUpStepProps> = ({
     >
       <H1 className="mb-3">Sign up with Rice email</H1>
       <Body className="text-neutral-600 mb-8">
-        Bridge is exclusively for Rice University students. Enter your @rice.edu email to get started.
+        Enter your @rice.edu email to get started.
       </Body>
 
       <Input

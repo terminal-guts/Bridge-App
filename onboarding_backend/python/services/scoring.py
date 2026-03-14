@@ -542,9 +542,10 @@ def score_ethnicity(profile_a: Dict, prefs_a: Dict, profile_b: Dict, prefs_b: Di
     b_pref_eth = _get_pref(profile_b, prefs_b, "preferred_ethnicities", []) or []
 
     STANDARD_ETHNICITIES = {
-        "white", "black", "asian", "hispanic", "latino", "middle_eastern",
-        "native_american", "pacific_islander", "south_asian", "southeast_asian",
-        "east_asian", "african", "caribbean", "mixed", "multiracial",
+        "black", "east asian", "hispanic", "middle eastern", "native american",
+        "pacific islander", "south asian", "southeast asian", "white", "other",
+        # Legacy values that may exist in database from older profiles
+        "asian", "latino", "african", "caribbean", "mixed", "multiracial",
     }
 
     def one_direction(their_ethnicity, my_pref_ethnicities):

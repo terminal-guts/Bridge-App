@@ -102,8 +102,8 @@ export const ChildrenStep: React.FC<ChildrenStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-6">
-        <H1 className="mb-2">Children & Family Plans</H1>
-        <Body className="text-neutral-600 mb-6">Share your current situation and future aspirations</Body>
+        <H1 className="mb-2">What are your family plans?</H1>
+        <Body className="text-neutral-600 mb-6">Tell us about your family goals.</Body>
 
         {/* Do you have children? */}
         <Card className="mb-4 p-4">

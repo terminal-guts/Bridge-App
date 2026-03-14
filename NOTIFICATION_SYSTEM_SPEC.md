@@ -1,8 +1,25 @@
-# Bridge Notification System — V2 Spec
+# Bridge Notification System
 
-## Overview
+## Guiding Principles
 
-12 notifications total. Every notification that matters is server-side push. Client-side local notifications are removed for all scheduled/engagement triggers.
+1. **3/day hard cap** (excluding direct messages and match notifications). Research shows 46% of users opt out at 2-5 notifications/week. We budget ~3/day max on active days, targeting 10-15/week total.
+2. **Always personalize** with friend names. Personalized notifications deliver 4x higher open rates.
+3. **One emoji per notification** — boosts CTR by up to 85%.
+4. **Curiosity gap** — don't reveal everything. "Someone weighed in on your match!" drives more opens than revealing who.
+5. **Respect silence** — if a user hasn't opened the app in 7+ days, scale back to 1 notification per 3 days max.
+6. **Transactional notifications are sacred** — new match and direct messages always send immediately. Users expect these and never count them as spam.
+
+---
+
+## Notification Categories & User Controls
+
+Three toggle groups in Settings:
+
+| Toggle | Controls | Default |
+|--------|----------|---------|
+| **Matches & Proposals** | New match, proposal deciding, match expiring, shared celebration, weekly recap | ON |
+| **Messages** | New messages | ON |
+| **Streaks & Reminders** | Streak risk, friend nudges, vote reminders, morning leaderboard, dormant nudges | ON |
 
 ---
 
@@ -163,7 +180,6 @@ These fire for at-risk users only.
 #### 11. You've Been Away (Dormant Escalation)
 - **Trigger**: Server-side cron — check `app_sessions.ended_at` or `user_profiles.updated_at` for inactivity
 - **Timing**: Varies by dormancy tier
-- **Escalation schedule**:
 
 | Days Inactive | Frequency | Copy |
 |---|---|---|
@@ -222,6 +238,17 @@ These fire for at-risk users only.
 
 ---
 
+## Copy Guidelines
+
+1. **Always use the friend's first name** — "Sarah's proposal needs your vote!" not "A friend needs your vote!"
+2. **One emoji maximum** — place at the start of the body, not the title
+3. **Keep titles under 6 words** — they get truncated on lock screens
+4. **Body under 80 characters** — full visibility without expansion
+5. **Curiosity gap for engagement notifications** — withhold the detail that makes them open the app
+6. **No exclamation marks in re-engagement** — sounds desperate. Use periods.
+
+---
+
 ## Copy Rotation
 
 Each notification type has 2-3 copy variants. The system tracks which variant was last sent per user per type in the `notification_log` table and rotates sequentially.
@@ -265,7 +292,7 @@ ALTER TABLE user_settings
 
 ## Edge Function Architecture
 
-### New: `send-push` (shared utility)
+### Shared: `send-push` utility
 
 Located at `supabase/functions/_shared/send-push.ts`. All edge functions call this.
 
@@ -291,7 +318,7 @@ Steps:
 7. Log to `notification_log`
 8. Return success/failure
 
-### New edge functions
+### Edge functions
 
 | Function | Cron (UTC) | Central Time | Purpose |
 |---|---|---|---|
@@ -310,16 +337,11 @@ Steps:
 | `send-weekly-summary` | Use shared `sendPush`, log to `notification_log` |
 | `proposal-lifecycle` | No notification changes — streak kill logic stays the same |
 
-### Server-side push for transactional (match, message, deciding)
+### Server-side transactional push (match, message, deciding)
 
 Database triggers on `matches`, `messages`, and `proposals` call `net.http_post()` → `notify-transactional` edge function.
 
 **Important:** Triggers read the Supabase URL and service role key from `vault.decrypted_secrets` (not `current_setting`). PostgREST/Supavisor pooled connections don't inherit database-level `app.settings.*` values, so `current_setting()` returns NULL and causes `net.http_post()` to throw — rolling back the parent INSERT/UPDATE. All triggers wrap `net.http_post()` in `BEGIN...EXCEPTION` blocks so a notification failure never blocks the parent operation.
-
-The edge function handles:
-- `matches` INSERT → send New Match push to both users
-- `messages` INSERT → send New Message push to receiver
-- `proposals` UPDATE to `'deciding'` → send Proposal Deciding push to both user_a and user_b
 
 ---
 
@@ -452,3 +474,33 @@ FOR each proposal WHERE status = 'deciding':
       Send to user_b: "Match with {user_a_name} needs a decision"
   Cooldown: only send once per proposal per user (check notification_log)
 ```
+
+---
+
+## Removed / Disabled Notifications
+
+| Notification | Reason |
+|---|---|
+| `notifyPendingDecision()` | Duplicate of `notifyProposalDeciding()` — removed |
+| `notifyGhosting()` | Not wired to any trigger, aggressive copy — removed |
+| `notifyFriendVotedOnYourProposal()` | Unwired, would fire too frequently for active users — removed |
+
+---
+
+## Metrics to Track
+
+- **Opt-out rate**: target < 15% of users disabling notifications in first 30 days
+- **Open rate**: target > 8% for engagement notifications (industry avg is 5-7%)
+- **D7 retention with push enabled vs disabled**: push should show 2x+ retention lift
+- **Notifications/churn correlation**: monitor if users who receive 4+ notifications/day churn faster
+
+---
+
+## Sources
+
+- Braze Push Notification Best Practices & Hinge Case Study
+- Business of Apps Push Notification Statistics 2025
+- Duolingo's Sleeping/Recovering Bandit Algorithm (KDD 2020)
+- CleverTap Emoji & Personalization Research
+- Airship 2025 Push Notification Benchmarks
+- OneSignal Frequency Capping Documentation

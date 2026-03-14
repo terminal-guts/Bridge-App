@@ -19,54 +19,6 @@ export const getUserMatches = async (): Promise<ApiResponse<Match[]>> => {
     // SECURITY: Get user ID from authenticated session
     const userId = await requireAuth();
 
-    // 🚨 DEVELOPMENT MODE: Check for mock Love Tab state first
-    const { getMockLoveTabState } = await import('./developerService');
-    const mockState = await getMockLoveTabState();
-
-    if (mockState?.enabled) {
-      const { mockProfiles, currentUserProfile } = await import('./mockData');
-
-      if (mockState.type === 'match') {
-        // Create a mock pending match with the specified time/score
-        const mockPendingMatch: Match = {
-          id: 'dev-mock-match',
-          user1Id: userId,
-          user2Id: 'mock-user-2',
-          user1Profile: currentUserProfile,
-          user2Profile: {
-            ...mockProfiles[0],
-            id: 'mock-profile-2',
-            userId: 'mock-user-2',
-          },
-          status: 'pending',
-          communityScore: mockState.communityScore || 87,
-          matchedAt: new Date().toISOString(),
-          expiresAt: mockState.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          currentUserId: userId,
-          // Pass through autoOpenProfileModal flag for state #4
-          autoOpenProfileModal: mockState.autoOpenProfileModal,
-        };
-        return { ok: true, data: [mockPendingMatch] };
-      } else if (mockState.type === 'empty' || mockState.type === 'survey_completed') {
-        // Return no matches for empty state or survey completed state
-        // survey_completed: User has completed survey, waiting for next match (empty with countdown)
-        return { ok: true, data: [] };
-      } else if (mockState.type === 'survey' || mockState.type === 'survey_not_completed') {
-        // Return no pending matches (survey will show)
-        // survey_not_completed: User needs to complete survey before getting matches
-        return { ok: true, data: [] };
-      }
-    }
-
-    // 🚨 DEVELOPMENT MODE: Return mock matches for quick testing
-    const { FEATURES } = await import('../config/features');
-    if (FEATURES.DEVELOPMENT_AUTO_FILL_ONBOARDING) {
-      const { mockMatches } = await import('./mockData');
-      const { communityService } = await import('./communityService');
-      const runtimePast = communityService.getRuntimePastMatches();
-      return { ok: true, data: [...runtimePast, ...mockMatches] };
-    }
-
     // Use joins to fetch matches with user profiles and match exits in a single query
     const { data: matches, error } = await supabase
       .from('matches')

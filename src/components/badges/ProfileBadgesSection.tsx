@@ -42,6 +42,7 @@ export const ProfileBadgesSection: React.FC<ProfileBadgesSectionProps> = React.m
             key={badge.id}
             badge={badge}
             revealAuthor={revealAuthor}
+            hideGiverName={!revealAuthor}
             compact
           />
         ))}

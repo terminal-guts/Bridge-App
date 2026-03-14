@@ -205,7 +205,7 @@ Deno.serve(async (req: Request) => {
         .in('status', ['pending', 'deciding']),
       supabase.from('blocked_users').select('user_id, blocked_user_id'),
       supabase.from('matches').select('user_id_1, user_id_2').in('status', ['pending', 'accepted', 'active']),
-      supabase.from('friends').select('user_id, friend_id'),
+      supabase.from('friends').select('user_id, friend_id').eq('status', 'accepted'),
     ]);
 
     // Pairs that can never be re-proposed (rejected/declined/matched)

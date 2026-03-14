@@ -33,22 +33,27 @@ const WEIGHTS: Record<string, number> = {
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const SIMILAR_RELIGIONS: Set<string>[] = [
+  new Set(['christian', 'catholic']),
   new Set(['christian', 'spiritual']),
+  new Set(['catholic', 'spiritual']),
   new Set(['buddhist', 'spiritual']),
   new Set(['hindu', 'spiritual']),
 ];
 
 const OPPOSING_RELIGIONS: Set<string>[] = [
   new Set(['atheist', 'christian']),
+  new Set(['atheist', 'catholic']),
   new Set(['atheist', 'muslim']),
   new Set(['atheist', 'jewish']),
   new Set(['atheist', 'hindu']),
   new Set(['agnostic', 'christian']),
+  new Set(['agnostic', 'catholic']),
 ];
 
 const RELIGIOUS_SET = new Set([
-  'christian', 'catholic', 'protestant', 'muslim', 'jewish',
-  'hindu', 'buddhist', 'sikh', 'mormon', 'jehovahs_witness',
+  'buddhist', 'catholic', 'christian', 'hindu', 'jewish', 'muslim',
+  // Legacy values that may exist in database
+  'protestant', 'sikh', 'mormon', 'orthodox', 'evangelical',
 ]);
 
 const POLITICS_ADJACENCY: Map<string, number> = new Map([
@@ -352,15 +357,40 @@ function scoreReligion(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dic
 
   if (!aReligion || !bReligion) return 0.5;
 
-  function oneDirection(theirReligion: string, myReligion: string): number {
+  const aPrefRel: string[] = _getPref(profileA, prefsA, 'preferred_religions', []) || [];
+  const bPrefRel: string[] = _getPref(profileB, prefsB, 'preferred_religions', []) || [];
+
+  function prefDirection(theirReligion: string, myPrefReligions: string[]): number {
+    if (!myPrefReligions.length) return 1.0; // No preference set = open to all
+    const prefLower = myPrefReligions.map(r => r.toLowerCase());
+    if (prefLower.includes('no preference')) return 1.0;
+
+    // Check each component if multi-religion (joined with " / ")
+    const components = theirReligion.includes(' / ')
+      ? theirReligion.split(' / ').map(c => c.trim().toLowerCase())
+      : [theirReligion.toLowerCase()];
+    for (const comp of components) {
+      if (prefLower.includes(comp)) return 1.0;
+    }
+    return 0.0;
+  }
+
+  function compatDirection(theirReligion: string, myReligion: string): number {
     if (theirReligion.toLowerCase() === myReligion.toLowerCase()) return 1.0;
     if (areSimilarReligions(theirReligion, myReligion)) return 0.75;
     if (areOpposingReligions(theirReligion, myReligion)) return 0.25;
     return 0.50;
   }
 
-  const aToB = oneDirection(bReligion, aReligion);
-  const bToA = oneDirection(aReligion, bReligion);
+  // Blend preference match (if set) with compatibility score
+  const aToBPref = prefDirection(bReligion, aPrefRel);
+  const bToAPref = prefDirection(aReligion, bPrefRel);
+  const aToBCompat = compatDirection(bReligion, aReligion);
+  const bToACompat = compatDirection(aReligion, bReligion);
+
+  // If preferences are set, weight them 60/40 with compatibility; otherwise use compatibility only
+  const aToB = aPrefRel.length > 0 ? aToBPref * 0.6 + aToBCompat * 0.4 : aToBCompat;
+  const bToA = bPrefRel.length > 0 ? bToAPref * 0.6 + bToACompat * 0.4 : bToACompat;
   return (aToB + bToA) / 2;
 }
 
@@ -447,9 +477,10 @@ function scoreHeight(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict)
 // ── Ethnicity (5%) ──────────────────────────────────────────────────────────
 
 const STANDARD_ETHNICITIES = new Set([
-  'white', 'black', 'asian', 'hispanic', 'latino', 'middle_eastern',
-  'native_american', 'pacific_islander', 'south_asian', 'southeast_asian',
-  'east_asian', 'african', 'caribbean', 'mixed', 'multiracial',
+  'black', 'east asian', 'hispanic', 'middle eastern', 'native american',
+  'pacific islander', 'south asian', 'southeast asian', 'white', 'other',
+  // Legacy values that may exist in database from older profiles
+  'asian', 'latino', 'african', 'caribbean', 'mixed', 'multiracial',
 ]);
 
 function scoreEthnicity(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {

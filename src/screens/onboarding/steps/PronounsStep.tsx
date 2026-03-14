@@ -100,7 +100,7 @@ export const PronounsStep: React.FC<PronounsStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-        <H1 className="mb-3">Your Pronouns</H1>
+        <H1 className="mb-3">What are your pronouns?</H1>
       <Body className="text-neutral-600 mb-2">
         Select up to {MAX_PRONOUNS} pronouns that you use.
       </Body>

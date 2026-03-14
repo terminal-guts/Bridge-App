@@ -125,8 +125,10 @@ export function ProfileView({
             {photos.length === 1 ? (
               <StyledImage
                 source={{ uri: photos[0].url }}
-                style={{ width: '100%', height: 280, borderRadius: 16 }}
+                style={{ width: '100%', height: 280, borderRadius: 16, backgroundColor: '#E5E7EB' }}
                 contentFit="cover"
+                transition={200}
+                cachePolicy="disk"
               />
             ) : (
               <>
@@ -157,8 +159,10 @@ export function ProfileView({
                     <StyledView key={`loop-${index}`} style={{ width: SCREEN_WIDTH - 40 }}>
                       <StyledImage
                         source={{ uri: photo.url }}
-                        style={{ width: '100%', height: 280, borderRadius: 16 }}
+                        style={{ width: '100%', height: 280, borderRadius: 16, backgroundColor: '#E5E7EB' }}
                         contentFit="cover"
+                        transition={200}
+                        cachePolicy="disk"
                       />
                     </StyledView>
                   ))}

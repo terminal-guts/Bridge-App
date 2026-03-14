@@ -52,9 +52,12 @@ interface TooltipProps {
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const TOOLTIP_MAX_WIDTH = 280;
+// Use dynamic screen dimensions instead of static module-level capture
+const getScreenDimensions = () => Dimensions.get('window');
+
+// iPhone 13 baseline: 390 x 844
+const BASE_WIDTH = 390;
 const ARROW_SIZE = 12;
 const PADDING_FROM_EDGE = 20;
 
@@ -79,6 +82,11 @@ export const Tooltip: React.FC<TooltipProps> = ({
    * Calculate tooltip position
    */
   const tooltipPosition = useMemo((): TooltipDimensions => {
+    const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = getScreenDimensions();
+    const scale = SCREEN_WIDTH / BASE_WIDTH;
+    const TOOLTIP_MAX_WIDTH = Math.round(280 * scale);
+    const ESTIMATED_TOOLTIP_HEIGHT = Math.round(220 * scale);
+
     // Center modal if no target
     if (!targetDimensions || preferredPosition === 'center') {
       return {
@@ -102,10 +110,12 @@ export const Tooltip: React.FC<TooltipProps> = ({
     let tooltipX = 0;
     let tooltipY = 0;
 
+    const minSpace = Math.round(200 * scale);
+
     // Auto-adjust if not enough space in preferred direction
-    if (preferredPosition === 'top' && spaceTop < 200) {
+    if (preferredPosition === 'top' && spaceTop < minSpace) {
       finalPosition = 'bottom';
-    } else if (preferredPosition === 'bottom' && spaceBottom < 200) {
+    } else if (preferredPosition === 'bottom' && spaceBottom < minSpace) {
       finalPosition = 'top';
     } else if (preferredPosition === 'left' && spaceLeft < TOOLTIP_MAX_WIDTH + PADDING_FROM_EDGE) {
       finalPosition = 'right';
@@ -120,7 +130,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
           PADDING_FROM_EDGE,
           Math.min(x + width / 2 - TOOLTIP_MAX_WIDTH / 2, SCREEN_WIDTH - TOOLTIP_MAX_WIDTH - PADDING_FROM_EDGE)
         );
-        tooltipY = y - 220 - ARROW_SIZE - 8;
+        tooltipY = y - ESTIMATED_TOOLTIP_HEIGHT - ARROW_SIZE - 8;
         break;
 
       case 'bottom':
@@ -135,7 +145,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
         tooltipX = x - TOOLTIP_MAX_WIDTH - ARROW_SIZE - 8;
         tooltipY = Math.max(
           insets.top + PADDING_FROM_EDGE,
-          Math.min(y + height / 2 - 100, SCREEN_HEIGHT - 200 - insets.bottom)
+          Math.min(y + height / 2 - Math.round(100 * scale), SCREEN_HEIGHT - minSpace - insets.bottom)
         );
         break;
 
@@ -143,7 +153,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
         tooltipX = x + width + ARROW_SIZE + 8;
         tooltipY = Math.max(
           insets.top + PADDING_FROM_EDGE,
-          Math.min(y + height / 2 - 100, SCREEN_HEIGHT - 200 - insets.bottom)
+          Math.min(y + height / 2 - Math.round(100 * scale), SCREEN_HEIGHT - minSpace - insets.bottom)
         );
         break;
 
@@ -160,7 +170,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
     // Ensure tooltip stays within safe area
     tooltipY = Math.max(
       insets.top + PADDING_FROM_EDGE,
-      Math.min(tooltipY, SCREEN_HEIGHT - 250 - insets.bottom)
+      Math.min(tooltipY, SCREEN_HEIGHT - Math.round(250 * scale) - insets.bottom)
     );
 
     return {
@@ -201,7 +211,13 @@ export const Tooltip: React.FC<TooltipProps> = ({
     <Animated.View
       style={[
         tooltipPosition.position === 'center'
-          ? styles.centerContainer
+          ? [styles.container, {
+              top: 0,
+              bottom: 0,
+              left: (getScreenDimensions().width - tooltipPosition.width) / 2,
+              width: tooltipPosition.width,
+              justifyContent: 'center' as const,
+            }]
           : [styles.container, { left: tooltipPosition.x, top: tooltipPosition.y, width: tooltipPosition.width }],
         animatedStyle,
       ]}
@@ -250,15 +266,13 @@ export const Tooltip: React.FC<TooltipProps> = ({
       </StyledView>
 
       {/* Arrow (CSS border triangle) — points toward target center */}
-      {tooltipPosition.position === 'bottom' && (
+      {tooltipPosition.position === 'bottom' && targetDimensions && (
         <View
           style={[
             styles.arrow,
             {
               top: -ARROW_SIZE + 2,
-              left: targetDimensions
-                ? Math.max(16, Math.min(targetDimensions.x + targetDimensions.width / 2 - tooltipPosition.x - ARROW_SIZE, tooltipPosition.width - ARROW_SIZE * 2 - 16))
-                : tooltipPosition.width / 2 - ARROW_SIZE,
+              left: Math.max(16, Math.min(targetDimensions.x + targetDimensions.width / 2 - tooltipPosition.x - ARROW_SIZE, tooltipPosition.width - ARROW_SIZE * 2 - 16)),
               borderLeftWidth: ARROW_SIZE,
               borderRightWidth: ARROW_SIZE,
               borderBottomWidth: ARROW_SIZE,
@@ -270,15 +284,13 @@ export const Tooltip: React.FC<TooltipProps> = ({
         />
       )}
 
-      {tooltipPosition.position === 'top' && (
+      {tooltipPosition.position === 'top' && targetDimensions && (
         <View
           style={[
             styles.arrow,
             {
               bottom: -ARROW_SIZE + 2,
-              left: targetDimensions
-                ? Math.max(16, Math.min(targetDimensions.x + targetDimensions.width / 2 - tooltipPosition.x - ARROW_SIZE, tooltipPosition.width - ARROW_SIZE * 2 - 16))
-                : tooltipPosition.width / 2 - ARROW_SIZE,
+              left: Math.max(16, Math.min(targetDimensions.x + targetDimensions.width / 2 - tooltipPosition.x - ARROW_SIZE, tooltipPosition.width - ARROW_SIZE * 2 - 16)),
               borderLeftWidth: ARROW_SIZE,
               borderRightWidth: ARROW_SIZE,
               borderTopWidth: ARROW_SIZE,
@@ -296,15 +308,6 @@ export const Tooltip: React.FC<TooltipProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    zIndex: 1000,
-  },
-  centerContainer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: (SCREEN_WIDTH - TOOLTIP_MAX_WIDTH) / 2,
-    width: TOOLTIP_MAX_WIDTH,
-    justifyContent: 'center',
     zIndex: 1000,
   },
   arrow: {

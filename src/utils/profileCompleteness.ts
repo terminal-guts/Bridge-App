@@ -47,6 +47,7 @@ const FIELD_WEIGHTS = {
   heightPreference: 4,
   partnerLifestylePreferences: 5,  // all 4 habits
   preferredEthnicities: 4,
+  preferredReligions: 3,
   preferredPolitics: 4,
 };
 
@@ -387,6 +388,18 @@ export const calculateProfileCompleteness = (
     });
   }
 
+  // Preferred Religions (3 points)
+  if (profile.preferredReligions && profile.preferredReligions.length > 0) {
+    score += FIELD_WEIGHTS.preferredReligions;
+  } else {
+    missingFields.push({
+      field: 'preferredReligions',
+      label: 'Select preferred religions',
+      weight: FIELD_WEIGHTS.preferredReligions,
+      category: 'important',
+    });
+  }
+
   // Preferred Politics (4 points)
   if (profile.preferredPolitics && profile.preferredPolitics.length > 0) {
     score += FIELD_WEIGHTS.preferredPolitics;
@@ -549,13 +562,14 @@ export const calculateMatchPreferencesCompleteness = (
     return {
       percentage: 0,
       completedCount: 0,
-      totalCount: 7,
+      totalCount: 8,
       missingFields: [
         "I'm Looking For",
         'Gender',
         'Age Range',
         'Height',
         'Ethnicity',
+        'Religion',
         'Politics',
         'Lifestyle',
       ],
@@ -593,11 +607,18 @@ export const calculateMatchPreferencesCompleteness = (
     missingFields.push('Height');
   }
 
-  // 6. Preferred Ethnicities
+  // 5. Preferred Ethnicities
   if (profile.preferredEthnicities && profile.preferredEthnicities.length > 0) {
     completedCount++;
   } else {
     missingFields.push('Ethnicity');
+  }
+
+  // 6. Preferred Religions
+  if (profile.preferredReligions && profile.preferredReligions.length > 0) {
+    completedCount++;
+  } else {
+    missingFields.push('Religion');
   }
 
   // 7. Preferred Politics
@@ -637,7 +658,7 @@ export const calculateMatchPreferencesCompleteness = (
   return {
     percentage,
     completedCount,
-    totalCount: 7,
+    totalCount: 8,
     missingFields,
   };
 };
@@ -693,7 +714,7 @@ export const calculateProfileStrengthBreakdown = (
       overall: 0,
       sections: {
         aboutMe: { score: 0, maxScore: 18, percentage: 0 },
-        matchPreferences: { score: 0, maxScore: 25, percentage: 0, completedCount: 0, totalCount: 7 },
+        matchPreferences: { score: 0, maxScore: 25, percentage: 0, completedCount: 0, totalCount: 8 },
         photos: { score: 0, maxScore: 25, percentage: 0, count: 0 },
         deepQuestions: { score: 0, maxScore: 25, percentage: 0, displayedCount: 0, answeredCount: 0 },
       },

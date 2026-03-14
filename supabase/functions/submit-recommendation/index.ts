@@ -72,6 +72,7 @@ Deno.serve(async (req: Request) => {
     const { data: friendship } = await supabase
       .from('friends')
       .select('id')
+      .eq('status', 'accepted')
       .or(`and(user_id.eq.${recommenderId},friend_id.eq.${recommended_to_friend_id}),and(user_id.eq.${recommended_to_friend_id},friend_id.eq.${recommenderId})`)
       .limit(1);
 

@@ -28,7 +28,7 @@ export const PreferencesStep: React.FC<PreferencesStepProps> = ({
   onBack,
 }) => {
   const [commitmentLevel, setCommitmentLevel] = useState<string>(
-    data.preferences?.lookingFor || ''
+    ''
   );
   const [error, setError] = useState<string>('');
 
@@ -59,7 +59,7 @@ export const PreferencesStep: React.FC<PreferencesStepProps> = ({
       <StyledView className="mt-8">
         <H1 className="mb-3">What are you looking for?</H1>
         <Body className="text-neutral-600 mb-8">
-          Bridge promotes genuine connection. You can change this later.
+          Bridge only promotes intentional connection.
         </Body>
 
         {COMMITMENT_OPTIONS.map((option) => (

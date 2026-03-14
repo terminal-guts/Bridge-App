@@ -193,13 +193,13 @@ export const BadgeAwardModal: React.FC<BadgeAwardModalProps> = ({
         placeholderTextColor={COLORS.text.muted}
         value={message}
         onChangeText={t => {
-          if (t.length <= 30) setMessage(t);
+          if (t.length <= 50) setMessage(t);
         }}
-        maxLength={30}
+        maxLength={50}
         multiline={false}
         autoFocus
       />
-      <Text style={styles.charCount}>{message.length}/30</Text>
+      <Text style={styles.charCount}>{message.length}/50</Text>
     </View>
   );
 
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '85%',
+    height: '92%',
     paddingBottom: 40,
   },
   header: {

@@ -60,7 +60,7 @@ export const EducationLevelStep: React.FC<EducationLevelStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-      <H1 className="mb-3">Education</H1>
+      <H1 className="mb-3">What's your education?</H1>
       <Body className="text-neutral-600 mb-8">
         What's your highest level of education?
       </Body>

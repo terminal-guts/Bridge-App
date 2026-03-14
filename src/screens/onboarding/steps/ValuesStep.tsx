@@ -88,7 +88,7 @@ export const ValuesStep: React.FC<ValuesStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-      <H1 className="mb-3">What Are Your Values</H1>
+      <H1 className="mb-3">What are your values?</H1>
       <Body className="text-neutral-500 text-sm mb-2">
         Select at least 3 - add custom values later.
       </Body>

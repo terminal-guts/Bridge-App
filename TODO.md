@@ -40,13 +40,12 @@ These are the most important screens in the app. All work (polish, bugs, feature
 ## Engagement Features (Not Implemented)
 
 ### Addiction Blueprint — Remaining Items
-From the engagement research (Hook Model, variable reinforcement, network effects). See `NOTIFICATION_STRATEGY.md` for the notification tier system (implemented).
+From the engagement research (Hook Model, variable reinforcement, network effects). See `NOTIFICATION_SYSTEM_SPEC.md` for the notification tier system (implemented).
 
 | Feature | Description | Status |
 |---------|-------------|--------|
 | Post-vote crowd reveal | "You and X others voted Yes!" / "Bold call — only 23% agree" | Not done |
 | Confetti on Yes votes | Wire existing `Confetti.tsx` on Yes votes + 3rd vote gate unlock | Not done |
-| Vote flash micro-celebrations | Color flash overlay (green/red/amber) on vote cast | Not done |
 | Social proof counters | "X votes cast today", "3 friends voted", blurred friend votes | Not done |
 | Leaderboard promotion card | Preview card in Community tab (rank + weekly karma + gap to #1) | Not done |
 | FOMO cards | Grayed-out missed proposals — "[Friend]'s match decided without you" | Not done |
@@ -60,7 +59,6 @@ From the engagement research (Hook Model, variable reinforcement, network effect
 | Settings notification subtitles | Update `SettingsScreen.tsx` notification toggle subtitles to reflect tier system | Not done |
 | Friend edge 2x callout | "Your vote counts 2x" when voting on a friend's proposal | Not done (held) |
 | Reframe percentages as vibes | Replace "25% Match" with labels like "Different vibes" / "Good match" / "Soulmates" with color coding | Not done (held) |
-| Animated proposal entrance | Photos slide in from left/right with parallax when proposal loads | Not done (held) |
 | Live real-time vote count | Supabase Realtime subscriptions so vote bar updates live when others vote | Not done (held) |
 
 ### What's Already Done (Engagement)
@@ -68,7 +66,11 @@ From the engagement research (Hook Model, variable reinforcement, network effect
 - Smart notification sequence (tiered cap system in `notificationService.ts`: 3/day Tier 2 cap, cooldowns)
 - Accuracy karma notifications (realtime channel, 6h cooldown)
 - Friend nudge (NudgeButton + send-nudge edge function, deployed)
-- Notification strategy documented (`NOTIFICATION_STRATEGY.md`)
+- Notification system documented (`NOTIFICATION_SYSTEM_SPEC.md`)
+- Vote flash micro-celebrations (green/red/amber color flash overlay on vote cast in ProposalReviewView)
+- Animated proposal entrance (opacity + translateX slide-in via Reanimated)
+- Vote micro-interactions (spring scale on all vote buttons)
+- Friend badge system (42 character trait icons, badge comparison in proposal view, 50-char messages)
 
 ### Friend Milestones (Proposal — Not Approved)
 
@@ -149,6 +151,8 @@ Creative engagement concepts organized by implementation effort. These are ideas
 | Anonymous Friend-to-Friend Proposals | Queued suggestion system respecting 7PM cycle. Approved with redesign — needs `friend_suggestions` table, rewritten edge function, generate-proposals integration. |
 | Google Auth | Not started (Phase 3) |
 | Online Now Tags | On hold |
+| Import Real Badge Icons | Replace 42 placeholder character trait SVGs with real icon assets. Source from icon pack, place in `assets/icons/badges/`, run `scripts/generate-badge-registry.js`. |
+| Badge Award Notification | Push notification when someone awards you a badge (variable reward timing). Low priority — may not need. |
 
 ---
 
@@ -182,37 +186,19 @@ Priority order. Use established design system (4px grid, COLORS constants, FONTS
 
 ### ProposalReviewView Refinement Plan
 
-Target: `src/components/community/proposal/ProposalReviewView.tsx` (~2082 lines). Constraints: uses Animated API (not Reanimated), compatibility badge is LOCKED, do NOT touch icons.
+Target: `src/components/community/proposal/ProposalReviewView.tsx`. Uses Reanimated. Compatibility badge is LOCKED.
 
-**Tier 1 — High-Impact, Low-Effort:**
+**Completed:** Vote button hierarchy (52px/48px + glow), colors→tokens, typography→tokens, EmptyState component, progress dots with "1 of 3" labels, photo responsive sizing, section card accents (3px colored left-border), scroll-to-top after vote, sub-component extraction (ProposalPhotoCard, LiveVoteBar, QuestionCarousel, SmartPillCloud, proposalHelpers), entrance animation (opacity + translateX), vote micro-interactions (spring scale).
+
+**Remaining:**
 | Item | What |
 |------|------|
-| Vote button hierarchy | Yes button too short (46px) vs secondary (63px). Fix: Yes→52px with glow, secondary→48px horizontal layout |
-| Hardcoded colors → tokens | Replace `BLUE=#2563EB` etc. with `COLORS.primary`, `COLORS.success`, `COLORS.rejectRed` from theme |
-| Typography tokens | Replace hardcoded font sizes with `FONT_SIZES` / `TEXT_STYLES` from typography constants |
-| Empty state | Use existing `EmptyState` component with illustration instead of plain text |
-| Progress dots | Active dot pulse animation, clearer completed color, "1 of 3" label |
-
-**Tier 2 — High-Impact, Medium-Effort:**
-| Item | What |
-|------|------|
-| Photo responsive sizing | `PHOTO_HEIGHT = Math.max(220, Math.min(screenHeight * 0.36, 340))` — test SE through Pro Max |
-| Extract StyleSheet | ~150 inline styles → `StyleSheet.create` in 4 phases (sub-components → main render). Keep Animated styles inline |
-| Section card accents | 3px colored left-border per section type (blue/emerald/purple/amber), padding 12→16 |
+| Extract StyleSheet | Remaining inline styles → `StyleSheet.create`. Keep Animated styles inline |
 | Smart pill spacing | Gap 6→8px, add column headers, increase divider margin. Fix colorblind accessibility |
-| Scroll-to-top after vote | `scrollTo({ y: 0 })` on advance timeout |
 | Badge positioning | Sit in divider gap between photos, fix "87 %" → "87%" |
-
-**Tier 3 — Medium-Impact, Higher-Effort:**
-| Item | What |
-|------|------|
-| Sub-component extraction | Split into `proposal/` directory: PhotoCard, LiveVoteBar, QuestionCarousel, SmartPillCloud, SectionCard, ComparisonRows, ForFriendModal, proposalUtils |
-| Entrance animation | Opacity 0→1 + translateX 30→0 over 250ms |
-| Vote micro-interactions | Scale spring on press. Yes: pulse 1.03. No: horizontal shake. Not Sure: tilt |
+| Active dot pulse | Pulse animation on active progress dot |
 
 **Cross-cutting:** Spacing audit (off-grid values → `SPACING` constants). WCAG contrast fixes (secondary button opacity 0.5→0.6, LiveVoteBar label color).
-
-**Implementation order:** Colors+typography → Buttons+empty+dots → StyleSheet A+B → Photo+badge+scroll → Section cards+pills → StyleSheet C+D → Sub-component extraction → Animations.
 
 ---
 

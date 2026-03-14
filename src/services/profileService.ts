@@ -131,6 +131,7 @@ function mapBackendToUserProfile(data: any): UserProfile {
       maxDistance: data.preferences?.max_distance ?? data.preferences?.maxDistance ?? 50,
     },
     preferredEthnicities: data.preferred_ethnicities || data.preferences?.preferred_ethnicities || [],
+    preferredReligions: data.preferred_religions || data.preferences?.preferred_religions || [],
     preferredPolitics: data.preferred_politics || data.preferences?.preferred_politics || [],
     partnerLifestylePreferences: (
       data.preferences?.partner_drinking !== undefined ||
@@ -348,6 +349,7 @@ export const createUserProfile = async (
       preferred_height_max_inches: data.preferences?.heightMax,
       max_distance: data.preferences?.maxDistance,
       preferred_ethnicities: data.preferredEthnicities,
+      preferred_religions: (data as any).preferredReligions,
       interested_in_genders: data.interestedInGenders,
     };
 
@@ -567,7 +569,8 @@ export const updateUserProfile = async (
 
     // Build and update user_preferences
     if (updates.preferences !== undefined || updates.preferredEthnicities !== undefined ||
-        updates.preferredPolitics !== undefined || updates.partnerLifestylePreferences !== undefined) {
+        updates.preferredReligions !== undefined || updates.preferredPolitics !== undefined ||
+        updates.partnerLifestylePreferences !== undefined) {
       const prefPayload: any = {};
       if (updates.preferences?.ageMin !== undefined) prefPayload.age_min = updates.preferences.ageMin;
       if (updates.preferences?.ageMax !== undefined) prefPayload.age_max = updates.preferences.ageMax;
@@ -577,6 +580,7 @@ export const updateUserProfile = async (
       if (updates.preferences?.heightMax !== undefined) prefPayload.preferred_height_max_inches = updates.preferences.heightMax;
       if (updates.preferences?.maxDistance !== undefined) prefPayload.max_distance = updates.preferences.maxDistance;
       if (updates.preferredEthnicities !== undefined) prefPayload.preferred_ethnicities = updates.preferredEthnicities;
+      if (updates.preferredReligions !== undefined) prefPayload.preferred_religions = updates.preferredReligions;
       if (updates.preferredPolitics !== undefined) prefPayload.preferred_politics = updates.preferredPolitics;
       if (updates.partnerLifestylePreferences !== undefined) {
         prefPayload.partner_drinking = updates.partnerLifestylePreferences.drinking;

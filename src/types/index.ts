@@ -87,6 +87,7 @@ export interface UserProfile {
   interestedInGenders?: string[]; // Array of genders user is interested in matching with
   customInterestedIn?: string; // Custom description for interested in genders
   preferredEthnicities?: string[]; // Array of ethnicities user is interested in matching with
+  preferredReligions?: string[]; // Array of religions user is interested in matching with
   preferredPolitics?: string[]; // Array of political preferences user is interested in matching with
   preferenceVisibility?: Record<string, boolean>; // Which preference sections are visible on profile
   maxDistance?: number | null; // Maximum distance in miles (denormalized from preferences for mock data)
@@ -319,7 +320,6 @@ export type RootStackParamList = {
 
   // Main Stack
   MainTabs: { screen?: string; params?: any } | undefined;
-  MatchReveal: undefined;
   MatchProposal: { match?: Match; profile?: UserProfile; proposalId?: string };
   ProposalProfile: {
     partnerProfile: UserProfile;

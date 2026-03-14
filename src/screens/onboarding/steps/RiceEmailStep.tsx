@@ -70,7 +70,7 @@ export const RiceEmailStep: React.FC<RiceEmailStepProps> = ({
     >
       <H1 className="mb-3">Rice email</H1>
       <Body className="text-neutral-600 mb-8">
-        Bridge is exclusively for Rice University students. Enter your @rice.edu email to verify.
+        Enter your @rice.edu email to get started.
       </Body>
 
       <Input

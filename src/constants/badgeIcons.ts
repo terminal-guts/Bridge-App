@@ -32,6 +32,53 @@ const EXCLUDED_ICONS = new Set([
 
 /** All badge icon names eligible for the badge picker */
 export const BADGE_ELIGIBLE_ICONS: string[] = [
+  // Character & Heart
+  'loyal-char-001',
+  'honest-char-002',
+  'trustworthy-char-003',
+  'generous-char-004',
+  'kind-char-005',
+  'humble-char-006',
+  'patient-char-007',
+  'brave-char-008',
+  'resilient-char-009',
+  'determined-char-010',
+  // Social & Energy
+  'funny-char-011',
+  'life-of-the-party-char-012',
+  'great-listener-char-013',
+  'supportive-char-014',
+  'encouraging-char-015',
+  'hype-person-char-016',
+  'peacemaker-char-017',
+  'inclusive-char-018',
+  'warm-char-019',
+  'charismatic-char-020',
+  // Reliability
+  'always-there-char-021',
+  'dependable-char-022',
+  'on-time-char-023',
+  'keeps-promises-char-024',
+  'ride-or-die-char-025',
+  'rock-solid-char-026',
+  'consistent-char-027',
+  'got-your-back-char-028',
+  // Intelligence & Growth
+  'wise-char-029',
+  'creative-char-030',
+  'problem-solver-char-031',
+  'curious-char-032',
+  'deep-thinker-char-033',
+  'big-picture-char-034',
+  'street-smart-char-035',
+  // Relationship Qualities
+  'romantic-char-036',
+  'thoughtful-gifter-char-037',
+  'great-communicator-char-038',
+  'emotionally-aware-char-039',
+  'good-with-families-char-040',
+  'adventurous-dater-char-041',
+  'best-wingman-char-042',
   // Mental Health & Wellness (kept)
   'cognitive-8926637',
   'counseling-8926640',
@@ -145,6 +192,53 @@ export const BADGE_ELIGIBLE_ICONS: string[] = [
 
 /** Human-readable display names for badge icons */
 export const BADGE_ICON_LABELS: Record<string, string> = {
+  // Character & Heart
+  'loyal-char-001': 'Loyal',
+  'honest-char-002': 'Honest',
+  'trustworthy-char-003': 'Trustworthy',
+  'generous-char-004': 'Generous',
+  'kind-char-005': 'Kind',
+  'humble-char-006': 'Humble',
+  'patient-char-007': 'Patient',
+  'brave-char-008': 'Brave',
+  'resilient-char-009': 'Resilient',
+  'determined-char-010': 'Determined',
+  // Social & Energy
+  'funny-char-011': 'Funny',
+  'life-of-the-party-char-012': 'Life of the Party',
+  'great-listener-char-013': 'Great Listener',
+  'supportive-char-014': 'Supportive',
+  'encouraging-char-015': 'Encouraging',
+  'hype-person-char-016': 'Hype Person',
+  'peacemaker-char-017': 'Peacemaker',
+  'inclusive-char-018': 'Inclusive',
+  'warm-char-019': 'Warm',
+  'charismatic-char-020': 'Charismatic',
+  // Reliability
+  'always-there-char-021': 'Always There',
+  'dependable-char-022': 'Dependable',
+  'on-time-char-023': 'On Time',
+  'keeps-promises-char-024': 'Keeps Promises',
+  'ride-or-die-char-025': 'Ride or Die',
+  'rock-solid-char-026': 'Rock Solid',
+  'consistent-char-027': 'Consistent',
+  'got-your-back-char-028': 'Got Your Back',
+  // Intelligence & Growth
+  'wise-char-029': 'Wise',
+  'creative-char-030': 'Creative',
+  'problem-solver-char-031': 'Problem Solver',
+  'curious-char-032': 'Curious',
+  'deep-thinker-char-033': 'Deep Thinker',
+  'big-picture-char-034': 'Big Picture',
+  'street-smart-char-035': 'Street Smart',
+  // Relationship Qualities
+  'romantic-char-036': 'Romantic',
+  'thoughtful-gifter-char-037': 'Thoughtful Gifter',
+  'great-communicator-char-038': 'Great Communicator',
+  'emotionally-aware-char-039': 'Emotionally Aware',
+  'good-with-families-char-040': 'Good With Families',
+  'adventurous-dater-char-041': 'Adventurous Dater',
+  'best-wingman-char-042': 'Best Wingman',
   // Wellness & Mind
   'cognitive-8926637': 'Cognitive',
   'counseling-8926640': 'Counseling',
@@ -256,8 +350,21 @@ export const BADGE_ICON_LABELS: Record<string, string> = {
   'yoga-pose-2037330': 'Yoga',
 };
 
+// Helper to extract the numeric suffix from character badge IDs (e.g. 'loyal-char-001' → 1)
+const charNum = (id: string): number => {
+  const m = id.match(/-char-(\d+)$/);
+  return m ? parseInt(m[1], 10) : 0;
+};
+const charRange = (min: number, max: number) =>
+  BADGE_ELIGIBLE_ICONS.filter(i => { const n = charNum(i); return n >= min && n <= max; });
+
 /** Badge icons grouped by category for the picker UI */
 export const BADGE_ICON_CATEGORIES: { title: string; icons: string[] }[] = [
+  { title: 'Character & Heart', icons: charRange(1, 10) },
+  { title: 'Social & Energy', icons: charRange(11, 20) },
+  { title: 'Reliability', icons: charRange(21, 28) },
+  { title: 'Intelligence & Growth', icons: charRange(29, 35) },
+  { title: 'Relationship Qualities', icons: charRange(36, 42) },
   {
     title: 'Sports & Fitness',
     icons: BADGE_ELIGIBLE_ICONS.filter(

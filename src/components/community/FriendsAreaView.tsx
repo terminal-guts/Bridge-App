@@ -38,6 +38,8 @@ import { AwaitingResponseCard } from './match/AwaitingResponseCard';
 import { ActiveMatchCard } from './match/ActiveMatchCard';
 import { EndMatchModal } from './match/EndMatchModal';
 import { communityService } from '../../services/communityServiceIndex';
+import { FriendRequest, getIncomingRequests, acceptFriendRequest, declineFriendRequest, removeFriend } from '../../services/friendService';
+import { FriendRequestCard } from '../friends/FriendRequestCard';
 import { GuideTarget } from '../guides';
 import { useGuide } from '../../hooks/useGuide';
 import { friendsAreaGuide } from '../../config/guides';
@@ -74,6 +76,10 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
   const [pendingProposals, setPendingProposals] = useState<MatchProposal[]>([]);
   const [activeMatch, setActiveMatch] = useState<ActiveMatch | null>(null);
   const [showEndMatchModal, setShowEndMatchModal] = useState(false);
+
+  // Friend request state
+  const [incomingRequests, setIncomingRequests] = useState<FriendRequest[]>([]);
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
 
   // Badge award modal state
   const [badgeModalVisible, setBadgeModalVisible] = useState(false);
@@ -131,17 +137,21 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
   }, []);
 
   // Load Friends Area data
-  const loadFriendsArea = useCallback(async () => {
+  const loadFriendsArea = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
 
-      const [data, previousStreaks] = await Promise.all([
+      const [data, previousStreaks, requestsResult] = await Promise.all([
         communityService.getFriendsAreaData(),
         getPreviousStreaks(),
+        getIncomingRequests(),
       ]);
 
       setFriends(data.friends);
       setPendingProposals(data.pendingProposals);
+      if (requestsResult.ok && requestsResult.data) {
+        setIncomingRequests(requestsResult.data);
+      }
       setActiveMatch(data.activeMatch);
 
       // Detect and announce streak changes (deaths + milestones)
@@ -163,10 +173,10 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
         await saveCurrentStreaks(friendsForTracking);
       }
 
-      setLoading(false);
+      if (!silent) setLoading(false);
     } catch (error) {
       logger.error('[FriendsAreaView] Error loading data:', error);
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -229,6 +239,53 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
     await loadFriendsArea();
     setRefreshing(false);
   };
+
+  const handleAcceptRequest = useCallback(async (requestId: string, senderName: string) => {
+    setProcessingRequestId(requestId);
+    try {
+      const result = await acceptFriendRequest(requestId);
+      if (result.ok) {
+        successHaptic();
+        showToast.success(`You and ${senderName} are now friends!`);
+        setIncomingRequests(prev => prev.filter(r => r.id !== requestId));
+        // Silently reload friends list to include the new friend (no spinner)
+        loadFriendsArea(true);
+      } else {
+        errorHaptic();
+        showToast.error('Could not accept request', result.error?.message || '');
+      }
+    } catch {
+      errorHaptic();
+      showToast.error('Something went wrong');
+    } finally {
+      setProcessingRequestId(null);
+    }
+  }, [loadFriendsArea]);
+
+  const handleDeclineRequest = useCallback(async (requestId: string) => {
+    setProcessingRequestId(requestId);
+    try {
+      const result = await declineFriendRequest(requestId);
+      if (result.ok) {
+        // Silent removal — no toast
+        setIncomingRequests(prev => prev.filter(r => r.id !== requestId));
+      }
+    } catch {
+      // Silent failure
+    } finally {
+      setProcessingRequestId(null);
+    }
+  }, []);
+
+  const handleRemoveFriend = useCallback(async (friendId: string) => {
+    const result = await removeFriend(friendId);
+    if (result.ok) {
+      setFriends(prev => prev.filter(f => f.friendId !== friendId));
+      showToast.info('Friend removed');
+    } else {
+      showToast.error('Could not remove friend');
+    }
+  }, []);
 
   const handleHelpFriend = useCallback((friendId: string) => {
     const friend = friends.find(f => f.friendId === friendId);
@@ -363,6 +420,53 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
           />
         }
       >
+        {/* SECTION 0: Friend Requests (only visible when there are incoming requests) */}
+        {incomingRequests.length > 0 && (
+          <StyledView className="px-4 pt-4 pb-2">
+            <StyledView className="flex-row items-center mb-3">
+              <StyledView style={{ marginRight: 8 }}>
+                <EvaIcon name="person-add" variant="outline" color="primary" size={20} />
+              </StyledView>
+              <StyledText style={{
+                fontSize: FONT_SIZES.lg,
+                fontWeight: '600',
+                fontFamily: FONTS.semiBold,
+                color: COLORS.text.primary,
+              }}>
+                Friend Requests
+              </StyledText>
+              <StyledView style={{
+                backgroundColor: '#3B82F6',
+                borderRadius: 10,
+                minWidth: 20,
+                height: 20,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginLeft: 8,
+                paddingHorizontal: 6,
+              }}>
+                <StyledText style={{
+                  color: '#FFFFFF',
+                  fontSize: FONT_SIZES.xs,
+                  fontWeight: '700',
+                  fontFamily: FONTS.bold,
+                }}>
+                  {incomingRequests.length}
+                </StyledText>
+              </StyledView>
+            </StyledView>
+            {incomingRequests.map(request => (
+              <FriendRequestCard
+                key={request.id}
+                request={request}
+                onAccept={() => handleAcceptRequest(request.id, request.senderProfile.firstName || 'Friend')}
+                onDecline={() => handleDeclineRequest(request.id)}
+                isProcessing={processingRequestId === request.id}
+              />
+            ))}
+          </StyledView>
+        )}
+
         {/* SECTION 1: Active Match (HIGHEST PRIORITY - only show if there is an active match) */}
         {filteredData.activeMatch && (
           <GuideTarget id="match-status-section">
@@ -521,6 +625,7 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                       onViewProfile={() => handleViewFriendProfile(friendItem.friendId)}
                       onStreakMilestone={handleStreakMilestone}
                       onBadgePress={() => handleBadgePress(friendItem.friendId, friendItem.friend?.firstName || 'Friend')}
+                      onRemoveFriend={() => handleRemoveFriend(friendItem.friendId)}
                     />
                   );
 

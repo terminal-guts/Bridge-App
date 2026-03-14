@@ -133,6 +133,7 @@ Deno.serve(async (req: Request) => {
         .from('friends')
         .select('friend_id')
         .eq('user_id', user.user_id)
+        .eq('status', 'accepted')
         .limit(1)
         .maybeSingle();
 

@@ -21,7 +21,6 @@ const GENDER_OPTIONS = [
   { value: 'male', label: 'Male' },
   { value: 'female', label: 'Female' },
   { value: 'non_binary', label: 'Non-binary' },
-  { value: 'genderqueer', label: 'Genderqueer' },
   { value: 'not_listed', label: 'Not Listed' },
 ];
 
@@ -136,7 +135,7 @@ export const GenderStep: React.FC<GenderStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-        <H1 className="mb-3">Gender</H1>
+        <H1 className="mb-3">What's your gender?</H1>
         <Body className="text-neutral-600 mb-8">
           Help us understand who you are and who you'd like to meet.
         </Body>

@@ -18,20 +18,16 @@ const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 
 const ETHNICITY_OPTIONS = [
-  'Asian',
   'Black',
-  'Caribbean',
-  'Central Asian',
   'East Asian',
   'Hispanic',
   'Middle Eastern',
   'Native American',
-  'North African',
   'Pacific Islander',
   'South Asian',
   'Southeast Asian',
-  'Sub-Saharan African',
   'White',
+  'Other',
 ];
 
 export const EthnicityStep: React.FC<EthnicityStepProps> = ({
@@ -106,7 +102,7 @@ export const EthnicityStep: React.FC<EthnicityStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-        <H1 className="mb-3">Ethnicity</H1>
+        <H1 className="mb-3">What's your ethnicity?</H1>
         <Body className="text-neutral-600 mb-6">
           What's your ethnicity? Select all that apply.
         </Body>

@@ -4,6 +4,7 @@ import ReanimatedAnimated, {
     useSharedValue,
     useAnimatedStyle,
     withTiming,
+    withSpring,
     Easing,
 } from 'react-native-reanimated';
 import { Image } from 'expo-image';
@@ -20,7 +21,7 @@ import { getUserProfile } from '../../services/profileService';
 import { UserProfile } from '../../types';
 import { ProfileCompletionBanner } from '../../components/profile/ProfileCompletionBanner';
 import { showToast } from '../../utils/toast';
-import { lightHaptic, heavyHaptic } from '../../utils/haptics';
+import { lightHaptic, heavyHaptic, successHaptic } from '../../utils/haptics';
 import { shareToMessages, shareGeneric } from '../../utils/shareMatch';
 import { ShareMatchSheet } from '../../components/matches/ShareMatchSheet';
 import { ShareableMatchCard } from '../../components/matches/ShareableMatchCard';
@@ -32,10 +33,12 @@ import ViewShot from 'react-native-view-shot';
 import * as FileSystem from 'expo-file-system';
 import { MatchesSkeleton } from '../../components/ui/SkeletonLoader';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
+import { SPRINGS } from '../../constants/animations';
 import { COLORS } from '../../theme/colors';
 
 // Lottie animation for the empty-state illustration
 const VALENTINE_COUPLE_ANIM = require('../../../assets/Icons/AnimatedIcons/valentine-couple.json');
+const CONFETTI_ANIM = require('../../../assets/Icons/AnimatedIcons/confetti.json');
 
 // One of five mutually exclusive states the screen can be in
 type ScreenState =
@@ -52,6 +55,23 @@ const CARD_STATUS: Record<Exclude<ScreenState, 'empty'>, import('../../component
     awaiting_them: 'awaiting_them',
     neither_voted: 'new_match',
 };
+
+/** Pure helper — derive screen state from data (used in render + celebration check) */
+function deriveScreenState(
+    activeMatch: ActiveMatch | null,
+    pendingProposals: MatchProposal[],
+): ScreenState {
+    if (activeMatch) return 'active_match';
+    if (pendingProposals.length > 0) {
+        const p = pendingProposals[0];
+        const yours = p.yourDecision ?? 'pending';
+        const theirs = p.partnerDecision ?? 'pending';
+        if (yours === 'pending' && theirs !== 'pending') return 'awaiting_you';
+        if (yours !== 'pending' && theirs === 'pending') return 'awaiting_them';
+        return 'neither_voted';
+    }
+    return 'empty';
+}
 
 const END_MATCH_REASONS = [
     'Conversation fizzled',
@@ -239,6 +259,8 @@ export function MatchesScreen() {
     const [shareImageUri, setShareImageUri] = useState<string | null>(null);
     const [shareLoading, setShareLoading] = useState(false);
     const [hasUnreadMatch, setHasUnreadMatch] = useState(false);
+    const [celebrationActive, setCelebrationActive] = useState(false);
+    const confettiRef = useRef<LottieView>(null);
     const viewShotRef = useRef<ViewShot>(null);
     const cardEntrance = useSharedValue(0);
     const hasAnimatedEntrance = useRef(false);
@@ -260,22 +282,26 @@ export function MatchesScreen() {
     const headerTotal = headerPad + 38 + 8 + scrollMargin;  // headerPad + title lineHeight + paddingBottom + scrollMargin
     const activeCardHeight = windowHeight - insets.top - headerTotal - tabBarH - cardMB;
 
-    // Tick every second so the timer display stays fresh — pauses when tab is not focused
+    // Tick every second only when showing the empty countdown — avoids re-renders during active match/proposal
+    const needsTimer = !activeMatch && pendingProposals.length === 0;
     useFocusEffect(
         useCallback(() => {
+            if (!needsTimer) return;
             setNow(Date.now());
             const id = setInterval(() => setNow(Date.now()), 1000);
             return () => clearInterval(id);
-        }, [])
+        }, [needsTimer])
     );
 
     const loadMatches = async () => {
+        let data: Awaited<ReturnType<typeof communityService.getFriendsAreaData>> | null = null;
         try {
             // Fetch match data and profile in parallel
-            const [data, profileResult] = await Promise.all([
+            const [fetchedData, profileResult] = await Promise.all([
                 communityService.getFriendsAreaData(),
                 getUserProfile(),
             ]);
+            data = fetchedData;
             const currentUserId = profileResult.ok && profileResult.data ? profileResult.data.userId : null;
             if (isMountedRef.current && profileResult.ok && profileResult.data) setProfile(profileResult.data);
             if (!isMountedRef.current) return;
@@ -313,6 +339,34 @@ export function MatchesScreen() {
                     hasAnimatedEntrance.current = true;
                     cardEntrance.value = 0;
                     cardEntrance.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
+                }
+
+                // ── Celebration check ────────────────────────────────
+                if (!data) return;
+                const state = deriveScreenState(data.activeMatch, data.pendingProposals || []);
+                let celebrationKey: string | null = null;
+                if (state === 'neither_voted' && data.pendingProposals?.[0]?.proposalId) {
+                    celebrationKey = `celebration_new_match_${data.pendingProposals[0].proposalId}`;
+                } else if (state === 'active_match' && data.activeMatch) {
+                    const mId = data.activeMatch.matchId ?? data.activeMatch.id;
+                    if (mId) celebrationKey = `celebration_active_match_${mId}`;
+                }
+                if (celebrationKey) {
+                    const seen = await AsyncStorage.getItem(celebrationKey);
+                    if (!seen) {
+                        await AsyncStorage.setItem(celebrationKey, '1');
+                        setCelebrationActive(true);
+                        successHaptic();
+                        if (state === 'neither_voted') {
+                            setTimeout(() => heavyHaptic(), 200);
+                        } else {
+                            setTimeout(() => heavyHaptic(), 150);
+                            setTimeout(() => heavyHaptic(), 300);
+                        }
+                        setTimeout(() => {
+                            if (isMountedRef.current) setCelebrationActive(false);
+                        }, 2800);
+                    }
                 }
             }
         }
@@ -452,39 +506,35 @@ export function MatchesScreen() {
 
     // ── Empty state countdown — time until next 7 PM Central ────────────────
     // NOTE: Must be above the early return to preserve hook order
-    const emptyCountdown = useMemo(() => {
-        const nowDate = new Date(now);
-        // Central Time offset: CDT = UTC-5, CST = UTC-6
-        // Determine if DST: second Sunday of March to first Sunday of November
-        const year = nowDate.getUTCFullYear();
+    // DST offset only changes twice a year — compute once on mount
+    const centralOffsetMs = useMemo(() => {
+        const year = new Date().getUTCFullYear();
         const marchSecondSun = new Date(Date.UTC(year, 2, 8));
         marchSecondSun.setUTCDate(8 + (7 - marchSecondSun.getUTCDay()) % 7);
         const novFirstSun = new Date(Date.UTC(year, 10, 1));
         novFirstSun.setUTCDate(1 + (7 - novFirstSun.getUTCDay()) % 7);
-        const isDST = nowDate.getTime() >= marchSecondSun.getTime() && nowDate.getTime() < novFirstSun.getTime();
-        const centralOffsetMs = isDST ? -5 * 3600000 : -6 * 3600000;
+        const isDST = Date.now() >= marchSecondSun.getTime() && Date.now() < novFirstSun.getTime();
+        return isDST ? -5 * 3600000 : -6 * 3600000;
+    }, []);
 
-        // Current time in Central
+    const emptyCountdown = useMemo(() => {
         const centralNow = new Date(now + centralOffsetMs);
         const centralHour = centralNow.getUTCHours();
-        const centralMin = centralNow.getUTCMinutes();
 
         // Next 7 PM Central in UTC
-        let next7pm = new Date(centralNow);
+        const next7pm = new Date(centralNow);
         next7pm.setUTCHours(19, 0, 0, 0);
         if (centralHour >= 19) {
             next7pm.setUTCDate(next7pm.getUTCDate() + 1);
         }
-        // Convert back to UTC
-        const next7pmUtc = next7pm.getTime() - centralOffsetMs;
-        const diffMs = next7pmUtc - now;
+        const diffMs = next7pm.getTime() - centralOffsetMs - now;
         if (diffMs <= 0) return null;
 
         const h = Math.floor(diffMs / 3600000);
         const m = Math.floor((diffMs % 3600000) / 60000);
         const s = Math.floor((diffMs % 60000) / 1000);
         return h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`;
-    }, [now]);
+    }, [now, centralOffsetMs]);
 
     if (loading && !popupEvent) {
         return (
@@ -692,12 +742,27 @@ export function MatchesScreen() {
                         imageUrl={partnerPhoto}
                         matchedByAvatars={endorserAvatars}
                         hasUnread={hasUnreadMatch}
+                        celebrate={celebrationActive}
                         onPress={handleCardPress}
                         onDismiss={screenState === 'active_match' ? () => setEndMatchModalVisible(true) : undefined}
                         onShare={screenState === 'active_match' ? handleSharePress : undefined}
                     />
                 </ReanimatedAnimated.View>
             </ScrollView>
+
+            {/* ── Confetti celebration overlay ─────────────────────────────── */}
+            {celebrationActive && (
+                <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                    <LottieView
+                        ref={confettiRef}
+                        source={CONFETTI_ANIM}
+                        autoPlay
+                        loop={false}
+                        style={{ flex: 1 }}
+                        speed={1}
+                    />
+                </View>
+            )}
 
             {/* ── Ended Match Popup ────────────────────────────────────────── */}
             <Modal

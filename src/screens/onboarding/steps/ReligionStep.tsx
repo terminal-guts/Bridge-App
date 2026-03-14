@@ -18,27 +18,16 @@ const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 
 const RELIGION_OPTIONS = [
-  'Agnostic',
-  'Atheist',
   'Buddhist',
   'Catholic',
   'Christian',
   'Hindu',
   'Jewish',
-  'Mormon',
   'Muslim',
-  'Sikh',
   'Spiritual',
-  'Orthodox',
-  'Protestant',
-  'Evangelical',
-  'Baha\'i',
-  'Jain',
-  'Shinto',
-  'Taoist',
-  'Pagan',
-  'Unitarian',
-  'Non-religious',
+  'Agnostic',
+  'Atheist',
+  'Other',
 ];
 
 export const ReligionStep: React.FC<ReligionStepProps> = ({
@@ -47,48 +36,33 @@ export const ReligionStep: React.FC<ReligionStepProps> = ({
   onNext,
   onBack,
 }) => {
-  const [selectedReligion, setSelectedReligion] = useState<string>(data.religion || '');
+  const [selected, setSelected] = useState<string[]>(
+    data.religion ? data.religion.split(' / ').map(s => s.trim()).filter(Boolean) : []
+  );
   const [error, setError] = useState<string>('');
 
-  const handleSelectReligion = (religion: string) => {
-    setSelectedReligion(religion);
+  const toggleReligion = (religion: string) => {
+    if (selected.includes(religion)) {
+      setSelected(selected.filter(r => r !== religion));
+    } else {
+      setSelected([...selected, religion]);
+    }
     setError('');
   };
 
   const validateAndContinue = () => {
-    if (!selectedReligion) {
-      setError('Please select a religious belief');
+    if (selected.length === 0) {
+      setError('Please select at least one');
       return;
     }
 
     updateData({
-      religion: selectedReligion,
+      religion: selected.join(' / '),
     });
     onNext();
   };
 
-  const OptionButton = ({
-    label,
-    selected,
-    onPress
-  }: {
-    label: string;
-    selected: boolean;
-    onPress: () => void;
-  }) => (
-    <StyledTouchableOpacity
-      onPress={onPress}
-      className={`px-4 py-3 rounded-lg border mr-2 mb-2 ${
-        selected
-          ? 'bg-primary-500 border-primary-500'
-          : 'bg-white border-neutral-300'
-      }`}
-    >
-      <Body className={selected ? 'text-white font-medium' : 'text-neutral-700'}>
-        {label}
-      </Body>
-    </StyledTouchableOpacity>
-  );
+  const isSelected = (r: string) => selected.includes(r);
 
   return (
     <OnboardingLayout
@@ -98,19 +72,26 @@ export const ReligionStep: React.FC<ReligionStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-      <H1 className="mb-3">Religious Beliefs</H1>
+      <H1 className="mb-3">What's your religion?</H1>
       <Body className="text-neutral-600 mb-8">
-        Share your religious or spiritual beliefs.
+        Select all that apply.
       </Body>
 
       <StyledView className="flex-row flex-wrap">
         {RELIGION_OPTIONS.map((option) => (
-          <OptionButton
+          <StyledTouchableOpacity
             key={option}
-            label={option}
-            selected={selectedReligion === option}
-            onPress={() => handleSelectReligion(option)}
-          />
+            onPress={() => toggleReligion(option)}
+            className={`px-4 py-3 rounded-lg border mr-2 mb-2 ${
+              isSelected(option)
+                ? 'bg-primary-500 border-primary-500'
+                : 'bg-white border-neutral-300'
+            }`}
+          >
+            <Body className={isSelected(option) ? 'text-white font-medium' : 'text-neutral-700'}>
+              {option}
+            </Body>
+          </StyledTouchableOpacity>
         ))}
       </StyledView>
 

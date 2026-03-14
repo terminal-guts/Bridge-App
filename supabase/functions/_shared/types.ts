@@ -43,6 +43,7 @@ export interface DBUserPreferences {
   preferred_height_max_inches: number | null;
   max_distance: number | null;
   preferred_ethnicities: string[];
+  preferred_religions: string[];
   preferred_politics: string[];
   partner_drinking: string[];
   partner_cannabis: string[];

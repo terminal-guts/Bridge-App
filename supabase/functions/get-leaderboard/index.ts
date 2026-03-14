@@ -79,11 +79,13 @@ Deno.serve(async (req: Request) => {
         .from('friends')
         .select('friend_id')
         .eq('user_id', userId)
+        .eq('status', 'accepted')
         .in('friend_id', participantIdList),
       supabase
         .from('friends')
         .select('user_id')
         .eq('friend_id', userId)
+        .eq('status', 'accepted')
         .in('user_id', participantIdList),
       supabase
         .from('user_settings')

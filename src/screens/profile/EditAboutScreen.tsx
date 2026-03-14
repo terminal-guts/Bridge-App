@@ -17,10 +17,8 @@ const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledText = styled(Text);
 
 const RELIGION_OPTIONS = [
-  'Agnostic', 'Atheist', 'Buddhist', 'Catholic', 'Christian', 'Hindu',
-  'Jewish', 'Mormon', 'Muslim', 'Sikh', 'Spiritual', 'Orthodox',
-  'Protestant', 'Evangelical', "Baha'i", 'Jain', 'Shinto', 'Taoist',
-  'Pagan', 'Unitarian', 'Non-religious',
+  'Buddhist', 'Catholic', 'Christian', 'Hindu', 'Jewish', 'Muslim',
+  'Spiritual', 'Agnostic', 'Atheist', 'Other',
 ];
 
 const POLITICAL_OPTIONS = [

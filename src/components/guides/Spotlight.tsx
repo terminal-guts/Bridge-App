@@ -30,13 +30,15 @@ interface SpotlightProps {
   animated?: boolean;
 }
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const getScreenDimensions = () => Dimensions.get('window');
 
 export const Spotlight: React.FC<SpotlightProps> = ({
   dimensions,
   shape = 'rounded-rect',
   animated = true,
 }) => {
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = getScreenDimensions();
+
   logger.info('[Spotlight] Rendering with dimensions:', dimensions, 'shape:', shape);
   logger.info('[Spotlight] Screen dimensions:', SCREEN_WIDTH, 'x', SCREEN_HEIGHT);
   logger.info('[Spotlight] Spotlight will create cutout from:', {
@@ -139,7 +141,7 @@ export const Spotlight: React.FC<SpotlightProps> = ({
   });
 
   return (
-    <View style={styles.fullScreen} pointerEvents="none">
+    <View style={{ position: 'absolute', top: 0, left: 0, width: SCREEN_WIDTH, height: SCREEN_HEIGHT }} pointerEvents="none">
       {/* Top overlay */}
       <Animated.View style={topOverlayStyle} />
 
@@ -155,20 +157,5 @@ export const Spotlight: React.FC<SpotlightProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  fullScreen: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
-  },
-  maskBackground: {
-    flex: 1,
-    backgroundColor: 'black', // Black in mask = visible in final result
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)', // Semi-transparent dark overlay (55% for better visibility)
-  },
-});
+// styles.maskBackground and styles.overlay kept for potential future use
+const styles = StyleSheet.create({});

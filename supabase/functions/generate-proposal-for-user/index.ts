@@ -126,7 +126,7 @@ Deno.serve(async (req: Request) => {
             supabase.from('proposals').select('user_a_id, user_b_id').in('status', ['pending', 'deciding']),
             supabase.from('blocked_users').select('user_id, blocked_user_id'),
             supabase.from('matches').select('user_id_1, user_id_2').in('status', ['pending', 'accepted', 'active']),
-            supabase.from('friends').select('user_id, friend_id'),
+            supabase.from('friends').select('user_id, friend_id').eq('status', 'accepted'),
           ]);
 
           const existingPairs = new Set<string>();
@@ -338,7 +338,8 @@ Deno.serve(async (req: Request) => {
     // Fetch friendships for exclusion (friends vote through friend channel, not pool)
     const { data: friendships } = await supabase
       .from('friends')
-      .select('user_id, friend_id');
+      .select('user_id, friend_id')
+      .eq('status', 'accepted');
 
     const friendsMap: Record<string, Set<string>> = {};
     for (const row of (friendships || [])) {

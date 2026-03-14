@@ -15,23 +15,15 @@ const StyledText = styled(Text);
 const MIN_VALUES = 3;
 const MAX_VALUES = 5;
 
-const AVAILABLE_VALUES = [
-  // Personal
-  'Honesty', 'Integrity', 'Trust', 'Respect', 'Authenticity', 'Kindness', 'Empathy',
-
-  // Relationship
-  'Communication', 'Commitment', 'Independence', 'Romance',
-
-  // Life
-  'Family', 'Career', 'Ambition', 'Work-Life Balance',
-  'Adventure', 'Stability', 'Growth Mindset', 'Creativity',
-
-  // Social
-  'Community', 'Social Justice', 'Environmentalism', 'Diversity',
-
-  // Personal Growth
-  'Spirituality', 'Health',
+const VALUE_GROUPS = [
+  { label: 'Personal', items: ['Honesty', 'Integrity', 'Trust', 'Respect', 'Authenticity', 'Kindness', 'Empathy'] },
+  { label: 'Relationship', items: ['Communication', 'Commitment', 'Independence', 'Romance'] },
+  { label: 'Life', items: ['Family', 'Career', 'Ambition', 'Work-Life Balance', 'Adventure', 'Stability', 'Growth Mindset', 'Creativity'] },
+  { label: 'Social', items: ['Community', 'Social Justice', 'Environmentalism', 'Diversity'] },
+  { label: 'Wellbeing', items: ['Spirituality', 'Health'] },
 ];
+
+const AVAILABLE_VALUES = VALUE_GROUPS.flatMap(g => g.items);
 
 // Convert to Set for O(1) lookup instead of O(n)
 const AVAILABLE_VALUES_SET = new Set(AVAILABLE_VALUES);
@@ -73,41 +65,53 @@ export const ValuesSection = React.memo<ValuesSectionProps>(({
         What matters most to you? (Select {MIN_VALUES}-{MAX_VALUES})
       </Body>
 
-      {/* Available Values Grid */}
-      <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
-        {AVAILABLE_VALUES.map((value) => (
-          <SimpleChip
-            key={value}
-            label={value}
-            selected={valuesSet.has(value)}
-            onPress={() => handleToggleValue(value)}
-          />
-        ))}
+      {/* Grouped Values */}
+      {VALUE_GROUPS.map((group) => (
+        <StyledView key={group.label} className="mb-5">
+          <Body className="text-neutral-400 text-xs font-semibold tracking-wider mb-2.5">{group.label}</Body>
+          <StyledView className="flex-row flex-wrap" style={{ gap: 10 }}>
+            {group.items.map((value) => (
+              <SimpleChip
+                key={value}
+                label={value}
+                selected={valuesSet.has(value)}
+                onPress={() => handleToggleValue(value)}
+              />
+            ))}
+          </StyledView>
+        </StyledView>
+      ))}
 
-        {/* Custom values (not in predefined list) */}
-        {customValues.map((customValue) => (
-          <StyledTouchableOpacity
-            key={customValue}
-            activeOpacity={1}
-            delayPressIn={0}
-            onPress={() => handleRemoveCustomValue(customValue)}
-            className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
-          >
-            <Body className="text-sm text-white font-medium">{customValue}</Body>
-          </StyledTouchableOpacity>
-        ))}
+      {/* Custom values */}
+      {customValues.length > 0 && (
+        <StyledView className="mb-5">
+          <Body className="text-neutral-400 text-xs font-semibold tracking-wider mb-2.5">Custom</Body>
+          <StyledView className="flex-row flex-wrap" style={{ gap: 10 }}>
+            {customValues.map((customValue) => (
+              <StyledTouchableOpacity
+                key={customValue}
+                activeOpacity={1}
+                delayPressIn={0}
+                onPress={() => handleRemoveCustomValue(customValue)}
+                className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
+              >
+                <Body className="text-sm text-white font-medium">{customValue}</Body>
+              </StyledTouchableOpacity>
+            ))}
+          </StyledView>
+        </StyledView>
+      )}
 
-        {/* "Other" Button */}
-        <StyledTouchableOpacity
-          onPress={() => {
-            lightHaptic();
-            onShowCustomValueModal();
-          }}
-          className="px-3 py-2 rounded-full border border-dashed border-neutral-400 bg-neutral-50"
-        >
-          <Body className="text-sm text-neutral-600">+ Other</Body>
-        </StyledTouchableOpacity>
-      </StyledView>
+      {/* "Other" Button */}
+      <StyledTouchableOpacity
+        onPress={() => {
+          lightHaptic();
+          onShowCustomValueModal();
+        }}
+        className="px-3 py-2 rounded-full border border-dashed border-neutral-400 bg-neutral-50 self-start"
+      >
+        <Body className="text-sm text-neutral-600">+ Other</Body>
+      </StyledTouchableOpacity>
     </Card>
   );
 });

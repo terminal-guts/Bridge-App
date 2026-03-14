@@ -199,7 +199,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
 
   const tierColors: Record<Tier, { bg: string; border: string; text: string }> = {
     1: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600' },
-    2: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-600' },
+    2: { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-600' },
     3: { bg: 'bg-pink-50', border: 'border-pink-200', text: 'text-pink-600' },
   };
 
@@ -307,7 +307,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
                 size={28}
                 color={hasAnswerInTier
                   ? COLORS.emerald
-                  : tier === 1 ? '#2563EB' : tier === 2 ? '#9333EA' : '#EC4899'}
+                  : tier === 1 ? '#2563EB' : tier === 2 ? '#4F46E5' : '#437FFF'}
               />
             </StyledView>
             <StyledView className="flex-1">
@@ -345,7 +345,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
         hasTextInput={false}
       >
         <StyledView className="mt-8">
-          <H1 className="mb-4">Getting to Know You</H1>
+          <H1 className="mb-4">What makes you, you?</H1>
           <Body className="text-neutral-600 mb-2">
             Answer <Body className="font-bold text-neutral-900">3 questions minimum</Body> (one from each tier) to enter the matching pool.
           </Body>

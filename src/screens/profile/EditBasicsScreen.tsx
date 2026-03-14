@@ -25,19 +25,15 @@ const PRONOUN_OPTIONS = [
 const MAX_PRONOUNS = 4;
 
 const GENDER_OPTIONS = [
-  { value: 'male', label: 'Man' },
-  { value: 'female', label: 'Woman' },
-  { value: 'non-binary', label: 'Non-binary' },
-  { value: 'genderfluid', label: 'Genderfluid' },
-  { value: 'agender', label: 'Agender' },
-  { value: 'two_spirit', label: 'Two-Spirit' },
-  { value: 'genderqueer', label: 'Genderqueer' },
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'non_binary', label: 'Non-binary' },
+  { value: 'not_listed', label: 'Not Listed' },
 ];
 
 const ETHNICITY_OPTIONS = [
-  'Asian', 'Black', 'Caribbean', 'Central Asian', 'East Asian',
-  'Hispanic', 'Middle Eastern', 'Native American', 'North African',
-  'Pacific Islander', 'South Asian', 'Southeast Asian', 'Sub-Saharan African', 'White',
+  'Black', 'East Asian', 'Hispanic', 'Middle Eastern', 'Native American',
+  'Pacific Islander', 'South Asian', 'Southeast Asian', 'White', 'Other',
 ];
 
 const SectionHeader: React.FC<{ title: string }> = ({ title }) => (

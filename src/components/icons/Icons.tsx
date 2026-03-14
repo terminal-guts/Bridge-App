@@ -212,11 +212,23 @@ export const WineGlassIcon: React.FC<IconProps> = ({ size = 24, color = '#667085
 export const LeafIcon: React.FC<IconProps> = ({ size = 24, color = '#667085', style }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
         <Path
-            d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66c.85-2.15 2.08-4.38 3.97-5.9C11.86 14.28 14.2 13.5 17 13.5V17l5-6.5L17 4v4z"
+            d="M11 20A7 7 0 0 1 4 13C4 9.13 7.13 6 11 6a7 7 0 0 1 7 7c0 3.87-3.13 7-7 7z"
             stroke={color}
             strokeWidth={1.8}
             strokeLinecap="round"
             strokeLinejoin="round"
+        />
+        <Path
+            d="M11 20V12"
+            stroke={color}
+            strokeWidth={1.8}
+            strokeLinecap="round"
+        />
+        <Path
+            d="M7 15c2-2 4-3 7-3"
+            stroke={color}
+            strokeWidth={1.8}
+            strokeLinecap="round"
         />
     </Svg>
 );

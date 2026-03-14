@@ -34,6 +34,7 @@ export interface ContactSection {
 
 // Cache for Bridge user names (5-min TTL)
 let bridgeUsersCache: { users: Map<string, string>; fetchedAt: number } | null = null;
+let friendIdsCache: { ids: Set<string>; fetchedAt: number } | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 /**
@@ -178,21 +179,26 @@ export const markBridgeUsers = async (contacts: NormalizedContact[]): Promise<No
     }
 
     // Fetch current user's friend IDs to filter out already-friended Bridge users
-    const friendIds = new Set<string>();
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: friends } = await supabase
-          .from('friends')
-          .select('friend_id')
-          .eq('user_id', user.id);
-        for (const f of friends || []) {
-          friendIds.add(f.friend_id);
+    // Cached in-memory for 60s to avoid re-querying on re-renders
+    if (!friendIdsCache || now - friendIdsCache.fetchedAt > 60_000) {
+      const freshIds = new Set<string>();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: friends } = await supabase
+            .from('friends')
+            .select('friend_id')
+            .eq('user_id', user.id);
+          for (const f of friends || []) {
+            freshIds.add(f.friend_id);
+          }
         }
+      } catch {
+        // Non-critical — just won't filter existing friends
       }
-    } catch {
-      // Non-critical — just won't filter existing friends
+      friendIdsCache = { ids: freshIds, fetchedAt: now };
     }
+    const friendIds = friendIdsCache.ids;
 
     return contacts.map((c) => {
       const userId = bridgeUsersCache!.users.get(c.name.toLowerCase());
