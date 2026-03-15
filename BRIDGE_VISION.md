@@ -343,6 +343,8 @@ Everything resets at **7PM Central Time** each day via pg_cron (00:00 UTC = 7PM 
 | 00:05 | `generate-proposals` | Create new proposals for eligible users, assign pool voters (up to 6 per proposal) |
 | 00:10 | `generate-daily-pairings` | Daily pairing suggestions |
 
+> **Full cron schedule** (including all notification jobs): see `NOTIFICATION_SYSTEM_SPEC.md § Cron Schedule`.
+
 - The 3-proposal voting gate resets (users must vote on 3 new community proposals)
 
 **What does NOT reset at 7PM:**

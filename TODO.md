@@ -61,20 +61,6 @@ From the engagement research (Hook Model, variable reinforcement, network effect
 | Reframe percentages as vibes | Replace "25% Match" with labels like "Different vibes" / "Good match" / "Soulmates" with color coding | Not done (held) |
 | Live real-time vote count | Supabase Realtime subscriptions so vote bar updates live when others vote | Not done (held) |
 
-### What's Already Done (Engagement)
-- Streak visual overhaul (4-tier system in `UserRow.tsx`: legendary/hot/warm/new/none with sublabels, glow, pulse)
-- Smart notification sequence (tiered cap system in `notificationService.ts`: 3/day Tier 2 cap, cooldowns)
-- Accuracy karma notifications (realtime channel, 6h cooldown)
-- Friend nudge (NudgeButton + send-nudge edge function, deployed)
-- Notification system documented (`NOTIFICATION_SYSTEM_SPEC.md`)
-- Vote flash micro-celebrations (green/red/amber color flash overlay on vote cast in ProposalReviewView)
-- Animated proposal entrance (opacity + translateX slide-in via Reanimated)
-- Vote micro-interactions (spring scale on all vote buttons)
-- Friend badge system (42 character trait icons, badge comparison in proposal view, 50-char messages)
-- Animated press depth system (`AnimatedPressable` + `Card` — shadow sinks on press-in, springs back on release, iOS)
-- Component-level shadow API (`<Card shadow="lg">` / `<Card shadow="accentBlue">` instead of numeric elevation)
-- Invite message redesign (4 rotating curiosity-driven SMS variants, improved landing page copy)
-
 ### Friend Milestones (Proposal — Not Approved)
 
 Progressive benefits at friend count thresholds. Design principles: never gate core functionality, reward density don't punish scarcity, benefits should be natural consequences.
@@ -151,26 +137,12 @@ Creative engagement concepts organized by implementation effort. These are ideas
 | Hot Take Prompts | "Hot Take of the Day" card on Community tab (not in voting flow). One prompt/day, inline card with live results. Revisit once campus engagement data exists. |
 | Vote Before Profile | Let new users vote during onboarding. Needs steady proposal flow (10+ active proposals). |
 | Instagram In-App Photos | Pull via IG API (like Hinge) instead of linking out. Larger engineering effort. |
-| ~~Anonymous Friend-to-Friend Proposals~~ | ~~Implemented: `friend_suggestions` table, `suggest-friend-match` edge function, `generate-proposals` conversion at 7PM. SuggestMatchScreen UI complete.~~ |
 | Google Auth | Not started (Phase 3) |
 | Online Now Tags | On hold |
 | Import Real Badge Icons | Replace 42 placeholder character trait SVGs with real icon assets. Source from icon pack, place in `assets/icons/badges/`, run `scripts/generate-badge-registry.js`. |
 | Badge Award Notification | Push notification when someone awards you a badge (variable reward timing). Low priority — may not need. |
 | Recommend-to-Friend Visibility | "Recommend to Friend" during voting is stored as algorithmic boost but invisible to recipient. Add notification/badge: "A friend recommended someone for you!" to close the UX gap. |
 | Dark Mode | Deferred — requires ~150+ dark color variants, NativeWind dark config, conditional component styling, dark shadow palette, Figma designs. Not safe without dedicated design pass. See `scripts/agent_plan.md`. |
-
----
-
-## V3 Features — Status
-
-| Feature | Decision |
-|---------|----------|
-| Ban System | Merged + deployed. Auto-suspends at 3+ reports. |
-| Friend Nudge | Merged + deployed. NudgeButton + send-nudge edge function. |
-| Hot Take Prompts | Deferred — don't interrupt voting flow |
-| Vote Before Profile | Deferred — no proposals for new users at small launch |
-| Instagram Link | Dropped — pulls users off-app. Future: in-app IG API integration |
-| Anonymous Friend Proposals | Implemented — `friend_suggestions` table, `suggest-friend-match` edge function, `SuggestMatchScreen` UI, 7PM conversion in `generate-proposals` |
 
 ---
 
@@ -193,17 +165,11 @@ Priority order. Use established design system (4px grid, COLORS constants, FONTS
 
 Target: `src/components/community/proposal/ProposalReviewView.tsx`. Uses Reanimated. Compatibility badge is LOCKED.
 
-**Completed:** Vote button hierarchy (52px/48px + glow), colors→tokens, typography→tokens, EmptyState component, progress dots with "1 of 3" labels, photo responsive sizing, section card accents (3px colored left-border), scroll-to-top after vote, sub-component extraction (ProposalPhotoCard, LiveVoteBar, QuestionCarousel, SmartPillCloud, proposalHelpers), entrance animation (opacity + translateX), vote micro-interactions (spring scale).
-
 **Remaining:**
 | Item | What |
 |------|------|
-| Extract StyleSheet | Remaining inline styles → `StyleSheet.create`. Keep Animated styles inline |
-| Smart pill spacing | Gap 6→8px, add column headers, increase divider margin. Fix colorblind accessibility |
-| Badge positioning | Sit in divider gap between photos, fix "87 %" → "87%" |
-| Active dot pulse | Pulse animation on active progress dot |
-
-**Cross-cutting:** Spacing audit (off-grid values → `SPACING` constants). WCAG contrast fixes (secondary button opacity 0.5→0.6, LiveVoteBar label color).
+| Extract StyleSheet | Modal content inline styles (step 1/2 headings, person selection cards, friend list items). Major blocks done. |
+| Off-grid spacing | 10px margins in pill sections → `SPACING` constants |
 
 ---
 
@@ -212,15 +178,6 @@ Target: `src/components/community/proposal/ProposalReviewView.tsx`. Uses Reanima
 - `__tests__/services/streakTrackingService.test.ts`
 - `__tests__/services/nudgeService.test.ts`
 - `__tests__/services/notificationEngagement.test.ts`
-
----
-
-## Cleanup
-
-- [ ] RESOURCES.md: remove Sarah Tavel link (Medium 403) and Coffee Meets Bagel / CIO Dive link (JS-only)
-- [x] Delete legacy `src/utils/shadows.ts` (dual-layer system, zero imports — removed)
-- [x] Standardize overlay values in GuideOverlay and InfoModal to use `OVERLAYS` constants
-- [x] Invite message redesign — rotating variants with curiosity-driven copy
 
 ---
 
