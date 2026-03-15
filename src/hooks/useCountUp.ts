@@ -68,7 +68,7 @@ export function useCountUp({
     return {
       text: text.value,
       defaultValue: text.value,
-    } as any;
+    } as { text: string; defaultValue: string };
   });
 
   return { value, text, animatedProps };

@@ -18,6 +18,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { requireServiceRole } from '../_shared/admin-auth.ts';
 import { sendPush, getNextCopyVariant } from '../_shared/send-push.ts';
 
 // ── Copy variants ────────────────────────────────────────────────
@@ -61,6 +62,9 @@ Deno.serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const forbidden = requireServiceRole(req);
+  if (forbidden) return forbidden;
+
   try {
     const supabase = createAdminClient();
     const { type, record, old_record } = await req.json();
@@ -69,7 +73,7 @@ Deno.serve(async (req: Request) => {
       return Response.json({ error: 'type and record required' }, { status: 400, headers: corsHeaders });
     }
 
-    const results: any[] = [];
+    const results: Array<{ user: string; sent: boolean; reason?: string }> = [];
 
     // ── NEW MATCH ──────────────────────────────────────────────────
     if (type === 'match') {
@@ -82,8 +86,8 @@ Deno.serve(async (req: Request) => {
         .select('user_id, first_name')
         .in('user_id', [user1Id, user2Id]);
 
-      const name1 = profiles?.find((p: any) => p.user_id === user1Id)?.first_name || 'Someone';
-      const name2 = profiles?.find((p: any) => p.user_id === user2Id)?.first_name || 'Someone';
+      const name1 = profiles?.find((p: { user_id: string; first_name?: string }) => p.user_id === user1Id)?.first_name || 'Someone';
+      const name2 = profiles?.find((p: { user_id: string; first_name?: string }) => p.user_id === user2Id)?.first_name || 'Someone';
 
       // Notify user1
       const v1 = await getNextCopyVariant(supabase, user1Id, 'match', MATCH_COPY.length);
@@ -127,7 +131,7 @@ Deno.serve(async (req: Request) => {
           .neq('voter_id', user2Id);
 
         if (voters && voters.length > 0) {
-          const voterIds = voters.map((v: any) => v.voter_id);
+          const voterIds = voters.map((v: { voter_id: string }) => v.voter_id);
 
           // Get voter names for the copy
           const { data: voterProfiles } = await supabase
@@ -135,7 +139,7 @@ Deno.serve(async (req: Request) => {
             .select('user_id, first_name')
             .in('user_id', voterIds);
 
-          const voterNames = voterProfiles?.map((p: any) => p.first_name).filter(Boolean) || [];
+          const voterNames = voterProfiles?.map((p: { first_name?: string }) => p.first_name).filter(Boolean) || [];
           const friendsStr = voterNames.length <= 2
             ? voterNames.join(' and ')
             : `${voterNames[0]} and ${voterNames.length - 1} others`;
@@ -220,8 +224,8 @@ Deno.serve(async (req: Request) => {
         .select('user_id, first_name')
         .in('user_id', [userAId, userBId]);
 
-      const nameA = profiles?.find((p: any) => p.user_id === userAId)?.first_name || 'someone special';
-      const nameB = profiles?.find((p: any) => p.user_id === userBId)?.first_name || 'someone special';
+      const nameA = profiles?.find((p: { user_id: string; first_name?: string }) => p.user_id === userAId)?.first_name || 'someone special';
+      const nameB = profiles?.find((p: { user_id: string; first_name?: string }) => p.user_id === userBId)?.first_name || 'someone special';
 
       // Notify user_a about user_b
       const va = await getNextCopyVariant(supabase, userAId, 'deciding', DECIDING_COPY.length);
@@ -254,10 +258,10 @@ Deno.serve(async (req: Request) => {
 
     return Response.json({ status: 'success', results }, { headers: corsHeaders });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[notify-transactional] Error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

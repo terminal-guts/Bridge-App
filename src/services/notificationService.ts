@@ -78,8 +78,8 @@ export const notificationService = {
                             updated_at: new Date().toISOString(),
                         }, { onConflict: 'user_id' });
                 }
-            } catch (e: any) {
-                logger.error('Error getting push token', e.message);
+            } catch (e: unknown) {
+                logger.error('Error getting push token', e instanceof Error ? e.message : String(e));
             }
         } else {
             logger.info('Must use physical device for push notifications');
@@ -91,7 +91,7 @@ export const notificationService = {
     /**
      * Schedule a local notification (used by realtime fallbacks only).
      */
-    scheduleLocalNotification: async (title: string, body: string, data?: Record<string, any>, delaySeconds: number = 1) => {
+    scheduleLocalNotification: async (title: string, body: string, data?: Record<string, unknown>, delaySeconds: number = 1) => {
         try {
             await Notifications.scheduleNotificationAsync({
                 content: {
@@ -105,8 +105,8 @@ export const notificationService = {
                     seconds: delaySeconds,
                 } as Notifications.TimeIntervalTriggerInput,
             });
-        } catch (e: any) {
-            logger.error('Error scheduling notification', e.message);
+        } catch (e: unknown) {
+            logger.error('Error scheduling notification', e instanceof Error ? e.message : String(e));
             showToast.info(title, body);
         }
     },
@@ -222,8 +222,8 @@ export const notificationService = {
                     logger.info(`Cancelled legacy scheduled notification: ${notif.identifier}`);
                 }
             }
-        } catch (e: any) {
-            logger.error('Error cancelling legacy notifications', e.message);
+        } catch (e: unknown) {
+            logger.error('Error cancelling legacy notifications', e instanceof Error ? e.message : String(e));
         }
     },
 
@@ -247,15 +247,15 @@ export const notificationService = {
         const matchChannel = supabase
             .channel('match-notifications')
             .on(
-                'postgres_changes' as any,
+                'postgres_changes',
                 {
                     event: 'INSERT',
                     schema: 'public',
                     table: 'matches',
                     filter: `user1_id=eq.${userId}`,
-                } as any,
-                async (payload: any) => {
-                    const partnerId = payload.new.user2_id;
+                },
+                async (payload) => {
+                    const partnerId = (payload.new as Record<string, unknown>).user2_id;
                     const { data: partner } = await supabase
                         .from('user_profiles')
                         .select('first_name')
@@ -265,15 +265,15 @@ export const notificationService = {
                 }
             )
             .on(
-                'postgres_changes' as any,
+                'postgres_changes',
                 {
                     event: 'INSERT',
                     schema: 'public',
                     table: 'matches',
                     filter: `user2_id=eq.${userId}`,
-                } as any,
-                async (payload: any) => {
-                    const partnerId = payload.new.user1_id;
+                },
+                async (payload) => {
+                    const partnerId = (payload.new as Record<string, unknown>).user1_id;
                     const { data: partner } = await supabase
                         .from('user_profiles')
                         .select('first_name')
@@ -288,30 +288,31 @@ export const notificationService = {
         const messageChannel = supabase
             .channel('message-notifications')
             .on(
-                'postgres_changes' as any,
+                'postgres_changes',
                 {
                     event: 'INSERT',
                     schema: 'public',
                     table: 'messages',
                     filter: `receiver_id=eq.${userId}`,
-                } as any,
-                async (payload: any) => {
-                    if (payload.new.sender_id === userId) return;
+                },
+                async (payload) => {
+                    const newRecord = payload.new as Record<string, unknown>;
+                    if (newRecord.sender_id === userId) return;
 
                     const { data: sender } = await supabase
                         .from('user_profiles')
                         .select('first_name')
-                        .eq('id', payload.new.sender_id)
+                        .eq('id', newRecord.sender_id as string)
                         .maybeSingle();
 
                     let preview: string;
-                    const msgType = payload.new.type;
+                    const msgType = newRecord.type;
                     if (msgType === 'audio') {
                         preview = '🎙️ Sent you a voice note';
                     } else if (msgType === 'image') {
                         preview = '🖼️ Sent you a photo';
                     } else {
-                        preview = payload.new.content || 'Sent you a message';
+                        preview = (newRecord.content as string) || 'Sent you a message';
                     }
 
                     notificationService.notifyNewMessage(
@@ -326,18 +327,20 @@ export const notificationService = {
         const proposalChannelA = supabase
             .channel('proposal-deciding-user-a')
             .on(
-                'postgres_changes' as any,
+                'postgres_changes',
                 {
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'proposals',
                     filter: `user_a_id=eq.${userId}`,
-                } as any,
-                async (payload: any) => {
-                    if (payload.new.status !== 'deciding') return;
-                    if (payload.old?.status === 'deciding') return;
+                },
+                async (payload) => {
+                    const newRecord = payload.new as Record<string, unknown>;
+                    const oldRecord = payload.old as Record<string, unknown> | undefined;
+                    if (newRecord.status !== 'deciding') return;
+                    if (oldRecord?.status === 'deciding') return;
 
-                    const partnerId = payload.new.user_b_id;
+                    const partnerId = newRecord.user_b_id as string;
                     const { data: partner } = await supabase
                         .from('user_profiles')
                         .select('first_name')
@@ -346,7 +349,7 @@ export const notificationService = {
 
                     notificationService.notifyProposalDeciding(
                         partner?.first_name || 'someone special',
-                        payload.new.id
+                        newRecord.id as string
                     );
                 }
             )
@@ -355,18 +358,20 @@ export const notificationService = {
         const proposalChannelB = supabase
             .channel('proposal-deciding-user-b')
             .on(
-                'postgres_changes' as any,
+                'postgres_changes',
                 {
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'proposals',
                     filter: `user_b_id=eq.${userId}`,
-                } as any,
-                async (payload: any) => {
-                    if (payload.new.status !== 'deciding') return;
-                    if (payload.old?.status === 'deciding') return;
+                },
+                async (payload) => {
+                    const newRecord = payload.new as Record<string, unknown>;
+                    const oldRecord = payload.old as Record<string, unknown> | undefined;
+                    if (newRecord.status !== 'deciding') return;
+                    if (oldRecord?.status === 'deciding') return;
 
-                    const partnerId = payload.new.user_a_id;
+                    const partnerId = newRecord.user_a_id as string;
                     const { data: partner } = await supabase
                         .from('user_profiles')
                         .select('first_name')
@@ -375,7 +380,7 @@ export const notificationService = {
 
                     notificationService.notifyProposalDeciding(
                         partner?.first_name || 'someone special',
-                        payload.new.id
+                        newRecord.id as string
                     );
                 }
             )

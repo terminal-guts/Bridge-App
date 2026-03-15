@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { requireServiceRole } from '../_shared/admin-auth.ts';
 import {
   FRIEND_VOTE_WEIGHT,
   MAX_PROPOSAL_DAYS,
@@ -14,7 +15,12 @@ import {
   IMMEDIATE_CANCEL_POOL_VOTES,
 } from '../_shared/constants.ts';
 
-function getProposalDay(proposal: any): number {
+interface ProposalTiming {
+  voting_started_at?: string | null;
+  created_at?: string;
+}
+
+function getProposalDay(proposal: ProposalTiming): number {
   const created = proposal.voting_started_at || proposal.created_at;
   if (!created) return 1;
   const createdDate = new Date(created);
@@ -24,7 +30,7 @@ function getProposalDay(proposal: any): number {
   return Math.min(day, MAX_PROPOSAL_DAYS + 1);
 }
 
-function getCurrentThreshold(proposal: any): number | null {
+function getCurrentThreshold(proposal: ProposalTiming): number | null {
   const day = getProposalDay(proposal);
   if (day > MAX_PROPOSAL_DAYS) return null;
   return THRESHOLD_SCHEDULE[day] ?? 0.55;
@@ -50,6 +56,9 @@ Deno.serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const forbidden = requireServiceRole(req);
+  if (forbidden) return forbidden;
+
   try {
     const supabase = createAdminClient();
     const nowIso = new Date().toISOString();
@@ -74,7 +83,7 @@ Deno.serve(async (req: Request) => {
       const weightedNo = proposal.weighted_no || 0;
 
       let newStatus = 'pending';
-      const updateData: Record<string, any> = {};
+      const updateData: Record<string, unknown> = {};
 
       // Check expiry (5-day hard cutoff) — auto-promote to deciding
       if (getProposalDay(proposal) > MAX_PROPOSAL_DAYS) {
@@ -100,7 +109,7 @@ Deno.serve(async (req: Request) => {
           .limit(IMMEDIATE_CANCEL_POOL_VOTES);
 
         if (poolVotes && poolVotes.length >= IMMEDIATE_CANCEL_POOL_VOTES) {
-          const allNo = poolVotes.every((v: any) => v.vote_type === 'NO');
+          const allNo = poolVotes.every((v: { vote_type: string }) => v.vote_type === 'NO');
           if (allNo) {
             newStatus = 'rejected';
             Object.assign(updateData, {
@@ -185,16 +194,12 @@ Deno.serve(async (req: Request) => {
     const { data: snapshotData, error: snapshotErr } = await supabase.rpc('snapshot_weekly_karma_rpc');
     if (snapshotErr) {
       console.error('Weekly karma snapshot failed:', snapshotErr);
-    } else {
-      console.log('Weekly karma snapshot status:', snapshotData);
     }
 
     // (d) Daily Rank Snapshot: Captures current leaderboard ranks for rank-change arrows.
     const { data: rankSnapData, error: rankSnapErr } = await supabase.rpc('snapshot_daily_ranks');
     if (rankSnapErr) {
       console.error('Daily rank snapshot failed:', rankSnapErr);
-    } else {
-      console.log('Daily rank snapshot status:', rankSnapData);
     }
 
     // 3. Check decision deadlines on 'deciding' proposals
@@ -230,10 +235,10 @@ Deno.serve(async (req: Request) => {
       auto_declined: autoDeclinedCount,
     }, { headers: corsHeaders });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('proposal-lifecycle error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

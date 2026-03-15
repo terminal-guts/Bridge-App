@@ -104,10 +104,10 @@ Deno.serve(async (req: Request) => {
       message: 'Recommendation stored',
     }, { headers: corsHeaders });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('submit-recommendation error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

@@ -55,7 +55,6 @@ Deno.serve(async (req: Request) => {
         },
         body: JSON.stringify({ triggered_by: 'snapshot-weekly-karma' }),
       });
-      console.log('Triggered send-weekly-summary');
     } catch (notifyErr) {
       // Don't fail the snapshot if notification fails
       console.error('Failed to trigger weekly summary:', notifyErr);
@@ -66,10 +65,10 @@ Deno.serve(async (req: Request) => {
       data,
     }, { headers: corsHeaders });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('snapshot-weekly-karma error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

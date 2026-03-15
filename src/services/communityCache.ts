@@ -51,14 +51,15 @@ async function setEntry<T>(key: string, data: T, cycleId?: string): Promise<void
 // Friends Data Cache (stale-while-revalidate)
 // ============================================================================
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- cached DB data has dynamic shape
 export async function getCachedFriendsData(): Promise<any | null> {
-  const entry = await getEntry<any>(KEY_FRIENDS_DATA, FRIENDS_DATA_TTL_MS);
+  const entry = await getEntry<unknown>(KEY_FRIENDS_DATA, FRIENDS_DATA_TTL_MS);
   if (!entry) return null;
   // Return even if stale — caller will revalidate in background
   return entry.data;
 }
 
-export async function setCachedFriendsData(data: any): Promise<void> {
+export async function setCachedFriendsData(data: unknown): Promise<void> {
   await setEntry(KEY_FRIENDS_DATA, data);
 }
 

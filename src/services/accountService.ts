@@ -73,13 +73,13 @@ export const deleteAccount = async (): Promise<ApiResponse<void>> => {
     await supabase.auth.signOut();
 
     return { ok: true };
-  } catch (err: any) {
-    logger.error('[ACCOUNT] Deletion error:', err.message);
+  } catch (err: unknown) {
+    logger.error('[ACCOUNT] Deletion error:', err instanceof Error ? err.message : String(err));
     return {
       ok: false,
       error: {
         code: 'DELETE_FAILED',
-        message: err.message || 'An unexpected error occurred',
+        message: err instanceof Error ? err.message : 'An unexpected error occurred',
       },
     };
   }

@@ -53,7 +53,7 @@ Deno.serve(async (req: Request) => {
     const totalParticipants = rawEntries?.[0]?.total_participants || 0;
 
     // Format entries
-    const entries = (rawEntries || []).map((row: any) => ({
+    const entries = (rawEntries || []).map((row: { user_id: string; first_name?: string; weekly_karma?: number; rank: number; rank_change?: number; total_participants?: number }) => ({
       userId: row.user_id,
       firstName: row.first_name || 'User',
       weeklyKarma: row.weekly_karma || 0,
@@ -113,10 +113,10 @@ Deno.serve(async (req: Request) => {
     // Extract main photo storage path from the JSONB photos array
     const photosMap: Record<string, string> = {};
     for (const p of (profilesResult.data || [])) {
-      const photos = p.photos as any[] | null;
+      const photos = p.photos as Array<{ url?: string; isMain?: boolean; is_main?: boolean }> | null;
       if (!photos || photos.length === 0) continue;
       // Prefer isMain/is_main photo, fall back to first photo
-      const main = photos.find((ph: any) => ph.isMain || ph.is_main) || photos[0];
+      const main = photos.find((ph) => ph.isMain || ph.is_main) || photos[0];
       if (main?.url) photosMap[p.user_id] = main.url;
     }
 
@@ -183,10 +183,10 @@ Deno.serve(async (req: Request) => {
       totalParticipants: Number(totalParticipants)
     }, { headers: corsHeaders });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('get-leaderboard error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

@@ -24,22 +24,22 @@ const createErrorResponse = <T>(code: string, message: string): ApiResponse<T> =
   error: { code, message },
 });
 
-const formatBadge = (data: any): FriendBadge => ({
-  id: data.id,
-  giverId: data.giver_id,
-  receiverId: data.receiver_id,
-  iconName: data.icon_name,
-  message: data.message,
-  isFeatured: data.is_featured,
-  isHidden: data.is_hidden,
-  createdAt: data.created_at,
-  updatedAt: data.updated_at,
+const formatBadge = (data: Record<string, unknown>): FriendBadge => ({
+  id: data.id as string,
+  giverId: data.giver_id as string,
+  receiverId: data.receiver_id as string,
+  iconName: data.icon_name as string,
+  message: data.message as string,
+  isFeatured: data.is_featured as boolean,
+  isHidden: data.is_hidden as boolean,
+  createdAt: data.created_at as string,
+  updatedAt: data.updated_at as string,
 });
 
-const formatBadgeWithGiver = (data: any): FriendBadgeWithGiver => ({
+const formatBadgeWithGiver = (data: Record<string, unknown>): FriendBadgeWithGiver => ({
   ...formatBadge(data),
-  giverFirstName: data.giver_profile?.first_name || 'Friend',
-  giverPhotoUrl: data.giver_profile?.photos?.[0]?.url,
+  giverFirstName: (data.giver_profile as Record<string, unknown> | null)?.first_name as string || 'Friend',
+  giverPhotoUrl: ((data.giver_profile as Record<string, unknown> | null)?.photos as Array<Record<string, unknown>> | undefined)?.[0]?.url as string | undefined,
 });
 
 function checkBlockedWords(message: string): string | null {
@@ -83,9 +83,9 @@ export const awardBadge = async (input: AwardBadgeInput): Promise<ApiResponse<Fr
     }
 
     return { ok: true, data: formatBadge(data) };
-  } catch (error: any) {
-    logger.error('Award badge failed:', error.message);
-    return createErrorResponse('AWARD_ERROR', error.message || 'Failed to award badge');
+  } catch (error: unknown) {
+    logger.error('Award badge failed:', error instanceof Error ? error.message : String(error));
+    return createErrorResponse('AWARD_ERROR', error instanceof Error ? error.message : 'Failed to award badge');
   }
 };
 
@@ -103,7 +103,7 @@ export const updateBadge = async (badgeId: string, input: UpdateBadgeInput): Pro
       }
     }
 
-    const updateData: any = {};
+    const updateData: Record<string, string> = {};
     if (input.iconName) updateData.icon_name = input.iconName;
     if (input.message) updateData.message = input.message;
 
@@ -121,9 +121,9 @@ export const updateBadge = async (badgeId: string, input: UpdateBadgeInput): Pro
 
     if (error) return createErrorResponse('UPDATE_ERROR', error.message);
     return { ok: true, data: formatBadge(data) };
-  } catch (error: any) {
-    logger.error('Update badge failed:', error.message);
-    return createErrorResponse('UPDATE_ERROR', error.message || 'Failed to update badge');
+  } catch (error: unknown) {
+    logger.error('Update badge failed:', error instanceof Error ? error.message : String(error));
+    return createErrorResponse('UPDATE_ERROR', error instanceof Error ? error.message : 'Failed to update badge');
   }
 };
 
@@ -139,9 +139,9 @@ export const deleteBadge = async (badgeId: string): Promise<ApiResponse<void>> =
 
     if (error) return createErrorResponse('DELETE_ERROR', error.message);
     return { ok: true };
-  } catch (error: any) {
-    logger.error('Delete badge failed:', error.message);
-    return createErrorResponse('DELETE_ERROR', error.message || 'Failed to delete badge');
+  } catch (error: unknown) {
+    logger.error('Delete badge failed:', error instanceof Error ? error.message : String(error));
+    return createErrorResponse('DELETE_ERROR', error instanceof Error ? error.message : 'Failed to delete badge');
   }
 };
 
@@ -162,16 +162,16 @@ export const getReceivedBadges = async (userId?: string): Promise<ApiResponse<Fr
     if (error) return createErrorResponse('FETCH_ERROR', error.message);
 
     const badges = (data || [])
-      .filter((b: any) => {
+      .filter((b: Record<string, unknown>) => {
         if (targetId === authUserId) return true;
         return !b.is_hidden;
       })
       .map(formatBadgeWithGiver);
 
     return { ok: true, data: badges };
-  } catch (error: any) {
-    logger.error('Get received badges failed:', error.message);
-    return createErrorResponse('FETCH_ERROR', error.message || 'Failed to fetch badges');
+  } catch (error: unknown) {
+    logger.error('Get received badges failed:', error instanceof Error ? error.message : String(error));
+    return createErrorResponse('FETCH_ERROR', error instanceof Error ? error.message : 'Failed to fetch badges');
   }
 };
 
@@ -195,9 +195,9 @@ export const getFeaturedBadges = async (userId: string): Promise<ApiResponse<Fri
 
     const badges = (data || []).map(formatBadgeWithGiver);
     return { ok: true, data: badges };
-  } catch (error: any) {
-    logger.error('Get featured badges failed:', error.message);
-    return createErrorResponse('FETCH_ERROR', error.message || 'Failed to fetch featured badges');
+  } catch (error: unknown) {
+    logger.error('Get featured badges failed:', error instanceof Error ? error.message : String(error));
+    return createErrorResponse('FETCH_ERROR', error instanceof Error ? error.message : 'Failed to fetch featured badges');
   }
 };
 
@@ -227,9 +227,9 @@ export const toggleFeatured = async (badgeId: string, isFeatured: boolean): Prom
 
     if (error) return createErrorResponse('UPDATE_ERROR', error.message);
     return { ok: true, data: formatBadge(data) };
-  } catch (error: any) {
-    logger.error('Toggle featured failed:', error.message);
-    return createErrorResponse('UPDATE_ERROR', error.message || 'Failed to toggle featured');
+  } catch (error: unknown) {
+    logger.error('Toggle featured failed:', error instanceof Error ? error.message : String(error));
+    return createErrorResponse('UPDATE_ERROR', error instanceof Error ? error.message : 'Failed to toggle featured');
   }
 };
 
@@ -237,7 +237,7 @@ export const toggleHidden = async (badgeId: string, isHidden: boolean): Promise<
   try {
     const userId = await requireAuth();
 
-    const updateData: any = { is_hidden: isHidden };
+    const updateData: Record<string, boolean> = { is_hidden: isHidden };
     if (isHidden) {
       updateData.is_featured = false;
     }
@@ -252,9 +252,9 @@ export const toggleHidden = async (badgeId: string, isHidden: boolean): Promise<
 
     if (error) return createErrorResponse('UPDATE_ERROR', error.message);
     return { ok: true, data: formatBadge(data) };
-  } catch (error: any) {
-    logger.error('Toggle hidden failed:', error.message);
-    return createErrorResponse('UPDATE_ERROR', error.message || 'Failed to toggle hidden');
+  } catch (error: unknown) {
+    logger.error('Toggle hidden failed:', error instanceof Error ? error.message : String(error));
+    return createErrorResponse('UPDATE_ERROR', error instanceof Error ? error.message : 'Failed to toggle hidden');
   }
 };
 
@@ -271,8 +271,8 @@ export const getBadgeForFriend = async (friendId: string): Promise<ApiResponse<F
 
     if (error) return createErrorResponse('FETCH_ERROR', error.message);
     return { ok: true, data: data ? formatBadge(data) : null };
-  } catch (error: any) {
-    logger.error('Get badge for friend failed:', error.message);
-    return createErrorResponse('FETCH_ERROR', error.message || 'Failed to check badge');
+  } catch (error: unknown) {
+    logger.error('Get badge for friend failed:', error instanceof Error ? error.message : String(error));
+    return createErrorResponse('FETCH_ERROR', error instanceof Error ? error.message : 'Failed to check badge');
   }
 };

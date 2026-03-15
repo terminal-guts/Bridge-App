@@ -30,16 +30,16 @@ function getFontForWeight(weight?: string | number): string {
 }
 
 // Approach 1: Patch Text.render (class components, older RN)
-function patchRender(Component: any) {
+function patchRender(Component: Record<string, unknown>) {
   const originalRender = Component.render;
   if (typeof originalRender === 'function') {
-    Component.render = function (props: any, ref: any) {
-      const flat = StyleSheet.flatten(props.style) || {};
+    Component.render = function (props: Record<string, unknown>, ref: unknown) {
+      const flat = (StyleSheet.flatten(props.style) || {}) as { fontFamily?: string; fontWeight?: string | number };
       // Skip if fontFamily already explicitly set to PlusJakartaSans
       if (flat.fontFamily && flat.fontFamily.startsWith('PlusJakartaSans')) {
         return originalRender.call(this, props, ref);
       }
-      const fontFamily = getFontForWeight(flat.fontWeight);
+      const fontFamily = getFontForWeight(flat.fontWeight as string | undefined);
       return originalRender.call(this, {
         ...props,
         style: [{ fontFamily }, props.style],
@@ -51,25 +51,26 @@ function patchRender(Component: any) {
 }
 
 // Approach 2: defaultProps fallback (works across all RN versions)
-function patchDefaultProps(Component: any) {
-  if (!Component.defaultProps) Component.defaultProps = {};
-  Component.defaultProps.style = [
+function patchDefaultProps(Component: Record<string, unknown>) {
+  const comp = Component as Record<string, Record<string, unknown>>;
+  if (!comp.defaultProps) comp.defaultProps = {};
+  comp.defaultProps.style = [
     { fontFamily: DEFAULT_FONT },
-    Component.defaultProps.style,
+    comp.defaultProps.style,
   ];
 }
 
 // Guard: only patch once (safe for HMR / fast-refresh)
 const PATCHED_KEY = '__plusJakartaPatched';
-if (!(Text as any)[PATCHED_KEY]) {
-  if (!patchRender(Text)) {
-    patchDefaultProps(Text);
+if (!(Text as unknown as Record<string, unknown>)[PATCHED_KEY]) {
+  if (!patchRender(Text as unknown as Record<string, unknown>)) {
+    patchDefaultProps(Text as unknown as Record<string, unknown>);
   }
-  (Text as any)[PATCHED_KEY] = true;
+  (Text as unknown as Record<string, unknown>)[PATCHED_KEY] = true;
 }
-if (!(TextInput as any)[PATCHED_KEY]) {
-  if (!patchRender(TextInput)) {
-    patchDefaultProps(TextInput);
+if (!(TextInput as unknown as Record<string, unknown>)[PATCHED_KEY]) {
+  if (!patchRender(TextInput as unknown as Record<string, unknown>)) {
+    patchDefaultProps(TextInput as unknown as Record<string, unknown>);
   }
-  (TextInput as any)[PATCHED_KEY] = true;
+  (TextInput as unknown as Record<string, unknown>)[PATCHED_KEY] = true;
 }

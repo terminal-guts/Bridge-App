@@ -123,8 +123,8 @@ export async function fetchStats(): Promise<{ ok: true; data: StatsResponse } | 
     }
 
     return { ok: true, data: data as StatsResponse };
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('fetchStats exception:', err);
-    return { ok: false, error: err.message || 'Network error' };
+    return { ok: false, error: err instanceof Error ? err.message : 'Network error' };
   }
 }

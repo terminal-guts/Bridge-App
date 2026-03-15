@@ -52,7 +52,7 @@ const DEFAULT_SETTINGS = {
 /**
  * Error response helper
  */
-const createErrorResponse = (code: string, message: string): ApiResponse<any> => {
+const createErrorResponse = <T = never>(code: string, message: string): ApiResponse<T> => {
   return {
     ok: false,
     error: { code, message },
@@ -100,9 +100,9 @@ export const getUserSettings = async (userId?: string): Promise<ApiResponse<User
         updatedAt: data.updated_at,
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('[SETTINGS] Get settings error:', error);
-    return createErrorResponse('FETCH_ERROR', error.message || 'Failed to fetch settings');
+    return createErrorResponse('FETCH_ERROR', error instanceof Error ? error.message : 'Failed to fetch settings');
   }
 };
 
@@ -161,9 +161,9 @@ export const updateUserSettings = async (
         updatedAt: data.updated_at,
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('[SETTINGS] Update settings error:', error);
-    return createErrorResponse('UPDATE_ERROR', error.message || 'Failed to update settings');
+    return createErrorResponse('UPDATE_ERROR', error instanceof Error ? error.message : 'Failed to update settings');
   }
 };
 
@@ -194,7 +194,7 @@ export const resetUserSettings = async (): Promise<ApiResponse<UserSettings>> =>
   try {
     const userId = await getCurrentUserId();
     return updateUserSettings(userId, DEFAULT_SETTINGS);
-  } catch (error: any) {
-    return createErrorResponse('RESET_ERROR', error.message || 'Failed to reset settings');
+  } catch (error: unknown) {
+    return createErrorResponse('RESET_ERROR', error instanceof Error ? error.message : 'Failed to reset settings');
   }
 };

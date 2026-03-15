@@ -14,9 +14,10 @@ export async function shareToMessages(imageUri: string): Promise<void> {
         } else {
             await Sharing.shareAsync(imageUri, { mimeType: 'image/png' });
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         // User cancellation is not an error
-        if (error?.message?.includes('cancel') || error?.code === 'ERR_SHARING_CANCELLED') return;
+        const err = error as Error & { code?: string };
+        if (err?.message?.includes('cancel') || err?.code === 'ERR_SHARING_CANCELLED') return;
         showToast.error('Could not share', 'Something went wrong — try again');
     }
 }
@@ -35,8 +36,9 @@ export async function shareGeneric(imageUri: string): Promise<void> {
             mimeType: 'image/png',
             UTI: 'public.png',
         });
-    } catch (error: any) {
-        if (error?.message?.includes('cancel') || error?.code === 'ERR_SHARING_CANCELLED') return;
+    } catch (error: unknown) {
+        const err = error as Error & { code?: string };
+        if (err?.message?.includes('cancel') || err?.code === 'ERR_SHARING_CANCELLED') return;
         showToast.error('Could not share', 'Something went wrong — try again');
     }
 }

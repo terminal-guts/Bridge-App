@@ -13,6 +13,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createAdminClient } from '../_shared/supabase-client.ts';
+import { requireServiceRole } from '../_shared/admin-auth.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { sendPush } from '../_shared/send-push.ts';
 
@@ -63,6 +64,9 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+
+  const forbidden = requireServiceRole(req);
+  if (forbidden) return forbidden;
 
   try {
     const supabase = createAdminClient();
@@ -172,10 +176,10 @@ Deno.serve(async (req: Request) => {
       sent: sentCount,
     }, { headers: corsHeaders });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[notify-dormant-users] Error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

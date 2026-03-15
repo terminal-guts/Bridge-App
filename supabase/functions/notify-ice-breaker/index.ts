@@ -10,6 +10,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { requireServiceRole } from '../_shared/admin-auth.ts';
 import { sendPush, getNextCopyVariant } from '../_shared/send-push.ts';
 
 const MIN_HOURS = 18;
@@ -34,6 +35,9 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+
+  const forbidden = requireServiceRole(req);
+  if (forbidden) return forbidden;
 
   try {
     const supabase = createAdminClient();
@@ -122,10 +126,10 @@ Deno.serve(async (req: Request) => {
       sent: sentCount,
     }, { headers: corsHeaders });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[notify-ice-breaker] Error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

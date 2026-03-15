@@ -31,7 +31,12 @@ import {
   KARMA_WEIGHTS,
 } from '../_shared/constants.ts';
 
-function getProposalDay(proposal: any): number {
+interface ProposalTiming {
+  voting_started_at?: string | null;
+  created_at?: string;
+}
+
+function getProposalDay(proposal: ProposalTiming): number {
   const created = proposal.voting_started_at || proposal.created_at;
   if (!created) return 1;
   const createdDate = new Date(created);
@@ -41,7 +46,7 @@ function getProposalDay(proposal: any): number {
   return Math.min(day, MAX_PROPOSAL_DAYS + 1);
 }
 
-function getCurrentThreshold(proposal: any): number | null {
+function getCurrentThreshold(proposal: ProposalTiming): number | null {
   const day = getProposalDay(proposal);
   if (day > MAX_PROPOSAL_DAYS) return null;
   return THRESHOLD_SCHEDULE[day] ?? 0.55;
@@ -281,7 +286,7 @@ Deno.serve(async (req: Request) => {
     const updatedProposal = { ...proposal, pool_yes_votes: poolYes, pool_no_votes: poolNo, friend_yes_votes: friendYes, friend_no_votes: friendNo, weighted_yes: weightedYes, weighted_no: weightedNo };
     const nowIso = new Date().toISOString();
     let newStatus = 'pending';
-    const lifecycleUpdate: Record<string, any> = {};
+    const lifecycleUpdate: Record<string, unknown> = {};
 
     // Check expiry (5-day hard cutoff) — auto-promote to deciding
     if (getProposalDay(updatedProposal) > MAX_PROPOSAL_DAYS) {
@@ -378,7 +383,7 @@ Deno.serve(async (req: Request) => {
     // 10. If friend vote, update friend streak for each friendship
     // Voter may be friends with both user_a and user_b — update both streaks
     if (isFriendVote) {
-      const streakUpdates: Promise<any>[] = [];
+      const streakUpdates: Promise<unknown>[] = [];
       if (isFriendOfA) {
         streakUpdates.push(supabase.rpc('update_friend_streak', { p_user_id: voterId, p_friend_id: proposal.user_a_id }));
       }
@@ -396,10 +401,10 @@ Deno.serve(async (req: Request) => {
       tallies: { pool_yes: poolYes, pool_no: poolNo, friend_yes: friendYes, friend_no: friendNo },
     }, { headers: corsHeaders });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('process-vote error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

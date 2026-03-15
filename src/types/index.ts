@@ -175,7 +175,7 @@ export interface LifestylePreferences {
 export interface NonNegotiable {
   id: string;
   type: string;
-  value: any;
+  value: string | number | boolean | string[];
 }
 
 export interface MatchPreferences {
@@ -319,12 +319,12 @@ export type RootStackParamList = {
   Onboarding: undefined;
 
   // Main Stack
-  MainTabs: { screen?: string; params?: any } | undefined;
+  MainTabs: { screen?: string; params?: Record<string, unknown> } | undefined;
   MatchProposal: { match?: Match; profile?: UserProfile; proposalId?: string };
   ProposalProfile: {
     partnerProfile: UserProfile;
     communityScore: number;
-    endorsers: any[];
+    endorsers: import('./community').Endorsement[];
     screenState: 'awaiting_you' | 'awaiting_them' | 'neither_voted';
     proposalId: string;
   };
@@ -364,7 +364,7 @@ export type RootStackParamList = {
 export type MainTabParamList = {
   Community: { initialPage?: 0 | 1 | 2 } | undefined;
   Matches: undefined;
-  Profile: undefined;
+  Profile: { initialTab?: 'about' | 'badges' | 'questions' } | undefined;
 };
 
 // Onboarding Types
@@ -447,7 +447,7 @@ export interface ApiResponse<T> {
   error?: {
     code: string;
     message: string;
-    details?: any;
+    details?: Record<string, unknown>;
   };
 }
 

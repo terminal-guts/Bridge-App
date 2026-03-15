@@ -315,7 +315,7 @@ export function truncateName(name: string, maxLength: number = 15): string {
 /**
  * Validate photo URL and provide fallback
  */
-export function getPhotoUrl(photos: any[], fallback: string = ''): string {
+export function getPhotoUrl(photos: { url?: string; isMain?: boolean }[], fallback: string = ''): string {
   if (!photos || photos.length === 0) return fallback;
   const mainPhoto = photos.find((p) => p.isMain) || photos[0];
   return mainPhoto?.url || fallback;
@@ -328,4 +328,45 @@ export function getInitials(firstName: string, lastName?: string): string {
   if (!firstName) return '?';
   if (!lastName) return firstName.charAt(0).toUpperCase();
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+}
+
+/**
+ * Deterministic color from a name string (for avatar backgrounds).
+ * Consistent across renders — same name always gets the same color.
+ */
+const INITIAL_AVATAR_COLORS = ['#437FFF', '#34C759', '#FF9500', '#AF52DE', '#FF3B30', '#5AC8FA', '#FF2D55', '#667085'];
+export function getInitialColor(name: string): string {
+  const code = name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return INITIAL_AVATAR_COLORS[code % INITIAL_AVATAR_COLORS.length];
+}
+
+/**
+ * Compact relative time for timestamps (short labels for tight UI spaces).
+ * Examples:
+ * - "Just now"
+ * - "5m ago"
+ * - "3h ago"
+ * - "2d ago"
+ * - "1w ago"
+ * - "3mo ago"
+ * - "1y ago"
+ */
+export function formatRelativeTimeCompact(timestamp?: string): string {
+  if (!timestamp) return 'Recently';
+
+  const now = new Date();
+  const updated = new Date(timestamp);
+  const diffMs = now.getTime() - updated.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  const diffMonths = Math.floor(diffDays / 30);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  if (diffMonths < 12) return `${diffMonths}mo ago`;
+  return `${Math.floor(diffMonths / 12)}y ago`;
 }

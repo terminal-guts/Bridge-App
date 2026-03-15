@@ -104,20 +104,20 @@ Deno.serve(async (req: Request) => {
           .eq('profile_completed', true)
           .neq('user_id', userId);
 
-        const otherIds = (allProfiles || []).map((p: any) => p.user_id).filter(Boolean);
+        const otherIds = (allProfiles || []).map((p: { user_id: string }) => p.user_id).filter(Boolean);
 
         const { data: allPrefs } = await supabase
           .from('user_preferences')
           .select('*')
           .in('user_id', otherIds);
 
-        const prefsMap: Record<string, any> = {};
+        const prefsMap: Record<string, Record<string, unknown>> = {};
         for (const p of (allPrefs || [])) {
           prefsMap[p.user_id] = p;
         }
 
         // Only users with preferences (completed onboarding)
-        const eligibleOthers = (allProfiles || []).filter((p: any) => prefsMap[p.user_id]);
+        const eligibleOthers = (allProfiles || []).filter((p: { user_id: string }) => prefsMap[p.user_id]);
 
         if (eligibleOthers.length > 0) {
           // Build exclusion sets (same pattern as generate-proposals)
@@ -163,21 +163,21 @@ Deno.serve(async (req: Request) => {
           }
 
           // Fetch deep question answers for scoring
-          const candidateIds = eligibleOthers.map((p: any) => p.user_id);
+          const candidateIds = eligibleOthers.map((p: { user_id: string }) => p.user_id);
           const { data: deepAnswers } = await supabase
             .from('deep_question_answers')
             .select('user_id, answers')
             .in('user_id', [userId, ...candidateIds]);
 
-          const deepMap: Record<string, any[]> = {};
+          const deepMap: Record<string, Array<{ question_id: string; answer_text: string }>> = {};
           for (const row of (deepAnswers || [])) {
             if (row.answers && typeof row.answers === 'object') {
               if (Array.isArray(row.answers)) {
                 deepMap[row.user_id] = row.answers;
               } else {
-                deepMap[row.user_id] = Object.entries(row.answers).map(([qid, answer]) => ({
+                deepMap[row.user_id] = Object.entries(row.answers as Record<string, unknown>).map(([qid, answer]) => ({
                   question_id: qid,
-                  answer_text: typeof answer === 'string' ? answer : (answer as any)?.answer_text || '',
+                  answer_text: typeof answer === 'string' ? answer : (answer as Record<string, unknown> | null)?.answer_text as string || '',
                 }));
               }
             }
@@ -196,7 +196,7 @@ Deno.serve(async (req: Request) => {
           }
 
           // Score candidates
-          let bestCandidate: any = null;
+          let bestCandidate: { profile: { user_id: string; [key: string]: unknown }; score: number; category_scores: Record<string, number>; weighted_scores: Record<string, number> } | null = null;
           let bestScore = -1;
 
           for (const other of eligibleOthers) {
@@ -268,10 +268,8 @@ Deno.serve(async (req: Request) => {
             if (!insertErr) {
               proposalCreated = true;
               compatibilityScore = bestCandidate.score;
-              console.log(`Created proposal for ${userId} with ${bestCandidate.profile.user_id} (score: ${bestCandidate.score})`);
             } else if (insertErr.code === '23505') {
               // Duplicate — race condition with cron, safe to ignore
-              console.log('Proposal already exists (duplicate), skipping');
             } else {
               console.error('Failed to create proposal:', insertErr.message);
             }
@@ -429,10 +427,10 @@ Deno.serve(async (req: Request) => {
       voters_backfilled: totalBackfilled,
     }, { headers: corsHeaders });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('generate-proposal-for-user error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

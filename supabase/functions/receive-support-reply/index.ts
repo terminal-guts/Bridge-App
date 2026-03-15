@@ -21,7 +21,7 @@ serve(async (req: Request) => {
 
     // Only accept replies from the founder
     if (from !== FOUNDER_PHONE) {
-      console.warn('Rejected reply from unauthorized number:', from);
+      console.error('Rejected reply from unauthorized number');
       return twiml();
     }
 

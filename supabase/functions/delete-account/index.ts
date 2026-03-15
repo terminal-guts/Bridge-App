@@ -48,12 +48,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log('Account deleted successfully for user:', userId);
     return Response.json({ success: true }, { headers: corsHeaders });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('delete-account error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

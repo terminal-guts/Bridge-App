@@ -100,8 +100,8 @@ async function getAllPushTokens(supabase: ReturnType<typeof createAdminClient>):
 
   if (!data) return [];
   return data
-    .map((row: any) => row.push_token)
-    .filter((token: string) => token && token.startsWith('ExponentPushToken'));
+    .map((row: { push_token: string | null }) => row.push_token)
+    .filter((token: string | null): token is string => !!token && token.startsWith('ExponentPushToken'));
 }
 
 function buildNotificationBody(stats: WeeklyStats): { title: string; body: string } {
@@ -190,15 +190,12 @@ Deno.serve(async (req: Request) => {
 
     // 1. Gather stats for the week that just ended
     const stats = await getWeeklyStats(supabase);
-    console.log('Weekly stats:', stats);
 
     // 2. Build notification
     const { title, body } = buildNotificationBody(stats);
-    console.log('Notification:', { title, body });
 
     // 3. Get all push tokens
     const tokens = await getAllPushTokens(supabase);
-    console.log(`Found ${tokens.length} push tokens`);
 
     if (tokens.length === 0) {
       return Response.json({
@@ -219,10 +216,10 @@ Deno.serve(async (req: Request) => {
       sent,
     }, { headers: corsHeaders });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('send-weekly-summary error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

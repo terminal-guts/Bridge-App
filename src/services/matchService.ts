@@ -8,6 +8,10 @@
 import { supabase } from '../lib/supabase';
 import { ApiResponse, Match, UserProfile } from '../types';
 import { requireAuth } from '../utils/auth';
+import { mapProfileRow } from './communityBackendService';
+import { createLogger } from '../utils/secureLogger';
+
+const logger = createLogger('MatchService');
 
 /**
  * Get all matches for the current user
@@ -52,55 +56,21 @@ export const getUserMatches = async (): Promise<ApiResponse<Match[]>> => {
       return { ok: true, data: [] };
     }
 
-    // Helper function to format profile data
-    const formatProfile = (p: any): UserProfile | undefined => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DB rows have dynamic shape
+    const formatProfile = (p: Record<string, any> | null): UserProfile | undefined => {
       if (!p) return undefined;
-      return {
-        id: p.id,
-        userId: p.user_id,
-        firstName: p.first_name,
-        lastName: p.last_name || '',
-        age: p.age,
-        gender: p.gender || [],
-        pronouns: p.pronouns || 'prefer_not_to_say',
-        currentJob: p.current_job || '',
-        companyPosition: p.company_position || '',
-        educationLevel: p.education_level || 'bachelors',
-        school: p.school || '',
-        height: p.height_inches || '',
-        ethnicity: p.ethnicity || '',
-        religion: p.religion || '',
-        politicalLeaning: p.political_leaning || 'prefer_not_to_say',
-        location: p.location || '',
-        photos: p.profile_photo_path ? [{ id: '1', url: p.profile_photo_path, isMain: true, order: 1 }] : [],
-        interests: Array.isArray(p.interests) ? p.interests : [],
-        values: Array.isArray(p.values) ? p.values : [],
-        lifestyle: {
-          drinking: p.drinking_frequency || 'Prefer not to say',
-          smoking: p.tobacco_frequency || 'Prefer not to say',
-          exercise: 'often',
-          children: p.has_children || 'open',
-          pets: [],
-        },
-        nonNegotiables: [],
-        preferences: {
-          ageMin: 24,
-          ageMax: 32,
-          gender: 'female',
-          lookingFor: 'relationship',
-        },
-        createdAt: p.created_at,
-        updatedAt: p.updated_at,
-      };
+      return mapProfileRow(p);
     };
 
     // Format matches directly from joined data
     const formattedMatches: Match[] = matches.map(m => {
       // Find the match_exit for the current user (if exists)
-      let matchExit: any = null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DB rows have dynamic shape
+      let matchExit: Record<string, any> | null | undefined = null;
       if (m.match_exits && Array.isArray(m.match_exits) && m.match_exits.length > 0) {
         // Find the exit where the current user was the one who exited
-        matchExit = m.match_exits.find((exit: any) => exit.exiting_user_id === userId);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DB rows have dynamic shape
+        matchExit = (m.match_exits as Array<Record<string, any>>).find((exit) => exit.exiting_user_id === userId);
       }
 
       return {
@@ -126,12 +96,12 @@ export const getUserMatches = async (): Promise<ApiResponse<Match[]>> => {
     });
 
     return { ok: true, data: formattedMatches };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       ok: false,
       error: {
         code: 'MATCHES_FETCH_ERROR',
-        message: error.message || 'An unexpected error occurred',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
       },
     };
   }
@@ -175,12 +145,12 @@ export const exitMatch = async (
     }
 
     return { ok: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       ok: false,
       error: {
         code: 'EXIT_MATCH_ERROR',
-        message: error.message || 'An unexpected error occurred',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
       },
     };
   }
@@ -213,13 +183,57 @@ export const updateMatchExitFeedback = async (
     }
 
     return { ok: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       ok: false,
       error: {
         code: 'UPDATE_FEEDBACK_ERROR',
-        message: error.message || 'An unexpected error occurred',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
       },
     };
   }
+};
+
+// ============================================================================
+// USER REPORTS
+// ============================================================================
+
+/**
+ * Submit a user report and send a notification to the team.
+ * Inserts a record into `user_reports` and fires a background edge function.
+ */
+export const submitUserReport = async (params: {
+  reporterId: string;
+  reportedUserId: string;
+  reportedUserName: string;
+  reason: string;
+  details: string;
+}): Promise<void> => {
+  const { reporterId, reportedUserId, reason, details, reportedUserName } = params;
+
+  const { error } = await supabase.from('user_reports').insert({
+    reporter_id: reporterId,
+    reported_user_id: reportedUserId,
+    reason,
+    details: details.trim() || '',
+  });
+  if (error) throw error;
+
+  // Fetch reporter's name for the notification email (fire-and-forget)
+  const { data: reporterProfile } = await supabase
+    .from('user_profiles')
+    .select('first_name')
+    .eq('user_id', reporterId)
+    .single();
+
+  supabase.functions.invoke('notify-report', {
+    body: {
+      reporter_name: reporterProfile?.first_name || 'Unknown',
+      reported_name: reportedUserName,
+      reason,
+      details: details.trim() || '',
+    },
+  }).catch((err) => {
+    logger.warn('[Report] Failed to notify founder via email:', err);
+  });
 };

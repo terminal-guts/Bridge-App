@@ -7,7 +7,7 @@
  */
 
 import { supabase } from '../lib/supabase';
-import { ApiResponse, UserProfile } from '../types';
+import { ApiResponse, UserProfile, Photo } from '../types';
 import { getAuthenticatedUserId } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
 
@@ -42,14 +42,15 @@ export interface BlockedUser {
 // HELPER
 // ============================================================================
 
-const createErrorResponse = (code: string, message: string): ApiResponse<any> => ({
+const createErrorResponse = <T = never>(code: string, message: string): ApiResponse<T> => ({
   ok: false,
   error: { code, message },
 });
 
-function tryParseJSON(json: any): any {
+function tryParseJSON(json: unknown): unknown {
   if (!json) return null;
   if (typeof json === 'object') return json;
+  if (typeof json !== 'string') return null;
   try {
     return JSON.parse(json);
   } catch {
@@ -134,9 +135,9 @@ export const blockUser = async (
 
     logger.info(`[Supabase] User ${currentUserId} blocked ${blockedUserId} (proposals cancelled, matches ended, friendship removed)`);
     return { ok: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('blockUser error:', error);
-    return createErrorResponse('BLOCK_ERROR', error.message || 'Failed to block user');
+    return createErrorResponse('BLOCK_ERROR', error instanceof Error ? error.message : 'Failed to block user');
   }
 };
 
@@ -163,9 +164,9 @@ export const unblockUser = async (
 
     logger.info(`[Supabase] User ${currentUserId} unblocked ${blockedUserId}`);
     return { ok: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('unblockUser error:', error);
-    return createErrorResponse('UNBLOCK_ERROR', error.message || 'Failed to unblock user');
+    return createErrorResponse('UNBLOCK_ERROR', error instanceof Error ? error.message : 'Failed to unblock user');
   }
 };
 
@@ -188,7 +189,7 @@ export const getBlockedUsers = async (): Promise<ApiResponse<BlockedUser[]>> => 
       return { ok: true, data: [] };
     }
 
-    const blockedUserIds = blocks.map((b: any) => b.blocked_user_id);
+    const blockedUserIds = blocks.map((b) => b.blocked_user_id);
 
     const { data: profiles, error: profilesError } = await supabase
       .from('user_profiles')
@@ -197,8 +198,8 @@ export const getBlockedUsers = async (): Promise<ApiResponse<BlockedUser[]>> => 
 
     if (profilesError) throw profilesError;
 
-    const result: BlockedUser[] = blocks.map((block: any) => {
-      const p = (profiles || []).find((x: any) => x.user_id === block.blocked_user_id);
+    const result: BlockedUser[] = blocks.map((block) => {
+      const p = (profiles || []).find((x) => x.user_id === block.blocked_user_id);
       return {
         id: block.id,
         userId: block.user_id,
@@ -212,16 +213,16 @@ export const getBlockedUsers = async (): Promise<ApiResponse<BlockedUser[]>> => 
               firstName: p.first_name,
               lastName: p.last_name,
               age: p.age,
-              photos: tryParseJSON(p.photos) ?? [],
+              photos: (tryParseJSON(p.photos) as Photo[] | null) ?? [],
             } as Partial<UserProfile>)
           : undefined,
       };
     });
 
     return { ok: true, data: result };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('getBlockedUsers error:', error);
-    return createErrorResponse('FETCH_BLOCKED_ERROR', error.message || 'Failed to fetch blocked users');
+    return createErrorResponse('FETCH_BLOCKED_ERROR', error instanceof Error ? error.message : 'Failed to fetch blocked users');
   }
 };
 
@@ -247,9 +248,9 @@ export const isUserPairBlocked = async (
 
     if (error) throw error;
     return { ok: true, data: !!data && data.length > 0 };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('isUserPairBlocked error:', error);
-    return createErrorResponse('CHECK_PAIR_BLOCKED_ERROR', error.message || 'Failed to check pair block status');
+    return createErrorResponse('CHECK_PAIR_BLOCKED_ERROR', error instanceof Error ? error.message : 'Failed to check pair block status');
   }
 };
 
@@ -272,8 +273,8 @@ export const getBlockedUserIds = async (
 
     if (error1 || error2) throw error1 || error2;
 
-    const outIds = (outgoing ?? []).map((r: any) => r.blocked_user_id);
-    const inIds = (incoming ?? []).map((r: any) => r.user_id);
+    const outIds = (outgoing ?? []).map((r) => r.blocked_user_id);
+    const inIds = (incoming ?? []).map((r) => r.user_id);
     return [...new Set([...outIds, ...inIds])];
   } catch (error) {
     logger.error('getBlockedUserIds error:', error);
@@ -295,9 +296,9 @@ export const getBlockedUsersCount = async (): Promise<ApiResponse<number>> => {
 
     if (error) throw error;
     return { ok: true, data: count ?? 0 };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('getBlockedUsersCount error:', error);
-    return createErrorResponse('COUNT_BLOCKED_ERROR', error.message || 'Failed to count blocked users');
+    return createErrorResponse('COUNT_BLOCKED_ERROR', error instanceof Error ? error.message : 'Failed to count blocked users');
   }
 };
 

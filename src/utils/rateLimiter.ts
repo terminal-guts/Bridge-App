@@ -105,13 +105,13 @@ export const checkRateLimit = async (
         retryAfterSeconds: result.retry_after_seconds,
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Rate limit check error:', error);
     return {
       ok: false,
       error: {
         code: 'RATE_LIMIT_CHECK_ERROR',
-        message: error.message || 'Failed to check rate limit',
+        message: error instanceof Error ? error.message : 'Failed to check rate limit',
       },
     };
   }
@@ -127,7 +127,7 @@ export const checkRateLimit = async (
 export const recordRateLimitAttempt = async (
   identifier: string,
   actionType: string,
-  metadata: Record<string, any> = {}
+  metadata: Record<string, unknown> = {}
 ): Promise<ApiResponse<boolean>> => {
   // DEVELOPMENT: Skip recording in development mode
   if (__DEV__) {
@@ -159,13 +159,13 @@ export const recordRateLimitAttempt = async (
       ok: true,
       data: data,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Record rate limit attempt error:', error);
     return {
       ok: false,
       error: {
         code: 'RECORD_ATTEMPT_ERROR',
-        message: error.message || 'Failed to record rate limit attempt',
+        message: error instanceof Error ? error.message : 'Failed to record rate limit attempt',
       },
     };
   }
@@ -219,11 +219,11 @@ export const enforceRateLimit = async (
  *   return await sendOTP(phone);
  * });
  */
-export const withRateLimit = <T extends (...args: any[]) => Promise<any>>(
+export const withRateLimit = <T extends (...args: unknown[]) => Promise<unknown>>(
   actionType: string,
   fn: T
 ): T => {
-  return (async (...args: any[]) => {
+  return (async (...args: unknown[]) => {
     // Get identifier from first argument (assumed to be userId)
     const identifier = args[0]?.toString() || 'unknown';
 

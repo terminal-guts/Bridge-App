@@ -12,7 +12,7 @@ export interface Profile {
     id: string;
     name: string;
     age: number;
-    image: any; // Can be a string (URI) or require() result
+    image: number | { uri: string }; // Can be a require() result (number) or URI object
     isVerified: boolean;
     karmaPoints: number;
     matchPercentage: number;

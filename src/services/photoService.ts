@@ -51,7 +51,7 @@ interface UploadResult {
 /**
  * Error response helper
  */
-const createErrorResponse = (code: string, message: string): ApiResponse<any> => {
+const createErrorResponse = <T = never>(code: string, message: string): ApiResponse<T> => {
   return {
     ok: false,
     error: { code, message },
@@ -114,7 +114,7 @@ const compressImage = async (
     );
 
     return manipulatedImage.uri;
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Image compression failed:', error);
     throw new Error('Failed to compress image');
   }
@@ -213,9 +213,9 @@ const uploadPhotoInternal = async (
         publicUrl: storagePath, // Return path for now, signed URL generated on demand
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Photo upload error:', error);
-    return createErrorResponse('UPLOAD_ERROR', error.message || 'Failed to upload photo');
+    return createErrorResponse('UPLOAD_ERROR', error instanceof Error ? error.message : 'Failed to upload photo');
   }
 };
 
@@ -260,9 +260,9 @@ export const uploadPhoto = async (
 
     // Call internal function with authenticated userId
     return uploadPhotoInternal(userId, imageUri, order, isMain, compressionOptions);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Photo upload error:', error);
-    return createErrorResponse('UPLOAD_ERROR', error.message || 'Failed to upload photo');
+    return createErrorResponse('UPLOAD_ERROR', error instanceof Error ? error.message : 'Failed to upload photo');
   }
 };
 
@@ -320,9 +320,9 @@ export const uploadMultiplePhotos = async (
     }
 
     return createErrorResponse('PHOTO_UPLOAD_FAILED', errors.join('; '));
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Multiple photo upload error:', error);
-    return createErrorResponse('UPLOAD_ERROR', error.message || 'Failed to upload photos');
+    return createErrorResponse('UPLOAD_ERROR', error instanceof Error ? error.message : 'Failed to upload photos');
   }
 };
 
@@ -367,9 +367,9 @@ export const deletePhoto = async (photoId: string): Promise<ApiResponse<void>> =
     return {
       ok: true,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Photo deletion error:', error);
-    return createErrorResponse('DELETE_ERROR', error.message || 'Failed to delete photo');
+    return createErrorResponse('DELETE_ERROR', error instanceof Error ? error.message : 'Failed to delete photo');
   }
 };
 
@@ -398,8 +398,8 @@ export const deleteMultiplePhotos = async (
     return {
       ok: true,
     };
-  } catch (error: any) {
-    return createErrorResponse('DELETE_ERROR', error.message || 'Failed to delete photos');
+  } catch (error: unknown) {
+    return createErrorResponse('DELETE_ERROR', error instanceof Error ? error.message : 'Failed to delete photos');
   }
 };
 
@@ -438,10 +438,10 @@ export const getPhotoSignedUrl = async (
       ok: true,
       data: data.signedUrl,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return createErrorResponse(
       'SIGNED_URL_ERROR',
-      error.message || 'Failed to generate signed URL'
+      error instanceof Error ? error.message : 'Failed to generate signed URL'
     );
   }
 };
@@ -485,10 +485,10 @@ export const getMultiplePhotoSignedUrls = async (
       ok: true,
       data: urlMap,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return createErrorResponse(
       'SIGNED_URLS_ERROR',
-      error.message || 'Failed to generate signed URLs'
+      error instanceof Error ? error.message : 'Failed to generate signed URLs'
     );
   }
 };

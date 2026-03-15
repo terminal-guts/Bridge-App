@@ -46,7 +46,8 @@ const getStreakDisplay = (streakDays: number) => {
 };
 
 interface FriendCardProps {
-    friend: FriendWithGridStatus | any; // Support both types
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supports legacy FriendData shape
+    friend: FriendWithGridStatus & Record<string, any>; // Support both types
     variant?: 'pending' | 'completed';
     onPress?: () => void;
     onActionPress?: () => void;
@@ -121,9 +122,10 @@ export const FriendCard = React.memo<FriendCardProps>(({
                 styles.container,
                 { backgroundColor: variant === 'completed' ? COLORS.COMPLETED_BG : COLORS.PENDING_BG }
             ]}
+            accessibilityLabel={`${name}, ${variant === 'completed' ? `${points} points` : 'pending'}${streak > 0 ? `, ${streak} day streak` : ''}`}
         >
             {/* Avatar */}
-            <StyledTouchable onPress={handleAvatarPress} activeOpacity={0.7}>
+            <StyledTouchable onPress={handleAvatarPress} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`View ${name}'s profile`}>
                 <StyledView style={styles.avatarContainer}>
                     <StyledImage
                         source={{ uri: photoUrl }}
@@ -133,6 +135,8 @@ export const FriendCard = React.memo<FriendCardProps>(({
                         ]}
                         cachePolicy="disk"
                         transition={200}
+                        accessibilityRole="image"
+                        accessibilityLabel={`${name}'s photo`}
                     />
                 </StyledView>
             </StyledTouchable>
@@ -142,6 +146,8 @@ export const FriendCard = React.memo<FriendCardProps>(({
                 onPress={handleMainPress}
                 activeOpacity={0.7}
                 style={styles.infoContainer}
+                accessibilityRole="button"
+                accessibilityLabel={`${name}`}
             >
                 <StyledView style={styles.nameRow}>
                     <StyledText numberOfLines={1} style={styles.nameText}>
@@ -172,6 +178,8 @@ export const FriendCard = React.memo<FriendCardProps>(({
                     }}
                     activeOpacity={0.7}
                     style={styles.badgeButton}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${name}'s badges`}
                 >
                     <EvaIcon name="award" variant="outline" size={20} color={THEME_COLORS.text.muted} />
                 </StyledTouchable>
@@ -184,6 +192,8 @@ export const FriendCard = React.memo<FriendCardProps>(({
                         onPress={handleActionPress}
                         activeOpacity={0.75}
                         style={styles.voteButton}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Vote for ${name}`}
                     >
                         <StyledText style={styles.voteButtonText}>Vote</StyledText>
                     </StyledTouchable>

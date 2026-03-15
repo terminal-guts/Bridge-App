@@ -42,8 +42,8 @@ export async function fetchLeaderboard(limit = 50): Promise<{ ok: true; data: Le
     }
 
     return { ok: true, data: data as LeaderboardResponse };
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('fetchLeaderboard exception:', err);
-    return { ok: false, error: err.message || 'Network error' };
+    return { ok: false, error: err instanceof Error ? err.message : 'Network error' };
   }
 }

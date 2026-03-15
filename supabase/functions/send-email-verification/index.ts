@@ -71,7 +71,6 @@ Deno.serve(async (req: Request) => {
         return jsonResponse({ error: "Failed to send verification email. Please try again." }, 500);
       }
 
-      console.log("OTP email sent via Supabase to:", normalizedEmail);
       return jsonResponse({ ok: true, message: "Verification code sent" });
     }
 
@@ -120,7 +119,6 @@ Deno.serve(async (req: Request) => {
         // Don't fail — the code was valid, email is verified
       }
 
-      console.log("Rice email verified for user:", user.id, "email:", normalizedEmail);
       return jsonResponse({ ok: true, verified: true });
     }
 

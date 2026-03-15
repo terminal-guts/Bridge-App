@@ -11,6 +11,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { requireServiceRole } from '../_shared/admin-auth.ts';
 import { sendPush, getNextCopyVariant } from '../_shared/send-push.ts';
 
 const COPY_VARIANTS = [
@@ -32,6 +33,9 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+
+  const forbidden = requireServiceRole(req);
+  if (forbidden) return forbidden;
 
   try {
     const supabase = createAdminClient();
@@ -103,7 +107,7 @@ Deno.serve(async (req: Request) => {
         .eq('voter_id', voterId)
         .in('proposal_id', proposalIds);
 
-      const votedProposalIds = new Set((votes || []).map((v: any) => v.proposal_id));
+      const votedProposalIds = new Set((votes || []).map((v: { proposal_id: string }) => v.proposal_id));
 
       // Filter to unvoted candidates
       const unvoted = candidates.filter(c => !votedProposalIds.has(c.proposalId));
@@ -145,10 +149,10 @@ Deno.serve(async (req: Request) => {
       sent: sentCount,
     }, { headers: corsHeaders });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[notify-vote-reminder] Error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

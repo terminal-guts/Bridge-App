@@ -127,7 +127,7 @@ const sanitizeString = (value: string): string => {
 /**
  * Sanitize an object by redacting sensitive fields and patterns
  */
-const sanitizeObject = (obj: any, depth = 0): any => {
+const sanitizeObject = (obj: unknown, depth = 0): unknown => {
   // Prevent infinite recursion
   if (depth > 10) {
     return '[MAX_DEPTH_REACHED]';
@@ -153,14 +153,14 @@ const sanitizeObject = (obj: any, depth = 0): any => {
     return {
       name: obj.name,
       message: sanitizeString(obj.message || ''),
-      ...(typeof (obj as any).code === 'string' ? { code: (obj as any).code } : {}),
+      ...(typeof (obj as Error & { code?: string }).code === 'string' ? { code: (obj as Error & { code?: string }).code } : {}),
     };
   }
 
   // Handle objects
-  const sanitized: any = {};
+  const sanitized: Record<string, unknown> = {};
 
-  for (const [key, value] of Object.entries(obj)) {
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
     // Check if field name is sensitive
     const lowerKey = key.toLowerCase();
     const isSensitiveField = SENSITIVE_FIELD_NAMES.some(
@@ -184,7 +184,7 @@ const sanitizeObject = (obj: any, depth = 0): any => {
 /**
  * Sanitize log arguments
  */
-const sanitizeArgs = (args: any[]): any[] => {
+const sanitizeArgs = (args: unknown[]): unknown[] => {
   if (!currentConfig.enableSanitization) {
     return args;
   }
@@ -240,7 +240,7 @@ const getLevelPrefix = (level: LogLevel): string => {
 /**
  * Core logging function
  */
-const log = (level: LogLevel, ...args: any[]): void => {
+const log = (level: LogLevel, ...args: unknown[]): void => {
   if (!shouldLog(level)) {
     return;
   }
@@ -269,7 +269,7 @@ const log = (level: LogLevel, ...args: any[]): void => {
  * Debug level logging (lowest priority)
  * Use for detailed debugging information
  */
-export const debug = (...args: any[]): void => {
+export const debug = (...args: unknown[]): void => {
   log(LogLevel.DEBUG, ...args);
 };
 
@@ -277,7 +277,7 @@ export const debug = (...args: any[]): void => {
  * Info level logging
  * Use for general informational messages
  */
-export const info = (...args: any[]): void => {
+export const info = (...args: unknown[]): void => {
   log(LogLevel.INFO, ...args);
 };
 
@@ -285,7 +285,7 @@ export const info = (...args: any[]): void => {
  * Warning level logging
  * Use for warning messages that aren't errors
  */
-export const warn = (...args: any[]): void => {
+export const warn = (...args: unknown[]): void => {
   log(LogLevel.WARN, ...args);
 };
 
@@ -293,7 +293,7 @@ export const warn = (...args: any[]): void => {
  * Error level logging (highest priority)
  * Use for error messages
  */
-export const error = (...args: any[]): void => {
+export const error = (...args: unknown[]): void => {
   log(LogLevel.ERROR, ...args);
 };
 
@@ -316,7 +316,7 @@ export const logError = (error: Error, context?: string): void => {
 export const logStructured = (
   level: LogLevel,
   event: string,
-  data?: Record<string, any>
+  data?: Record<string, unknown>
 ): void => {
   const structuredLog = {
     timestamp: getTimestamp(),
@@ -332,10 +332,10 @@ export const logStructured = (
  */
 export const createLogger = (namespace: string) => {
   return {
-    debug: (...args: any[]) => debug(`[${namespace}]`, ...args),
-    info: (...args: any[]) => info(`[${namespace}]`, ...args),
-    warn: (...args: any[]) => warn(`[${namespace}]`, ...args),
-    error: (...args: any[]) => error(`[${namespace}]`, ...args),
+    debug: (...args: unknown[]) => debug(`[${namespace}]`, ...args),
+    info: (...args: unknown[]) => info(`[${namespace}]`, ...args),
+    warn: (...args: unknown[]) => warn(`[${namespace}]`, ...args),
+    error: (...args: unknown[]) => error(`[${namespace}]`, ...args),
     logError: (err: Error, context?: string) => logError(err, `[${namespace}]${context ? ' ' + context : ''}`),
   };
 };

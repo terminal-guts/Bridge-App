@@ -7,7 +7,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { useGuideContext } from '../contexts/GuideContext';
-import { GuideDefinition } from '../types/guides';
+import { GuideDefinition, GuideId } from '../types/guides';
 import { isGuideCompleted, resetGuide } from '../services/guideService';
 import { createLogger } from '../utils/secureLogger';
 
@@ -86,7 +86,7 @@ export const useGuide = (): UseGuideReturn => {
    */
   const isCompleted = useCallback(
     (guideId: string) => {
-      return completedGuides.has(guideId as any);
+      return completedGuides.has(guideId as GuideId);
     },
     [completedGuides]
   );

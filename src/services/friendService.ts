@@ -7,14 +7,16 @@
  * - Add friends using friend codes
  * - Remove friends
  * - Get friend lists with profiles
+ *
+ * Friend code operations are in friendService.codes.ts.
+ * Friend request operations are in friendService.requests.ts.
  */
 
 import { supabase } from '../lib/supabase';
 import { ApiResponse, UserProfile } from '../types';
 import { requireAuth } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
-import { getMultiplePhotoSignedUrls } from './photoService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { mapProfileRow, resolveProfilePhotos } from './communityBackendService';
 import {
   checkRateLimit,
   recordRateLimitAttempt,
@@ -22,18 +24,14 @@ import {
   formatRetryTime,
 } from '../utils/rateLimiter';
 
-const logger = createLogger('FriendService');
+// Re-export from sub-modules so existing imports keep working
+export { getUserFriendCode, getFriendCodeByUserId, getFriendCodesByUserIds, sendFriendRequestByCode } from './friendService.codes';
+export type { FriendCode } from './friendService.codes';
+export { sendFriendRequest, getIncomingRequests, getOutgoingRequests, acceptFriendRequest, declineFriendRequest, cancelFriendRequest } from './friendService.requests';
+export type { FriendRequest } from './friendService.requests';
+export { invalidateFriendCountCache, type AddFriendResult } from './friendService.shared';
 
-/**
- * Friend Code data structure
- */
-export interface FriendCode {
-  id: string;
-  userId: string;
-  code: string;
-  createdAt: string;
-  updatedAt: string;
-}
+const logger = createLogger('FriendService');
 
 /**
  * Friend data structure with profile
@@ -46,77 +44,7 @@ export interface FriendWithProfile {
   profile: UserProfile;
 }
 
-/**
- * Add friend result
- */
-export interface AddFriendResult {
-  friendUserId: string;
-  friendProfile?: UserProfile;
-  wasAutoAccepted?: boolean;
-  requestId?: string;
-}
-
-/**
- * Friend request data structure
- */
-export interface FriendRequest {
-  id: string;
-  senderId: string;
-  recipientId: string;
-  senderProfile: UserProfile;
-  requestedAt: string;
-}
-
-/**
- * Generate a mock friend code in BRIDGE-XXXX-XXXX format
- */
-const generateMockFriendCode = (): string => {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excludes I, O, 0, 1 for clarity
-  let code = 'BRIDGE-';
-  for (let i = 0; i < 4; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  code += '-';
-  for (let i = 0; i < 4; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-};
-
-/**
- * Get or create a stable mock friend code for a user.
- * Persists the generated code to AsyncStorage so the same user always sees
- * the same code even when the Supabase database is unavailable (mock/dev mode).
- */
-const getOrCreateStableMockCode = async (userId: string): Promise<string> => {
-  const storageKey = `mock_friend_code_${userId}`;
-  try {
-    const cached = await AsyncStorage.getItem(storageKey);
-    if (cached) return cached;
-    const newCode = generateMockFriendCode();
-    await AsyncStorage.setItem(storageKey, newCode);
-    return newCode;
-  } catch {
-    // If AsyncStorage is unavailable, fall back to a deterministic code derived
-    // from the userId so it is at least consistent within the same session.
-    // A simple djb2-style hash of the userId drives character selection from
-    // the same charset, so the result is stable for a given userId.
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let hash = 5381;
-    for (let i = 0; i < userId.length; i++) {
-      hash = ((hash * 33) ^ userId.charCodeAt(i)) >>> 0; // keep as uint32
-    }
-    let fallback = 'BRIDGE-';
-    for (let i = 0; i < 4; i++) {
-      fallback += chars[((hash >>> (i * 4)) ^ (hash * (i + 3))) % chars.length];
-    }
-    fallback += '-';
-    for (let i = 0; i < 4; i++) {
-      fallback += chars[((hash >>> ((i + 4) * 4)) ^ (hash * (i + 7))) % chars.length];
-    }
-    return fallback;
-  }
-};
+import { invalidateFriendCountCache as _invalidate, setCachedFriendCount, getCachedFriendCount, FRIEND_COUNT_TTL, type AddFriendResult } from './friendService.shared';
 
 /**
  * Error response helper
@@ -129,153 +57,9 @@ const createErrorResponse = <T>(code: string, message: string): ApiResponse<T> =
   },
 });
 
-/**
- * Get the current user's friend code
- * SECURITY FIX: Gets userId from authenticated session, not from client
- * Cached permanently — friend codes never change once created.
- */
-let friendCodeCache: ApiResponse<FriendCode> | null = null;
-
-export const getUserFriendCode = async (): Promise<ApiResponse<FriendCode>> => {
-  if (friendCodeCache) return friendCodeCache;
-  try {
-    // SECURITY: Get user ID from authenticated session
-    const userId = await requireAuth();
-
-    const { data, error } = await supabase
-      .from('friend_codes')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-
-    if (error) {
-      // If user doesn't have a friend code yet, create one
-      if (error.code === 'PGRST116') {
-        return await createFriendCode(userId);
-      }
-
-      // FRONTEND MOCK: If database query fails, return a stable mock code
-      logger.warn('Friend code fetch failed, returning mock code:', error.message);
-      const mockCode = await getOrCreateStableMockCode(userId);
-      const mockResult: ApiResponse<FriendCode> = {
-        ok: true,
-        data: {
-          id: 'mock-id',
-          userId: userId,
-          code: mockCode,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      };
-      friendCodeCache = mockResult;
-      return mockResult;
-    }
-
-    const result: ApiResponse<FriendCode> = {
-      ok: true,
-      data: {
-        id: data.id,
-        userId: data.user_id,
-        code: data.code,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-      },
-    };
-    friendCodeCache = result;
-    return result;
-  } catch (error: any) {
-    // FRONTEND MOCK: If anything fails, return a stable mock code
-    logger.warn('Friend code operation failed, returning mock code:', error.message);
-    // Attempt to get userId for stable code lookup; fall back to a generated code
-    let stableCode: string;
-    try {
-      const uid = await requireAuth();
-      stableCode = await getOrCreateStableMockCode(uid);
-      const catchResult: ApiResponse<FriendCode> = {
-        ok: true,
-        data: {
-          id: 'mock-id',
-          userId: uid,
-          code: stableCode,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      };
-      friendCodeCache = catchResult;
-      return catchResult;
-    } catch {
-      stableCode = generateMockFriendCode();
-      return {
-        ok: true,
-        data: {
-          id: 'mock-id',
-          userId: 'unknown',
-          code: stableCode,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      };
-    }
-  }
-};
-
-/**
- * Create a friend code for a user (called automatically on signup via trigger)
- */
-const createFriendCode = async (userId: string): Promise<ApiResponse<FriendCode>> => {
-  // Generate the code outside the try block so the catch fallback can reference it
-  const codeData = generateMockFriendCode();
-  try {
-    // Try to insert the friend code into database
-    const { data, error } = await supabase
-      .from('friend_codes')
-      .insert({
-        user_id: userId,
-        code: codeData,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      // FRONTEND MOCK: If database insert fails, return mock code anyway
-      logger.warn('Friend code insert failed, returning mock code:', error.message);
-      return {
-        ok: true,
-        data: {
-          id: 'mock-id',
-          userId: userId,
-          code: codeData,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      };
-    }
-
-    return {
-      ok: true,
-      data: {
-        id: data.id,
-        userId: data.user_id,
-        code: data.code,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-      },
-    };
-  } catch (error: any) {
-    // FRONTEND MOCK: If anything fails, return mock code
-    logger.warn('Friend code creation failed, returning mock code:', error.message);
-    return {
-      ok: true,
-      data: {
-        id: 'mock-id',
-        userId: userId,
-        code: codeData,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    };
-  }
-};
+// ============================================================================
+// Core Friend Operations
+// ============================================================================
 
 /**
  * Add a friend using their friend code
@@ -337,19 +121,19 @@ export const addFriendByCode = async (
       .eq('user_id', result.friend_user_id)
       .single();
 
-    friendCountCache = null;
+    _invalidate();
 
     return {
       ok: true,
       data: {
         friendUserId: result.friend_user_id,
-        friendProfile: profileData ? formatDatabaseProfile(profileData) : undefined,
+        friendProfile: profileData ? mapProfileRow(profileData) : undefined,
         wasAutoAccepted: result.was_auto_accepted,
         requestId: result.request_id,
       },
     };
-  } catch (error: any) {
-    return createErrorResponse('ADD_FRIEND_ERROR', error.message || 'Failed to add friend');
+  } catch (error: unknown) {
+    return createErrorResponse('ADD_FRIEND_ERROR', error instanceof Error ? error.message : 'Failed to add friend');
   }
 };
 
@@ -407,48 +191,23 @@ export const getFriends = async (): Promise<ApiResponse<FriendWithProfile[]>> =>
       return createErrorResponse('FETCH_ERROR', error.message);
     }
 
-    const friends: FriendWithProfile[] = data.map((item: any) => ({
-      friendshipId: item.id,
-      userId: item.user_id,
-      friendId: item.friend_id,
-      addedAt: item.added_at,
-      profile: formatDatabaseProfile(item.friend_profile),
+    const friends: FriendWithProfile[] = data.map((item: Record<string, unknown>) => ({
+      friendshipId: item.id as string,
+      userId: item.user_id as string,
+      friendId: item.friend_id as string,
+      addedAt: item.added_at as string,
+      profile: mapProfileRow(item.friend_profile as Record<string, unknown>),
     }));
 
     // Resolve storage paths to signed URLs for friend profile photos
-    const allPaths = new Set<string>();
-    for (const f of friends) {
-      if (f.profile.photos) {
-        for (const photo of f.profile.photos) {
-          if (photo.url && !photo.url.startsWith('http') && !photo.url.startsWith('file://')) {
-            allPaths.add(photo.url);
-          }
-        }
-      }
-    }
-
-    if (allPaths.size > 0) {
-      const urlMapRes = await getMultiplePhotoSignedUrls(Array.from(allPaths), 86400);
-      if (urlMapRes.ok && urlMapRes.data) {
-        for (const f of friends) {
-          if (f.profile.photos) {
-            f.profile.photos = f.profile.photos
-              .filter(p => p.url && !p.url.startsWith('file://'))
-              .map(p => ({
-                ...p,
-                url: urlMapRes.data![p.url] || p.url,
-              }));
-          }
-        }
-      }
-    }
+    await resolveProfilePhotos(friends.map(f => f.profile));
 
     return {
       ok: true,
       data: friends,
     };
-  } catch (error: any) {
-    return createErrorResponse('FETCH_ERROR', error.message || 'Failed to fetch friends');
+  } catch (error: unknown) {
+    return createErrorResponse('FETCH_ERROR', error instanceof Error ? error.message : 'Failed to fetch friends');
   }
 };
 
@@ -484,13 +243,13 @@ export const removeFriend = async (
       return createErrorResponse('DELETE_ERROR', error2.message);
     }
 
-    friendCountCache = null; // invalidate on removal
+    _invalidate(); // invalidate on removal
 
     return {
       ok: true,
     };
-  } catch (error: any) {
-    return createErrorResponse('DELETE_ERROR', error.message || 'Failed to remove friend');
+  } catch (error: unknown) {
+    return createErrorResponse('DELETE_ERROR', error instanceof Error ? error.message : 'Failed to remove friend');
   }
 };
 
@@ -499,23 +258,19 @@ export const removeFriend = async (
  * SECURITY FIX: Gets userId from authenticated session, not from client
  * Cached in-memory for 60s to avoid redundant DB hits on tab switches.
  */
-let friendCountCache: { value: number; at: number } | null = null;
-const FRIEND_COUNT_TTL = 60_000; // 60 seconds
-
 export const getFriendCount = async (): Promise<ApiResponse<number>> => {
   try {
     // Return cached value if fresh
-    if (friendCountCache && Date.now() - friendCountCache.at < FRIEND_COUNT_TTL) {
-      return { ok: true, data: friendCountCache.value };
+    const cached = getCachedFriendCount();
+    if (cached !== null) {
+      return { ok: true, data: cached };
     }
 
     // SECURITY: Get user ID from authenticated session
     const userId = await requireAuth();
 
-    // 🚨 DEVELOPMENT MODE: Return mock friend count to match getFriends() behavior
     const { FEATURES } = await import('../config/features');
     if (FEATURES.DEVELOPMENT_AUTO_FILL_ONBOARDING) {
-      // Return 3 to match the mock friends in getFriends()
       return { ok: true, data: 3 };
     }
 
@@ -530,14 +285,14 @@ export const getFriendCount = async (): Promise<ApiResponse<number>> => {
     }
 
     const result = count || 0;
-    friendCountCache = { value: result, at: Date.now() };
+    setCachedFriendCount(result);
 
     return {
       ok: true,
       data: result,
     };
-  } catch (error: any) {
-    return createErrorResponse('COUNT_ERROR', error.message || 'Failed to count friends');
+  } catch (error: unknown) {
+    return createErrorResponse('COUNT_ERROR', error instanceof Error ? error.message : 'Failed to count friends');
   }
 };
 
@@ -568,8 +323,8 @@ export const areFriends = async (
       ok: true,
       data: !!data,
     };
-  } catch (error: any) {
-    return createErrorResponse('CHECK_ERROR', error.message || 'Failed to check friendship');
+  } catch (error: unknown) {
+    return createErrorResponse('CHECK_ERROR', error instanceof Error ? error.message : 'Failed to check friendship');
   }
 };
 
@@ -612,323 +367,24 @@ export const getFriendStats = async (): Promise<ApiResponse<FriendStats[]>> => {
       };
     }
 
-    const friendStats: FriendStats[] = data.map((friend: any) => ({
-      friendId: friend.friend_id,
-      friendCode: friend.friend_code,
-      firstName: friend.first_name,
-      matchesIntroduced: friend.matches_introduced,
-      successfulMatches: friend.successful_matches,
-      matchSuccessRate: friend.match_success_rate,
-      matchmakerBadge: friend.matchmaker_badge,
-      badgeColor: friend.badge_color,
+    const friendStats: FriendStats[] = data.map((friend: Record<string, unknown>) => ({
+      friendId: friend.friend_id as string,
+      friendCode: friend.friend_code as string,
+      firstName: friend.first_name as string,
+      matchesIntroduced: friend.matches_introduced as number,
+      successfulMatches: friend.successful_matches as number,
+      matchSuccessRate: friend.match_success_rate as number,
+      matchmakerBadge: friend.matchmaker_badge as string,
+      badgeColor: friend.badge_color as string,
     }));
 
     return {
       ok: true,
       data: friendStats,
     };
-  } catch (error: any) {
-    return createErrorResponse('FETCH_STATS_ERROR', error.message || 'Failed to fetch friend stats');
+  } catch (error: unknown) {
+    return createErrorResponse('FETCH_STATS_ERROR', error instanceof Error ? error.message : 'Failed to fetch friend stats');
   }
 };
 
-// ============================================================================
-// Friend Request Functions
-// ============================================================================
-
-/**
- * Send a friend request (replaces instant-add).
- * Returns request info including whether it was auto-accepted (mutual request).
- */
-export const sendFriendRequest = async (
-  friendCode: string
-): Promise<ApiResponse<AddFriendResult>> => {
-  try {
-    const userId = await requireAuth();
-
-    const rateLimitResult = await checkRateLimit(userId, RateLimitAction.FRIEND_CODE_ATTEMPT);
-    if (!rateLimitResult.ok) {
-      return createErrorResponse('RATE_LIMIT_CHECK_FAILED', rateLimitResult.error?.message || 'Failed to check rate limit');
-    }
-    if (rateLimitResult.data?.allowed === false) {
-      const retryTime = formatRetryTime(rateLimitResult.data.retryAfterSeconds ?? 60);
-      return createErrorResponse('RATE_LIMIT_EXCEEDED', `Too many attempts. Try again in ${retryTime}.`);
-    }
-
-    await recordRateLimitAttempt(userId, RateLimitAction.FRIEND_CODE_ATTEMPT, {
-      friendCode: friendCode.substring(0, 10) + '...',
-      timestamp: new Date().toISOString(),
-    });
-
-    const { data, error } = await supabase
-      .rpc('send_friend_request', { friend_code: friendCode.toUpperCase() });
-
-    if (error) {
-      return createErrorResponse('SEND_REQUEST_ERROR', error.message);
-    }
-
-    const result = data?.[0];
-    if (!result) {
-      return createErrorResponse('SEND_REQUEST_ERROR', 'No response from server');
-    }
-    if (!result.success) {
-      return createErrorResponse('SEND_REQUEST_FAILED', result.message);
-    }
-
-    // Fetch the friend's profile
-    const { data: profileData } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('user_id', result.friend_user_id)
-      .single();
-
-    friendCountCache = null;
-
-    return {
-      ok: true,
-      data: {
-        friendUserId: result.friend_user_id,
-        friendProfile: profileData ? formatDatabaseProfile(profileData) : undefined,
-        wasAutoAccepted: result.was_auto_accepted,
-        requestId: result.request_id,
-      },
-    };
-  } catch (error: any) {
-    return createErrorResponse('SEND_REQUEST_ERROR', error.message || 'Failed to send friend request');
-  }
-};
-
-/**
- * Get incoming friend requests (pending requests where I'm the recipient).
- */
-export const getIncomingRequests = async (): Promise<ApiResponse<FriendRequest[]>> => {
-  try {
-    const userId = await requireAuth();
-
-    const { data, error } = await supabase
-      .from('friends')
-      .select(`
-        id,
-        user_id,
-        friend_id,
-        added_at,
-        sender_profile:user_profiles!friends_user_id_fkey(*)
-      `)
-      .eq('friend_id', userId)
-      .eq('status', 'pending')
-      .order('added_at', { ascending: false });
-
-    if (error) {
-      return createErrorResponse('FETCH_ERROR', error.message);
-    }
-
-    const requests: FriendRequest[] = (data || []).map((item: any) => ({
-      id: item.id,
-      senderId: item.user_id,
-      recipientId: item.friend_id,
-      senderProfile: formatDatabaseProfile(item.sender_profile),
-      requestedAt: item.added_at,
-    }));
-
-    // Resolve photo URLs
-    const allPaths = new Set<string>();
-    for (const req of requests) {
-      if (req.senderProfile.photos) {
-        for (const photo of req.senderProfile.photos) {
-          if (photo.url && !photo.url.startsWith('http') && !photo.url.startsWith('file://')) {
-            allPaths.add(photo.url);
-          }
-        }
-      }
-    }
-    if (allPaths.size > 0) {
-      const urlMapRes = await getMultiplePhotoSignedUrls(Array.from(allPaths), 86400);
-      if (urlMapRes.ok && urlMapRes.data) {
-        for (const req of requests) {
-          if (req.senderProfile.photos) {
-            req.senderProfile.photos = req.senderProfile.photos
-              .filter(p => p.url && !p.url.startsWith('file://'))
-              .map(p => ({ ...p, url: urlMapRes.data![p.url] || p.url }));
-          }
-        }
-      }
-    }
-
-    return { ok: true, data: requests };
-  } catch (error: any) {
-    return createErrorResponse('FETCH_ERROR', error.message || 'Failed to fetch incoming requests');
-  }
-};
-
-/**
- * Get outgoing friend requests (pending requests I sent).
- */
-export const getOutgoingRequests = async (): Promise<ApiResponse<FriendRequest[]>> => {
-  try {
-    const userId = await requireAuth();
-
-    const { data, error } = await supabase
-      .from('friends')
-      .select(`
-        id,
-        user_id,
-        friend_id,
-        added_at,
-        recipient_profile:user_profiles!friends_friend_id_fkey(*)
-      `)
-      .eq('user_id', userId)
-      .eq('status', 'pending')
-      .order('added_at', { ascending: false });
-
-    if (error) {
-      return createErrorResponse('FETCH_ERROR', error.message);
-    }
-
-    const requests: FriendRequest[] = (data || []).map((item: any) => ({
-      id: item.id,
-      senderId: item.user_id,
-      recipientId: item.friend_id,
-      senderProfile: formatDatabaseProfile(item.recipient_profile),
-      requestedAt: item.added_at,
-    }));
-
-    return { ok: true, data: requests };
-  } catch (error: any) {
-    return createErrorResponse('FETCH_ERROR', error.message || 'Failed to fetch outgoing requests');
-  }
-};
-
-/**
- * Accept a friend request.
- */
-export const acceptFriendRequest = async (requestId: string): Promise<ApiResponse<{ friendUserId: string }>> => {
-  try {
-    const { data, error } = await supabase
-      .rpc('accept_friend_request', { request_id: requestId });
-
-    if (error) {
-      return createErrorResponse('ACCEPT_ERROR', error.message);
-    }
-
-    const result = data?.[0];
-    if (!result?.success) {
-      return createErrorResponse('ACCEPT_FAILED', result?.message || 'Failed to accept request');
-    }
-
-    friendCountCache = null;
-
-    return { ok: true, data: { friendUserId: result.friend_user_id } };
-  } catch (error: any) {
-    return createErrorResponse('ACCEPT_ERROR', error.message || 'Failed to accept friend request');
-  }
-};
-
-/**
- * Decline a friend request (silent — no notification).
- */
-export const declineFriendRequest = async (requestId: string): Promise<ApiResponse<void>> => {
-  try {
-    const { data, error } = await supabase
-      .rpc('decline_friend_request', { request_id: requestId });
-
-    if (error) {
-      return createErrorResponse('DECLINE_ERROR', error.message);
-    }
-
-    const result = data?.[0];
-    if (!result?.success) {
-      return createErrorResponse('DECLINE_FAILED', result?.message || 'Failed to decline request');
-    }
-
-    return { ok: true };
-  } catch (error: any) {
-    return createErrorResponse('DECLINE_ERROR', error.message || 'Failed to decline friend request');
-  }
-};
-
-/**
- * Cancel an outgoing friend request.
- */
-export const cancelFriendRequest = async (requestId: string): Promise<ApiResponse<void>> => {
-  try {
-    const { data, error } = await supabase
-      .rpc('cancel_friend_request', { request_id: requestId });
-
-    if (error) {
-      return createErrorResponse('CANCEL_ERROR', error.message);
-    }
-
-    const result = data?.[0];
-    if (!result?.success) {
-      return createErrorResponse('CANCEL_FAILED', result?.message || 'Failed to cancel request');
-    }
-
-    return { ok: true };
-  } catch (error: any) {
-    return createErrorResponse('CANCEL_ERROR', error.message || 'Failed to cancel friend request');
-  }
-};
-
-/**
- * Safely parse JSONB data that may already be parsed by Supabase
- * Supabase automatically parses JSONB columns, so we need to handle both cases
- */
-const safeParseJson = (value: any, defaultValue: any[] = []): any => {
-  if (value === null || value === undefined) return defaultValue;
-  if (Array.isArray(value)) return value;
-  if (typeof value === 'object') return value;
-  if (typeof value === 'string') {
-    try {
-      return JSON.parse(value);
-    } catch {
-      return defaultValue;
-    }
-  }
-  return defaultValue;
-};
-
-/**
- * Format database profile to match UserProfile type
- */
-const formatDatabaseProfile = (data: any): UserProfile => {
-  return {
-    id: data.id,
-    userId: data.user_id,
-    firstName: data.first_name,
-    lastName: data.last_name,
-    age: data.age,
-    gender: data.gender || [],
-    pronouns: data.pronouns,
-    customPronouns: data.custom_pronouns,
-    currentJob: data.current_job || '',
-    company: data.company_position || '',
-    educationLevel: data.education_level,
-    school: data.school,
-    height: data.height_inches,
-    ethnicity: data.ethnicity,
-    religion: data.religion,
-    politicalLeaning: data.political_leaning,
-    location: data.location || '',
-    photos: safeParseJson(data.photos, []),
-    interests: safeParseJson(data.interests, []),
-    values: safeParseJson(data.values, []),
-    lifestyle: {
-      drinking: data.drinking_frequency,
-      smoking: data.tobacco_frequency,
-      exercise: 'often',
-      children: data.has_children,
-      pets: [],
-    },
-    nonNegotiables: [],
-    preferences: {
-      ageMin: 24,
-      ageMax: 32,
-      gender: data.preferred_gender || 'both',
-      lookingFor: data.looking_for || 'relationship',
-    },
-    isPaused: data.is_paused,
-    profileCompleted: data.profile_completed || false,
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
-  };
-};
+// Profile row mapping consolidated into communityBackendService.mapProfileRow

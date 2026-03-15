@@ -42,11 +42,13 @@ export const Input: React.FC<InputProps> = ({
     }
   }, [autoFocus]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RN event type varies across versions
   const handleFocus = (e: any) => {
     setIsFocused(true);
     onFocus?.(e);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RN event type varies across versions
   const handleBlur = (e: any) => {
     setIsFocused(false);
     onBlur?.(e);
@@ -72,7 +74,7 @@ export const Input: React.FC<InputProps> = ({
       <StyledTextInput
         ref={inputRef}
         accessibilityLabel={props.accessibilityLabel || label || props.placeholder}
-        accessibilityRole="none"
+        accessibilityRole="text"
         {...props}
         autoFocus={false}
         onFocus={handleFocus}

@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { calculateCompatibility, passesBasicFilter } from '../_shared/scoring.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { requireServiceRole } from '../_shared/admin-auth.ts';
 import { MAX_POOL_VOTES, RECOMMENDATION_BOOST_PER, RECOMMENDATION_BOOST_CAP } from '../_shared/constants.ts';
 
 const MIN_COMPATIBILITY_SCORE = 25.0;
@@ -13,9 +14,12 @@ Deno.serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const forbidden = requireServiceRole(req);
+  if (forbidden) return forbidden;
+
   try {
     const body = await req.json().catch(() => ({}));
-    const maxProposals = body.max_proposals || MAX_PROPOSALS_PER_RUN;
+    const maxProposals = Math.min(body.max_proposals || MAX_PROPOSALS_PER_RUN, MAX_PROPOSALS_PER_RUN);
     const supabase = createAdminClient();
 
     // ── 0. Process friend suggestions before algorithmic proposals ──────
@@ -169,7 +173,7 @@ Deno.serve(async (req: Request) => {
       }, { headers: corsHeaders });
     }
 
-    const userIds = profiles.map((p: any) => p.user_id).filter(Boolean);
+    const userIds = profiles.map((p: { user_id: string }) => p.user_id).filter(Boolean);
 
     // 2. Fetch preferences (only users with preferences are eligible)
     const { data: allPrefs, error: prefsErr } = await supabase
@@ -179,13 +183,13 @@ Deno.serve(async (req: Request) => {
 
     if (prefsErr) throw prefsErr;
 
-    const prefsMap: Record<string, any> = {};
+    const prefsMap: Record<string, Record<string, unknown>> = {};
     for (const p of (allPrefs || [])) {
       prefsMap[p.user_id] = p;
     }
 
     // Filter to users who have preferences (completed onboarding)
-    const eligibleProfiles = profiles.filter((p: any) => prefsMap[p.user_id]);
+    const eligibleProfiles = profiles.filter((p: { user_id: string }) => prefsMap[p.user_id]);
 
     if (eligibleProfiles.length < 2) {
       return Response.json({
@@ -256,7 +260,7 @@ Deno.serve(async (req: Request) => {
       .select('user_id, answers')
       .in('user_id', userIds);
 
-    const deepMap: Record<string, any[]> = {};
+    const deepMap: Record<string, Array<{ question_id: string; answer_text: string }>> = {};
     for (const row of (deepAnswers || [])) {
       if (row.answers && typeof row.answers === 'object') {
         // answers is JSONB — could be an array or an object with question_id keys
@@ -264,9 +268,9 @@ Deno.serve(async (req: Request) => {
           deepMap[row.user_id] = row.answers;
         } else {
           // Convert object format to array format
-          deepMap[row.user_id] = Object.entries(row.answers).map(([qid, answer]) => ({
+          deepMap[row.user_id] = Object.entries(row.answers as Record<string, unknown>).map(([qid, answer]) => ({
             question_id: qid,
-            answer_text: typeof answer === 'string' ? answer : (answer as any)?.answer_text || '',
+            answer_text: typeof answer === 'string' ? answer : (answer as Record<string, unknown> | null)?.answer_text as string || '',
           }));
         }
       }
@@ -288,7 +292,7 @@ Deno.serve(async (req: Request) => {
 
     // 5. Generate candidate pairs with pre-filtering
     const candidates: Array<{
-      profileA: any; prefsA: any; profileB: any; prefsB: any;
+      profileA: Record<string, unknown>; prefsA: Record<string, unknown>; profileB: Record<string, unknown>; prefsB: Record<string, unknown>;
     }> = [];
 
     for (let i = 0; i < eligibleProfiles.length; i++) {
@@ -383,7 +387,7 @@ Deno.serve(async (req: Request) => {
     // 7. Create proposals in DB
     const now = new Date().toISOString();
     const votingExpires = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
-    const createdProposals: any[] = [];
+    const createdProposals: Array<{ id: string; user_a_id: string; user_b_id: string; status: string }> = [];
 
     for (const pair of topPairs) {
       const displayScore = Math.floor(Math.random() * 30) + 70; // Random 70-99
@@ -476,7 +480,7 @@ Deno.serve(async (req: Request) => {
       // - not friends of either
       // - hasn't already been assigned this proposal
       // - must be an active profile (from allActiveProfiles)
-      const eligible = (allActiveProfiles || []).filter((u: any) =>
+      const eligible = (allActiveProfiles || []).filter((u: { user_id: string }) =>
         u.user_id !== ua &&
         u.user_id !== ub &&
         !allFriends.has(u.user_id) &&
@@ -495,7 +499,7 @@ Deno.serve(async (req: Request) => {
       const toAssign = eligible.slice(0, batchSize);
 
       if (toAssign.length > 0) {
-        const insertBatch = toAssign.map((voter: any) => ({
+        const insertBatch = toAssign.map((voter: { user_id: string }) => ({
           proposal_id: proposal.id,
           voter_id: voter.user_id,
           assignment_date: todayStr,
@@ -525,10 +529,10 @@ Deno.serve(async (req: Request) => {
         : 0,
     }, { headers: corsHeaders });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('generate-proposals error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

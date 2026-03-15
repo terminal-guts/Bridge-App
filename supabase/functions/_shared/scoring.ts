@@ -11,9 +11,9 @@
  *   Deep Questions: 6%
  */
 
-import type { CompatibilityResult } from './types.ts';
+import type { CompatibilityResult, DeepQuestionAnswer } from './types.ts';
 
-type Dict = Record<string, any>;
+type Dict = Record<string, unknown>;
 
 // ── Weights ──────────────────────────────────────────────────────────────────
 
@@ -115,11 +115,11 @@ const DEEP_STOP_WORDS = new Set([
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function _get(profile: Dict, key: string, defaultVal: any = null): any {
+function _get(profile: Dict, key: string, defaultVal: unknown = null): unknown {
   return profile[key] ?? defaultVal;
 }
 
-function _getPref(profile: Dict, prefs: Dict, key: string, defaultVal: any = null): any {
+function _getPref(profile: Dict, prefs: Dict, key: string, defaultVal: unknown = null): unknown {
   return prefs[key] ?? defaultVal;
 }
 
@@ -207,24 +207,28 @@ function scoreDistance(
 
 function scoreSingleSubstance(
   aHabit: string | null,
-  bPrefsForSubstance: any,
+  bPrefsForSubstance: unknown,
   bHabit: string | null,
-  aPrefsForSubstance: any,
+  aPrefsForSubstance: unknown,
 ): number {
-  function oneDirection(habit: string | null, partnerPrefs: any): number {
+  function oneDirection(habit: string | null, rawPrefs: unknown): number {
     if (habit == null || habit === '') return 0.5;
-    if (partnerPrefs == null || (Array.isArray(partnerPrefs) && partnerPrefs.length === 0)) return 1.0;
-    if (typeof partnerPrefs === 'string') {
-      if (partnerPrefs === 'dont_care' || partnerPrefs === "don't care") return 1.0;
-      partnerPrefs = [partnerPrefs];
+    if (rawPrefs == null || (Array.isArray(rawPrefs) && rawPrefs.length === 0)) return 1.0;
+    let prefsList: string[];
+    if (typeof rawPrefs === 'string') {
+      if (rawPrefs === 'dont_care' || rawPrefs === "don't care") return 1.0;
+      prefsList = [rawPrefs];
+    } else if (Array.isArray(rawPrefs)) {
+      prefsList = rawPrefs as string[];
+    } else {
+      return 0.5;
     }
-    if (!Array.isArray(partnerPrefs)) return 0.5;
-    if (partnerPrefs.includes('dont_care') || partnerPrefs.includes("don't care")) return 1.0;
-    if (partnerPrefs.includes(habit)) return 1.0;
+    if (prefsList.includes('dont_care') || prefsList.includes("don't care")) return 1.0;
+    if (prefsList.includes(habit)) return 1.0;
 
     if (habit === 'sometimes') {
-      const hasOnlyYes = (partnerPrefs.length === 1 && (partnerPrefs[0] === 'yes' || partnerPrefs[0] === 'regularly'));
-      const hasOnlyNo = (partnerPrefs.length === 1 && (partnerPrefs[0] === 'no' || partnerPrefs[0] === 'never'));
+      const hasOnlyYes = (prefsList.length === 1 && (prefsList[0] === 'yes' || prefsList[0] === 'regularly'));
+      const hasOnlyNo = (prefsList.length === 1 && (prefsList[0] === 'no' || prefsList[0] === 'never'));
       if (hasOnlyYes || hasOnlyNo) return 0.5;
     }
 
@@ -237,7 +241,7 @@ function scoreSingleSubstance(
   return (aToB + bToA) / 2;
 }
 
-function getLifestylePref(prefs: Dict, substance: string): any {
+function getLifestylePref(prefs: Dict, substance: string): unknown {
   const prefKey = `partner_${substance}`;
   const val = prefs[prefKey];
   if (val != null) return val;
@@ -591,7 +595,7 @@ function extractMeaningfulWords(text: string): Set<string> {
   return new Set(words);
 }
 
-function scoreQuestionOverlap(deepA: Dict[], deepB: Dict[]): number {
+function scoreQuestionOverlap(deepA: DeepQuestionAnswer[], deepB: DeepQuestionAnswer[]): number {
   const aIds = new Set(deepA.map(d => d.question_id).filter(Boolean));
   const bIds = new Set(deepB.map(d => d.question_id).filter(Boolean));
 
@@ -603,8 +607,8 @@ function scoreQuestionOverlap(deepA: Dict[], deepB: Dict[]): number {
   return Math.min(1.0, overlapRatio * 1.2);
 }
 
-function scoreAnswerLengthSimilarity(deepA: Dict[], deepB: Dict[]): number {
-  function avgLength(answers: Dict[]): number {
+function scoreAnswerLengthSimilarity(deepA: DeepQuestionAnswer[], deepB: DeepQuestionAnswer[]): number {
+  function avgLength(answers: DeepQuestionAnswer[]): number {
     const lengths = answers.map(d => (d.answer_text || '').length);
     return lengths.length > 0 ? lengths.reduce((a, b) => a + b, 0) / lengths.length : 0;
   }
@@ -617,7 +621,7 @@ function scoreAnswerLengthSimilarity(deepA: Dict[], deepB: Dict[]): number {
   return Math.min(aAvg, bAvg) / Math.max(aAvg, bAvg);
 }
 
-function scoreKeywordOverlap(deepA: Dict[], deepB: Dict[]): number {
+function scoreKeywordOverlap(deepA: DeepQuestionAnswer[], deepB: DeepQuestionAnswer[]): number {
   const aWords = new Set<string>();
   for (const d of deepA) {
     for (const w of extractMeaningfulWords(d.answer_text || '')) aWords.add(w);
@@ -637,7 +641,7 @@ function scoreKeywordOverlap(deepA: Dict[], deepB: Dict[]): number {
   return Math.min(1.0, shared / smaller);
 }
 
-function scoreDeepQuestions(deepA: Dict[], deepB: Dict[]): number {
+function scoreDeepQuestions(deepA: DeepQuestionAnswer[], deepB: DeepQuestionAnswer[]): number {
   if (deepA.length === 0 && deepB.length === 0) return 0.5;
   if (deepA.length === 0 || deepB.length === 0) return 0.3;
 
@@ -657,8 +661,8 @@ export function calculateCompatibility(
   profileB: Dict,
   prefsB: Dict,
   actualDistance: number | null = null,
-  deepQuestionsA: Dict[] = [],
-  deepQuestionsB: Dict[] = [],
+  deepQuestionsA: DeepQuestionAnswer[] = [],
+  deepQuestionsB: DeepQuestionAnswer[] = [],
 ): CompatibilityResult {
   const raw: Record<string, number> = {
     age_range: scoreAge(profileA, prefsA, profileB, prefsB),

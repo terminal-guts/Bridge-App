@@ -92,13 +92,13 @@ export const signInWithPassword = async (email: string, password: string): Promi
         phone: data.user.phone,
       },
     };
-  } catch (error: any) {
-    logger.error('[AUTH] Sign in with password error:', error.message);
+  } catch (error: unknown) {
+    logger.error('[AUTH] Sign in with password error:', error instanceof Error ? error.message : String(error));
     return {
       ok: false,
       error: {
         code: 'AUTH_ERROR',
-        message: error.message || 'An unexpected error occurred',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
       },
     };
   }
@@ -142,13 +142,13 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
 
     logger.info('[EMAIL] OTP sent successfully to:', email);
     return { ok: true };
-  } catch (error: any) {
-    logger.error('[EMAIL] Error sending OTP:', error.message);
+  } catch (error: unknown) {
+    logger.error('[EMAIL] Error sending OTP:', error instanceof Error ? error.message : String(error));
     return {
       ok: false,
       error: {
         code: 'EMAIL_OTP_ERROR',
-        message: error.message || 'An unexpected error occurred',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
       },
     };
   }
@@ -170,12 +170,12 @@ export const signOut = async (): Promise<ApiResponse<void>> => {
     await supabase.auth.signOut();
 
     return { ok: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       ok: false,
       error: {
         code: 'SIGNOUT_ERROR',
-        message: error.message || 'An unexpected error occurred',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
       },
     };
   }
@@ -200,12 +200,12 @@ export const getCurrentUser = async (): Promise<ApiResponse<User | null>> => {
         phone: user.phone,
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       ok: false,
       error: {
         code: 'GET_USER_ERROR',
-        message: error.message || 'An unexpected error occurred',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
       },
     };
   }
@@ -256,13 +256,13 @@ export const verifyEmail = async (email: string, code: string): Promise<ApiRespo
         phone: data.user.phone,
       },
     };
-  } catch (error: any) {
-    logger.error('[EMAIL] Verification error:', error.message);
+  } catch (error: unknown) {
+    logger.error('[EMAIL] Verification error:', error instanceof Error ? error.message : String(error));
     return {
       ok: false,
       error: {
         code: 'VERIFICATION_ERROR',
-        message: error.message || 'An unexpected error occurred',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
       },
     };
   }
@@ -305,11 +305,11 @@ export const sendRiceEmailVerification = async (email: string): Promise<ApiRespo
 
     logger.info('[EMAIL_VERIFY] Verification code sent successfully');
     return { ok: true };
-  } catch (error: any) {
-    logger.error('[EMAIL_VERIFY] Error:', error.message);
+  } catch (error: unknown) {
+    logger.error('[EMAIL_VERIFY] Error:', error instanceof Error ? error.message : String(error));
     return {
       ok: false,
-      error: { code: 'SEND_VERIFY_ERROR', message: error.message || 'Failed to send verification code' },
+      error: { code: 'SEND_VERIFY_ERROR', message: error instanceof Error ? error.message : 'Failed to send verification code' },
     };
   }
 };
@@ -351,11 +351,11 @@ export const verifyRiceEmailCode = async (email: string, code: string): Promise<
         error: { code: 'WRONG_CODE', message: 'Incorrect code. Please try again.' },
       };
     }
-  } catch (error: any) {
-    logger.error('[EMAIL_VERIFY] Error:', error.message);
+  } catch (error: unknown) {
+    logger.error('[EMAIL_VERIFY] Error:', error instanceof Error ? error.message : String(error));
     return {
       ok: false,
-      error: { code: 'VERIFY_ERROR', message: error.message || 'Verification failed' },
+      error: { code: 'VERIFY_ERROR', message: error instanceof Error ? error.message : 'Verification failed' },
     };
   }
 };
@@ -397,11 +397,11 @@ export const sendEmailSignUpCode = async (email: string): Promise<ApiResponse<vo
 
     logger.info('[EMAIL_SIGNUP] Verification code sent successfully');
     return { ok: true };
-  } catch (error: any) {
-    logger.error('[EMAIL_SIGNUP] Error:', error.message);
+  } catch (error: unknown) {
+    logger.error('[EMAIL_SIGNUP] Error:', error instanceof Error ? error.message : String(error));
     return {
       ok: false,
-      error: { code: 'SEND_ERROR', message: error.message || 'Failed to send verification code' },
+      error: { code: 'SEND_ERROR', message: error instanceof Error ? error.message : 'Failed to send verification code' },
     };
   }
 };
@@ -466,11 +466,11 @@ export const verifyEmailSignUpCode = async (
         email: data.user.email,
       },
     };
-  } catch (error: any) {
-    logger.error('[EMAIL_SIGNUP] Error:', error.message);
+  } catch (error: unknown) {
+    logger.error('[EMAIL_SIGNUP] Error:', error instanceof Error ? error.message : String(error));
     return {
       ok: false,
-      error: { code: 'VERIFY_ERROR', message: error.message || 'Verification failed' },
+      error: { code: 'VERIFY_ERROR', message: error instanceof Error ? error.message : 'Verification failed' },
     };
   }
 };

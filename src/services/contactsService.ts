@@ -137,8 +137,8 @@ export const fetchAndNormalizeContacts = async (): Promise<NormalizedContact[]> 
 
     const invitedAt = invitedMap[normalized];
 
-    const contactEmails = contact.emails?.map((e: any) => e.email).filter(Boolean) || [];
-    const hasRiceEmail = contactEmails.some((e: string) => e.toLowerCase().endsWith('@rice.edu'));
+    const contactEmails: string[] = (contact.emails?.map((e) => e.email).filter((e): e is string => Boolean(e)) || []);
+    const hasRiceEmail = contactEmails.some((e) => e.toLowerCase().endsWith('@rice.edu'));
 
     contacts.push({
       id: contact.id ?? normalized,

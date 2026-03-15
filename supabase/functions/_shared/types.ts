@@ -1,3 +1,14 @@
+export interface PhotoEntry {
+  url: string;
+  isMain?: boolean;
+  is_main?: boolean;
+}
+
+export interface DeepQuestionAnswer {
+  question_id: string;
+  answer_text: string;
+}
+
 export interface DBUserProfile {
   id: string;
   user_id: string;
@@ -27,8 +38,8 @@ export interface DBUserProfile {
   interests: string[];
   values: string[];
   bio: string | null;
-  photos: any[];
-  non_negotiables: any[]; // SCRAPPED — always empty, kept for DB schema compat
+  photos: PhotoEntry[];
+  non_negotiables: string[]; // SCRAPPED — always empty, kept for DB schema compat
   is_paused: boolean;
 }
 

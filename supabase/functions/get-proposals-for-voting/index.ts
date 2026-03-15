@@ -3,6 +3,14 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 
+interface ProposalRow {
+  id: string;
+  user_a_id: string;
+  user_b_id: string;
+  status: string;
+  [key: string]: unknown;
+}
+
 const GATE_SIZE = 3;
 
 Deno.serve(async (req: Request) => {
@@ -52,8 +60,8 @@ Deno.serve(async (req: Request) => {
 
     // ── Build lookup sets ───────────────────────────────────────────────────
     const blockedIds = new Set<string>([
-      ...(blockedOutgoing || []).map((r: any) => r.blocked_user_id),
-      ...(blockedIncoming || []).map((r: any) => r.user_id),
+      ...(blockedOutgoing || []).map((r: { blocked_user_id: string }) => r.blocked_user_id),
+      ...(blockedIncoming || []).map((r: { user_id: string }) => r.user_id),
     ]);
 
     const friendIds = new Set<string>();
@@ -63,8 +71,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const alreadyActedIds = new Set([
-      ...(existingVotes || []).map((v: any) => v.proposal_id),
-      ...(existingRecs || []).filter((r: any) => r.source_proposal_id).map((r: any) => r.source_proposal_id),
+      ...(existingVotes || []).map((v: { proposal_id: string }) => v.proposal_id),
+      ...(existingRecs || []).filter((r: { source_proposal_id: string | null }) => r.source_proposal_id).map((r: { source_proposal_id: string | null }) => r.source_proposal_id),
     ]);
 
     // Count how many voters are assigned to each proposal (for even distribution)
@@ -78,7 +86,7 @@ Deno.serve(async (req: Request) => {
     // ── Filter eligible proposals for the gate ──────────────────────────────
     // Gate = non-friend proposals only. Friend proposals are voted on via
     // the Match button in the friends area, not in the gate.
-    const eligible: any[] = [];
+    const eligible: ProposalRow[] = [];
 
     for (const p of (pendingProposals || [])) {
       // Skip proposals the user is part of
@@ -132,7 +140,7 @@ Deno.serve(async (req: Request) => {
       profileUserIds.add(p.user_b_id);
     }
 
-    let profilesMap: Record<string, any> = {};
+    let profilesMap: Record<string, Record<string, unknown>> = {};
     if (profileUserIds.size > 0) {
       const profileIds = [...profileUserIds];
 
@@ -147,7 +155,7 @@ Deno.serve(async (req: Request) => {
           .in('user_id', profileIds),
       ]);
 
-      const preferencesMap: Record<string, any> = {};
+      const preferencesMap: Record<string, Record<string, unknown>> = {};
       for (const pref of (preferencesResult.data || [])) {
         preferencesMap[pref.user_id] = pref;
       }
@@ -188,10 +196,10 @@ Deno.serve(async (req: Request) => {
       friend_count: 0,
     }, { headers: corsHeaders });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('get-proposals-for-voting error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

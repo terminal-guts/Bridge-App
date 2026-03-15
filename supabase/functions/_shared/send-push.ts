@@ -53,9 +53,9 @@ export interface PushPayload {
   category: 'transactional' | 'engagement' | 'ritual' | 'reengagement' | 'weekly';
   title: string;
   body: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   copyVariant?: number;
-  metadata?: Record<string, any>;  // for dedup (proposal_id, match_id, etc.)
+  metadata?: Record<string, unknown>;  // for dedup (proposal_id, match_id, etc.)
 }
 
 export interface PushResult {

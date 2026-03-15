@@ -48,7 +48,7 @@ Deno.serve(async (req: Request) => {
 
     // 2. Filter out proposals where the new user is a participant (defensive)
     const eligible = (pendingProposals || []).filter(
-      (p: any) => p.user_a_id !== userId && p.user_b_id !== userId
+      (p: { user_a_id: string; user_b_id: string }) => p.user_a_id !== userId && p.user_b_id !== userId
     );
 
     if (eligible.length === 0) {
@@ -63,7 +63,7 @@ Deno.serve(async (req: Request) => {
     const selected = eligible.slice(0, 3);
 
     // 4. Insert pool_vote_assignments
-    const rows = selected.map((p: any) => ({
+    const rows = selected.map((p: { id: string }) => ({
       proposal_id: p.id,
       voter_id: userId,
       has_voted: false,
@@ -80,10 +80,10 @@ Deno.serve(async (req: Request) => {
 
     return Response.json({ assigned: selected.length }, { headers: corsHeaders });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('assign-new-user-proposals error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

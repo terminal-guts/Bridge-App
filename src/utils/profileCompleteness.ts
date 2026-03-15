@@ -697,7 +697,7 @@ export interface ProfileStrengthBreakdown {
     };
   };
   totalScore: number; // Total score across all sections
-  maxTotalScore: number; // Maximum possible total score (94)
+  maxTotalScore: number; // Maximum possible total score (93)
 }
 
 /**

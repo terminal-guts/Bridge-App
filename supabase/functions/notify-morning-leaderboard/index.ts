@@ -10,6 +10,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { requireServiceRole } from '../_shared/admin-auth.ts';
 import { sendPush, getNextCopyVariant } from '../_shared/send-push.ts';
 
 const COPY_NOT_FIRST = [
@@ -42,6 +43,9 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+
+  const forbidden = requireServiceRole(req);
+  if (forbidden) return forbidden;
 
   try {
     const supabase = createAdminClient();
@@ -103,7 +107,7 @@ Deno.serve(async (req: Request) => {
 
     // Build karma lookup
     const karmaMap = new Map<string, number>();
-    leaderboard.forEach((row: any) => karmaMap.set(row.user_id, row.karma_points));
+    leaderboard.forEach((row: { user_id: string; karma_points: number }) => karmaMap.set(row.user_id, row.karma_points));
 
     let sentCount = 0;
 
@@ -152,10 +156,10 @@ Deno.serve(async (req: Request) => {
       leader: { name: leaderName, karma: topKarma },
     }, { headers: corsHeaders });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[notify-morning-leaderboard] Error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

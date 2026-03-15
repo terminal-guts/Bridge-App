@@ -11,6 +11,7 @@ import type {
   ProposalVoteType,
   VoteResult,
 } from '../types/community';
+import type { UserProfile } from '../types';
 
 // ============================================================================
 // Proposal Generation (Admin/Cron)
@@ -34,7 +35,7 @@ export async function generateProposals(maxProposals: number = 50): Promise<{
 // ============================================================================
 
 export async function getProposalsForVoting(_userId: string): Promise<{
-  proposals: any[];
+  proposals: Record<string, unknown>[];
   pool_count: number;
   friend_count: number;
 }> {
@@ -85,7 +86,7 @@ export async function submitFriendRecommendation(
 // ============================================================================
 
 export async function getPendingDecisions(userId: string): Promise<{
-  proposals: any[];
+  proposals: Record<string, unknown>[];
 }> {
   // Direct Supabase query — no Edge Function needed
   const { data: proposals, error } = await supabase
@@ -110,7 +111,7 @@ export async function getPendingDecisions(userId: string): Promise<{
     .select('*')
     .in('user_id', partnerIds);
 
-  const profileMap = new Map<string, any>();
+  const profileMap = new Map<string, Record<string, unknown>>();
   (profiles || []).forEach(p => profileMap.set(p.user_id, p));
 
   // Enrich proposals with partner profile
@@ -183,39 +184,42 @@ export async function assignNewUserProposals(): Promise<{ assigned: number }> {
 // Helper: Transform backend proposal to frontend Proposal type
 // ============================================================================
 
-export function transformBackendProposal(raw: any): Partial<Proposal> {
+export function transformBackendProposal(raw: Record<string, unknown>): Partial<Proposal> {
+  // Cast raw DB row — fields are validated by the database schema
+  // Safe cast: DB row fields are validated by the database schema
+  const r = raw as Record<string, string | number | boolean | null | undefined>;
   return {
-    id: raw.id,
-    status: raw.status,
-    poolYesVotes: raw.pool_yes_votes || 0,
-    poolNoVotes: raw.pool_no_votes || 0,
-    friendYesVotes: raw.friend_yes_votes || 0,
-    friendNoVotes: raw.friend_no_votes || 0,
-    yesVotes: (raw.pool_yes_votes || 0) + (raw.friend_yes_votes || 0),
-    noVotes: (raw.pool_no_votes || 0) + (raw.friend_no_votes || 0),
+    id: r.id as string | undefined,
+    status: r.status as Proposal['status'],
+    poolYesVotes: (r.pool_yes_votes as number) || 0,
+    poolNoVotes: (r.pool_no_votes as number) || 0,
+    friendYesVotes: (r.friend_yes_votes as number) || 0,
+    friendNoVotes: (r.friend_no_votes as number) || 0,
+    yesVotes: ((r.pool_yes_votes as number) || 0) + ((r.friend_yes_votes as number) || 0),
+    noVotes: ((r.pool_no_votes as number) || 0) + ((r.friend_no_votes as number) || 0),
     totalVotes:
-      (raw.pool_yes_votes || 0) + (raw.pool_no_votes || 0) +
-      (raw.friend_yes_votes || 0) + (raw.friend_no_votes || 0),
-    compatibilityScore: raw.compatibility_score || 0,
-    categoryScores: raw.category_scores,
-    votingStartedAt: raw.voting_started_at,
-    confirmedAt: raw.confirmed_at,
-    rejectedAt: raw.rejected_at,
-    expiredAt: raw.expired_at,
-    sentToUsersAt: raw.sent_to_users_at,
-    decisionDeadlineAt: raw.decision_deadline_at,
-    userADecision: raw.user_a_decision,
-    userBDecision: raw.user_b_decision,
-    userADecidedAt: raw.user_a_decided_at,
-    userBDecidedAt: raw.user_b_decided_at,
-    createdAt: raw.created_at,
-    updatedAt: raw.updated_at,
-    voteContext: raw.vote_context,
-    isFriendVote: raw.is_friend_vote,
-    userAProfile: raw.user_a_profile,
-    userBProfile: raw.user_b_profile,
-    createdBy: raw.created_by,
-    creationType: raw.creation_type,
+      ((r.pool_yes_votes as number) || 0) + ((r.pool_no_votes as number) || 0) +
+      ((r.friend_yes_votes as number) || 0) + ((r.friend_no_votes as number) || 0),
+    compatibilityScore: (r.compatibility_score as number) || 0,
+    categoryScores: raw.category_scores as Proposal['categoryScores'],
+    votingStartedAt: r.voting_started_at as string | undefined,
+    confirmedAt: r.confirmed_at as string | undefined,
+    rejectedAt: r.rejected_at as string | undefined,
+    expiredAt: r.expired_at as string | undefined,
+    sentToUsersAt: r.sent_to_users_at as string | undefined,
+    decisionDeadlineAt: r.decision_deadline_at as string | undefined,
+    userADecision: r.user_a_decision as 'pending' | 'accepted' | 'declined' | undefined,
+    userBDecision: r.user_b_decision as 'pending' | 'accepted' | 'declined' | undefined,
+    userADecidedAt: r.user_a_decided_at as string | undefined,
+    userBDecidedAt: r.user_b_decided_at as string | undefined,
+    createdAt: r.created_at as string | undefined,
+    updatedAt: r.updated_at as string | undefined,
+    voteContext: r.vote_context as 'pool' | 'friend' | undefined,
+    isFriendVote: r.is_friend_vote as boolean | undefined,
+    userAProfile: raw.user_a_profile as Partial<UserProfile> | undefined,
+    userBProfile: raw.user_b_profile as Partial<UserProfile> | undefined,
+    createdBy: r.created_by as string | undefined,
+    creationType: r.creation_type as 'algorithm' | 'friend_proposal' | undefined,
   };
 }
 

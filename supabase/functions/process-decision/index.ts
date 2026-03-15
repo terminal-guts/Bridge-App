@@ -110,7 +110,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // 4. Write this user's decision first (before checking the other user's)
-    const updateData: Record<string, any> = { updated_at: nowIso };
+    const updateData: Record<string, unknown> = { updated_at: nowIso };
 
     if (isUserA) {
       updateData.user_a_decision = decision;
@@ -236,10 +236,10 @@ Deno.serve(async (req: Request) => {
       your_decision: decision,
     }, { headers: corsHeaders });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('process-decision error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

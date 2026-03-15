@@ -87,7 +87,7 @@ export interface GuideStep {
   icon?: string;
 
   /** Optional image to display between message and button (require() asset) */
-  image?: any;
+  image?: number | { uri: string };
 
   /** Primary button text (e.g., "Next", "Got It") */
   primaryButtonText: string;

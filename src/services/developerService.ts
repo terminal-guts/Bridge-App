@@ -39,7 +39,7 @@ export const quickAddMatch = async (status: 'pending' | 'accepted' = 'pending'):
   const expiresAt = new Date();
   expiresAt.setHours(expiresAt.getHours() + 48);
 
-  const matchData: any = {
+  const matchData: Record<string, unknown> = {
     user_id_1: userId,
     user_id_2: mockUserId,
     status,
@@ -179,7 +179,7 @@ export const extendAllMatches = async (): Promise<void> => {
 /**
  * Get current app state info
  */
-export const getAppState = async (): Promise<any> => {
+export const getAppState = async (): Promise<Record<string, unknown> | null> => {
   const userId = await getCurrentUserId();
   if (!userId) return null;
 
