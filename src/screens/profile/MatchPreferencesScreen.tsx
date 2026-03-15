@@ -1,27 +1,33 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { View, ScrollView, TouchableOpacity, Alert, Modal, Keyboard, TextInput, Text } from 'react-native';
-import ReanimatedAnimated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withSpring,
-    interpolate,
-} from 'react-native-reanimated';
-import { SPRINGS } from '../../constants/animations';
+import { View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { styled } from 'nativewind';
-import { H3, Body, Card, Button, ScreenWrapper } from '../../components/ui';
+import { H3, Body, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile } from '../../types';
-import RangeSlider from 'rn-range-slider';
-import { AgeRangeStepper } from '../../components/ui/AgeRangeStepper';
 import NetInfo from '@react-native-community/netinfo';
 import { getCurrentUser } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
-import { lightHaptic, mediumHaptic } from '../../utils/haptics';
+import { mediumHaptic } from '../../utils/haptics';
 import { calculateMatchPreferencesCompleteness } from '../../utils/profileCompleteness';
 import { createLogger } from '../../utils/secureLogger';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { EvaIcon } from '../../components/icons';
+
+// Extracted section components and constants
+import {
+  Thumb,
+  Rail,
+  RailSelected,
+  LookingForSection,
+  GenderSection,
+  AgeRangeSection,
+  HeightSection,
+  EthnicitySection,
+  ReligionSection,
+  PoliticsSection,
+  LifestyleSection,
+  CustomInputModal,
+} from './MatchPreferencesScreen.sections';
 
 const logger = createLogger('MatchPreferencesScreen');
 
@@ -32,113 +38,6 @@ interface MatchPreferencesScreenProps {
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-const StyledTextInput = styled(TextInput);
-const StyledAnimatedView = styled(ReanimatedAnimated.View);
-const StyledText = styled(Text);
-
-// Gender options - values must match database storage format (male/female, not man/woman)
-const GENDER_OPTIONS = [
-  { value: 'male', label: 'Man' },
-  { value: 'female', label: 'Woman' },
-  { value: 'non-binary', label: 'Non-binary' },
-  { value: 'genderfluid', label: 'Genderfluid' },
-  { value: 'agender', label: 'Agender' },
-  { value: 'two_spirit', label: 'Two-Spirit' },
-];
-
-const LIFESTYLE_FREQUENCY_OPTIONS = [
-  { value: 'no', label: 'No' },
-  { value: 'sometimes', label: 'Sometimes' },
-  { value: 'yes', label: 'Yes' },
-  { value: 'dont_care', label: "Don't Care" },
-];
-
-const COMMON_VALUES = [
-  // Personal
-  'Honesty', 'Integrity', 'Trust', 'Respect', 'Authenticity', 'Kindness', 'Empathy',
-
-  // Relationship
-  'Communication', 'Commitment', 'Independence', 'Romance',
-
-  // Life
-  'Family', 'Career', 'Ambition', 'Work-Life Balance',
-  'Adventure', 'Stability', 'Growth Mindset', 'Creativity',
-
-  // Social
-  'Community', 'Social Justice', 'Environmentalism', 'Diversity',
-
-  // Personal Growth
-  'Spirituality', 'Health',
-];
-
-const COMMON_INTERESTS = [
-  // Activities
-  'Tennis', 'Golf', 'Running', 'Yoga', 'Hiking', 'Skiing',
-  'Basketball', 'Lifting', 'Live Sports', 'Watching Sports',
-
-  // Culture & Entertainment
-  'Museums', 'Theater', 'Live Music', 'Comedy Shows',
-  'Film', 'Reading', 'Photography',
-
-  // Food & Drink
-  'Cooking', 'Coffee', 'Cocktails', 'Fine Dining', 'Brunch',
-
-  // Travel & Adventure
-  'Travel', 'Camping',
-
-  // Lifestyle
-  'Startups', 'Investing', 'Real Estate', 'Fashion', 'Meditation', 'Podcasts',
-
-  // Social
-  'Dinner Parties', 'Game Nights', 'Dancing', 'Trivia Nights',
-  'Poker', 'Video Games',
-];
-
-const ETHNICITY_OPTIONS = [
-  'No Preference',
-  'Black',
-  'East Asian',
-  'Hispanic',
-  'Middle Eastern',
-  'Native American',
-  'Pacific Islander',
-  'South Asian',
-  'Southeast Asian',
-  'White',
-  'Other',
-];
-
-const RELIGION_PREF_OPTIONS = [
-  'No Preference',
-  'Buddhist',
-  'Catholic',
-  'Christian',
-  'Hindu',
-  'Jewish',
-  'Muslim',
-  'Spiritual',
-  'Agnostic',
-  'Atheist',
-  'Other',
-];
-
-const POLITICAL_OPTIONS = [
-  { value: 'no_preference', label: 'No Preference' },
-  { value: 'very_liberal', label: 'Very Liberal' },
-  { value: 'liberal', label: 'Liberal' },
-  { value: 'moderate', label: 'Moderate' },
-  { value: 'conservative', label: 'Conservative' },
-  { value: 'very_conservative', label: 'Very Conservative' },
-  { value: 'not_political', label: 'Not Political' },
-  { value: 'other', label: 'Other' },
-];
-
-// Stable sub-components for RangeSlider (prevent re-mounting on each render)
-const Thumb = () => (
-  <StyledView className="w-6 h-6 rounded-full border-2 border-white shadow-md" style={{ backgroundColor: COLORS.primaryAccent }} />
-);
-const Rail = () => <StyledView className="flex-1 h-1 rounded-full bg-neutral-200" />;
-const RailSelected = () => <StyledView className="h-1 rounded-full" style={{ backgroundColor: COLORS.primaryAccent }} />;
 
 export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ navigation }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -166,66 +65,12 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   // Track original data for change detection
   const originalDataRef = useRef<string | null>(null);
 
-  // "Other" custom input modal state
+  // Custom input modal state
   const [showCustomModal, setShowCustomModal] = useState(false);
-  const [customModalType, setCustomModalType] = useState<'gender'>('gender');
-  const [customInputValue, setCustomInputValue] = useState('');
-  const customModalAnim = useSharedValue(0);
-  const modalOverlayStyle = useAnimatedStyle(() => ({ opacity: customModalAnim.value }));
-  const modalScaleStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(customModalAnim.value, [0, 1], [0.9, 1]) }],
-  }));
-
-
-  // Helper function to convert inches to feet and inches
-  const formatHeight = (inches: number): string => {
-    const feet = Math.floor(inches / 12);
-    const remainingInches = inches % 12;
-    return `${feet}'${remainingInches}"`;
-  };
 
   useEffect(() => {
     loadProfile();
   }, []);
-
-  // Animation for the reusable custom modal
-  useEffect(() => {
-    customModalAnim.value = withSpring(showCustomModal ? 1 : 0, SPRINGS.responsive);
-  }, [showCustomModal]);
-
-  // Helper to open custom modal for different types
-  const openCustomModal = (type: 'gender') => {
-    setCustomModalType(type);
-    setCustomInputValue('');
-    setShowCustomModal(true);
-    lightHaptic();
-  };
-
-  // Helper to save custom modal value
-  const saveCustomModalValue = () => {
-    const trimmedValue = customInputValue.trim();
-    if (!trimmedValue) return;
-
-    if (customModalType === 'gender') {
-      if (!interestedInGenders.includes(trimmedValue)) {
-        setInterestedInGenders(prev => [...prev, trimmedValue]);
-      }
-    }
-
-    mediumHaptic();
-    setCustomInputValue('');
-    setShowCustomModal(false);
-    Keyboard.dismiss();
-  };
-
-  // Get modal title based on type
-  const getCustomModalTitle = () => {
-    return 'Add Custom Gender';
-  };
-
-  const getCustomModalPlaceholder = () => {
-    return 'Enter gender identity';
-  };
 
   const loadProfile = async () => {
     try {
@@ -257,16 +102,10 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
           });
         }
 
-        // Load preferred ethnicities
+        // Load array preferences
         setPreferredEthnicities(profileResult.data.preferredEthnicities || []);
-
-        // Load preferred religions
         setPreferredReligions(profileResult.data.preferredReligions || []);
-
-        // Load interested in genders
         setInterestedInGenders(profileResult.data.interestedInGenders || []);
-
-        // Load preferred politics
         setPreferredPolitics(profileResult.data.preferredPolitics || []);
 
         // Store original data for change detection
@@ -276,7 +115,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
             ageMin: loadedPrefs.ageMin,
             ageMax: loadedPrefs.ageMax,
             gender: loadedPrefs.gender,
-            lookingFor: 'relationship', // Include lookingFor to match current state structure
+            lookingFor: 'relationship',
             heightMin: loadedPrefs.heightMin ?? 60,
             heightMax: loadedPrefs.heightMax ?? 84,
           },
@@ -312,31 +151,18 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
     }
   }, [preferences, partnerPreferences, preferredEthnicities, preferredReligions, interestedInGenders, preferredPolitics]);
 
-  const handleClose = () => {
-    if (hasUnsavedChanges) {
-      Alert.alert(
-        'Discard Changes?',
-        'You have unsaved changes. Are you sure you want to leave?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Discard',
-            style: 'destructive',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
-    } else {
+  const handleBack = () => {
+    if (!hasUnsavedChanges) {
       navigation.goBack();
+      return;
     }
+    // Auto-save on back
+    handleSave();
   };
 
   const renderThumb = useCallback(() => <Thumb />, []);
   const renderRail = useCallback(() => <Rail />, []);
   const renderRailSelected = useCallback(() => <RailSelected />, []);
-  const handleAgeValueChanged = useCallback((low: number, high: number) => {
-    setPreferences((prev) => ({ ...prev, ageMin: low, ageMax: high }));
-  }, []);
   const handleHeightValueChanged = useCallback((low: number, high: number) => {
     setPreferences((prev) => ({ ...prev, heightMin: low, heightMax: high }));
   }, []);
@@ -362,23 +188,37 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
       return;
     }
 
-    // Allow min to equal max for specific age targeting
-    // No validation needed here
-
     if (preferences.heightMin && preferences.heightMax && preferences.heightMin > preferences.heightMax) {
       Alert.alert('Invalid Height Range', 'Minimum height cannot be greater than maximum height');
       return;
     }
 
-    if (interestedInGenders.length === 0) {
-      Alert.alert('Gender Interest Required', 'Please select at least one gender you\'re interested in');
+    // Validate all mandatory fields
+    const missing: string[] = [];
+    if (interestedInGenders.length === 0) missing.push('Gender');
+    if (preferredEthnicities.length === 0) missing.push('Ethnicity');
+    if (preferredReligions.length === 0) missing.push('Religion');
+    if (preferredPolitics.length === 0) missing.push('Politics');
+    if (partnerPreferences.partnerDrinking.length === 0 ||
+        partnerPreferences.partnerCannabis.length === 0 ||
+        partnerPreferences.partnerTobacco.length === 0 ||
+        partnerPreferences.partnerOtherDrugs.length === 0) missing.push('Lifestyle');
+
+    if (missing.length > 0) {
+      Alert.alert(
+        'Missing Required Fields',
+        `Please complete: ${missing.join(', ')}`,
+        [
+          { text: 'Fix', style: 'cancel' },
+          { text: 'Discard Changes', style: 'destructive', onPress: () => navigation.goBack() },
+        ]
+      );
       return;
     }
 
     setSaving(true);
     try {
       // Auto-derive preferred_gender from interestedInGenders for backward compatibility
-      // Values are already in database format (male/female, not man/woman)
       let derivedPreferredGender: 'male' | 'female' | 'both' = 'both';
       if (interestedInGenders.length === 1) {
         if (interestedInGenders[0] === 'male') {
@@ -386,20 +226,17 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         } else if (interestedInGenders[0] === 'female') {
           derivedPreferredGender = 'female';
         }
-        // For non-binary, genderfluid, etc., use 'both'
       }
-      // Multiple genders selected = 'both'
 
       const updatedProfile = {
         ...profile,
         preferences: {
           ...preferences,
-          gender: derivedPreferredGender, // Auto-derived from interestedInGenders
-          lookingFor: 'relationship' as const, // Bridge only supports relationships
+          gender: derivedPreferredGender,
+          lookingFor: 'relationship' as const,
         },
         interestedInGenders: interestedInGenders,
         preferredPolitics: preferredPolitics,
-        // Partner preferences
         partnerLifestylePreferences: {
           drinking: partnerPreferences.partnerDrinking,
           cannabis: partnerPreferences.partnerCannabis,
@@ -413,7 +250,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
       const result = await updateUserProfile(updatedProfile);
 
       if (result.ok) {
-        // Navigate back automatically on success - no popup needed
         navigation.goBack();
       } else {
         Alert.alert('Error', 'Failed to save preferences. Please try again.');
@@ -426,18 +262,12 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   };
 
   // Calculate match preferences completion for current editing state
-  // NOTE: Uses centralized calculation - consistent with ProfileStrengthDashboard
-  // This provides real-time updates as user edits (before saving)
   const matchPrefsCompletion = useMemo(() => {
     if (!profile) return { percentage: 0, completedCount: 0, totalCount: 8, missingFields: [] };
 
-    // Create a temporary profile with current state for real-time updates
     const currentProfile = {
       ...profile,
-      preferences: {
-        ...profile.preferences,
-        ...preferences,
-      },
+      preferences: { ...profile.preferences, ...preferences },
       partnerLifestylePreferences: {
         drinking: partnerPreferences.partnerDrinking,
         cannabis: partnerPreferences.partnerCannabis,
@@ -454,11 +284,18 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   }, [profile, preferences, partnerPreferences, interestedInGenders, preferredEthnicities, preferredReligions, preferredPolitics]);
 
   // Calculate match preferences completion for SAVED profile (for banner visibility)
-  // This prevents banner from disappearing until changes are actually saved
   const savedMatchPrefsCompletion = useMemo(() => {
     if (!profile) return { percentage: 0 };
     return calculateMatchPreferencesCompleteness(profile);
   }, [profile]);
+
+  const handleCustomGenderSave = useCallback((value: string) => {
+    if (!interestedInGenders.includes(value)) {
+      setInterestedInGenders(prev => [...prev, value]);
+    }
+    mediumHaptic();
+    setShowCustomModal(false);
+  }, [interestedInGenders]);
 
   return (
     <ScreenWrapper>
@@ -466,17 +303,17 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
       {/* Header */}
       <StyledView className="bg-white border-b border-neutral-200 px-4 py-3">
         <StyledView className="flex-row items-center justify-between">
-          <StyledTouchableOpacity onPress={handleClose} className="mr-3">
-            <EvaIcon name="close" variant="outline" size={24} color="#101828" />
+          <StyledTouchableOpacity onPress={handleBack} className="mr-3" accessibilityRole="button" accessibilityLabel="Go back">
+            <EvaIcon name="arrow-ios-back" variant="outline" size={24} color={COLORS.textDarkHeading} />
           </StyledTouchableOpacity>
           <StyledView className="flex-1">
             <H3>Match Preferences</H3>
           </StyledView>
-          <StyledTouchableOpacity onPress={handleSave} disabled={saving}>
-            <Body className={saving ? 'text-neutral-400' : 'text-primary-500 font-medium'}>
-              {saving ? 'Saving...' : 'Save'}
+          {hasUnsavedChanges && (
+            <Body className="text-primary-500 text-xs font-medium">
+              {saving ? 'Saving...' : 'Auto-saves on back'}
             </Body>
-          </StyledTouchableOpacity>
+          )}
         </StyledView>
 
         {/* Completion Progress Bar - Hidden only when both saved AND current state are 100% */}
@@ -505,503 +342,57 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
       <StyledScrollView className="flex-1">
         <StyledView className="px-4 py-4">
-          {/* Looking For - Bridge is for relationships only */}
-          <Card className="mb-6">
-            <H3 className="mb-4">I'm Looking For</H3>
-            <Body className="text-neutral-600 text-sm mb-4">
-              Bridge promotes genuine connection
-            </Body>
-            <StyledView className="p-4 rounded-lg border bg-primary-50 border-primary-500">
-              <StyledView className="flex-row items-center justify-between">
-                <StyledView className="flex-1">
-                  <Body className="text-base font-semibold mb-1 text-primary-700">
-                    Relationship
-                  </Body>
-                  <Body className="text-sm text-neutral-600">
-                    Long-term relationship
-                  </Body>
-                </StyledView>
-                <EvaIcon name="checkmark-circle-2" variant="outline" size={24} color="#437FFF" />
-              </StyledView>
-            </StyledView>
-          </Card>
+          <LookingForSection />
 
-          {/* Interested In Genders */}
-          <Card className="mb-6">
-            <H3 className="mb-2">Gender <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
-            <Body className="text-neutral-600 text-sm mb-4">
-              Select all gender identities you're open to matching with
-            </Body>
-            <StyledView className="flex-row flex-wrap gap-2.5">
-              {GENDER_OPTIONS.map((option) => {
-                const isSelected = interestedInGenders.includes(option.value);
-                return (
-                  <StyledTouchableOpacity
-                    key={option.value}
-                    activeOpacity={1}
-                    onPress={() => {
-                      lightHaptic();
-                      if (isSelected) {
-                        setInterestedInGenders(prev => prev.filter(g => g !== option.value));
-                      } else {
-                        setInterestedInGenders(prev => [...prev, option.value]);
-                      }
-                    }}
-                    className={`px-3 py-2 rounded-full border ${
-                      isSelected
-                        ? 'bg-primary-500 border-primary-500'
-                        : 'bg-white border-neutral-300'
-                    }`}
-                  >
-                    <Body
-                      className={`text-sm ${
-                        isSelected ? 'text-white font-medium' : 'text-neutral-700'
-                      }`}
-                    >
-                      {option.label}
-                    </Body>
-                  </StyledTouchableOpacity>
-                );
-              })}
-              {/* Custom genders (not in predefined list) */}
-              {interestedInGenders
-                .filter(g => !GENDER_OPTIONS.some(opt => opt.value === g))
-                .map((customGender) => (
-                  <StyledTouchableOpacity
-                    key={customGender}
-                    activeOpacity={1}
-                    onPress={() => {
-                      lightHaptic();
-                      setInterestedInGenders(prev => prev.filter(g => g !== customGender));
-                    }}
-                    className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
-                  >
-                    <Body className="text-sm text-white font-medium">{customGender}</Body>
-                  </StyledTouchableOpacity>
-                ))}
-              {/* Other button */}
-              <StyledTouchableOpacity
-                onPress={() => openCustomModal('gender')}
-                className="px-3 py-2 rounded-full border border-dashed border-neutral-400 bg-neutral-50"
-              >
-                <Body className="text-sm text-neutral-600">+ Other</Body>
-              </StyledTouchableOpacity>
-            </StyledView>
-          </Card>
+          <GenderSection
+            interestedInGenders={interestedInGenders}
+            setInterestedInGenders={setInterestedInGenders}
+            onOpenCustomModal={() => setShowCustomModal(true)}
+          />
 
-          {/* Age Range */}
-          <Card className="mb-6">
-            <H3 className="mb-4">Age Range <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
-            <AgeRangeStepper
-              min={preferences.ageMin}
-              max={preferences.ageMax}
-              floor={18}
-              ceiling={35}
-              onMinChange={(v) => setPreferences(prev => ({ ...prev, ageMin: v }))}
-              onMaxChange={(v) => setPreferences(prev => ({ ...prev, ageMax: v }))}
-            />
-          </Card>
+          <AgeRangeSection
+            ageMin={preferences.ageMin}
+            ageMax={preferences.ageMax}
+            onMinChange={(v) => setPreferences(prev => ({ ...prev, ageMin: v }))}
+            onMaxChange={(v) => setPreferences(prev => ({ ...prev, ageMax: v }))}
+          />
 
-          {/* Height Preference */}
-          <Card className="mb-6">
-            <H3 className="mb-3">Height <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
-            <Body className="text-neutral-600 text-sm mb-4">
-              Set your height preferences for potential matches
-            </Body>
+          <HeightSection
+            heightMin={preferences.heightMin}
+            heightMax={preferences.heightMax}
+            renderThumb={renderThumb}
+            renderRail={renderRail}
+            renderRailSelected={renderRailSelected}
+            onValueChanged={handleHeightValueChanged}
+          />
 
-            <StyledView className="flex-row justify-between mb-3">
-              <Body className="text-neutral-600">Min: <Body className="text-neutral-900 font-semibold">{formatHeight(preferences.heightMin || 60)}</Body></Body>
-              <Body className="text-neutral-600">Max: <Body className="text-neutral-900 font-semibold">{formatHeight(preferences.heightMax || 84)}</Body></Body>
-            </StyledView>
-            <StyledView className="px-2">
-              <RangeSlider
-                style={{ width: '100%', height: 40 }}
-                min={48}
-                max={84}
-                step={1}
-                low={preferences.heightMin || 60}
-                high={preferences.heightMax || 84}
-                minRange={1}
-                floatingLabel={false}
-                renderThumb={renderThumb}
-                renderRail={renderRail}
-                renderRailSelected={renderRailSelected}
-                onValueChanged={handleHeightValueChanged}
-              />
-            </StyledView>
-          </Card>
+          <EthnicitySection
+            preferredEthnicities={preferredEthnicities}
+            setPreferredEthnicities={setPreferredEthnicities}
+          />
 
-          {/* Preferred Ethnicities */}
-          <Card className="mb-6">
-            <H3 className="mb-2">Ethnicity <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
-            <Body className="text-neutral-600 text-sm mb-4">
-              Select the ethnicities you're interested in for potential matches
-            </Body>
-            <StyledView className="flex-row flex-wrap gap-2.5">
-              {ETHNICITY_OPTIONS.map(ethnicity => {
-                const isSelected = preferredEthnicities.includes(ethnicity);
-                return (
-                  <StyledTouchableOpacity
-                    key={ethnicity}
-                    activeOpacity={1}
-                    onPress={() => {
-                      lightHaptic();
-                      if (isSelected) {
-                        setPreferredEthnicities(prev => prev.filter(e => e !== ethnicity));
-                      } else if (ethnicity === 'No Preference') {
-                        setPreferredEthnicities(['No Preference']);
-                      } else {
-                        setPreferredEthnicities(prev => [...prev.filter(e => e !== 'No Preference'), ethnicity]);
-                      }
-                    }}
-                    className={`px-3 py-2 rounded-full border ${
-                      isSelected
-                        ? 'bg-primary-500 border-primary-500'
-                        : 'bg-white border-neutral-300'
-                    }`}
-                  >
-                    <Body className={`text-sm ${
-                      isSelected ? 'text-white font-medium' : 'text-neutral-700'
-                    }`}>{ethnicity}</Body>
-                  </StyledTouchableOpacity>
-                );
-              })}
-            </StyledView>
-          </Card>
+          <ReligionSection
+            preferredReligions={preferredReligions}
+            setPreferredReligions={setPreferredReligions}
+          />
 
-          {/* Preferred Religions */}
-          <Card className="mb-6">
-            <H3 className="mb-2">Religion</H3>
-            <Body className="text-neutral-600 text-sm mb-4">
-              Select the religious beliefs you're open to matching with
-            </Body>
-            <StyledView className="flex-row flex-wrap gap-2.5">
-              {RELIGION_PREF_OPTIONS.map(religion => {
-                const isSelected = preferredReligions.includes(religion);
-                return (
-                  <StyledTouchableOpacity
-                    key={religion}
-                    activeOpacity={1}
-                    onPress={() => {
-                      lightHaptic();
-                      if (isSelected) {
-                        setPreferredReligions(prev => prev.filter(r => r !== religion));
-                      } else if (religion === 'No Preference') {
-                        setPreferredReligions(['No Preference']);
-                      } else {
-                        setPreferredReligions(prev => [...prev.filter(r => r !== 'No Preference'), religion]);
-                      }
-                    }}
-                    className={`px-3 py-2 rounded-full border ${
-                      isSelected
-                        ? 'bg-primary-500 border-primary-500'
-                        : 'bg-white border-neutral-300'
-                    }`}
-                  >
-                    <Body className={`text-sm ${
-                      isSelected ? 'text-white font-medium' : 'text-neutral-700'
-                    }`}>{religion}</Body>
-                  </StyledTouchableOpacity>
-                );
-              })}
-            </StyledView>
-          </Card>
+          <PoliticsSection
+            preferredPolitics={preferredPolitics}
+            setPreferredPolitics={setPreferredPolitics}
+          />
 
-          {/* Preferred Politics */}
-          <Card className="mb-6">
-            <H3 className="mb-2">Politics <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
-            <Body className="text-neutral-600 text-sm mb-4">
-              Select the political views you're open to matching with
-            </Body>
-            <StyledView className="flex-row flex-wrap gap-2.5">
-              {POLITICAL_OPTIONS.map(option => {
-                const isSelected = preferredPolitics.includes(option.value);
-                return (
-                  <StyledTouchableOpacity
-                    key={option.value}
-                    activeOpacity={1}
-                    onPress={() => {
-                      lightHaptic();
-                      if (isSelected) {
-                        setPreferredPolitics(prev => prev.filter(p => p !== option.value));
-                      } else if (option.value === 'no_preference') {
-                        setPreferredPolitics(['no_preference']);
-                      } else {
-                        setPreferredPolitics(prev => [...prev.filter(p => p !== 'no_preference'), option.value]);
-                      }
-                    }}
-                    className={`px-3 py-2 rounded-full border ${
-                      isSelected
-                        ? 'bg-primary-500 border-primary-500'
-                        : 'bg-white border-neutral-300'
-                    }`}
-                  >
-                    <Body className={`text-sm ${
-                      isSelected ? 'text-white font-medium' : 'text-neutral-700'
-                    }`}>{option.label}</Body>
-                  </StyledTouchableOpacity>
-                );
-              })}
-            </StyledView>
-          </Card>
-
-          {/* Lifestyle */}
-          <Card className="mb-6">
-            <H3 className="mb-2">Lifestyle <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
-            <Body className="text-neutral-600 text-sm mb-4">
-              What lifestyle habits do you prefer in a partner?
-            </Body>
-
-            {/* Drinking */}
-            <StyledView className="mb-4">
-              <Body className="text-neutral-700 text-sm font-medium mb-2">Drinking</Body>
-              <StyledView className="flex-row flex-wrap gap-2.5">
-                {LIFESTYLE_FREQUENCY_OPTIONS.map(option => {
-                  const isSelected = partnerPreferences.partnerDrinking.includes(option.value);
-                  return (
-                    <StyledTouchableOpacity
-                      key={option.value}
-                      activeOpacity={1}
-                      onPress={() => {
-                        lightHaptic();
-                        if (isSelected) {
-                          // Deselect if already selected
-                          setPartnerPreferences(prev => ({
-                            ...prev,
-                            partnerDrinking: prev.partnerDrinking.filter(v => v !== option.value)
-                          }));
-                        } else {
-                          // Select if not selected
-                          setPartnerPreferences(prev => ({
-                            ...prev,
-                            partnerDrinking: [...prev.partnerDrinking, option.value]
-                          }));
-                        }
-                      }}
-                      className={`px-3 py-2 rounded-full border ${
-                        isSelected
-                          ? 'bg-primary-500 border-primary-500'
-                          : 'bg-white border-neutral-300'
-                      }`}
-                    >
-                      <Body className={`text-center text-sm font-medium ${
-                        isSelected ? 'text-white' : 'text-neutral-700'
-                      }`}>{option.label}</Body>
-                    </StyledTouchableOpacity>
-                  );
-                })}
-              </StyledView>
-            </StyledView>
-
-            {/* Cannabis */}
-            <StyledView className="mb-4">
-              <Body className="text-neutral-700 text-sm font-medium mb-2">Cannabis</Body>
-              <StyledView className="flex-row flex-wrap gap-2.5">
-                {LIFESTYLE_FREQUENCY_OPTIONS.map(option => {
-                  const isSelected = partnerPreferences.partnerCannabis.includes(option.value);
-                  return (
-                    <StyledTouchableOpacity
-                      key={option.value}
-                      activeOpacity={1}
-                      onPress={() => {
-                        lightHaptic();
-                        if (isSelected) {
-                          // Deselect if already selected
-                          setPartnerPreferences(prev => ({
-                            ...prev,
-                            partnerCannabis: prev.partnerCannabis.filter(v => v !== option.value)
-                          }));
-                        } else {
-                          // Select if not selected
-                          setPartnerPreferences(prev => ({
-                            ...prev,
-                            partnerCannabis: [...prev.partnerCannabis, option.value]
-                          }));
-                        }
-                      }}
-                      className={`px-3 py-2 rounded-full border ${
-                        isSelected
-                          ? 'bg-primary-500 border-primary-500'
-                          : 'bg-white border-neutral-300'
-                      }`}
-                    >
-                      <Body className={`text-center text-sm font-medium ${
-                        isSelected ? 'text-white' : 'text-neutral-700'
-                      }`}>{option.label}</Body>
-                    </StyledTouchableOpacity>
-                  );
-                })}
-              </StyledView>
-            </StyledView>
-
-            {/* Tobacco */}
-            <StyledView className="mb-4">
-              <Body className="text-neutral-700 text-sm font-medium mb-2">Tobacco/Vaping</Body>
-              <StyledView className="flex-row flex-wrap gap-2.5">
-                {LIFESTYLE_FREQUENCY_OPTIONS.map(option => {
-                  const isSelected = partnerPreferences.partnerTobacco.includes(option.value);
-                  return (
-                    <StyledTouchableOpacity
-                      key={option.value}
-                      activeOpacity={1}
-                      onPress={() => {
-                        lightHaptic();
-                        if (isSelected) {
-                          // Deselect if already selected
-                          setPartnerPreferences(prev => ({
-                            ...prev,
-                            partnerTobacco: prev.partnerTobacco.filter(v => v !== option.value)
-                          }));
-                        } else {
-                          // Select if not selected
-                          setPartnerPreferences(prev => ({
-                            ...prev,
-                            partnerTobacco: [...prev.partnerTobacco, option.value]
-                          }));
-                        }
-                      }}
-                      className={`px-3 py-2 rounded-full border ${
-                        isSelected
-                          ? 'bg-primary-500 border-primary-500'
-                          : 'bg-white border-neutral-300'
-                      }`}
-                    >
-                      <Body className={`text-center text-sm font-medium ${
-                        isSelected ? 'text-white' : 'text-neutral-700'
-                      }`}>{option.label}</Body>
-                    </StyledTouchableOpacity>
-                  );
-                })}
-              </StyledView>
-            </StyledView>
-
-            {/* Other Drugs */}
-            <StyledView>
-              <Body className="text-neutral-700 text-sm font-medium mb-2">Other Substances</Body>
-              <StyledView className="flex-row flex-wrap gap-2.5">
-                {LIFESTYLE_FREQUENCY_OPTIONS.map(option => {
-                  const isSelected = partnerPreferences.partnerOtherDrugs.includes(option.value);
-                  return (
-                    <StyledTouchableOpacity
-                      key={option.value}
-                      activeOpacity={1}
-                      onPress={() => {
-                        lightHaptic();
-                        if (isSelected) {
-                          // Deselect if already selected
-                          setPartnerPreferences(prev => ({
-                            ...prev,
-                            partnerOtherDrugs: prev.partnerOtherDrugs.filter(v => v !== option.value)
-                          }));
-                        } else {
-                          // Select if not selected
-                          setPartnerPreferences(prev => ({
-                            ...prev,
-                            partnerOtherDrugs: [...prev.partnerOtherDrugs, option.value]
-                          }));
-                        }
-                      }}
-                      className={`px-3 py-2 rounded-full border ${
-                        isSelected
-                          ? 'bg-primary-500 border-primary-500'
-                          : 'bg-white border-neutral-300'
-                      }`}
-                    >
-                      <Body className={`text-center text-sm font-medium ${
-                        isSelected ? 'text-white' : 'text-neutral-700'
-                      }`}>{option.label}</Body>
-                    </StyledTouchableOpacity>
-                  );
-                })}
-              </StyledView>
-            </StyledView>
-          </Card>
-
+          <LifestyleSection
+            partnerPreferences={partnerPreferences}
+            setPartnerPreferences={setPartnerPreferences}
+          />
         </StyledView>
       </StyledScrollView>
 
-      {/* Reusable Custom Input Modal */}
-      <Modal
+      <CustomInputModal
         visible={showCustomModal}
-        animationType="none"
-        transparent
-        onRequestClose={() => setShowCustomModal(false)}
-      >
-        <StyledAnimatedView
-          className="flex-1 bg-black/50 justify-start items-center px-6 pt-24"
-          style={modalOverlayStyle}
-        >
-          <StyledTouchableOpacity
-            activeOpacity={1}
-            onPress={() => {
-              Keyboard.dismiss();
-              setShowCustomModal(false);
-              setCustomInputValue('');
-            }}
-            className="absolute inset-0"
-          />
-
-          <StyledAnimatedView
-            className="bg-white rounded-2xl w-full max-w-md"
-            style={modalScaleStyle}
-          >
-            {/* Header */}
-            <StyledView className="px-6 pt-6 pb-4 border-b border-neutral-100">
-              <H3 className="mb-2">{getCustomModalTitle()}</H3>
-              <Body className="text-neutral-600 text-sm">
-                {getCustomModalPlaceholder()}
-              </Body>
-            </StyledView>
-
-            {/* Input Field */}
-            <StyledView className="px-6 py-5">
-              <StyledTextInput
-                value={customInputValue}
-                onChangeText={setCustomInputValue}
-                placeholder={getCustomModalPlaceholder()}
-                className="bg-neutral-50 border border-neutral-200 rounded-lg px-4 py-3 text-base text-neutral-900"
-                placeholderTextColor={COLORS.text.disabled}
-                autoFocus
-                returnKeyType="done"
-                onSubmitEditing={saveCustomModalValue}
-              />
-            </StyledView>
-
-            {/* Action Buttons */}
-            <StyledView className="px-6 pb-6 flex-row gap-3">
-              <StyledTouchableOpacity
-                onPress={() => {
-                  lightHaptic();
-                  setShowCustomModal(false);
-                  setCustomInputValue('');
-                  Keyboard.dismiss();
-                }}
-                className="flex-1 bg-neutral-100 rounded-lg py-3 items-center"
-              >
-                <Body className="text-neutral-700 font-semibold">Cancel</Body>
-              </StyledTouchableOpacity>
-
-              <StyledTouchableOpacity
-                onPress={saveCustomModalValue}
-                className={`flex-1 rounded-lg py-3 items-center ${
-                  customInputValue.trim()
-                    ? 'bg-primary-500'
-                    : 'bg-neutral-200'
-                }`}
-                disabled={!customInputValue.trim()}
-              >
-                <Body className={`font-semibold ${
-                  customInputValue.trim()
-                    ? 'text-white'
-                    : 'text-neutral-400'
-                }`}>
-                  Add
-                </Body>
-              </StyledTouchableOpacity>
-            </StyledView>
-          </StyledAnimatedView>
-        </StyledAnimatedView>
-      </Modal>
+        onClose={() => setShowCustomModal(false)}
+        onSave={handleCustomGenderSave}
+      />
     </ScreenWrapper>
   );
 };

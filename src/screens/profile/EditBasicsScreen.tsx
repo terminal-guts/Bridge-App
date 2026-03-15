@@ -25,12 +25,9 @@ const PRONOUN_OPTIONS = [
 const MAX_PRONOUNS = 4;
 
 const GENDER_OPTIONS = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
+  { value: 'male', label: 'Man' },
+  { value: 'female', label: 'Woman' },
   { value: 'non-binary', label: 'Non-binary' },
-  { value: 'genderfluid', label: 'Genderfluid' },
-  { value: 'agender', label: 'Agender' },
-  { value: 'two_spirit', label: 'Two-Spirit' },
 ];
 
 const ETHNICITY_OPTIONS = [
@@ -200,6 +197,9 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
                   ? 'bg-primary-500 border-primary-500'
                   : 'bg-white border-neutral-300'
                 }`}
+                accessibilityRole="checkbox"
+                accessibilityLabel={option}
+                accessibilityState={{ checked: isSelected }}
               >
                 <Body className={`text-sm ${isSelected ? 'text-white font-medium' : 'text-neutral-700'}`}>
                   {option}
@@ -307,6 +307,24 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
             );
           })}
 
+          {/* Non-predefined genders (legacy values like genderfluid, agender, two_spirit, or custom) */}
+          {(profile.gender || [])
+            .filter(g => !GENDER_OPTIONS.some(opt => opt.value === g))
+            .map((custom) => (
+              <StyledTouchableOpacity
+                key={custom}
+                activeOpacity={1}
+                delayPressIn={0}
+                onPress={() => {
+                  lightHaptic();
+                  updateProfile({ gender: (profile.gender || []).filter(g => g !== custom) });
+                }}
+                className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
+              >
+                <Body className="text-sm text-white font-medium">{custom}</Body>
+              </StyledTouchableOpacity>
+            ))}
+
           {profile.customMyGender && (
             <StyledTouchableOpacity
               onPress={() => {
@@ -321,9 +339,9 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
 
           <StyledTouchableOpacity
             onPress={() => { lightHaptic(); setShowCustomGenderModal(true); }}
-            className="px-3 py-2 rounded-full border bg-white border-neutral-300"
+            className="px-3 py-2 rounded-full border border-dashed border-neutral-400 bg-neutral-50"
           >
-            <Body className="text-sm text-neutral-700">Other</Body>
+            <Body className="text-sm text-neutral-600">Other</Body>
           </StyledTouchableOpacity>
         </StyledView>
       </Card>

@@ -4,6 +4,7 @@ import { styled } from 'nativewind';
 import { H1, H3, Body, Card } from '../../../components/ui';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import { EvaIcon } from '../../../components/icons';
+import { COLORS } from '../../../theme/colors';
 
 interface WelcomeToBridgeStepProps {
   onNext: () => void;
@@ -39,7 +40,7 @@ export const WelcomeToBridgeStep: React.FC<WelcomeToBridgeStepProps> = ({
       <Card className="mb-5 p-5">
         <StyledView className="flex-row items-start mb-2">
           <StyledView className="bg-primary-100 p-2 rounded-full mr-3">
-            <EvaIcon name="sun" variant="outline" size={24} color="#437FFF" />
+            <EvaIcon name="sun" variant="outline" size={24} color={COLORS.primaryAccent} />
           </StyledView>
           <StyledView className="flex-1">
             <H3 className="mb-2">One Best Match, Every Day</H3>
@@ -54,7 +55,7 @@ export const WelcomeToBridgeStep: React.FC<WelcomeToBridgeStepProps> = ({
       <Card className="mb-5 p-5">
         <StyledView className="flex-row items-start mb-2">
           <StyledView className="bg-primary-100 p-2 rounded-full mr-3">
-            <EvaIcon name="message-circle" variant="outline" size={24} color="#437FFF" />
+            <EvaIcon name="message-circle" variant="outline" size={24} color={COLORS.primaryAccent} />
           </StyledView>
           <StyledView className="flex-1">
             <H3 className="mb-2">Your Friends Weigh In</H3>
@@ -69,7 +70,7 @@ export const WelcomeToBridgeStep: React.FC<WelcomeToBridgeStepProps> = ({
       <Card className="mb-5 p-5">
         <StyledView className="flex-row items-start mb-2">
           <StyledView className="bg-primary-100 p-2 rounded-full mr-3">
-            <EvaIcon name="flash" variant="outline" size={24} color="#437FFF" />
+            <EvaIcon name="flash" variant="outline" size={24} color={COLORS.primaryAccent} />
           </StyledView>
           <StyledView className="flex-1">
             <H3 className="mb-2">Done in 5 Minutes</H3>

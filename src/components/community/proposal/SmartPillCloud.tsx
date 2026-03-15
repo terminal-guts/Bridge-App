@@ -6,7 +6,9 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { FONTS, FONT_SIZES } from '../../../constants/typography';
+import { SPACING } from '../../../constants/dimensions';
 import { COLORS } from '../../../theme/colors';
+import { SHADOWS } from '../../../theme/shadows';
 import { MatchResult, MatchStatus } from '../../../utils/proposalMatching';
 import { EvaIcon } from '../../icons';
 import type { SmartPillResult } from './proposalHelpers';
@@ -138,7 +140,7 @@ export function TagCloudSection({ leftTags, rightTags }: { leftTags: string[]; r
       <View style={{ flex: 1, gap: 8 }}>
         {leftTags.map((t) => <TagPill key={t} label={t} />)}
       </View>
-      <View style={{ width: 1, backgroundColor: COLORS.border, marginHorizontal: 16 }} />
+      <View style={{ width: 1, backgroundColor: COLORS.border, marginHorizontal: SPACING.lg }} />
       <View style={{ flex: 1, gap: 8 }}>
         {rightTags.map((t) => <TagPill key={t} label={t} />)}
       </View>
@@ -194,7 +196,7 @@ export function SmartPillCloudSection({
             )}
             {greyA.map(t => <TagPill key={`greyA-${t}`} label={t} />)}
           </View>
-          <View style={{ width: 1, backgroundColor: COLORS.border, marginHorizontal: 16 }} />
+          <View style={{ width: 1, backgroundColor: COLORS.border, marginHorizontal: SPACING.lg }} />
           <View style={{ flex: 1, gap: 8 }}>
             {greyB.length > 0 && (
               <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.xs, color: COLORS.text.disabled, marginBottom: 4 }}>{userBName}</Text>
@@ -266,11 +268,7 @@ export const SectionCard = React.memo(function SectionCard({
       borderColor: CARD_BORDER,
       borderLeftWidth: accentColor ? 3 : 1,
       borderLeftColor: accentColor || CARD_BORDER,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.05,
-      shadowRadius: 4,
-      elevation: 2,
+      ...SHADOWS.sm,
       padding: 16,
       marginBottom: 20,
     }}>

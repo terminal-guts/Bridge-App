@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
-import { View, ScrollView, TouchableOpacity } from 'react-native';
+import { View, ScrollView, TouchableOpacity, TextInput, Modal, Keyboard, Pressable } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, H3, Body, Card } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
+import { FONTS } from '../../../constants/typography';
+import { COLORS } from '../../../theme/colors';
+import { lightHaptic, mediumHaptic } from '../../../utils/haptics';
+import ReanimatedAnimated, { useSharedValue, useAnimatedStyle, withSpring, interpolate, runOnJS } from 'react-native-reanimated';
+import { SPRINGS } from '../../../constants/animations';
 
 interface GenderStepProps {
   data: Partial<OnboardingData>;
@@ -16,14 +21,13 @@ interface GenderStepProps {
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
+const StyledTextInput = styled(TextInput);
+const StyledAnimatedView = styled(ReanimatedAnimated.View);
 
 const GENDER_OPTIONS = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
+  { value: 'male', label: 'Man' },
+  { value: 'female', label: 'Woman' },
   { value: 'non-binary', label: 'Non-binary' },
-  { value: 'genderfluid', label: 'Genderfluid' },
-  { value: 'agender', label: 'Agender' },
-  { value: 'two_spirit', label: 'Two-Spirit' },
 ];
 
 export const GenderStep: React.FC<GenderStepProps> = ({
@@ -39,6 +43,54 @@ export const GenderStep: React.FC<GenderStepProps> = ({
     data.interestedInGenders || []
   );
   const [errors, setErrors] = useState<{ myGender?: string; interestedIn?: string }>({});
+
+  // Custom gender modal state
+  const [showCustomModal, setShowCustomModal] = useState(false);
+  const [customModalTarget, setCustomModalTarget] = useState<'my' | 'interested'>('my');
+  const [customInputValue, setCustomInputValue] = useState('');
+  const customModalAnim = useSharedValue(0);
+  const modalOverlayStyle = useAnimatedStyle(() => ({ opacity: customModalAnim.value }));
+  const modalScaleStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(customModalAnim.value, [0, 1], [0.9, 1]) }],
+  }));
+
+  // Custom genders that aren't in the predefined list
+  const myCustomGenders = myGender.filter(g => !GENDER_OPTIONS.some(opt => opt.value === g));
+  const interestedCustomGenders = interestedIn.filter(g => !GENDER_OPTIONS.some(opt => opt.value === g));
+
+  const openCustomModal = (target: 'my' | 'interested') => {
+    setCustomModalTarget(target);
+    setCustomInputValue('');
+    setShowCustomModal(true);
+    customModalAnim.value = withSpring(1, SPRINGS.responsive);
+    lightHaptic();
+  };
+
+  const closeCustomModal = () => {
+    customModalAnim.value = withSpring(0, SPRINGS.responsive, (finished) => {
+      if (finished) runOnJS(setShowCustomModal)(false);
+    });
+    setCustomInputValue('');
+    Keyboard.dismiss();
+  };
+
+  const saveCustomValue = () => {
+    const trimmed = customInputValue.trim();
+    if (!trimmed) return;
+
+    if (customModalTarget === 'my') {
+      if (!myGender.includes(trimmed)) {
+        setMyGender(prev => [...prev, trimmed]);
+      }
+    } else {
+      if (!interestedIn.includes(trimmed)) {
+        setInterestedIn(prev => [...prev, trimmed]);
+      }
+    }
+
+    mediumHaptic();
+    closeCustomModal();
+  };
 
   const toggleMyGender = (gender: string) => {
     if (myGender.includes(gender)) {
@@ -79,17 +131,14 @@ export const GenderStep: React.FC<GenderStepProps> = ({
     let preferredGender: 'male' | 'female' | 'both' = 'both';
 
     if (interestedIn.length === 1) {
-      // Single gender selected
       if (interestedIn[0] === 'male') {
         preferredGender = 'male';
       } else if (interestedIn[0] === 'female') {
         preferredGender = 'female';
       } else {
-        // For non-binary, genderfluid, etc., use 'both'
         preferredGender = 'both';
       }
     } else if (interestedIn.length > 1) {
-      // Multiple genders selected, use 'both'
       preferredGender = 'both';
     }
 
@@ -123,6 +172,9 @@ export const GenderStep: React.FC<GenderStepProps> = ({
           ? 'bg-primary-500 border-primary-500'
           : 'bg-white border-neutral-300'
       }`}
+      accessibilityRole="checkbox"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: selected }}
     >
       <Body className={selected ? 'text-white font-medium' : 'text-neutral-700'}>
         {label}
@@ -157,6 +209,22 @@ export const GenderStep: React.FC<GenderStepProps> = ({
               onPress={() => toggleMyGender(option.value)}
             />
           ))}
+          {/* Custom genders */}
+          {myCustomGenders.map((custom) => (
+            <OptionButton
+              key={custom}
+              label={custom}
+              selected={true}
+              onPress={() => toggleMyGender(custom)}
+            />
+          ))}
+          {/* Other button */}
+          <StyledTouchableOpacity
+            onPress={() => openCustomModal('my')}
+            className="px-4 py-3 rounded-lg border border-dashed border-neutral-400 bg-neutral-50 mr-2 mb-2"
+          >
+            <Body className="text-neutral-600">Other</Body>
+          </StyledTouchableOpacity>
         </StyledView>
         {errors.myGender && (
           <Body className="text-error text-sm mt-2">{errors.myGender}</Body>
@@ -178,12 +246,74 @@ export const GenderStep: React.FC<GenderStepProps> = ({
               onPress={() => toggleInterestedIn(option.value)}
             />
           ))}
+          {/* Custom genders */}
+          {interestedCustomGenders.map((custom) => (
+            <OptionButton
+              key={custom}
+              label={custom}
+              selected={true}
+              onPress={() => toggleInterestedIn(custom)}
+            />
+          ))}
+          {/* Other button */}
+          <StyledTouchableOpacity
+            onPress={() => openCustomModal('interested')}
+            className="px-4 py-3 rounded-lg border border-dashed border-neutral-400 bg-neutral-50 mr-2 mb-2"
+          >
+            <Body className="text-neutral-600">Other</Body>
+          </StyledTouchableOpacity>
         </StyledView>
         {errors.interestedIn && (
           <Body className="text-error text-sm mt-2">{errors.interestedIn}</Body>
         )}
       </Card>
       </StyledView>
+
+      {/* Custom Gender Modal */}
+      <Modal visible={showCustomModal} animationType="none" transparent onRequestClose={closeCustomModal}>
+        <StyledAnimatedView
+          className="flex-1 bg-black/50 justify-start items-center px-6 pt-24"
+          style={modalOverlayStyle}
+        >
+          <Pressable
+            onPress={closeCustomModal}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          />
+          <StyledAnimatedView className="bg-white rounded-2xl w-full max-w-md" style={modalScaleStyle}>
+            <StyledView className="px-6 pt-6 pb-4 border-b border-neutral-100">
+              <H3 className="mb-2">Add Custom Gender</H3>
+              <Body className="text-neutral-600 text-sm">Enter your gender identity</Body>
+            </StyledView>
+            <StyledView className="px-6 py-5">
+              <StyledTextInput
+                value={customInputValue}
+                onChangeText={setCustomInputValue}
+                placeholder="Type your gender identity"
+                className="bg-neutral-50 border border-neutral-200 rounded-lg px-4 py-3 text-base text-neutral-900"
+                placeholderTextColor={COLORS.text.disabled}
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={saveCustomValue}
+              />
+            </StyledView>
+            <StyledView className="px-6 pb-6 flex-row gap-3">
+              <StyledTouchableOpacity
+                onPress={closeCustomModal}
+                className="flex-1 bg-neutral-100 rounded-lg py-3 items-center"
+              >
+                <Body className="text-neutral-700 font-semibold">Cancel</Body>
+              </StyledTouchableOpacity>
+              <StyledTouchableOpacity
+                onPress={saveCustomValue}
+                className={`flex-1 rounded-lg py-3 items-center ${customInputValue.trim() ? 'bg-primary-500' : 'bg-neutral-200'}`}
+                disabled={!customInputValue.trim()}
+              >
+                <Body className={`font-semibold ${customInputValue.trim() ? 'text-white' : 'text-neutral-400'}`}>Add</Body>
+              </StyledTouchableOpacity>
+            </StyledView>
+          </StyledAnimatedView>
+        </StyledAnimatedView>
+      </Modal>
     </OnboardingLayout>
   );
 };

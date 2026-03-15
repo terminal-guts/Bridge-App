@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { OnboardingData, Photo } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import { EvaIcon } from '../../../components/icons';
+import { COLORS } from '../../../theme/colors';
 
 interface PhotoUploadStepProps {
   data: Partial<OnboardingData>;
@@ -223,6 +224,8 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
                     <StyledTouchableOpacity
                       onPress={() => removePhoto(index)}
                       className="absolute top-2 right-2 bg-neutral-900/60 rounded-full w-7 h-7 items-center justify-center"
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove photo ${index + 1}`}
                     >
                       <EvaIcon name="close" variant="outline" size={16} color="white" />
                     </StyledTouchableOpacity>
@@ -230,6 +233,8 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
                     <StyledTouchableOpacity
                       onPress={() => showPhotoOptions(index)}
                       className="absolute bottom-2 right-2 bg-neutral-900/60 rounded-full w-7 h-7 items-center justify-center"
+                      accessibilityRole="button"
+                      accessibilityLabel={`Replace photo ${index + 1}`}
                     >
                       <EvaIcon name="refresh" variant="outline" size={14} color="white" />
                     </StyledTouchableOpacity>
@@ -238,12 +243,14 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
                   <StyledTouchableOpacity
                     onPress={() => showPhotoOptions(index)}
                     className="w-full h-full bg-neutral-100 rounded-xl items-center justify-center border-2 border-dashed border-neutral-300"
+                    accessibilityRole="button"
+                    accessibilityLabel={isMainSlot ? 'Add main photo' : `Add photo ${index + 1}`}
                   >
                     <EvaIcon
                       name={isMainSlot ? 'camera' : 'plus'}
                       variant="outline"
                       size={isMainSlot ? 36 : 28}
-                      color="#98A2B3"
+                      color={COLORS.text.placeholder}
                     />
                     <Body className="text-neutral-400 text-xs mt-1">
                       {isMainSlot ? 'Main Photo' : 'Add Photo'}

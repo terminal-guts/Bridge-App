@@ -135,6 +135,7 @@ export const TimerBadge: React.FC<TimerBadgeProps> = ({ timeRemaining }) => {
 
   return (
     <Animated.View
+      accessibilityLabel={`Time remaining: ${timeRemaining}`}
       style={[
         animatedStyle,
         {

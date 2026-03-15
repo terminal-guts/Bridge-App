@@ -6,9 +6,9 @@
  */
 
 import React, { useState, useRef } from 'react';
-import { View, Modal, ScrollView, Text, TouchableOpacity, FlatList, Dimensions } from 'react-native';
+import { View, Modal, ScrollView, Text, TouchableOpacity, Dimensions, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
-import { formatProfileValue } from '../../utils/formatProfileValue';
+import { formatProfileValue, formatGenderDisplay } from '../../utils/formatProfileValue';
 import { styled } from 'nativewind';
 import { UserProfile } from '../../types';
 import { clampDisplayScore } from '../../utils/compatibilityHelpers';
@@ -91,29 +91,24 @@ export function ProfileView({
       presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
-      <StyledView style={{ flex: 1, backgroundColor: '#FBF9F6' }}>
+      <StyledView style={{ flex: 1, backgroundColor: COLORS.backgroundWarmCream }}>
         {/* Header with Back Button */}
-        <StyledView style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: 20,
-          paddingTop: 48,
-          paddingBottom: 16,
-        }}>
+        <StyledView style={pvStyles.header}>
           <StyledTouchableOpacity
             onPress={onClose}
             style={{ flexDirection: 'row', alignItems: 'center' }}
+            accessibilityRole="button"
+            accessibilityLabel="Close profile"
           >
-            <EvaIcon name="arrow-back" variant="outline" size={28} color="#4A4540" />
-            <StyledText style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.regular, color: COLORS.text.warmNeutral, marginLeft: 8 }}>Back</StyledText>
+            <EvaIcon name="arrow-back" variant="outline" size={28} color={COLORS.text.warmNeutral} />
+            <StyledText style={pvStyles.backText}>Back</StyledText>
           </StyledTouchableOpacity>
         </StyledView>
 
         {/* Name (if shown) */}
         {showName && (
           <StyledView style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-            <StyledText style={{ fontSize: FONT_SIZES['5xl'], fontWeight: '700', fontFamily: FONTS.bold, color: COLORS.text.warmNeutral }}>
+            <StyledText style={pvStyles.nameText}>
               {profile.firstName} {profile.lastName}
             </StyledText>
           </StyledView>
@@ -125,7 +120,7 @@ export function ProfileView({
             {photos.length === 1 ? (
               <StyledImage
                 source={{ uri: photos[0].url }}
-                style={{ width: '100%', height: 280, borderRadius: 16, backgroundColor: '#E5E7EB' }}
+                style={{ width: '100%', height: 280, borderRadius: 16, backgroundColor: COLORS.backgroundGrayMedium }}
                 contentFit="cover"
                 transition={200}
                 cachePolicy="disk"
@@ -159,7 +154,7 @@ export function ProfileView({
                     <StyledView key={`loop-${index}`} style={{ width: SCREEN_WIDTH - 40 }}>
                       <StyledImage
                         source={{ uri: photo.url }}
-                        style={{ width: '100%', height: 280, borderRadius: 16, backgroundColor: '#E5E7EB' }}
+                        style={{ width: '100%', height: 280, borderRadius: 16, backgroundColor: COLORS.backgroundGrayMedium }}
                         contentFit="cover"
                         transition={200}
                         cachePolicy="disk"
@@ -169,7 +164,7 @@ export function ProfileView({
                 </ScrollView>
 
                 {/* Pagination Dots */}
-                <StyledView style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 12, gap: 6 }}>
+                <StyledView style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 12, gap: 8 }}>
                   {photos.map((_, index) => (
                     <StyledTouchableOpacity
                       key={index}
@@ -209,17 +204,11 @@ export function ProfileView({
           {/* Compatibility Section (if shown) */}
           {showCompatibility && compatibilityScore !== undefined && (
             <StyledView style={{ marginBottom: 24 }}>
-              <StyledView style={{
-                backgroundColor: COLORS.backgroundPurpleTag,
-                borderRadius: 16,
-                padding: 16,
-                alignItems: 'center',
-                marginBottom: 16,
-              }}>
-                <StyledText style={{ fontSize: 48, fontWeight: '700', fontFamily: FONTS.bold, color: COLORS.purple }}>
+              <StyledView style={pvStyles.compatCard}>
+                <StyledText style={pvStyles.compatScore}>
                   {clampDisplayScore(compatibilityScore)}%
                 </StyledText>
-                <StyledText style={{ fontSize: FONT_SIZES.base, color: '#6B21A8', fontWeight: '600', fontFamily: FONTS.semiBold }}>
+                <StyledText style={pvStyles.compatLabel}>
                   Compatibility Match
                 </StyledText>
               </StyledView>
@@ -227,12 +216,12 @@ export function ProfileView({
               {/* Why This Match */}
               {whyThisMatch.length > 0 && (
                 <StyledView style={{ marginBottom: 12 }}>
-                  <StyledText style={{ fontSize: FONT_SIZES.lg, fontWeight: '700', fontFamily: FONTS.bold, color: '#059669', marginBottom: 8 }}>
+                  <StyledText style={pvStyles.whyMatchTitle}>
                     Why This Match
                   </StyledText>
                   {whyThisMatch.map((reason, index) => (
-                    <StyledView key={index} style={{ flexDirection: 'row', marginBottom: 6 }}>
-                      <StyledText style={{ fontFamily: FONTS.regular, color: '#059669', marginRight: 8 }}>✓</StyledText>
+                    <StyledView key={index} style={{ flexDirection: 'row', marginBottom: 8 }}>
+                      <StyledText style={{ fontFamily: FONTS.regular, color: COLORS.matchReasonGreen, marginRight: 8 }}>✓</StyledText>
                       <StyledText style={{ fontSize: FONT_SIZES.md, fontFamily: FONTS.regular, color: COLORS.text.warmNeutral, flex: 1 }}>
                         {reason}
                       </StyledText>
@@ -244,12 +233,12 @@ export function ProfileView({
               {/* What Doesn't Fit */}
               {whatDoesntFit.length > 0 && (
                 <StyledView>
-                  <StyledText style={{ fontSize: FONT_SIZES.lg, fontWeight: '700', fontFamily: FONTS.bold, color: '#B45309', marginBottom: 8 }}>
+                  <StyledText style={pvStyles.doesntFitTitle}>
                     What Doesn't Fit
                   </StyledText>
                   {whatDoesntFit.map((concern, index) => (
-                    <StyledView key={index} style={{ flexDirection: 'row', marginBottom: 6 }}>
-                      <StyledText style={{ fontFamily: FONTS.regular, color: '#B45309', marginRight: 8 }}>•</StyledText>
+                    <StyledView key={index} style={{ flexDirection: 'row', marginBottom: 8 }}>
+                      <StyledText style={{ fontFamily: FONTS.regular, color: COLORS.amberText, marginRight: 8 }}>•</StyledText>
                       <StyledText style={{ fontSize: FONT_SIZES.md, fontFamily: FONTS.regular, color: COLORS.text.warmNeutral, flex: 1 }}>
                         {concern}
                       </StyledText>
@@ -261,73 +250,40 @@ export function ProfileView({
           )}
 
           {/* Basic Info Row */}
-          <StyledView style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            gap: 8,
-            marginBottom: 20,
-          }}>
+          <StyledView style={pvStyles.infoPillWrap}>
             {/* Gender */}
             {profile.gender && profile.gender.length > 0 && (
-              <StyledView style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: COLORS.backgroundGray,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 20,
-              }}>
-                <EvaIcon name="person" variant="outline" size={16} color="#7C3AED" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.warmNeutral, fontWeight: '500', fontFamily: FONTS.medium }}>
-                  {capitalize(profile.gender[0])}
+              <StyledView style={pvStyles.infoPill}>
+                <EvaIcon name="person" variant="outline" size={16} color={COLORS.purple} style={{ marginRight: 8 }} />
+                <StyledText style={pvStyles.infoPillText}>
+                  {formatGenderDisplay(profile.gender[0])}
                 </StyledText>
               </StyledView>
             )}
 
             {/* Pronouns */}
             {profile.pronouns && (
-              <StyledView style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: COLORS.backgroundGray,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 20,
-              }}>
-                <EvaIcon name="message-circle" variant="outline" size={16} color="#EC4899" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.warmNeutral, fontWeight: '500', fontFamily: FONTS.medium }}>
+              <StyledView style={pvStyles.infoPill}>
+                <EvaIcon name="message-circle" variant="outline" size={16} color={COLORS.pink} style={{ marginRight: 8 }} />
+                <StyledText style={pvStyles.infoPillText}>
                   {profile.pronouns.replace('_', '/')}
                 </StyledText>
               </StyledView>
             )}
 
             {/* Age */}
-            <StyledView style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: COLORS.backgroundGray,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              borderRadius: 20,
-            }}>
-              <EvaIcon name="calendar" variant="outline" size={16} color="#EC4899" style={{ marginRight: 6 }} />
-              <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.warmNeutral, fontWeight: '500', fontFamily: FONTS.medium }}>
+            <StyledView style={pvStyles.infoPill}>
+              <EvaIcon name="calendar" variant="outline" size={16} color={COLORS.pink} style={{ marginRight: 8 }} />
+              <StyledText style={pvStyles.infoPillText}>
                 {profile.age}
               </StyledText>
             </StyledView>
 
             {/* Height */}
             {profile.height && (
-              <StyledView style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: COLORS.backgroundGray,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 20,
-              }}>
-                <EvaIcon name="maximize" variant="outline" size={16} color="#10B981" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.warmNeutral, fontWeight: '500', fontFamily: FONTS.medium }}>
+              <StyledView style={pvStyles.infoPill}>
+                <EvaIcon name="maximize" variant="outline" size={16} color={COLORS.emerald} style={{ marginRight: 8 }} />
+                <StyledText style={pvStyles.infoPillText}>
                   {formatHeight(profile.height)}
                 </StyledText>
               </StyledView>
@@ -335,16 +291,9 @@ export function ProfileView({
 
             {/* Occupation */}
             {profile.currentJob && (
-              <StyledView style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: COLORS.backgroundGray,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 20,
-              }}>
-                <EvaIcon name="briefcase" variant="outline" size={16} color="#3B82F6" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.warmNeutral, fontWeight: '500', fontFamily: FONTS.medium }}>
+              <StyledView style={pvStyles.infoPill}>
+                <EvaIcon name="briefcase" variant="outline" size={16} color={COLORS.tier1.icon} style={{ marginRight: 8 }} />
+                <StyledText style={pvStyles.infoPillText}>
                   {profile.currentJob}
                 </StyledText>
               </StyledView>
@@ -352,16 +301,9 @@ export function ProfileView({
 
             {/* Ethnicity */}
             {profile.ethnicity && (
-              <StyledView style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: COLORS.backgroundGray,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 20,
-              }}>
-                <EvaIcon name="globe" variant="outline" size={16} color="#8B5CF6" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.warmNeutral, fontWeight: '500', fontFamily: FONTS.medium }}>
+              <StyledView style={pvStyles.infoPill}>
+                <EvaIcon name="globe" variant="outline" size={16} color={COLORS.violet} style={{ marginRight: 8 }} />
+                <StyledText style={pvStyles.infoPillText}>
                   {profile.ethnicity}
                 </StyledText>
               </StyledView>
@@ -369,16 +311,9 @@ export function ProfileView({
 
             {/* Religion */}
             {profile.religion && (
-              <StyledView style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: COLORS.backgroundGray,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 20,
-              }}>
-                <EvaIcon name="moon" variant="outline" size={16} color="#6366F1" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.warmNeutral, fontWeight: '500', fontFamily: FONTS.medium }}>
+              <StyledView style={pvStyles.infoPill}>
+                <EvaIcon name="moon" variant="outline" size={16} color={COLORS.tier2.icon} style={{ marginRight: 8 }} />
+                <StyledText style={pvStyles.infoPillText}>
                   {profile.religion}
                 </StyledText>
               </StyledView>
@@ -386,16 +321,9 @@ export function ProfileView({
 
             {/* Political Leaning */}
             {profile.politicalLeaning && (
-              <StyledView style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: COLORS.backgroundGray,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 20,
-              }}>
-                <EvaIcon name="flag" variant="outline" size={16} color="#EF4444" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.warmNeutral, fontWeight: '500', fontFamily: FONTS.medium }}>
+              <StyledView style={pvStyles.infoPill}>
+                <EvaIcon name="flag" variant="outline" size={16} color={COLORS.error} style={{ marginRight: 8 }} />
+                <StyledText style={pvStyles.infoPillText}>
                   {formatProfileValue(profile.politicalLeaning)}
                 </StyledText>
               </StyledView>
@@ -403,16 +331,9 @@ export function ProfileView({
 
             {/* Joined Date */}
             {profile.createdAt && (
-              <StyledView style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: COLORS.backgroundGray,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 20,
-              }}>
-                <EvaIcon name="clock" variant="outline" size={16} color="#4B5563" style={{ marginRight: 6 }} />
-                <StyledText style={{ fontSize: FONT_SIZES.md, color: COLORS.text.warmNeutral, fontWeight: '500', fontFamily: FONTS.medium }}>
+              <StyledView style={pvStyles.infoPill}>
+                <EvaIcon name="clock" variant="outline" size={16} color={COLORS.grayIcon} style={{ marginRight: 8 }} />
+                <StyledText style={pvStyles.infoPillText}>
                   Joined {new Date(profile.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </StyledText>
               </StyledView>
@@ -423,24 +344,14 @@ export function ProfileView({
           {profile.interests && profile.interests.length > 0 && (
             <StyledView style={{ marginBottom: 20 }}>
               <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <EvaIcon name="star" variant="outline" size={18} color="#F59E0B" style={{ marginRight: 6 }} />
+                <EvaIcon name="star" variant="outline" size={18} color={COLORS.warning.icon} style={{ marginRight: 8 }} />
                 <StyledText style={{ fontSize: FONT_SIZES.lg, color: COLORS.text.warmNeutral, fontWeight: '600', fontFamily: FONTS.semiBold }}>Interests</StyledText>
               </StyledView>
-              <StyledView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              <StyledView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {profile.interests.map((interest: string, index: number) => (
-                  <StyledView
-                    key={index}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      backgroundColor: '#FEF3C7',
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderRadius: 16,
-                    }}
-                  >
-                    <IconScoutIcon name={interestIconName(interest) ?? ''} size={14} style={{ marginRight: 3 }} />
-                    <StyledText style={{ fontSize: FONT_SIZES.md, color: '#B45309', fontWeight: '500', fontFamily: FONTS.medium }}>
+                  <StyledView key={index} style={pvStyles.interestTag}>
+                    <IconScoutIcon name={interestIconName(interest) ?? ''} size={14} style={{ marginRight: 4 }} />
+                    <StyledText style={pvStyles.interestTagText}>
                       {interest}
                     </StyledText>
                   </StyledView>
@@ -453,24 +364,14 @@ export function ProfileView({
           {profile.values && profile.values.length > 0 && (
             <StyledView style={{ marginBottom: 20 }}>
               <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <EvaIcon name="award" variant="outline" size={18} color="#10B981" style={{ marginRight: 6 }} />
+                <EvaIcon name="award" variant="outline" size={18} color={COLORS.emerald} style={{ marginRight: 8 }} />
                 <StyledText style={{ fontSize: FONT_SIZES.lg, color: COLORS.text.warmNeutral, fontWeight: '600', fontFamily: FONTS.semiBold }}>Values</StyledText>
               </StyledView>
-              <StyledView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              <StyledView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {profile.values.map((value: string, index: number) => (
-                  <StyledView
-                    key={index}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      backgroundColor: COLORS.backgroundValuesTag,
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderRadius: 16,
-                    }}
-                  >
-                    <IconScoutIcon name={valueIconName(value) ?? ''} size={14} style={{ marginRight: 3 }} />
-                    <StyledText style={{ fontSize: FONT_SIZES.md, color: '#065F46', fontWeight: '500', fontFamily: FONTS.medium }}>
+                  <StyledView key={index} style={pvStyles.valueTag}>
+                    <IconScoutIcon name={valueIconName(value) ?? ''} size={14} style={{ marginRight: 4 }} />
+                    <StyledText style={pvStyles.valueTagText}>
                       {value}
                     </StyledText>
                   </StyledView>
@@ -483,7 +384,7 @@ export function ProfileView({
           {showDeepQuestions && profile.deepQuestions && profile.deepQuestions.length > 0 && (
             <StyledView style={{ marginBottom: 20 }}>
               <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                <EvaIcon name="message-square" variant="outline" size={18} color="#7C3AED" style={{ marginRight: 6 }} />
+                <EvaIcon name="message-square" variant="outline" size={18} color={COLORS.purple} style={{ marginRight: 8 }} />
                 <StyledText style={{ fontSize: FONT_SIZES.lg, color: COLORS.text.warmNeutral, fontWeight: '600', fontFamily: FONTS.semiBold }}>About Me</StyledText>
               </StyledView>
 
@@ -500,18 +401,18 @@ export function ProfileView({
           {/* Family */}
           <StyledView style={{ marginBottom: 20 }}>
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <EvaIcon name="people" variant="outline" size={18} color="#F59E0B" style={{ marginRight: 6 }} />
+              <EvaIcon name="people" variant="outline" size={18} color={COLORS.warning.icon} style={{ marginRight: 8 }} />
               <StyledText style={{ fontSize: FONT_SIZES.lg, color: COLORS.text.warmNeutral, fontWeight: '600', fontFamily: FONTS.semiBold }}>Family</StyledText>
             </StyledView>
-            <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-              <EvaIcon name="person" variant="outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
+            <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <EvaIcon name="person" variant="outline" size={16} color={COLORS.text.subtle} style={{ marginRight: 8 }} />
               <StyledText style={{ fontSize: FONT_SIZES.base, fontFamily: FONTS.regular, color: COLORS.text.warmNeutral }}>
                 {profile.hasChildren === 'no' ? 'No children' : profile.hasChildren === 'yes' ? 'Has children' : 'Prefer not to say'}
               </StyledText>
             </StyledView>
             {profile.familyPlans && (
               <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <EvaIcon name="heart" variant="outline" size={16} color="#78716C" style={{ marginRight: 8 }} />
+                <EvaIcon name="heart" variant="outline" size={16} color={COLORS.text.subtle} style={{ marginRight: 8 }} />
                 <StyledText style={{ fontSize: FONT_SIZES.base, fontFamily: FONTS.regular, color: COLORS.text.warmNeutral }}>
                   {profile.familyPlans === 'want_children' ? 'Want children someday' :
                     profile.familyPlans === 'open_to_children' ? 'Open to children' :
@@ -524,19 +425,14 @@ export function ProfileView({
           {/* Lifestyle */}
           <StyledView style={{ marginBottom: 20 }}>
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <EvaIcon name="trending-up" variant="outline" size={18} color="#8B5CF6" style={{ marginRight: 6 }} />
+              <EvaIcon name="trending-up" variant="outline" size={18} color={COLORS.violet} style={{ marginRight: 8 }} />
               <StyledText style={{ fontSize: FONT_SIZES.lg, color: COLORS.text.warmNeutral, fontWeight: '600', fontFamily: FONTS.semiBold }}>Lifestyle</StyledText>
             </StyledView>
 
             {profile.drinkingFrequency && (
-              <StyledView style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 10,
-              }}>
+              <StyledView style={pvStyles.lifestyleRow}>
                 <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <WineGlassIcon size={16} color="#78716C" style={{ marginRight: 8 }} />
+                  <WineGlassIcon size={16} color={COLORS.text.subtle} style={{ marginRight: 8 }} />
                   <StyledText style={{ fontSize: FONT_SIZES.base, fontFamily: FONTS.regular, color: COLORS.text.warmNeutral }}>Drinking</StyledText>
                 </StyledView>
                 <StyledText style={{ fontSize: FONT_SIZES.base, color: COLORS.text.subtle, fontWeight: '500', fontFamily: FONTS.medium }}>
@@ -546,14 +442,9 @@ export function ProfileView({
             )}
 
             {profile.cannabisFrequency && (
-              <StyledView style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 10,
-              }}>
+              <StyledView style={pvStyles.lifestyleRow}>
                 <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <LeafIcon size={16} color="#78716C" style={{ marginRight: 8 }} />
+                  <LeafIcon size={16} color={COLORS.text.subtle} style={{ marginRight: 8 }} />
                   <StyledText style={{ fontSize: FONT_SIZES.base, fontFamily: FONTS.regular, color: COLORS.text.warmNeutral }}>Cannabis</StyledText>
                 </StyledView>
                 <StyledText style={{ fontSize: FONT_SIZES.base, color: COLORS.text.subtle, fontWeight: '500', fontFamily: FONTS.medium }}>
@@ -563,13 +454,9 @@ export function ProfileView({
             )}
 
             {profile.tobaccoFrequency && (
-              <StyledView style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}>
+              <StyledView style={[pvStyles.lifestyleRow, { marginBottom: 0 }]}>
                 <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <CigaretteIcon size={16} color="#78716C" style={{ marginRight: 8 }} />
+                  <CigaretteIcon size={16} color={COLORS.text.subtle} style={{ marginRight: 8 }} />
                   <StyledText style={{ fontSize: FONT_SIZES.base, fontFamily: FONTS.regular, color: COLORS.text.warmNeutral }}>Tobacco</StyledText>
                 </StyledView>
                 <StyledText style={{ fontSize: FONT_SIZES.base, color: COLORS.text.subtle, fontWeight: '500', fontFamily: FONTS.medium }}>
@@ -582,16 +469,7 @@ export function ProfileView({
 
         {/* Action Button (if provided) */}
         {actionButton && (
-          <StyledView style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: 20,
-            backgroundColor: '#FBF9F6',
-            borderTopWidth: 1,
-            borderTopColor: '#E7DED4',
-          }}>
+          <StyledView style={pvStyles.actionButtonBar}>
             {actionButton}
           </StyledView>
         )}
@@ -601,3 +479,123 @@ export function ProfileView({
 }
 
 export default ProfileView;
+
+const pvStyles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 48,
+    paddingBottom: 16,
+  },
+  backText: {
+    fontSize: FONT_SIZES.xl,
+    fontFamily: FONTS.regular,
+    color: COLORS.text.warmNeutral,
+    marginLeft: 8,
+  },
+  nameText: {
+    fontSize: FONT_SIZES['5xl'],
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    color: COLORS.text.warmNeutral,
+  },
+  compatCard: {
+    backgroundColor: COLORS.backgroundPurpleTag,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  compatScore: {
+    fontSize: 48,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    color: COLORS.purple,
+  },
+  compatLabel: {
+    fontSize: FONT_SIZES.base,
+    color: COLORS.purpleDeep,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+  },
+  whyMatchTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    color: COLORS.matchReasonGreen,
+    marginBottom: 8,
+  },
+  doesntFitTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    color: COLORS.amberText,
+    marginBottom: 8,
+  },
+  infoPillWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 20,
+  },
+  infoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.backgroundGray,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  infoPillText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.text.warmNeutral,
+    fontWeight: '500',
+    fontFamily: FONTS.medium,
+  },
+  interestTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.warning.bg,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  interestTagText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.amberText,
+    fontWeight: '500',
+    fontFamily: FONTS.medium,
+  },
+  valueTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.backgroundValuesTag,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  valueTagText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.emeraldText,
+    fontWeight: '500',
+    fontFamily: FONTS.medium,
+  },
+  lifestyleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  actionButtonBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
+    backgroundColor: COLORS.backgroundWarmCream,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderWarm,
+  },
+});

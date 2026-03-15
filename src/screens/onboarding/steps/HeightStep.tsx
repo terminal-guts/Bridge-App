@@ -108,9 +108,9 @@ export const HeightStep: React.FC<HeightStepProps> = ({
             minimumValue={MIN_HEIGHT}
             maximumValue={MAX_HEIGHT}
             step={1}
-            minimumTrackTintColor="#437FFF"
+            minimumTrackTintColor={COLORS.primaryAccent}
             maximumTrackTintColor={COLORS.backgroundGrayMedium}
-            thumbTintColor="#437FFF"
+            thumbTintColor={COLORS.primaryAccent}
           />
           <StyledView className="flex-row justify-between mt-2">
             <Body className="text-xs text-neutral-500">4'0"</Body>
@@ -138,7 +138,7 @@ export const HeightStep: React.FC<HeightStepProps> = ({
             renderThumb={() => (
               <StyledView
                 className="w-6 h-6 rounded-full border-2 border-white shadow-md"
-                style={{ backgroundColor: '#437FFF' }}
+                style={{ backgroundColor: COLORS.primaryAccent }}
               />
             )}
             renderRail={() => (
@@ -147,7 +147,7 @@ export const HeightStep: React.FC<HeightStepProps> = ({
             renderRailSelected={() => (
               <StyledView
                 className="h-1 rounded-full"
-                style={{ backgroundColor: '#437FFF' }}
+                style={{ backgroundColor: COLORS.primaryAccent }}
               />
             )}
             onValueChanged={(low, high) => {
