@@ -14,7 +14,7 @@ import { supabase } from '../lib/supabase';
 import { FEATURES } from '../config/features';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { Sentry } from '../lib/sentry';
-import { fetchAndSetUserProfile, invalidateProfileCache, checkSuspensionStatus, getUserProfile } from '../services/profileService';
+import { fetchAndSetUserProfile, invalidateProfileCache, checkMinimalProfileStatus, getUserProfile } from '../services/profileService';
 import { calculateOverallProfileStrength } from '../utils/profileCompleteness';
 import Svg, { Circle } from 'react-native-svg';
 import { isIntentionalSignOut, resetIntentionalSignOut } from '../services/authService';
@@ -89,6 +89,10 @@ const SuggestMatchScreen = withSuspense(React.lazy(() => import('../screens/comm
 
 // Badge management
 const BadgeManagementScreen = withSuspense(React.lazy(() => import('../screens/profile/BadgeManagementScreen').then(m => ({ default: m.BadgeManagementScreen }))));
+
+// Matchmaker screens
+const MatchmakerHomeScreen = withSuspense(React.lazy(() => import('../screens/matchmaker/MatchmakerHomeScreen').then(m => ({ default: m.MatchmakerHomeScreen }))));
+const MatchmakerGhostProfileScreen = withSuspense(React.lazy(() => import('../screens/matchmaker/MatchmakerGhostProfileScreen').then(m => ({ default: m.MatchmakerGhostProfileScreen }))));
 
 // Friends sub-screens
 const ContactInviteScreen = withSuspense(React.lazy(() => import('../screens/friends/ContactInviteScreen').then(m => ({ default: m.ContactInviteScreen }))));
@@ -285,6 +289,7 @@ export const AppNavigator = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isSuspended, setIsSuspended] = useState(false);
   const [suspensionReason, setSuspensionReason] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'dater' | 'matchmaker'>('dater');
   const navigationRef = React.useRef<any>(null);
   const authStateRef = React.useRef<boolean | null>(null);
   const pendingInviteCode = useRef<string | null>(null);
@@ -455,13 +460,14 @@ export const AppNavigator = () => {
           setCachedUserId(user.id);
           logger.info('[AppNavigator] Authenticated user:', user.id);
 
-          // Lightweight suspension check (2 columns only) — unblocks navigation fast
-          const suspStatus = await checkSuspensionStatus();
+          // Lightweight status check (suspension + role) — unblocks navigation fast
+          const status = await checkMinimalProfileStatus();
           if (!isMountedRef.current) return;
-          setIsSuspended(suspStatus.isSuspended);
-          setSuspensionReason(suspStatus.reason);
+          setIsSuspended(status.isSuspended);
+          setSuspensionReason(status.reason);
+          setUserRole(status.role);
 
-          // Render MainTabs NOW — don't wait for full profile
+          // Render MainTabs or MatchmakerHome NOW — don't wait for full profile
           setIsAuthenticated(true);
 
           // Full profile fetch runs in background — populates cache for screens
@@ -500,9 +506,10 @@ export const AppNavigator = () => {
             notificationService.scheduleAppOpenChecks();
             // Re-check suspension status on foreground
             try {
-              const suspStatus = await checkSuspensionStatus();
-              setIsSuspended(suspStatus.isSuspended);
-              setSuspensionReason(suspStatus.reason);
+              const status = await checkMinimalProfileStatus();
+              setIsSuspended(status.isSuspended);
+              setSuspensionReason(status.reason);
+              setUserRole(status.role);
             } catch {}
           }
         });
@@ -567,7 +574,7 @@ export const AppNavigator = () => {
         }}
       >
         <Stack.Navigator
-          initialRouteName={isAuthenticated ? (isSuspended ? 'Suspended' : 'MainTabs') : 'Welcome'}
+          initialRouteName={isAuthenticated ? (isSuspended ? 'Suspended' : (userRole === 'matchmaker' ? 'MatchmakerHome' : 'MainTabs')) : 'Welcome'}
           screenOptions={{
             headerShown: false,
             cardStyle: { backgroundColor: '#F9FAFB' },
@@ -585,6 +592,10 @@ export const AppNavigator = () => {
 
           {/* Main App — fade in from auth/onboarding */}
           <Stack.Screen name="MainTabs" component={MainTabs} options={fadeTransition} />
+
+          {/* Matchmaker Experience */}
+          <Stack.Screen name="MatchmakerHome" component={MatchmakerHomeScreen} options={fadeTransition} />
+          <Stack.Screen name="MatchmakerGhostProfile" component={MatchmakerGhostProfileScreen} options={fadeTransition} />
 
           {/* Community Screens */}
           <Stack.Screen name="FriendProposal" component={FriendProposalScreen} />

@@ -133,6 +133,7 @@ function mapBackendToUserProfile(data: Record<string, any>): UserProfile {
       badge_tier: data.karma_score.badge_tier ?? 'new',
       total_assists: data.karma_score.total_assists ?? 0,
     } : undefined,
+    role: data.role || 'dater',
   } as unknown as UserProfile;
 }
 
@@ -203,22 +204,23 @@ export const getGuideCompletionStatus = async (
 // SUSPENSION CHECK
 // ============================================================================
 
-export async function checkSuspensionStatus(): Promise<{ isSuspended: boolean; reason: string | null }> {
+export async function checkMinimalProfileStatus(): Promise<{ isSuspended: boolean; reason: string | null; role: 'dater' | 'matchmaker' }> {
   try {
     const userId = await getCurrentUserId();
     const { data, error } = await supabase
       .from('user_profiles')
-      .select('is_suspended, suspension_reason')
+      .select('is_suspended, suspension_reason, role')
       .eq('user_id', userId)
       .maybeSingle();
 
-    if (error || !data) return { isSuspended: false, reason: null };
+    if (error || !data) return { isSuspended: false, reason: null, role: 'dater' };
     return {
       isSuspended: data.is_suspended ?? false,
       reason: data.suspension_reason ?? null,
+      role: data.role || 'dater',
     };
   } catch {
-    return { isSuspended: false, reason: null };
+    return { isSuspended: false, reason: null, role: 'dater' };
   }
 }
 

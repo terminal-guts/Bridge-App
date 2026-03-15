@@ -20,7 +20,7 @@ import { calculateProfileStrengthBreakdown } from '../utils/profileCompleteness'
 
 // Re-export from sub-modules so existing imports keep working
 export { addProfilePhotos, removeProfilePhoto, reorderProfilePhotos, setMainProfilePhoto } from './profileService.photos';
-export { updateProfilePauseStatus, getProfilePauseStatus, markGuideCompleted, getGuideCompletionStatus, checkSuspensionStatus, fetchAndSetUserProfile, getProfileById, getFullUserProfileById, checkEmailRegistered, findProfileByEmail } from './profileService.extras';
+export { updateProfilePauseStatus, getProfilePauseStatus, markGuideCompleted, getGuideCompletionStatus, checkMinimalProfileStatus, fetchAndSetUserProfile, getProfileById, getFullUserProfileById, checkEmailRegistered, findProfileByEmail } from './profileService.extras';
 export { saveOnboardingStep, createUserProfile } from './profileService.onboarding';
 
 const logger = createLogger('ProfileService');
@@ -174,6 +174,7 @@ function mapBackendToUserProfile(data: Record<string, any>): UserProfile {
     matchmakingOnly: data.matchmaking_only || false,
     isSuspended: data.is_suspended ?? false,
     suspensionReason: data.suspension_reason ?? null,
+    role: data.role || 'dater',
     createdAt: data.created_at || new Date().toISOString(),
     updatedAt: data.updated_at || new Date().toISOString(),
     karma: data.karma_score ? {
@@ -331,6 +332,7 @@ export const updateUserProfile = async (
     if (updates.values !== undefined) profilePayload.values = updates.values;
     if (updates.bio !== undefined) profilePayload.bio = updates.bio;
     if (updates.isPaused !== undefined) profilePayload.is_paused = updates.isPaused;
+    if (updates.role !== undefined) profilePayload.role = updates.role;
     if (updates.interestedInGenders !== undefined) profilePayload.interested_in_genders = updates.interestedInGenders;
     if ((updates as UserProfile & { guideCompletions?: Record<string, boolean> }).guideCompletions !== undefined) profilePayload.guide_completions = (updates as UserProfile & { guideCompletions?: Record<string, boolean> }).guideCompletions;
     if (updates.photos !== undefined) {
@@ -444,5 +446,3 @@ export const updateUserProfile = async (
     return createErrorResponse('UPDATE_PROFILE_ERROR', error instanceof Error ? error.message : 'Failed to update profile');
   }
 };
-
-// Photo and extra operations are re-exported at the top of this file from sub-modules.
