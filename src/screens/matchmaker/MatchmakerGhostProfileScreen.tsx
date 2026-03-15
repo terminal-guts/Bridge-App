@@ -10,6 +10,8 @@ const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 
+import { createGhostProfile } from '../../services/matchmakerService';
+
 export const MatchmakerGhostProfileScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const [firstName, setFirstName] = useState('');
@@ -24,15 +26,28 @@ export const MatchmakerGhostProfileScreen: React.FC = () => {
     }
 
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const res = await createGhostProfile({
+        name: firstName,
+        age: parseInt(age, 10),
+        bio,
+        photos: [] // TODO: Add photo upload support
+      });
+
+      if (res.ok && res.data) {
+        Alert.alert(
+          'Ghost Profile Created',
+          `You've created a profile for ${firstName}. Share the link to invite them to claim it!\n\nInvite Code: ${res.data.invite_token}`,
+          [{ text: 'Copy Code & Finish', onPress: () => navigation.goBack() }]
+        );
+      } else {
+        throw new Error(res.error?.message || 'Failed to create ghost profile');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Something went wrong');
+    } finally {
       setLoading(false);
-      Alert.alert(
-        'Ghost Profile Created',
-        `You've created a profile for ${firstName}. It's currently invisible to everyone.`,
-        [{ text: 'Great', onPress: () => navigation.goBack() }]
-      );
-    }, 1500);
+    }
   };
 
   return (

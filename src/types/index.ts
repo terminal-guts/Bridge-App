@@ -325,6 +325,7 @@ export type RootStackParamList = {
   MainTabs: { screen?: string; params?: Record<string, unknown> } | undefined;
   MatchmakerHome: undefined;
   MatchmakerGhostProfile: undefined;
+  MatchmakerClaim: { token: string };
   MatchProposal: { match?: Match; profile?: UserProfile; proposalId?: string };
   ProposalProfile: {
     partnerProfile: UserProfile;

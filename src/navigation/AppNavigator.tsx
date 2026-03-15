@@ -93,6 +93,7 @@ const BadgeManagementScreen = withSuspense(React.lazy(() => import('../screens/p
 // Matchmaker screens
 const MatchmakerHomeScreen = withSuspense(React.lazy(() => import('../screens/matchmaker/MatchmakerHomeScreen').then(m => ({ default: m.MatchmakerHomeScreen }))));
 const MatchmakerGhostProfileScreen = withSuspense(React.lazy(() => import('../screens/matchmaker/MatchmakerGhostProfileScreen').then(m => ({ default: m.MatchmakerGhostProfileScreen }))));
+const MatchmakerClaimScreen = withSuspense(React.lazy(() => import('../screens/matchmaker/MatchmakerClaimScreen').then(m => ({ default: m.MatchmakerClaimScreen }))));
 
 // Friends sub-screens
 const ContactInviteScreen = withSuspense(React.lazy(() => import('../screens/friends/ContactInviteScreen').then(m => ({ default: m.ContactInviteScreen }))));
@@ -293,6 +294,7 @@ export const AppNavigator = () => {
   const navigationRef = React.useRef<any>(null);
   const authStateRef = React.useRef<boolean | null>(null);
   const pendingInviteCode = useRef<string | null>(null);
+  const pendingClaimToken = useRef<string | null>(null);
 
   // Handle deep links: bridge://invite/BRIDGE-XXXX-XXXX
   const handleDeepLink = useCallback((url: string) => {
@@ -308,6 +310,13 @@ export const AppNavigator = () => {
           pendingInviteCode.current = code;
         }
       }
+    } else if (parsed.path?.startsWith('claim/')) {
+        const token = parsed.path.replace('claim/', '');
+        if (authStateRef.current && navigationRef.current) {
+            navigationRef.current.navigate('MatchmakerClaim', { token });
+        } else {
+            pendingClaimToken.current = token;
+        }
     }
   }, []);
 
@@ -415,15 +424,22 @@ export const AppNavigator = () => {
     return () => responseSubscription?.remove();
   }, [handleNotificationNavigation]);
 
-  // Process pending invite code once authenticated
+  // Process pending invite or claim once authenticated
   useEffect(() => {
-    if (isAuthenticated && pendingInviteCode.current && navigationRef.current) {
-      const code = pendingInviteCode.current;
-      pendingInviteCode.current = null;
-      // Small delay to ensure navigation is ready
-      setTimeout(() => {
-        navigationRef.current?.navigate('ContactInvite', { autoAddCode: code });
-      }, 500);
+    if (isAuthenticated && navigationRef.current) {
+      if (pendingInviteCode.current) {
+        const code = pendingInviteCode.current;
+        pendingInviteCode.current = null;
+        setTimeout(() => {
+          navigationRef.current?.navigate('ContactInvite', { autoAddCode: code });
+        }, 800);
+      } else if (pendingClaimToken.current) {
+        const token = pendingClaimToken.current;
+        pendingClaimToken.current = null;
+        setTimeout(() => {
+          navigationRef.current?.navigate('MatchmakerClaim', { token });
+        }, 800);
+      }
     }
   }, [isAuthenticated]);
 
@@ -596,6 +612,7 @@ export const AppNavigator = () => {
           {/* Matchmaker Experience */}
           <Stack.Screen name="MatchmakerHome" component={MatchmakerHomeScreen} options={fadeTransition} />
           <Stack.Screen name="MatchmakerGhostProfile" component={MatchmakerGhostProfileScreen} options={fadeTransition} />
+          <Stack.Screen name="MatchmakerClaim" component={MatchmakerClaimScreen} options={fadeTransition} />
 
           {/* Community Screens */}
           <Stack.Screen name="FriendProposal" component={FriendProposalScreen} />
