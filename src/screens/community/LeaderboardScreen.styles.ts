@@ -1,0 +1,415 @@
+/**
+ * LeaderboardScreen Styles
+ * Extracted from LeaderboardScreen.tsx for maintainability.
+ */
+
+import { StyleSheet } from 'react-native';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
+import { SHADOWS } from '../../theme/shadows';
+
+export const s = StyleSheet.create({
+  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  headerTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: FONT_SIZES['5xl'],
+    color: COLORS.textDarkHeading,
+  },
+
+  // Layer 2 — Banner (floating)
+  bannerShadow: {
+    paddingHorizontal: 20,
+    marginBottom: 8,
+    ...SHADOWS.accentBlue,
+  },
+  banner: {
+    borderRadius: 999,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(67, 127, 255, 0.12)',
+  },
+  bannerText: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.primaryAccent,
+    textAlign: 'center',
+  },
+  bannerBold: {
+    fontFamily: FONTS.bold,
+  },
+
+  // Countdown
+  countdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  countdownText: {
+    fontFamily: FONTS.semiBold,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.navInactiveIcon,
+  },
+
+  // Layer 6 — Karma pill with shadow
+  karmaPillShadow: {
+    ...SHADOWS.accentGreen,
+  },
+  karmaPillShadowLarge: {
+    shadowOpacity: 0.22,
+    shadowRadius: 6,
+  },
+  karmaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: COLORS.success,
+    borderRadius: 999,
+    backgroundColor: 'rgba(52, 199, 89, 0.08)',
+  },
+  karmaPillText: {
+    fontFamily: FONTS.semiBold,
+    color: COLORS.success,
+  },
+
+  // Friend badge
+  friendBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: COLORS.primaryAccent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.card,
+    zIndex: 1,
+    ...SHADOWS.accentBlue,
+  },
+
+  // Initial avatar fallback
+  initialAvatar: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  initialAvatarText: {
+    fontFamily: FONTS.bold,
+    color: COLORS.card,
+  },
+
+  // Layer 3 — Podium (hero card)
+  podiumOuter: {
+    marginHorizontal: 16,
+    borderRadius: 24,
+    ...SHADOWS.xl,
+  },
+  podiumGradient: {
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  podiumGlassEdge: {
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    paddingTop: 24,
+    paddingBottom: 0,
+    overflow: 'hidden',
+  },
+  podiumSection: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  podiumSide: { alignItems: 'center', flex: 1 },
+  podiumCenter: { alignItems: 'center', flex: 1, marginBottom: 8 },
+  crownIconWrap: { alignItems: 'center', marginBottom: 8 },
+
+  // Avatar wrappers
+  avatarWrapperLarge: { position: 'relative', marginBottom: 12 },
+  avatarWrapperMedium: { position: 'relative', marginBottom: 12 },
+  avatarWrapperSmall: { position: 'relative', marginBottom: 12 },
+
+  avatarRing: {
+    borderWidth: 3,
+    borderRadius: 999,
+    padding: 4,
+    backgroundColor: COLORS.card,
+  },
+  avatarRingGold: {
+    borderWidth: 4,
+    padding: 4,
+    borderColor: '#FFD700',
+    ...SHADOWS.accentGold,
+  },
+  avatarRingSilver: {
+    borderColor: '#C0C0C0',
+    ...SHADOWS.accentSilver,
+  },
+  avatarRingBronze: {
+    borderColor: '#CD7F32',
+    ...SHADOWS.accentBronze,
+  },
+
+  avatarLarge: { width: 88, height: 88, borderRadius: 44 },
+  avatarMedium: { width: 72, height: 72, borderRadius: 36 },
+  avatarSmall: { width: 64, height: 64, borderRadius: 32 },
+
+  // Rank badges
+  rankBadge: {
+    position: 'absolute',
+    bottom: -2,
+    left: -2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.card,
+    ...SHADOWS.sm,
+  },
+  rankBadgeLarge: { width: 30, height: 30, borderRadius: 15 },
+  rankBadgeText: { fontFamily: FONTS.bold, fontSize: FONT_SIZES.sm, color: COLORS.card },
+  rankBadgeTextLarge: { fontSize: FONT_SIZES.base },
+
+  // Podium text
+  podiumName: {
+    fontFamily: FONTS.semiBold,
+    fontSize: FONT_SIZES.base,
+    color: COLORS.textDarkHeading,
+    maxWidth: 100,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  podiumNameFirst: {
+    color: COLORS.primaryAccent,
+    fontSize: FONT_SIZES.xl,
+    fontFamily: FONTS.bold,
+  },
+
+  // Layer 4 — How to Earn (inline in podium)
+  howToEarnInline: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 16,
+    marginTop: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(67, 127, 255, 0.12)',
+    gap: 8,
+  },
+  howToEarnItem: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.navInactiveIcon,
+  },
+  howToEarnBold: {
+    fontFamily: FONTS.semiBold,
+    color: COLORS.primaryAccent,
+  },
+  howToEarnDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: COLORS.borderDivider,
+  },
+
+  // Layer 5 — List (card-style rows)
+  listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  listCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: COLORS.card,
+    ...SHADOWS.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.03)',
+  },
+  listCardHighlighted: {
+    backgroundColor: 'rgba(67, 127, 255, 0.06)',
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primaryAccent,
+    borderColor: 'rgba(67, 127, 255, 0.15)',
+    shadowColor: COLORS.primaryAccent,
+    shadowOpacity: 0.12,
+  },
+  rankPill: {
+    width: 36,
+    height: 28,
+    borderRadius: 999,
+    backgroundColor: COLORS.backgroundProgressTrack,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  rankPillHighlighted: {
+    backgroundColor: COLORS.primaryAccent,
+    ...SHADOWS.accentBlue,
+  },
+  rankPillText: {
+    fontFamily: FONTS.bold,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.navInactiveIcon,
+  },
+  rankPillTextHighlighted: {
+    color: COLORS.card,
+  },
+
+  // Layer 8 — List avatars with ring shadow
+  listAvatarWrap: {
+    position: 'relative',
+    marginRight: 12,
+    ...SHADOWS.sm,
+  },
+  listAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+  },
+  listNameCol: { flex: 1 },
+  listName: {
+    fontFamily: FONTS.semiBold,
+    fontSize: FONT_SIZES.xl,
+    color: COLORS.textDarkHeading,
+  },
+  listNameHighlighted: {
+    color: COLORS.primaryAccent,
+    fontFamily: FONTS.bold,
+  },
+  gapText: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.navInactiveIcon,
+    marginTop: 2,
+  },
+
+  // Layer 7 — Sticky bar (seamless with page gradient)
+  stickyBar: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(0, 0, 0, 0.06)',
+  },
+  stickyBarInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    ...SHADOWS.md,
+  },
+  stickyRankPill: {
+    backgroundColor: COLORS.primaryAccent,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginRight: 12,
+    ...SHADOWS.accentBlue,
+  },
+  stickyRankText: {
+    fontFamily: FONTS.bold,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.card,
+  },
+  stickyAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 12,
+  },
+  stickyNameCol: { flex: 1 },
+  stickyName: {
+    fontFamily: FONTS.bold,
+    fontSize: FONT_SIZES.lg,
+    color: COLORS.primaryAccent,
+  },
+  stickyGapText: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.navInactiveIcon,
+    marginTop: 1,
+  },
+
+  // Empty / Error
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: FONT_SIZES['3xl'],
+    color: COLORS.textDarkHeading,
+    marginTop: 16,
+  },
+  emptyBody: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.lg,
+    color: COLORS.navInactiveIcon,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  retryBtn: {
+    marginTop: 20,
+    backgroundColor: COLORS.primaryAccent,
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    ...SHADOWS.accentBlue,
+  },
+  retryBtnText: {
+    fontFamily: FONTS.semiBold,
+    fontSize: FONT_SIZES.lg,
+    color: COLORS.card,
+  },
+
+  // Rank change arrows
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rankChangeWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1,
+  },
+  rankChangeUp: {},
+  rankChangeDown: {},
+  rankChangeText: {
+    fontFamily: FONTS.semiBold,
+    fontSize: 10,
+    lineHeight: 12,
+  },
+
+});
