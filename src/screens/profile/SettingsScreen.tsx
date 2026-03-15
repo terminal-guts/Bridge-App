@@ -81,10 +81,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
   const [tutorialEnabled, setTutorialEnabled] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Notification Preferences
-  const [matchesEnabled, setMatchesEnabled] = useState(true);
-  const [messagesEnabled, setMessagesEnabled] = useState(true);
-  const [showNameIfWinner, setShowNameIfWinner] = useState(true);
+  // Notification Preferences — all default false until loaded from storage
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [matchesEnabled, setMatchesEnabled] = useState(false);
+  const [messagesEnabled, setMessagesEnabled] = useState(false);
+  const [showNameIfWinner, setShowNameIfWinner] = useState(false);
   const [leaderboardVisible, setLeaderboardVisible] = useState(false);
 
   useEffect(() => {
@@ -98,9 +99,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
     setMessagesEnabled(prefs.messagesEnabled);
     setShowNameIfWinner(prefs.showNameIfWinner);
     setLeaderboardVisible(prefs.leaderboardVisible);
+    setPrefsLoaded(true);
   };
 
   const updatePreference = async (key: 'matchesEnabled' | 'messagesEnabled' | 'showNameIfWinner' | 'leaderboardVisible', value: boolean) => {
+    if (!prefsLoaded) return;
     selectionHaptic();
     // Optimistic UI update
     if (key === 'matchesEnabled') setMatchesEnabled(value);
@@ -184,6 +187,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               toggle
               toggleValue={leaderboardVisible}
               onToggle={async (newValue: boolean) => {
+                if (!prefsLoaded) return;
                 selectionHaptic();
                 setLeaderboardVisible(newValue);
                 setShowNameIfWinner(newValue);

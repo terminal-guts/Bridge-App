@@ -5,7 +5,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { UsersTabIcon, HandshakeTabIcon, ProfileTabIcon } from '../components/icons/Icons';
 import { ActivityIndicator, AppState, View, Text, TouchableOpacity, useWindowDimensions, LayoutChangeEvent, StyleSheet as RNStyleSheet } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, useAnimatedProps, withSpring, withTiming } from 'react-native-reanimated';
 import { SPRINGS } from '../constants/animations';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGuideContext } from '../contexts/GuideContext';
@@ -110,6 +110,7 @@ const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 // ── Custom Tab Bar ───────────────────────────────────────────────────────────
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const TAB_ICONS = [UsersTabIcon, HandshakeTabIcon, ProfileTabIcon];
 const TAB_TARGET_IDS = ['tab-community', 'tab-matches', 'tab-profile'];
 
@@ -128,13 +129,14 @@ const CustomTabBar = ({ state, navigation }: any) => {
   // One-way gate: once profileCompleted is true, never show the ring again
   const [profileStrength, setProfileStrength] = useState(100);
   const [profileCompleted, setProfileCompleted] = useState(true); // default true = hidden until loaded
+  const ringProgress = useSharedValue(profileStrength < 100 ? profileStrength / 100 : 1);
   useEffect(() => {
-    // Invalidate cache first so we get truly fresh data after profile edits
-    invalidateProfileCache();
     getUserProfile().then(result => {
       if (result.ok && result.data) {
-        setProfileStrength(calculateOverallProfileStrength(result.data));
+        const strength = calculateOverallProfileStrength(result.data);
+        setProfileStrength(strength);
         setProfileCompleted(result.data.profileCompleted ?? false);
+        ringProgress.value = withTiming(strength / 100, { duration: 800 });
       }
     });
   }, [state.index]);
@@ -153,6 +155,15 @@ const CustomTabBar = ({ state, navigation }: any) => {
 
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: indicatorX.value }],
+  }));
+
+  // ── Animated ring props (for profile tab completion ring) ─────────────────
+  const ringSize = iconSize + 8;
+  const ringRadius = ringSize / 2 - 2;
+  const ringCircumference = 2 * Math.PI * ringRadius;
+
+  const ringAnimatedProps = useAnimatedProps(() => ({
+    strokeDashoffset: ringCircumference * (1 - ringProgress.value),
   }));
 
   return (
@@ -206,10 +217,6 @@ const CustomTabBar = ({ state, navigation }: any) => {
           }
         };
 
-        const ringSize = iconSize + 8;
-        const ringRadius = ringSize / 2 - 2;
-        const circumference = 2 * Math.PI * ringRadius;
-
         return (
           <GuideTarget key={route.key} id={TAB_TARGET_IDS[index]} style={{ flex: 1 }}>
             <TouchableOpacity
@@ -232,7 +239,7 @@ const CustomTabBar = ({ state, navigation }: any) => {
                       stroke="rgba(103,112,133,0.15)"
                       strokeWidth={2.5}
                     />
-                    <Circle
+                    <AnimatedCircle
                       cx={ringSize / 2}
                       cy={ringSize / 2}
                       r={ringRadius}
@@ -240,8 +247,8 @@ const CustomTabBar = ({ state, navigation }: any) => {
                       stroke="#437FFF"
                       strokeWidth={2.5}
                       strokeLinecap="round"
-                      strokeDasharray={circumference}
-                      strokeDashoffset={circumference * (1 - profileStrength / 100)}
+                      strokeDasharray={ringCircumference}
+                      animatedProps={ringAnimatedProps}
                     />
                   </Svg>
                   <Icon size={iconSize} color={focused ? '#437FFF' : '#667085'} />

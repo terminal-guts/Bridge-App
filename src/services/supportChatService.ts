@@ -67,7 +67,7 @@ export async function sendSupportMessage(content: string): Promise<{ ok: boolean
 export function subscribeToSupportMessages(
   callback: (message: SupportMessage) => void
 ): { unsubscribe: () => void } {
-  let channel: any = null;
+  let channel: ReturnType<typeof supabase.channel> | null = null;
   let disposed = false;
 
   // Set up subscription asynchronously
@@ -78,14 +78,14 @@ export function subscribeToSupportMessages(
     channel = supabase
       .channel(`support-messages-${userId}`)
       .on(
-        'postgres_changes' as any,
+        'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'support_messages',
           filter: `user_id=eq.${userId}`,
         },
-        (payload: any) => {
+        (payload) => {
           if (disposed) return;
           const newMessage = payload.new as SupportMessage;
           if (newMessage.sender === 'admin') {

@@ -13,6 +13,7 @@ import { UserProfile, Photo } from '../../../types';
 import { FONTS, FONT_SIZES } from '../../../constants/typography';
 import { COLORS } from '../../../theme/colors';
 import { EvaIcon } from '../../icons';
+import { formatGenderDisplay } from '../../../utils/formatProfileValue';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -66,7 +67,7 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
   const formatGenderPreference = (): string => {
     const pref = anchor.preferences?.gender;
     if (!pref || pref === 'both') return 'Open to all genders';
-    return capitalize(pref);
+    return formatGenderDisplay(pref);
   };
 
   return (

@@ -25,7 +25,7 @@ function makeCompleteProfile(): UserProfile {
     religion: 'None',
     pronounsList: ['she/her'],
     pronouns: 'she/her',
-    gender: ['Female'],
+    gender: ['female'],
     politicalLeaning: 'Liberal',
     hasChildren: false,
     familyPlans: 'Want children',

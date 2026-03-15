@@ -50,7 +50,7 @@ function makeProfile(overrides: Partial<UserProfile> = {}): UserProfile {
     ethnicity: 'White',
     religion: 'None',
     pronouns: 'he/him',
-    gender: ['Male'],
+    gender: ['male'],
     politicalLeaning: 'moderate',
     educationLevel: 'bachelors',
     school: 'Rice University',
