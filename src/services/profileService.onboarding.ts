@@ -187,6 +187,7 @@ export const createUserProfile = async (
       photos: photoData,
       non_negotiables: [],
       matchmaking_only: data.matchmakingOnly ?? false,
+      role: data.role || 'dater',
     };
 
     // Remove undefined values so they don't overwrite existing data

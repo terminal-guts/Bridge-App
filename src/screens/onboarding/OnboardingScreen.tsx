@@ -325,6 +325,14 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
       await resetAllGuides();
       logger.info('Guides reset for new user');
 
+      // Skip proposal generation for matchmakers — they don't date
+      if (onboardingData.role === 'matchmaker') {
+        successHaptic();
+        setTimeout(() => successHaptic(), 300);
+        (navigation as any).navigate('MatchmakerHome');
+        return;
+      }
+
       // Await proposal generation + backfill so proposals are ready before
       // the Community screen loads. Falls back to simple assignment on failure.
       try {

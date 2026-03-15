@@ -5,6 +5,50 @@ import { getAuthenticatedUserId } from '../utils/auth';
 
 const logger = createLogger('MatchmakerService');
 
+/**
+ * Minimal snake_case → UserProfile mapper for matchmaker browse results.
+ * The full mapper lives in profileService.ts but importing it creates a circular dep.
+ */
+function mapRawToUserProfile(raw: Record<string, any>): UserProfile {
+  return {
+    id: raw.id,
+    userId: raw.user_id || raw.id,
+    firstName: raw.first_name || 'User',
+    lastName: raw.last_name || '',
+    age: raw.age,
+    gender: raw.gender || [],
+    pronouns: raw.pronouns || '',
+    pronounsList: raw.pronouns_list || [],
+    interestedInGenders: raw.interested_in_genders || [],
+    height: raw.height_inches ? `${Math.floor(raw.height_inches / 12)}'${raw.height_inches % 12}"` : '',
+    ethnicity: raw.ethnicity || '',
+    religion: raw.religion || '',
+    politicalLeaning: raw.political_leaning || '',
+    school: raw.school,
+    currentJob: raw.current_job,
+    bio: raw.bio || '',
+    photos: ((raw.photos as Array<Record<string, unknown>>) || []).map((p) => ({
+      id: (p.id || p.url) as string,
+      url: p.url as string,
+      isMain: (p.is_main || false) as boolean,
+      order: (p.display_order || 0) as number,
+    })),
+    interests: raw.interests || [],
+    values: raw.values || [],
+    lifestyle: raw.lifestyle || {},
+    preferences: {
+      ageMin: raw.preferences?.age_min ?? 22,
+      ageMax: raw.preferences?.age_max ?? 30,
+      gender: 'both',
+      lookingFor: raw.preferences?.looking_for ?? 'relationship',
+    },
+    nonNegotiables: [],
+    createdAt: raw.created_at || new Date().toISOString(),
+    updatedAt: raw.updated_at || new Date().toISOString(),
+    role: raw.role || 'dater',
+  } as UserProfile;
+}
+
 // Roster Entry Model
 export interface RosterEntry {
   id: string;
@@ -67,8 +111,13 @@ export async function getRoster(): Promise<{ ok: boolean; data?: RosterEntry[]; 
 
     if (error) throw error;
     
-    // Map to UserProfile types if needed (photo handling etc.)
-    return { ok: true, data: data as RosterEntry[] };
+    // Map nested user data from snake_case to UserProfile
+    const mapped = (data || []).map(entry => ({
+      ...entry,
+      user: entry.user ? mapRawToUserProfile(entry.user) : undefined,
+    }));
+
+    return { ok: true, data: mapped as RosterEntry[] };
   } catch (error) {
     logger.error('Error fetching roster:', error);
     return { ok: false, error };
@@ -83,8 +132,6 @@ export async function browseCandidates(): Promise<{ ok: boolean; data?: UserProf
     const userId = await getAuthenticatedUserId();
     if (!userId) throw new Error('Not authenticated');
 
-    // In a real app, this would be a complex RPC or filtered query
-    // For now, we fetch all daters who aren't the current user and aren't matchmakers
     const { data, error } = await supabase
       .from('user_profiles')
       .select('*')
@@ -102,9 +149,11 @@ export async function browseCandidates(): Promise<{ ok: boolean; data?: UserProf
       .eq('matchmaker_id', userId);
     
     const rosterIds = new Set((rosterData || []).map(r => r.user_id).filter(Boolean));
-    const filteredProfiles = (data || []).filter(p => !rosterIds.has(p.user_id));
+    const filteredProfiles = (data || [])
+      .filter(p => !rosterIds.has(p.user_id))
+      .map(mapRawToUserProfile);
 
-    return { ok: true, data: filteredProfiles as UserProfile[] };
+    return { ok: true, data: filteredProfiles };
   } catch (error) {
     logger.error('Error browsing candidates:', error);
     return { ok: false, error };
@@ -126,7 +175,15 @@ export async function getIntroductions(): Promise<{ ok: boolean; data?: Introduc
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return { ok: true, data: data as Introduction[] };
+
+    // Map nested user data from snake_case to UserProfile
+    const mapped = (data || []).map(intro => ({
+      ...intro,
+      person_a: intro.person_a ? mapRawToUserProfile(intro.person_a) : undefined,
+      person_b: intro.person_b ? mapRawToUserProfile(intro.person_b) : undefined,
+    }));
+
+    return { ok: true, data: mapped as Introduction[] };
   } catch (error) {
     logger.error('Error fetching introductions:', error);
     return { ok: false, error };
@@ -209,6 +266,89 @@ export async function createGhostProfile(
     return { ok: true, data: ghost as GhostProfile };
   } catch (error) {
     logger.error('Error creating ghost profile:', error);
+    return { ok: false, error };
+  }
+}
+
+/**
+ * Remove someone from the matchmaker's roster (soft delete)
+ */
+export async function removeFromRoster(
+  rosterId: string
+): Promise<{ ok: boolean; error?: any }> {
+  try {
+    const userId = await getAuthenticatedUserId();
+    if (!userId) throw new Error('Not authenticated');
+
+    const { error } = await supabase
+      .from('roster')
+      .update({ status: 'removed' })
+      .eq('id', rosterId)
+      .eq('matchmaker_id', userId); // Ensure ownership
+
+    if (error) throw error;
+    return { ok: true };
+  } catch (error) {
+    logger.error('Error removing from roster:', error);
+    return { ok: false, error };
+  }
+}
+
+/**
+ * Respond to an introduction (called by a dater, not matchmaker).
+ * Automatically resolves the top-level status when both parties have responded.
+ */
+export async function respondToIntroduction(
+  introId: string,
+  response: 'accepted' | 'declined'
+): Promise<{ ok: boolean; error?: any }> {
+  try {
+    const userId = await getAuthenticatedUserId();
+    if (!userId) throw new Error('Not authenticated');
+
+    // Determine which person the current user is
+    const { data: intro, error: fetchError } = await supabase
+      .from('introductions')
+      .select('person_a_id, person_b_id, person_a_response, person_b_response')
+      .eq('id', introId)
+      .single();
+
+    if (fetchError || !intro) throw fetchError || new Error('Introduction not found');
+
+    const isPersonA = intro.person_a_id === userId;
+    const isPersonB = intro.person_b_id === userId;
+    if (!isPersonA && !isPersonB) throw new Error('You are not part of this introduction');
+
+    const updateCol = isPersonA ? 'person_a_response' : 'person_b_response';
+    const otherResponse = isPersonA ? intro.person_b_response : intro.person_a_response;
+
+    // Determine new top-level status
+    let newStatus: string = 'suggested';
+    if (response === 'declined') {
+      newStatus = 'declined';
+    } else if (otherResponse === 'accepted') {
+      newStatus = 'mutual_accept';
+    } else {
+      newStatus = isPersonA ? 'a_accepted' : 'b_accepted';
+    }
+
+    const update: Record<string, any> = {
+      [updateCol]: response,
+      status: newStatus,
+    };
+    if (newStatus === 'mutual_accept' || newStatus === 'declined') {
+      update.resolved_at = new Date().toISOString();
+    }
+
+    const { error } = await supabase
+      .from('introductions')
+      .update(update)
+      .eq('id', introId);
+
+    if (error) throw error;
+    return { ok: true };
+  } catch (error) {
+    logger.error('Error responding to introduction:', error);
     return { ok: false, error };
   }
 }
