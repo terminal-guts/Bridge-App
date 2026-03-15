@@ -15,6 +15,7 @@ import { getFeaturedBadges } from '../../services/badgeService';
 import { BadgeCard } from './BadgeCard';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
+import { SHADOWS } from '../../theme/shadows';
 import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('BadgeComparisonSection');
@@ -124,11 +125,7 @@ const styles = StyleSheet.create({
     borderColor: CARD_BORDER,
     borderLeftWidth: 3,
     borderLeftColor: ACCENT_COLOR,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...SHADOWS.sm,
     padding: 16,
     marginBottom: 20,
   },

@@ -22,10 +22,11 @@ import ReanimatedAnimated, {
 import { SPRINGS } from '../../../constants/animations';
 import { styled } from 'nativewind';
 import * as Haptics from 'expo-haptics';
-import { Proposal, UserProfile, Endorsement } from '../../../types/community';
+import { Proposal, UserProfile } from '../../../types/community';
 import { KarmaBadge } from '../karma/KarmaBadge';
 import { FONTS } from '../../../constants/typography';
 import { COLORS } from '../../../theme/colors';
+import { SHADOWS } from '../../../theme/shadows';
 import { EvaIcon } from '../../icons';
 
 const StyledView = styled(View) as typeof View;
@@ -46,7 +47,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
   yourVote,
   onVote,
   onVoteAnimationComplete,
-  showRecommendedBadge = true,
+  showRecommendedBadge: _showRecommendedBadge = true,
 }) => {
   const hasVoted = yourVote !== undefined;
   const highlyRecommended = false;
@@ -83,7 +84,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
   };
 
   // Render profile preview (anchor or candidate)
-  const renderProfilePreview = (user: UserProfile, label: string) => {
+  const renderProfilePreview = (user: UserProfile, _label: string) => {
     // Get 1-2 key attributes
     const attributes = [
       user.currentJob && user.company ? `${user.currentJob} at ${user.company}` : user.currentJob,
@@ -183,18 +184,12 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
   return (
     <ReanimatedAnimated.View
       className="bg-neutral-50 rounded-xl p-4 mb-4"
-      style={[{
-        elevation: 2,
-        shadowColor: '#FF9678',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.12,
-        shadowRadius: 2,
-      }, cardAnimStyle]}
+      style={[SHADOWS.sm, cardAnimStyle]}
     >
       {/* Highly Recommended Badge */}
       {highlyRecommended && (
         <StyledView className="flex-row items-center mb-3 px-2 py-1.5 bg-amber-50 rounded-lg self-start">
-          <EvaIcon name="star" variant="outline" size={16} color="#F59E0B" />
+          <EvaIcon name="star" variant="outline" size={16} color={COLORS.warning.icon} />
           <StyledText className="text-xs font-semibold text-amber-700 ml-1" style={{ fontFamily: FONTS.semiBold }}>
             Highly Recommended
           </StyledText>
@@ -234,6 +229,9 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
           onPress={() => handleVote(false)}
           disabled={hasVoted}
           activeOpacity={hasVoted ? 1 : 0.8}
+          accessibilityRole="button"
+          accessibilityLabel={hasVoted && yourVote === false ? 'Voted no' : 'Vote no'}
+          accessibilityState={{ disabled: hasVoted }}
         >
           <StyledText
             className="font-semibold"
@@ -256,6 +254,9 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
           onPress={() => handleVote(true)}
           disabled={hasVoted}
           activeOpacity={hasVoted ? 1 : 0.8}
+          accessibilityRole="button"
+          accessibilityLabel={hasVoted && yourVote === true ? 'Voted yes' : 'Vote yes'}
+          accessibilityState={{ disabled: hasVoted }}
         >
           <StyledText
             className="font-semibold"

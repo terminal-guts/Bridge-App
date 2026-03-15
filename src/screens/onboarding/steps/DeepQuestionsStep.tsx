@@ -6,6 +6,7 @@ import { OnboardingData, DeepQuestionAnswer } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import { FONTS } from '../../../constants/typography';
 import { COLORS } from '../../../theme/colors';
+import { SHADOWS } from '../../../theme/shadows';
 import { EvaIcon } from '../../../components/icons';
 
 interface DeepQuestionsStepProps {
@@ -223,13 +224,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
               ? 'bg-primary-50 border-primary-300'
               : 'bg-white border-neutral-200'
           }`}
-          style={{
-            shadowColor: isAnswered ? COLORS.primaryAccent : '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: isAnswered ? 0.1 : 0.05,
-            shadowRadius: 4,
-            elevation: isAnswered ? 2 : 1,
-          }}
+          style={isAnswered ? SHADOWS.md : SHADOWS.sm}
         >
           <StyledView className="flex-row items-start">
             {isAnswered && (
@@ -287,13 +282,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
               ? 'bg-green-50 border-green-300'
               : `${colors.bg} ${colors.border}`
           }`}
-          style={{
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.08,
-            shadowRadius: 8,
-            elevation: 3,
-          }}
+          style={SHADOWS.lg}
         >
           <StyledView className="flex-row items-center flex-1">
             <StyledView
@@ -307,7 +296,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
                 size={28}
                 color={hasAnswerInTier
                   ? COLORS.emerald
-                  : tier === 1 ? '#2563EB' : tier === 2 ? '#4F46E5' : '#437FFF'}
+                  : tier === 1 ? COLORS.primary : tier === 2 ? COLORS.indigo : COLORS.primaryAccent}
               />
             </StyledView>
             <StyledView className="flex-1">
@@ -323,7 +312,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
               name={isExpanded ? 'arrow-ios-upward' : 'arrow-ios-downward'}
               variant="outline"
               size={24}
-              color="#9CA3AF"
+              color={COLORS.text.disabled}
             />
           </StyledView>
         </StyledTouchableOpacity>

@@ -6,6 +6,8 @@ import { OnboardingData, LifestylePreferences } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import { EvaIcon } from '../../../components/icons';
 import { WineGlassIcon, CigaretteIcon, PillIcon } from '../../../components/icons/Icons';
+import { COLORS } from '../../../theme/colors';
+import { SHADOWS } from '../../../theme/shadows';
 
 interface LifestyleStepProps {
   data: Partial<OnboardingData>;
@@ -97,17 +99,11 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
             ? 'bg-primary-50 border-primary-500'
             : 'bg-white border-neutral-200'
         }`}
-        style={{
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: selected ? 0.12 : 0.06,
-          shadowRadius: 4,
-          elevation: selected ? 3 : 1,
-        }}
+        style={selected ? SHADOWS.md : SHADOWS.sm}
       >
         <StyledView className="flex-1 items-center justify-center py-2.5 px-2">
           {selected && (
-            <EvaIcon name="checkmark-circle-2" variant="outline" size={22} color="#437FFF" style={{ marginBottom: 4 }} />
+            <EvaIcon name="checkmark-circle-2" variant="outline" size={22} color={COLORS.primaryAccent} style={{ marginBottom: 4 }} />
           )}
           <Body className={`text-center text-sm leading-tight ${selected ? 'text-primary-700 font-semibold' : 'text-neutral-700'}`}>
             {label}
@@ -130,7 +126,7 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
   }) => (
     <StyledView className="mb-8">
       <StyledView className="flex-row items-center mb-4">
-        {customIcon || <EvaIcon name={icon!} variant="outline" size={24} color="#437FFF" style={{ marginRight: 10 }} />}
+        {customIcon || <EvaIcon name={icon!} variant="outline" size={24} color={COLORS.primaryAccent} style={{ marginRight: 10 }} />}
         <H3 className="text-neutral-900">{title}</H3>
       </StyledView>
 
@@ -187,7 +183,7 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
         <QuestionSection
           title="Drinking"
           field="drinking"
-          customIcon={<WineGlassIcon size={24} color="#437FFF" style={{ marginRight: 10 }} />}
+          customIcon={<WineGlassIcon size={24} color={COLORS.primaryAccent} style={{ marginRight: 10 }} />}
         />
 
         <QuestionSection
@@ -199,13 +195,13 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
         <QuestionSection
           title="Tobacco"
           field="tobacco"
-          customIcon={<CigaretteIcon size={24} color="#437FFF" style={{ marginRight: 10 }} />}
+          customIcon={<CigaretteIcon size={24} color={COLORS.primaryAccent} style={{ marginRight: 10 }} />}
         />
 
         <QuestionSection
           title="Other Drugs"
           field="otherDrugs"
-          customIcon={<PillIcon size={24} color="#437FFF" style={{ marginRight: 10 }} />}
+          customIcon={<PillIcon size={24} color={COLORS.primaryAccent} style={{ marginRight: 10 }} />}
         />
 
         {error && (

@@ -3,7 +3,7 @@
  * Migrated to Reanimated for UI-thread performance (no useNativeDriver: false).
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, LayoutChangeEvent } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -15,13 +15,14 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS, FONT_SIZES } from '../../../constants/typography';
 import { COLORS } from '../../../theme/colors';
+import { SHADOWS } from '../../../theme/shadows';
 import { DURATIONS } from '../../../constants/animations';
 import { lightHaptic } from '../../../utils/haptics';
 
 const BLUE = COLORS.primary;
 const GREEN = COLORS.success;
 const RED = COLORS.rejectRed;
-const GREY_VOTE = COLORS.text.disabled;
+const GREY_VOTE = COLORS.text.secondary;  // #64748B — WCAG AA compliant (was text.disabled #9CA3AF, failed AA at small sizes)
 
 export function LiveVoteBar({
   yesVotes,
@@ -36,7 +37,7 @@ export function LiveVoteBar({
   const total = yesVotes + noVotes + unsureVotes;
 
   const [barWidth, setBarWidth] = useState(0);
-  const hasMountedRef = useRef(false);
+  const hasMounted = useSharedValue(false);
 
   const yesPct = useSharedValue(0);
   const noPct = useSharedValue(0);
@@ -52,9 +53,9 @@ export function LiveVoteBar({
     noPct.value = withTiming(np, { duration: DURATIONS.slow });
     unsurePct.value = withTiming(up, { duration: DURATIONS.slow }, (finished) => {
       // Only fire haptic on user-initiated vote changes, not initial mount
-      if (finished && hasMountedRef.current) runOnJS(lightHaptic)();
+      if (finished && hasMounted.value) runOnJS(lightHaptic)();
     });
-    hasMountedRef.current = true;
+    hasMounted.value = true;
   }, [yesVotes, noVotes, unsureVotes, total]);
 
   const onBarLayout = (e: LayoutChangeEvent) => {
@@ -86,8 +87,7 @@ export function LiveVoteBar({
         <View style={{
           height: 14, borderRadius: 7, width: '100%', marginBottom: 8,
           backgroundColor: COLORS.borderSubtle,
-          shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.06, shadowRadius: 2, elevation: 1,
+          ...SHADOWS.sm,
           overflow: 'hidden',
         }}>
           <LinearGradient
@@ -108,12 +108,11 @@ export function LiveVoteBar({
   }
 
   return (
-    <View style={{ marginTop: 10, marginBottom: 4 }}>
+    <View style={{ marginTop: 10, marginBottom: 4 }} accessibilityLabel={`Vote results: ${yesVotes} yes, ${noVotes} no, ${unsureVotes} unsure out of ${total} votes`}>
       <View style={{
         height: 14, borderRadius: 7, overflow: 'hidden',
         backgroundColor: COLORS.borderSubtle,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08, shadowRadius: 3, elevation: 2,
+        ...SHADOWS.sm,
       }}>
         <LinearGradient
           colors={['rgba(0,0,0,0.04)', 'transparent', 'rgba(0,0,0,0.06)']}
@@ -129,7 +128,7 @@ export function LiveVoteBar({
           )}
           {noVotes > 0 && (
             <Animated.View style={noStyle}>
-              <LinearGradient colors={['#FF6B6B', RED, '#E11D48']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={{ flex: 1 }} />
+              <LinearGradient colors={[COLORS.urgentRed, RED, '#E11D48']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={{ flex: 1 }} />
             </Animated.View>
           )}
           {unsureVotes > 0 && (

@@ -6,7 +6,7 @@ import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EvaIcon } from '../icons';
 import { COLORS } from '../../theme/colors';
-import { OVERLAYS } from '../../theme/shadows';
+import { OVERLAYS, SHADOWS } from '../../theme/shadows';
 
 interface InfoModalProps {
   visible: boolean;
@@ -61,18 +61,14 @@ export const InfoModal: React.FC<InfoModalProps> = ({
           className="absolute inset-0"
           activeOpacity={1}
           onPress={handleBackdropPress}
+          accessibilityRole="button"
+          accessibilityLabel="Close modal"
         />
 
         {/* Modal Content */}
         <StyledView
           className="bg-white rounded-3xl w-full max-w-md overflow-hidden"
-          style={{
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 20 },
-            shadowOpacity: 0.3,
-            shadowRadius: 30,
-            elevation: 24,
-          }}
+          style={SHADOWS.xxl}
         >
           {/* Top gradient accent */}
           <LinearGradient
@@ -95,6 +91,8 @@ export const InfoModal: React.FC<InfoModalProps> = ({
               onPress={handleClose}
               className="absolute top-4 right-4 p-2 rounded-full bg-neutral-100"
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
             >
               <EvaIcon name="close" variant="outline" size={20} color="#64748B" />
             </StyledTouchableOpacity>
@@ -108,7 +106,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
             </StyledView>
 
             {/* Title */}
-            <H2 className="text-neutral-900 text-center text-xl font-bold">
+            <H2 className="text-neutral-900 text-center text-xl font-bold" accessibilityRole="header">
               {title}
             </H2>
           </StyledView>

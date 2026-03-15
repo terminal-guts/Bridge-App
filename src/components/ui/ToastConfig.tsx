@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import { BaseToast, ErrorToast, InfoToast } from 'react-native-toast-message';
+import { BaseToast, ErrorToast, InfoToast, BaseToastProps } from 'react-native-toast-message';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
+import { SHADOWS } from '../../theme/shadows';
 
 /**
  * Custom Toast Configuration
@@ -10,7 +11,7 @@ import { COLORS } from '../../theme/colors';
  */
 
 export const toastConfig = {
-  success: (props: any) => (
+  success: (props: BaseToastProps) => (
     <BaseToast
       {...props}
       style={{
@@ -20,11 +21,7 @@ export const toastConfig = {
         borderRadius: 12,
         paddingVertical: 12,
         paddingHorizontal: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 5,
+        ...SHADOWS.lg,
         minHeight: 70,
       }}
       contentContainerStyle={{
@@ -46,7 +43,7 @@ export const toastConfig = {
     />
   ),
 
-  error: (props: any) => (
+  error: (props: BaseToastProps) => (
     <ErrorToast
       {...props}
       style={{
@@ -56,11 +53,7 @@ export const toastConfig = {
         borderRadius: 12,
         paddingVertical: 12,
         paddingHorizontal: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 5,
+        ...SHADOWS.lg,
         minHeight: 70,
       }}
       contentContainerStyle={{
@@ -82,7 +75,7 @@ export const toastConfig = {
     />
   ),
 
-  info: (props: any) => (
+  info: (props: BaseToastProps) => (
     <InfoToast
       {...props}
       style={{
@@ -92,11 +85,7 @@ export const toastConfig = {
         borderRadius: 12,
         paddingVertical: 12,
         paddingHorizontal: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 5,
+        ...SHADOWS.lg,
         minHeight: 70,
       }}
       contentContainerStyle={{
@@ -118,18 +107,14 @@ export const toastConfig = {
     />
   ),
 
-  premiumToast: (props: any) => (
+  premiumToast: (props: BaseToastProps) => (
     <View
       style={{
         backgroundColor: COLORS.card,
         borderRadius: 12,
         paddingVertical: 16,
         paddingHorizontal: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 5,
+        ...SHADOWS.lg,
         borderWidth: 1,
         borderColor: '#E5E5E5',
         minHeight: 70,

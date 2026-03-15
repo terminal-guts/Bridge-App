@@ -3,6 +3,7 @@ import { View, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native
 import { styled } from 'nativewind';
 import { H2, H3, Body, Card, ScreenWrapper } from '../../components/ui';
 import { COLORS } from '../../theme/colors';
+import { SHADOWS } from '../../theme/shadows';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { EvaIcon } from '../../components/icons';
@@ -62,10 +63,10 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
 
       {/* Header */}
       <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center">
-        <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
+        <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mr-3" accessibilityRole="button" accessibilityLabel="Go back">
           <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
         </StyledTouchableOpacity>
-        <H3>Help & Support</H3>
+        <H3 accessibilityRole="header">Help & Support</H3>
       </StyledView>
 
       <StyledScrollView className="flex-1">
@@ -89,13 +90,9 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
               <StyledTouchableOpacity
                 onPress={handleEmailSupport}
                 className="bg-primary-500 px-6 py-3 rounded-lg flex-row items-center"
-                style={{
-                  shadowColor: COLORS.primaryAccent,
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  elevation: 4,
-                }}
+                style={SHADOWS.accentBlue}
+                accessibilityRole="button"
+                accessibilityLabel="Send support email"
               >
                 <EvaIcon name="paper-plane" variant="outline" size={18} color="white" />
                 <Body className="text-white font-semibold ml-2">Send Email</Body>
@@ -133,6 +130,8 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
 
               <StyledTouchableOpacity
                 className="flex-row items-start"
+                accessibilityRole="button"
+                accessibilityLabel="Report a safety concern"
                 onPress={() => {
                   const subject = encodeURIComponent('Bridge Safety Report');
                   const body = encodeURIComponent('I would like to report the following safety concern:\n\nType of issue: [harassment / fake profile / inappropriate content / other]\n\nDetails:\n\n');

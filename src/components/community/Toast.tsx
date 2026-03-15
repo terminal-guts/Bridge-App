@@ -17,6 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { FONTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
+import { SHADOWS } from '../../theme/shadows';
 import { EvaIcon } from '../icons';
 import { SPRINGS, DURATIONS } from '../../constants/animations';
 
@@ -86,9 +87,9 @@ export function Toast({
   const config = TYPE_CONFIG[type];
 
   return (
-    <Animated.View style={[styles.container, animStyle]}>
+    <Animated.View style={[styles.container, animStyle]} accessibilityRole="alert" accessibilityLabel={message}>
       <View style={[styles.inner, { backgroundColor: config.bg }]}>
-        <EvaIcon name={icon || config.icon} variant="outline" size={24} color="#FFFFFF" />
+        <EvaIcon name={icon || config.icon} variant="outline" size={24} color={COLORS.card} />
         <Text style={styles.message}>{message}</Text>
       </View>
     </Animated.View>
@@ -109,15 +110,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
+    ...SHADOWS.lg,
   },
   message: {
     flex: 1,
-    color: '#FFFFFF',
+    color: COLORS.card,
     fontFamily: FONTS.medium,
     marginLeft: 12,
   },

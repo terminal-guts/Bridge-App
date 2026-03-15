@@ -40,6 +40,7 @@ import { showToast } from '../../../utils/toast';
 import { createLogger } from '../../../utils/secureLogger';
 import { FONTS } from '../../../constants/typography';
 import { COLORS } from '../../../theme/colors';
+import { SHADOWS } from '../../../theme/shadows';
 
 const logger = createLogger('AddFriendsStep');
 
@@ -604,7 +605,7 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
             <StyledTextInput
               className="flex-1 ml-2 text-sm text-neutral-900"
               placeholder="Search contacts..."
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={COLORS.text.disabled}
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoCorrect={false}
@@ -644,11 +645,7 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
             className="absolute left-4 right-4"
             style={{
               bottom: 90,
-              shadowColor: '#437FFF',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 8,
+              ...SHADOWS.accentBlue,
             }}
           >
             <StyledTouchableOpacity
@@ -764,7 +761,7 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
               </Body>
               {addedFriends.map((name, i) => (
                 <StyledView key={i} className="flex-row items-center mb-1">
-                  <EvaIcon name="checkmark-circle-2" variant="outline" size={18} color="#22C55E" />
+                  <EvaIcon name="checkmark-circle-2" variant="outline" size={18} color={COLORS.match.icon} />
                   <Body className="text-neutral-700 ml-2">{name}</Body>
                 </StyledView>
               ))}

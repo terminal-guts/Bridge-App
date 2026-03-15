@@ -15,10 +15,10 @@ import { Image, ImageBackground } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
-import { CheckmarkIcon, HourglassIcon, ChatIcon, HeartsIcon, ArrowRightIcon, QuestionIcon, GiftIcon } from '../icons/Icons';
+import { CheckmarkIcon, HourglassIcon, HeartsIcon, ArrowRightIcon, GiftIcon } from '../icons/Icons';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
-import { SHADOWS, glowShadow } from '../../theme/shadows';
+import { SHADOWS, glowShadow, DEPTH_PRESS_FACTOR } from '../../theme/shadows';
 import { EvaIcon } from '../icons';
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ const TOP_BADGE_CONFIG: Record<MatchStatus, { label: string; bg: string; Icon?: 
     awaiting_you:  { label: 'They said yes!', bg: COLORS.success, Icon: CheckmarkIcon },
     awaiting_them: { label: 'You said yes',   bg: COLORS.success, Icon: CheckmarkIcon },
     new_match:     { label: 'New Match',      bg: COLORS.success, Icon: HeartsIcon },
-    no_match:      { label: 'No match',       bg: '#8E8E93', Icon: HourglassIcon },
+    no_match:      { label: 'No match',       bg: COLORS.systemGray, Icon: HourglassIcon },
 };
 
 // Bottom pill — always BLUE (action/context)
@@ -160,13 +160,13 @@ export const MatchCard: React.FC<MatchCardProps> = ({
         fadeAnim.value = withTiming(1, { duration: 450 });
     }, [status]);
 
-    // #5 — Press scale with spring
+    // #5 — Press scale with spring (snappy press-in, responsive release for depth spring-back)
     const pressScale = useSharedValue(1);
     const onPressIn = useCallback(() => {
-        pressScale.value = withSpring(0.96, { damping: 12, stiffness: 200 });
+        pressScale.value = withSpring(0.96, SPRINGS.snappy);
     }, []);
     const onPressOut = useCallback(() => {
-        pressScale.value = withSpring(1, { damping: 12, stiffness: 200 });
+        pressScale.value = withSpring(1, SPRINGS.responsive);
     }, []);
 
     // #5 — Action button press scale (deeper bounce)
@@ -190,11 +190,20 @@ export const MatchCard: React.FC<MatchCardProps> = ({
         }
     }, [celebrate]);
 
-    // Animated styles
-    const cardAnimStyle = useAnimatedStyle(() => ({
-        opacity: fadeAnim.value,
-        transform: [{ translateY: slideAnim.value }, { scale: pressScale.value * celebrateScale.value }],
-    }));
+    // Animated styles — includes shadow depth animation on press (iOS)
+    const cardAnimStyle = useAnimatedStyle(() => {
+        // Shadow sinks on press: reduce opacity and radius proportional to press
+        const pressAmount = 1 - pressScale.value; // 0 at rest, ~0.04 when pressed
+        const depthReduction = pressAmount * (DEPTH_PRESS_FACTOR / 0.04); // normalize to full factor
+        const clampedReduction = Math.min(depthReduction, DEPTH_PRESS_FACTOR);
+        return {
+            opacity: fadeAnim.value,
+            transform: [{ translateY: slideAnim.value }, { scale: pressScale.value * celebrateScale.value }],
+            shadowOpacity: 0.18 * (1 - clampedReduction),
+            shadowRadius: 24 * (1 - clampedReduction),
+            shadowOffset: { width: 0, height: 8 * (1 - clampedReduction) },
+        };
+    });
     const actionBtnAnimStyle = useAnimatedStyle(() => ({
         transform: [{ scale: pulseAnim.value * actionPressScale.value }],
     }));
@@ -204,13 +213,13 @@ export const MatchCard: React.FC<MatchCardProps> = ({
 
     return (
         <Animated.View style={[{ flex: 1 }, cardAnimStyle]}>
-        <Pressable style={{ flex: 1 }} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
+        <Pressable style={{ flex: 1 }} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} accessibilityRole="button" accessibilityLabel={`${name}${age ? `, age ${age}` : ''}, ${topBadge.label}`}>
         <View style={[styles.card, isActiveMatch && styles.cardActive, isAwaitingYou && styles.cardAwaitingYou, status === 'new_match' && styles.cardNewMatch]}>
             {/* Top accent line — state color bar */}
             <View style={[styles.accentLine, { backgroundColor: accentColor }]} />
             <ImageBackground
                 source={{ uri: optimizedImageUrl }}
-                style={[StyleSheet.absoluteFillObject, { backgroundColor: '#E5E7EB' }]}
+                style={[StyleSheet.absoluteFillObject, { backgroundColor: COLORS.backgroundGrayMedium }]}
                 contentFit="cover"
                 transition={200}
                 cachePolicy="disk"
@@ -244,12 +253,12 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                         {isActiveMatch && (
                             <View style={styles.topActions}>
                                 {onShare && (
-                                    <TouchableOpacity onPress={onShare} style={styles.topActionBtn} activeOpacity={0.7}>
+                                    <TouchableOpacity onPress={onShare} style={styles.topActionBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Share match">
                                         <EvaIcon name="share" variant="outline" size={20} color="#FFFFFF" />
                                     </TouchableOpacity>
                                 )}
                                 {onDismiss && (
-                                    <TouchableOpacity onPress={onDismiss} style={styles.topActionBtn} activeOpacity={0.7}>
+                                    <TouchableOpacity onPress={onDismiss} style={styles.topActionBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Dismiss match card">
                                         <EvaIcon name="close" variant="outline" size={18} color="#FFFFFF" />
                                     </TouchableOpacity>
                                 )}
@@ -287,7 +296,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                                             <View key={i} style={[styles.avatarShadowWrap, { marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }]}>
                                                 <Image
                                                     source={{ uri: optimizedAvatarUrl }}
-                                                    style={[styles.avatarCircle, { backgroundColor: '#E5E7EB' }]}
+                                                    style={[styles.avatarCircle, { backgroundColor: COLORS.backgroundGrayMedium }]}
                                                     contentFit="cover"
                                                     transition={200}
                                                     cachePolicy="disk"
@@ -479,11 +488,7 @@ const styles = StyleSheet.create({
     },
     // #4 — Avatar shadow wrap for lift effect
     avatarShadowWrap: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 4,
+        ...SHADOWS.md,
     },
     // #4 — Avatars: 28px with tighter -8 overlap, 1.5px border
     avatarCircle: {
@@ -493,7 +498,7 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
         borderColor: 'rgba(255, 255, 255, 0.9)',
         overflow: 'hidden',
-        backgroundColor: '#667085',
+        backgroundColor: COLORS.navInactiveIcon,
     },
     // #2 — Date: 12px, lighter opacity
     dateText: {
@@ -515,20 +520,12 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.card,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 12,
-        elevation: 8,
+        ...SHADOWS.xl,
     },
     // Unified blue action button with glow — all states
     actionButtonBlue: {
         backgroundColor: COLORS.primaryButton,
-        shadowColor: COLORS.primaryButton,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
-        elevation: 10,
+        ...SHADOWS.accentBlue,
     },
     nameRow: {
         flexDirection: 'row' as const,
@@ -539,7 +536,7 @@ const styles = StyleSheet.create({
         width: 10,
         height: 10,
         borderRadius: 5,
-        backgroundColor: '#437FFF',
+        backgroundColor: COLORS.primaryAccent,
         marginBottom: 4,
     },
 });

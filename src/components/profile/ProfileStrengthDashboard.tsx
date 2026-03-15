@@ -18,6 +18,7 @@ import { calculateProfileStrengthBreakdown } from '../../utils/profileCompletene
 import { createLogger } from '../../utils/secureLogger';
 import { EvaIcon } from '../icons';
 import { COLORS } from '../../theme/colors';
+import { SHADOWS } from '../../theme/shadows';
 import { FONTS } from '../../constants/typography';
 import { useCountUp } from '../../hooks/useCountUp';
 import { successHaptic } from '../../utils/haptics';
@@ -117,7 +118,7 @@ const calculateStrength = (profile: UserProfile): {
     score: breakdown.sections.matchPreferences.score,
     maxScore: breakdown.sections.matchPreferences.maxScore,
     suggestions: preferencesSuggestions.slice(0, 2),
-    color: '#7C3AED',
+    color: COLORS.purple,
     displayPercentage: breakdown.sections.matchPreferences.percentage,
   });
 
@@ -159,7 +160,7 @@ const calculateStrength = (profile: UserProfile): {
     score: breakdown.sections.deepQuestions.score,
     maxScore: breakdown.sections.deepQuestions.maxScore,
     suggestions: questionsSuggestions.slice(0, 2),
-    color: '#F59E0B',
+    color: COLORS.warning.icon,
     displayPercentage: breakdown.sections.deepQuestions.percentage,
   });
 
@@ -176,16 +177,16 @@ const getStrengthLevel = (score: number, profileCompleted?: boolean): { level: s
   // User already completed once — softer "dropped" messaging
   if (profileCompleted) {
     if (score >= 90) return { level: 'Slightly Incomplete', message: 'A field was removed from your profile', color: COLORS.primaryAccent };
-    if (score >= 75) return { level: 'Dropped', message: "Your profile isn't at full strength", color: '#F59E0B' };
-    return { level: 'Needs Attention', message: 'Some profile info is missing', color: '#DC2626' };
+    if (score >= 75) return { level: 'Dropped', message: "Your profile isn't at full strength", color: COLORS.warning.icon };
+    return { level: 'Needs Attention', message: 'Some profile info is missing', color: COLORS.danger };
   }
 
   // First-time user — motivating "build toward the pool" messaging
   if (score >= 90) return { level: 'So Close', message: 'One more step to start receiving matches', color: COLORS.emerald };
   if (score >= 75) return { level: 'Almost There', message: 'Just a few more fields to go', color: COLORS.primaryAccent };
-  if (score >= 60) return { level: 'Looking Good', message: "You're getting close to the matching pool", color: '#F59E0B' };
-  if (score >= 40) return { level: 'Making Progress', message: 'Your friends need more to find your match', color: '#DC2626' };
-  return { level: 'Getting Started', message: 'Fill this out to enter the matching pool', color: '#B91C1C' };
+  if (score >= 60) return { level: 'Looking Good', message: "You're getting close to the matching pool", color: COLORS.warning.icon };
+  if (score >= 40) return { level: 'Making Progress', message: 'Your friends need more to find your match', color: COLORS.danger };
+  return { level: 'Getting Started', message: 'Fill this out to enter the matching pool', color: COLORS.criticalRed };
 };
 
 export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> = React.memo(({
@@ -223,14 +224,14 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
   }
 
   return (
-    <Card elevation={3} variant="elevated" className={`mb-4 ${className}`}>
+    <Card shadow="lg" variant="elevated" className={`mb-4 ${className}`}>
       {/* Compact Header */}
       <StyledView className="flex-row items-center justify-between mb-3">
         <StyledView className="flex-row items-center">
           <StyledView
             className="w-9 h-9 rounded-lg items-center justify-center mr-2.5"
             style={{
-              backgroundColor: isComplete ? COLORS.backgroundValuesTag : '#EBF2FF',
+              backgroundColor: isComplete ? COLORS.backgroundValuesTag : COLORS.backgroundBlueBadge,
               shadowColor: isComplete ? COLORS.emerald : COLORS.primaryAccent,
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.3,
@@ -242,7 +243,7 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
               name={isComplete ? 'checkmark-circle-2' : 'bar-chart'}
               variant="outline"
               size={18}
-              color={isComplete ? '#10B981' : '#437FFF'}
+              color={isComplete ? COLORS.emerald : COLORS.primaryAccent}
             />
           </StyledView>
           <H3 className="text-base">Profile Strength</H3>
@@ -293,7 +294,7 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
                   {section.name}
                 </Body>
                 {sectionComplete && (
-                  <EvaIcon name="checkmark-circle-2" variant="outline" size={14} color="#10B981" />
+                  <EvaIcon name="checkmark-circle-2" variant="outline" size={14} color={COLORS.emerald} />
                 )}
               </StyledView>
 

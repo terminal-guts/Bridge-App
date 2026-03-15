@@ -1,257 +1,53 @@
-import React, { useState, useEffect, useCallback, useRef, useReducer, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, RefreshControl, Modal } from 'react-native';
-import ReanimatedAnimated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withRepeat,
-    withSequence,
-    withTiming,
-    cancelAnimation,
-    Easing,
-} from 'react-native-reanimated';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 
-import LottieView from 'lottie-react-native';
 import { UserRow } from '../../components/community/UserRow';
 import { StaggerItem } from '../../hooks/useStaggeredList';
 import { ProposalReviewView } from '../../components/community/proposal/ProposalReviewView';
 import { GuideTarget } from '../../components/guides';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { EvaIcon } from '../../components/icons';
-import { Image } from 'expo-image';
 import { MainTabParamList } from '../../types';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { communityService } from '../../services/communityServiceIndex';
 import { getUserFriendCode } from '../../services/friendService';
 import { FriendWithGridStatus } from '../../types/community';
 import { getUserProfile } from '../../services/profileService';
+import { supabase } from '../../lib/supabase';
 import { UserProfile } from '../../types';
 import { ProfileCompletionBanner } from '../../components/profile/ProfileCompletionBanner';
 import { useGuide } from '../../hooks/useGuide';
 import { beginnerTourGuide } from '../../config/guides';
 import { CommunitySkeleton } from '../../components/ui/SkeletonLoader';
-import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
-import { OVERLAYS } from '../../theme/shadows';
 import { ScreenWrapper } from '../../components/ui';
 import { getLast7PMCentral } from '../../utils/centralTime';
-import { lightHaptic, successHaptic } from '../../utils/haptics';
-import { getFriendUnreadCount, getBatchUnreadFriendIds } from '../../services/messageService';
+import { successHaptic, lightHaptic } from '../../utils/haptics';
+import { getBatchUnreadFriendIds } from '../../services/messageService';
 import { getActiveSuggestions } from '../../services/friendProposalService';
 import { showToast } from '../../utils/toast';
 import { BadgeAwardModal } from '../../components/badges/BadgeAwardModal';
 import { getBadgeForFriend } from '../../services/badgeService';
 import { FriendBadge } from '../../types/badges';
 
-// ── Mock leaderboard karma thresholds for rank interpolation ─────────────────
-// Sorted descending — same values as LeaderboardScreen MOCK_WEEKLY
-const MOCK_LEADERBOARD_KARMA = [87, 74, 68, 62, 55, 51, 48, 44, 39, 36, 32, 29, 25, 21, 18, 14, 11, 8, 5, 3];
-
-/** Given a karma score, return approximate global leaderboard rank (1-indexed) */
-function getApproxRank(karma: number): number {
-  for (let i = 0; i < MOCK_LEADERBOARD_KARMA.length; i++) {
-    if (karma >= MOCK_LEADERBOARD_KARMA[i]) return i + 1;
-  }
-  return MOCK_LEADERBOARD_KARMA.length + 1;
-}
-
-/** Split friends into needs-help vs already-helped, sorted by karma rank */
-function partitionFriends(friends: FriendWithGridStatus[]) {
-  const toMatch = friends.filter(f => !f.hasCompletedGrid);
-  const helped = friends
-    .filter(f => f.hasCompletedGrid)
-    .sort((a, b) =>
-      getApproxRank(a.karmaScore?.karmaPoints ?? 0) - getApproxRank(b.karmaScore?.karmaPoints ?? 0)
-    );
-  return { toMatch, helped };
-}
-
-/** Compute activity status line for a crew member */
-function getFriendStatusLine(
-  user: FriendWithGridStatus,
-  suggestionsMap?: Map<string, { suggestedForName: string; status: 'queued' | 'stashed' }>,
-): string | undefined {
-  // Show suggestion indicator (takes priority over assists count)
-  const suggestion = suggestionsMap?.get(user.friend.userId || '');
-  if (suggestion) return `Suggested for ${suggestion.suggestedForName}`;
-  if (user.isMatched) return 'Has a match!';
-  const assists = user.assistsCount || 0;
-  if (assists > 0) return `${assists} match${assists === 1 ? '' : 'es'} made`;
-  return undefined;
-}
-
-// ── Match reset countdown timer ───────────────────────────────────────────────
-//
-// Uses a ref for the target timestamp and a force-render counter.
-// `remaining` is computed fresh from Date.now() on every render — never stored
-// in state — so React batching and unmount/remount cycles can't stale-lock it.
-function MatchResetTimer() {
-  // Target timestamp (epoch ms) from the service
-  const targetRef = useRef(Number(communityService.getNextResetAt()));
-  // Incrementing counter just to force a re-render every second
-  const [, tick] = useReducer((n: number) => n + 1, 0);
-  const [infoVisible, setInfoVisible] = useState(false);
-  const pulseAnim = useSharedValue(1);
-  const pulsingRef = useRef(false);
-  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulseAnim.value }] }));
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      const ms = targetRef.current - Date.now();
-      if (ms <= 0) {
-        communityService.triggerReset();
-        targetRef.current = Number(communityService.getNextResetAt());
-      }
-
-      // Start pulse when <30 min remaining
-      const shouldPulse = ms > 0 && ms < 30 * 60 * 1000;
-      if (shouldPulse && !pulsingRef.current) {
-        pulsingRef.current = true;
-        pulseAnim.value = withRepeat(
-          withSequence(
-            withTiming(1.08, { duration: 600, easing: Easing.inOut(Easing.ease) }),
-            withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) }),
-          ), -1, false
-        );
-      } else if (!shouldPulse && pulsingRef.current) {
-        pulsingRef.current = false;
-        cancelAnimation(pulseAnim);
-        pulseAnim.value = 1;
-      }
-
-      tick(); // force re-render
-    }, 1000);
-
-    // Re-sync when dev toggle / triggerReset changes the reset time
-    const unsub = communityService.onStateChange(() => {
-      targetRef.current = Number(communityService.getNextResetAt());
-      tick();
-    });
-
-    return () => {
-      clearInterval(id);
-      unsub();
-      cancelAnimation(pulseAnim);
-    };
-  }, []);
-
-  // Computed fresh every render — never stale
-  const remaining = Math.max(0, targetRef.current - Date.now());
-
-  const hours   = Math.floor(remaining / 3600000);
-  const minutes = Math.floor((remaining % 3600000) / 60000);
-  const seconds = Math.floor((remaining % 60000) / 1000);
-
-  let label: string;
-  if (hours > 0) {
-    label = `${hours}h ${minutes}m`;
-  } else if (minutes > 0) {
-    label = `${minutes}m ${seconds}s`;
-  } else {
-    label = `${seconds}s`;
-  }
-
-  // Color thresholds: green 12-24h, orange 4-12h, red <4h
-  let color: string;
-  let bgColor: string;
-  let borderColor: string;
-  if (remaining > 12 * 3600000) {
-    color = '#1D9E50';
-    bgColor = 'rgba(52, 199, 89, 0.08)';
-    borderColor = 'rgba(52, 199, 89, 0.25)';
-  } else if (remaining > 4 * 3600000) {
-    color = '#C96B00';
-    bgColor = 'rgba(255, 141, 40, 0.08)';
-    borderColor = 'rgba(255, 141, 40, 0.25)';
-  } else {
-    color = '#D92D20';
-    bgColor = 'rgba(255, 56, 60, 0.08)';
-    borderColor = 'rgba(255, 56, 60, 0.25)';
-  }
-
-  return (
-    <>
-      <TouchableOpacity activeOpacity={0.7} onPress={() => setInfoVisible(true)}>
-        <ReanimatedAnimated.View style={[pulseStyle, {
-          flexDirection: 'row',
-          alignItems: 'center',
-          backgroundColor: bgColor,
-          borderWidth: 1,
-          borderColor,
-          borderRadius: 10,
-          paddingHorizontal: 9,
-          height: 34,
-          gap: 5,
-        }]}>
-          <EvaIcon name="clock" variant="outline" size={13} color={color} />
-          <Text style={{ fontSize: FONT_SIZES.md, fontFamily: FONTS.semiBold, color }}>{label}</Text>
-        </ReanimatedAnimated.View>
-      </TouchableOpacity>
-
-      <Modal visible={infoVisible} transparent animationType="fade" onRequestClose={() => setInfoVisible(false)}>
-        <TouchableOpacity style={timerInfoStyles.overlay} activeOpacity={1} onPress={() => setInfoVisible(false)}>
-          <View style={timerInfoStyles.card}>
-            <Text style={timerInfoStyles.title}>Daily Reset</Text>
-            <Text style={timerInfoStyles.body}>
-              New proposals drop every day at 7 PM. Come back to vote on new matches and maybe get a match yourself!
-            </Text>
-            <TouchableOpacity style={timerInfoStyles.btn} onPress={() => setInfoVisible(false)} activeOpacity={0.85}>
-              <Text style={timerInfoStyles.btnText}>Got it</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    </>
-  );
-}
-
-const timerInfoStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: OVERLAYS.medium,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  card: {
-    backgroundColor: COLORS.card,
-    borderRadius: 20,
-    paddingHorizontal: 28,
-    paddingTop: 28,
-    paddingBottom: 22,
-    marginHorizontal: 32,
-    alignItems: 'center',
-  },
-  title: {
-    fontFamily: FONTS.bold,
-    fontSize: FONT_SIZES['2xl'],
-    color: '#101828',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  body: {
-    fontFamily: FONTS.regular,
-    fontSize: FONT_SIZES.base,
-    color: '#667085',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 20,
-  },
-  btn: {
-    backgroundColor: COLORS.primaryButton,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-  },
-  btnText: {
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.lg,
-    color: COLORS.card,
-  },
-});
+// Extracted
+import {
+  MatchResetTimer,
+  partitionFriends,
+  getFriendStatusLine,
+  EmptyState,
+  InviteBanner,
+  ImpactCard,
+  SuggestMatchRow,
+  CaughtUpFooter,
+  buildVoteHandlers,
+  buildCrewHandlers,
+  styles,
+} from './CommunityScreen.components';
 
 interface CommunityScreenProps {
   navigation: NavigationProp<MainTabParamList, 'Community'>;
 }
-
 
 export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const { startGuideIfNeeded } = useGuide();
@@ -324,6 +120,8 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   }, [loadUnreadCounts]);
 
   const onRefresh = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
     lightHaptic();
     setRefreshing(true);
     // Invalidate in-memory + AsyncStorage cache so pull-to-refresh always fetches fresh data
@@ -345,6 +143,10 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   }, [loadFriendsData]);
 
   const initialize = useCallback(async () => {
+    // Bail out if not authenticated (e.g. after sign-out while screen is still mounted)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
     const cycleId = String(getLast7PMCentral());
 
     // ── Fast path: try to render from cache instantly ──────────────────────
@@ -489,8 +291,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     navigation.navigate('Community');
   }, [loadFriendsData, navigation]);
 
-  // ── Memoized derived values ──────────────────────────────────────────────
-  // Computed once when list data changes, not on every render tick
   const totalFriends = usersToMatch.length + alreadyHelped.length;
   const showInviteBanner = totalFriends > 0 && totalFriends < 5;
 
@@ -505,45 +305,14 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     return { kind: 'impact' as const, totalAssists };
   }, [totalFriends, usersToMatch, alreadyHelped]);
 
-  // Stable per-item callback maps — keyed by friendId so memo on UserRow is effective
-  const voteHandlers = useMemo(() => {
-    const viewProfile: Record<string, () => void> = {};
-    const matchHandlers: Record<string, () => void> = {};
-    for (const user of usersToMatch) {
-      viewProfile[user.friendId] = () =>
-        (navigation as any).navigate('ProfileView', { profile: user.friend });
-      matchHandlers[user.friendId] = () =>
-        (navigation as any).navigate('FriendProposal', {
-          friendId: user.friendId,
-          friendName: user.friend.firstName,
-          friendPhotoUrl: user.friend.photos?.[0]?.url,
-          friendAge: user.friend.age,
-          friendJob: user.friend.currentJob,
-        });
-    }
-    return { viewProfile, matchHandlers };
-  }, [usersToMatch, navigation]);
-
-  const crewHandlers = useMemo(() => {
-    const viewProfile: Record<string, () => void> = {};
-    const chatHandlers: Record<string, () => void> = {};
-    const badgeHandlers: Record<string, () => void> = {};
-    for (const user of alreadyHelped) {
-      viewProfile[user.friendId] = () =>
-        (navigation as any).navigate('ProfileView', { profile: user.friend });
-      chatHandlers[user.friendId] = () =>
-        (navigation as any).navigate('Chat', {
-          friendshipId: user.friendshipId,
-          recipientId: user.friendId,
-          recipientName: user.friend.firstName,
-          recipientPhoto: user.friend.photos?.[0]?.url,
-          isFriendChat: true,
-        });
-      badgeHandlers[user.friendId] = () =>
-        handleBadgePress(user.friendId, user.friend.firstName || 'Friend');
-    }
-    return { viewProfile, chatHandlers, badgeHandlers };
-  }, [alreadyHelped, navigation, handleBadgePress]);
+  const voteHandlers = useMemo(
+    () => buildVoteHandlers(usersToMatch, navigation),
+    [usersToMatch, navigation],
+  );
+  const crewHandlers = useMemo(
+    () => buildCrewHandlers(alreadyHelped, navigation, handleBadgePress),
+    [alreadyHelped, navigation, handleBadgePress],
+  );
 
   if (loading || hasCompletedVoting === null) {
     return (
@@ -565,6 +334,8 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     );
   }
 
+  const navigateToContactInvite = () => (navigation as any).navigate('ContactInvite');
+
   return (
     <ScreenWrapper>
       <OfflineBanner />
@@ -576,7 +347,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       {/* Header section */}
       <View className="px-6 pt-4">
         <View className="flex-row items-center justify-between">
-          <Text style={styles.headerTitle}>
+          <Text style={styles.headerTitle} accessibilityRole="header">
             Community
           </Text>
           <View style={styles.headerRight}>
@@ -584,12 +355,14 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             {!showInviteBanner && (
               <GuideTarget id="add-friend-button">
                 <TouchableOpacity
-                  onPress={() => (navigation as any).navigate('ContactInvite')}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  onPress={navigateToContactInvite}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   activeOpacity={0.7}
                   style={styles.addFriendBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add friend"
                 >
-                  <EvaIcon name="person-add" variant="outline" size={18} color="#2B65F9" />
+                  <EvaIcon name="person-add" variant="outline" size={18} color={COLORS.primaryButton} />
                 </TouchableOpacity>
               </GuideTarget>
             )}
@@ -605,33 +378,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primaryButton} />
           }
         >
-          <View style={styles.emptyContainer}>
-            {/* Lottie animation centerpiece */}
-            <LottieView
-              source={require('../../../assets/Icons/AnimatedIcons/add-account.json')}
-              autoPlay
-              loop
-              speed={0.5}
-              style={styles.emptyLottie}
-            />
-
-            <Text style={styles.emptyHeroText}>
-              Add your crew
-            </Text>
-            <Text style={styles.emptySubtext}>
-              Your friends pick your matches.{'\n'}Invite from contacts to get started.
-            </Text>
-
-            {/* Primary CTA — Invite from Contacts */}
-            <TouchableOpacity
-              style={styles.inviteContactsButton}
-              activeOpacity={0.85}
-              onPress={() => (navigation as any).navigate('ContactInvite')}
-            >
-              <EvaIcon name="people" variant="outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-              <Text style={styles.inviteContactsButtonText}>Invite from Contacts</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState onInvite={navigateToContactInvite} />
         </ScrollView>
       ) : (
         <ScrollView
@@ -643,34 +390,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
         >
           {/* #5: Invite nudge when <5 friends; #10: Impact card when >=5 friends */}
           {bannerSection.kind === 'invite' ? (
-            <TouchableOpacity
-              style={styles.crewBanner}
-              activeOpacity={0.85}
-              onPress={() => (navigation as any).navigate('ContactInvite')}
-            >
-              <View style={styles.crewAvatarRow}>
-                {bannerSection.avatarFriends.map((f, i) => (
-                  <Image
-                    key={f.friendId}
-                    source={{ uri: f.friend.photos?.[0]?.url || 'https://via.placeholder.com/36' }}
-                    style={[styles.crewAvatar, i > 0 && { marginLeft: -10 }]}
-                  />
-                ))}
-                <View style={[styles.crewAddCircle, bannerSection.avatarFriends.length > 0 && { marginLeft: -10 }]}>
-                  <EvaIcon name="plus" variant="outline" size={16} color="#2B65F9" />
-                </View>
-              </View>
-              <Text style={styles.crewBannerHeadline}>Add your people</Text>
-            </TouchableOpacity>
+            <InviteBanner avatarFriends={bannerSection.avatarFriends} onPress={navigateToContactInvite} />
           ) : (
-            <View style={styles.impactCard}>
-              <EvaIcon name="heart" variant="outline" size={22} color="#2B65F9" />
-              <Text style={styles.impactText}>
-                {bannerSection.totalAssists > 0
-                  ? `You've helped make ${bannerSection.totalAssists} match${bannerSection.totalAssists === 1 ? '' : 'es'}`
-                  : 'Your votes matter! Help friends find their match.'}
-              </Text>
-            </View>
+            <ImpactCard totalAssists={bannerSection.totalAssists} />
           )}
 
           {usersToMatch.length > 0 && (
@@ -726,23 +448,13 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
             {/* Suggest a Match — inline row at bottom of crew list */}
             {(usersToMatch.length + alreadyHelped.length) >= 2 && (
-              <TouchableOpacity
-                style={styles.suggestMatchRow}
-                activeOpacity={0.75}
-                onPress={() => { lightHaptic(); navigation.getParent()?.navigate('SuggestMatch'); }}
-              >
-                <EvaIcon name="heart" variant="outline" size={16} color="#437FFF" />
-                <Text style={styles.suggestMatchText}>Suggest a Match</Text>
-                <EvaIcon name="arrow-ios-forward" variant="outline" size={14} color="#437FFF" />
-              </TouchableOpacity>
+              <SuggestMatchRow onPress={() => navigation.getParent()?.navigate('SuggestMatch')} />
             )}
           </View>
 
           {/* Slim caught-up footer — only when no pending votes */}
           {usersToMatch.length === 0 && alreadyHelped.length > 0 && (
-            <Text style={styles.caughtUpFooter}>
-              All caught up — new proposals drop at 7 PM
-            </Text>
+            <CaughtUpFooter />
           )}
         </ScrollView>
       )}
@@ -766,233 +478,5 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  emptyContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 24 },
-  emptyLottie: {
-    width: 260,
-    height: 260,
-    marginBottom: 16,
-  },
-  emptyHeroText: {
-    fontFamily: FONTS.bold,
-    fontWeight: '700',
-    fontSize: FONT_SIZES['4xl'],
-    lineHeight: LINE_HEIGHTS['4xl'],
-    color: COLORS.text.heading,
-    textAlign: 'center',
-    marginBottom: 6,
-    letterSpacing: -0.3,
-    width: '100%',
-  },
-  emptySubtext: {
-    fontFamily: FONTS.regular,
-    fontSize: FONT_SIZES.base,
-    lineHeight: LINE_HEIGHTS.base,
-    color: COLORS.text.light,
-    textAlign: 'center',
-    marginBottom: 28,
-  },
-  tagline: { fontFamily: FONTS.semiBold, fontSize: FONT_SIZES['3xl'], lineHeight: 26, color: '#0B1226', textAlign: 'center', marginBottom: 12 },
-  illustration: { width: 300, height: 300, marginBottom: 32 },
-  subtitle: { fontFamily: FONTS.semiBold, fontSize: 17, lineHeight: 24, color: '#0B1226', textAlign: 'center', marginBottom: 20, width: '100%' },
-  ctaButton: {
-    backgroundColor: '#007AFF',
-    width: 250,
-    height: 47,
-    borderRadius: 9999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: 'rgba(0, 122, 255, 0.2)',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  ctaText: { fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.lg, color: COLORS.card },
-  crewBanner: {
-    backgroundColor: COLORS.backgroundFriendActive,
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#D1DEFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    shadowColor: COLORS.primaryButton,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  crewAvatarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  crewAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: COLORS.backgroundFriendActive,
-    backgroundColor: COLORS.backgroundGrayMedium,
-  },
-  crewAddCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: COLORS.primaryButton,
-    borderStyle: 'dashed',
-    backgroundColor: COLORS.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  crewBannerHeadline: {
-    fontFamily: FONTS.bold,
-    fontSize: FONT_SIZES.base,
-    color: '#101828',
-    flex: 1,
-  },
-  impactCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F4F7FF',
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#D1DEFF',
-    gap: 10,
-    shadowColor: COLORS.primaryButton,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  impactText: {
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.md,
-    color: COLORS.primaryButton,
-    flex: 1,
-  },
-  inviteContactsButton: {
-    backgroundColor: COLORS.primaryButton,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 280,
-    height: 50,
-    borderRadius: 9999,
-    shadowColor: COLORS.primaryButton,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
-    elevation: 4,
-    marginBottom: 24,
-  },
-  inviteContactsButtonText: {
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.xl,
-    color: COLORS.card,
-  },
-  headerTitle: {
-    fontFamily: FONTS.bold,
-    fontWeight: '700',
-    fontSize: FONT_SIZES['6xl'],
-    lineHeight: 38,
-    color: COLORS.text.black,
-    letterSpacing: -0.5,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  addFriendBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#F4F7FF',
-    borderWidth: 1,
-    borderColor: '#D1DEFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: COLORS.primaryButton,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    paddingHorizontal: 24,
-    gap: 8,
-  },
-  sectionAccent: {
-    width: 3,
-    height: 16,
-    borderRadius: 2,
-  },
-  sectionTitle: {
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.base,
-    color: '#667085',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-  },
-  voteListBg: {
-    backgroundColor: 'rgba(43, 101, 249, 0.02)',
-  },
-  suggestMatchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E8EDFB',
-  },
-  suggestMatchText: {
-    flex: 1,
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.lg,
-    color: COLORS.primaryAccent,
-  },
-  // ── Help count badge ──────────────────────────────────────────
-  helpCountBadge: {
-    backgroundColor: COLORS.primaryButton,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-    marginLeft: 4,
-  },
-  helpCountText: {
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.xs,
-    color: COLORS.card,
-  },
-  // ── Caught up footer ──────────────────────────────────────────────
-  caughtUpFooter: {
-    fontFamily: FONTS.regular,
-    fontSize: FONT_SIZES.md,
-    color: COLORS.text.placeholder,
-    textAlign: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-  },
-});
 
 export default CommunityScreen;

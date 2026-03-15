@@ -188,6 +188,62 @@ export const COLORS = {
     cardTitleDark: '#0F1724',
     // #565164 — pass button background
     passButton: '#565164',
+    // #D0D5DD — light divider / chevron / radio-off color
+    borderDivider: '#D0D5DD',
+    // #101828 — near-black headings / close buttons
+    textDarkHeading: '#101828',
+    // #344054 — medium dark text (secondary emphasis, stat values)
+    textGray800: '#344054',
+    // #374151 — dark gray inline edit text
+    textGray700: '#374151',
+    // #E4E7EC — neutral gray border (inputs, pills, text areas)
+    borderNeutral: '#E4E7EC',
+    // #D1DEFF — light periwinkle border (invite banners, add-friend buttons)
+    borderPeriwinkle: '#D1DEFF',
+    // #FAFBFC — very subtle off-white background (text areas)
+    backgroundOffWhite: '#FAFBFC',
+    // #FFF4ED — warm peach background (end match icon)
+    backgroundWarmPeach: '#FFF4ED',
+    // #FEF3F2 — soft red background (report icon)
+    backgroundSoftRed: '#FEF3F2',
+    // #F0F4FF — light blue card background (date proposal, impact card)
+    backgroundLightBlue: '#F0F4FF',
+    // #D0DBFF — medium blue border (date proposal card)
+    borderMediumBlue: '#D0DBFF',
+    // #8E8E93 — system gray (no match state)
+    systemGray: '#8E8E93',
+    // #EBF2FF — light blue icon badge background
+    backgroundBlueBadge: '#EBF2FF',
+    // #FDE68A — warm gold border for featured badges
+    borderGoldLight: '#FDE68A',
+    // #2952CC — deep blue shadow (invite button, about me card)
+    shadowBlue: '#2952CC',
+    // #0284C7 — sky blue shadow (progress header)
+    shadowSky: '#0284C7',
+    // #B45309 — dark amber text for interest tags / featured badges
+    amberText: '#B45309',
+    // #059669 — match reason green text
+    matchReasonGreen: '#059669',
+    // #6B21A8 — deep purple compatibility text
+    purpleDeep: '#6B21A8',
+    // #4F46E5 — indigo tier 2 icon color
+    indigo: '#4F46E5',
+    // #8B5CF6 — violet accent icons
+    violet: '#8B5CF6',
+    // #4B5563 — muted gray icon color
+    grayIcon: '#4B5563',
+    // #065F46 — dark emerald text for values tags
+    emeraldText: '#065F46',
+    // #DC2626 — danger / needs attention red
+    danger: '#DC2626',
+    // #16A34A — positive rank change green
+    rankUp: '#16A34A',
+    // #F43F5E — rose accent for bio/question icons
+    rose: '#F43F5E',
+    // #1D4ED8 — blue-700 text for match mutual interests
+    blueText: '#1D4ED8',
+    // #B91C1C — critical red (getting started level)
+    criticalRed: '#B91C1C',
 
     // ── Toast Backgrounds ────────────────────────────────────
     toast: {
@@ -203,12 +259,4 @@ export const COLORS = {
         medium: 'rgba(0, 0, 0, 0.50)',
         heavy: 'rgba(0, 0, 0, 0.65)',
     },
-};
-
-export const SPACING = {
-    xs: 4,
-    sm: 8,
-    md: 16,
-    lg: 24,
-    xl: 32,
 };

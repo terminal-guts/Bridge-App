@@ -13,7 +13,9 @@ import { UserProfile, Match } from '../../types';
 import { valueIconName, interestIconName } from '../../utils/emojiMaps';
 import { EvaIcon } from '../../components/icons';
 import { WineGlassIcon, LeafIcon, CigaretteIcon, PillIcon } from '../../components/icons/Icons';
-import { formatProfileValue } from '../../utils/formatProfileValue';
+import { formatProfileValue, formatGenderDisplay } from '../../utils/formatProfileValue';
+import { COLORS } from '../../theme/colors';
+import { SHADOWS } from '../../theme/shadows';
 
 const StyledView = styled(View);
 const StyledImage = Image;
@@ -43,7 +45,7 @@ export const ProfileInfoItem: React.FC<ProfileInfoItemProps> = ({
 }) => (
   <StyledView className="flex-row items-center">
     <StyledView className="w-10 h-10 bg-primary-100 rounded-lg items-center justify-center mr-3">
-      {customIcon || <EvaIcon name={icon!} variant="outline" size={20} color="#437FFF" />}
+      {customIcon || <EvaIcon name={icon!} variant="outline" size={20} color={COLORS.primaryAccent} />}
     </StyledView>
     <StyledView className="flex-1">
       <Body className="text-neutral-500 text-xs mb-1">{label}</Body>
@@ -77,7 +79,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
             accessibilityLabel="Edit profile"
             accessibilityRole="button"
           >
-            <EvaIcon name="edit-2" variant="outline" size={18} color="#437FFF" />
+            <EvaIcon name="edit-2" variant="outline" size={18} color={COLORS.primaryAccent} />
           </StyledTouchableOpacity>
         </StyledView>
       }
@@ -154,7 +156,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
             <ProfileInfoItem
               icon="heart"
               label="Interested In"
-              value={profile.interestedInGenders.map(g => g.charAt(0).toUpperCase() + g.slice(1)).join(', ')}
+              value={profile.interestedInGenders.map(g => formatGenderDisplay(g)).join(', ')}
               subtitle={profile.customInterestedIn}
             />
           )}
@@ -211,16 +213,16 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
           {(profile.drinkingFrequency || profile.cannabisFrequency || profile.tobaccoFrequency || profile.otherDrugsFrequency) && (
             <StyledView className="space-y-3">
               {profile.drinkingFrequency && (
-                <ProfileInfoItem customIcon={<WineGlassIcon size={20} color="#437FFF" />} label="Drinking" value={formatProfileValue(profile.drinkingFrequency)} />
+                <ProfileInfoItem customIcon={<WineGlassIcon size={20} color={COLORS.primaryAccent} />} label="Drinking" value={formatProfileValue(profile.drinkingFrequency)} />
               )}
               {profile.cannabisFrequency && (
-                <ProfileInfoItem customIcon={<LeafIcon size={20} color="#437FFF" />} label="Cannabis" value={formatProfileValue(profile.cannabisFrequency)} />
+                <ProfileInfoItem customIcon={<LeafIcon size={20} color={COLORS.primaryAccent} />} label="Cannabis" value={formatProfileValue(profile.cannabisFrequency)} />
               )}
               {profile.tobaccoFrequency && (
-                <ProfileInfoItem customIcon={<CigaretteIcon size={20} color="#437FFF" />} label="Tobacco" value={formatProfileValue(profile.tobaccoFrequency)} />
+                <ProfileInfoItem customIcon={<CigaretteIcon size={20} color={COLORS.primaryAccent} />} label="Tobacco" value={formatProfileValue(profile.tobaccoFrequency)} />
               )}
               {profile.otherDrugsFrequency && (
-                <ProfileInfoItem customIcon={<PillIcon size={20} color="#437FFF" />} label="Other Substances" value={formatProfileValue(profile.otherDrugsFrequency)} />
+                <ProfileInfoItem customIcon={<PillIcon size={20} color={COLORS.primaryAccent} />} label="Other Substances" value={formatProfileValue(profile.otherDrugsFrequency)} />
               )}
             </StyledView>
           )}
@@ -312,7 +314,7 @@ export const PartnerLifestyleSection: React.FC<PartnerLifestyleSectionProps> = (
     <Card className="mb-6">
       <StyledView className="flex-row items-center justify-between mb-3">
         <StyledView className="flex-row items-center flex-1">
-          <EvaIcon name="heart" variant="outline" size={20} color="#7C3AED" />
+          <EvaIcon name="heart" variant="outline" size={20} color={COLORS.purple} />
           <H3 className="ml-2">What I Want in a Partner - Lifestyle</H3>
         </StyledView>
         {onEdit && (
@@ -321,7 +323,7 @@ export const PartnerLifestyleSection: React.FC<PartnerLifestyleSectionProps> = (
             accessibilityLabel="Edit partner lifestyle preferences"
             accessibilityRole="button"
           >
-            <EvaIcon name="edit-2" variant="outline" size={18} color="#7C3AED" />
+            <EvaIcon name="edit-2" variant="outline" size={18} color={COLORS.purple} />
           </StyledTouchableOpacity>
         )}
       </StyledView>
@@ -329,7 +331,7 @@ export const PartnerLifestyleSection: React.FC<PartnerLifestyleSectionProps> = (
         {drinking && (
           <StyledView className="flex-row justify-between items-center">
             <StyledView className="flex-row items-center">
-              <WineGlassIcon size={18} color="#7C3AED" />
+              <WineGlassIcon size={18} color={COLORS.purple} />
               <Body className="text-purple-700 ml-2">Drinking</Body>
             </StyledView>
             <Body className="text-purple-900 font-medium">{formatProfileValue(drinking)}</Body>
@@ -338,7 +340,7 @@ export const PartnerLifestyleSection: React.FC<PartnerLifestyleSectionProps> = (
         {cannabis && (
           <StyledView className="flex-row justify-between items-center">
             <StyledView className="flex-row items-center">
-              <LeafIcon size={18} color="#7C3AED" />
+              <LeafIcon size={18} color={COLORS.purple} />
               <Body className="text-purple-700 ml-2">Weed</Body>
             </StyledView>
             <Body className="text-purple-900 font-medium">{formatProfileValue(cannabis)}</Body>
@@ -347,7 +349,7 @@ export const PartnerLifestyleSection: React.FC<PartnerLifestyleSectionProps> = (
         {tobacco && (
           <StyledView className="flex-row justify-between items-center">
             <StyledView className="flex-row items-center">
-              <CigaretteIcon size={18} color="#7C3AED" />
+              <CigaretteIcon size={18} color={COLORS.purple} />
               <Body className="text-purple-700 ml-2">Tobacco</Body>
             </StyledView>
             <Body className="text-purple-900 font-medium">{formatProfileValue(tobacco)}</Body>
@@ -356,7 +358,7 @@ export const PartnerLifestyleSection: React.FC<PartnerLifestyleSectionProps> = (
         {otherDrugs && (
           <StyledView className="flex-row justify-between items-center">
             <StyledView className="flex-row items-center">
-              <PillIcon size={18} color="#7C3AED" />
+              <PillIcon size={18} color={COLORS.purple} />
               <Body className="text-purple-700 ml-2">Drugs</Body>
             </StyledView>
             <Body className="text-purple-900 font-medium">{formatProfileValue(otherDrugs)}</Body>
@@ -377,7 +379,7 @@ interface LifestyleItemProps {
 const LifestyleItem: React.FC<LifestyleItemProps> = ({ icon, customIcon, label, value }) => (
   <StyledView className="flex-row justify-between items-center">
     <StyledView className="flex-row items-center">
-      {customIcon || <EvaIcon name={icon!} variant="outline" size={18} color="#667085" />}
+      {customIcon || <EvaIcon name={icon!} variant="outline" size={18} color={COLORS.navInactiveIcon} />}
       <Body className="text-neutral-600 ml-2">{label}</Body>
     </StyledView>
     <Body className="text-neutral-900 font-medium">{value}</Body>
@@ -418,14 +420,14 @@ export const LifestyleSection: React.FC<LifestyleSectionProps> = ({ lifestyle })
         )}
         {lifestyle.drinking && (
           <LifestyleItem
-            customIcon={<WineGlassIcon size={18} color="#667085" />}
+            customIcon={<WineGlassIcon size={18} color={COLORS.navInactiveIcon} />}
             label="Drinking"
             value={formatProfileValue(lifestyle.drinking)}
           />
         )}
         {lifestyle.smoking && (
           <LifestyleItem
-            customIcon={<CigaretteIcon size={18} color="#667085" />}
+            customIcon={<CigaretteIcon size={18} color={COLORS.navInactiveIcon} />}
             label="Smoking"
             value={formatProfileValue(lifestyle.smoking)}
           />
@@ -470,7 +472,7 @@ export const PreferencesSection: React.FC<PreferencesSectionProps> = ({ preferen
         <LifestyleItem
           icon="people"
           label="Interested In (Gender)"
-          value={preferences.gender === 'both' ? 'Men & Women' : preferences.gender.charAt(0).toUpperCase() + preferences.gender.slice(1)}
+          value={preferences.gender === 'both' ? 'Men & Women' : formatGenderDisplay(preferences.gender)}
         />
         <LifestyleItem
           icon="heart"
@@ -524,29 +526,31 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({ match, onMatchP
     <StyledTouchableOpacity
       onPress={() => onMatchPress(match)}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`Match with ${matchProfile.firstName}, matched ${matchedDate}`}
     >
-      <Card elevation={1} className="mb-4">
+      <Card shadow="sm" className="mb-4">
         <StyledView className="flex-row items-center justify-between">
           <StyledView className="flex-1">
             <H3 className="mb-1">
               {matchProfile.firstName}
             </H3>
             <StyledView className="flex-row items-center mb-0.5">
-              <EvaIcon name="heart" variant="outline" size={12} color="#10B981" />
+              <EvaIcon name="heart" variant="outline" size={12} color={COLORS.emerald} />
               <Body className="text-neutral-600 text-xs ml-1.5">
                 Matched: {matchedDate}
               </Body>
             </StyledView>
             {unmatchedDate && (
               <StyledView className="flex-row items-center">
-                <EvaIcon name="close-circle" variant="outline" size={12} color="#EF4444" />
+                <EvaIcon name="close-circle" variant="outline" size={12} color={COLORS.error} />
                 <Body className="text-neutral-600 text-xs ml-1.5">
                   Unmatched: {unmatchedDate}
                 </Body>
               </StyledView>
             )}
           </StyledView>
-          <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color="#D0D5DD" />
+          <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color={COLORS.borderDivider} />
         </StyledView>
       </Card>
     </StyledTouchableOpacity>
@@ -577,7 +581,7 @@ interface EmptyStateProps {
  * - Properly centered icon and content
  */
 export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, message }) => (
-  <Card elevation={1} className="bg-gradient-to-br from-neutral-50 to-white">
+  <Card shadow="sm" className="bg-gradient-to-br from-neutral-50 to-white">
     <StyledView className="items-center justify-center py-8 px-4">
       {/* Decorative Background Circles - Centered */}
       <StyledView className="relative mb-4 items-center justify-center">
@@ -587,7 +591,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, message }) 
           <StyledView className="absolute w-16 h-16 bg-white/40 rounded-xl" />
 
           {/* Icon - Properly centered */}
-          <EvaIcon name={icon} variant="outline" size={36} color="#437FFF" style={{ zIndex: 1 }} />
+          <EvaIcon name={icon} variant="outline" size={36} color={COLORS.primaryAccent} style={{ zIndex: 1 }} />
         </StyledView>
       </StyledView>
 
@@ -640,15 +644,8 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
 
   return (
     <Card
-      elevation={3}
+      shadow="xl"
       className="mb-4 bg-gradient-to-r from-blue-50 to-primary-50 border-2 border-primary-200"
-      style={{
-        shadowColor: '#2952CC',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.18,
-        shadowRadius: 12,
-        elevation: 6,
-      }}
     >
       <StyledView className="flex-row items-center justify-between mb-3">
         <StyledView className="flex-row items-center flex-1">
@@ -675,7 +672,7 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
         {/* Age */}
         <StyledView className="flex-row items-center justify-between py-2 border-b border-primary-100/50">
           <StyledView className="flex-row items-center">
-            <EvaIcon name="calendar" variant="outline" size={16} color="#437FFF" />
+            <EvaIcon name="calendar" variant="outline" size={16} color={COLORS.primaryAccent} />
             <Body className="text-neutral-700 text-sm ml-2">Age</Body>
           </StyledView>
           <Body className="text-neutral-900 font-semibold text-sm">
@@ -686,7 +683,7 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
         {/* Ethnicity */}
         <StyledView className="flex-row items-center justify-between py-2 border-b border-primary-100/50">
           <StyledView className="flex-row items-center">
-            <EvaIcon name="globe" variant="outline" size={16} color="#437FFF" />
+            <EvaIcon name="globe" variant="outline" size={16} color={COLORS.primaryAccent} />
             <Body className="text-neutral-700 text-sm ml-2">Ethnicity</Body>
           </StyledView>
           <Body className="text-neutral-900 font-semibold text-sm" numberOfLines={1}>
@@ -744,15 +741,8 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
 }) => {
   return (
     <Card
-      elevation={3}
+      shadow="xl"
       className="mb-4 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200"
-      style={{
-        shadowColor: '#7C3AED',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.18,
-        shadowRadius: 12,
-        elevation: 6,
-      }}
     >
       <StyledView className="flex-row items-center justify-between mb-3">
         <StyledView className="flex-row items-center flex-1">
@@ -778,7 +768,7 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
         {/* Looking For */}
         <StyledView className="flex-row items-center justify-between py-2 border-b border-purple-100/50">
           <StyledView className="flex-row items-center">
-            <EvaIcon name="search" variant="outline" size={16} color="#7C3AED" />
+            <EvaIcon name="search" variant="outline" size={16} color={COLORS.purple} />
             <Body className="text-neutral-700 text-sm ml-2">Looking For</Body>
           </StyledView>
           <Body className="text-neutral-900 font-semibold text-sm">
@@ -789,7 +779,7 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
         {/* Height Preference */}
         <StyledView className="flex-row items-center justify-between py-2 border-b border-purple-100/50">
           <StyledView className="flex-row items-center">
-            <EvaIcon name="arrow-upward" variant="outline" size={16} color="#7C3AED" />
+            <EvaIcon name="arrow-upward" variant="outline" size={16} color={COLORS.purple} />
             <Body className="text-neutral-700 text-sm ml-2">Height</Body>
           </StyledView>
           <Body className="text-neutral-900 font-semibold text-sm">
@@ -802,7 +792,7 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
         {/* Preferred Politics */}
         <StyledView className="flex-row items-center justify-between py-2">
           <StyledView className="flex-row items-center">
-            <EvaIcon name="compass" variant="outline" size={16} color="#7C3AED" />
+            <EvaIcon name="compass" variant="outline" size={16} color={COLORS.purple} />
             <Body className="text-neutral-700 text-sm ml-2">Preferred Politics</Body>
           </StyledView>
           <Body className="text-neutral-900 font-semibold text-sm" numberOfLines={1}>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { FONTS } from '../../constants/typography';
+import { SHADOWS } from '../../theme/shadows';
 
 // ── DEV STATE TOGGLE — DELETE THIS FILE WHEN DONE ───────────────────────────
 const SAUL_ID = 'b853df7d-19db-4212-8fdf-8696bc72a167';
@@ -131,8 +132,7 @@ const s = StyleSheet.create({
   fab: {
     backgroundColor: 'rgba(37, 99, 235, 0.9)', borderRadius: 20,
     paddingHorizontal: 12, paddingVertical: 7,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18, shadowRadius: 6, elevation: 8,
+    ...SHADOWS.lg,
   },
   fabText: { color: '#FFF', fontSize: 12, fontWeight: '700', fontFamily: FONTS.bold, letterSpacing: 0.8 },
   menu: { flexDirection: 'column', gap: 6, alignItems: 'flex-end' },

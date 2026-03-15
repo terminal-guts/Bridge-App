@@ -1,18 +1,22 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
+  ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
+import { SHADOWS } from '../../theme/shadows';
 import { calculateProfileStrengthBreakdown } from '../../utils/profileCompleteness';
 import { UserProfile } from '../../types';
 
@@ -28,19 +32,32 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 interface MatchPoolLockedViewProps {
   profile: UserProfile | null;
   onNavigateToSection: (section: string) => void;
+  onRingPress?: () => void;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
 export const MatchPoolLockedView: React.FC<MatchPoolLockedViewProps> = ({
   profile,
   onNavigateToSection,
+  onRingPress,
+  onRefresh,
+  refreshing,
 }) => {
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
-  // ── DEV: Photo alignment controls (temporary) ──────────────────────────
-  const [posX, setPosX] = useState(50); // percentage 0-100 (left-right)
-  const [posY, setPosY] = useState(20); // percentage 0-100 (top-bottom)
-  const contentPosition = { top: `${posY}%`, left: `${posX}%` };
+  // Photo crop position — tuned via dev overlay, now hardcoded
+  const contentPosition = { top: '20%', left: '50%' };
+
+  // Gender-based image selection (case-insensitive)
+  const mockImage = useMemo(() => {
+    const interested = (profile?.interestedInGenders ?? []).map(g => g.toLowerCase());
+    if (interested.includes('male') && !interested.includes('female')) {
+      return MALE_IMAGE;
+    }
+    return FEMALE_IMAGE;
+  }, [profile?.interestedInGenders]);
 
   const breakdown = useMemo(
     () => calculateProfileStrengthBreakdown(profile),
@@ -51,14 +68,34 @@ export const MatchPoolLockedView: React.FC<MatchPoolLockedViewProps> = ({
   const strokeDashoffset =
     CIRCUMFERENCE - (CIRCUMFERENCE * overallPercentage) / 100;
 
-  // Select mock image based on interestedInGenders
-  const backgroundImage = useMemo(() => {
-    const prefs = (profile?.interestedInGenders ?? []).map(g => g.toLowerCase());
-    if (prefs.includes('male') && !prefs.includes('female')) {
-      return MALE_IMAGE;
+  // Dynamic headline based on profile completeness
+  // Priority order matches CTA: Photos → About Me → Match Preferences → Questions
+  const headline = useMemo(() => {
+    const { sections } = breakdown;
+    const pct = breakdown.overall;
+
+    if (pct >= 90 && pct <= 99) {
+      if (sections.photos.percentage < 100) {
+        return 'Almost there —\nadd your photos';
+      }
+      if (sections.aboutMe.percentage < 100) {
+        return 'Almost there — finish\nyour About Me';
+      }
+      if (sections.matchPreferences.percentage < 100) {
+        return 'Almost there — set your\nmatch preferences';
+      }
+      if (sections.deepQuestions.percentage < 100) {
+        return 'Almost there — just\nanswer a few questions';
+      }
+      return 'Almost there — just a\nfew more details';
     }
-    return FEMALE_IMAGE;
-  }, [profile?.interestedInGenders]);
+
+    if (pct >= 60) {
+      return "Keep going — you're building\na great profile";
+    }
+
+    return 'Complete your profile\nto get matched';
+  }, [breakdown]);
 
   // Smart CTA: first incomplete section
   const cta = useMemo(() => {
@@ -74,6 +111,26 @@ export const MatchPoolLockedView: React.FC<MatchPoolLockedViewProps> = ({
     return { label: 'Complete Profile', section: 'About Me' };
   }, [breakdown]);
 
+  // Entrance animation
+  const animOpacity = useSharedValue(0);
+  const animScale = useSharedValue(0.95);
+
+  useEffect(() => {
+    animOpacity.value = withTiming(1, {
+      duration: 400,
+      easing: Easing.out(Easing.cubic),
+    });
+    animScale.value = withTiming(1, {
+      duration: 400,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, []);
+
+  const overlayAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: animOpacity.value,
+    transform: [{ scale: animScale.value }],
+  }));
+
   // Card sizing — mirrors MatchesScreen layout exactly
   const headerPad = Math.round(windowHeight * 0.011);
   const scrollMargin = Math.round(windowHeight * 0.009);
@@ -82,7 +139,7 @@ export const MatchPoolLockedView: React.FC<MatchPoolLockedViewProps> = ({
   const headerTotal = headerPad + 38 + 8 + scrollMargin;
   const cardHeight = windowHeight - insets.top - headerTotal - tabBarH - cardMB;
 
-  return (
+  const content = (
     <View style={styles.container}>
       {/* Header — matches real MatchesScreen header */}
       <View style={[styles.header, { paddingTop: headerPad }]}>
@@ -95,7 +152,7 @@ export const MatchPoolLockedView: React.FC<MatchPoolLockedViewProps> = ({
         <View style={styles.mockCard}>
           {/* Photo background — contentPosition centers the face in the crop */}
           <Image
-            source={backgroundImage}
+            source={mockImage}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             contentPosition={contentPosition}
@@ -149,9 +206,9 @@ export const MatchPoolLockedView: React.FC<MatchPoolLockedViewProps> = ({
             <View style={styles.mockEndorserRow}>
               <Text style={styles.mockEndorserLabel}>Picked by</Text>
               <View style={styles.mockAvatarStack}>
-                <View style={[styles.mockAvatar, { zIndex: 3, backgroundColor: '#7C3AED' }]} />
-                <View style={[styles.mockAvatar, { zIndex: 2, marginLeft: -8, backgroundColor: '#3B82F6' }]} />
-                <View style={[styles.mockAvatar, { zIndex: 1, marginLeft: -8, backgroundColor: '#10B981' }]} />
+                <View style={[styles.mockAvatar, { zIndex: 3, backgroundColor: COLORS.purple }]} />
+                <View style={[styles.mockAvatar, { zIndex: 2, marginLeft: -8, backgroundColor: COLORS.tier1.icon }]} />
+                <View style={[styles.mockAvatar, { zIndex: 1, marginLeft: -8, backgroundColor: COLORS.emerald }]} />
               </View>
             </View>
           </View>
@@ -172,10 +229,17 @@ export const MatchPoolLockedView: React.FC<MatchPoolLockedViewProps> = ({
         {/* Dark tint over blur for contrast */}
         <View style={styles.blurTint} />
 
-        {/* Overlay content — centered on the card */}
-        <View style={styles.overlayContent}>
-          {/* Progress ring */}
-          <View style={styles.ringContainer}>
+        {/* Overlay content — centered on the card, with entrance animation */}
+        <Animated.View style={[styles.overlayContent, overlayAnimatedStyle]}>
+          {/* Progress ring — tappable to navigate to Profile */}
+          <TouchableOpacity
+            style={styles.ringContainer}
+            activeOpacity={onRingPress ? 0.7 : 1}
+            onPress={onRingPress}
+            disabled={!onRingPress}
+            accessibilityRole="button"
+            accessibilityLabel={`Profile ${Math.round(overallPercentage)}% complete`}
+          >
             <Svg width={RING_SIZE} height={RING_SIZE}>
               <Circle
                 cx={RING_SIZE / 2}
@@ -189,7 +253,7 @@ export const MatchPoolLockedView: React.FC<MatchPoolLockedViewProps> = ({
                 cx={RING_SIZE / 2}
                 cy={RING_SIZE / 2}
                 r={RADIUS}
-                stroke="#437FFF"
+                stroke={COLORS.primaryAccent}
                 strokeWidth={STROKE_WIDTH}
                 fill="none"
                 strokeDasharray={CIRCUMFERENCE}
@@ -202,87 +266,48 @@ export const MatchPoolLockedView: React.FC<MatchPoolLockedViewProps> = ({
             <View style={styles.ringTextContainer}>
               <Text style={styles.ringText}>{Math.round(overallPercentage)}%</Text>
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* Headline */}
-          <Text style={styles.headline}>
-            Complete your profile{'\n'}to get matched
-          </Text>
+          <Text style={styles.headline}>{headline}</Text>
 
           {/* CTA button */}
           <TouchableOpacity
             style={styles.ctaButton}
             activeOpacity={0.85}
             onPress={() => onNavigateToSection(cta.section)}
+            accessibilityRole="button"
+            accessibilityLabel={cta.label}
           >
             <Text style={styles.ctaText}>{cta.label}</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </View>
 
-      {/* ── DEV: Photo alignment overlay (TEMPORARY — remove after alignment) ── */}
-      {__DEV__ && (
-        <View style={devStyles.container}>
-          <View style={devStyles.panel}>
-            <Text style={devStyles.label}>Position: X={posX}%  Y={posY}%</Text>
-            <View style={devStyles.row}>
-              <TouchableOpacity style={devStyles.btn} onPress={() => setPosX(p => Math.max(0, p - 5))}>
-                <Text style={devStyles.btnText}>{'<'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={devStyles.btn} onPress={() => setPosY(p => Math.max(0, p - 5))}>
-                <Text style={devStyles.btnText}>UP</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={devStyles.btn} onPress={() => setPosY(p => Math.min(100, p + 5))}>
-                <Text style={devStyles.btnText}>DN</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={devStyles.btn} onPress={() => setPosX(p => Math.min(100, p + 5))}>
-                <Text style={devStyles.btnText}>{'>'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
     </View>
   );
+
+  // Wrap in ScrollView with pull-to-refresh if onRefresh is provided
+  if (onRefresh) {
+    return (
+      <ScrollView
+        contentContainerStyle={{ flex: 1 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing ?? false}
+            onRefresh={onRefresh}
+            tintColor={COLORS.primaryAccent}
+          />
+        }
+      >
+        {content}
+      </ScrollView>
+    );
+  }
+
+  return content;
 };
 
-const devStyles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  panel: {
-    backgroundColor: '#000',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  label: {
-    color: '#FFF',
-    fontFamily: FONTS.bold,
-    fontSize: 13,
-    marginBottom: 6,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  btn: {
-    width: 50,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#437FFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontFamily: FONTS.bold,
-  },
-});
 
 const styles = StyleSheet.create({
   container: {
@@ -327,7 +352,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 3,
-    backgroundColor: '#34C759',
+    backgroundColor: COLORS.success,
     zIndex: 10,
   },
   mockBadge: {
@@ -346,7 +371,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.bold,
     fontSize: FONT_SIZES.base,
     lineHeight: 18,
-    color: '#FFFFFF',
+    color: COLORS.card,
   },
   mockBottom: {
     position: 'absolute',
@@ -367,13 +392,13 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.md,
     lineHeight: 17,
-    color: '#FFFFFF',
+    color: COLORS.card,
   },
   mockName: {
     fontFamily: FONTS.extraBold,
     fontSize: FONT_SIZES['6xl'],
     lineHeight: 36,
-    color: '#FFFFFF',
+    color: COLORS.card,
     letterSpacing: -0.8,
   },
   mockEndorserRow: {
@@ -416,7 +441,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 8,
     borderTopWidth: 6,
     borderBottomWidth: 6,
-    borderLeftColor: '#FFFFFF',
+    borderLeftColor: COLORS.card,
     borderTopColor: 'transparent',
     borderBottomColor: 'transparent',
     marginLeft: 3,
@@ -450,35 +475,31 @@ const styles = StyleSheet.create({
   ringText: {
     fontFamily: FONTS.bold,
     fontSize: 22,
-    color: '#FFFFFF',
+    color: COLORS.card,
   },
 
   // ── Text + CTA ──────────────────────────────────────────────────
   headline: {
     fontFamily: FONTS.bold,
     fontSize: 22,
-    color: '#FFFFFF',
+    color: COLORS.card,
     textAlign: 'center',
     marginTop: 16,
     lineHeight: 28,
     letterSpacing: -0.3,
   },
   ctaButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.card,
     paddingVertical: 14,
     paddingHorizontal: 32,
     borderRadius: 9999,
     marginTop: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 6,
+    ...SHADOWS.xl,
   },
   ctaText: {
     fontFamily: FONTS.bold,
     fontSize: 16,
-    color: '#437FFF',
+    color: COLORS.primaryAccent,
   },
 });
 

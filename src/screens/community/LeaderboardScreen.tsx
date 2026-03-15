@@ -3,7 +3,6 @@ import {
   View,
   TouchableOpacity,
   FlatList,
-  StyleSheet,
   Text,
   Alert,
   ActivityIndicator,
@@ -17,9 +16,7 @@ import { StaggerItem } from '../../hooks/useStaggeredList';
 import { RootStackParamList } from '../../types';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
-import { SHADOWS } from '../../theme/shadows';
 import { ScreenWrapper } from '../../components/ui';
 import { getCentralOffsetHours } from '../../utils/centralTime';
 import {
@@ -27,6 +24,10 @@ import {
   LeaderboardEntry,
   LeaderboardCurrentUser,
 } from '../../services/leaderboardService';
+
+// Extracted
+import { s } from './LeaderboardScreen.styles';
+import { KarmaPill, FriendBadge, InitialAvatar, RankChangeArrow } from './LeaderboardScreen.components';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -73,78 +74,6 @@ const toLeaderboardUser = (
   isFriend: entry.isFriend,
   isAnonymous: isCurrentUser ? false : (entry.isAnonymous ?? false),
 });
-
-
-const INITIAL_COLORS = ['#437FFF', '#34C759', '#FF9500', '#AF52DE', '#FF3B30', '#5AC8FA', '#FF2D55', '#667085'];
-const getInitialColor = (name: string): string => {
-  const code = name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  return INITIAL_COLORS[code % INITIAL_COLORS.length];
-};
-
-// ─── Karma Pill ──────────────────────────────────────────────────────────────
-
-const KarmaPill = ({ karma, size = 'medium' }: { karma: number; size?: 'small' | 'medium' | 'large' }) => {
-  const fontSize = size === 'large' ? FONT_SIZES.xl : size === 'medium' ? FONT_SIZES.base : FONT_SIZES.md;
-  const iconSize = size === 'large' ? 15 : size === 'medium' ? 13 : 12;
-  const paddingV = size === 'large' ? 6 : 4;
-  const paddingH = size === 'large' ? 14 : size === 'medium' ? 12 : 10;
-  return (
-    <View style={[s.karmaPillShadow, size === 'large' && s.karmaPillShadowLarge]}>
-      <View style={[s.karmaPill, { paddingVertical: paddingV, paddingHorizontal: paddingH }]}>
-        <EvaIcon name="star" variant="outline" size={iconSize} color="#34C759" style={{ marginRight: 4 }} />
-        <Text style={[s.karmaPillText, { fontSize }]}>{karma} pts</Text>
-      </View>
-    </View>
-  );
-};
-
-// ─── Friend Badge ────────────────────────────────────────────────────────────
-
-const FriendBadge = () => (
-  <View style={s.friendBadge}>
-    <EvaIcon name="people" variant="outline" size={12} color="#FFFFFF" />
-  </View>
-);
-
-// ─── Initial Avatar ──────────────────────────────────────────────────────────
-
-const InitialAvatar = ({ name, size, isAnonymous }: { name: string; size: number; isAnonymous?: boolean }) => {
-  const bg = isAnonymous ? '#D0D5DD' : getInitialColor(name);
-  const fontSize = size * 0.42;
-  if (isAnonymous) {
-    return (
-      <View style={[s.initialAvatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }]}>
-        <EvaIcon name="eye-off" variant="outline" size={fontSize} color="#FFFFFF" />
-      </View>
-    );
-  }
-  const initial = (name && name !== 'You' ? name[0] : '?').toUpperCase();
-  return (
-    <View style={[s.initialAvatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }]}>
-      <Text style={[s.initialAvatarText, { fontSize }]}>{initial}</Text>
-    </View>
-  );
-};
-
-// ─── Rank Change Arrow ───────────────────────────────────────────────────────
-
-const RankChangeArrow = ({ change }: { change: number }) => {
-  if (change === 0) return null;
-  const isUp = change > 0;
-  return (
-    <View style={[s.rankChangeWrap, isUp ? s.rankChangeUp : s.rankChangeDown]}>
-      <EvaIcon
-        name={isUp ? 'arrow-upward' : 'arrow-downward'}
-        variant="outline"
-        size={12}
-        color={isUp ? '#16A34A' : '#DC2626'}
-      />
-      <Text style={[s.rankChangeText, { color: isUp ? '#16A34A' : '#DC2626' }]}>
-        {Math.abs(change)}
-      </Text>
-    </View>
-  );
-};
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -298,13 +227,13 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
 
   const renderHeader = (showInfo = false) => (
     <View style={s.header}>
-      <TouchableOpacity onPress={handleBack} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-        <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
+      <TouchableOpacity onPress={handleBack} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityRole="button" accessibilityLabel="Go back">
+        <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.textDarkHeading} />
       </TouchableOpacity>
-      <Text style={s.headerTitle}>Leaderboard</Text>
+      <Text style={s.headerTitle} accessibilityRole="header">Leaderboard</Text>
       {showInfo ? (
-        <TouchableOpacity onPress={handleInfo} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <EvaIcon name="info" variant="outline" size={24} color="#667085" />
+        <TouchableOpacity onPress={handleInfo} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityRole="button" accessibilityLabel="Leaderboard info">
+          <EvaIcon name="info" variant="outline" size={24} color={COLORS.navInactiveIcon} />
         </TouchableOpacity>
       ) : (
         <View style={{ width: 24 }} />
@@ -328,10 +257,10 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
       <ScreenWrapper>
         {renderHeader()}
         <View style={s.emptyState}>
-          <EvaIcon name="wifi-off" variant="outline" size={64} color="#D0D5DD" />
+          <EvaIcon name="wifi-off" variant="outline" size={64} color={COLORS.borderDivider} />
           <Text style={s.emptyTitle}>Something went wrong</Text>
           <Text style={s.emptyBody}>{error}</Text>
-          <TouchableOpacity style={s.retryBtn} onPress={handleRetry}>
+          <TouchableOpacity style={s.retryBtn} onPress={handleRetry} accessibilityRole="button" accessibilityLabel="Try again">
             <Text style={s.retryBtnText}>Try Again</Text>
           </TouchableOpacity>
         </View>
@@ -344,7 +273,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
       <ScreenWrapper>
         {renderHeader()}
         <View style={s.emptyState}>
-          <EvaIcon name="award" variant="outline" size={64} color="#D0D5DD" />
+          <EvaIcon name="award" variant="outline" size={64} color={COLORS.borderDivider} />
           <Text style={s.emptyTitle}>No Rankings Yet</Text>
           <Text style={s.emptyBody}>Be the first to earn karma and climb the leaderboard!</Text>
         </View>
@@ -379,7 +308,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
 
         {/* Countdown */}
         <View style={s.countdownRow}>
-          <EvaIcon name="clock" variant="outline" size={14} color="#667085" />
+          <EvaIcon name="clock" variant="outline" size={14} color={COLORS.navInactiveIcon} />
           <Text style={s.countdownText}>
             Resets in {countdown.days}d {countdown.hours}h {countdown.minutes}m
           </Text>
@@ -419,7 +348,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
                   {/* 1st place */}
                   <View style={s.podiumCenter}>
                     <View style={s.crownIconWrap}>
-                      <IconScoutIcon name="torch-5303281" size={36} />
+                      <IconScoutIcon name="olympic-5303267" size={36} />
                     </View>
                     <View style={s.avatarWrapperLarge}>
                       <View style={[s.avatarRing, s.avatarRingGold]}>
@@ -506,7 +435,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
               {currentUser!.avatarUrl ? (
                 <Image source={{ uri: currentUser!.avatarUrl }} style={s.stickyAvatar} />
               ) : (
-                <View style={{ marginRight: 10 }}>
+                <View style={{ marginRight: 12 }}>
                   <InitialAvatar name={currentUser!.firstName} size={36} />
                 </View>
               )}
@@ -526,411 +455,3 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
     </ScreenWrapper>
   );
 };
-
-// ─── Styles ──────────────────────────────────────────────────────────────────
-
-const s = StyleSheet.create({
-  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-  },
-  headerTitle: {
-    fontFamily: FONTS.bold,
-    fontSize: FONT_SIZES['5xl'],
-    color: '#101828',
-  },
-
-  // Layer 2 — Banner (floating)
-  bannerShadow: {
-    paddingHorizontal: 20,
-    marginBottom: 6,
-    ...SHADOWS.accentBlue,
-  },
-  banner: {
-    borderRadius: 999,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(67, 127, 255, 0.12)',
-  },
-  bannerText: {
-    fontFamily: FONTS.regular,
-    fontSize: FONT_SIZES.md,
-    color: COLORS.primaryAccent,
-    textAlign: 'center',
-  },
-  bannerBold: {
-    fontFamily: FONTS.bold,
-  },
-
-  // Countdown
-  countdownRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-  },
-  countdownText: {
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.md,
-    color: '#667085',
-  },
-
-  // Layer 6 — Karma pill with shadow
-  karmaPillShadow: {
-    ...SHADOWS.accentGreen,
-  },
-  karmaPillShadowLarge: {
-    shadowOpacity: 0.22,
-    shadowRadius: 6,
-  },
-  karmaPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: COLORS.success,
-    borderRadius: 999,
-    backgroundColor: 'rgba(52, 199, 89, 0.08)',
-  },
-  karmaPillText: {
-    fontFamily: FONTS.semiBold,
-    color: COLORS.success,
-  },
-
-  // Friend badge
-  friendBadge: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: COLORS.primaryAccent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.card,
-    zIndex: 1,
-    ...SHADOWS.accentBlue,
-  },
-
-  // Initial avatar fallback
-  initialAvatar: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  initialAvatarText: {
-    fontFamily: FONTS.bold,
-    color: COLORS.card,
-  },
-
-  // Layer 3 — Podium (hero card)
-  podiumOuter: {
-    marginHorizontal: 16,
-    borderRadius: 24,
-    ...SHADOWS.xl,
-  },
-  podiumGradient: {
-    borderRadius: 24,
-    overflow: 'hidden',
-  },
-  podiumGlassEdge: {
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
-    paddingTop: 24,
-    paddingBottom: 0,
-    overflow: 'hidden',
-  },
-  podiumSection: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  podiumSide: { alignItems: 'center', flex: 1 },
-  podiumCenter: { alignItems: 'center', flex: 1, marginBottom: 8 },
-  crownIconWrap: { alignItems: 'center', marginBottom: 6 },
-
-  // Avatar wrappers
-  avatarWrapperLarge: { position: 'relative', marginBottom: 10 },
-  avatarWrapperMedium: { position: 'relative', marginBottom: 10 },
-  avatarWrapperSmall: { position: 'relative', marginBottom: 10 },
-
-  avatarRing: {
-    borderWidth: 3,
-    borderRadius: 999,
-    padding: 3,
-    backgroundColor: COLORS.card,
-  },
-  avatarRingGold: {
-    borderWidth: 4,
-    padding: 3,
-    borderColor: '#FFD700',
-    ...SHADOWS.accentGold,
-  },
-  avatarRingSilver: {
-    borderColor: '#C0C0C0',
-    ...SHADOWS.accentSilver,
-  },
-  avatarRingBronze: {
-    borderColor: '#CD7F32',
-    ...SHADOWS.accentBronze,
-  },
-
-  avatarLarge: { width: 88, height: 88, borderRadius: 44 },
-  avatarMedium: { width: 72, height: 72, borderRadius: 36 },
-  avatarSmall: { width: 64, height: 64, borderRadius: 32 },
-
-  // Rank badges
-  rankBadge: {
-    position: 'absolute',
-    bottom: -2,
-    left: -2,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.card,
-    ...SHADOWS.sm,
-  },
-  rankBadgeLarge: { width: 30, height: 30, borderRadius: 15 },
-  rankBadgeText: { fontFamily: FONTS.bold, fontSize: FONT_SIZES.sm, color: COLORS.card },
-  rankBadgeTextLarge: { fontSize: FONT_SIZES.base },
-
-  // Podium text
-  podiumName: {
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.base,
-    color: '#101828',
-    maxWidth: 100,
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  podiumNameFirst: {
-    color: COLORS.primaryAccent,
-    fontSize: FONT_SIZES.xl,
-    fontFamily: FONTS.bold,
-  },
-
-  // Layer 4 — How to Earn (inline in podium)
-  howToEarnInline: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 14,
-    marginTop: 4,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(67, 127, 255, 0.12)',
-    gap: 8,
-  },
-  howToEarnItem: {
-    fontFamily: FONTS.regular,
-    fontSize: FONT_SIZES.sm,
-    color: '#667085',
-  },
-  howToEarnBold: {
-    fontFamily: FONTS.semiBold,
-    color: COLORS.primaryAccent,
-  },
-  howToEarnDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: '#D0D5DD',
-  },
-
-  // Layer 5 — List (card-style rows)
-  listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 8,
-    gap: 6,
-  },
-  listCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-    backgroundColor: COLORS.card,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.03)',
-  },
-  listCardHighlighted: {
-    backgroundColor: 'rgba(67, 127, 255, 0.06)',
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.primaryAccent,
-    borderColor: 'rgba(67, 127, 255, 0.15)',
-    shadowColor: COLORS.primaryAccent,
-    shadowOpacity: 0.12,
-  },
-  rankPill: {
-    width: 36,
-    height: 28,
-    borderRadius: 999,
-    backgroundColor: COLORS.backgroundProgressTrack,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  rankPillHighlighted: {
-    backgroundColor: COLORS.primaryAccent,
-    ...SHADOWS.accentBlue,
-  },
-  rankPillText: {
-    fontFamily: FONTS.bold,
-    fontSize: FONT_SIZES.md,
-    color: '#667085',
-  },
-  rankPillTextHighlighted: {
-    color: COLORS.card,
-  },
-
-  // Layer 8 — List avatars with ring shadow
-  listAvatarWrap: {
-    position: 'relative',
-    marginRight: 12,
-    ...SHADOWS.sm,
-  },
-  listAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-  },
-  listNameCol: { flex: 1 },
-  listName: {
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.xl,
-    color: '#101828',
-  },
-  listNameHighlighted: {
-    color: COLORS.primaryAccent,
-    fontFamily: FONTS.bold,
-  },
-  gapText: {
-    fontFamily: FONTS.regular,
-    fontSize: FONT_SIZES.sm,
-    color: '#667085',
-    marginTop: 2,
-  },
-
-  // Layer 7 — Sticky bar (seamless with page gradient)
-  stickyBar: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(0, 0, 0, 0.06)',
-  },
-  stickyBarInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-    ...SHADOWS.md,
-  },
-  stickyRankPill: {
-    backgroundColor: COLORS.primaryAccent,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginRight: 10,
-    ...SHADOWS.accentBlue,
-  },
-  stickyRankText: {
-    fontFamily: FONTS.bold,
-    fontSize: FONT_SIZES.md,
-    color: COLORS.card,
-  },
-  stickyAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    marginRight: 10,
-  },
-  stickyNameCol: { flex: 1 },
-  stickyName: {
-    fontFamily: FONTS.bold,
-    fontSize: FONT_SIZES.lg,
-    color: COLORS.primaryAccent,
-  },
-  stickyGapText: {
-    fontFamily: FONTS.regular,
-    fontSize: FONT_SIZES.xs,
-    color: '#667085',
-    marginTop: 1,
-  },
-
-  // Empty / Error
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyTitle: {
-    fontFamily: FONTS.bold,
-    fontSize: FONT_SIZES['3xl'],
-    color: '#101828',
-    marginTop: 16,
-  },
-  emptyBody: {
-    fontFamily: FONTS.regular,
-    fontSize: FONT_SIZES.lg,
-    color: '#667085',
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  retryBtn: {
-    marginTop: 20,
-    backgroundColor: COLORS.primaryAccent,
-    borderRadius: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    ...SHADOWS.accentBlue,
-  },
-  retryBtnText: {
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.lg,
-    color: COLORS.card,
-  },
-
-  // Rank change arrows
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  rankChangeWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 1,
-  },
-  rankChangeUp: {},
-  rankChangeDown: {},
-  rankChangeText: {
-    fontFamily: FONTS.semiBold,
-    fontSize: 10,
-    lineHeight: 12,
-  },
-
-});
