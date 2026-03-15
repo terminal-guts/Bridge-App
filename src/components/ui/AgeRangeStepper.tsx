@@ -13,7 +13,7 @@ interface AgeRangeStepperProps {
   onMaxChange: (value: number) => void;
 }
 
-const StepButton = ({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) => (
+const StepButton = ({ label, onPress, disabled, accessibilityLabel }: { label: string; onPress: () => void; disabled?: boolean; accessibilityLabel: string }) => (
   <TouchableOpacity
     onPress={() => { lightHaptic(); onPress(); }}
     disabled={disabled}
@@ -23,6 +23,9 @@ const StepButton = ({ label, onPress, disabled }: { label: string; onPress: () =
       s.stepBtn,
       disabled ? s.stepBtnOff : s.stepBtnOn,
     ]}
+    accessibilityRole="button"
+    accessibilityLabel={accessibilityLabel}
+    accessibilityState={{ disabled: !!disabled }}
   >
     <Text
       style={[
@@ -46,13 +49,13 @@ export const AgeRangeStepper: React.FC<AgeRangeStepperProps> = ({
   <View style={s.root}>
     {/* Min group */}
     <View style={s.group}>
-      <Text style={s.label}>Min</Text>
+      <Text style={s.label} accessibilityRole="header">Min</Text>
       <View style={s.controls}>
-        <StepButton label="−" onPress={() => onMinChange(min - 1)} disabled={min <= floor} />
-        <View style={s.valueBox}>
+        <StepButton label="−" onPress={() => onMinChange(min - 1)} disabled={min <= floor} accessibilityLabel={`Decrease minimum age, currently ${min}`} />
+        <View style={s.valueBox} accessibilityRole="text" accessibilityLabel={`Minimum age ${min}`}>
           <Text style={s.valueNum}>{min}</Text>
         </View>
-        <StepButton label="+" onPress={() => onMinChange(min + 1)} disabled={min >= max - 1} />
+        <StepButton label="+" onPress={() => onMinChange(min + 1)} disabled={min >= max - 1} accessibilityLabel={`Increase minimum age, currently ${min}`} />
       </View>
     </View>
 
@@ -61,13 +64,13 @@ export const AgeRangeStepper: React.FC<AgeRangeStepperProps> = ({
 
     {/* Max group */}
     <View style={s.group}>
-      <Text style={s.label}>Max</Text>
+      <Text style={s.label} accessibilityRole="header">Max</Text>
       <View style={s.controls}>
-        <StepButton label="−" onPress={() => onMaxChange(max - 1)} disabled={max <= min + 1} />
-        <View style={s.valueBox}>
+        <StepButton label="−" onPress={() => onMaxChange(max - 1)} disabled={max <= min + 1} accessibilityLabel={`Decrease maximum age, currently ${max}`} />
+        <View style={s.valueBox} accessibilityRole="text" accessibilityLabel={`Maximum age ${max}`}>
           <Text style={s.valueNum}>{max}</Text>
         </View>
-        <StepButton label="+" onPress={() => onMaxChange(max + 1)} disabled={max >= ceiling} />
+        <StepButton label="+" onPress={() => onMaxChange(max + 1)} disabled={max >= ceiling} accessibilityLabel={`Increase maximum age, currently ${max}`} />
       </View>
     </View>
   </View>

@@ -74,7 +74,7 @@ export const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
   };
 
   return (
-    <Card elevation={elevation} variant={variant} className={`mb-4 ${className}`}>
+    <Card elevation={elevation} variant={variant} className={`mb-4 ${className}`} animateDepth>
       {/* Header */}
       <StyledTouchableOpacity
         onPress={handleToggle}
@@ -87,13 +87,7 @@ export const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
           <StyledView className="flex-row items-center flex-1">
             {icon && <StyledView className="mr-3">{icon}</StyledView>}
             <StyledView className="flex-1">
-              {typeof title === 'string' ? (
-                <StyledView>
-                  {title}
-                </StyledView>
-              ) : (
-                title
-              )}
+              {title}
             </StyledView>
           </StyledView>
 

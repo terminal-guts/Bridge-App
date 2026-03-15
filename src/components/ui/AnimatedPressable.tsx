@@ -55,6 +55,7 @@ interface AnimatedPressableProps {
   depthLevel?: ShadowKey;
   accessibilityRole?: AccessibilityRole;
   accessibilityLabel?: string;
+  accessibilityHint?: string;
   accessibilityState?: AccessibilityState;
   hitSlop?: number | { top?: number; bottom?: number; left?: number; right?: number };
 }
@@ -72,6 +73,7 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
   depthLevel,
   accessibilityRole,
   accessibilityLabel,
+  accessibilityHint,
   accessibilityState,
   hitSlop,
 }) => {
@@ -161,6 +163,7 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
         accessible
         accessibilityRole={accessibilityRole || 'button'}
         accessibilityLabel={accessibilityLabel}
+        accessibilityHint={accessibilityHint}
         accessibilityState={{ ...accessibilityState, disabled }}
         hitSlop={hitSlop}
       >

@@ -17,6 +17,7 @@ interface AvatarProps {
   className?: string;
   rounded?: 'full' | 'lg' | '2xl';
   blurRadius?: number;
+  accessibilityLabel?: string;
 }
 
 export const Avatar: React.FC<AvatarProps> = ({
@@ -25,6 +26,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   className = '',
   rounded = '2xl',
   blurRadius,
+  accessibilityLabel = 'Profile photo',
 }) => {
   const [hasError, setHasError] = useState(false);
   const optimizedUri = useMemo(() => getOptimizedImageUrl(uri, size), [uri, size]);
@@ -41,6 +43,8 @@ export const Avatar: React.FC<AvatarProps> = ({
       <StyledView
         className={`bg-neutral-200 items-center justify-center ${roundedClass} ${className}`}
         style={{ width: size, height: size }}
+        accessibilityRole="image"
+        accessibilityLabel={accessibilityLabel}
       >
         <EvaIcon name="person" variant="outline" size={size} color="#A3A3A3" />
       </StyledView>
@@ -57,6 +61,8 @@ export const Avatar: React.FC<AvatarProps> = ({
       transition={200}
       cachePolicy="disk"
       recyclingKey={uri}
+      accessibilityRole="image"
+      accessibilityLabel={accessibilityLabel}
       onError={(e) => {
         logger.warn('Failed to load image:', uri);
         setHasError(true);

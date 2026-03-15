@@ -35,6 +35,8 @@ interface CardProps {
   style?: ViewStyle;
   /** Enable animated depth on press (shadow sinks on press-in, lifts on release) */
   animateDepth?: boolean;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 const StyledView = styled(View);
@@ -74,6 +76,8 @@ export const Card: React.FC<CardProps> = ({
   variant = 'default',
   style,
   animateDepth = false,
+  accessibilityLabel,
+  accessibilityHint,
 }) => {
   const baseStyles = 'bg-neutral-50 rounded-lg p-4';
   const shadowStyle = getShadowStyle(shadow, elevation);
@@ -139,6 +143,9 @@ export const Card: React.FC<CardProps> = ({
         depthLevel={shadowKey}
         className={`${baseStyles} ${className}`}
         style={combinedStyle as unknown as ViewStyle}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        accessibilityHint={accessibilityHint}
       >
         {renderContent()}
       </AnimatedPressable>

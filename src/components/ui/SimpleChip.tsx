@@ -24,6 +24,9 @@ const SimpleChipComponent: React.FC<SimpleChipProps> = ({ label, selected, onPre
           ? 'bg-primary-500 border-primary-500'
           : 'bg-white border-neutral-300'
       }`}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
     >
       <StyledText
         className={`text-sm ${selected ? 'text-white font-medium' : 'text-neutral-700'}`}
