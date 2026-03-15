@@ -1,5 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { View, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, ScrollView, SafeAreaView, TouchableOpacity, Linking } from 'react-native';
 import { styled } from 'nativewind';
 import { H2, Body, Button } from '.';
 import { createLogger } from '../../utils/secureLogger';
@@ -134,8 +134,13 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               {/* Secondary Actions */}
               <TouchableOpacity
                 onPress={() => {
-                  // TODO: Navigate to help/support screen or open support email
-                  logger.info('Contact support');
+                  const subject = encodeURIComponent('Bridge App — Error Report');
+                  const body = encodeURIComponent(
+                    `Hi Bridge team,\n\nI encountered an error in the app.\n\nError: ${this.state.error?.message ?? 'Unknown'}\n\nPlease help!`
+                  );
+                  Linking.openURL(`mailto:bridge.date.app@gmail.com?subject=${subject}&body=${body}`).catch(() => {
+                    logger.warn('Unable to open mail client');
+                  });
                 }}
                 activeOpacity={0.7}
                 className="py-2"
