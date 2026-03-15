@@ -11,14 +11,11 @@ import { ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 
 import { RootStackParamList } from '../../types';
-import { Proposal, UserProfile } from '../../types/community';
+import { Proposal } from '../../types/community';
 import { ProposalReviewView, DeepQuestionData } from '../../components/community/proposal/ProposalReviewView';
 import { communityService } from '../../services/communityServiceIndex';
-import { supabase } from '../../lib/supabase';
-import { transformBackendProposal } from '../../services/proposalApiService';
-import { mapProfileRow, resolveProfilePhotos } from '../../services/communityBackendService';
+import { getFriendActiveProposal, DeepQuestionData as DQData } from '../../services/friendProposalService';
 import { createLogger } from '../../utils/secureLogger';
-import { getQuestionById } from '../../utils/deepQuestions';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { ScreenWrapper } from '../../components/ui';
@@ -37,7 +34,7 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch the friend's active proposal from the DB
+  // Fetch the friend's active proposal from the service
   useEffect(() => {
     let cancelled = false;
 
@@ -46,123 +43,16 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
         setLoading(true);
         setError(null);
 
-        // Find the friend's active proposal (they could be user_a or user_b)
-        // Fire both queries in parallel to avoid sequential waterfall
-        const [{ data: proposalA }, { data: proposalB }] = await Promise.all([
-          supabase
-            .from('proposals')
-            .select('*')
-            .eq('user_a_id', friendId)
-            .eq('status', 'pending')
-            .maybeSingle(),
-          supabase
-            .from('proposals')
-            .select('*')
-            .eq('user_b_id', friendId)
-            .eq('status', 'pending')
-            .maybeSingle(),
-        ]);
-
-        const rawProposal = proposalA || proposalB;
+        const result = await getFriendActiveProposal(friendId, friendName);
 
         if (cancelled) return;
 
-        if (!rawProposal) {
-          setError(`${friendName} doesn't have an active proposal right now.`);
-          setLoading(false);
-          return;
+        if ('error' in result) {
+          setError(result.error);
+        } else {
+          setProposal(result.proposal);
+          setDeepQuestions(result.deepQuestions);
         }
-
-        // Fetch both user profiles for the proposal
-        const [{ data: profileA }, { data: profileB }] = await Promise.all([
-          supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('user_id', rawProposal.user_a_id)
-            .maybeSingle(),
-          supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('user_id', rawProposal.user_b_id)
-            .maybeSingle(),
-        ]);
-
-        if (cancelled) return;
-
-        const transformed = transformBackendProposal(rawProposal);
-
-        const userA: UserProfile = profileA
-          ? mapProfileRow(profileA)
-          : { id: rawProposal.user_a_id, firstName: 'User A', photos: [] } as any;
-
-        const userB: UserProfile = profileB
-          ? mapProfileRow(profileB)
-          : { id: rawProposal.user_b_id, firstName: 'User B', photos: [] } as any;
-
-        // Resolve photos + fetch deep questions in parallel
-        const [, dqAResult, dqBResult] = await Promise.all([
-          resolveProfilePhotos([userA, userB]),
-          supabase
-            .from('deep_question_answers')
-            .select('user_id, answers, displayed_question_ids')
-            .eq('user_id', rawProposal.user_a_id)
-            .maybeSingle(),
-          supabase
-            .from('deep_question_answers')
-            .select('user_id, answers, displayed_question_ids')
-            .eq('user_id', rawProposal.user_b_id)
-            .maybeSingle(),
-        ]);
-
-        if (cancelled) return;
-
-        // Build deep questions data — show ALL questions from both users
-        const dqA = dqAResult.data;
-        const dqB = dqBResult.data;
-        const allQuestions: DeepQuestionData[] = [];
-        const answersA = (dqA?.answers || {}) as Record<string, string>;
-        const answersB = (dqB?.answers || {}) as Record<string, string>;
-        const displayedA = new Set((dqA?.displayed_question_ids || []).map(String));
-        const displayedB = new Set((dqB?.displayed_question_ids || []).map(String));
-
-        // Collect all unique question IDs from both users
-        const allQIds = new Set([...Object.keys(answersA), ...Object.keys(answersB)]);
-        const qIdArray = Array.from(allQIds);
-
-        // Sort: shared first, then displayed, then others
-        qIdArray.sort((a, b) => {
-          const aShared = answersA[a] && answersB[a] ? 4 : 0;
-          const bShared = answersA[b] && answersB[b] ? 4 : 0;
-          const aDisp = (displayedA.has(a) ? 1 : 0) + (displayedB.has(a) ? 1 : 0);
-          const bDisp = (displayedA.has(b) ? 1 : 0) + (displayedB.has(b) ? 1 : 0);
-          return (bShared + bDisp) - (aShared + aDisp);
-        });
-
-        for (const qId of qIdArray.slice(0, 5)) {
-          const questionDef = getQuestionById(Number(qId));
-          if (questionDef && (answersA[qId] || answersB[qId])) {
-            allQuestions.push({
-              questionId: Number(qId),
-              questionText: questionDef.question,
-              userAAnswer: answersA[qId] || undefined,
-              userBAnswer: answersB[qId] || undefined,
-            });
-          }
-        }
-        setDeepQuestions(allQuestions);
-
-        const fullProposal: Proposal = {
-          ...transformed,
-          userA,
-          userB,
-          endorsements: [],
-          votingThreshold: 20,
-          baseThreshold: 20,
-          proposalDate: rawProposal.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-          votingExpiresAt: rawProposal.voting_expires_at || new Date(Date.now() + 5 * 24 * 3600000).toISOString(),
-        } as Proposal;
-
-        setProposal(fullProposal);
       } catch (err: any) {
         logger.error('[FriendProposalScreen] Error fetching proposal:', err);
         if (!cancelled) {

@@ -5,7 +5,8 @@ import { Body, Card, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { getBlockedUsers, blockUser, unblockUser, BlockedUser as BlockedUserType } from '../../services/blockService';
-import { supabase } from '../../lib/supabase';
+import { getCurrentUser } from '../../services/authService';
+import { findProfileByEmail } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
 import { FONTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
@@ -41,9 +42,9 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
 
   const loadCurrentUser = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUserId(user.id);
+      const result = await getCurrentUser();
+      if (result.ok && result.data) {
+        setCurrentUserId(result.data.id);
       }
     } catch (error) {
       logger.error('Failed to get current user:', error);
@@ -121,25 +122,21 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
     setBlocking(true);
 
     try {
-      const { data: profile, error: findError } = await supabase
-        .from('user_profiles')
-        .select('user_id, first_name, last_name')
-        .eq('email', trimmed)
-        .single();
+      const profile = await findProfileByEmail(trimmed);
 
-      if (findError || !profile) {
+      if (!profile) {
         setBlocking(false);
         Alert.alert('Not Found', 'No Bridge account found with this email');
         return;
       }
 
-      if (profile.user_id === currentUserId) {
+      if (profile.userId === currentUserId) {
         setBlocking(false);
         Alert.alert('Error', 'You cannot block yourself');
         return;
       }
 
-      const userName = `${profile.first_name} ${profile.last_name}`;
+      const userName = `${profile.firstName} ${profile.lastName}`;
       setBlocking(false);
 
       Alert.alert(
@@ -151,7 +148,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
             text: 'Block',
             style: 'destructive',
             onPress: async () => {
-              const result = await blockUser(profile.user_id);
+              const result = await blockUser(profile.userId);
               if (result.ok) {
                 setEmailInput('');
                 loadBlockedUsers();

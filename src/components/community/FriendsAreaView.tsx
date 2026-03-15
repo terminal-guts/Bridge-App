@@ -15,7 +15,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, FlatList, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity, StyleSheet } from 'react-native';
 import { styled } from 'nativewind';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { EvaIcon, IconScoutIcon } from '../icons';
@@ -43,14 +43,14 @@ import { FriendRequestCard } from '../friends/FriendRequestCard';
 import { GuideTarget } from '../guides';
 import { useGuide } from '../../hooks/useGuide';
 import { friendsAreaGuide } from '../../config/guides';
-import { SEPARATOR } from '../../constants/friendsArea';
+
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { UNIVERSAL_PROPOSAL_RELEASE_HOUR } from '../../constants/timings';
 import { SHADOWS } from '../../theme/shadows';
 import { createLogger } from '../../utils/secureLogger';
 import { showToast } from '../../utils/toast';
-import { successHaptic, warningHaptic, errorHaptic } from '../../utils/haptics';
+import { successHaptic, errorHaptic } from '../../utils/haptics';
 import { getPreviousStreaks, saveCurrentStreaks, detectStreakChanges } from '../../services/streakTrackingService';
 
 const logger = createLogger('FriendsAreaView');
@@ -58,7 +58,6 @@ const logger = createLogger('FriendsAreaView');
 const StyledView = styled(View);
 const StyledText = styled(Text);
 const StyledScrollView = styled(ScrollView);
-const StyledFlatList = styled(FlatList);
 const StyledTouchable = styled(TouchableOpacity);
 
 interface FriendsAreaViewProps {
@@ -66,7 +65,7 @@ interface FriendsAreaViewProps {
   isActive?: boolean; // Whether this page is currently visible
 }
 
-export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaViewProps) {
+export function FriendsAreaView({ taskProgress: _taskProgress, isActive = false }: FriendsAreaViewProps) {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   // Internal state for data
@@ -427,30 +426,11 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
               <StyledView style={{ marginRight: 8 }}>
                 <EvaIcon name="person-add" variant="outline" color="primary" size={20} />
               </StyledView>
-              <StyledText style={{
-                fontSize: FONT_SIZES.lg,
-                fontWeight: '600',
-                fontFamily: FONTS.semiBold,
-                color: COLORS.text.primary,
-              }}>
+              <StyledText style={friendsStyles.sectionHeaderTitle}>
                 Friend Requests
               </StyledText>
-              <StyledView style={{
-                backgroundColor: '#3B82F6',
-                borderRadius: 10,
-                minWidth: 20,
-                height: 20,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginLeft: 8,
-                paddingHorizontal: 6,
-              }}>
-                <StyledText style={{
-                  color: '#FFFFFF',
-                  fontSize: FONT_SIZES.xs,
-                  fontWeight: '700',
-                  fontFamily: FONTS.bold,
-                }}>
+              <StyledView style={friendsStyles.requestCountBadge}>
+                <StyledText style={friendsStyles.requestCountText}>
                   {incomingRequests.length}
                 </StyledText>
               </StyledView>
@@ -531,22 +511,14 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
             <StyledView className="px-4 pt-6 pb-4">
               <StyledView
                 className="rounded-2xl shadow-lg border-2"
-                style={{
-                  backgroundColor: '#FFF1F2', // Same warm rose as active match
-                  borderColor: '#FFE4E6',
-                  ...SHADOWS.accentRed,
-                  padding: 16, // Standardized padding
-                }}
+                style={friendsStyles.emptyMatchCard}
               >
                 {/* Icon with glow effect */}
                 <StyledView className="flex-row items-start mb-3">
                   <StyledView className="relative mr-3">
                     <StyledView
                       className="w-16 h-16 rounded-full items-center justify-center"
-                      style={{
-                        backgroundColor: '#FFE4E6',
-                        ...SHADOWS.accentRed,
-                      }}
+                      style={friendsStyles.emptyMatchIcon}
                     >
                       <EvaIcon name="heart" variant="outline" size={32} color="#7C3AED" />
                     </StyledView>
@@ -587,22 +559,10 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
             <StyledView style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
               <StyledView className="flex-row items-center justify-between mb-3">
                 <StyledView>
-                  <StyledText style={{
-                    fontSize: FONT_SIZES['5xl'],
-                    fontWeight: '800',
-                    fontFamily: FONTS.extraBold,
-                    color: COLORS.text.primary,
-                    letterSpacing: -0.5,
-                  }}>
+                  <StyledText style={friendsStyles.friendsTitle}>
                     Friends
                   </StyledText>
-                  <StyledText style={{
-                    fontSize: FONT_SIZES.md,
-                    fontWeight: '500',
-                    fontFamily: FONTS.medium,
-                    color: COLORS.text.secondary,
-                    marginTop: 2,
-                  }}>
+                  <StyledText style={friendsStyles.friendsSubtitle}>
                     Help your crew find matches
                   </StyledText>
                 </StyledView>
@@ -636,50 +596,15 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
                   return (
                     <React.Fragment key={friendItem.friendshipId}>
                       {showSeparator && (
-                        <StyledView
-                          style={{
-                            height: 56,
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            backgroundColor: COLORS.backgroundSubtle,
-                            paddingVertical: 16,
-                          }}
-                        >
-                          <StyledView style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, width: '100%' }}>
-                            <StyledView style={{
-                              flex: 1,
-                              height: 1.5,
-                              backgroundColor: COLORS.backgroundGrayMedium,
-                              opacity: 0.6,
-                            }} />
-                            <StyledView style={{
-                              backgroundColor: COLORS.backgroundGray,
-                              paddingHorizontal: 14,
-                              paddingVertical: 6,
-                              borderRadius: 12,
-                              marginHorizontal: 12,
-                              borderWidth: 1,
-                              borderColor: COLORS.backgroundGrayMedium,
-                            }}>
-                              <StyledText
-                                style={{
-                                  fontSize: FONT_SIZES.xs,
-                                  color: COLORS.text.label,
-                                  fontWeight: '700',
-                                  fontFamily: FONTS.bold,
-                                  letterSpacing: 0.8,
-                                  textTransform: 'uppercase',
-                                }}
-                              >
+                        <StyledView style={friendsStyles.separatorContainer}>
+                          <StyledView style={friendsStyles.separatorRow}>
+                            <StyledView style={friendsStyles.separatorLine} />
+                            <StyledView style={friendsStyles.separatorPill}>
+                              <StyledText style={friendsStyles.separatorText}>
                                 Already Helped
                               </StyledText>
                             </StyledView>
-                            <StyledView style={{
-                              flex: 1,
-                              height: 1.5,
-                              backgroundColor: COLORS.backgroundGrayMedium,
-                              opacity: 0.6,
-                            }} />
+                            <StyledView style={friendsStyles.separatorLine} />
                           </StyledView>
                         </StyledView>
                       )}
@@ -711,6 +636,8 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
               <StyledTouchable
                 className="bg-primary-500 px-5 py-2.5 rounded-xl"
                 onPress={() => navigation.navigate('ContactInvite')}
+                accessibilityRole="button"
+                accessibilityLabel="Invite from contacts"
               >
                 <StyledText className="text-white font-semibold text-sm">Invite from Contacts</StyledText>
               </StyledTouchable>
@@ -764,3 +691,88 @@ export function FriendsAreaView({ taskProgress, isActive = false }: FriendsAreaV
 }
 
 export default FriendsAreaView;
+
+const friendsStyles = StyleSheet.create({
+  sectionHeaderTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    color: COLORS.text.primary,
+  },
+  requestCountBadge: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+    paddingHorizontal: 6,
+  },
+  requestCountText: {
+    color: '#FFFFFF',
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+  },
+  emptyMatchCard: {
+    backgroundColor: '#FFF1F2',
+    borderColor: '#FFE4E6',
+    ...SHADOWS.accentRed,
+    padding: 16,
+  },
+  emptyMatchIcon: {
+    backgroundColor: '#FFE4E6',
+    ...SHADOWS.accentRed,
+  },
+  friendsTitle: {
+    fontSize: FONT_SIZES['5xl'],
+    fontWeight: '800',
+    fontFamily: FONTS.extraBold,
+    color: COLORS.text.primary,
+    letterSpacing: -0.5,
+  },
+  friendsSubtitle: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '500',
+    fontFamily: FONTS.medium,
+    color: COLORS.text.secondary,
+    marginTop: 2,
+  },
+  separatorContainer: {
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.backgroundSubtle,
+    paddingVertical: 16,
+  },
+  separatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    width: '100%',
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1.5,
+    backgroundColor: COLORS.backgroundGrayMedium,
+    opacity: 0.6,
+  },
+  separatorPill: {
+    backgroundColor: COLORS.backgroundGray,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginHorizontal: 12,
+    borderWidth: 1,
+    borderColor: COLORS.backgroundGrayMedium,
+  },
+  separatorText: {
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.text.label,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+});
