@@ -278,6 +278,21 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
     columns: [],
     // No save - this is just a confirmation screen
   },
+
+  // Matchmaker Roles
+  role: {
+    key: 'role',
+    type: 'single_choice',
+    table: 'user_profiles',
+    columns: ['role'],
+  },
+
+  bio: {
+    key: 'bio',
+    type: 'text',
+    table: 'user_profiles',
+    columns: ['bio'],
+  },
 };
 
 /**

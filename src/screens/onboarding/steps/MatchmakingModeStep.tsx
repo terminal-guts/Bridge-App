@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { H1, Body, H3, AnimatedPressable } from '../../../components/ui';
 import { COLORS } from '../../../theme/colors';
 import { EvaIcon } from '../../../components/icons';
+import { InfoModal, InfoSection } from '../../../components/ui/InfoModal';
 
 interface MatchmakingModeStepProps {
   data: any;
@@ -20,32 +21,38 @@ const StyledSafeAreaView = styled(SafeAreaView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledImage = styled(Image);
 
-type Mode = 'full' | 'match_others_only';
+type Role = 'dater' | 'matchmaker';
 
 export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
+  data,
   updateData,
   onNext,
 }) => {
-  const [selectedMode, setSelectedMode] = useState<Mode>('full');
+  // Use existing role if it exists, otherwise default to dater
+  const [selectedRole, setSelectedRole] = useState<Role>(data.role || 'dater');
+  const [showMatchmakerInfo, setShowMatchmakerInfo] = useState(false);
 
   const handleContinue = () => {
-    // matchmakingOnly = true means "match others only" (NOT in the pool to be matched themselves)
-    updateData({ matchmakingOnly: selectedMode === 'match_others_only' });
+    updateData({ role: selectedRole });
     onNext();
   };
 
   const renderOption = (
-    mode: Mode,
+    role: Role,
     icon: string,
     title: string,
     description: string,
     delayMs: number,
+    onPressExtra?: () => void
   ) => {
-    const isSelected = selectedMode === mode;
+    const isSelected = selectedRole === role;
     return (
       <Animated.View entering={FadeInUp.duration(DURATIONS.normal).delay(delayMs)}>
         <StyledTouchableOpacity
-          onPress={() => setSelectedMode(mode)}
+          onPress={() => {
+            setSelectedRole(role);
+            if (onPressExtra) onPressExtra();
+          }}
           className={`rounded-2xl p-5 mb-4 border-2 ${
             isSelected
               ? 'border-primary-500 bg-primary-50'
@@ -55,18 +62,18 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
         >
           <StyledView className="flex-row items-start">
             <StyledView
-              className={`w-10 h-10 rounded-full items-center justify-center mr-4 ${
+              className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${
                 isSelected ? 'bg-primary-500' : 'bg-neutral-100'
               }`}
             >
               <EvaIcon
                 name={icon}
                 variant="outline"
-                size={20}
+                size={24}
                 color={isSelected ? COLORS.card : COLORS.text.label}
               />
             </StyledView>
-            <StyledView className="flex-1">
+            <StyledView className="flex-1 mt-1">
               <H3 className={isSelected ? 'text-primary-700' : 'text-neutral-900'}>
                 {title}
               </H3>
@@ -74,7 +81,7 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
                 {description}
               </Body>
             </StyledView>
-            <StyledView className="mt-1">
+            <StyledView className="mt-2">
               <EvaIcon
                 name={isSelected ? 'checkmark-circle-2' : 'radio-button-off'}
                 variant={isSelected ? 'fill' : 'outline'}
@@ -94,39 +101,37 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
         {/* Header */}
         <StyledView className="flex-1 justify-center">
           <Animated.View entering={FadeInUp.duration(DURATIONS.slow)}>
-            <StyledView className="items-center mb-2">
+            <StyledView className="items-center mb-6">
               <StyledImage
                 source={require('../../../../assets/favicon.png')}
                 style={{ width: 80, height: 80 }}
                 resizeMode="contain"
               />
             </StyledView>
-            <H1 className="text-center mb-2">How do you want to use Bridge?</H1>
-            <Body className="text-center text-neutral-500 mb-8">
-              You can always change this later in Settings.
-            </Body>
+            <H1 className="text-center mb-10">How do you want to use Bridge?</H1>
           </Animated.View>
 
           {renderOption(
-            'full',
-            'people',
-            'Standard',
-            'Get matched and match your friends.',
-            500,
+            'dater',
+            'person',
+            'Find my person',
+            'Build your profile and start matching.',
+            300
           )}
 
           {renderOption(
-            'match_others_only',
-            'heart',
-            'In a Relationship',
-            'Match your friends without being in the pool.',
-            650,
+            'matchmaker',
+            'people',
+            'Be a matchmaker',
+            "Set up your friends. You won't appear in anyone's stack.",
+            450,
+            () => setShowMatchmakerInfo(true)
           )}
         </StyledView>
 
         {/* Continue Button */}
         <Animated.View
-          entering={FadeIn.duration(DURATIONS.normal).delay(800)}
+          entering={FadeIn.duration(DURATIONS.normal).delay(600)}
           style={{ paddingBottom: 24 }}
         >
           <AnimatedPressable
@@ -140,6 +145,29 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
           </AnimatedPressable>
         </Animated.View>
       </StyledView>
+
+      {/* Matchmaker Info Explainer Bottom Sheet */}
+      <InfoModal
+        visible={showMatchmakerInfo}
+        onClose={() => setShowMatchmakerInfo(false)}
+        title="Be a Matchmaker"
+        icon="people"
+      >
+        <InfoSection>
+          As a matchmaker, you'll build profiles for your friends and browse candidates on their behalf. You can suggest introductions and track how they go. You won't have a dating profile yourself.
+        </InfoSection>
+        <StyledView className="mt-4">
+          <AnimatedPressable
+            onPress={() => setShowMatchmakerInfo(false)}
+            scale="standard"
+            className="bg-primary-500 rounded-full py-4 px-8 items-center"
+          >
+            <Body className="text-white text-center font-semibold">
+              Got it, let's go
+            </Body>
+          </AnimatedPressable>
+        </StyledView>
+      </InfoModal>
     </StyledSafeAreaView>
   );
 };

@@ -141,6 +141,9 @@ export interface UserProfile {
   isSuspended?: boolean;
   suspensionReason?: string | null;
 
+  // Feature Role
+  role?: 'dater' | 'matchmaker';
+
   // Guide completion tracking (frontend-only for now)
   hasCompletedTabNavigationGuide?: boolean;
   hasCompletedDailyGridGuide?: boolean;
@@ -432,7 +435,8 @@ export interface OnboardingData {
   emailVerified?: boolean;
   verificationCode?: string;
 
-  // Matchmaking mode
+  // Matchmaking role
+  role?: 'dater' | 'matchmaker';
   matchmakingOnly?: boolean;
 
   // Legacy fields (kept for backward compatibility)

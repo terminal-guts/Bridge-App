@@ -47,6 +47,8 @@ import { PreferencesStep } from './steps/PreferencesStep';
 import { AddFriendsStep } from './steps/AddFriendsStep';
 import { WelcomeToBridgeStep } from './steps/WelcomeToBridgeStep';
 import { MatchmakingModeStep } from './steps/MatchmakingModeStep';
+import { MatchmakerProfileStep } from './steps/MatchmakerProfileStep';
+import { MatchmakerInviteStep } from './steps/MatchmakerInviteStep';
 
 interface OnboardingScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Onboarding'>;
@@ -156,15 +158,29 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
     photos: [],
   });
 
-  // Build steps array — email-only signup
+  // Separate Matchmaker steps path
+  const MATCHMAKER_STEPS: StepDefinition[] = [
+    { component: MatchmakerProfileStep, title: 'Profile', hasTextInput: true, mappingKey: 'bio' },
+    { component: MatchmakerInviteStep, title: 'Add Person', hasTextInput: false },
+  ];
+
+  // Build steps array dynamically
   const steps = useMemo((): StepDefinition[] => {
-    return [
-      { component: MatchmakingModeStep, title: 'Mode', hasTextInput: false },
+    // Both paths share these initial three screens
+    const baseSteps = [
       { component: EmailSignUpStep, title: 'Email', hasTextInput: true },
       { component: EmailSignUpVerificationStep, title: 'Verify Email', hasTextInput: true },
-      ...PROFILE_STEPS,
+      { component: NameStep, title: 'Name', hasTextInput: true, mappingKey: 'name' },
+      { component: MatchmakingModeStep, title: 'Role', hasTextInput: false, mappingKey: 'role' },
     ];
-  }, []);
+
+    if (onboardingData.role === 'matchmaker') {
+      return [...baseSteps, ...MATCHMAKER_STEPS];
+    } else {
+      // Need to filter out NameStep from PROFILE_STEPS if it's there
+      return [...baseSteps, ...PROFILE_STEPS.filter(step => step.component !== NameStep)];
+    }
+  }, [onboardingData.role]);
 
   const totalSteps = steps.length;
 
