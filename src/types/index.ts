@@ -323,6 +323,7 @@ export type RootStackParamList = {
 
   // Main Stack
   MainTabs: { screen?: string; params?: Record<string, unknown> } | undefined;
+  MatchmakerTabs: undefined;
   MatchmakerHome: undefined;
   MatchmakerGhostProfile: undefined;
   MatchmakerClaim: { token: string };
@@ -370,6 +371,12 @@ export type RootStackParamList = {
 export type MainTabParamList = {
   Community: { initialPage?: 0 | 1 | 2 } | undefined;
   Matches: undefined;
+  Profile: { initialTab?: 'about' | 'badges' | 'questions' } | undefined;
+};
+
+export type MatchmakerTabParamList = {
+  MatchmakerHub: undefined;
+  Community: { initialPage?: 0 | 1 | 2 } | undefined;
   Profile: { initialTab?: 'about' | 'badges' | 'questions' } | undefined;
 };
 

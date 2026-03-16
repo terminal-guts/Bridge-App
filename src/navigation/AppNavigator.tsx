@@ -100,7 +100,7 @@ const ContactInviteScreen = withSuspense(React.lazy(() => import('../screens/fri
 // ChangePhoneNumberScreen removed — email-only auth
 
 // Types
-import { RootStackParamList, MainTabParamList } from '../types';
+import { RootStackParamList, MainTabParamList, MatchmakerTabParamList } from '../types';
 import { createLogger } from '../utils/secureLogger';
 import { slideWithFade, modalSlideUp, fadeTransition } from '../utils/screenTransitions';
 
@@ -113,13 +113,16 @@ const logger = createLogger('AppNavigator');
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
+const MatchmakerTab = createBottomTabNavigator<MatchmakerTabParamList>();
 
 // ── Custom Tab Bar ───────────────────────────────────────────────────────────
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const TAB_ICONS = [UsersTabIcon, HandshakeTabIcon, ProfileTabIcon];
 const TAB_TARGET_IDS = ['tab-community', 'tab-matches', 'tab-profile'];
 
-const CustomTabBar = ({ state, navigation }: any) => {
+const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetIdsProp }: any) => {
+  const resolvedIcons = iconsProp ?? TAB_ICONS;
+  const resolvedTargetIds = targetIdsProp ?? TAB_TARGET_IDS;
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { activeGuide, currentStep, nextStep } = useGuideContext();
@@ -200,7 +203,7 @@ const CustomTabBar = ({ state, navigation }: any) => {
 
       {state.routes.map((route: any, index: number) => {
         const focused = state.index === index;
-        const Icon = TAB_ICONS[index];
+        const Icon = resolvedIcons[index];
         const showRing = index === 2 && profileStrength < 100 && !profileCompleted;
 
         const onPress = () => {
@@ -216,14 +219,14 @@ const CustomTabBar = ({ state, navigation }: any) => {
 
             // Advance guide if it's waiting for this tab press
             const currentGuideStep = activeGuide?.steps[currentStep];
-            if (currentGuideStep?.interactive && currentGuideStep?.targetElement === TAB_TARGET_IDS[index]) {
+            if (currentGuideStep?.interactive && currentGuideStep?.targetElement === resolvedTargetIds[index]) {
               nextStep();
             }
           }
         };
 
         return (
-          <GuideTarget key={route.key} id={TAB_TARGET_IDS[index]} style={{ flex: 1 }}>
+          <GuideTarget key={route.key} id={resolvedTargetIds[index]} style={{ flex: 1 }}>
             <TouchableOpacity
               style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-start', paddingTop: iconPaddingTop }}
               onPress={onPress}
@@ -282,6 +285,30 @@ const MainTabs = () => {
       <Tab.Screen name="Matches" component={MatchesScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
+  );
+};
+
+// Matchmaker icons — handshake (hub), users (community), profile
+const MATCHMAKER_TAB_ICONS = [HandshakeTabIcon, UsersTabIcon, ProfileTabIcon];
+const MATCHMAKER_TAB_TARGET_IDS = ['tab-matchmaker', 'tab-community', 'tab-profile'];
+
+// Matchmaker Tab Navigator — same visual bar, no Matches tab
+const MatchmakerTabs = () => {
+  return (
+    <MatchmakerTab.Navigator
+      tabBar={props => (
+        <CustomTabBar
+          {...props}
+          icons={MATCHMAKER_TAB_ICONS}
+          targetIds={MATCHMAKER_TAB_TARGET_IDS}
+        />
+      )}
+      screenOptions={{ headerShown: false }}
+    >
+      <MatchmakerTab.Screen name="MatchmakerHub" component={MatchmakerHomeScreen} />
+      <MatchmakerTab.Screen name="Community" component={CommunityScreen} />
+      <MatchmakerTab.Screen name="Profile" component={ProfileScreen} />
+    </MatchmakerTab.Navigator>
   );
 };
 
@@ -590,7 +617,7 @@ export const AppNavigator = () => {
         }}
       >
         <Stack.Navigator
-          initialRouteName={isAuthenticated ? (isSuspended ? 'Suspended' : (userRole === 'matchmaker' ? 'MatchmakerHome' : 'MainTabs')) : 'Welcome'}
+          initialRouteName={isAuthenticated ? (isSuspended ? 'Suspended' : (userRole === 'matchmaker' ? 'MatchmakerTabs' : 'MainTabs')) : 'Welcome'}
           screenOptions={{
             headerShown: false,
             cardStyle: { backgroundColor: '#F9FAFB' },
@@ -610,6 +637,7 @@ export const AppNavigator = () => {
           <Stack.Screen name="MainTabs" component={MainTabs} options={fadeTransition} />
 
           {/* Matchmaker Experience */}
+          <Stack.Screen name="MatchmakerTabs" component={MatchmakerTabs} options={fadeTransition} />
           <Stack.Screen name="MatchmakerHome" component={MatchmakerHomeScreen} options={fadeTransition} />
           <Stack.Screen name="MatchmakerGhostProfile" component={MatchmakerGhostProfileScreen} options={fadeTransition} />
           <Stack.Screen name="MatchmakerClaim" component={MatchmakerClaimScreen} options={fadeTransition} />
