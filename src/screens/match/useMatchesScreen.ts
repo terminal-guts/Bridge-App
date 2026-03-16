@@ -25,7 +25,7 @@ import { calculateOverallProfileStrength } from '../../utils/profileCompleteness
 import { showToast } from '../../utils/toast';
 import { lightHaptic, heavyHaptic, successHaptic } from '../../utils/haptics';
 import { shareToMessages, shareGeneric } from '../../utils/shareMatch';
-import { getUnreadCount } from '../../services/messageService';
+import { getUnreadCount, getMatchMessages } from '../../services/messageService';
 import { deriveScreenState, type ScreenState } from './MatchesScreen.components';
 
 export function useMatchesScreen() {
@@ -51,6 +51,7 @@ export function useMatchesScreen() {
     const [shareImageUri, setShareImageUri] = useState<string | null>(null);
     const [shareLoading, setShareLoading] = useState(false);
     const [hasUnreadMatch, setHasUnreadMatch] = useState(false);
+    const [firstMatchMessage, setFirstMatchMessage] = useState<string | null>(null);
     const [celebrationActive, setCelebrationActive] = useState(false);
     const confettiRef = useRef<LottieView>(null);
     const viewShotRef = useRef<ViewShot>(null);
@@ -95,9 +96,17 @@ export function useMatchesScreen() {
                     getUnreadCount(matchId, currentUserId).then(result => {
                         if (isMountedRef.current) setHasUnreadMatch(result.ok && (result.data ?? 0) > 0);
                     }).catch(() => {});
+                    getMatchMessages(matchId).then(result => {
+                        if (!isMountedRef.current) return;
+                        const firstText = result.ok && result.data
+                            ? result.data.find(m => m.type === 'text')
+                            : undefined;
+                        setFirstMatchMessage(firstText?.content ?? null);
+                    }).catch(() => {});
                 }
             } else {
                 setHasUnreadMatch(false);
+                setFirstMatchMessage(null);
             }
 
             const event = communityService.getEndedMatchEvent();
@@ -350,6 +359,7 @@ export function useMatchesScreen() {
         shareImageUri,
         shareLoading,
         hasUnreadMatch,
+        firstMatchMessage,
         celebrationActive,
         endMatchCustomReason,
         screenState,

@@ -155,6 +155,7 @@ export function MatchesScreen() {
                         matchedByAvatars={endorserAvatars}
                         hasUnread={state.hasUnreadMatch}
                         celebrate={state.celebrationActive}
+                        messagePreview={state.screenState === 'active_match' ? (state.firstMatchMessage ?? undefined) : undefined}
                         onPress={handleCardPress}
                         onDismiss={state.screenState === 'active_match' ? () => state.setEndMatchModalVisible(true) : undefined}
                         onShare={state.screenState === 'active_match' ? state.handleSharePress : undefined}

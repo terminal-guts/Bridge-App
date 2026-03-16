@@ -95,6 +95,7 @@ interface MatchCardProps {
     matchedByAvatars: string[];
     hasUnread?: boolean;
     celebrate?: boolean;
+    messagePreview?: string;
     onPress?: () => void;
     onDismiss?: () => void;
     onShare?: () => void;
@@ -121,13 +122,18 @@ export const MatchCard: React.FC<MatchCardProps> = ({
     matchedByAvatars,
     hasUnread,
     celebrate,
+    messagePreview,
     onPress,
     onDismiss,
     onShare,
 }) => {
     const topBadge = TOP_BADGE_CONFIG[status];
-    const bottomPills = BOTTOM_PILLS[status];
     const gradient = GRADIENT_CONFIG[status];
+
+    // For active matches with a message preview, replace the default pill label
+    const bottomPills = (status === 'active_match' && messagePreview)
+        ? [{ ...BOTTOM_PILLS.active_match[0], label: messagePreview.length > 40 ? messagePreview.slice(0, 40) + '…' : messagePreview }]
+        : BOTTOM_PILLS[status];
     const isActiveMatch = status === 'active_match';
     const isAwaitingYou = status === 'awaiting_you';
 
