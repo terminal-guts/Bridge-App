@@ -150,7 +150,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
   }, [data, currentUserIndex]);
 
   const top3 = useMemo(() => data.slice(0, 3), [data]);
-  const rest = useMemo(() => data.slice(3), [data]);
+  const rest = useMemo(() => data.slice(3, 10), [data]);
 
   const currentUserListIndex = useMemo(() => {
     if (currentUserIndex < 3) return -1;

@@ -97,7 +97,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
       <StyledView className="flex-1 items-center">
         {/* Photo */}
         <StyledImage
-          source={{ uri: user.photos?.[0]?.url || 'https://via.placeholder.com/60' }}
+          source={user.photos?.[0]?.url ? { uri: user.photos[0].url } : null}
           className="rounded-full mb-2"
           style={{ width: 60, height: 60 }}
           contentFit="cover"
@@ -145,7 +145,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
               {isFriend && (
                 <StyledImage
                   source={{
-                    uri: endorsement.endorserProfile.photos?.[0]?.url || 'https://via.placeholder.com/24',
+                    uri: endorsement.endorserProfile.photos?.[0]?.url,
                   }}
                   className="rounded-full"
                   style={{ width: 24, height: 24, marginRight: 8 }}

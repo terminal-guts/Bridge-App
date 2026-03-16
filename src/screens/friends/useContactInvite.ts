@@ -76,7 +76,7 @@ export function useContactInvite(route: RouteProp<RootStackParamList, 'ContactIn
     getUserProfile().then((result) => {
       if (result.ok && result.data) setSenderName(result.data.firstName);
     });
-    getBridgeUserCount().then((count) => setBridgeUserCount(count * 2));
+    getBridgeUserCount().then((count) => setBridgeUserCount(count));
     AsyncStorage.getItem(INVITE_COUNT_KEY).then((val) => {
       if (val) setInvitesSentCount(parseInt(val, 10) || 0);
     });
@@ -284,7 +284,14 @@ export function useContactInvite(route: RouteProp<RootStackParamList, 'ContactIn
   const handleShareCode = useCallback(async () => {
     if (!friendCode) return;
     const message = await buildInviteMessage(friendCode, senderName);
-    Share.share({ message });
+    const result = await Share.share({ message });
+    if (result.action === Share.sharedAction) {
+      setInvitesSentCount((prev) => {
+        const newCount = prev + 1;
+        AsyncStorage.setItem(INVITE_COUNT_KEY, String(newCount));
+        return newCount;
+      });
+    }
   }, [friendCode, senderName]);
 
   const handleCopyCode = useCallback(async () => {

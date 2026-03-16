@@ -10,7 +10,7 @@ import { EvaIcon } from '../../components/icons';
 import { MainTabParamList } from '../../types';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { communityService } from '../../services/communityServiceIndex';
-import { getUserFriendCode } from '../../services/friendService';
+import { getUserFriendCode, getIncomingRequests, acceptFriendRequest, declineFriendRequest, FriendRequest } from '../../services/friendService';
 import { FriendWithGridStatus } from '../../types/community';
 import { getUserProfile } from '../../services/profileService';
 import { supabase } from '../../lib/supabase';
@@ -24,7 +24,6 @@ import { ScreenWrapper } from '../../components/ui';
 import { getLast7PMCentral } from '../../utils/centralTime';
 import { successHaptic, lightHaptic } from '../../utils/haptics';
 import { getBatchUnreadFriendIds } from '../../services/messageService';
-import { getActiveSuggestions } from '../../services/friendProposalService';
 import { showToast } from '../../utils/toast';
 import { BadgeAwardModal } from '../../components/badges/BadgeAwardModal';
 import { getBadgeForFriend } from '../../services/badgeService';
@@ -38,10 +37,10 @@ import {
   EmptyState,
   InviteBanner,
   ImpactCard,
-  SuggestMatchRow,
   CaughtUpFooter,
   buildVoteHandlers,
   buildCrewHandlers,
+  PendingRequestsSection,
   styles,
 } from './CommunityScreen.components';
 
@@ -60,7 +59,8 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadMap, setUnreadMap] = useState<Record<string, boolean>>({});
-  const [suggestionsMap, setSuggestionsMap] = useState<Map<string, { suggestedForName: string; status: 'queued' | 'stashed' }>>(new Map());
+  const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
+  const [processingRequestIds, setProcessingRequestIds] = useState<Set<string>>(new Set());
 
   // Badge award modal state
   const [badgeModalVisible, setBadgeModalVisible] = useState(false);
@@ -96,16 +96,19 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   const loadFriendsData = useCallback(async () => {
     try {
-      const [data, codeRes, suggestions] = await Promise.all([
+      const [data, codeRes, requestsRes] = await Promise.all([
         communityService.getFriendsAreaData(),
         getUserFriendCode(),
-        getActiveSuggestions(),
+        getIncomingRequests(),
       ]);
 
       if (codeRes.ok && codeRes.data) {
         setFriendCode(codeRes.data.code);
       }
-      setSuggestionsMap(suggestions);
+
+      if (requestsRes.ok && requestsRes.data) {
+        setPendingRequests(requestsRes.data);
+      }
 
       const { toMatch, helped } = partitionFriends(data.friends);
       setUsersToMatch(toMatch);
@@ -291,6 +294,37 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     navigation.navigate('Community');
   }, [loadFriendsData, navigation]);
 
+  const handleAcceptRequest = useCallback(async (requestId: string) => {
+    setProcessingRequestIds(prev => new Set([...prev, requestId]));
+    const result = await acceptFriendRequest(requestId);
+    if (result.ok) {
+      successHaptic();
+      setPendingRequests(prev => prev.filter(r => r.id !== requestId));
+      if ('invalidateFriendsCache' in communityService) {
+        (communityService as any).invalidateFriendsCache();
+      }
+      await loadFriendsData();
+    } else {
+      showToast.error('Could not accept request. Try again.');
+    }
+    setProcessingRequestIds(prev => {
+      const next = new Set(prev);
+      next.delete(requestId);
+      return next;
+    });
+  }, [loadFriendsData]);
+
+  const handleDeclineRequest = useCallback(async (requestId: string) => {
+    lightHaptic();
+    // Optimistic removal — decline is fast and recoverable
+    setPendingRequests(prev => prev.filter(r => r.id !== requestId));
+    const result = await declineFriendRequest(requestId);
+    if (!result.ok) {
+      showToast.error('Could not decline request. Try again.');
+      loadFriendsData(); // restore correct state
+    }
+  }, [loadFriendsData]);
+
   const totalFriends = usersToMatch.length + alreadyHelped.length;
   const showInviteBanner = totalFriends > 0 && totalFriends < 5;
 
@@ -372,12 +406,18 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
       {usersToMatch.length === 0 && alreadyHelped.length === 0 ? (
         <ScrollView
-          contentContainerStyle={{ flex: 1 }}
+          contentContainerStyle={pendingRequests.length === 0 ? { flex: 1 } : undefined}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primaryButton} />
           }
         >
+          <PendingRequestsSection
+            requests={pendingRequests}
+            processingIds={processingRequestIds}
+            onAccept={handleAcceptRequest}
+            onDecline={handleDeclineRequest}
+          />
           <EmptyState onInvite={navigateToContactInvite} />
         </ScrollView>
       ) : (
@@ -388,6 +428,13 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primaryButton} />
           }
         >
+          <PendingRequestsSection
+            requests={pendingRequests}
+            processingIds={processingRequestIds}
+            onAccept={handleAcceptRequest}
+            onDecline={handleDeclineRequest}
+          />
+
           {/* #5: Invite nudge when <5 friends; #10: Impact card when >=5 friends */}
           {bannerSection.kind === 'invite' ? (
             <InviteBanner avatarFriends={bannerSection.avatarFriends} onPress={navigateToContactInvite} />
@@ -436,7 +483,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                   <UserRow
                     item={user}
                     index={index}
-                    statusLine={getFriendStatusLine(user, suggestionsMap)}
+                    statusLine={getFriendStatusLine(user)}
                     hasUnread={!!unreadMap[user.friendId]}
 
                     onViewProfile={crewHandlers.viewProfile[user.friendId]}
@@ -446,10 +493,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                 </StaggerItem>
             ))}
 
-            {/* Suggest a Match — inline row at bottom of crew list */}
-            {(usersToMatch.length + alreadyHelped.length) >= 2 && (
-              <SuggestMatchRow onPress={() => navigation.getParent()?.navigate('SuggestMatch')} />
-            )}
           </View>
 
           {/* Slim caught-up footer — only when no pending votes */}

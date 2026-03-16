@@ -91,9 +91,7 @@ export const NameStep: React.FC<NameStepProps> = ({
         </StyledView>
       </StyledView>
 
-      <Body className="text-neutral-500 text-sm mt-4">
-        Please use your real name. This will be shown to potential matches.
-      </Body>
+
     </OnboardingLayout>
   );
 };

@@ -6,6 +6,9 @@
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { ScrollView } from 'react-native';
+import { supabase } from '../../../lib/supabase';
+import { getQuestionById } from '../../../utils/deepQuestions';
+import type { DeepQuestionData } from './proposalHelpers';
 import {
   useSharedValue,
   useAnimatedStyle,
@@ -326,17 +329,6 @@ export function useForFriendModal(
     if (current) {
       const recommendedPersonId = selectedPersonSide === 'userA' ? current.userA.id : current.userB.id;
 
-      logger.info('[ProposalReviewView] Friend recommendation submitted:', {
-        proposalId: current.id,
-        recommendedPersonId,
-        toFriendId: selectedFriendId,
-      });
-
-      try {
-        await communityService.submitRecommendation(recommendedPersonId, selectedFriendId, current.id);
-      } catch (err: any) {
-        logger.error('[ProposalReviewView] Friend recommendation error:', err);
-      }
     }
     setShowForFriendModal(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
@@ -402,4 +394,63 @@ export function useMatchData(proposals: Proposal[], currentIndex: number) {
       compatScore, valuesPillResult, interestsPillResult,
     };
   }, [currentIndex, proposals]);
+}
+
+// ─── Deep Questions Hook ──────────────────────────────────────────────────────
+// Fetches deep question answers for the current proposal's two users.
+// Used when deepQuestions are not passed in from outside (e.g. community gate voting).
+
+export function useDeepQuestions(proposals: Proposal[], currentIndex: number): DeepQuestionData[] {
+  const [deepQuestions, setDeepQuestions] = useState<DeepQuestionData[]>([]);
+
+  useEffect(() => {
+    if (proposals.length === 0 || currentIndex >= proposals.length) return;
+    const proposal = proposals[currentIndex];
+    const userAId = proposal.userA?.userId;
+    const userBId = proposal.userB?.userId;
+    if (!userAId || !userBId) return;
+
+    let cancelled = false;
+
+    async function fetchQuestions() {
+      const [dqAResult, dqBResult] = await Promise.all([
+        supabase.from('deep_question_answers').select('answers, displayed_question_ids').eq('user_id', userAId).maybeSingle(),
+        supabase.from('deep_question_answers').select('answers, displayed_question_ids').eq('user_id', userBId).maybeSingle(),
+      ]);
+      if (cancelled) return;
+
+      const answersA = ((dqAResult.data?.answers || {}) as Record<string, string>);
+      const answersB = ((dqBResult.data?.answers || {}) as Record<string, string>);
+      const displayedA = new Set(((dqAResult.data?.displayed_question_ids || []) as string[]).map(String));
+      const displayedB = new Set(((dqBResult.data?.displayed_question_ids || []) as string[]).map(String));
+
+      const allQIds = Array.from(new Set([...Object.keys(answersA), ...Object.keys(answersB)]));
+      allQIds.sort((a, b) => {
+        const aScore = (answersA[a] && answersB[a] ? 4 : 0) + (displayedA.has(a) ? 1 : 0) + (displayedB.has(a) ? 1 : 0);
+        const bScore = (answersA[b] && answersB[b] ? 4 : 0) + (displayedA.has(b) ? 1 : 0) + (displayedB.has(b) ? 1 : 0);
+        return bScore - aScore;
+      });
+
+      const questions: DeepQuestionData[] = [];
+      for (const qId of allQIds.slice(0, 5)) {
+        const def = getQuestionById(Number(qId));
+        if (def && (answersA[qId] || answersB[qId])) {
+          questions.push({
+            questionId: Number(qId),
+            questionText: def.question,
+            userAAnswer: answersA[qId] || undefined,
+            userBAnswer: answersB[qId] || undefined,
+          });
+        }
+      }
+
+      setDeepQuestions(questions);
+    }
+
+    setDeepQuestions([]);
+    fetchQuestions().catch(() => {});
+    return () => { cancelled = true; };
+  }, [proposals, currentIndex]);
+
+  return deepQuestions;
 }

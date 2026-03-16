@@ -22,6 +22,7 @@ import {
   invalidateCachedFriendsData,
   getCachedPhotoUrls,
   mergeCachedPhotoUrls,
+  invalidateCachedPhotoUrls,
   getCachedVotingGate,
   setCachedVotingGate,
 } from '../../src/services/communityCache';
@@ -31,9 +32,10 @@ const KEY_FRIENDS_DATA = '@bridge:cache:friends_data';
 const KEY_PHOTO_URLS = '@bridge:cache:photo_urls';
 const KEY_VOTING_GATE = '@bridge:cache:voting_gate';
 
-beforeEach(() => {
-  // Clear mock storage
+beforeEach(async () => {
+  // Clear mock storage and reset in-memory photo URL state
   Object.keys(mockStorage).forEach(k => delete mockStorage[k]);
+  await invalidateCachedPhotoUrls();
   jest.clearAllMocks();
 });
 

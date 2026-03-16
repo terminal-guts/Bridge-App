@@ -10,7 +10,6 @@ import { FONTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SectionScreenWrapper } from './sections/SectionScreenWrapper';
 import { useEditProfile } from './sections/useEditProfile';
-import { CustomInputModal } from './sections/CustomInputModal';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -28,6 +27,7 @@ const GENDER_OPTIONS = [
   { value: 'male', label: 'Man' },
   { value: 'female', label: 'Woman' },
   { value: 'non-binary', label: 'Non-binary' },
+  { value: 'other', label: 'Other' },
 ];
 
 const ETHNICITY_OPTIONS = [
@@ -49,8 +49,6 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
   const { profile, setProfile, loading, updateProfile, originalProfileJson } = useEditProfile();
   const [isHeightFocused, setIsHeightFocused] = useState(false);
   const [heightError, setHeightError] = useState('');
-  const [showCustomGenderModal, setShowCustomGenderModal] = useState(false);
-
   const ethnicityArray = useMemo(() => {
     return profile?.ethnicity
       ? profile.ethnicity.split(' / ').filter(e => e.trim() !== '')
@@ -307,58 +305,9 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
             );
           })}
 
-          {/* Non-predefined genders (legacy values like genderfluid, agender, two_spirit, or custom) */}
-          {(profile.gender || [])
-            .filter(g => !GENDER_OPTIONS.some(opt => opt.value === g))
-            .map((custom) => (
-              <StyledTouchableOpacity
-                key={custom}
-                activeOpacity={1}
-                delayPressIn={0}
-                onPress={() => {
-                  lightHaptic();
-                  updateProfile({ gender: (profile.gender || []).filter(g => g !== custom) });
-                }}
-                className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
-              >
-                <Body className="text-sm text-white font-medium">{custom}</Body>
-              </StyledTouchableOpacity>
-            ))}
-
-          {profile.customMyGender && (
-            <StyledTouchableOpacity
-              onPress={() => {
-                setProfile({ ...profile, customMyGender: '' });
-                mediumHaptic();
-              }}
-              className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
-            >
-              <Body className="text-sm text-white font-medium">{profile.customMyGender}</Body>
-            </StyledTouchableOpacity>
-          )}
-
-          <StyledTouchableOpacity
-            onPress={() => { lightHaptic(); setShowCustomGenderModal(true); }}
-            className="px-3 py-2 rounded-full border border-dashed border-neutral-400 bg-neutral-50"
-          >
-            <Body className="text-sm text-neutral-600">Other</Body>
-          </StyledTouchableOpacity>
         </StyledView>
       </Card>
 
-      {/* Custom Modals */}
-      <CustomInputModal
-        visible={showCustomGenderModal}
-        title="Add Custom Gender"
-        subtitle="Enter your gender identity"
-        placeholder="Type your gender identity"
-        onClose={() => setShowCustomGenderModal(false)}
-        onSubmit={(value) => {
-          setProfile({ ...profile, customMyGender: value });
-          mediumHaptic();
-          setShowCustomGenderModal(false);
-        }}
-      />
     </SectionScreenWrapper>
   );
 };

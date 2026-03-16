@@ -8,6 +8,7 @@ import { View, Text, ScrollView, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS, FONT_SIZES } from '../../../constants/typography';
+import { getOptimizedImageUrl } from '../../../utils/imageUtils';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const PHOTO_HEIGHT = Math.max(220, Math.min(Math.round(SCREEN_HEIGHT * 0.36), 340));
@@ -33,7 +34,10 @@ export function ProposalPhotoCard({
   proposalId: string;
 }) {
   const [currentPage, setCurrentPage] = useState(0);
-  const validPhotos = (photos || []).filter((p: any) => p.url);
+  const validPhotos = (photos || []).filter((p: any) => p.url).map((p: any) => ({
+    ...p,
+    url: getOptimizedImageUrl(p.url, width) || p.url,
+  }));
   const showCarousel = validPhotos.length > 1;
   const mainPhoto = validPhotos.find((p: any) => p.isMain) || validPhotos[0];
 
@@ -63,7 +67,7 @@ export function ProposalPhotoCard({
               source={{ uri: photo.url }}
               style={{ width, height }}
               contentFit="cover"
-              transition={200}
+              transition={0}
               cachePolicy="disk"
               recyclingKey={`${proposalId}-${side}-${i}`}
             />
@@ -71,10 +75,10 @@ export function ProposalPhotoCard({
         </ScrollView>
       ) : (
         <Image
-          source={{ uri: mainPhoto?.url || 'https://via.placeholder.com/200' }}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, ...borderRadiusStyle }}
+          source={mainPhoto?.url ? { uri: mainPhoto.url } : null}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, ...borderRadiusStyle, backgroundColor: '#E5E7EB' }}
           contentFit="cover"
-          transition={200}
+          transition={0}
           cachePolicy="disk"
           recyclingKey={`${proposalId}-${side}`}
         />
@@ -113,7 +117,7 @@ export function ProposalPhotoCard({
       )}
       <View style={{ position: 'absolute', bottom: 14, left: 14 }} pointerEvents="none">
         <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: FONT_SIZES['5xl'], color: '#FFF', letterSpacing: -0.3 }}>
-          {name}{age ? `, ${age}` : ''}
+          {name.split(' ').map(n => n.charAt(0).toUpperCase()).join('').slice(0, 2).split('').join('.')}.{age ? `, ${age}` : ''}
         </Text>
       </View>
     </View>

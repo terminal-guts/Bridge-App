@@ -227,7 +227,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                 source={{ uri: optimizedImageUrl }}
                 style={[StyleSheet.absoluteFillObject, { backgroundColor: COLORS.backgroundGrayMedium }]}
                 contentFit="cover"
-                transition={200}
+                transition={0}
                 cachePolicy="disk"
                 recyclingKey={name}
             >
@@ -304,7 +304,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                                                     source={{ uri: optimizedAvatarUrl }}
                                                     style={[styles.avatarCircle, { backgroundColor: COLORS.backgroundGrayMedium }]}
                                                     contentFit="cover"
-                                                    transition={200}
+                                                    transition={0}
                                                     cachePolicy="disk"
                                                 />
                                             </View>

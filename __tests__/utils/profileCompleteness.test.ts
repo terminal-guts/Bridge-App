@@ -38,6 +38,7 @@ function makeCompleteProfile(): UserProfile {
     photos: [{ url: 'photo1.jpg', isMain: true }],
     interestedInGenders: ['Male'],
     preferredEthnicities: ['No Preference'],
+    preferredReligions: ['No Preference'],
     preferredPolitics: ['No Preference'],
     preferences: {
       ageMin: 20,
@@ -74,8 +75,8 @@ describe('calculateProfileCompleteness', () => {
 
   it('returns max percentage for complete profile', () => {
     const result = calculateProfileCompleteness(makeCompleteProfile());
-    // Weights sum to 93, so max percentage is 93
-    expect(result.percentage).toBe(93);
+    // Weights sum to 96 (includes preferredReligions weight 3)
+    expect(result.percentage).toBe(96);
     expect(result.missingFields).toHaveLength(0);
   });
 
@@ -173,8 +174,8 @@ describe('calculateMatchPreferencesCompleteness', () => {
   it('returns 0% for null profile', () => {
     const result = calculateMatchPreferencesCompleteness(null);
     expect(result.percentage).toBe(0);
-    expect(result.totalCount).toBe(7);
-    expect(result.missingFields).toHaveLength(7);
+    expect(result.totalCount).toBe(8);
+    expect(result.missingFields).toHaveLength(8);
   });
 
   it('returns 100% for complete preferences', () => {
@@ -252,9 +253,8 @@ describe('calculateProfileStrengthBreakdown', () => {
     expect(calculateProfileStrengthBreakdown(profile).sections.deepQuestions.percentage).toBe(0);
   });
 
-  it('maxTotalScore is 94 (null return) / 93 (calculated)', () => {
-    // The null early-return uses 94; the actual calculation uses 93 (18+25+25+25)
-    expect(calculateProfileStrengthBreakdown(null).maxTotalScore).toBe(94);
+  it('maxTotalScore is 93 for both null and calculated', () => {
+    expect(calculateProfileStrengthBreakdown(null).maxTotalScore).toBe(93);
     const profile = makeCompleteProfile();
     expect(calculateProfileStrengthBreakdown(profile).maxTotalScore).toBe(93);
   });

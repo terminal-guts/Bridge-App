@@ -19,9 +19,6 @@ import { lightHaptic } from '../../utils/haptics';
 import { FONTS } from '../../constants/typography';
 import { SHADOWS } from '../../theme/shadows';
 import { COLORS as THEME_COLORS } from '../../theme/colors';
-import { NavigationProp } from '@react-navigation/native';
-import { RootStackParamList } from '../../types';
-import { getFriends } from '../../services/friendService';
 import { Image } from 'expo-image';
 
 const StyledView = styled(View);
@@ -352,7 +349,7 @@ export const BlurredPhoto: React.FC<{ uri: string; style?: object; index: number
   const BLUR_LEVELS = [5, 10, 12, 15];
   return (
     <StyledView style={style}>
-      <StyledImage source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" blurRadius={BLUR_LEVELS[Math.min(index, BLUR_LEVELS.length - 1)]} transition={200} cachePolicy="disk" />
+      <StyledImage source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" blurRadius={BLUR_LEVELS[Math.min(index, BLUR_LEVELS.length - 1)]} transition={0} cachePolicy="disk" />
       <StyledView className="absolute inset-0" style={{ backgroundColor: `rgba(255,255,255,${0.03 + index * 0.02})` }} />
     </StyledView>
   );
@@ -512,70 +509,6 @@ export const PassFeedbackModal: React.FC<{ visible: boolean; onClose: () => void
         <StyledTouchableOpacity onPress={() => selectedFeedback ? onSubmit(selectedFeedback) : onClose()} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.primary500, borderRadius: 8, ...SHADOWS.sm }} activeOpacity={0.8}>
           <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.white }}>Done</Body>
         </StyledTouchableOpacity>
-      </StyledView>
-    </ModalContainer>
-  );
-};
-
-export const RecommendToFriendModal: React.FC<{ visible: boolean; profileName: string; onClose: () => void; onRecommend: (friendId: string) => void; onSkip: () => void; navigation: NavigationProp<RootStackParamList> }> = ({ visible, profileName, onClose, onRecommend, onSkip, navigation }) => {
-  const [friends, setFriends] = useState<Array<{ friendId: string; profile: { firstName: string } }>>([]);
-  const [loadingFriends, setLoadingFriends] = useState(true);
-  const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (visible) {
-      setLoadingFriends(true);
-      getFriends().then(result => {
-        if (result.ok && result.data) setFriends(result.data);
-        setLoadingFriends(false);
-      }).catch(() => setLoadingFriends(false));
-    }
-  }, [visible]);
-
-  return (
-    <ModalContainer visible={visible} onClose={onClose}>
-      <StyledView className="items-center mb-5">
-        <StyledView className="w-16 h-16 rounded-full items-center justify-center mb-4" style={{ backgroundColor: COLORS.primary50 }}>
-          <EvaIcon name="gift" variant="outline" size={28} color={COLORS.primary500} />
-        </StyledView>
-        <Body className="text-center mb-2" style={{ fontSize: 20, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral900 }}>Know someone who'd click?</Body>
-        <Body className="text-center" style={{ fontSize: 16, color: COLORS.neutral500, lineHeight: 24 }}>Recommend {profileName} to a friend</Body>
-      </StyledView>
-
-      {loadingFriends ? (
-        <StyledView className="py-8 items-center"><Body style={{ fontSize: 16, color: COLORS.neutral500 }}>Loading friends...</Body></StyledView>
-      ) : friends.length === 0 ? (
-        <StyledView className="py-6 items-center">
-          <StyledView className="w-14 h-14 rounded-full items-center justify-center mb-4" style={{ backgroundColor: COLORS.neutral50 }}><EvaIcon name="people" variant="outline" size={24} color={COLORS.neutral300} /></StyledView>
-          <Body className="mb-2" style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral700 }}>No friends yet</Body>
-          <Body className="text-center mb-5" style={{ fontSize: 14, color: COLORS.neutral500, lineHeight: 20, paddingHorizontal: 16 }}>Add friends to share match recommendations</Body>
-          <StyledTouchableOpacity onPress={() => { onClose(); navigation.navigate('ContactInvite'); }} style={{ backgroundColor: COLORS.primary500, borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24 }} activeOpacity={0.8}>
-            <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.white }}>Add Friends</Body>
-          </StyledTouchableOpacity>
-        </StyledView>
-      ) : (
-        <ScrollView className="mb-5" style={{ maxHeight: 240 }} showsVerticalScrollIndicator={false}>
-          {friends.slice(0, 5).map((friend) => (
-            <StyledTouchableOpacity key={friend.friendId} onPress={() => { lightHaptic(); setSelectedFriend(friend.friendId === selectedFriend ? null : friend.friendId); }} className="flex-row items-center mb-2 py-3 px-3" style={{ backgroundColor: selectedFriend === friend.friendId ? COLORS.primary50 : COLORS.white, borderWidth: 1, borderColor: selectedFriend === friend.friendId ? COLORS.primary500 : COLORS.neutral300, borderRadius: 8 }} activeOpacity={0.7}>
-              <StyledView className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: selectedFriend === friend.friendId ? COLORS.primaryBorder : COLORS.primary50 }}>
-                <EvaIcon name="person" variant="outline" size={16} color={selectedFriend ? COLORS.primary500 : COLORS.neutral400} />
-              </StyledView>
-              <Body className="ml-3 flex-1" style={{ fontSize: 16, fontWeight: '500', fontFamily: FONTS.medium, color: selectedFriend === friend.friendId ? COLORS.primary500 : COLORS.neutral700 }}>{friend.profile.firstName}</Body>
-              {selectedFriend === friend.friendId && <EvaIcon name="checkmark-circle-2" variant="outline" size={20} color={COLORS.primary500} />}
-            </StyledTouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
-
-      <StyledView className="flex-row" style={{ gap: 12 }}>
-        <StyledTouchableOpacity onPress={onSkip} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 8 }} activeOpacity={0.7}>
-          <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral600 }}>No Thanks</Body>
-        </StyledTouchableOpacity>
-        {friends.length > 0 && (
-          <StyledTouchableOpacity onPress={() => selectedFriend && onRecommend(selectedFriend)} disabled={!selectedFriend} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: selectedFriend ? COLORS.primary500 : COLORS.neutral100, borderRadius: 8 }} activeOpacity={0.8}>
-            <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: selectedFriend ? COLORS.white : COLORS.neutral400 }}>Recommend</Body>
-          </StyledTouchableOpacity>
-        )}
       </StyledView>
     </ModalContainer>
   );

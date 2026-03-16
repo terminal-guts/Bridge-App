@@ -129,10 +129,11 @@ export const EditPhotosScreen: React.FC<EditPhotosScreenProps> = ({ navigation }
         text: 'Remove',
         style: 'destructive',
         onPress: () => {
-          setProfile({
-            ...profile,
-            photos: profile.photos.filter(p => p.id !== photoId),
-          });
+          const remaining = profile.photos.filter(p => p.id !== photoId);
+          // If we removed the main photo, promote the first remaining one
+          const wasMain = profile.photos.find(p => p.id === photoId)?.isMain;
+          if (wasMain && remaining.length > 0) remaining[0].isMain = true;
+          setProfile({ ...profile, photos: remaining });
         },
       },
     ]);
@@ -188,7 +189,7 @@ export const EditPhotosScreen: React.FC<EditPhotosScreenProps> = ({ navigation }
           <StyledView className="flex-row items-center">
             <H3>Photos <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
           </StyledView>
-          <Body className={`text-sm font-semibold ${profile.photos.length === 0 ? 'text-error' : 'text-neutral-400'}`}>
+          <Body className={`text-sm font-semibold ${profile.photos.length === 0 ? 'text-error' : 'text-emerald-500'}`}>
             {profile.photos.length}/3
           </Body>
         </StyledView>

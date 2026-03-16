@@ -36,6 +36,7 @@ export const GENDER_OPTIONS = [
   { value: 'male', label: 'Man' },
   { value: 'female', label: 'Woman' },
   { value: 'non-binary', label: 'Non-binary' },
+  { value: 'other', label: 'Other' },
 ];
 
 export const LIFESTYLE_FREQUENCY_OPTIONS = [
@@ -230,11 +231,8 @@ export const LookingForSection: React.FC = () => (
     <StyledView className="p-4 rounded-lg border bg-primary-50 border-primary-500">
       <StyledView className="flex-row items-center justify-between">
         <StyledView className="flex-1">
-          <Body className="text-base font-semibold mb-1 text-primary-700">
+          <Body className="text-base font-semibold text-primary-700">
             Relationship
-          </Body>
-          <Body className="text-sm text-neutral-600">
-            Long-term relationship
           </Body>
         </StyledView>
         <EvaIcon name="checkmark-circle-2" variant="outline" size={24} color={COLORS.primaryAccent} />
@@ -247,8 +245,7 @@ export const LookingForSection: React.FC = () => (
 export const GenderSection: React.FC<{
   interestedInGenders: string[];
   setInterestedInGenders: React.Dispatch<React.SetStateAction<string[]>>;
-  onOpenCustomModal: () => void;
-}> = ({ interestedInGenders, setInterestedInGenders, onOpenCustomModal }) => (
+}> = ({ interestedInGenders, setInterestedInGenders }) => (
   <Card className="mb-6">
     <H3 className="mb-2">Gender <RequiredMark /></H3>
     <Body className="text-neutral-600 text-sm mb-4">
@@ -285,29 +282,6 @@ export const GenderSection: React.FC<{
           </StyledTouchableOpacity>
         );
       })}
-      {/* Custom genders (not in predefined list) */}
-      {interestedInGenders
-        .filter(g => !GENDER_OPTIONS.some(opt => opt.value === g))
-        .map((customGender) => (
-          <StyledTouchableOpacity
-            key={customGender}
-            activeOpacity={1}
-            onPress={() => {
-              lightHaptic();
-              setInterestedInGenders(prev => prev.filter(g => g !== customGender));
-            }}
-            className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
-          >
-            <Body className="text-sm text-white font-medium">{customGender}</Body>
-          </StyledTouchableOpacity>
-        ))}
-      {/* Other button */}
-      <StyledTouchableOpacity
-        onPress={onOpenCustomModal}
-        className="px-3 py-2 rounded-full border border-dashed border-neutral-400 bg-neutral-50"
-      >
-        <Body className="text-sm text-neutral-600">+ Other</Body>
-      </StyledTouchableOpacity>
     </StyledView>
   </Card>
 );

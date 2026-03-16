@@ -13,8 +13,8 @@ import { getUserProfile, getFullUserProfileById } from '../../services/profileSe
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { KarmaInfoModal } from '../../components/community/karma/KarmaInfoModal';
 import { valueIconName, interestIconName } from '../../utils/emojiMaps';
-import { IconScoutIcon } from '../../components/icons';
-import { WineGlassIcon, LeafIcon, CigaretteIcon } from '../../components/icons/Icons';
+import { IconScoutIcon, EvaIcon } from '../../components/icons';
+import { WineGlassIcon, CigaretteIcon, PillIcon } from '../../components/icons/Icons';
 import { formatProfileValue } from '../../utils/formatProfileValue';
 import { showToast } from '../../utils/toast';
 import { COLORS } from '../../theme/colors';
@@ -158,16 +158,19 @@ export default function ProfileMatchScreen() {
 
     const lifestyleItems = useMemo(() => {
         if (!partnerProfile) return [];
-        const items: { label: string; value: string; icon: 'wine' | 'leaf' | 'cigarette' }[] = [];
-        const { drinkingFrequency, cannabisFrequency, tobaccoFrequency } = partnerProfile;
+        const items: { label: string; value: string; icon: 'wine' | 'smiley' | 'cigarette' | 'pill' }[] = [];
+        const { drinkingFrequency, cannabisFrequency, tobaccoFrequency, otherDrugsFrequency } = partnerProfile;
         if (drinkingFrequency && drinkingFrequency !== 'never' && drinkingFrequency !== 'irrelevant') {
             items.push({ label: 'Drinking', value: formatProfileValue(drinkingFrequency), icon: 'wine' });
         }
         if (cannabisFrequency && cannabisFrequency !== 'never' && cannabisFrequency !== 'irrelevant') {
-            items.push({ label: 'Cannabis', value: formatProfileValue(cannabisFrequency), icon: 'leaf' });
+            items.push({ label: 'Cannabis', value: formatProfileValue(cannabisFrequency), icon: 'smiley' });
         }
         if (tobaccoFrequency && tobaccoFrequency !== 'never' && tobaccoFrequency !== 'irrelevant') {
             items.push({ label: 'Tobacco', value: formatProfileValue(tobaccoFrequency), icon: 'cigarette' });
+        }
+        if (otherDrugsFrequency && otherDrugsFrequency !== 'never' && otherDrugsFrequency !== 'irrelevant') {
+            items.push({ label: 'Other Drugs', value: formatProfileValue(otherDrugsFrequency), icon: 'pill' });
         }
         return items;
     }, [partnerProfile]);
@@ -284,7 +287,7 @@ export default function ProfileMatchScreen() {
                                                             source={{ uri: getOptimizedImageUrl(uri, 24) }}
                                                             style={styles.stackAvatar}
                                                             contentFit="cover"
-                                                            transition={200}
+                                                            transition={0}
                                                             cachePolicy="disk"
                                                         />
                                                     </View>
@@ -345,7 +348,8 @@ export default function ProfileMatchScreen() {
                                         source={{ uri: item.data.url }}
                                         style={styles.inlinePhoto}
                                         contentFit="cover"
-                                        transition={300}
+                                        cachePolicy="disk"
+                                        transition={0}
                                     />
                                 </View>
                             );
@@ -410,8 +414,9 @@ export default function ProfileMatchScreen() {
                                 >
                                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                         {item.icon === 'wine' && <WineGlassIcon size={16} color={COLORS.text.secondary} />}
-                                        {item.icon === 'leaf' && <LeafIcon size={16} color={COLORS.text.secondary} />}
+                                        {item.icon === 'smiley' && <EvaIcon name="smiling-face" variant="outline" size={16} color={COLORS.text.secondary} />}
                                         {item.icon === 'cigarette' && <CigaretteIcon size={16} color={COLORS.text.secondary} />}
+                                        {item.icon === 'pill' && <PillIcon size={16} color={COLORS.text.secondary} />}
                                         <Text style={styles.lifestyleLabel}>{item.label}</Text>
                                     </View>
                                     <Text style={styles.lifestyleValue}>{item.value}</Text>

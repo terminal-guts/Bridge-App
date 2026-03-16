@@ -123,7 +123,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                     ...SHADOWS.xl,
                   } as any}
                   contentFit="cover"
-                  transition={200}
+                  transition={0}
                   cachePolicy="disk"
                   onError={(e) => { logger.warn('Failed to load profile photo:', e.error); }}
                 />

@@ -71,7 +71,7 @@ export const ShareMatchSheet: React.FC<ShareMatchSheetProps> = ({
                                 source={{ uri: imageUri }}
                                 style={styles.preview}
                                 contentFit="contain"
-                                transition={200}
+                                transition={0}
                             />
                         ) : null}
                     </View>

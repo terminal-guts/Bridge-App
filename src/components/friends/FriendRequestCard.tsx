@@ -33,17 +33,17 @@ export const FriendRequestCard: React.FC<FriendRequestCardProps> = ({
   isProcessing = false,
 }) => {
   const name = request.senderProfile.firstName || 'Someone';
-  const photoUrl = request.senderProfile.photos?.[0]?.url || 'https://via.placeholder.com/100';
+  const photoUrl = request.senderProfile.photos?.[0]?.url || undefined;
   const school = request.senderProfile.school || '';
 
   return (
     <StyledView style={styles.container}>
       {/* Avatar */}
       <Image
-        source={{ uri: photoUrl }}
+        source={photoUrl ? { uri: photoUrl } : null}
         style={styles.avatar}
         cachePolicy="disk"
-        transition={200}
+        transition={0}
       />
 
       {/* Info */}

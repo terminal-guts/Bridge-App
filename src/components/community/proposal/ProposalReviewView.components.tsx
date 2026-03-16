@@ -229,10 +229,10 @@ export function ForFriendModal({
                   style={styles.modalPersonCard}
                 >
                   <Image
-                    source={{ uri: photoAUrl || 'https://via.placeholder.com/200' }}
-                    style={{ width: '100%', height: '100%' }}
+                    source={photoAUrl ? { uri: photoAUrl } : null}
+                    style={{ width: '100%', height: '100%', backgroundColor: '#E5E7EB' }}
                     contentFit="cover"
-                    transition={200}
+                    transition={0}
                     cachePolicy="disk"
                     recyclingKey={`${proposalId}-modal-a`}
                   />
@@ -253,10 +253,10 @@ export function ForFriendModal({
                   style={styles.modalPersonCard}
                 >
                   <Image
-                    source={{ uri: photoBUrl || 'https://via.placeholder.com/200' }}
-                    style={{ width: '100%', height: '100%' }}
+                    source={photoBUrl ? { uri: photoBUrl } : null}
+                    style={{ width: '100%', height: '100%', backgroundColor: '#E5E7EB' }}
                     contentFit="cover"
-                    transition={200}
+                    transition={0}
                     cachePolicy="disk"
                     recyclingKey={`${proposalId}-modal-b`}
                   />
@@ -313,10 +313,10 @@ export function ForFriendModal({
                         ]}
                       >
                         <Image
-                          source={{ uri: friendPhoto || 'https://via.placeholder.com/50' }}
-                          style={styles.modalFriendAvatar}
+                          source={friendPhoto ? { uri: friendPhoto } : null}
+                          style={[styles.modalFriendAvatar, { backgroundColor: '#E5E7EB' }]}
                           contentFit="cover"
-                          transition={200}
+                          transition={0}
                           cachePolicy="disk"
                         />
                         <View style={{ flex: 1 }}>

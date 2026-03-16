@@ -672,7 +672,7 @@ export interface ProfileStrengthBreakdown {
   sections: {
     aboutMe: {
       score: number; // Current score
-      maxScore: number; // Maximum possible score (18)
+      maxScore: number; // Maximum possible score (60)
       percentage: number; // Percentage for this section (0-100)
     };
     matchPreferences: {
@@ -680,24 +680,24 @@ export interface ProfileStrengthBreakdown {
       maxScore: number; // Maximum possible score (25)
       percentage: number; // Percentage for this section (0-100)
       completedCount: number; // Number of completed fields
-      totalCount: number; // Total required fields (7)
+      totalCount: number; // Total required fields (8)
     };
     photos: {
       score: number; // Current score
-      maxScore: number; // Maximum possible score (25)
+      maxScore: number; // Maximum possible score (5)
       percentage: number; // Percentage for this section (0-100)
       count: number; // Number of photos uploaded
     };
     deepQuestions: {
       score: number; // Current score
-      maxScore: number; // Maximum possible score (25)
+      maxScore: number; // Maximum possible score (10)
       percentage: number; // Percentage for this section (0-100)
       displayedCount: number; // Number of displayed questions
       answeredCount: number; // Number of answered questions
     };
   };
   totalScore: number; // Total score across all sections
-  maxTotalScore: number; // Maximum possible total score (93)
+  maxTotalScore: number; // Maximum possible total score (100)
 }
 
 /**
@@ -713,13 +713,13 @@ export const calculateProfileStrengthBreakdown = (
     return {
       overall: 0,
       sections: {
-        aboutMe: { score: 0, maxScore: 18, percentage: 0 },
+        aboutMe: { score: 0, maxScore: 60, percentage: 0 },
         matchPreferences: { score: 0, maxScore: 25, percentage: 0, completedCount: 0, totalCount: 8 },
-        photos: { score: 0, maxScore: 25, percentage: 0, count: 0 },
-        deepQuestions: { score: 0, maxScore: 25, percentage: 0, displayedCount: 0, answeredCount: 0 },
+        photos: { score: 0, maxScore: 5, percentage: 0, count: 0 },
+        deepQuestions: { score: 0, maxScore: 10, percentage: 0, displayedCount: 0, answeredCount: 0 },
       },
       totalScore: 0,
-      maxTotalScore: 93,
+      maxTotalScore: 100,
     };
   }
 
@@ -787,34 +787,43 @@ export const calculateProfileStrengthBreakdown = (
   const questionsPercentage = displayedCount >= 3 ? 100 : Math.round((displayedCount / 3) * 100);
 
   // TOTAL CALCULATION
-  const totalScore = aboutScore + preferencesScore + photosScore + questionsScore;
-  const maxTotal = 93; // 18 + 25 + 25 + 25
+  // About Me: 60 pts (18 fields equally weighted)
+  const aboutMePoints = Math.round((aboutScore / 18) * 60);
+  // Match Preferences: 25 pts (8 fields equally weighted)
+  const preferencesPoints = Math.round((matchPrefsCompletion.percentage / 100) * 25);
+  // Photos: 5 pts (1 photo = full 5)
+  const photosPoints = photoCount >= 1 ? 5 : 0;
+  // Deep Questions: 10 pts (3 displayed = full 10, linear partial credit)
+  const questionsPoints = displayedCount >= 3 ? 10 : Math.round((displayedCount / 3) * 10);
+
+  const totalScore = aboutMePoints + preferencesPoints + photosPoints + questionsPoints;
+  const maxTotal = 100; // 60 + 25 + 5 + 10
   const finalPercentage = Math.round((totalScore / maxTotal) * 100);
 
   return {
     overall: finalPercentage,
     sections: {
       aboutMe: {
-        score: aboutScore,
-        maxScore: 18,
+        score: aboutMePoints,
+        maxScore: 50,
         percentage: aboutMePercentage,
       },
       matchPreferences: {
-        score: preferencesScore,
-        maxScore: 25,
+        score: preferencesPoints,
+        maxScore: 30,
         percentage: matchPrefsCompletion.percentage,
         completedCount: matchPrefsCompletion.completedCount,
         totalCount: matchPrefsCompletion.totalCount,
       },
       photos: {
-        score: photosScore,
-        maxScore: 25,
-        percentage: Math.min(photosPercentage, 100), // Cap at 100%
+        score: photosPoints,
+        maxScore: 10,
+        percentage: Math.min(photosPercentage, 100),
         count: photoCount,
       },
       deepQuestions: {
-        score: questionsScore,
-        maxScore: 25,
+        score: questionsPoints,
+        maxScore: 10,
         percentage: questionsPercentage,
         displayedCount,
         answeredCount,

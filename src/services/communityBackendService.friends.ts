@@ -64,7 +64,6 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
     { data: userPhotos },
     { data: karmaScores },
     { data: allUserVotes },
-    { data: allUserRecs },
   ] = await Promise.all([
     supabase
       .from('user_profiles')
@@ -110,12 +109,6 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
       .from('proposal_votes')
       .select('proposal_id')
       .eq('voter_user_id', userId)
-      .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
-    // Pre-fetch recent user recommendations
-    supabase
-      .from('friend_recommendations')
-      .select('source_proposal_id')
-      .eq('recommender_id', userId)
       .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
   ]);
 
@@ -170,9 +163,6 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
 
   for (const v of (allUserVotes || [])) {
     if (activeProposalIds.has(v.proposal_id)) votedProposalIds.add(v.proposal_id);
-  }
-  for (const r of (allUserRecs || [])) {
-    if (activeProposalIds.has(r.source_proposal_id)) votedProposalIds.add(r.source_proposal_id);
   }
 
   // Determine hasCompletedGrid for each friend:

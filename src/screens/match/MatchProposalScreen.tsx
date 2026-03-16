@@ -76,7 +76,6 @@ import {
   Tag,
   LifestyleRow,
   PassFeedbackModal,
-  RecommendToFriendModal,
   PassConfirmModal,
   CelebrationOverlay,
 } from './MatchProposalScreen.components';
@@ -178,9 +177,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   const [isPassing, setIsPassing] = useState(false);
   const [showPassFeedback, setShowPassFeedback] = useState(false);
   const [showPassConfirm, setShowPassConfirm] = useState(false);
-  const [showRecommendModal, setShowRecommendModal] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [passFeedbackId, setPassFeedbackId] = useState<string | undefined>(undefined);
   const flatListRef = useRef<FlatList>(null);
   const isMountedRef = useRef(true);
   useEffect(() => { return () => { isMountedRef.current = false; }; }, []);
@@ -298,51 +295,10 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   }, [navigation, match, profile]);
 
   const handlePassConfirmed = useCallback(() => { setShowPassConfirm(false); setShowPassFeedback(true); }, []);
-  const handlePassFeedbackSubmit = useCallback((feedbackId?: string) => { setShowPassFeedback(false); setPassFeedbackId(feedbackId); setShowRecommendModal(true); }, []);
-  const handleRecommendToFriend = useCallback(async (friendId: string) => {
-    setShowRecommendModal(false);
+  const handlePassFeedbackSubmit = useCallback(async (_feedbackId?: string) => {
+    setShowPassFeedback(false);
     setIsPassing(true);
 
-    // 1. Record the pass (decline the proposal)
-    if (route.params?.proposalId) {
-      try {
-        await communityService.respondToMatchProposal(route.params.proposalId, false, {
-          name: currentUserProfile?.firstName || 'Unknown',
-          photoUrl: currentUserProfile?.photos?.[0]?.url,
-        });
-        logger.info('[MatchProposalScreen] Proposal passed (with recommendation):', route.params.proposalId);
-      } catch (error) {
-        logger.error('[MatchProposalScreen] Error passing proposal:', error);
-      }
-    }
-
-    // 2. Persist the recommendation (same as community voting recommend-to-friend)
-    if (profile?.userId) {
-      try {
-        await communityService.submitRecommendation(profile.userId, friendId, route.params?.proposalId);
-        logger.info('[MatchProposalScreen] Recommendation sent:', profile.userId, '→ friend', friendId);
-      } catch (error) {
-        logger.error('[MatchProposalScreen] Error submitting recommendation:', error);
-      }
-    }
-
-    if (!isMountedRef.current) return;
-    Alert.alert('Recommendation Sent!', 'Your friend will see this match in their recommendations.', [{
-      text: 'OK',
-      onPress: () => {
-        if (isMountedRef.current) {
-          setIsPassing(false);
-          navigation.navigate('MainTabs', { screen: 'Matches' });
-        }
-      },
-    }]);
-  }, [navigation, route.params, profile, currentUserProfile]);
-
-  const handleSkipRecommend = useCallback(async () => {
-    setShowRecommendModal(false);
-    setIsPassing(true);
-
-    // Record pass in community service
     if (route.params?.proposalId) {
       try {
         await communityService.respondToMatchProposal(route.params.proposalId, false, {
@@ -357,10 +313,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
 
     if (!isMountedRef.current) return;
     warningHaptic();
-    // Clear any existing navigation timer
-    if (navigationTimerRef.current) {
-      clearTimeout(navigationTimerRef.current);
-    }
+    if (navigationTimerRef.current) clearTimeout(navigationTimerRef.current);
     navigationTimerRef.current = setTimeout(() => {
       if (!isMountedRef.current) return;
       setIsPassing(false);
@@ -551,7 +504,6 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
       {/* Modals */}
       <PassConfirmModal visible={showPassConfirm} onConfirm={handlePassConfirmed} onCancel={() => setShowPassConfirm(false)} />
       <PassFeedbackModal visible={showPassFeedback} onClose={() => handlePassFeedbackSubmit()} onSubmit={(id) => handlePassFeedbackSubmit(id)} />
-      <RecommendToFriendModal visible={showRecommendModal} profileName={getFirstInitial(profile.firstName)} onClose={() => setShowRecommendModal(false)} onRecommend={handleRecommendToFriend} onSkip={handleSkipRecommend} navigation={navigation} />
       <CelebrationOverlay visible={showCelebration} recipientName={profile.firstName} onComplete={handleCelebrationComplete} />
     </View>
   );

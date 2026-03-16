@@ -26,7 +26,6 @@ import {
   ReligionSection,
   PoliticsSection,
   LifestyleSection,
-  CustomInputModal,
 } from './MatchPreferencesScreen.sections';
 
 const logger = createLogger('MatchPreferencesScreen');
@@ -64,9 +63,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
   // Track original data for change detection
   const originalDataRef = useRef<string | null>(null);
-
-  // Custom input modal state
-  const [showCustomModal, setShowCustomModal] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -289,14 +285,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
     return calculateMatchPreferencesCompleteness(profile);
   }, [profile]);
 
-  const handleCustomGenderSave = useCallback((value: string) => {
-    if (!interestedInGenders.includes(value)) {
-      setInterestedInGenders(prev => [...prev, value]);
-    }
-    mediumHaptic();
-    setShowCustomModal(false);
-  }, [interestedInGenders]);
-
   return (
     <ScreenWrapper>
 
@@ -347,7 +335,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
           <GenderSection
             interestedInGenders={interestedInGenders}
             setInterestedInGenders={setInterestedInGenders}
-            onOpenCustomModal={() => setShowCustomModal(true)}
           />
 
           <AgeRangeSection
@@ -388,11 +375,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         </StyledView>
       </StyledScrollView>
 
-      <CustomInputModal
-        visible={showCustomModal}
-        onClose={() => setShowCustomModal(false)}
-        onSave={handleCustomGenderSave}
-      />
     </ScreenWrapper>
   );
 };

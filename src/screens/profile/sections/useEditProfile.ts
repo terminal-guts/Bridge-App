@@ -37,7 +37,12 @@ export function useEditProfile() {
 
         const profileResult = await getUserProfile();
         if (profileResult.ok && profileResult.data && mounted) {
-          setProfile(profileResult.data);
+          const data = profileResult.data;
+          // Auto-promote first photo to main if none is set
+          if (data.photos && data.photos.length > 0 && !data.photos.some((p: any) => p.isMain)) {
+            data.photos = data.photos.map((p: any, i: number) => ({ ...p, isMain: i === 0 }));
+          }
+          setProfile(data);
           originalProfileRef.current = JSON.stringify(profileResult.data);
         } else if (mounted) {
           Alert.alert('Error', 'Failed to load profile');

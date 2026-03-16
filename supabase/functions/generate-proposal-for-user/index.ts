@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { calculateCompatibility, passesBasicFilter } from '../_shared/scoring.ts';
 import { corsHeaders } from '../_shared/cors.ts';
-import { MAX_POOL_VOTES, RECOMMENDATION_BOOST_PER, RECOMMENDATION_BOOST_CAP } from '../_shared/constants.ts';
+import { MAX_POOL_VOTES } from '../_shared/constants.ts';
 
 const MIN_COMPATIBILITY_SCORE = 30.0;
 const VOTERS_PER_PROPOSAL = 6;
@@ -183,18 +183,6 @@ Deno.serve(async (req: Request) => {
             }
           }
 
-          // Fetch friend recommendations for this user (where they are the recommended_to)
-          const { data: userRecs } = await supabase
-            .from('friend_recommendations')
-            .select('recommended_person_id, recommended_to_friend_id')
-            .or(`recommended_to_friend_id.eq.${userId},recommended_person_id.eq.${userId}`);
-
-          const recBoostMap = new Map<string, number>();
-          for (const rec of (userRecs || [])) {
-            const key = [rec.recommended_person_id, rec.recommended_to_friend_id].sort().join('|');
-            recBoostMap.set(key, (recBoostMap.get(key) || 0) + 1);
-          }
-
           // New user boost for the requesting user
           const myCreatedMs = myProfile.created_at ? new Date(myProfile.created_at as string).getTime() : 0;
           const myDaysOld = (Date.now() - myCreatedMs) / (24 * 60 * 60 * 1000);
@@ -244,11 +232,6 @@ Deno.serve(async (req: Request) => {
               deepMap[userId] || [],
               deepMap[other.user_id] || [],
             );
-
-            // Apply friend recommendation boost
-            const recKey = [userId, other.user_id].sort().join('|');
-            const recCount = recBoostMap.get(recKey) || 0;
-            result.total_score += Math.min(recCount * RECOMMENDATION_BOOST_PER, RECOMMENDATION_BOOST_CAP);
 
             // Apply new user boost (highest of the two users)
             const otherCreatedMs = other.created_at ? new Date(other.created_at as string).getTime() : 0;

@@ -56,7 +56,7 @@ function getStreakTier(days: number) {
 
 export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onViewProfile, onChat, rank, onRankPress, statusLine, showVoteRing, hasUnread, onBadgePress, onStreakMilestone, previousStreakDays }) => {
     const name = item.friend.firstName || 'User';
-    const rawImageUrl = item.friend.photos?.[0]?.url || 'https://via.placeholder.com/150';
+    const rawImageUrl = item.friend.photos?.[0]?.url || undefined;
     const imageUrl = useMemo(() => getOptimizedImageUrl(rawImageUrl, 68), [rawImageUrl]);
     const streak = item.streakDays || 0;
     const friendProfileComplete = item.friend.profileCompleted === true;
@@ -139,7 +139,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                         streak >= 30 && { borderColor: '#EF4444' },
                     ]}
                     contentFit="cover"
-                    transition={200}
+                    transition={0}
                     cachePolicy="disk"
                     recyclingKey={item.friendId}
                 />

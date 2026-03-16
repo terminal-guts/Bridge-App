@@ -122,7 +122,7 @@ export function ProfileView({
                 source={{ uri: photos[0].url }}
                 style={{ width: '100%', height: 280, borderRadius: 16, backgroundColor: COLORS.backgroundGrayMedium }}
                 contentFit="cover"
-                transition={200}
+                transition={0}
                 cachePolicy="disk"
               />
             ) : (
@@ -156,7 +156,7 @@ export function ProfileView({
                         source={{ uri: photo.url }}
                         style={{ width: '100%', height: 280, borderRadius: 16, backgroundColor: COLORS.backgroundGrayMedium }}
                         contentFit="cover"
-                        transition={200}
+                        transition={0}
                         cachePolicy="disk"
                       />
                     </StyledView>
@@ -444,7 +444,7 @@ export function ProfileView({
             {profile.cannabisFrequency && (
               <StyledView style={pvStyles.lifestyleRow}>
                 <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <LeafIcon size={16} color={COLORS.text.subtle} style={{ marginRight: 8 }} />
+                  <EvaIcon name="smiling-face" variant="outline" size={16} color={COLORS.text.subtle} style={{ marginRight: 8 }} />
                   <StyledText style={{ fontSize: FONT_SIZES.base, fontFamily: FONTS.regular, color: COLORS.text.warmNeutral }}>Cannabis</StyledText>
                 </StyledView>
                 <StyledText style={{ fontSize: FONT_SIZES.base, color: COLORS.text.subtle, fontWeight: '500', fontFamily: FONTS.medium }}>
@@ -454,13 +454,25 @@ export function ProfileView({
             )}
 
             {profile.tobaccoFrequency && (
-              <StyledView style={[pvStyles.lifestyleRow, { marginBottom: 0 }]}>
+              <StyledView style={pvStyles.lifestyleRow}>
                 <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <CigaretteIcon size={16} color={COLORS.text.subtle} style={{ marginRight: 8 }} />
                   <StyledText style={{ fontSize: FONT_SIZES.base, fontFamily: FONTS.regular, color: COLORS.text.warmNeutral }}>Tobacco</StyledText>
                 </StyledView>
                 <StyledText style={{ fontSize: FONT_SIZES.base, color: COLORS.text.subtle, fontWeight: '500', fontFamily: FONTS.medium }}>
                   {capitalize(profile.tobaccoFrequency)}
+                </StyledText>
+              </StyledView>
+            )}
+
+            {profile.otherDrugsFrequency && (
+              <StyledView style={[pvStyles.lifestyleRow, { marginBottom: 0 }]}>
+                <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <EvaIcon name="plus-circle" variant="outline" size={16} color={COLORS.text.subtle} style={{ marginRight: 8 }} />
+                  <StyledText style={{ fontSize: FONT_SIZES.base, fontFamily: FONTS.regular, color: COLORS.text.warmNeutral }}>Other Drugs</StyledText>
+                </StyledView>
+                <StyledText style={{ fontSize: FONT_SIZES.base, color: COLORS.text.subtle, fontWeight: '500', fontFamily: FONTS.medium }}>
+                  {capitalize(profile.otherDrugsFrequency)}
                 </StyledText>
               </StyledView>
             )}

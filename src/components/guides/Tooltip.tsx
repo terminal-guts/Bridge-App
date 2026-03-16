@@ -48,6 +48,9 @@ interface TooltipProps {
 
   /** Optional image to display between message and button */
   image?: ImageSourcePropType;
+
+  /** Fine-tune tooltip position after auto-calculation */
+  tooltipOffset?: { x?: number; y?: number };
 }
 
 const StyledView = styled(View);
@@ -71,6 +74,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
   targetDimensions,
   preferredPosition,
   image,
+  tooltipOffset,
 }) => {
   const insets = useSafeAreaInsets();
 
@@ -174,12 +178,12 @@ export const Tooltip: React.FC<TooltipProps> = ({
     );
 
     return {
-      x: tooltipX,
-      y: tooltipY,
+      x: tooltipX + (tooltipOffset?.x || 0),
+      y: tooltipY + (tooltipOffset?.y || 0),
       position: finalPosition,
       width: TOOLTIP_MAX_WIDTH,
     };
-  }, [targetDimensions, preferredPosition, insets]);
+  }, [targetDimensions, preferredPosition, insets, tooltipOffset]);
 
   /**
    * Animate in on mount
@@ -232,11 +236,23 @@ export const Tooltip: React.FC<TooltipProps> = ({
 
         {/* Optional image */}
         {image && (
-          <Image
-            source={image}
-            style={{ width: '100%', height: 240, borderRadius: 12, marginBottom: 16 }}
-            resizeMode="cover"
-          />
+          <View style={{
+            overflow: 'hidden',
+            borderRadius: 12,
+            marginBottom: 16,
+            height: Math.round(300 * (getScreenDimensions().width / BASE_WIDTH)),
+          }}>
+            <Image
+              source={image}
+              style={{
+                width: '100%',
+                height: Math.round(600 * (getScreenDimensions().width / BASE_WIDTH)),
+                position: 'absolute',
+                top: -Math.round(90 * (getScreenDimensions().width / BASE_WIDTH)),
+              }}
+              resizeMode="cover"
+            />
+          </View>
         )}
 
         {/* Buttons */}

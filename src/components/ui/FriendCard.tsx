@@ -76,7 +76,7 @@ export const FriendCard = React.memo<FriendCardProps>(({
 }) => {
     // Normalize data
     const name = friend.friend?.firstName || friend.name || 'Friend';
-    const photoUrl = friend.friend?.photos?.[0]?.url || friend.photoUrl || 'https://via.placeholder.com/100';
+    const photoUrl = friend.friend?.photos?.[0]?.url || friend.photoUrl || undefined;
     const streak = friend.streakDays ?? friend.streak ?? 0;
     const points = friend.karmaScore?.karmaPoints ?? friend.karmaPoints ?? 0;
 
@@ -128,13 +128,13 @@ export const FriendCard = React.memo<FriendCardProps>(({
             <StyledTouchable onPress={handleAvatarPress} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`View ${name}'s profile`}>
                 <StyledView style={styles.avatarContainer}>
                     <StyledImage
-                        source={{ uri: photoUrl }}
+                        source={photoUrl ? { uri: photoUrl } : null}
                         style={[
                             styles.avatar,
-                            { borderColor: variant === 'pending' ? '#EFF6FF' : '#F0FDF4' }
+                            { borderColor: variant === 'pending' ? '#EFF6FF' : '#F0FDF4', backgroundColor: '#E5E7EB' }
                         ]}
                         cachePolicy="disk"
-                        transition={200}
+                        transition={0}
                         accessibilityRole="image"
                         accessibilityLabel={`${name}'s photo`}
                     />

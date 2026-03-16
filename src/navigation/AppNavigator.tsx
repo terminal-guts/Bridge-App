@@ -4,7 +4,7 @@ import * as Linking from 'expo-linking';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { UsersTabIcon, HandshakeTabIcon, ProfileTabIcon } from '../components/icons/Icons';
-import { ActivityIndicator, AppState, View, Text, TouchableOpacity, useWindowDimensions, LayoutChangeEvent, StyleSheet as RNStyleSheet } from 'react-native';
+import { AppState, View, Text, TouchableOpacity, useWindowDimensions, LayoutChangeEvent, StyleSheet as RNStyleSheet } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, useAnimatedProps, withSpring, withTiming } from 'react-native-reanimated';
 import { SPRINGS } from '../constants/animations';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,11 +22,12 @@ import { isIntentionalSignOut, resetIntentionalSignOut } from '../services/authS
 import { setCachedUserId, clearCachedUserId } from '../utils/auth';
 import { showToast } from '../utils/toast';
 import { selectionHaptic } from '../utils/haptics';
+import { CommunitySkeleton } from '../components/ui/SkeletonLoader';
 
 // ── All screens are lazy-loaded to minimize startup parsing ──
 
 // ── Lazy-loaded screens (only evaluated when navigated to) ──────────────────
-const LazyFallback = () => <ActivityIndicator style={{ flex: 1 }} color="#437FFF" />;
+const LazyFallback = () => <CommunitySkeleton />;
 
 function withSuspense<P extends object>(LazyComponent: React.LazyExoticComponent<React.ComponentType<P>>) {
   return function SuspenseWrapped(props: P) {
@@ -83,9 +84,6 @@ const StatsScreen = withSuspense(React.lazy(() => import('../screens/community/S
 
 // Auth sub-screens
 const SuspendedScreen = withSuspense(React.lazy(() => import('../screens/auth/SuspendedScreen')));
-
-// Community sub-screens
-const SuggestMatchScreen = withSuspense(React.lazy(() => import('../screens/community/SuggestMatchScreen')));
 
 // Badge management
 const BadgeManagementScreen = withSuspense(React.lazy(() => import('../screens/profile/BadgeManagementScreen').then(m => ({ default: m.BadgeManagementScreen }))));
@@ -597,13 +595,10 @@ export const AppNavigator = () => {
     };
   }, []);
 
-  // Show loading screen while checking auth
+  // Show skeleton while checking auth — matches what CommunityScreen shows while loading,
+  // so the transition is seamless instead of a gray spinner → nav bar flash → skeleton.
   if (isAuthenticated === null) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' }}>
-        <ActivityIndicator size="large" color="#437FFF" />
-      </View>
-    );
+    return <CommunitySkeleton />;
   }
 
   return (
@@ -675,7 +670,6 @@ export const AppNavigator = () => {
           <Stack.Screen name="SupportChat" component={SupportChatScreen} />
           <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
           <Stack.Screen name="Stats" component={StatsScreen} />
-          <Stack.Screen name="SuggestMatch" component={SuggestMatchScreen} />
           <Stack.Screen name="BadgeManagement" component={BadgeManagementScreen} />
 
           {/* Friends */}

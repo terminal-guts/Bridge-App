@@ -291,19 +291,16 @@ export const uploadMultiplePhotos = async (
       );
     }
 
+    const results = await Promise.all(
+      imageUris.map((uri, i) =>
+        uploadPhotoInternal(userId, uri, i, i === 0, compressionOptions)
+      )
+    );
+
     const uploadedPhotos: Photo[] = [];
     const errors: string[] = [];
-
-    // Upload photos sequentially to avoid overwhelming the server
-    for (let i = 0; i < imageUris.length; i++) {
-      const result = await uploadPhotoInternal(
-        userId,
-        imageUris[i],
-        i,
-        i === 0, // First photo is main photo
-        compressionOptions
-      );
-
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
       if (result.ok && result.data) {
         uploadedPhotos.push(result.data.photo);
       } else {

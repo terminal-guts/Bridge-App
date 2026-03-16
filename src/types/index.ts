@@ -362,7 +362,6 @@ export type RootStackParamList = {
   SupportChat: undefined;
   Leaderboard: undefined;
   Stats: undefined;
-  SuggestMatch: undefined;
   Suspended: undefined;
   ContactInvite: { autoAddCode?: string } | undefined;
   BadgeManagement: undefined;

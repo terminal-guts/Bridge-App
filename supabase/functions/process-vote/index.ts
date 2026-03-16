@@ -105,45 +105,31 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createAdminClient();
 
-    // 0. Check if user is suspended
-    const { data: voterProfile } = await supabase
-      .from('user_profiles')
-      .select('is_suspended')
-      .eq('user_id', voterId)
-      .maybeSingle();
+    // ── Phase 1: Parallel pre-checks (all independent of each other) ────────
+    const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+    const [
+      { data: voterProfile },
+      { count: todayVotes },
+      { data: existingVote },
+      { data: proposal, error: propErr },
+    ] = await Promise.all([
+      supabase.from('user_profiles').select('is_suspended').eq('user_id', voterId).maybeSingle(),
+      supabase.from('proposal_votes').select('*', { count: 'exact', head: true }).eq('voter_user_id', voterId).gte('created_at', todayStart),
+      supabase.from('proposal_votes').select('vote_type, is_friend_vote, voter_user_id, vote_weight').eq('proposal_id', proposal_id).eq('voter_user_id', voterId).maybeSingle(),
+      supabase.from('proposals').select('*').eq('id', proposal_id).single(),
+    ]);
 
+    // 0. Suspended check
     if (voterProfile?.is_suspended) {
       return Response.json({ error: 'Your account has been suspended' }, { status: 403, headers: corsHeaders });
     }
 
-    // 0a. Daily vote cap — safety net against abuse (generous limit; real users won't hit this)
-    const { count: todayVotes } = await supabase
-      .from('proposal_votes')
-      .select('*', { count: 'exact', head: true })
-      .eq('voter_user_id', voterId)
-      .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
-
+    // 0a. Daily vote cap
     if ((todayVotes ?? 0) >= 50) {
       return Response.json({ error: 'Daily vote limit reached. Try again tomorrow.' }, { status: 429, headers: corsHeaders });
     }
 
-    // 0b. Check if a vote already exists for this proposal/voter pair
-    const { data: existingVote } = await supabase
-      .from('proposal_votes')
-      .select('vote_type, is_friend_vote, voter_user_id, vote_weight')
-      .eq('proposal_id', proposal_id)
-      .eq('voter_user_id', voterId)
-      .maybeSingle();
-
-    const isNewVote = !existingVote;
-
-    // 1. Fetch the proposal
-    const { data: proposal, error: propErr } = await supabase
-      .from('proposals')
-      .select('*')
-      .eq('id', proposal_id)
-      .single();
-
+    // 1. Proposal validation
     if (propErr || !proposal) {
       return Response.json({ error: 'Proposal not found' }, { status: 404, headers: corsHeaders });
     }
@@ -157,28 +143,30 @@ Deno.serve(async (req: Request) => {
       return Response.json({ error: 'You cannot vote on your own proposal' }, { status: 403, headers: corsHeaders });
     }
 
-    // 2b. Block check — voter must not have blocked either participant (or vice versa)
-    const { data: blockRows } = await supabase
-      .from('blocked_users')
-      .select('id')
-      .or(
+    const isNewVote = !existingVote;
+
+    // ── Phase 2: Parallel context queries (depend on proposal user IDs) ────
+    const [
+      { data: blockRows },
+      { data: friendRows },
+      { data: voterKarma },
+    ] = await Promise.all([
+      // 2b. Block check
+      supabase.from('blocked_users').select('id').or(
         `and(user_id.eq.${voterId},blocked_user_id.eq.${proposal.user_a_id}),` +
         `and(user_id.eq.${voterId},blocked_user_id.eq.${proposal.user_b_id}),` +
         `and(user_id.eq.${proposal.user_a_id},blocked_user_id.eq.${voterId}),` +
         `and(user_id.eq.${proposal.user_b_id},blocked_user_id.eq.${voterId})`,
-      )
-      .limit(1);
+      ).limit(1),
+      // 3. Friend check
+      supabase.from('friends').select('user_id, friend_id').eq('status', 'accepted').or(`user_id.eq.${voterId},friend_id.eq.${voterId}`),
+      // 4. Karma tier for vote weighting
+      supabase.from('karma_scores').select('badge_tier').eq('user_id', voterId).maybeSingle(),
+    ]);
 
     if (blockRows && blockRows.length > 0) {
       return Response.json({ error: 'You cannot vote on this proposal' }, { status: 403, headers: corsHeaders });
     }
-
-    // 3. Determine if this is a friend vote
-    const { data: friendRows } = await supabase
-      .from('friends')
-      .select('user_id, friend_id')
-      .eq('status', 'accepted')
-      .or(`user_id.eq.${voterId},friend_id.eq.${voterId}`);
 
     const voterFriends = new Set<string>();
     for (const row of (friendRows || [])) {
@@ -190,13 +178,6 @@ Deno.serve(async (req: Request) => {
     const isFriendOfB = voterFriends.has(proposal.user_b_id);
     const isFriendVote = isFriendOfA || isFriendOfB;
     const friendOf = isFriendOfA ? proposal.user_a_id : (isFriendOfB ? proposal.user_b_id : null);
-
-    // 4. Get voter karma tier for vote weighting
-    const { data: voterKarma } = await supabase
-      .from('karma_scores')
-      .select('badge_tier')
-      .eq('user_id', voterId)
-      .maybeSingle();
 
     const voterTier = voterKarma?.badge_tier || 'new';
     const weightMultiplier = KARMA_WEIGHTS[voterTier] || 1.0;

@@ -21,7 +21,6 @@ import {
 import {
   castProposalVote,
   decideOnProposal,
-  submitFriendRecommendation,
 } from './proposalApiService';
 import { createLogger } from '../utils/secureLogger';
 import {
@@ -162,25 +161,6 @@ class CommunityBackendService {
     this.invalidateFriendsCache();
     if (!this.sessionVotedProposals.has(proposalId)) {
       this.sessionVotedProposals.add(proposalId);
-      this.sessionVoteCount++;
-      AsyncStorage.setItem(STORAGE_KEY_VOTES, String(this.sessionVoteCount)).catch(() => {});
-    }
-  }
-
-  async submitRecommendation(recommendedPersonId: string, recommendedToFriendId: string, sourceProposalId?: string): Promise<void> {
-    const userId = await getCurrentUserId();
-    await submitFriendRecommendation(recommendedPersonId, recommendedToFriendId, sourceProposalId);
-    // +1 karma and mark assignment as voted (fire-and-forget, non-blocking)
-    supabase.rpc('increment_karma_for_vote', { p_user_id: userId }).then(null, (e: unknown) => Sentry.captureException(e));
-    if (sourceProposalId) {
-      supabase.from('pool_vote_assignments').update({ has_voted: true }).match({ proposal_id: sourceProposalId, voter_id: userId }).then(null, (e: unknown) => Sentry.captureException(e));
-    }
-    this.invalidateFriendsCache();
-    if (sourceProposalId && !this.sessionVotedProposals.has(sourceProposalId)) {
-      this.sessionVotedProposals.add(sourceProposalId);
-      this.sessionVoteCount++;
-      AsyncStorage.setItem(STORAGE_KEY_VOTES, String(this.sessionVoteCount)).catch(() => {});
-    } else if (!sourceProposalId) {
       this.sessionVoteCount++;
       AsyncStorage.setItem(STORAGE_KEY_VOTES, String(this.sessionVoteCount)).catch(() => {});
     }

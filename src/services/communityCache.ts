@@ -95,6 +95,14 @@ export async function mergeCachedPhotoUrls(newUrls: Record<string, string>): Pro
   await setEntry(KEY_PHOTO_URLS, merged);
 }
 
+/** Invalidate the in-memory and AsyncStorage photo URL cache */
+export async function invalidateCachedPhotoUrls(): Promise<void> {
+  inMemoryPhotoUrls = null;
+  try {
+    await AsyncStorage.removeItem(KEY_PHOTO_URLS);
+  } catch { /* non-critical */ }
+}
+
 // ============================================================================
 // Voting Gate Cache
 // ============================================================================

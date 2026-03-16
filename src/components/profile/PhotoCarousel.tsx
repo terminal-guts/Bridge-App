@@ -209,7 +209,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
             className="rounded-lg bg-neutral-200"
             style={{ width: photoSize, height: photoSize }}
             contentFit="cover"
-            transition={200}
+            transition={0}
             cachePolicy="disk"
           />
 

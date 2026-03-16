@@ -38,7 +38,7 @@ Deno.serve(async (req: Request) => {
     const userId = user.id;
     const supabase = createAdminClient();
 
-    // ── Parallel: fetch everything we need ──────────────────────────────────
+    // ── Parallel: fetch everything we need (no proposal body, no global assignments) ──
     const [
       { data: blockedOutgoing },
       { data: blockedIncoming },
@@ -46,16 +46,14 @@ Deno.serve(async (req: Request) => {
       { data: existingVotes },
       { data: existingRecs },
       { data: pendingProposals },
-      { data: allAssignments },
     ] = await Promise.all([
       supabase.from('blocked_users').select('blocked_user_id').eq('user_id', userId),
       supabase.from('blocked_users').select('user_id').eq('blocked_user_id', userId),
       supabase.from('friends').select('user_id, friend_id').eq('status', 'accepted').or(`user_id.eq.${userId},friend_id.eq.${userId}`),
       supabase.from('proposal_votes').select('proposal_id').eq('voter_user_id', userId),
       supabase.from('friend_recommendations').select('source_proposal_id').eq('recommender_id', userId),
-      supabase.from('proposals').select('*').eq('status', 'pending'),
-      // Fetch ALL pool_vote_assignments so we can count votes per proposal
-      supabase.from('pool_vote_assignments').select('proposal_id, voter_id, has_voted'),
+      // Only fetch the columns needed for filtering — no SELECT *
+      supabase.from('proposals').select('id, user_a_id, user_b_id').eq('status', 'pending'),
     ]);
 
     // ── Build lookup sets ───────────────────────────────────────────────────
@@ -75,14 +73,6 @@ Deno.serve(async (req: Request) => {
       ...(existingRecs || []).filter((r: { source_proposal_id: string | null }) => r.source_proposal_id).map((r: { source_proposal_id: string | null }) => r.source_proposal_id),
     ]);
 
-    // Count how many voters are assigned to each proposal (for even distribution)
-    const assignmentCounts = new Map<string, number>();
-    const userAssignedIds = new Set<string>();
-    for (const a of (allAssignments || [])) {
-      assignmentCounts.set(a.proposal_id, (assignmentCounts.get(a.proposal_id) || 0) + 1);
-      if (a.voter_id === userId) userAssignedIds.add(a.proposal_id);
-    }
-
     // ── Filter eligible proposals for the gate ──────────────────────────────
     // Gate = non-friend proposals only. Friend proposals are voted on via
     // the Match button in the friends area, not in the gate.
@@ -99,6 +89,24 @@ Deno.serve(async (req: Request) => {
       if (friendIds.has(p.user_a_id) || friendIds.has(p.user_b_id)) continue;
 
       eligible.push(p);
+    }
+
+    // ── Fetch assignment counts ONLY for eligible proposals (not all proposals) ──
+    // This replaces the previous full-table scan of pool_vote_assignments.
+    const assignmentCounts = new Map<string, number>();
+    const userAssignedIds = new Set<string>();
+
+    if (eligible.length > 0) {
+      const eligibleIds = eligible.map(p => p.id);
+      const { data: assignments } = await supabase
+        .from('pool_vote_assignments')
+        .select('proposal_id, voter_id')
+        .in('proposal_id', eligibleIds);
+
+      for (const a of (assignments || [])) {
+        assignmentCounts.set(a.proposal_id, (assignmentCounts.get(a.proposal_id) || 0) + 1);
+        if (a.voter_id === userId) userAssignedIds.add(a.proposal_id);
+      }
     }
 
     // ── Pick up to GATE_SIZE proposals, fewest assignments first ─────────

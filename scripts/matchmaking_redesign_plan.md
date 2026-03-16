@@ -51,7 +51,7 @@ The Bridge matchmaking system consists of:
 - Gender compatibility (mutual interested_in_genders)
 - Age range (mutual — hard filter in `passesBasicFilter`)
 - Blocked users
-- Friend pairs (cannot be romantically matched)
+- ~~Friend pairs (cannot be romantically matched)~~ — **removed 2026-03-16**: friends can now be algorithmically matched
 - Previously rejected/declined pairs (permanent block)
 - Users with active proposals or matches
 - Users with queued friend suggestions
@@ -656,7 +656,7 @@ We considered selecting from a "top band" (e.g., all pairs within 5 points of th
 ## I. Edge Cases and Failure Modes
 
 ### 1. User With No Viable Candidates
-**Scenario:** All potential partners are blocked, matched, friended, or below threshold.
+**Scenario:** All potential partners are blocked, matched, or below threshold.
 **Behavior:** User receives no proposal. This is correct and intended.
 **Mitigation:** None needed — scarcity is a product feature.
 

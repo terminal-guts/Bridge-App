@@ -196,6 +196,7 @@ export const GuideOverlay: React.FC = () => {
           }
           preferredPosition={step.tooltipPosition}
           image={step.image}
+          tooltipOffset={step.tooltipOffset}
         />
 
         {/* Progress indicator removed — cleaner tour UX */}

@@ -186,6 +186,11 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
           customIcon={<WineGlassIcon size={24} color={COLORS.primaryAccent} style={{ marginRight: 10 }} />}
         />
 
+        {/* Scroll hint — signals there's more below the fold */}
+        <StyledView className="items-center py-1 mb-4 opacity-50">
+          <Body className="text-neutral-400 text-xs">↓ More below</Body>
+        </StyledView>
+
         <QuestionSection
           title="Cannabis"
           field="cannabis"

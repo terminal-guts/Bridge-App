@@ -43,7 +43,7 @@ import { EvaIcon } from '../../icons';
 
 // Extracted modules
 import { proposalStyles, styles, BLUE } from './ProposalReviewView.styles';
-import { useProposalVoting, useForFriendModal, useMatchData } from './ProposalReviewView.hooks';
+import { useProposalVoting, useForFriendModal, useMatchData, useDeepQuestions } from './ProposalReviewView.hooks';
 import {
   ProgressDots,
   VoteButtons,
@@ -118,6 +118,10 @@ export function ProposalReviewView({
   );
 
   const matchData = useMatchData(proposals, currentIndex);
+
+  // Fetch deep questions from DB when not provided as a prop (e.g. community gate voting)
+  const fetchedDeepQuestions = useDeepQuestions(proposals, currentIndex);
+  const resolvedDeepQuestions = deepQuestions ?? fetchedDeepQuestions;
 
   // ── Confetti on Yes vote ──────────────────────────────────────────────────
   const confettiRef = useRef<LottieView>(null);
@@ -282,10 +286,10 @@ export function ProposalReviewView({
         <BadgeComparisonSection userAId={userA.userId} userBId={userB.userId} />
 
         {/* ── Questions ─────────────────────────────────────────────── */}
-        {deepQuestions && deepQuestions.length > 0 && (
+        {resolvedDeepQuestions && resolvedDeepQuestions.length > 0 && (
           <SectionCard title="Questions" matched={undefined} total={undefined} accentColor={COLORS.primary}>
             <QuestionCarousel
-              questions={deepQuestions}
+              questions={resolvedDeepQuestions}
               userAName={userA.firstName}
               userBName={userB.firstName}
             />

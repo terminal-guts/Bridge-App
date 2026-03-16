@@ -3,7 +3,7 @@
  * Extracted from ContactInviteScreen.tsx for maintainability.
  */
 
-import React, { RefObject } from 'react';
+import React, { RefObject, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   SectionList,
   Image,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { styled } from 'nativewind';
 import { EvaIcon } from '../../components/icons';
 import { H3, Body } from '../../components/ui';
@@ -21,6 +22,7 @@ import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
 import { NormalizedContact, ContactSection } from '../../services/contactsService';
 import { contactStyles } from './ContactInviteScreen.styles';
+import { lightHaptic } from '../../utils/haptics';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -221,15 +223,30 @@ export interface FriendCodeCardProps {
   onEnterCodePress: () => void;
 }
 
-export const FriendCodeCard = React.memo(({ friendCode, onShareCode, onEnterCodePress }: FriendCodeCardProps) => (
+export const FriendCodeCard = React.memo(({ friendCode, onShareCode, onEnterCodePress }: FriendCodeCardProps) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyCode = useCallback(async () => {
+    await Clipboard.setStringAsync(friendCode);
+    lightHaptic();
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [friendCode]);
+
+  return (
   <StyledView
     className="bg-primary-50 rounded-2xl px-6 pt-5 pb-6 items-center mb-8"
     style={{ borderWidth: 1, borderColor: 'rgba(67, 127, 255, 0.12)' }}
   >
     <StyledText className="text-xs font-bold text-primary-400 tracking-widest mb-1">YOUR FRIEND CODE</StyledText>
-    <StyledText style={contactStyles.friendCodeText}>
-      {friendCode}
-    </StyledText>
+    <TouchableOpacity onPress={handleCopyCode} activeOpacity={0.7} style={{ alignItems: 'center', marginBottom: 4 }}>
+      <StyledText style={contactStyles.friendCodeText}>
+        {friendCode}
+      </StyledText>
+      <StyledText style={{ fontSize: FONT_SIZES.xs, color: copied ? COLORS.success : COLORS.text.disabled, marginTop: 2 }}>
+        {copied ? 'Copied!' : 'Tap to copy'}
+      </StyledText>
+    </TouchableOpacity>
     <StyledView className="flex-row" style={{ gap: 12 }}>
       <StyledTouchableOpacity
         className="flex-1 flex-row items-center justify-center py-3 rounded-xl"
@@ -248,7 +265,8 @@ export const FriendCodeCard = React.memo(({ friendCode, onShareCode, onEnterCode
       </StyledTouchableOpacity>
     </StyledView>
   </StyledView>
-));
+  );
+});
 
 // ── Enter Code Input ──────────────────────────────────────────────────────────
 

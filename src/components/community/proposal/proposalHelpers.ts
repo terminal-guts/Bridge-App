@@ -69,10 +69,14 @@ export function computeSmartPills(
   const greyA = tagsA.filter(t => !usedA.has(t));
   const greyB = tagsB.filter(t => !usedB.has(t));
 
-  // Percentage
-  const maxLen = Math.max(tagsA.length, tagsB.length, 1);
-  const score = (greenPairs.length * 1.0 + yellowPairs.length * 0.5) / maxLen * 100;
-  const percentMatch = Math.round(score);
+  // Percentage: score against the smaller list, then add a base floor
+  // Base of 30 means even zero overlap starts at 30% — two people on Bridge
+  // already have something in common just by being here
+  const minLen = Math.min(tagsA.length, tagsB.length) || 1;
+  const rawScore = (greenPairs.length * 1.0 + yellowPairs.length * 0.75) / minLen * 100;
+  // 30% base + 70% scaled from actual overlap, capped at 100
+  const score = 30 + rawScore * 0.7;
+  const percentMatch = Math.min(100, Math.round(score));
 
   return { greenPairs, yellowPairs, greyA, greyB, percentMatch };
 }

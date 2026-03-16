@@ -9,8 +9,7 @@
  */
 
 import React from 'react';
-import { View, TouchableOpacity, TextInput } from 'react-native';
-import Animated, { useAnimatedProps } from 'react-native-reanimated';
+import { View, TouchableOpacity, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { H2, H3, Body, Card } from '../ui';
 import { UserProfile } from '../../types';
@@ -20,10 +19,7 @@ import { EvaIcon } from '../icons';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
 import { FONTS } from '../../constants/typography';
-import { useCountUp } from '../../hooks/useCountUp';
 import { successHaptic } from '../../utils/haptics';
-
-const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 const logger = createLogger('ProfileStrengthDashboard');
 
@@ -132,7 +128,7 @@ const calculateStrength = (profile: UserProfile): {
   }
 
   sections.push({
-    name: 'Photos',
+    name: 'Photo',
     icon: 'camera',
     score: breakdown.sections.photos.score,
     maxScore: breakdown.sections.photos.maxScore,
@@ -198,12 +194,6 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
   const { level, color } = getStrengthLevel(overall, profile.profileCompleted);
   const isComplete = overall === 100;
 
-  // Animated count-up for the overall percentage
-  const { animatedProps: countUpProps, value: countValue } = useCountUp({
-    end: overall,
-    enabled: !isComplete,
-  });
-
   // Fire success haptic when crossing milestone thresholds
   const prevOverallRef = React.useRef(overall);
   React.useEffect(() => {
@@ -249,9 +239,7 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
           <H3 className="text-base">Profile Strength</H3>
         </StyledView>
         <StyledView className="flex-row items-center">
-          <AnimatedTextInput
-            animatedProps={countUpProps}
-            editable={false}
+          <Text
             style={{
               fontSize: 30,
               fontWeight: '700',
@@ -259,9 +247,10 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
               color,
               padding: 0,
               margin: 0,
-              minWidth: 30,
             }}
-          />
+          >
+            {overall}
+          </Text>
           <Body className="text-3xl font-bold" style={{ color }}>%</Body>
         </StyledView>
       </StyledView>

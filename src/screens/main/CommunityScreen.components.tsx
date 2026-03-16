@@ -23,6 +23,8 @@ import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS, OVERLAYS } from '../../theme/shadows';
 import { lightHaptic } from '../../utils/haptics';
+import { FriendRequestCard } from '../../components/friends/FriendRequestCard';
+import { FriendRequest } from '../../services/friendService';
 
 // ── Mock leaderboard karma thresholds for rank interpolation ─────────────────
 // Sorted descending — same values as LeaderboardScreen MOCK_WEEKLY
@@ -50,11 +52,7 @@ export function partitionFriends(friends: FriendWithGridStatus[]) {
 /** Compute activity status line for a crew member */
 export function getFriendStatusLine(
   user: FriendWithGridStatus,
-  suggestionsMap?: Map<string, { suggestedForName: string; status: 'queued' | 'stashed' }>,
 ): string | undefined {
-  // Show suggestion indicator (takes priority over assists count)
-  const suggestion = suggestionsMap?.get(user.friend.userId || '');
-  if (suggestion) return `Suggested for ${suggestion.suggestedForName}`;
   if (user.isMatched) return 'Has a match!';
   const assists = user.assistsCount || 0;
   if (assists > 0) return `${assists} match${assists === 1 ? '' : 'es'} made`;
@@ -237,7 +235,7 @@ export function InviteBanner({ avatarFriends, onPress }: InviteBannerProps) {
         {avatarFriends.map((f, i) => (
           <Image
             key={f.friendId}
-            source={{ uri: f.friend.photos?.[0]?.url || 'https://via.placeholder.com/36' }}
+            source={f.friend.photos?.[0]?.url ? { uri: f.friend.photos[0].url } : null}
             style={[styles.crewAvatar, i > 0 && { marginLeft: -10 }]}
           />
         ))}
@@ -265,27 +263,6 @@ export function ImpactCard({ totalAssists }: ImpactCardProps) {
           : 'Your votes matter! Help friends find their match.'}
       </Text>
     </View>
-  );
-}
-
-// ── Suggest a Match row ──────────────────────────────────────────────────────
-interface SuggestMatchRowProps {
-  onPress: () => void;
-}
-
-export function SuggestMatchRow({ onPress }: SuggestMatchRowProps) {
-  return (
-    <TouchableOpacity
-      style={styles.suggestMatchRow}
-      activeOpacity={0.75}
-      onPress={() => { lightHaptic(); onPress(); }}
-      accessibilityRole="button"
-      accessibilityLabel="Suggest a match"
-    >
-      <EvaIcon name="heart" variant="outline" size={16} color={COLORS.primaryAccent} />
-      <Text style={styles.suggestMatchText}>Suggest a Match</Text>
-      <EvaIcon name="arrow-ios-forward" variant="outline" size={14} color={COLORS.primaryAccent} />
-    </TouchableOpacity>
   );
 }
 
@@ -349,6 +326,97 @@ export function buildCrewHandlers(
   }
   return { viewProfile, chatHandlers, badgeHandlers };
 }
+
+// ── Pending Friend Requests Section ──────────────────────────────────────────
+
+interface PendingRequestsSectionProps {
+  requests: FriendRequest[];
+  processingIds: Set<string>;
+  onAccept: (id: string) => void;
+  onDecline: (id: string) => void;
+}
+
+/**
+ * Renders incoming friend requests pinned above all other community content.
+ * Returns null when there are no pending requests — no empty state shown.
+ */
+export function PendingRequestsSection({
+  requests,
+  processingIds,
+  onAccept,
+  onDecline,
+}: PendingRequestsSectionProps) {
+  if (requests.length === 0) return null;
+
+  return (
+    <View style={requestStyles.container}>
+      <View style={requestStyles.header}>
+        <View style={[requestStyles.accent, { backgroundColor: '#22C55E' }]} />
+        <Text style={requestStyles.title}>FRIEND REQUESTS</Text>
+        <View style={requestStyles.badge}>
+          <Text style={requestStyles.badgeText}>{requests.length}</Text>
+        </View>
+      </View>
+      <View style={requestStyles.cardList}>
+        {requests.map(req => (
+          <FriendRequestCard
+            key={req.id}
+            request={req}
+            onAccept={() => onAccept(req.id)}
+            onDecline={() => onDecline(req.id)}
+            isProcessing={processingIds.has(req.id)}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const requestStyles = StyleSheet.create({
+  container: {
+    marginTop: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  accent: {
+    width: 3,
+    height: 16,
+    borderRadius: 2,
+  },
+  title: {
+    fontFamily: FONTS.semiBold,
+    fontSize: FONT_SIZES.base,
+    color: COLORS.navInactiveIcon,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  badge: {
+    backgroundColor: '#22C55E',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    marginLeft: 4,
+  },
+  badgeText: {
+    fontFamily: FONTS.semiBold,
+    fontSize: FONT_SIZES.xs,
+    color: '#FFFFFF',
+  },
+  cardList: {
+    backgroundColor: COLORS.card,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.borderSubtle,
+  },
+});
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
@@ -577,21 +645,6 @@ export const styles = StyleSheet.create({
   },
   voteListBg: {
     backgroundColor: 'rgba(43, 101, 249, 0.02)',
-  },
-  suggestMatchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.borderLightBlue,
-  },
-  suggestMatchText: {
-    flex: 1,
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.lg,
-    color: COLORS.primaryAccent,
   },
   // ── Help count badge ──────────────────────────────────────────
   helpCountBadge: {

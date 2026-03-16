@@ -106,6 +106,9 @@ export interface GuideStep {
    * Useful for "Click this button to continue" steps.
    */
   interactive?: boolean;
+
+  /** Fine-tune tooltip position after auto-calculation (pixels) */
+  tooltipOffset?: { x?: number; y?: number };
 }
 
 /**

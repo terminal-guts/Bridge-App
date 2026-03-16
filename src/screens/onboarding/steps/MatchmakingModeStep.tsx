@@ -53,7 +53,7 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
             setSelectedRole(role);
             if (onPressExtra) onPressExtra();
           }}
-          className={`rounded-2xl p-5 mb-4 border-2 ${
+          className={`rounded-2xl p-4 mb-3 border-2 ${
             isSelected
               ? 'border-primary-500 bg-primary-50'
               : 'border-neutral-200 bg-white'
@@ -98,32 +98,32 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
   return (
     <StyledSafeAreaView edges={['top', 'bottom']} className="flex-1 bg-neutral-50">
       <StyledView className="flex-1 px-6 justify-between">
-        {/* Header */}
-        <StyledView className="flex-1 justify-center">
+        {/* Content — vertically centered as a single block */}
+        <StyledView className="flex-1 justify-center" style={{ marginBottom: 80 }}>
           <Animated.View entering={FadeInUp.duration(DURATIONS.slow)}>
-            <StyledView className="items-center mb-6">
+            <StyledView className="items-center mb-4">
               <StyledImage
                 source={require('../../../../assets/favicon.png')}
-                style={{ width: 80, height: 80 }}
+                style={{ width: 104, height: 104 }}
                 resizeMode="contain"
               />
             </StyledView>
-            <H1 className="text-center mb-10">How do you want to use Bridge?</H1>
+            <H1 className="text-center mb-6">How do you want to use Bridge?</H1>
           </Animated.View>
 
           {renderOption(
             'dater',
             'person',
             'Find my person',
-            'Build your profile and start matching.',
+            "Get matched and set up your friends — you're in the pool.",
             300
           )}
 
           {renderOption(
             'matchmaker',
             'people',
-            'Be a matchmaker',
-            "Set up your friends. You won't appear in anyone's stack.",
+            'Already taken?',
+            "Set up your friends without being in anyone's stack.",
             450,
             () => setShowMatchmakerInfo(true)
           )}

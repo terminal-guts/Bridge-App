@@ -7,6 +7,7 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { Image as ExpoImage } from 'expo-image';
 import { UserProfile, KarmaTier } from '../types/community';
 import { getMultiplePhotoSignedUrls } from './photoService';
 import { getAuthenticatedUserId } from '../utils/auth';
@@ -219,10 +220,7 @@ export function prefetchProfileImages(profiles: UserProfile[]): void {
     }
   }
   if (urls.length === 0) return;
-  // Dynamic import to avoid pulling expo-image into service bundle eagerly
-  import('expo-image').then(({ Image }) => {
-    Image.prefetch(urls);
-  }).catch(() => {});
+  ExpoImage.prefetch(urls);
 }
 
 // ============================================================================

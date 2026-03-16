@@ -62,26 +62,6 @@ export async function castProposalVote(
 }
 
 // ============================================================================
-// Friend Recommendations
-// ============================================================================
-
-export async function submitFriendRecommendation(
-  recommendedPersonId: string,
-  recommendedToFriendId: string,
-  sourceProposalId?: string,
-): Promise<{ status: string }> {
-  const { data, error } = await supabase.functions.invoke('submit-recommendation', {
-    body: {
-      recommended_person_id: recommendedPersonId,
-      recommended_to_friend_id: recommendedToFriendId,
-      source_proposal_id: sourceProposalId || null,
-    },
-  });
-  if (error) throw new Error(`Recommendation failed: ${error.message}`);
-  return data;
-}
-
-// ============================================================================
 // User Decisions (Accept/Decline)
 // ============================================================================
 
