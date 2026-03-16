@@ -71,4 +71,18 @@ export const contactStyles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: FONTS.regular,
   },
+  contactListWrapper: {
+    flex: 1,
+    position: 'relative' as const,
+  },
+  sectionListFlex: {
+    flex: 1,
+  },
+  contentWithSelection: {
+    paddingBottom: 80,
+    paddingRight: 16,
+  },
+  contentDefault: {
+    paddingRight: 16,
+  },
 });

@@ -539,6 +539,192 @@ export interface ScreenHeaderProps {
   invitesSentCount: number;
 }
 
+// ── Permission View (undetermined / denied) ─────────────────────────────────
+
+export interface PermissionViewProps {
+  friendCode: string;
+  enterCodeValue: string;
+  enterCodeError: string;
+  addingCode: boolean;
+  enterCodeInputRef: React.RefObject<TextInput | null>;
+  bridgeUserCount: number;
+  permissionStatus: string | null;
+  onShareCode: () => void;
+  onEnterCodeChangeText: (t: string) => void;
+  onEnterCode: () => void;
+  onRequestPermission: () => void;
+  onOpenSettings: () => void;
+}
+
+export const PermissionView = React.memo(({
+  friendCode,
+  enterCodeValue,
+  enterCodeError,
+  addingCode,
+  enterCodeInputRef,
+  bridgeUserCount,
+  permissionStatus,
+  onShareCode,
+  onEnterCodeChangeText,
+  onEnterCode,
+  onRequestPermission,
+  onOpenSettings,
+}: PermissionViewProps) => (
+  <StyledView className="flex-1 px-8 pt-12">
+    {friendCode ? (
+      <FriendCodeCard
+        friendCode={friendCode}
+        onShareCode={onShareCode}
+        onEnterCodePress={() => enterCodeInputRef.current?.focus()}
+      />
+    ) : null}
+    <EnterCodeInput
+      inputRef={enterCodeInputRef}
+      value={enterCodeValue}
+      onChangeText={onEnterCodeChangeText}
+      onSubmit={onEnterCode}
+      error={enterCodeError}
+      adding={addingCode}
+    />
+    {permissionStatus === 'denied' ? (
+      <SettingsPrompt onOpenSettings={onOpenSettings} />
+    ) : (
+      <ContactsAccessPrompt
+        bridgeUserCount={bridgeUserCount}
+        onRequestPermission={onRequestPermission}
+      />
+    )}
+  </StyledView>
+));
+
+// ── Granted Contact List View ────────────────────────────────────────────────
+
+export interface GrantedContactListProps {
+  friendCode: string;
+  enterCodeValue: string;
+  enterCodeError: string;
+  addingCode: boolean;
+  selectedIds: Set<string>;
+  addingFriendId: string | null;
+  invitesRemaining: number;
+  sending: boolean;
+  unadddedBridgeCount: number;
+  addingAll: boolean;
+  filteredSections: ContactSection[];
+  sectionListRef: React.RefObject<SectionList<NormalizedContact, ContactSection> | null>;
+  onCopyCode: () => void;
+  onShareCode: () => void;
+  onEnterCodeChangeText: (t: string) => void;
+  onEnterCode: () => void;
+  onToggleSelect: (c: NormalizedContact) => void;
+  onAddFriend: (c: NormalizedContact) => void;
+  onInviteSingle: (c: NormalizedContact) => void;
+  onAddAllBridge: () => void;
+  onSendInvites: () => void;
+  keyExtractor: (item: NormalizedContact) => string;
+}
+
+export const GrantedContactList = React.memo(({
+  friendCode,
+  enterCodeValue,
+  enterCodeError,
+  addingCode,
+  selectedIds,
+  addingFriendId,
+  invitesRemaining,
+  sending,
+  unadddedBridgeCount,
+  addingAll,
+  filteredSections,
+  sectionListRef,
+  onCopyCode,
+  onShareCode,
+  onEnterCodeChangeText,
+  onEnterCode,
+  onToggleSelect,
+  onAddFriend,
+  onInviteSingle,
+  onAddAllBridge,
+  onSendInvites,
+  keyExtractor,
+}: GrantedContactListProps) => {
+  const renderItem = React.useCallback(
+    ({ item }: { item: NormalizedContact }) => (
+      <ContactRow
+        contact={item}
+        isSelected={selectedIds.has(item.id)}
+        isAdding={addingFriendId === item.id}
+        onToggleSelect={onToggleSelect}
+        onAddFriend={onAddFriend}
+        onInviteSingle={onInviteSingle}
+      />
+    ),
+    [selectedIds, addingFriendId, onToggleSelect, onAddFriend, onInviteSingle]
+  );
+
+  const renderSectionHeader = React.useCallback(
+    ({ section }: { section: { title: string; data: NormalizedContact[] } }) => {
+      if (section.title === ON_BRIDGE_SECTION && unadddedBridgeCount > 0) {
+        return (
+          <SectionHeader
+            title={section.title}
+            onAddAll={onAddAllBridge}
+            addAllDisabled={addingAll}
+            addAllLabel={addingAll ? 'Adding...' : `Add All (${unadddedBridgeCount})`}
+          />
+        );
+      }
+      return <SectionHeader title={section.title} />;
+    },
+    [unadddedBridgeCount, onAddAllBridge, addingAll]
+  );
+
+  return (
+    <>
+      <GrantedHeaderStrip
+        friendCode={friendCode}
+        enterCodeValue={enterCodeValue}
+        enterCodeError={enterCodeError}
+        addingCode={addingCode}
+        onCopyCode={onCopyCode}
+        onShareCode={onShareCode}
+        onChangeText={onEnterCodeChangeText}
+        onEnterCode={onEnterCode}
+      />
+
+      {filteredSections.length > 0 ? (
+        <View style={contactStyles.contactListWrapper}>
+          <SectionList
+            ref={sectionListRef}
+            style={contactStyles.sectionListFlex}
+            sections={filteredSections}
+            keyExtractor={keyExtractor}
+            renderItem={renderItem}
+            renderSectionHeader={renderSectionHeader}
+            stickySectionHeadersEnabled
+            initialNumToRender={20}
+            maxToRenderPerBatch={30}
+            windowSize={10}
+            contentContainerStyle={selectedIds.size > 0 ? contactStyles.contentWithSelection : contactStyles.contentDefault}
+          />
+          <AZSidebar sections={filteredSections} sectionListRef={sectionListRef} />
+        </View>
+      ) : (
+        <EmptyContactsView />
+      )}
+
+      <FloatingSendButton
+        selectedCount={selectedIds.size}
+        invitesRemaining={invitesRemaining}
+        sending={sending}
+        onSend={onSendInvites}
+      />
+    </>
+  );
+});
+
+// ── Screen Header with Progress ───────────────────────────────────────────────
+
 export const ScreenHeader = React.memo(({ onGoBack, bridgeUserCount, invitesRemaining, invitesSentCount }: ScreenHeaderProps) => (
   <StyledView className="px-4 py-3 border-b border-neutral-200 bg-white">
     <StyledView className="flex-row items-center justify-between">

@@ -4,13 +4,20 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, TextInput, Modal, KeyboardAvoidingView, Platform, RefreshControl } from 'react-native';
+import ReanimatedAnimated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import LottieView from 'lottie-react-native';
 import { EvaIcon } from '../../components/icons';
+import { ClockIcon } from '../../components/icons/Icons';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { OVERLAYS, SHADOWS } from '../../theme/shadows';
-import { MatchEndedEvent } from '../../types/community';
+import { MatchEndedEvent, ActiveMatch, MatchProposal } from '../../types/community';
+import { UserProfile } from '../../types';
+import { ProfileCompletionBanner } from '../../components/profile/ProfileCompletionBanner';
+import { MatchPoolLockedView } from '../../components/matches/MatchPoolLockedView';
+import { ScreenWrapper } from '../../components/ui';
+import { MatchesSkeleton } from '../../components/ui/SkeletonLoader';
 
 // ── Screen state type ─────────────────────────────────────────────────────────
 export type ScreenState = 'empty' | 'neither_voted' | 'awaiting_you' | 'awaiting_them' | 'active_match';
@@ -440,3 +447,383 @@ export const stateStyles = StyleSheet.create({
     color: COLORS.text.light,
   },
 });
+
+// ── Extracted screen-state components ─────────────────────────────────────────
+
+/** Loading skeleton */
+export function MatchesLoadingView() {
+  return (
+    <ScreenWrapper>
+      <MatchesSkeleton />
+    </ScreenWrapper>
+  );
+}
+
+/** Profile-incomplete locked view */
+export function MatchesLockedView({
+  profile,
+  navigation,
+  handleRefresh,
+  refreshing,
+}: {
+  profile: UserProfile | null;
+  navigation: any;
+  handleRefresh: () => Promise<void>;
+  refreshing: boolean;
+}) {
+  return (
+    <ScreenWrapper>
+      <ReanimatedAnimated.View style={{ flex: 1 }} exiting={FadeOut.duration(300)}>
+        <MatchPoolLockedView
+          profile={profile}
+          onNavigateToSection={(section) => {
+            switch (section) {
+              case 'Match Preferences':
+                navigation.navigate('MatchPreferences');
+                break;
+              case 'Questions':
+                navigation.navigate('MainTabs', { screen: 'Profile', params: { initialTab: 'questions' } });
+                break;
+              case 'Photos':
+              case 'About Me':
+              default:
+                navigation.navigate('ProfileEdit');
+                break;
+            }
+          }}
+          onRingPress={() => navigation.navigate('Profile')}
+          onRefresh={handleRefresh}
+          refreshing={refreshing}
+        />
+      </ReanimatedAnimated.View>
+    </ScreenWrapper>
+  );
+}
+
+/** Empty state — no active match or proposal */
+export function EmptyStateView({
+  profile,
+  navigation,
+  refreshing,
+  handleRefresh,
+  emptyCountdown,
+  animateEntrance,
+  popupEvent,
+  handlePopupContinue,
+}: {
+  profile: UserProfile | null;
+  navigation: any;
+  refreshing: boolean;
+  handleRefresh: () => Promise<void>;
+  emptyCountdown: string | null;
+  animateEntrance: boolean;
+  popupEvent: MatchEndedEvent | null;
+  handlePopupContinue: () => void;
+}) {
+  const emptyContent = (
+    <>
+      <ProfileCompletionBanner
+        profile={profile}
+        onPress={() => navigation.navigate('Profile')}
+      />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle} accessibilityRole="header">Match</Text>
+      </View>
+      <ScrollView
+        contentContainerStyle={styles.emptyContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.primaryButton} />
+        }
+      >
+        <IllustrationAnimation />
+        <Text style={styles.tagline}>Your friends are on it</Text>
+        <Text style={styles.subtitle}>Help them out and they'll return the favor</Text>
+        <TouchableOpacity
+          style={styles.ctaButton}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('Community')}
+          accessibilityRole="button"
+          accessibilityLabel="Vote for your friends"
+        >
+          <Text style={styles.ctaText}>Vote for Your Friends</Text>
+        </TouchableOpacity>
+        {emptyCountdown && (
+          <View style={stateStyles.countdownRow}>
+            <ClockIcon size={13} color={COLORS.text.light} />
+            <Text style={stateStyles.countdownText}>New proposals in {emptyCountdown}</Text>
+          </View>
+        )}
+      </ScrollView>
+    </>
+  );
+
+  return (
+    <ScreenWrapper>
+      {animateEntrance ? (
+        <ReanimatedAnimated.View style={{ flex: 1 }} entering={FadeIn.duration(400).delay(200)}>
+          {emptyContent}
+        </ReanimatedAnimated.View>
+      ) : (
+        emptyContent
+      )}
+
+      {/* Ended Match Popup — persists over empty state */}
+      <EndedMatchPopupModal popupEvent={popupEvent} onContinue={handlePopupContinue} />
+    </ScreenWrapper>
+  );
+}
+
+/** Ended match popup modal */
+export function EndedMatchPopupModal({
+  popupEvent,
+  onContinue,
+}: {
+  popupEvent: MatchEndedEvent | null;
+  onContinue: () => void;
+}) {
+  return (
+    <Modal
+      visible={!!popupEvent}
+      transparent
+      animationType="fade"
+      onRequestClose={onContinue}
+    >
+      <View style={popupStyles.overlay}>
+        <View style={popupStyles.card}>
+          {popupEvent && <EndedMatchPopupContent event={popupEvent} />}
+          <TouchableOpacity style={popupStyles.continueBtn} onPress={onContinue} activeOpacity={0.85}>
+            <Text style={popupStyles.continueBtnText}>Continue</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+/** End match confirmation modal (top-sheet style) */
+export function EndMatchModal({
+  visible,
+  endMatchReason,
+  endMatchCustomReason,
+  endMatchSubmitting,
+  onReasonSelect,
+  onCustomReasonChange,
+  onConfirm,
+  onDismiss,
+}: {
+  visible: boolean;
+  endMatchReason: string;
+  endMatchCustomReason: string;
+  endMatchSubmitting: boolean;
+  onReasonSelect: (reason: string) => void;
+  onCustomReasonChange: (text: string) => void;
+  onConfirm: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onDismiss}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={tsStyles.overlay}
+      >
+        <View style={tsStyles.card}>
+          <TouchableOpacity
+            style={tsStyles.closeBtn}
+            onPress={onDismiss}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Text style={{ fontSize: FONT_SIZES['2xl'], color: COLORS.navInactiveIcon }}>✕</Text>
+          </TouchableOpacity>
+
+          <View style={[tsStyles.iconWrap, { backgroundColor: COLORS.backgroundWarmPeach }]}>
+            <EvaIcon name="close-circle" variant="outline" size={40} color={COLORS.error} />
+          </View>
+          <Text style={tsStyles.title}>End this match?</Text>
+          <Text style={tsStyles.subtitle}>
+            You'll re-enter the matchmaking pool.{'\n'}Your reason will be shared with them.
+          </Text>
+
+          <View style={tsStyles.pillRow}>
+            {END_MATCH_REASONS.map(reason => (
+              <TouchableOpacity
+                key={reason}
+                style={[tsStyles.pill, endMatchReason === reason && tsStyles.pillActive]}
+                onPress={() => onReasonSelect(reason)}
+              >
+                <Text style={[tsStyles.pillText, endMatchReason === reason && tsStyles.pillTextActive]}>
+                  {reason}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <TextInput
+            style={tsStyles.textArea}
+            placeholder={endMatchReason === 'Other' ? 'Tell us a bit more...' : 'Additional details (optional)'}
+            placeholderTextColor={COLORS.text.placeholder}
+            value={endMatchCustomReason}
+            onChangeText={onCustomReasonChange}
+            multiline
+            maxLength={300}
+          />
+
+          <TouchableOpacity
+            style={[tsStyles.submitBtn, { backgroundColor: COLORS.error }, (!endMatchReason || endMatchSubmitting) && tsStyles.submitBtnDisabled]}
+            onPress={onConfirm}
+            disabled={!endMatchReason || endMatchSubmitting}
+          >
+            <Text style={tsStyles.submitBtnText}>{endMatchSubmitting ? 'Ending...' : 'End Match'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          activeOpacity={1}
+          style={{ flex: 1 }}
+          onPress={onDismiss}
+        />
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+/** Timer info modal */
+export function TimerInfoModal({
+  visible,
+  screenState,
+  onClose,
+}: {
+  visible: boolean;
+  screenState: ScreenState;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.timerInfoOverlay} activeOpacity={1} onPress={onClose}>
+        <View style={styles.timerInfoCard}>
+          <Text style={styles.timerInfoTitle}>
+            {screenState === 'active_match' ? 'Match Timer' : 'Time to Decide'}
+          </Text>
+          <Text style={styles.timerInfoBody}>
+            {screenState === 'active_match'
+              ? 'Your match window is ticking. Make the most of it — start a conversation!'
+              : screenState === 'awaiting_you'
+              ? "They already said yes. Decide before time runs out — you don't want to miss this."
+              : screenState === 'awaiting_them'
+              ? "You've made your move. They have until the timer runs out to decide."
+              : 'Both of you have a window to decide. If time runs out, the proposal expires.'}
+          </Text>
+          <TouchableOpacity style={styles.timerInfoBtn} onPress={onClose} activeOpacity={0.85}>
+            <Text style={styles.timerInfoBtnText}>Got it</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+/** Confetti celebration overlay */
+export function ConfettiOverlay({
+  active,
+  confettiRef,
+}: {
+  active: boolean;
+  confettiRef: React.RefObject<LottieView | null>;
+}) {
+  const CONFETTI_ANIM = require('../../../assets/Icons/AnimatedIcons/confetti.json');
+  if (!active) return null;
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <LottieView
+        ref={confettiRef}
+        source={CONFETTI_ANIM}
+        autoPlay
+        loop={false}
+        style={{ flex: 1 }}
+        speed={1}
+      />
+    </View>
+  );
+}
+
+// ── Timer computation helper ─────────────────────────────────────────────────
+
+export function computeTimerInfo(
+  screenState: ScreenState,
+  activeMatch: ActiveMatch | null,
+  currentProposal: MatchProposal | null,
+  now: number,
+): { timerLabel: string | null; timerClr: string; timerBg: string; timerBdrClr: string } {
+  const expiryTs: number | null = (() => {
+    if (screenState === 'active_match') {
+      const exp = activeMatch?.expiresAt;
+      return exp ? new Date(exp).getTime() : null;
+    }
+    return currentProposal?.expiresAt ? new Date(currentProposal.expiresAt).getTime() : null;
+  })();
+
+  let timerLabel: string | null = null;
+  let timerClr = COLORS.success;
+  let timerBg = 'rgba(52, 199, 89, 0.08)';
+  let timerBdrClr = 'rgba(52, 199, 89, 0.25)';
+
+  if (expiryTs) {
+    const diffMs = expiryTs - now;
+    if (diffMs > 0) {
+      const totalHours = diffMs / 3600000;
+      const h = Math.floor(totalHours);
+      const m = Math.floor((diffMs % 3600000) / 60000);
+      const s = Math.floor((diffMs % 60000) / 1000);
+      timerLabel = h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`;
+      timerClr = timerColor(totalHours);
+      timerBg = timerBgColor(totalHours);
+      timerBdrClr = timerBorderColor(totalHours);
+    }
+  }
+
+  return { timerLabel, timerClr, timerBg, timerBdrClr };
+}
+
+/** Build card display props from match/proposal state */
+export function buildCardProps(
+  screenState: ScreenState,
+  activeMatch: ActiveMatch | null,
+  currentProposal: MatchProposal | null,
+) {
+  const partner =
+    screenState === 'active_match'
+      ? activeMatch!.partnerProfile
+      : currentProposal!.partnerProfile;
+
+  const partnerPhoto = partner?.photos?.[0]?.url || '';
+  const partnerName = partner?.firstName || 'Unknown';
+  const partnerAge = partner?.age;
+
+  const endorsers = screenState === 'active_match'
+    ? activeMatch?.endorsers
+    : currentProposal?.endorsers;
+
+  const endorserAvatars = endorsers
+    ?.map((e: any) => e.endorserProfile?.photos?.[0]?.url)
+    .filter(Boolean) ?? [];
+
+  const endorserNames = endorsers
+    ?.map((e: any) => e.endorserProfile?.firstName)
+    .filter(Boolean) ?? [];
+
+  const matchDate: string = (() => {
+    if (screenState === 'active_match') {
+      return formatMatchDate(activeMatch!.matchedAt);
+    }
+    const ref = currentProposal?.approvedAt || currentProposal?.expiresAt;
+    if (!ref) return '';
+    const dateStr = new Date(ref).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `Proposed ${dateStr}`;
+  })();
+
+  return { partner, partnerPhoto, partnerName, partnerAge, endorserAvatars, endorserNames, matchDate };
+}
