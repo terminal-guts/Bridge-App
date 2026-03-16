@@ -299,11 +299,44 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
 
   const handlePassConfirmed = useCallback(() => { setShowPassConfirm(false); setShowPassFeedback(true); }, []);
   const handlePassFeedbackSubmit = useCallback((feedbackId?: string) => { setShowPassFeedback(false); setPassFeedbackId(feedbackId); setShowRecommendModal(true); }, []);
-  const handleRecommendToFriend = useCallback((friendId: string) => {
+  const handleRecommendToFriend = useCallback(async (friendId: string) => {
     setShowRecommendModal(false);
     setIsPassing(true);
-    Alert.alert('Recommendation Sent!', 'Your friend will see this match in their recommendations.', [{ text: 'OK', onPress: () => { setIsPassing(false); navigation.navigate('MainTabs', { screen: 'Matches' }); } }]);
-  }, [navigation]);
+
+    // 1. Record the pass (decline the proposal)
+    if (route.params?.proposalId) {
+      try {
+        await communityService.respondToMatchProposal(route.params.proposalId, false, {
+          name: currentUserProfile?.firstName || 'Unknown',
+          photoUrl: currentUserProfile?.photos?.[0]?.url,
+        });
+        logger.info('[MatchProposalScreen] Proposal passed (with recommendation):', route.params.proposalId);
+      } catch (error) {
+        logger.error('[MatchProposalScreen] Error passing proposal:', error);
+      }
+    }
+
+    // 2. Persist the recommendation (same as community voting recommend-to-friend)
+    if (profile?.userId) {
+      try {
+        await communityService.submitRecommendation(profile.userId, friendId, route.params?.proposalId);
+        logger.info('[MatchProposalScreen] Recommendation sent:', profile.userId, '→ friend', friendId);
+      } catch (error) {
+        logger.error('[MatchProposalScreen] Error submitting recommendation:', error);
+      }
+    }
+
+    if (!isMountedRef.current) return;
+    Alert.alert('Recommendation Sent!', 'Your friend will see this match in their recommendations.', [{
+      text: 'OK',
+      onPress: () => {
+        if (isMountedRef.current) {
+          setIsPassing(false);
+          navigation.navigate('MainTabs', { screen: 'Matches' });
+        }
+      },
+    }]);
+  }, [navigation, route.params, profile, currentUserProfile]);
 
   const handleSkipRecommend = useCallback(async () => {
     setShowRecommendModal(false);
