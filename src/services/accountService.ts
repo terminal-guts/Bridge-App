@@ -4,11 +4,14 @@
  * Handles account-level operations like deletion.
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiResponse } from '../types';
 import { supabase } from '../lib/supabase';
 import { cleanupSubscriptions } from './messageService';
 import { setIntentionalSignOut } from './authService';
+import { clearCachedUserId } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
+import { INVITE_COUNT_KEY } from '../screens/friends/ContactInviteScreen.components';
 
 const logger = createLogger('AccountService');
 
@@ -67,6 +70,11 @@ export const deleteAccount = async (): Promise<ApiResponse<void>> => {
     }
 
     logger.info('[ACCOUNT] Account deleted successfully');
+
+    // Clear invite count and stale auth cache so a re-signup starts fresh
+    await AsyncStorage.removeItem(INVITE_COUNT_KEY);
+    await AsyncStorage.removeItem('bridge_auth_user');
+    clearCachedUserId();
 
     // Mark as intentional so AppNavigator doesn't show "Session Expired"
     setIntentionalSignOut();

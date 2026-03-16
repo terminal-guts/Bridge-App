@@ -5,9 +5,11 @@
  * Email OTP works out of the box with Supabase.
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiResponse } from '../types';
 import { invalidateProfileCache } from './profileService';
 import { supabase } from '../lib/supabase';
+import { clearCachedUserId } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
 
 declare const __DEV__: boolean;
@@ -127,7 +129,7 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
 
     logger.info('[EMAIL] Sending OTP via Supabase to:', email);
 
-    const { error } = await supabase.auth.signInWithOtp({ email });
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
 
     if (error) {
       logger.error('[EMAIL] Supabase OTP error:', error.message);
@@ -155,6 +157,48 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
 };
 
 /**
+ * Send OTP for login — does NOT create a new user if email is unrecognized.
+ * Returns an error if no auth account exists for this email.
+ */
+export const sendLoginOtpToEmail = async (email: string): Promise<ApiResponse<void>> => {
+  try {
+    if (!isAllowedEmailDomain(email)) {
+      return {
+        ok: false,
+        error: { code: 'INVALID_DOMAIN', message: 'Only Rice University emails (@rice.edu) are allowed.' },
+      };
+    }
+
+    if (isReviewerBypassEmail(email)) {
+      logger.info('[EMAIL] Reviewer bypass — skipping OTP send');
+      return { ok: true };
+    }
+
+    logger.info('[EMAIL] Sending login OTP to:', email);
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true },
+    });
+
+    if (error) {
+      logger.warn('[EMAIL] Login OTP error:', error.message);
+      return {
+        ok: false,
+        error: { code: 'EMAIL_OTP_ERROR', message: error.message },
+      };
+    }
+
+    return { ok: true };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: { code: 'EMAIL_OTP_ERROR', message: error instanceof Error ? error.message : 'An unexpected error occurred' },
+    };
+  }
+};
+
+/**
  * Sign out the current user
  */
 export const signOut = async (): Promise<ApiResponse<void>> => {
@@ -165,6 +209,8 @@ export const signOut = async (): Promise<ApiResponse<void>> => {
     // Clean up message subscriptions and cached profile data
     import('./messageService').then(m => m.cleanupSubscriptions());
     invalidateProfileCache();
+    clearCachedUserId();
+    await AsyncStorage.removeItem('bridge_auth_user');
 
     // Sign out from Supabase (clears session from AsyncStorage automatically)
     await supabase.auth.signOut();
@@ -279,6 +325,23 @@ export const sendRiceEmailVerification = async (email: string): Promise<ApiRespo
       return {
         ok: false,
         error: { code: 'INVALID_DOMAIN', message: 'Only @rice.edu emails are allowed.' },
+      };
+    }
+
+    // Check if this email already has an account
+    const { data: existing } = await supabase
+      .from('user_profiles')
+      .select('user_id')
+      .eq('email', email.toLowerCase().trim())
+      .maybeSingle();
+
+    if (existing) {
+      return {
+        ok: false,
+        error: {
+          code: 'ACCOUNT_EXISTS',
+          message: 'An account with this email already exists. Please sign in instead.',
+        },
       };
     }
 

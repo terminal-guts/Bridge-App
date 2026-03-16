@@ -5,7 +5,6 @@ import { H1, Body, Input } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import { isAllowedEmailDomain, sendOtpToEmail } from '../../../services/authService';
-import { checkEmailRegistered } from '../../../services/profileService';
 import { createLogger } from '../../../utils/secureLogger';
 
 const logger = createLogger('EmailSignUpStep');
@@ -50,14 +49,6 @@ export const EmailSignUpStep: React.FC<EmailSignUpStepProps> = ({
     }
 
     setIsSending(true);
-
-    // Block sign-up if the email is already registered.
-    const emailTaken = await checkEmailRegistered(trimmed);
-    if (emailTaken) {
-      setIsSending(false);
-      setError('An account with this email already exists. Please sign in instead.');
-      return;
-    }
 
     const result = await sendOtpToEmail(trimmed);
     setIsSending(false);

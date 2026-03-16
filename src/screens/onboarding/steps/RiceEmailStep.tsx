@@ -5,7 +5,6 @@ import { H1, Body, Input } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import { isAllowedEmailDomain, sendRiceEmailVerification } from '../../../services/authService';
-import { checkEmailRegistered } from '../../../services/profileService';
 import { createLogger } from '../../../utils/secureLogger';
 
 const logger = createLogger('RiceEmailStep');
@@ -50,13 +49,6 @@ export const RiceEmailStep: React.FC<RiceEmailStepProps> = ({
     }
 
     setIsSending(true);
-
-    const emailTaken = await checkEmailRegistered(trimmed);
-    if (emailTaken) {
-      setIsSending(false);
-      setError('An account with this email already exists. Please sign in instead.');
-      return;
-    }
 
     const result = await sendRiceEmailVerification(trimmed);
     setIsSending(false);
