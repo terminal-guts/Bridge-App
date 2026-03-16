@@ -20,20 +20,22 @@ These are the most important screens in the app. All work (polish, bugs, feature
 
 ## Beta Feedback (Unresolved)
 
-### In Progress
-- Profile strength 100% at 1 photo → triggers `profile_completed` → enters matchmaking pool (gate matchmaking on `profile_completed = true`)
-- Beginner explanation system (Risus asked what the timer was) — friend working on it
-
 ### TODO
-- Friend code needs to be clickable/copyable when sent
 - Onboarding: transition from code entry to name entry is unnatural (Leif)
 - Onboarding: lifestyle page should indicate more buttons to scroll to beneath cannabis (Leif)
 - Onboarding: page transition polish — Leif likes haptics but not the transitions
-- Onboarding: photos/profile should be uploaded before hitting "get started" button (Leif)
-- Load profile changes locally before pushing to Supabase — delay is annoying (Leif)
-- "Already helped" bug — says user helped a friend even though they didn't (Leif)
-- Loading screen is a little blurry (Leif)
-- Audio proposal not working (general bug)
+- Audio proposal not working — audio recording/playback only exists in match chat, never implemented for proposals. Clarify if this feature is still wanted.
+
+### Resolved
+- ~~Profile strength 100% gating~~ — Done. `profile_completed` flag gates matchmaking in both edge functions + frontend.
+- ~~Beginner explanation system~~ — Done. Full guide system: `GuideContext`, `GuideOverlay`, 5 guide configs (beginner tour, proposals, profile, tabs, friends area).
+- ~~Friend code clickable/copyable~~ — Done. `FriendCodeCard` with clipboard + haptic + "Copied!" feedback.
+- ~~"Already helped" bug~~ — Done.
+- ~~Confetti on Yes votes~~ — Done. LottieView confetti fires on yes vote in ProposalReviewView.
+- ~~Post-vote crowd reveal~~ — Scrapped. Static messages removed.
+- ~~Loading screen blurry~~ — Done. Generated proper 1284x2778 splash.png with icon centered at native resolution. Switched from `contain` to `cover`.
+- ~~Photos upload before "get started"~~ — Done. Background upload starts immediately after PhotoUploadStep; `completeOnboarding` uses pre-uploaded URLs.
+- ~~Profile edit delay~~ — Done. SectionScreenWrapper now navigates back immediately; Supabase save runs in background. Alert shown only on failure.
 
 ---
 
@@ -44,8 +46,8 @@ From the engagement research (Hook Model, variable reinforcement, network effect
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| Post-vote crowd reveal | "You and X others voted Yes!" / "Bold call — only 23% agree" | Not done |
-| Confetti on Yes votes | Wire existing `Confetti.tsx` on Yes votes + 3rd vote gate unlock | Not done |
+| Post-vote crowd reveal | "You and X others voted Yes!" / "Bold call — only 23% agree" | Scrapped |
+| Confetti on Yes votes | Wire existing `Confetti.tsx` on Yes votes | **Done** |
 | Social proof counters | "X votes cast today", "3 friends voted", blurred friend votes | Not done |
 | Leaderboard promotion card | Preview card in Community tab (rank + weekly karma + gap to #1) | Not done |
 | FOMO cards | Grayed-out missed proposals — "[Friend]'s match decided without you" | Not done |

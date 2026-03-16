@@ -7,8 +7,8 @@
     "icon": "./assets/BridgeIcon_Final.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/BridgeIcon_Final.png",
-      "resizeMode": "contain",
+      "image": "./assets/splash.png",
+      "resizeMode": "cover",
       "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": [

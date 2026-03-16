@@ -12,6 +12,7 @@ import {
     Easing,
 } from 'react-native-reanimated';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { getNext7PMCentral } from '../../utils/centralTime';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import ViewShot from 'react-native-view-shot';
@@ -281,34 +282,16 @@ export function useMatchesScreen() {
         }
     }, [shareImageUri]);
 
-    // DST offset — compute once on mount
-    const centralOffsetMs = useMemo(() => {
-        const year = new Date().getUTCFullYear();
-        const marchSecondSun = new Date(Date.UTC(year, 2, 8));
-        marchSecondSun.setUTCDate(8 + (7 - marchSecondSun.getUTCDay()) % 7);
-        const novFirstSun = new Date(Date.UTC(year, 10, 1));
-        novFirstSun.setUTCDate(1 + (7 - novFirstSun.getUTCDay()) % 7);
-        const isDST = Date.now() >= marchSecondSun.getTime() && Date.now() < novFirstSun.getTime();
-        return isDST ? -5 * 3600000 : -6 * 3600000;
-    }, []);
-
     const emptyCountdown = useMemo(() => {
-        const centralNow = new Date(now + centralOffsetMs);
-        const centralHour = centralNow.getUTCHours();
-
-        const next7pm = new Date(centralNow);
-        next7pm.setUTCHours(19, 0, 0, 0);
-        if (centralHour >= 19) {
-            next7pm.setUTCDate(next7pm.getUTCDate() + 1);
-        }
-        const diffMs = next7pm.getTime() - centralOffsetMs - now;
+        const next7pmMs = getNext7PMCentral();
+        const diffMs = next7pmMs - now;
         if (diffMs <= 0) return null;
 
         const h = Math.floor(diffMs / 3600000);
         const m = Math.floor((diffMs % 3600000) / 60000);
         const s = Math.floor((diffMs % 60000) / 1000);
         return h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`;
-    }, [now, centralOffsetMs]);
+    }, [now]);
 
     // Profile gate
     const profileStrength = profile ? calculateOverallProfileStrength(profile) : 0;

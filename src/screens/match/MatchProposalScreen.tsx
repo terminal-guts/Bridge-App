@@ -237,6 +237,8 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
         logger.error('[MatchProposalScreen] Error accepting proposal:', error);
         if (isMountedRef.current) {
           setIsAccepting(false);
+          swipeX.setValue(0);
+          swipeOpacity.setValue(1);
           showToast.error('Could not accept', 'This proposal may have expired');
         }
         return;

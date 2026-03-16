@@ -93,7 +93,7 @@ export async function getPendingDecisions(userId: string): Promise<{
     .from('proposals')
     .select('*')
     .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`)
-    .in('status', ['deciding', 'expired']);
+    .eq('status', 'deciding');
 
   if (error) throw new Error(`Fetch pending decisions failed: ${error.message}`);
 

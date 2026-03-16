@@ -155,26 +155,32 @@ export function useProposalVoting(
     );
   }, []);
 
+  // Refs to avoid stale closures inside setTimeout
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
+  const proposalCountRef = useRef(proposals.length);
+  proposalCountRef.current = proposals.length;
+
   // Advance to the next proposal or trigger completion callbacks.
   const advanceProposal = useCallback(() => {
     if (voteTimeoutRef.current) clearTimeout(voteTimeoutRef.current);
     voteTimeoutRef.current = setTimeout(() => {
       if (!isMountedRef.current) return;
       setVoting(false);
-      if (currentIndex >= proposals.length - 1) {
+      if (currentIndexRef.current >= proposalCountRef.current - 1) {
         if (onVoteComplete) {
           onVoteComplete();
         } else if (onBack) {
           onBack();
         } else {
-          setTimeout(() => onVotesComplete?.(), 500);
+          onVotesComplete?.();
         }
       } else {
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         setCurrentIndex(prev => prev + 1);
       }
     }, 1000);
-  }, [currentIndex, proposals.length, onVoteComplete, onBack, onVotesComplete]);
+  }, [onVoteComplete, onBack, onVotesComplete]);
 
   const handleVote = useCallback(async (vote: 'yes' | 'no' | 'unsure') => {
     if (voting || currentIndex >= proposals.length) return;

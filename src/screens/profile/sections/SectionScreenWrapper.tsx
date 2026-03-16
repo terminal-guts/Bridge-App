@@ -27,7 +27,8 @@ interface SectionScreenWrapperProps {
 
 /**
  * Auto-saves profile changes when navigating back.
- * Used by all section edit screens to provide consistent save behavior.
+ * Optimistic: navigates back immediately, saves in background.
+ * Shows alert only if save fails.
  */
 export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
   title,
@@ -48,7 +49,45 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
     }
   }, [profile, originalProfileJson]);
 
-  const handleSaveAndGoBack = useCallback(async () => {
+  /** Save profile in background — does not block navigation */
+  const saveInBackground = useCallback(async (profileSnapshot: UserProfile) => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+
+    try {
+      // Upload any new photos (file:// URIs) to Supabase Storage first
+      const uploadedPhotos = [];
+      for (const photo of profileSnapshot.photos || []) {
+        if (photo.url.startsWith('file://')) {
+          const uploadRes = await uploadPhoto(photo.url, photo.order, photo.isMain);
+          if (uploadRes.ok && uploadRes.data) {
+            uploadedPhotos.push(uploadRes.data.photo);
+          } else {
+            logger.error('Background photo upload failed:', uploadRes.error?.message);
+            Alert.alert('Save Failed', 'Failed to upload photo. Please try editing again.');
+            return;
+          }
+        } else {
+          uploadedPhotos.push(photo);
+        }
+      }
+
+      const profileToSave = { ...profileSnapshot, photos: uploadedPhotos };
+      const result = await updateUserProfile(profileToSave);
+
+      if (!result.ok) {
+        logger.error('Background profile save failed:', result.error?.message);
+        Alert.alert('Save Failed', 'Your changes could not be saved. Please try again.');
+      }
+    } catch (error: any) {
+      logger.error('Background save exception:', error);
+      Alert.alert('Save Failed', 'Your changes could not be saved. Please try again.');
+    } finally {
+      savingRef.current = false;
+    }
+  }, []);
+
+  const handleSaveAndGoBack = useCallback(() => {
     if (!hasChanges()) {
       onGoBack();
       return;
@@ -66,43 +105,11 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
       return;
     }
 
-    if (savingRef.current) return;
-    savingRef.current = true;
-
-    try {
-      // Upload any new photos (file:// URIs) to Supabase Storage first
-      const uploadedPhotos = [];
-      for (const photo of profile.photos || []) {
-        if (photo.url.startsWith('file://')) {
-          const uploadRes = await uploadPhoto(photo.url, photo.order, photo.isMain);
-          if (uploadRes.ok && uploadRes.data) {
-            uploadedPhotos.push(uploadRes.data.photo);
-          } else {
-            logger.error('Photo upload failed:', uploadRes.error?.message);
-            Alert.alert('Error', `Failed to upload photo: ${uploadRes.error?.message || 'Unknown error'}`);
-            savingRef.current = false;
-            return;
-          }
-        } else {
-          uploadedPhotos.push(photo);
-        }
-      }
-
-      const profileToSave = { ...profile, photos: uploadedPhotos };
-      const result = await updateUserProfile(profileToSave);
-
-      if (result.ok) {
-        onGoBack();
-      } else {
-        Alert.alert('Error', result.error?.message || 'Failed to update profile');
-      }
-    } catch (error: any) {
-      logger.error('Save exception:', error);
-      Alert.alert('Error', error?.message || 'An unexpected error occurred');
-    } finally {
-      savingRef.current = false;
-    }
-  }, [profile, originalProfileJson, isOffline, onGoBack, hasChanges]);
+    // Navigate back immediately — save happens in background
+    const profileSnapshot = { ...profile };
+    onGoBack();
+    saveInBackground(profileSnapshot);
+  }, [profile, isOffline, onGoBack, hasChanges, saveInBackground]);
 
   return (
     <ScreenWrapper>

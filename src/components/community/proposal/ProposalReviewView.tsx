@@ -17,16 +17,19 @@
 
 import { COLORS } from '../../../theme/colors';
 import { EmptyState } from '../../ui/EmptyState';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
+  StyleSheet,
   Platform,
   UIManager,
   Dimensions,
 } from 'react-native';
+import LottieView from 'lottie-react-native';
+const CONFETTI_ANIM = require('../../../../assets/Icons/AnimatedIcons/confetti.json');
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -115,6 +118,18 @@ export function ProposalReviewView({
   );
 
   const matchData = useMatchData(proposals, currentIndex);
+
+  // ── Confetti on Yes vote ──────────────────────────────────────────────────
+  const confettiRef = useRef<LottieView>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  const handleVoteWithEffects = useCallback(async (vote: 'yes' | 'no' | 'unsure') => {
+    if (vote === 'yes') {
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 2500);
+    }
+    await handleVote(vote);
+  }, [handleVote]);
 
   // Active dot pulse animation
   const dotPulse = useSharedValue(1);
@@ -217,7 +232,7 @@ export function ProposalReviewView({
             <View style={{ flexDirection: 'row' }}>
               <ProposalPhotoCard
                 photos={userA.photos || []}
-                name={userA.firstName}
+                name={`${userA.firstName} ${userA.lastName}`}
                 age={userA.age}
                 width={PHOTO_WIDTH}
                 height={PHOTO_HEIGHT}
@@ -227,7 +242,7 @@ export function ProposalReviewView({
               <View style={{ width: DIVIDER_WIDTH }} />
               <ProposalPhotoCard
                 photos={userB.photos || []}
-                name={userB.firstName}
+                name={`${userB.firstName} ${userB.lastName}`}
                 age={userB.age}
                 width={PHOTO_WIDTH}
                 height={PHOTO_HEIGHT}
@@ -329,7 +344,7 @@ export function ProposalReviewView({
       {/* ── Fixed bottom vote buttons ───────────────────────────────── */}
       <VoteButtons
         voting={voting}
-        handleVote={handleVote}
+        handleVote={handleVoteWithEffects}
         handleForFriendPress={handleForFriendPress}
         yesButtonAnimatedStyle={yesButtonAnimatedStyle}
         noButtonAnimatedStyle={noButtonAnimatedStyle}
@@ -361,6 +376,19 @@ export function ProposalReviewView({
         <Animated.View
           style={[styles.voteFlashOverlay, { backgroundColor: voteFlashColor }, flashAnimatedStyle]}
         />
+      )}
+
+      {/* Confetti overlay on Yes vote */}
+      {showConfetti && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <LottieView
+            ref={confettiRef}
+            source={CONFETTI_ANIM}
+            autoPlay
+            loop={false}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
       )}
 
     </View>

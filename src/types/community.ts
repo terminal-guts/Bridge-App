@@ -9,55 +9,6 @@ import type { UserProfile } from './index';
 // Re-export UserProfile for convenience
 export type { UserProfile };
 
-// ==================== Grid Types ====================
-
-export interface DailyGrid {
-  id: string;
-  anchorUserId: string;
-  anchor: UserProfile;
-  candidates: UserProfile[]; // Always 3 candidates
-  gridDate: string; // ISO date string
-  createdAt?: string; // ISO timestamp
-  expiresAt: string; // ISO timestamp
-  hasVoted: boolean;
-  hasMatched: boolean; // Did user create a proposal for this grid?
-  randomMatchAssignment?: RandomMatchAssignment;
-  scorePairings?: ScorePairing[]; // Compatibility scores between anchor and each candidate
-}
-
-export interface ScorePairing {
-  candidateId: string;
-  totalScore: number;
-  categoryScores: {
-    ageRange: number;
-    distance: number;
-    lifestyleSubstances: number;
-    values: number;
-    interests: number;
-    family: number;
-    religion: number;
-    politics: number;
-    height: number;
-    ethnicity: number;
-    education: number;
-    career: number;
-  };
-}
-
-export interface RandomMatchAssignment {
-  id?: string;
-  matcherId: string; // Alias for matcherUserId
-  matcherUserId: string;
-  anchorId: string; // Alias for anchorUserId
-  anchorUserId: string;
-  assignedAnchor?: UserProfile;
-  assignedAt: string; // Alias for assignmentDate
-  assignmentDate?: string;
-  hasCompleted: boolean;
-  completed: boolean; // Alias for hasCompleted
-  completedAt?: string;
-}
-
 export type ProposalStatus = 'voting' | 'candidate_match' | 'confirmed' | 'rejected' | 'expired_sent' | 'accepted' | 'declined' | 'pending' | 'deciding';
 
 export interface Proposal {
@@ -201,25 +152,6 @@ export interface Assist {
 
 // ==================== Friend Superpower Types ====================
 
-export type SignalType = 'good_type' | 'avoid_type';
-export type SignalStatus = 'pending' | 'approved' | 'rejected';
-
-export interface FriendSuperpower {
-  id: string;
-  senderFriendId: string;
-  senderProfile: UserProfile;
-  anchorUserId: string;
-  signalType: SignalType;
-  subjectUserId: string;
-  subjectProfile: UserProfile;
-  signalReason?: string;
-  signalWeek: string; // Week start date
-  status: SignalStatus;
-  approvedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 // ==================== Community Task Types ====================
 
 export interface CommunityTask {
@@ -245,29 +177,6 @@ export interface DailyTaskStatus {
   hasCompletedRandomMatch: boolean;
   allTasksCompleted: boolean;
   completedAt?: string;
-}
-
-// ==================== Friend Grid Types ====================
-
-export interface FriendGrid {
-  friendId: string;
-  friend: UserProfile;
-  grid: DailyGrid;
-  hasProposed: boolean;
-  proposedCandidateId?: string;
-  hasCompletedGrid: boolean;
-}
-
-// Alias type for backward compatibility
-export interface FriendAnchor {
-  id: string;
-  friendId: string;
-  friendName: string;
-  friendPhotoUrl: string;
-  hasGridToday: boolean;
-  hasProposedToday: boolean;
-  karmaScore?: KarmaScore;
-  grid?: DailyGrid;
 }
 
 export interface FriendWithGridStatus {
@@ -338,12 +247,6 @@ export interface ActiveMatch {
 
 // ==================== Community Service Response Types ====================
 
-export interface GetDailyGridResponse {
-  grid: DailyGrid | null;
-  randomMatchAssignment?: RandomMatchAssignment;
-  taskStatus: DailyTaskStatus;
-}
-
 export interface GetProposalsToVoteResponse {
   proposals: Proposal[];
   votingProgress: {
@@ -357,7 +260,6 @@ export interface GetFriendsAreaResponse {
   friends: FriendWithGridStatus[];
   pendingProposals: MatchProposal[];
   activeMatch: ActiveMatch | null;
-  friendSuperpowers: FriendSuperpower[];
 }
 
 // ==================== Match Ended Events ====================

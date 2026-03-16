@@ -16,6 +16,7 @@ import { NavigationProp } from '@react-navigation/native';
 import { DURATIONS } from '../../constants/animations';
 import { RootStackParamList, OnboardingData } from '../../types';
 import { createUserProfile, saveOnboardingStep } from '../../services/profileService';
+import { uploadMultiplePhotos } from '../../services/photoService';
 import { supabase } from '../../lib/supabase';
 import { Body } from '../../components/ui';
 import { ONBOARDING_STEP_MAPPING } from '../../config/onboardingMapping';
@@ -112,6 +113,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   // Guard against concurrent goNext invocations (rapid taps / double-submit)
   const isGoingNextRef = useRef(false);
+  // Background photo upload: starts after PhotoUploadStep, results used by completeOnboarding
+  const photoUploadPromiseRef = useRef<Promise<any> | null>(null);
+  const photoUploadResultRef = useRef<Array<{ id: string; url: string }> | null>(null);
 
   // Fetch the authenticated user ID from Supabase session.
   // Re-checks on step changes because the user gets authenticated during
@@ -225,6 +229,31 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
         }
       }
 
+      // After Photos step: start uploading photos in the background immediately
+      // so they're ready by the time completeOnboarding fires
+      if (steps[stepAtCall].title === 'Photos' && onboardingData.photos && onboardingData.photos.length > 0) {
+        const uris = onboardingData.photos
+          .map(p => p.url || (p as any).uri)
+          .filter((u: string) => u && u.startsWith('file://'));
+        if (uris.length > 0) {
+          logger.info('[OnboardingScreen] Starting background photo upload:', uris.length, 'photos');
+          photoUploadPromiseRef.current = uploadMultiplePhotos(uris)
+            .then(res => {
+              if (res.ok && res.data) {
+                photoUploadResultRef.current = res.data;
+                logger.info('[OnboardingScreen] Background photo upload complete:', res.data.length);
+              } else {
+                logger.warn('[OnboardingScreen] Background photo upload failed — will retry at profile creation');
+              }
+              return res;
+            })
+            .catch(err => {
+              logger.warn('[OnboardingScreen] Background photo upload error (will retry):', err.message);
+              return null;
+            });
+        }
+      }
+
       // After email verification completes (step index 1), the user has a JWT.
       // Fire-and-forget: assign existing proposals early so the gate isn't empty.
       if (steps[stepAtCall].title === 'Verify Email') {
@@ -287,8 +316,28 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
       logger.info('Creating profile for user:', userId);
       logger.info('Photos to upload:', onboardingData.photos?.length || 0);
 
+      // Wait for background photo upload if it's in progress
+      let dataForProfile = onboardingData;
+      if (photoUploadPromiseRef.current) {
+        logger.info('[OnboardingScreen] Waiting for background photo upload to finish...');
+        await photoUploadPromiseRef.current;
+      }
+      if (photoUploadResultRef.current && photoUploadResultRef.current.length > 0) {
+        // Inject pre-uploaded photo URLs so createUserProfile skips re-uploading
+        logger.info('[OnboardingScreen] Using pre-uploaded photos:', photoUploadResultRef.current.length);
+        dataForProfile = {
+          ...onboardingData,
+          photos: photoUploadResultRef.current.map((p, i) => ({
+            id: p.id || p.url,
+            url: p.url,
+            isMain: i === 0,
+            order: i,
+          })),
+        };
+      }
+
       // Create user profile with all onboarding data
-      const profileResult = await createUserProfile(userId, onboardingData);
+      const profileResult = await createUserProfile(userId, dataForProfile);
 
       setIsCreatingProfile(false);
 

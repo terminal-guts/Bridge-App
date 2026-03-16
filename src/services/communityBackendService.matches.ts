@@ -303,11 +303,19 @@ export async function detectPartnerDeclinedProposal(
       .eq('user_id', partnerId)
       .maybeSingle();
 
+    let photoUrl: string | undefined;
+    if (partnerRow?.profile_photo_path) {
+      const { data: signedData } = await supabase.storage
+        .from('photos')
+        .createSignedUrl(partnerRow.profile_photo_path, 3600);
+      photoUrl = signedData?.signedUrl;
+    }
+
     setPendingEndedEvent({
       type: 'they_rejected',
       eventId,
       partnerName: partnerRow?.first_name || 'Your match',
-      partnerPhotoUrl: partnerRow?.profile_photo_path || undefined,
+      partnerPhotoUrl: photoUrl,
     });
   } catch {
     // Silent — don't break the main data load
