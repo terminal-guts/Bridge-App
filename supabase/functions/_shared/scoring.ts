@@ -1,14 +1,24 @@
 /**
- * Bridge Matching Algorithm — Scoring Engine (Deno/TypeScript)
+ * Bridge Matching Algorithm — Scoring Engine v2 (Deno/TypeScript)
  *
- * 10-category mutual percentage-based scoring. All categories sum to 100%.
- * Distance, Career, and Education removed for Rice University beta.
+ * 12-category mutual percentage-based scoring. All category weights sum to 100%.
+ *
+ * v2 Changes (2026-03-15):
+ *   - Fixed interests/values: overlap coefficient → modified Jaccard (fixes small-set inflation)
+ *   - Fixed family plans: matrix keys now match actual stored values (want_children, dont_want_children)
+ *   - Fixed religion: preference bonus/penalty model replaces perverse incentive blend
+ *   - Fixed politics: not_political is orthogonal to spectrum, not on it
+ *   - Fixed ethnicity: partial credit via cultural proximity groups
+ *   - Fixed substances: ordinal gradient replaces binary cliff-edge
+ *   - Rebalanced weights: interests 22%, values 12%, age 10% (was 18%)
+ *   - Re-enabled education (3%) and career (3%)
+ *   - Principled missing data defaults
  *
  * Category Weights:
- *   Age Range:    18%    Interests:     15%    Lifestyle:     11%
- *   Height:       11%    Ethnicity:     11%    Politics:       9%
- *   Values:        7%    Family:         6%    Religion:       6%
- *   Deep Questions: 6%
+ *   Interests:      22%    Values:        12%    Lifestyle:     10%
+ *   Age Range:      10%    Religion:       9%    Politics:       7%
+ *   Height:          7%    Ethnicity:      6%    Family:         6%
+ *   Deep Questions:  5%    Education:      3%    Career:         3%
  */
 
 import type { CompatibilityResult, DeepQuestionAnswer } from './types.ts';
@@ -18,55 +28,54 @@ type Dict = Record<string, unknown>;
 // ── Weights ──────────────────────────────────────────────────────────────────
 
 const WEIGHTS: Record<string, number> = {
-  age_range: 0.18,
-  interests: 0.15,
-  lifestyle_substances: 0.11,
-  height: 0.11,
-  ethnicity: 0.11,
-  politics: 0.09,
-  values: 0.07,
+  interests: 0.22,
+  values: 0.12,
+  lifestyle_substances: 0.10,
+  age_range: 0.10,
+  religion: 0.09,
+  politics: 0.07,
+  height: 0.07,
+  ethnicity: 0.06,
   family: 0.06,
-  religion: 0.06,
-  deep_questions: 0.06,
+  deep_questions: 0.05,
+  education: 0.03,
+  career: 0.03,
 };
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const SIMILAR_RELIGIONS: Set<string>[] = [
-  new Set(['christian', 'catholic']),
-  new Set(['christian', 'spiritual']),
-  new Set(['catholic', 'spiritual']),
-  new Set(['buddhist', 'spiritual']),
-  new Set(['hindu', 'spiritual']),
-];
-
-const OPPOSING_RELIGIONS: Set<string>[] = [
-  new Set(['atheist', 'christian']),
-  new Set(['atheist', 'catholic']),
-  new Set(['atheist', 'muslim']),
-  new Set(['atheist', 'jewish']),
-  new Set(['atheist', 'hindu']),
-  new Set(['agnostic', 'christian']),
-  new Set(['agnostic', 'catholic']),
-];
+const SIMILAR_RELIGIONS: Map<string, number> = new Map([
+  ['christian|catholic', 0.75],
+  ['christian|spiritual', 0.65],
+  ['catholic|spiritual', 0.60],
+  ['buddhist|spiritual', 0.70],
+  ['hindu|spiritual', 0.60],
+  ['jewish|spiritual', 0.50],
+  ['agnostic|spiritual', 0.65],
+  ['agnostic|atheist', 0.70],
+]);
 
 const RELIGIOUS_SET = new Set([
   'buddhist', 'catholic', 'christian', 'hindu', 'jewish', 'muslim',
-  // Legacy values that may exist in database
   'protestant', 'sikh', 'mormon', 'orthodox', 'evangelical',
 ]);
 
-const POLITICS_ADJACENCY: Map<string, number> = new Map([
-  ['very_liberal|liberal', 0.80],
-  ['liberal|moderate', 0.70],
-  ['moderate|conservative', 0.70],
-  ['conservative|very_conservative', 0.80],
-  ['moderate|not_political', 0.80],
-]);
+// not_political compatibility — orthogonal to the liberal-conservative spectrum
+const NOT_POLITICAL_COMPAT: Record<string, number> = {
+  'not_political': 1.0,
+  'moderate': 0.75,
+  'liberal': 0.55,
+  'conservative': 0.55,
+  'very_liberal': 0.35,
+  'very_conservative': 0.35,
+};
 
 const POLITICS_SPECTRUM = [
   'very_liberal', 'liberal', 'moderate', 'conservative', 'very_conservative',
 ];
+
+// Spectrum distance scores (gap → score)
+const POLITICS_GAP_SCORES: number[] = [1.0, 0.80, 0.50, 0.20, 0.05];
 
 const EDUCATION_LEVELS: Record<string, number> = {
   no_high_school: 0,
@@ -83,17 +92,54 @@ const EDUCATION_LEVELS: Record<string, number> = {
 };
 
 const FAMILY_PLANS_MATRIX: Map<string, number> = new Map([
+  // Current stored values (from onboarding)
+  ['want_children|want_children', 1.0],
+  ['want_children|not_sure', 0.6],
+  ['want_children|dont_want_children', 0.0],
+  ['dont_want_children|dont_want_children', 1.0],
+  ['dont_want_children|not_sure', 0.4],
+  ['not_sure|not_sure', 0.9],
+  // Legacy values (backward compatibility with older profiles)
   ['want_someday|want_someday', 1.0],
   ['want_someday|open', 0.8],
   ['want_someday|not_sure', 0.6],
+  ['want_someday|want_children', 1.0],
   ['want_someday|dont_want', 0.0],
+  ['want_someday|dont_want_children', 0.0],
   ['want_someday|prefer_not_to_say', 0.5],
   ['dont_want|dont_want', 1.0],
+  ['dont_want|dont_want_children', 1.0],
   ['dont_want|open', 0.4],
   ['dont_want|not_sure', 0.4],
   ['open|open', 1.0],
   ['open|not_sure', 0.8],
-  ['not_sure|not_sure', 0.9],
+  ['open|want_children', 0.8],
+  ['open|dont_want_children', 0.4],
+]);
+
+// Ordinal scales for substance scoring
+const SUBSTANCE_ORDINAL: Record<string, Record<string, number>> = {
+  drinking: { no: 0, never: 0, rarely: 1, sometimes: 2, socially: 2, regularly: 3, yes: 3 },
+  cannabis: { no: 0, never: 0, rarely: 1, sometimes: 2, regularly: 3, yes: 3 },
+  tobacco: { no: 0, never: 0, sometimes: 1, regularly: 2, yes: 2 },
+  other_drugs: { no: 0, never: 0, sometimes: 1, regularly: 2, yes: 2 },
+};
+
+// Ethnicity cultural proximity for partial credit
+const ETHNICITY_PROXIMITY: Record<string, Record<string, number>> = {
+  'east asian': { 'southeast asian': 0.5, 'south asian': 0.25 },
+  'southeast asian': { 'east asian': 0.5, 'south asian': 0.35, 'pacific islander': 0.35 },
+  'south asian': { 'southeast asian': 0.35, 'middle eastern': 0.25, 'east asian': 0.25 },
+  'hispanic': { 'white': 0.25, 'native american': 0.2 },
+  'middle eastern': { 'south asian': 0.25, 'white': 0.15 },
+  'pacific islander': { 'southeast asian': 0.35 },
+  'native american': { 'hispanic': 0.2 },
+};
+
+const STANDARD_ETHNICITIES = new Set([
+  'black', 'east asian', 'hispanic', 'middle eastern', 'native american',
+  'pacific islander', 'south asian', 'southeast asian', 'white', 'other',
+  'asian', 'latino', 'african', 'caribbean', 'mixed', 'multiracial',
 ]);
 
 const DEEP_STOP_WORDS = new Set([
@@ -123,18 +169,151 @@ function _getPref(profile: Dict, prefs: Dict, key: string, defaultVal: unknown =
   return prefs[key] ?? defaultVal;
 }
 
-// ── Age (18%) ────────────────────────────────────────────────────────────────
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+// ── Interests (22%) — Modified Jaccard ───────────────────────────────────────
+
+function scoreInterests(profileA: Dict, profileB: Dict): number {
+  const aRaw = (_get(profileA, 'interests') || []) as string[];
+  const bRaw = (_get(profileB, 'interests') || []) as string[];
+  const aInts = new Set<string>(aRaw.map((i: string) => i.toLowerCase()));
+  const bInts = new Set<string>(bRaw.map((i: string) => i.toLowerCase()));
+
+  if (aInts.size === 0 && bInts.size === 0) return 0.5;
+  if (aInts.size === 0 || bInts.size === 0) return 0.4;
+
+  let shared = 0;
+  for (const v of aInts) if (bInts.has(v)) shared++;
+
+  if (shared === 0) return 0.0;
+
+  // Union for Jaccard
+  const unionSize = new Set([...aInts, ...bInts]).size;
+  const jaccard = shared / unionSize;
+
+  // Absolute bonus: rewards having many shared interests (caps at 4)
+  const absoluteBonus = Math.min(shared / 4, 1.0);
+
+  return jaccard * 0.5 + absoluteBonus * 0.5;
+}
+
+// ── Values (12%) — Modified Jaccard ──────────────────────────────────────────
+
+function scoreValues(profileA: Dict, profileB: Dict): number {
+  const aVals = new Set<string>((_get(profileA, 'values') || []) as string[]);
+  const bVals = new Set<string>((_get(profileB, 'values') || []) as string[]);
+
+  if (aVals.size === 0 && bVals.size === 0) return 0.5;
+  if (aVals.size === 0 || bVals.size === 0) return 0.4;
+
+  let shared = 0;
+  for (const v of aVals) if (bVals.has(v)) shared++;
+
+  if (shared === 0) return 0.0;
+
+  const unionSize = new Set([...aVals, ...bVals]).size;
+  const jaccard = shared / unionSize;
+
+  // Absolute bonus: caps at 3 shared values (values lists tend shorter than interests)
+  const absoluteBonus = Math.min(shared / 3, 1.0);
+
+  return jaccard * 0.5 + absoluteBonus * 0.5;
+}
+
+// ── Lifestyle / Substances (10%) — Ordinal Gradients ─────────────────────────
+
+function scoreSingleSubstance(
+  aHabit: string | null,
+  bPrefsForSubstance: unknown,
+  bHabit: string | null,
+  aPrefsForSubstance: unknown,
+  substance: string,
+): number {
+  const ordinalScale = SUBSTANCE_ORDINAL[substance] || SUBSTANCE_ORDINAL.drinking;
+  const maxOrd = Math.max(...Object.values(ordinalScale));
+
+  function oneDirection(habit: string | null, rawPrefs: unknown): number {
+    if (habit == null || habit === '') return 0.6;
+    if (rawPrefs == null || (Array.isArray(rawPrefs) && rawPrefs.length === 0)) return 1.0;
+
+    let prefsList: string[];
+    if (typeof rawPrefs === 'string') {
+      if (rawPrefs === 'dont_care' || rawPrefs === "don't care") return 1.0;
+      prefsList = [rawPrefs];
+    } else if (Array.isArray(rawPrefs)) {
+      prefsList = rawPrefs as string[];
+    } else {
+      return 0.6;
+    }
+
+    if (prefsList.includes('dont_care') || prefsList.includes("don't care")) return 1.0;
+    if (prefsList.includes(habit)) return 1.0;
+    if (habit === 'prefer_not_to_say') return 0.5;
+
+    // Ordinal gradient fallback: find minimum distance to any preferred value
+    const habitOrd = ordinalScale[habit.toLowerCase()];
+    if (habitOrd == null) return 0.5;
+
+    let minDist = maxOrd;
+    for (const pref of prefsList) {
+      const prefOrd = ordinalScale[pref.toLowerCase()];
+      if (prefOrd != null) {
+        minDist = Math.min(minDist, Math.abs(habitOrd - prefOrd));
+      }
+    }
+
+    if (minDist === 0) return 1.0;
+    // Decay: 1 step → 0.6, 2 steps → 0.35, 3 steps → 0.15
+    return Math.max(0.1, 1.0 - (minDist / maxOrd) * 0.85);
+  }
+
+  const aToB = oneDirection(aHabit, bPrefsForSubstance);
+  const bToA = oneDirection(bHabit, aPrefsForSubstance);
+  return (aToB + bToA) / 2;
+}
+
+function getLifestylePref(prefs: Dict, substance: string): unknown {
+  const prefKey = `partner_${substance}`;
+  const val = prefs[prefKey];
+  if (val != null) return val;
+
+  const oldPrefs = prefs['partner_lifestyle_preferences'];
+  if (oldPrefs && typeof oldPrefs === 'object') return (oldPrefs as Record<string, unknown>)[substance];
+  return null;
+}
+
+function scoreLifestyle(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
+  const substances = ['drinking', 'cannabis', 'tobacco', 'other_drugs'];
+  const habitKeys = [
+    'drinking_frequency', 'cannabis_frequency',
+    'tobacco_frequency', 'other_drugs_frequency',
+  ];
+
+  let total = 0.0;
+  for (let i = 0; i < substances.length; i++) {
+    const aHabit = _get(profileA, habitKeys[i]) as string | null;
+    const bHabit = _get(profileB, habitKeys[i]) as string | null;
+    const aPref = getLifestylePref(prefsA, substances[i]);
+    const bPref = getLifestylePref(prefsB, substances[i]);
+    total += scoreSingleSubstance(aHabit, bPref, bHabit, aPref, substances[i]);
+  }
+  return total / substances.length;
+}
+
+// ── Age (10%) ────────────────────────────────────────────────────────────────
 
 function scoreAge(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
-  const ageA = _get(profileA, 'age');
-  const ageB = _get(profileB, 'age');
+  const ageA = _get(profileA, 'age') as number | null;
+  const ageB = _get(profileB, 'age') as number | null;
 
   if (ageA == null || ageB == null) return 0.5;
 
-  const aMin = _getPref(profileA, prefsA, 'age_min', 18);
-  const aMax = _getPref(profileA, prefsA, 'age_max', 99);
-  const bMin = _getPref(profileB, prefsB, 'age_min', 18);
-  const bMax = _getPref(profileB, prefsB, 'age_max', 99);
+  const aMin = _getPref(profileA, prefsA, 'age_min', 18) as number;
+  const aMax = _getPref(profileA, prefsA, 'age_max', 99) as number;
+  const bMin = _getPref(profileB, prefsB, 'age_min', 18) as number;
+  const bMax = _getPref(profileB, prefsB, 'age_max', 99) as number;
 
   function directionScore(personAge: number, prefMin: number, prefMax: number): number {
     if (personAge < prefMin || personAge > prefMax) return 0.0;
@@ -150,298 +329,114 @@ function scoreAge(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): n
   return (aToB + bToA) / 2;
 }
 
-// ── Distance (15%) ──────────────────────────────────────────────────────────
+// ── Religion (9%) — Compatibility base + preference bonus/penalty ────────────
 
-function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 3959; // Earth radius in miles
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-function normalizeCity(location: string | null): string {
-  if (!location) return '';
-  return location.trim().toLowerCase().split(',')[0].trim();
-}
-
-function scoreDistance(
-  profileA: Dict, prefsA: Dict,
-  profileB: Dict, prefsB: Dict,
-  actualDistance: number | null = null,
-): number {
-  if (actualDistance == null) {
-    const latA = _get(profileA, 'latitude');
-    const lonA = _get(profileA, 'longitude');
-    const latB = _get(profileB, 'latitude');
-    const lonB = _get(profileB, 'longitude');
-
-    if (latA && lonA && latB && lonB) {
-      actualDistance = haversine(latA, lonA, latB, lonB);
-    } else {
-      const cityA = normalizeCity(_get(profileA, 'location'));
-      const cityB = normalizeCity(_get(profileB, 'location'));
-      if (cityA && cityB && cityA === cityB) return 0.90;
-      return 0.5;
-    }
-  }
-
-  let aMax = _getPref(profileA, prefsA, 'max_distance') ?? _getPref(profileA, prefsA, 'distance_miles');
-  let bMax = _getPref(profileB, prefsB, 'max_distance') ?? _getPref(profileB, prefsB, 'distance_miles');
-
-  if (aMax == null || aMax >= 200) aMax = 200;
-  if (bMax == null || bMax >= 200) bMax = 200;
-
-  const maxAcceptable = Math.min(aMax, bMax);
-  if (actualDistance > maxAcceptable) return 0.0;
-  if (maxAcceptable === 0) return 1.0;
-
-  const score = 1.0 - (actualDistance / maxAcceptable) ** 0.7;
-  return Math.max(0.0, score);
-}
-
-// ── Lifestyle / Substances (12%) ────────────────────────────────────────────
-
-function scoreSingleSubstance(
-  aHabit: string | null,
-  bPrefsForSubstance: unknown,
-  bHabit: string | null,
-  aPrefsForSubstance: unknown,
-): number {
-  function oneDirection(habit: string | null, rawPrefs: unknown): number {
-    if (habit == null || habit === '') return 0.5;
-    if (rawPrefs == null || (Array.isArray(rawPrefs) && rawPrefs.length === 0)) return 1.0;
-    let prefsList: string[];
-    if (typeof rawPrefs === 'string') {
-      if (rawPrefs === 'dont_care' || rawPrefs === "don't care") return 1.0;
-      prefsList = [rawPrefs];
-    } else if (Array.isArray(rawPrefs)) {
-      prefsList = rawPrefs as string[];
-    } else {
-      return 0.5;
-    }
-    if (prefsList.includes('dont_care') || prefsList.includes("don't care")) return 1.0;
-    if (prefsList.includes(habit)) return 1.0;
-
-    if (habit === 'sometimes') {
-      const hasOnlyYes = (prefsList.length === 1 && (prefsList[0] === 'yes' || prefsList[0] === 'regularly'));
-      const hasOnlyNo = (prefsList.length === 1 && (prefsList[0] === 'no' || prefsList[0] === 'never'));
-      if (hasOnlyYes || hasOnlyNo) return 0.5;
-    }
-
-    if (habit === 'prefer_not_to_say') return 0.5;
-    return 0.0;
-  }
-
-  const aToB = oneDirection(aHabit, bPrefsForSubstance);
-  const bToA = oneDirection(bHabit, aPrefsForSubstance);
-  return (aToB + bToA) / 2;
-}
-
-function getLifestylePref(prefs: Dict, substance: string): unknown {
-  const prefKey = `partner_${substance}`;
-  const val = prefs[prefKey];
-  if (val != null) return val;
-
-  const oldPrefs = prefs['partner_lifestyle_preferences'];
-  if (oldPrefs && typeof oldPrefs === 'object') return oldPrefs[substance];
-  return null;
-}
-
-function scoreLifestyle(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
-  const substances = ['drinking', 'cannabis', 'tobacco', 'other_drugs'];
-  const habitKeys = [
-    'drinking_frequency', 'cannabis_frequency',
-    'tobacco_frequency', 'other_drugs_frequency',
-  ];
-
-  let total = 0.0;
-  for (let i = 0; i < substances.length; i++) {
-    const aHabit = _get(profileA, habitKeys[i]);
-    const bHabit = _get(profileB, habitKeys[i]);
-    const aPref = getLifestylePref(prefsA, substances[i]);
-    const bPref = getLifestylePref(prefsB, substances[i]);
-    total += scoreSingleSubstance(aHabit, bPref, bHabit, aPref);
-  }
-  return total / substances.length;
-}
-
-// ── Values (8%) ─────────────────────────────────────────────────────────────
-
-function scoreValues(profileA: Dict, profileB: Dict): number {
-  const aVals = new Set<string>(_get(profileA, 'values') || []);
-  const bVals = new Set<string>(_get(profileB, 'values') || []);
-
-  if (aVals.size === 0 && bVals.size === 0) return 0.5;
-  if (aVals.size === 0 || bVals.size === 0) return 0.25;
-
-  let shared = 0;
-  for (const v of aVals) if (bVals.has(v)) shared++;
-  const smaller = Math.min(aVals.size, bVals.size);
-  return shared / smaller;
-}
-
-// ── Interests (8%) ──────────────────────────────────────────────────────────
-
-function scoreInterests(profileA: Dict, profileB: Dict): number {
-  const aInts = new Set<string>((_get(profileA, 'interests') || []).map((i: string) => i.toLowerCase()));
-  const bInts = new Set<string>((_get(profileB, 'interests') || []).map((i: string) => i.toLowerCase()));
-
-  if (aInts.size === 0 && bInts.size === 0) return 0.5;
-  if (aInts.size === 0 || bInts.size === 0) return 0.25;
-
-  let shared = 0;
-  for (const v of aInts) if (bInts.has(v)) shared++;
-  const smaller = Math.min(aInts.size, bInts.size);
-  return shared / smaller;
-}
-
-// ── Family (8%) ─────────────────────────────────────────────────────────────
-
-function defaultChildrenScore(aChildren: string | null, bChildren: string | null): number {
-  if (aChildren === 'prefer_not_to_say' || bChildren === 'prefer_not_to_say') return 0.75;
-  if (aChildren == null || bChildren == null) return 0.5;
-  if (aChildren === bChildren) return 1.0;
-  return 0.5;
-}
-
-function scoreHasChildren(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
-  const aChildren = _get(profileA, 'has_children');
-  const bChildren = _get(profileB, 'has_children');
-  return defaultChildrenScore(aChildren, bChildren);
-}
-
-function scoreFamilyPlans(profileA: Dict, profileB: Dict): number {
-  const aPlans = _get(profileA, 'family_plans');
-  const bPlans = _get(profileB, 'family_plans');
-
-  if (!aPlans || !bPlans) return 0.5;
-  if (aPlans === 'prefer_not_to_say' || bPlans === 'prefer_not_to_say') return 0.5;
-
-  const score = FAMILY_PLANS_MATRIX.get(`${aPlans}|${bPlans}`) ??
-    FAMILY_PLANS_MATRIX.get(`${bPlans}|${aPlans}`);
-  if (score != null) return score;
-  return 0.5;
-}
-
-function scoreFamily(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
-  const childrenScore = scoreHasChildren(profileA, prefsA, profileB, prefsB);
-  const plansScore = scoreFamilyPlans(profileA, profileB);
-  return childrenScore * 0.4 + plansScore * 0.6;
-}
-
-// ── Religion (6%) ───────────────────────────────────────────────────────────
-
-function areSimilarReligions(a: string, b: string): boolean {
+function getReligionSimilarity(a: string, b: string): number | null {
   const aLower = a.toLowerCase();
   const bLower = b.toLowerCase();
-  for (const group of SIMILAR_RELIGIONS) {
-    if (group.has(aLower) && group.has(bLower)) return true;
-  }
-  return false;
+  const key1 = `${aLower}|${bLower}`;
+  const key2 = `${bLower}|${aLower}`;
+  return SIMILAR_RELIGIONS.get(key1) ?? SIMILAR_RELIGIONS.get(key2) ?? null;
 }
 
-function areOpposingReligions(a: string, b: string): boolean {
+function isOpposingReligion(a: string, b: string): boolean {
   const aLower = a.toLowerCase();
   const bLower = b.toLowerCase();
-  for (const pair of OPPOSING_RELIGIONS) {
-    if (pair.has(aLower) && pair.has(bLower) && pair.size === 2) return true;
-  }
   if (aLower === 'atheist' && RELIGIOUS_SET.has(bLower)) return true;
   if (bLower === 'atheist' && RELIGIOUS_SET.has(aLower)) return true;
   return false;
 }
 
 function scoreReligion(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
-  const aReligion = _get(profileA, 'religion');
-  const bReligion = _get(profileB, 'religion');
+  const aReligion = _get(profileA, 'religion') as string | null;
+  const bReligion = _get(profileB, 'religion') as string | null;
 
   if (!aReligion || !bReligion) return 0.5;
-  // "Other" is unscored — treat as neutral
   if (aReligion.toLowerCase() === 'other' || bReligion.toLowerCase() === 'other') return 0.5;
 
-  const aPrefRel: string[] = _getPref(profileA, prefsA, 'preferred_religions', []) || [];
-  const bPrefRel: string[] = _getPref(profileB, prefsB, 'preferred_religions', []) || [];
+  const aPrefRel: string[] = (_getPref(profileA, prefsA, 'preferred_religions', []) || []) as string[];
+  const bPrefRel: string[] = (_getPref(profileB, prefsB, 'preferred_religions', []) || []) as string[];
 
-  function prefDirection(theirReligion: string, myPrefReligions: string[]): number {
-    if (!myPrefReligions.length) return 1.0; // No preference set = open to all
+  // Base compatibility score (symmetric)
+  function compatScore(relA: string, relB: string): number {
+    if (relA.toLowerCase() === relB.toLowerCase()) return 1.0;
+    const similarity = getReligionSimilarity(relA, relB);
+    if (similarity != null) return similarity;
+    if (isOpposingReligion(relA, relB)) return 0.25;
+    return 0.50;
+  }
+
+  // Preference check: does their religion match my preferences?
+  function prefMatch(theirReligion: string, myPrefReligions: string[]): boolean | null {
+    if (!myPrefReligions.length) return null; // No preference set
     const prefLower = myPrefReligions.map(r => r.toLowerCase());
-    if (prefLower.includes('no preference')) return 1.0;
+    if (prefLower.includes('no preference')) return null;
 
-    // Check each component if multi-religion (joined with " / ")
     const components = theirReligion.includes(' / ')
       ? theirReligion.split(' / ').map(c => c.trim().toLowerCase())
       : [theirReligion.toLowerCase()];
     for (const comp of components) {
-      if (prefLower.includes(comp)) return 1.0;
+      if (prefLower.includes(comp)) return true;
     }
-    return 0.0;
+    return false;
   }
 
-  function compatDirection(theirReligion: string, myReligion: string): number {
-    if (theirReligion.toLowerCase() === myReligion.toLowerCase()) return 1.0;
-    if (areSimilarReligions(theirReligion, myReligion)) return 0.75;
-    if (areOpposingReligions(theirReligion, myReligion)) return 0.25;
-    return 0.50;
-  }
+  const baseCompat = compatScore(aReligion, bReligion);
 
-  // Blend preference match (if set) with compatibility score
-  const aToBPref = prefDirection(bReligion, aPrefRel);
-  const bToAPref = prefDirection(aReligion, bPrefRel);
-  const aToBCompat = compatDirection(bReligion, aReligion);
-  const bToACompat = compatDirection(aReligion, bReligion);
+  // Preference bonus/penalty (additive, not replacing compat)
+  const aMatch = prefMatch(bReligion, aPrefRel);
+  const bMatch = prefMatch(aReligion, bPrefRel);
 
-  // If preferences are set, weight them 60/40 with compatibility; otherwise use compatibility only
-  const aToB = aPrefRel.length > 0 ? aToBPref * 0.6 + aToBCompat * 0.4 : aToBCompat;
-  const bToA = bPrefRel.length > 0 ? bToAPref * 0.6 + bToACompat * 0.4 : bToACompat;
-  return (aToB + bToA) / 2;
+  // If pref set and matched → +0.2 bonus; if set and not matched → -0.15 penalty
+  const aBonus = aMatch === null ? 0 : (aMatch ? 0.2 : -0.15);
+  const bBonus = bMatch === null ? 0 : (bMatch ? 0.2 : -0.15);
+
+  const aScore = clamp(baseCompat + aBonus, 0, 1);
+  const bScore = clamp(baseCompat + bBonus, 0, 1);
+  return (aScore + bScore) / 2;
 }
 
-// ── Politics (6%) ───────────────────────────────────────────────────────────
+// ── Politics (7%) — not_political is orthogonal ──────────────────────────────
 
 function scorePolitics(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
-  const aPolitics = _get(profileA, 'political_leaning');
-  const bPolitics = _get(profileB, 'political_leaning');
+  const aPolitics = (_get(profileA, 'political_leaning') as string | null)?.toLowerCase() || null;
+  const bPolitics = (_get(profileB, 'political_leaning') as string | null)?.toLowerCase() || null;
 
   if (!aPolitics || !bPolitics) return 0.5;
-  // "Other" is unscored — treat as neutral
-  if (aPolitics.toLowerCase() === 'other' || bPolitics.toLowerCase() === 'other') return 0.5;
+  if (aPolitics === 'other' || bPolitics === 'other') return 0.5;
+  if (aPolitics === 'prefer_not_to_say' || bPolitics === 'prefer_not_to_say') return 0.5;
 
-  const aPrefPolitics: string[] = _getPref(profileA, prefsA, 'preferred_politics', []) || [];
-  const bPrefPolitics: string[] = _getPref(profileB, prefsB, 'preferred_politics', []) || [];
+  const aPrefPolitics: string[] = (_getPref(profileA, prefsA, 'preferred_politics', []) || []) as string[];
+  const bPrefPolitics: string[] = (_getPref(profileB, prefsB, 'preferred_politics', []) || []) as string[];
 
-  function oneDirection(theirLeaning: string, myLeaning: string, myPrefPolitics: string[]): number {
-    if (theirLeaning === 'prefer_not_to_say' || myLeaning === 'prefer_not_to_say') return 0.5;
-    const normalizedPrefs = myPrefPolitics.map(p => p.toLowerCase().replace(/\s+/g, '_'));
-    if (!normalizedPrefs.length || normalizedPrefs.includes('no_preference')) return 1.0;
-    if (normalizedPrefs.includes(theirLeaning)) return 1.0;
-    if (theirLeaning === myLeaning) return 1.0;
+  function spectrumCompat(leaningA: string, leaningB: string): number {
+    if (leaningA === leaningB) return 1.0;
 
-    // Check adjacency
-    const sortedPair = [theirLeaning, myLeaning].sort().join('|');
-    const unsortedPair = `${theirLeaning}|${myLeaning}`;
-    for (const [key, adjScore] of POLITICS_ADJACENCY) {
-      const keyParts = new Set(key.split('|'));
-      if (keyParts.has(theirLeaning) && keyParts.has(myLeaning)) return adjScore;
+    // Handle not_political as orthogonal axis
+    if (leaningA === 'not_political' || leaningB === 'not_political') {
+      const other = leaningA === 'not_political' ? leaningB : leaningA;
+      return NOT_POLITICAL_COMPAT[other] ?? 0.5;
     }
 
-    if (theirLeaning === 'not_political' || myLeaning === 'not_political') return 0.6;
-
-    const pairSet = new Set([theirLeaning, myLeaning]);
-    if (pairSet.has('very_liberal') && pairSet.has('very_conservative')) return 0.0;
-
-    const aIdx = POLITICS_SPECTRUM.indexOf(theirLeaning);
-    const bIdx = POLITICS_SPECTRUM.indexOf(myLeaning);
+    const aIdx = POLITICS_SPECTRUM.indexOf(leaningA);
+    const bIdx = POLITICS_SPECTRUM.indexOf(leaningB);
     if (aIdx >= 0 && bIdx >= 0) {
       const gap = Math.abs(aIdx - bIdx);
-      if (gap >= 3) return 0.1;
-      if (gap >= 2) return 0.3;
+      return POLITICS_GAP_SCORES[gap] ?? 0.05;
     }
 
     return 0.5;
+  }
+
+  function oneDirection(theirLeaning: string, myLeaning: string, myPrefPolitics: string[]): number {
+    const normalizedPrefs = myPrefPolitics.map(p => p.toLowerCase().replace(/\s+/g, '_'));
+    if (!normalizedPrefs.length || normalizedPrefs.includes('no_preference')) {
+      return spectrumCompat(theirLeaning, myLeaning);
+    }
+    // Preference match
+    if (normalizedPrefs.includes(theirLeaning)) return 1.0;
+    // Not in preferences — use spectrum distance but penalized
+    return spectrumCompat(theirLeaning, myLeaning) * 0.8;
   }
 
   const aToB = oneDirection(bPolitics, aPolitics, aPrefPolitics);
@@ -449,13 +444,13 @@ function scorePolitics(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dic
   return (aToB + bToA) / 2;
 }
 
-// ── Height (5%) ─────────────────────────────────────────────────────────────
+// ── Height (7%) ──────────────────────────────────────────────────────────────
 
 function scoreHeight(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
-  const aHeight = _get(profileA, 'height_inches');
-  const bHeight = _get(profileB, 'height_inches');
+  const aHeight = _get(profileA, 'height_inches') as number | null;
+  const bHeight = _get(profileB, 'height_inches') as number | null;
 
-  if (aHeight == null || bHeight == null) return 0.5;
+  if (aHeight == null || bHeight == null) return 0.7;
 
   const aMin = _getPref(profileA, prefsA, 'preferred_height_min_inches') ?? _getPref(profileA, prefsA, 'height_min');
   const aMax = _getPref(profileA, prefsA, 'preferred_height_max_inches') ?? _getPref(profileA, prefsA, 'height_max');
@@ -477,30 +472,22 @@ function scoreHeight(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict)
     return 1.0 - (dist / halfRange) * 0.5;
   }
 
-  const aToB = directionScore(bHeight, aMin, aMax);
-  const bToA = directionScore(aHeight, bMin, bMax);
+  const aToB = directionScore(bHeight as number, aMin as number | null, aMax as number | null);
+  const bToA = directionScore(aHeight as number, bMin as number | null, bMax as number | null);
   return (aToB + bToA) / 2;
 }
 
-// ── Ethnicity (5%) ──────────────────────────────────────────────────────────
-
-const STANDARD_ETHNICITIES = new Set([
-  'black', 'east asian', 'hispanic', 'middle eastern', 'native american',
-  'pacific islander', 'south asian', 'southeast asian', 'white', 'other',
-  // Legacy values that may exist in database from older profiles
-  'asian', 'latino', 'african', 'caribbean', 'mixed', 'multiracial',
-]);
+// ── Ethnicity (6%) — Partial credit via cultural proximity ───────────────────
 
 function scoreEthnicity(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
-  const aEthnicity: string | null = _get(profileA, 'ethnicity');
-  const bEthnicity: string | null = _get(profileB, 'ethnicity');
+  const aEthnicity = _get(profileA, 'ethnicity') as string | null;
+  const bEthnicity = _get(profileB, 'ethnicity') as string | null;
 
-  if (!aEthnicity || !bEthnicity) return 0.5;
-  // "Other" is unscored — treat as neutral
+  if (!aEthnicity || !bEthnicity) return 0.6;
   if (aEthnicity.toLowerCase() === 'other' || bEthnicity.toLowerCase() === 'other') return 0.5;
 
-  const aPrefEth: string[] = _getPref(profileA, prefsA, 'preferred_ethnicities', []) || [];
-  const bPrefEth: string[] = _getPref(profileB, prefsB, 'preferred_ethnicities', []) || [];
+  const aPrefEth: string[] = (_getPref(profileA, prefsA, 'preferred_ethnicities', []) || []) as string[];
+  const bPrefEth: string[] = (_getPref(profileB, prefsB, 'preferred_ethnicities', []) || []) as string[];
 
   function oneDirection(theirEthnicity: string, myPrefEthnicities: string[]): number {
     if (!myPrefEthnicities.length) return 1.0;
@@ -508,9 +495,12 @@ function scoreEthnicity(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Di
     if (prefLowerCheck.includes('no_preference')) return 1.0;
 
     const prefLower = myPrefEthnicities.map(e => e.toLowerCase());
-    if (prefLower.includes(theirEthnicity.toLowerCase())) return 1.0;
+    const theirLower = theirEthnicity.toLowerCase();
 
-    // Check multi-ethnic
+    // Exact match
+    if (prefLower.includes(theirLower)) return 1.0;
+
+    // Multi-ethnic: check if any component matches
     if (theirEthnicity.includes(' / ')) {
       const components = theirEthnicity.split(' / ').map(c => c.trim().toLowerCase());
       for (const comp of components) {
@@ -518,7 +508,24 @@ function scoreEthnicity(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Di
       }
     }
 
-    if (!STANDARD_ETHNICITIES.has(theirEthnicity.toLowerCase())) return 0.5;
+    // Cultural proximity partial credit
+    let bestProximity = 0;
+    for (const pref of prefLower) {
+      const proximityMap = ETHNICITY_PROXIMITY[pref];
+      if (proximityMap) {
+        const proximity = proximityMap[theirLower] || 0;
+        bestProximity = Math.max(bestProximity, proximity);
+      }
+      // Also check reverse direction
+      const reverseMap = ETHNICITY_PROXIMITY[theirLower];
+      if (reverseMap) {
+        const proximity = reverseMap[pref] || 0;
+        bestProximity = Math.max(bestProximity, proximity);
+      }
+    }
+    if (bestProximity > 0) return bestProximity;
+
+    if (!STANDARD_ETHNICITIES.has(theirLower)) return 0.5;
     return 0.0;
   }
 
@@ -527,63 +534,38 @@ function scoreEthnicity(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Di
   return (aToB + bToA) / 2;
 }
 
-// ── Education (3%) ──────────────────────────────────────────────────────────
+// ── Family (6%) ──────────────────────────────────────────────────────────────
 
-function scoreEducation(profileA: Dict, profileB: Dict): number {
-  const aEdu = _get(profileA, 'education_level');
-  const bEdu = _get(profileB, 'education_level');
-
-  if (!aEdu || !bEdu) return 0.5;
-
-  const aLevel = EDUCATION_LEVELS[aEdu.toLowerCase()] ?? 3;
-  const bLevel = EDUCATION_LEVELS[bEdu.toLowerCase()] ?? 3;
-  const gap = Math.abs(aLevel - bLevel);
-
-  if (gap === 0) return 1.0;
-  if (gap === 1) return 0.8;
-  if (gap === 2) return 0.6;
-  if (gap === 3) return 0.4;
-  return 0.2;
+function defaultChildrenScore(aChildren: string | null, bChildren: string | null): number {
+  if (aChildren === 'prefer_not_to_say' || bChildren === 'prefer_not_to_say') return 0.75;
+  if (aChildren == null || bChildren == null) return 0.5;
+  if (aChildren === bChildren) return 1.0;
+  return 0.5;
 }
 
-// ── Career (1%) ─────────────────────────────────────────────────────────────
-
-function normalizeText(text: string | null): string {
-  if (!text) return '';
-  return text.toLowerCase().trim();
+function scoreHasChildren(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
+  const aChildren = _get(profileA, 'has_children') as string | null;
+  const bChildren = _get(profileB, 'has_children') as string | null;
+  return defaultChildrenScore(aChildren, bChildren);
 }
 
-function extractKeywords(text: string): Set<string> {
-  const stopWords = new Set(['the', 'a', 'an', 'at', 'in', 'of', 'and', 'or', 'for', 'to', 'is', 'inc', 'llc', 'ltd']);
-  const words = new Set(normalizeText(text).split(/\s+/).filter(w => w.length > 0));
-  const result = new Set<string>();
-  for (const w of words) if (!stopWords.has(w)) result.add(w);
-  return result;
+function scoreFamilyPlans(profileA: Dict, profileB: Dict): number {
+  const aPlans = _get(profileA, 'family_plans') as string | null;
+  const bPlans = _get(profileB, 'family_plans') as string | null;
+
+  if (!aPlans || !bPlans) return 0.5;
+  if (aPlans === 'prefer_not_to_say' || bPlans === 'prefer_not_to_say') return 0.5;
+
+  const score = FAMILY_PLANS_MATRIX.get(`${aPlans}|${bPlans}`) ??
+    FAMILY_PLANS_MATRIX.get(`${bPlans}|${aPlans}`);
+  if (score != null) return score;
+  return 0.5;
 }
 
-function scoreCareer(profileA: Dict, profileB: Dict): number {
-  const aJob = normalizeText(_get(profileA, 'current_job'));
-  const bJob = normalizeText(_get(profileB, 'current_job'));
-  const aCompany = normalizeText(_get(profileA, 'company_position'));
-  const bCompany = normalizeText(_get(profileB, 'company_position'));
-  const aSchool = normalizeText(_get(profileA, 'school'));
-  const bSchool = normalizeText(_get(profileB, 'school'));
-
-  if ((!aJob && !aCompany) || (!bJob && !bCompany)) return 0.5;
-  if (aCompany && bCompany && aCompany === bCompany) return 1.0;
-  if (aSchool && bSchool && aSchool === bSchool) return 1.0;
-
-  const aKeywords = new Set([...extractKeywords(aJob), ...extractKeywords(aCompany)]);
-  const bKeywords = new Set([...extractKeywords(bJob), ...extractKeywords(bCompany)]);
-
-  if (aKeywords.size > 0 && bKeywords.size > 0) {
-    for (const kw of aKeywords) {
-      if (bKeywords.has(kw)) return 0.75;
-    }
-  }
-
-  if (aJob && bJob) return 0.5;
-  return 0.25;
+function scoreFamily(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
+  const childrenScore = scoreHasChildren(profileA, prefsA, profileB, prefsB);
+  const plansScore = scoreFamilyPlans(profileA, profileB);
+  return childrenScore * 0.4 + plansScore * 0.6;
 }
 
 // ── Deep Questions (5%) — Keyword fallback only ─────────────────────────────
@@ -649,8 +631,79 @@ function scoreDeepQuestions(deepA: DeepQuestionAnswer[], deepB: DeepQuestionAnsw
   const lengthScore = scoreAnswerLengthSimilarity(deepA, deepB);
   const keywordScore = scoreKeywordOverlap(deepA, deepB);
 
-  // Question overlap weighted heavily — choosing the same questions signals alignment
   return questionScore * 0.55 + keywordScore * 0.30 + lengthScore * 0.15;
+}
+
+// ── Education (3%) ──────────────────────────────────────────────────────────
+
+function scoreEducation(profileA: Dict, profileB: Dict): number {
+  const aEdu = _get(profileA, 'education_level') as string | null;
+  const bEdu = _get(profileB, 'education_level') as string | null;
+
+  if (!aEdu || !bEdu) return 0.5;
+
+  const aLevel = EDUCATION_LEVELS[aEdu.toLowerCase()] ?? 3;
+  const bLevel = EDUCATION_LEVELS[bEdu.toLowerCase()] ?? 3;
+  const gap = Math.abs(aLevel - bLevel);
+
+  if (gap === 0) return 1.0;
+  if (gap === 1) return 0.8;
+  if (gap === 2) return 0.6;
+  if (gap === 3) return 0.4;
+  return 0.2;
+}
+
+// ── Career (3%) ─────────────────────────────────────────────────────────────
+
+function normalizeText(text: string | null): string {
+  if (!text) return '';
+  return text.toLowerCase().trim();
+}
+
+function extractKeywords(text: string): Set<string> {
+  const stopWords = new Set(['the', 'a', 'an', 'at', 'in', 'of', 'and', 'or', 'for', 'to', 'is', 'inc', 'llc', 'ltd']);
+  const words = new Set(normalizeText(text).split(/\s+/).filter(w => w.length > 0));
+  const result = new Set<string>();
+  for (const w of words) if (!stopWords.has(w)) result.add(w);
+  return result;
+}
+
+function scoreCareer(profileA: Dict, profileB: Dict): number {
+  const aJob = normalizeText(_get(profileA, 'current_job') as string | null);
+  const bJob = normalizeText(_get(profileB, 'current_job') as string | null);
+  const aCompany = normalizeText(_get(profileA, 'company_position') as string | null);
+  const bCompany = normalizeText(_get(profileB, 'company_position') as string | null);
+  const aSchool = normalizeText(_get(profileA, 'school') as string | null);
+  const bSchool = normalizeText(_get(profileB, 'school') as string | null);
+
+  if ((!aJob && !aCompany) || (!bJob && !bCompany)) return 0.5;
+  if (aCompany && bCompany && aCompany === bCompany) return 1.0;
+  if (aSchool && bSchool && aSchool === bSchool) return 1.0;
+
+  const aKeywords = new Set([...extractKeywords(aJob), ...extractKeywords(aCompany)]);
+  const bKeywords = new Set([...extractKeywords(bJob), ...extractKeywords(bCompany)]);
+
+  if (aKeywords.size > 0 && bKeywords.size > 0) {
+    for (const kw of aKeywords) {
+      if (bKeywords.has(kw)) return 0.75;
+    }
+  }
+
+  if (aJob && bJob) return 0.5;
+  return 0.25;
+}
+
+// ── Distance (disabled for campus beta, kept for future) ─────────────────────
+
+function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3959;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
 // ── Main API ────────────────────────────────────────────────────────────────
@@ -665,22 +718,24 @@ export function calculateCompatibility(
   deepQuestionsB: DeepQuestionAnswer[] = [],
 ): CompatibilityResult {
   const raw: Record<string, number> = {
-    age_range: scoreAge(profileA, prefsA, profileB, prefsB),
-    lifestyle_substances: scoreLifestyle(profileA, prefsA, profileB, prefsB),
     interests: scoreInterests(profileA, profileB),
     values: scoreValues(profileA, profileB),
-    family: scoreFamily(profileA, prefsA, profileB, prefsB),
-    height: scoreHeight(profileA, prefsA, profileB, prefsB),
-    ethnicity: scoreEthnicity(profileA, prefsA, profileB, prefsB),
+    lifestyle_substances: scoreLifestyle(profileA, prefsA, profileB, prefsB),
+    age_range: scoreAge(profileA, prefsA, profileB, prefsB),
     religion: scoreReligion(profileA, prefsA, profileB, prefsB),
     politics: scorePolitics(profileA, prefsA, profileB, prefsB),
+    height: scoreHeight(profileA, prefsA, profileB, prefsB),
+    ethnicity: scoreEthnicity(profileA, prefsA, profileB, prefsB),
+    family: scoreFamily(profileA, prefsA, profileB, prefsB),
     deep_questions: scoreDeepQuestions(deepQuestionsA, deepQuestionsB),
+    education: scoreEducation(profileA, profileB),
+    career: scoreCareer(profileA, profileB),
   };
 
   const weighted: Record<string, number> = {};
   let total = 0.0;
   for (const [category, rawScore] of Object.entries(raw)) {
-    const w = WEIGHTS[category];
+    const w = WEIGHTS[category] || 0;
     const contribution = rawScore * w * 100;
     weighted[category] = Math.round(contribution * 100) / 100;
     total += contribution;
@@ -707,10 +762,11 @@ export function passesBasicFilter(
   profileB: Dict,
   prefsB: Dict,
 ): boolean {
-  let aGender: string[] = _get(profileA, 'gender') || [];
-  let bGender: string[] = _get(profileB, 'gender') || [];
-  let aInterested: string[] = _get(profileA, 'interested_in_genders') || _getPref(profileA, prefsA, 'interested_in_genders', []) || [];
-  let bInterested: string[] = _get(profileB, 'interested_in_genders') || _getPref(profileB, prefsB, 'interested_in_genders', []) || [];
+  // Gender check first (eliminates ~50% of pairs for hetero users)
+  let aGender: string[] = (_get(profileA, 'gender') || []) as string[];
+  let bGender: string[] = (_get(profileB, 'gender') || []) as string[];
+  let aInterested: string[] = (_get(profileA, 'interested_in_genders') || _getPref(profileA, prefsA, 'interested_in_genders', []) || []) as string[];
+  let bInterested: string[] = (_get(profileB, 'interested_in_genders') || _getPref(profileB, prefsB, 'interested_in_genders', []) || []) as string[];
 
   if (typeof aGender === 'string') aGender = [aGender];
   if (typeof bGender === 'string') bGender = [bGender];
@@ -725,13 +781,14 @@ export function passesBasicFilter(
     if (!bOk) return false;
   }
 
-  const aAge = _get(profileA, 'age');
-  const bAge = _get(profileB, 'age');
+  // Age range check
+  const aAge = _get(profileA, 'age') as number | null;
+  const bAge = _get(profileB, 'age') as number | null;
   if (aAge && bAge) {
-    const aMin = _getPref(profileA, prefsA, 'age_min', 18);
-    const aMax = _getPref(profileA, prefsA, 'age_max', 99);
-    const bMin = _getPref(profileB, prefsB, 'age_min', 18);
-    const bMax = _getPref(profileB, prefsB, 'age_max', 99);
+    const aMin = _getPref(profileA, prefsA, 'age_min', 18) as number;
+    const aMax = _getPref(profileA, prefsA, 'age_max', 99) as number;
+    const bMin = _getPref(profileB, prefsB, 'age_min', 18) as number;
+    const bMax = _getPref(profileB, prefsB, 'age_max', 99) as number;
 
     if (bAge < aMin || bAge > aMax) return false;
     if (aAge < bMin || aAge > bMax) return false;
