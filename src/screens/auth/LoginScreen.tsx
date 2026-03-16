@@ -6,6 +6,7 @@ import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { OnboardingLayout } from '../../components/onboarding/OnboardingLayout';
 import { sendOtpToEmail, isAllowedEmailDomain } from '../../services/authService';
+import { checkEmailRegistered } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
 import { EvaIcon } from '../../components/icons';
 
@@ -42,6 +43,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     setIsLoading(true);
 
     try {
+      const accountExists = await checkEmailRegistered(email.trim().toLowerCase());
+      if (!accountExists) {
+        setError("No account found with this email. Please sign up first.");
+        setIsLoading(false);
+        return;
+      }
+
       const result = await sendOtpToEmail(email);
 
       if (result.ok) {
