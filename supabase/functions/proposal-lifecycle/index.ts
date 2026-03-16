@@ -73,6 +73,7 @@ Deno.serve(async (req: Request) => {
 
     let confirmedCount = 0;
     let rejectedCount = 0;
+    let expiredCount = 0;
 
     for (const proposal of (proposals || [])) {
       const poolYes = proposal.pool_yes_votes || 0;
@@ -84,21 +85,9 @@ Deno.serve(async (req: Request) => {
 
       let newStatus = 'pending';
       const updateData: Record<string, unknown> = {};
+      const isExpired = getProposalDay(proposal) > MAX_PROPOSAL_DAYS;
 
-      // Check expiry (5-day hard cutoff) — auto-promote to deciding
-      if (getProposalDay(proposal) > MAX_PROPOSAL_DAYS) {
-        newStatus = 'deciding';
-        const deadline = new Date(Date.now() + DECISION_DEADLINE_HOURS * 60 * 60 * 1000).toISOString();
-        Object.assign(updateData, {
-          status: 'deciding',
-          community_decided_at: nowIso,
-          passed_to_users_at: nowIso,
-          decision_deadline_at: deadline,
-          updated_at: nowIso,
-        });
-      }
-
-      // Check immediate cancel (first 6 pool votes all NO)
+      // Check immediate cancel (first 6 pool votes all NO) — runs before expiry check
       if (newStatus === 'pending') {
         const { data: poolVotes } = await supabase
           .from('proposal_votes')
@@ -160,7 +149,41 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Pool eligibility removed — pending proposals stay visible until rejected
+      // Day 5+ quality floor: auto-promote only if quality is acceptable
+      if (newStatus === 'pending' && isExpired) {
+        const totalAll = poolYes + poolNo + friendYes + friendNo;
+        const totalYes = poolYes + friendYes;
+        const combinedYesRate = totalAll > 0 ? totalYes / totalAll : 0;
+
+        if (totalAll < 3) {
+          // Too few votes to judge — expire (can be retried later), not auto-send
+          newStatus = 'expired';
+          Object.assign(updateData, {
+            status: 'expired',
+            expired_at: nowIso,
+            updated_at: nowIso,
+          });
+        } else if (combinedYesRate < 0.40) {
+          // Community clearly said no — reject
+          newStatus = 'rejected';
+          Object.assign(updateData, {
+            status: 'rejected',
+            rejected_at: nowIso,
+            updated_at: nowIso,
+          });
+        } else {
+          // Quality floor passed — auto-promote to deciding
+          newStatus = 'deciding';
+          const deadline = new Date(Date.now() + DECISION_DEADLINE_HOURS * 60 * 60 * 1000).toISOString();
+          Object.assign(updateData, {
+            status: 'deciding',
+            community_decided_at: nowIso,
+            passed_to_users_at: nowIso,
+            decision_deadline_at: deadline,
+            updated_at: nowIso,
+          });
+        }
+      }
 
       // Apply update
       if (Object.keys(updateData).length > 0) {
@@ -178,6 +201,8 @@ Deno.serve(async (req: Request) => {
             p_proposal_id: proposal.id,
             p_outcome: 'rejected',
           });
+        } else if (newStatus === 'expired') {
+          expiredCount++;
         }
       }
     }
@@ -232,6 +257,7 @@ Deno.serve(async (req: Request) => {
       proposals_checked: (proposals || []).length,
       confirmed: confirmedCount,
       rejected: rejectedCount,
+      expired: expiredCount,
       auto_declined: autoDeclinedCount,
     }, { headers: corsHeaders });
 

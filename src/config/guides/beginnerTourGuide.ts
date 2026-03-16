@@ -32,7 +32,7 @@ export const beginnerTourGuide: GuideDefinition = {
       title: 'Unlock Friends',
       message:
         'Before helping your friends, help others on Bridge. Takes about 2 minutes!',
-      image: require('../../../assets/guide-voting-example.jpg'),
+      image: require('../../../assets/guide-voting-example.png'),
       primaryButtonText: 'Got it',
     },
     {
@@ -41,7 +41,7 @@ export const beginnerTourGuide: GuideDefinition = {
       tooltipPosition: 'center',
       title: 'Add Your Friends',
       message:
-        "Friends can suggest and validate matches for you. If you help others, you'll receive more frequent matches.",
+        "Friends can suggest and validate matches for you. If you help others, you'll receive better matches.",
       primaryButtonText: 'Great',
     },
     {
@@ -49,8 +49,9 @@ export const beginnerTourGuide: GuideDefinition = {
       targetElement: 'tab-matches',
       highlightType: 'spotlight',
       spotlightShape: 'rounded-rect',
-      spotlightPadding: 12,
+      spotlightPadding: 20,
       tooltipPosition: 'top',
+      tooltipOffset: { x: -20, y: -60 },
       title: 'Your Matches',
       message:
         "Here you'll see matches verified by your friends and the Bridge community.",
@@ -62,8 +63,9 @@ export const beginnerTourGuide: GuideDefinition = {
       targetElement: 'tab-profile',
       highlightType: 'spotlight',
       spotlightShape: 'rounded-rect',
-      spotlightPadding: 12,
+      spotlightPadding: 20,
       tooltipPosition: 'top',
+      tooltipOffset: { x: -20, y: -60 },
       title: 'Your Profile',
       message:
         "You can vote anytime, but to receive matches you'll need 100% profile strength.",

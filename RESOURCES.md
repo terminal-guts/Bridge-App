@@ -121,6 +121,14 @@
 
 - [Gamification of Social Apps](https://thetechtrends.tech/gamification-of-social-apps/) — Streaks, karma systems, badges, dopamine loops, loss aversion — directly relevant to Bridge
 
+## Matchmaking & Compatibility Research
+
+- [Similarity-Attraction Effect Meta-Analysis (Montoya & Horton, 2013)](https://psycnet.apa.org/record/2012-33628-001) — Most comprehensive meta-analysis of similarity-attraction. Attitude/value similarity has strongest effect (r=0.40-0.50). Validates weighting interests and values heavily in scoring.
+- [Gale-Shapley Stable Matching (Wikipedia)](https://en.wikipedia.org/wiki/Gale%E2%80%93Shapley_algorithm) — Foundation of two-sided matching theory. Bridge uses greedy allocation (not full Gale-Shapley) because scoring is symmetric.
+- [Jaccard Index vs Overlap Coefficient (Wikipedia)](https://en.wikipedia.org/wiki/Jaccard_index) — Set similarity metrics. Bridge switched from overlap coefficient to modified Jaccard for interests/values scoring to fix small-set inflation bias.
+- [OKCupid Data Insights (Dataclysm, Christian Rudder)](https://www.goodreads.com/book/show/21480734-dataclysm) — Empirical findings: stated preferences predict attraction; behavioral similarity predicts relationship longevity.
+- [Two-Sided Matching (Roth & Sotomayor)](http://web.stanford.edu/~alroth/papers/92_HGT_Two-SidedMatching.pdf) — Foundational academic paper on matching markets and allocation fairness.
+
 ## Building Dating Apps
 
 - [Hinge — Designed to Be Deleted](https://hinge.co/press) — Hinge's product philosophy, press releases, and research

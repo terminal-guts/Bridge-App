@@ -551,7 +551,7 @@ A streak tracks **consecutive days that you and a specific friend have voted on 
 
 **End-to-end flow for a single proposal:**
 
-1. **7PM — `generate-proposals`**: Algorithm scores all eligible user pairs across 13 categories (age 18%, distance 15%, lifestyle 12%, values 8%, interests 8%, family 8%, religion 6%, politics 6%, height 5%, ethnicity 5%, deep questions 5%, education 3%, career 1%). Pairs scoring ≥25 get proposals. Each proposal gets up to 6 random pool voters assigned.
+1. **7PM — `generate-proposals`**: Algorithm scores all eligible user pairs across 12 categories (interests 22%, values 12%, lifestyle 10%, age 10%, religion 9%, politics 7%, height 7%, ethnicity 6%, family 6%, deep questions 5%, education 3%, career 3%). Pairs scoring ≥25 get proposals via exclusive allocation (each user in at most one proposal per cycle). Each proposal gets up to 6 random pool voters assigned.
 
 2. **User opens app → Community tab**: Must vote on 3 community pool proposals to unlock Friends Area. Each vote calls `process-vote` edge function.
 

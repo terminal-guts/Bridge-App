@@ -287,21 +287,9 @@ Deno.serve(async (req: Request) => {
     const nowIso = new Date().toISOString();
     let newStatus = 'pending';
     const lifecycleUpdate: Record<string, unknown> = {};
+    const isExpired = getProposalDay(updatedProposal) > MAX_PROPOSAL_DAYS;
 
-    // Check expiry (5-day hard cutoff) — auto-promote to deciding
-    if (getProposalDay(updatedProposal) > MAX_PROPOSAL_DAYS) {
-      newStatus = 'deciding';
-      const deadline = new Date(Date.now() + DECISION_DEADLINE_HOURS * 60 * 60 * 1000).toISOString();
-      Object.assign(lifecycleUpdate, {
-        status: 'deciding',
-        community_decided_at: nowIso,
-        passed_to_users_at: nowIso,
-        decision_deadline_at: deadline,
-        updated_at: nowIso,
-      });
-    }
-
-    // Check immediate cancel (first 6 pool votes all NO)
+    // Check immediate cancel (first 6 pool votes all NO) — runs before expiry
     if (newStatus === 'pending') {
       const { data: poolVotesSorted } = await supabase
         .from('proposal_votes')
@@ -363,7 +351,38 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Pool eligibility removed — pending proposals stay visible until rejected
+    // Day 5+ quality floor: auto-promote only if quality is acceptable
+    if (newStatus === 'pending' && isExpired) {
+      const totalAll = poolYes + poolNo + friendYes + friendNo;
+      const totalYes = poolYes + friendYes;
+      const combinedYesRate = totalAll > 0 ? totalYes / totalAll : 0;
+
+      if (totalAll < 3) {
+        newStatus = 'expired';
+        Object.assign(lifecycleUpdate, {
+          status: 'expired',
+          expired_at: nowIso,
+          updated_at: nowIso,
+        });
+      } else if (combinedYesRate < 0.40) {
+        newStatus = 'rejected';
+        Object.assign(lifecycleUpdate, {
+          status: 'rejected',
+          rejected_at: nowIso,
+          updated_at: nowIso,
+        });
+      } else {
+        newStatus = 'deciding';
+        const deadline = new Date(Date.now() + DECISION_DEADLINE_HOURS * 60 * 60 * 1000).toISOString();
+        Object.assign(lifecycleUpdate, {
+          status: 'deciding',
+          community_decided_at: nowIso,
+          passed_to_users_at: nowIso,
+          decision_deadline_at: deadline,
+          updated_at: nowIso,
+        });
+      }
+    }
 
     // Apply lifecycle update if any
     if (Object.keys(lifecycleUpdate).length > 0) {

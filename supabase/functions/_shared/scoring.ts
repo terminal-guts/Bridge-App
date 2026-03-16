@@ -29,13 +29,13 @@ type Dict = Record<string, unknown>;
 
 const WEIGHTS: Record<string, number> = {
   interests: 0.22,
-  values: 0.12,
+  values: 0.10,
   lifestyle_substances: 0.10,
   age_range: 0.10,
-  religion: 0.09,
+  religion: 0.07,
   politics: 0.07,
   height: 0.07,
-  ethnicity: 0.06,
+  ethnicity: 0.10,
   family: 0.06,
   deep_questions: 0.05,
   education: 0.03,
@@ -173,7 +173,51 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-// ── Interests (22%) — Modified Jaccard ───────────────────────────────────────
+// ── Interest Clusters (for partial credit on same-category interests) ────────
+
+const INTEREST_CLUSTERS: Record<string, string[]> = {
+  outdoor_active: ['hiking', 'camping', 'running', 'skiing'],
+  fitness: ['lifting', 'yoga', 'basketball', 'tennis', 'golf', 'live sports', 'watching sports'],
+  cultural: ['museums', 'theater', 'live music', 'comedy shows', 'film', 'reading', 'photography'],
+  social: ['dinner parties', 'game nights', 'trivia nights', 'dancing', 'poker', 'video games'],
+  food_drink: ['cooking', 'coffee', 'cocktails', 'fine dining', 'brunch'],
+  intellectual: ['startups', 'investing', 'real estate', 'podcasts', 'meditation'],
+};
+
+// Build reverse lookup: interest → cluster name
+const INTEREST_TO_CLUSTER: Record<string, string> = {};
+for (const [cluster, interests] of Object.entries(INTEREST_CLUSTERS)) {
+  for (const interest of interests) {
+    INTEREST_TO_CLUSTER[interest] = cluster;
+  }
+}
+
+function countClusterOverlap(aInts: Set<string>, bInts: Set<string>, exactShared: number): number {
+  // Count how many interests fall in the same cluster but aren't exact matches
+  const aClusters = new Map<string, number>();
+  const bClusters = new Map<string, number>();
+
+  for (const i of aInts) {
+    const cluster = INTEREST_TO_CLUSTER[i];
+    if (cluster) aClusters.set(cluster, (aClusters.get(cluster) || 0) + 1);
+  }
+  for (const i of bInts) {
+    if (aInts.has(i)) continue; // Skip exact matches — already counted
+    const cluster = INTEREST_TO_CLUSTER[i];
+    if (cluster && aClusters.has(cluster)) {
+      bClusters.set(cluster, (bClusters.get(cluster) || 0) + 1);
+    }
+  }
+
+  // Count clusters where both users have interests (but different ones)
+  let clusterOverlaps = 0;
+  for (const [cluster] of bClusters) {
+    clusterOverlaps++;
+  }
+  return clusterOverlaps;
+}
+
+// ── Interests (22%) — Modified Jaccard + Cluster Bonus ───────────────────────
 
 function scoreInterests(profileA: Dict, profileB: Dict): number {
   const aRaw = (_get(profileA, 'interests') || []) as string[];
@@ -187,16 +231,22 @@ function scoreInterests(profileA: Dict, profileB: Dict): number {
   let shared = 0;
   for (const v of aInts) if (bInts.has(v)) shared++;
 
-  if (shared === 0) return 0.0;
+  // Cluster partial credit: same-category interests that aren't exact matches
+  const clusterOverlaps = countClusterOverlap(aInts, bInts, shared);
+  // Each cluster overlap counts as 0.35 of an exact match
+  const effectiveShared = shared + clusterOverlaps * 0.35;
 
-  // Union for Jaccard
+  if (effectiveShared === 0) return 0.0;
+
+  // Union for Jaccard (uses exact counts only — clusters are a bonus)
   const unionSize = new Set([...aInts, ...bInts]).size;
   const jaccard = shared / unionSize;
 
-  // Absolute bonus: rewards having many shared interests (caps at 4)
-  const absoluteBonus = Math.min(shared / 4, 1.0);
+  // Absolute bonus: caps at 3 (users select max 5 interests, so 3 shared = very strong)
+  const absoluteBonus = Math.min(effectiveShared / 3, 1.0);
 
-  return jaccard * 0.5 + absoluteBonus * 0.5;
+  // Weight absolute count more heavily — having things to DO together matters most
+  return jaccard * 0.35 + absoluteBonus * 0.65;
 }
 
 // ── Values (12%) — Modified Jaccard ──────────────────────────────────────────
@@ -216,10 +266,10 @@ function scoreValues(profileA: Dict, profileB: Dict): number {
   const unionSize = new Set([...aVals, ...bVals]).size;
   const jaccard = shared / unionSize;
 
-  // Absolute bonus: caps at 3 shared values (values lists tend shorter than interests)
+  // Absolute bonus: caps at 3 (users select max 5 values)
   const absoluteBonus = Math.min(shared / 3, 1.0);
 
-  return jaccard * 0.5 + absoluteBonus * 0.5;
+  return jaccard * 0.35 + absoluteBonus * 0.65;
 }
 
 // ── Lifestyle / Substances (10%) — Ordinal Gradients ─────────────────────────
@@ -741,13 +791,27 @@ export function calculateCompatibility(
     total += contribution;
   }
 
+  // Mutual satisfaction bonus: reward pairs where both sides are happy across
+  // preference-based categories, penalize pairs with strong one-sided mismatches
+  const prefCategories = ['lifestyle_substances', 'age_range', 'religion', 'height', 'ethnicity'];
+  let mutualHighCount = 0;
+  let severeMismatchCount = 0;
+  for (const cat of prefCategories) {
+    const score = raw[cat];
+    if (score >= 0.8) mutualHighCount++;
+    if (score <= 0.15) severeMismatchCount++;
+  }
+  // +1.5 per mutually-happy category (max +7.5), -2 per severe mismatch (max -10)
+  const mutualBonus = mutualHighCount * 1.5 - severeMismatchCount * 2.0;
+  total += mutualBonus;
+
   const categoryScores: Record<string, number> = {};
   for (const [cat, rawScore] of Object.entries(raw)) {
     categoryScores[cat] = Math.round(rawScore * 1000) / 10;
   }
 
   return {
-    total_score: Math.round(total * 10) / 10,
+    total_score: Math.round(Math.max(0, total) * 10) / 10,
     category_scores: categoryScores,
     weighted_scores: weighted,
     raw_scores: Object.fromEntries(

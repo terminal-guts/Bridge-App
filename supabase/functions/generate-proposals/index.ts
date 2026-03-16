@@ -5,7 +5,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { requireServiceRole } from '../_shared/admin-auth.ts';
 import { MAX_POOL_VOTES, RECOMMENDATION_BOOST_PER, RECOMMENDATION_BOOST_CAP } from '../_shared/constants.ts';
 
-const MIN_COMPATIBILITY_SCORE = 25.0;
+const MIN_COMPATIBILITY_SCORE = 30.0;
 const MAX_PROPOSALS_PER_RUN = 50;
 const VOTERS_PER_PROPOSAL = 6;
 
@@ -290,6 +290,51 @@ Deno.serve(async (req: Request) => {
       recBoostMap.set(key, (recBoostMap.get(key) || 0) + 1);
     }
 
+    // 4c. Starvation fairness: count consecutive cycles without a proposal per user
+    // A user is "starved" if they have no proposals in recent history
+    const { data: recentProposals } = await supabase
+      .from('proposals')
+      .select('user_a_id, user_b_id, created_at')
+      .gte('created_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString())
+      .order('created_at', { ascending: false });
+
+    const lastProposalDate: Record<string, number> = {};
+    for (const row of (recentProposals || [])) {
+      const tsMs = new Date(row.created_at).getTime();
+      if (!lastProposalDate[row.user_a_id] || tsMs > lastProposalDate[row.user_a_id]) {
+        lastProposalDate[row.user_a_id] = tsMs;
+      }
+      if (!lastProposalDate[row.user_b_id] || tsMs > lastProposalDate[row.user_b_id]) {
+        lastProposalDate[row.user_b_id] = tsMs;
+      }
+    }
+
+    // Build new-user set (created_at within last 7 days) and starvation boost map
+    const nowMs = Date.now();
+    const newUserBoost: Record<string, number> = {};
+    const starvationBoost: Record<string, number> = {};
+    for (const p of eligibleProfiles) {
+      const uid = p.user_id as string;
+      // New user boost: +5 for first 3 days, +3 for days 4-7, +2 for days 8-14
+      const createdMs = p.created_at ? new Date(p.created_at as string).getTime() : 0;
+      const daysOld = (nowMs - createdMs) / (24 * 60 * 60 * 1000);
+      if (daysOld <= 3) newUserBoost[uid] = 5;
+      else if (daysOld <= 7) newUserBoost[uid] = 3;
+      else if (daysOld <= 14) newUserBoost[uid] = 2;
+
+      // Starvation boost: +2 per day without proposal (max +8, kicks in after 3 days)
+      const lastTs = lastProposalDate[uid];
+      if (!lastTs) {
+        // Never had a proposal — max starvation boost
+        starvationBoost[uid] = 8;
+      } else {
+        const daysSince = (nowMs - lastTs) / (24 * 60 * 60 * 1000);
+        if (daysSince >= 3) {
+          starvationBoost[uid] = Math.min(Math.floor((daysSince - 2) * 2), 8);
+        }
+      }
+    }
+
     // 5. Generate candidate pairs with pre-filtering
     const candidates: Array<{
       profileA: Record<string, unknown>; prefsA: Record<string, unknown>; profileB: Record<string, unknown>; prefsB: Record<string, unknown>;
@@ -356,6 +401,16 @@ Deno.serve(async (req: Request) => {
       const recBoost = Math.min(recCount * RECOMMENDATION_BOOST_PER, RECOMMENDATION_BOOST_CAP);
       result.total_score += recBoost;
 
+      // Apply new user boost (highest of the two users)
+      const aNewBoost = newUserBoost[profileA.user_id as string] || 0;
+      const bNewBoost = newUserBoost[profileB.user_id as string] || 0;
+      result.total_score += Math.max(aNewBoost, bNewBoost);
+
+      // Apply starvation fairness boost (sum of both users — both deserve proposals)
+      const aStarve = starvationBoost[profileA.user_id as string] || 0;
+      const bStarve = starvationBoost[profileB.user_id as string] || 0;
+      result.total_score += (aStarve + bStarve) / 2;
+
       if (result.total_score >= MIN_COMPATIBILITY_SCORE) {
         // Enforce user_a_id < user_b_id
         const [uA, uB] = profileA.user_id < profileB.user_id
@@ -373,7 +428,19 @@ Deno.serve(async (req: Request) => {
     }
 
     scored.sort((a, b) => b.compatibility_score - a.compatibility_score);
-    const topPairs = scored.slice(0, maxProposals);
+
+    // Exclusive allocation: each user appears in at most one proposal per cycle
+    const allocated = new Set<string>();
+    const topPairs: typeof scored = [];
+    for (const pair of scored) {
+      if (allocated.has(pair.user_a_id) || allocated.has(pair.user_b_id)) {
+        continue; // User already allocated in this cycle
+      }
+      topPairs.push(pair);
+      allocated.add(pair.user_a_id);
+      allocated.add(pair.user_b_id);
+      if (topPairs.length >= maxProposals) break;
+    }
 
     if (topPairs.length === 0) {
       return Response.json({

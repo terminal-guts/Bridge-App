@@ -5,7 +5,7 @@ import { calculateCompatibility, passesBasicFilter } from '../_shared/scoring.ts
 import { corsHeaders } from '../_shared/cors.ts';
 import { MAX_POOL_VOTES, RECOMMENDATION_BOOST_PER, RECOMMENDATION_BOOST_CAP } from '../_shared/constants.ts';
 
-const MIN_COMPATIBILITY_SCORE = 25.0;
+const MIN_COMPATIBILITY_SCORE = 30.0;
 const VOTERS_PER_PROPOSAL = 6;
 const MAX_VOTING_GATE = 3;
 
@@ -195,6 +195,29 @@ Deno.serve(async (req: Request) => {
             recBoostMap.set(key, (recBoostMap.get(key) || 0) + 1);
           }
 
+          // New user boost for the requesting user
+          const myCreatedMs = myProfile.created_at ? new Date(myProfile.created_at as string).getTime() : 0;
+          const myDaysOld = (Date.now() - myCreatedMs) / (24 * 60 * 60 * 1000);
+          const myNewBoost = myDaysOld <= 3 ? 5 : myDaysOld <= 7 ? 3 : myDaysOld <= 14 ? 2 : 0;
+
+          // Starvation boost: check how long since this user's last proposal
+          const { data: myLastProposal } = await supabase
+            .from('proposals')
+            .select('created_at')
+            .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          let myStarvationBoost = 0;
+          if (!myLastProposal || myLastProposal.length === 0) {
+            myStarvationBoost = 8; // Never had a proposal
+          } else {
+            const daysSince = (Date.now() - new Date(myLastProposal[0].created_at).getTime()) / (24 * 60 * 60 * 1000);
+            if (daysSince >= 3) {
+              myStarvationBoost = Math.min(Math.floor((daysSince - 2) * 2), 8);
+            }
+          }
+
           // Score candidates
           let bestCandidate: { profile: { user_id: string; [key: string]: unknown }; score: number; category_scores: Record<string, number>; weighted_scores: Record<string, number> } | null = null;
           let bestScore = -1;
@@ -226,6 +249,15 @@ Deno.serve(async (req: Request) => {
             const recKey = [userId, other.user_id].sort().join('|');
             const recCount = recBoostMap.get(recKey) || 0;
             result.total_score += Math.min(recCount * RECOMMENDATION_BOOST_PER, RECOMMENDATION_BOOST_CAP);
+
+            // Apply new user boost (highest of the two users)
+            const otherCreatedMs = other.created_at ? new Date(other.created_at as string).getTime() : 0;
+            const otherDaysOld = (Date.now() - otherCreatedMs) / (24 * 60 * 60 * 1000);
+            const otherNewBoost = otherDaysOld <= 3 ? 5 : otherDaysOld <= 7 ? 3 : otherDaysOld <= 14 ? 2 : 0;
+            result.total_score += Math.max(myNewBoost, otherNewBoost);
+
+            // Apply starvation boost (average of both)
+            result.total_score += myStarvationBoost / 2;
 
             if (result.total_score >= MIN_COMPATIBILITY_SCORE && result.total_score > bestScore) {
               bestScore = result.total_score;
