@@ -200,6 +200,33 @@ class CommunityBackendService {
     const decision = accept ? 'accepted' : 'declined';
     await decideOnProposal(proposalId, userId, decision);
 
+    // Optimistically update the cached result so MatchesScreen reflects the new
+    // decision state instantly when it refocuses — no network round-trip needed.
+    if (this.friendsAreaResultCache) {
+      if (accept) {
+        // Mark yourDecision = accepted in the cached proposal
+        const proposal = this.friendsAreaResultCache.data.pendingProposals
+          .find((p: any) => p.proposalId === proposalId || p.id === proposalId);
+        if (proposal) {
+          proposal.yourDecision = 'accepted';
+          proposal.hasResponded = true;
+        }
+      } else {
+        // Remove the proposal from cache — declined proposals disappear from the list
+        this.friendsAreaResultCache.data.pendingProposals =
+          this.friendsAreaResultCache.data.pendingProposals
+            .filter((p: any) => p.proposalId !== proposalId && p.id !== proposalId);
+      }
+      // Keep cache timestamp fresh so stale-while-revalidate serves it immediately,
+      // but reset backgroundRefreshInFlight so a real fetch runs in the background.
+      this.friendsAreaResultCache.ts = Date.now();
+      this.backgroundRefreshInFlight = false;
+    }
+
+    // Reset the load timer so useFocusEffect bypasses the 10s debounce guard
+    // and triggers a reload as soon as MatchesScreen regains focus.
+    this.lastFriendsAreaLoadAt = 0;
+
     // Set ended event so MatchesScreen shows the "You passed" popup
     if (!accept && partnerInfo) {
       this.pendingEndedEvent = {

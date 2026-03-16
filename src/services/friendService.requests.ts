@@ -106,15 +106,11 @@ export const getIncomingRequests = async (): Promise<ApiResponse<FriendRequest[]
   try {
     const userId = await requireAuth();
 
-    const { data, error } = await supabase
+    // Step 1: get pending rows (friends FKs reference auth.users, not user_profiles,
+    // so PostgREST can't join to user_profiles directly — do it in two queries)
+    const { data: rows, error } = await supabase
       .from('friends')
-      .select(`
-        id,
-        user_id,
-        friend_id,
-        added_at,
-        sender_profile:user_profiles!friends_user_id_fkey(*)
-      `)
+      .select('id, user_id, friend_id, added_at')
       .eq('friend_id', userId)
       .eq('status', 'pending')
       .order('added_at', { ascending: false });
@@ -122,12 +118,27 @@ export const getIncomingRequests = async (): Promise<ApiResponse<FriendRequest[]
     if (error) {
       return createErrorResponse('FETCH_ERROR', error.message);
     }
+    if (!rows || rows.length === 0) {
+      return { ok: true, data: [] };
+    }
 
-    const requests: FriendRequest[] = (data || []).map((item: Record<string, unknown>) => ({
+    // Step 2: fetch sender profiles
+    const senderIds = rows.map(r => r.user_id as string);
+    const { data: profiles } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .in('user_id', senderIds);
+
+    const profileMap: Record<string, Record<string, unknown>> = {};
+    for (const p of profiles || []) {
+      profileMap[(p as Record<string, unknown>).user_id as string] = p as Record<string, unknown>;
+    }
+
+    const requests: FriendRequest[] = rows.map((item: Record<string, unknown>) => ({
       id: item.id as string,
       senderId: item.user_id as string,
       recipientId: item.friend_id as string,
-      senderProfile: mapProfileRow(item.sender_profile as Record<string, unknown>),
+      senderProfile: mapProfileRow(profileMap[item.user_id as string] ?? {}),
       requestedAt: item.added_at as string,
     }));
 
@@ -147,15 +158,11 @@ export const getOutgoingRequests = async (): Promise<ApiResponse<FriendRequest[]
   try {
     const userId = await requireAuth();
 
-    const { data, error } = await supabase
+    // friends.friend_id references auth.users (not user_profiles), so PostgREST can't
+    // join directly — fetch rows first, then look up recipient profiles separately.
+    const { data: rows, error } = await supabase
       .from('friends')
-      .select(`
-        id,
-        user_id,
-        friend_id,
-        added_at,
-        recipient_profile:user_profiles!friends_friend_id_fkey(*)
-      `)
+      .select('id, user_id, friend_id, added_at')
       .eq('user_id', userId)
       .eq('status', 'pending')
       .order('added_at', { ascending: false });
@@ -163,14 +170,30 @@ export const getOutgoingRequests = async (): Promise<ApiResponse<FriendRequest[]
     if (error) {
       return createErrorResponse('FETCH_ERROR', error.message);
     }
+    if (!rows || rows.length === 0) {
+      return { ok: true, data: [] };
+    }
 
-    const requests: FriendRequest[] = (data || []).map((item: Record<string, unknown>) => ({
+    const recipientIds = rows.map(r => r.friend_id as string);
+    const { data: profiles } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .in('user_id', recipientIds);
+
+    const profileMap: Record<string, Record<string, unknown>> = {};
+    for (const p of profiles || []) {
+      profileMap[(p as Record<string, unknown>).user_id as string] = p as Record<string, unknown>;
+    }
+
+    const requests: FriendRequest[] = rows.map((item: Record<string, unknown>) => ({
       id: item.id as string,
       senderId: item.user_id as string,
       recipientId: item.friend_id as string,
-      senderProfile: mapProfileRow(item.recipient_profile as Record<string, unknown>),
+      senderProfile: mapProfileRow(profileMap[item.friend_id as string] ?? {}),
       requestedAt: item.added_at as string,
     }));
+
+    await resolveProfilePhotos(requests.map(req => req.senderProfile));
 
     return { ok: true, data: requests };
   } catch (error: unknown) {

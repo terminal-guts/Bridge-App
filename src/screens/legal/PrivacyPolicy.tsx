@@ -30,115 +30,103 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
 
       <StyledScrollView className="flex-1 px-4 py-4">
         <Body className="text-neutral-500 text-sm mb-4">
-          Last Updated: March 4, 2026
+          Last Updated: March 16, 2026
         </Body>
 
-        <H2 className="mb-3">1. Information We Collect</H2>
         <Body className="text-neutral-700 mb-6 leading-6">
-          Bridge collects information you provide directly to us, including:
-          {'\n'}• Profile information (name, age, photos, occupation)
-          {'\n'}• Preferences and interests
-          {'\n'}• Deep question responses
-          {'\n'}• Proposal voting activity and community participation
-          {'\n'}• Messages between matched users
-          {'\n'}• Location data (with your permission)
-          {'\n'}• Device information and usage data
+          Bridge is built on trust. Here's exactly what we collect, why we collect it, and how we protect it. No fine print.
         </Body>
 
-        <H2 className="mb-3">2. How We Use Your Information</H2>
+        <H2 className="mb-3">1. What We Collect</H2>
         <Body className="text-neutral-700 mb-6 leading-6">
-          We use the information we collect to:
-          {'\n'}• Provide and improve our matchmaking services
-          {'\n'}• Generate compatible matches using our algorithm
-          {'\n'}• Facilitate community-driven matchmaking through proposal voting
-          {'\n'}• Improve proposal generation and matching quality
-          {'\n'}• Communicate with you about your account and matches
-          {'\n'}• Ensure safety and prevent fraud
-          {'\n'}• Comply with legal obligations
+          When you use Bridge, we collect:
+          {'\n'}• Profile information: name, age, gender, photos, job, and city
+          {'\n'}• Match preferences (age range, gender, lifestyle, etc.)
+          {'\n'}• Your responses to deep questions
+          {'\n'}• Your votes on proposals and community participation
+          {'\n'}• Messages with your matches
+          {'\n'}• Karma score and activity history
+          {'\n'}• Device info and basic usage data (for bug fixes and improvements)
+          {'\n\n'}We don't collect payment information — Bridge is free.
         </Body>
 
-        <H2 className="mb-3">3. Information Sharing</H2>
+        <H2 className="mb-3">2. How We Use It</H2>
         <Body className="text-neutral-700 mb-6 leading-6">
-          We share your information in the following circumstances:
-          {'\n'}• With other users as part of the matchmaking process
-          {'\n'}• With matched users (full profile after mutual acceptance)
-          {'\n'}• With service providers who assist our operations
-          {'\n'}• When required by law or to protect rights
-          {'\n'}• With your consent
-          {'\n\n'}We never sell your personal information to third parties.
+          We use your information to:
+          {'\n'}• Generate match proposals using our algorithm
+          {'\n'}• Show your profile to other users for community voting
+          {'\n'}• Run the karma and leaderboard systems
+          {'\n'}• Send you notifications about matches, votes, and activity
+          {'\n'}• Fix bugs and improve the app
+          {'\n'}• Keep the community safe
         </Body>
 
-        <H2 className="mb-3">4. Community Matchmaking</H2>
+        <H2 className="mb-3">3. How Community Matchmaking Works</H2>
         <Body className="text-neutral-700 mb-6 leading-6">
-          Bridge's unique community-driven approach means:
-          {'\n'}• Your profile may appear as a proposal for other users to vote on
-          {'\n'}• Other users help determine your compatibility matches
-          {'\n'}• Your votes on proposals contribute to matching others
-          {'\n'}• Partial profiles are shown during the match reveal process
+          Bridge's community-driven model means your profile is shown to other users — including people you don't know — as part of the voting process. Specifically:
+          {'\n'}• Your first name, age, photos, and select profile details appear in voting proposals
+          {'\n'}• Other users vote yes, no, or unsure on potential matches
+          {'\n'}• Votes are anonymous — neither you nor your potential match ever sees who voted
+          {'\n'}• Your full profile is only revealed to someone after you both accept a match
+          {'\n\n'}By using Bridge, you consent to your profile appearing in proposals.
+        </Body>
+
+        <H2 className="mb-3">4. Information Sharing</H2>
+        <Body className="text-neutral-700 mb-6 leading-6">
+          We share your information only in these cases:
+          {'\n'}• With matched users (full profile, after both accept)
+          {'\n'}• With service providers who help us run the app (cloud hosting, analytics)
+          {'\n'}• When required by law or to protect the safety of our users
+          {'\n'}• With your explicit consent
+          {'\n\n'}We never sell your data. Ever.
         </Body>
 
         <H2 className="mb-3">5. Data Security</H2>
         <Body className="text-neutral-700 mb-6 leading-6">
-          We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. However, no internet transmission is completely secure, and we cannot guarantee absolute security.
+          Your data is stored securely using Supabase, with encryption in transit and at rest. We take security seriously, but no system is 100% foolproof. Use a strong, unique password and keep your device secure.
         </Body>
 
-        <H2 className="mb-3">6. Your Rights and Choices</H2>
+        <H2 className="mb-3">6. Your Rights</H2>
         <Body className="text-neutral-700 mb-6 leading-6">
-          You have the right to:
-          {'\n'}• Access and update your profile information
-          {'\n'}• Delete your account and associated data
-          {'\n'}• Opt-out of certain communications
-          {'\n'}• Control location sharing permissions
-          {'\n'}• Report inappropriate content or behavior
-          {'\n'}• Request a copy of your data
+          You can, at any time:
+          {'\n'}• Update your profile information in the app
+          {'\n'}• Delete your account (Settings → Delete Account) — your data is removed within 90 days
+          {'\n'}• Turn off notifications in Settings
+          {'\n'}• Control location permissions through your device settings
+          {'\n'}• Request a copy of your data by emailing us
         </Body>
 
         <H2 className="mb-3">7. Data Retention</H2>
         <Body className="text-neutral-700 mb-6 leading-6">
-          We retain your information for as long as your account is active or as needed to provide services. If you delete your account, we will delete your personal information within 90 days, except where retention is necessary for legal compliance or legitimate business purposes.
+          We keep your data as long as your account is active. When you delete your account, your personal data is removed within 90 days. Some anonymized aggregate data (like vote counts) may be retained for analytics after deletion.
         </Body>
 
         <H2 className="mb-3">8. Children's Privacy</H2>
         <Body className="text-neutral-700 mb-6 leading-6">
-          Bridge is not intended for users under 18 years of age. We do not knowingly collect personal information from children under 18. If we become aware that we have collected personal information from a child under 18, we will take steps to delete such information.
+          Bridge is for users 18 and older. We don't knowingly collect data from anyone under 18. If we discover we have, we'll delete it immediately.
         </Body>
 
-        <H2 className="mb-3">9. International Data Transfers</H2>
+        <H2 className="mb-3">9. Analytics</H2>
         <Body className="text-neutral-700 mb-6 leading-6">
-          Your information may be transferred to and processed in countries other than your country of residence. These countries may have data protection laws different from your country. We take appropriate safeguards to ensure your information remains protected.
+          We use mobile analytics tools to understand how people use Bridge and to catch bugs. We don't track you across other apps. You can limit analytics through iOS Settings → Privacy → Tracking.
         </Body>
 
-        <H2 className="mb-3">10. Analytics and Tracking</H2>
+        <H2 className="mb-3">10. California Privacy Rights</H2>
         <Body className="text-neutral-700 mb-6 leading-6">
-          Bridge is a mobile app and does not use browser cookies. We may use mobile analytics tools to:
-          {'\n'}• Understand how features are used
-          {'\n'}• Improve app performance and stability
-          {'\n'}• Diagnose crashes and technical issues
-          {'\n\n'}You can limit analytics data collection through your device's privacy settings (iOS: Settings → Privacy → Tracking).
+          If you're a California resident, you have rights under the CCPA, including the right to know what data we hold, request deletion, and opt out of data sales. Bridge does not sell personal data.
         </Body>
 
-        <H2 className="mb-3">11. Third-Party Services</H2>
+        <H2 className="mb-3">11. Changes to This Policy</H2>
         <Body className="text-neutral-700 mb-6 leading-6">
-          Bridge may contain links to third-party websites or services. We are not responsible for the privacy practices of these third parties. We encourage you to review their privacy policies before providing any information.
+          If we update this policy in a meaningful way, we'll let you know in the app. The "Last Updated" date at the top always reflects the current version.
         </Body>
 
-        <H2 className="mb-3">12. California Privacy Rights</H2>
-        <Body className="text-neutral-700 mb-6 leading-6">
-          California residents have additional rights under the California Consumer Privacy Act (CCPA), including the right to know, delete, and opt-out of the sale of personal information. Bridge does not sell personal information.
-        </Body>
-
-        <H2 className="mb-3">13. Updates to Privacy Policy</H2>
-        <Body className="text-neutral-700 mb-6 leading-6">
-          We may update this Privacy Policy from time to time. We will notify you of any material changes by posting the new Privacy Policy on this page and updating the "Last Updated" date. Your continued use of Bridge after changes constitutes acceptance of the updated policy.
-        </Body>
-
-        <H2 className="mb-3">14. Contact Us</H2>
+        <H2 className="mb-3">12. Contact</H2>
         <Body className="text-neutral-700 mb-8 leading-6">
-          If you have questions about this Privacy Policy or our data practices, please contact us at:
+          Questions about your privacy or your data? We're here.
           {'\n\n'}Bridge Privacy Team
           {'\n'}Email: bridge.date.app@gmail.com
-          {'\n'}Address: Houston, TX
-          {'\n\n'}For data protection inquiries or to exercise your rights, email: bridge.date.app@gmail.com
+          {'\n'}Houston, TX
         </Body>
       </StyledScrollView>
     </StyledSafeAreaView>

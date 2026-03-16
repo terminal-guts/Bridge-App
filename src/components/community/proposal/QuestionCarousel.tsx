@@ -5,8 +5,9 @@
  *
  * Design decisions:
  * - Index-based pagination (no horizontal ScrollView) — height adapts to each question's content
+ * - Swipe left/right via PanResponder to navigate between questions
  * - Stacked cards per person, full width, readable at any length
- * - Initial only (e.g. "M") — privacy, not a full name reveal
+ * - F.L. initials (first + last) — privacy, not a full name reveal
  * - Left accent bar: A = primary blue, B = purple
  * - Unrevealed: white card, italic "Tap to reveal →" hint
  * - Revealed: colored border, answer text in primary body color
@@ -14,8 +15,8 @@
  * - Tappable dots for navigation
  */
 
-import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import { View, Text, TouchableOpacity, PanResponder } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -32,6 +33,14 @@ import type { DeepQuestionData } from './proposalHelpers';
 
 // Color for person B — distinct from person A's primary blue
 const ACCENT_B = COLORS.purple; // #7C3AED
+
+// "Mo Orji" → "M.O."
+function toInitials(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase() + '.';
+  return parts[0].charAt(0).toUpperCase() + '.' + parts[parts.length - 1].charAt(0).toUpperCase() + '.';
+}
 
 // ─── PersonAnswerCard ─────────────────────────────────────────────────────────
 function PersonAnswerCard({
@@ -77,7 +86,7 @@ function PersonAnswerCard({
 
         {/* Content */}
         <View style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 10 }}>
-          {/* Initial — always visible */}
+          {/* Initials — always visible */}
           <Text style={{
             fontFamily: FONTS.semiBold,
             fontSize: FONT_SIZES.xs,
@@ -205,11 +214,26 @@ export function QuestionCarousel({
   const [currentPage, setCurrentPage] = useState(0);
   const total = questions.length;
 
-  const userAInitial = userAName.charAt(0).toUpperCase();
-  const userBInitial = userBName.charAt(0).toUpperCase();
+  const userAInitial = toInitials(userAName);
+  const userBInitial = toInitials(userBName);
+
+  // Use a ref so the PanResponder callback always has the current total
+  const totalRef = useRef(total);
+  totalRef.current = total;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gs) =>
+        Math.abs(gs.dx) > 8 && Math.abs(gs.dx) > Math.abs(gs.dy),
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dx < -40) setCurrentPage(p => Math.min(p + 1, totalRef.current - 1));
+        else if (gs.dx > 40) setCurrentPage(p => Math.max(p - 1, 0));
+      },
+    })
+  ).current;
 
   return (
-    <View>
+    <View {...panResponder.panHandlers}>
       {/* Current question only — height adapts to content */}
       <QuestionPage
         key={`qp-${questions[currentPage].questionId}`}

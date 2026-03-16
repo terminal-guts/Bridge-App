@@ -168,8 +168,14 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   const effectiveProfile = useMemo(() => {
     if (passedProfile) return passedProfile;
     if (match) return match.currentUserId === match.user1Id ? match.user2Profile : match.user1Profile;
-    return MOCK_PROFILE;
+    // No real profile available — navigate back rather than showing mock data to production users
+    return null;
   }, [passedProfile, match]);
+
+  // Guard: if no real profile, go back immediately
+  useEffect(() => {
+    if (!effectiveProfile) navigation.goBack();
+  }, [effectiveProfile, navigation]);
 
   const [loading] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);

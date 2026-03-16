@@ -10,12 +10,12 @@
 --   ALTER DATABASE postgres SET app.settings.service_role_key = 'new-key-here';
 --
 -- Schedule (UTC, targeting ~7PM Central):
---   00:00 AM UTC daily  — proposal-lifecycle       (expire old proposals, check thresholds)
---   00:05 AM UTC daily  — generate-proposals       (create new proposals for eligible users)
+--   23:55 UTC daily     — proposal-lifecycle       (expire old proposals, check thresholds) = 6:55PM CDT
+--   00:00 UTC daily     — generate-proposals       (create new proposals for eligible users) = 7:00PM CDT
 --   Every 4h            — proposal-lifecycle-check  (safety net, same as lifecycle)
 --   00:00 AM UTC Monday — snapshot-weekly-karma    (snapshot karma baselines, then chains send-weekly-summary)
 --
--- DST note: 00:00 UTC = 7PM CDT (Mar-Nov) / 6PM CST (Nov-Mar).
+-- DST note: 23:55/00:00 UTC = 6:55PM/7:00PM CDT (Mar-Nov) / 5:55PM/6:00PM CST (Nov-Mar).
 -- Using 00:00 UTC means the cycle runs at 6PM CST during winter. This is acceptable
 -- since it's before the 7PM target, not after.
 
@@ -40,12 +40,12 @@ WHERE jobname IN (
 );
 
 -- ============================================
--- 1. Proposal Lifecycle — 00:00 UTC daily (= 7PM CDT / 6PM CST)
+-- 1. Proposal Lifecycle — 23:55 UTC daily (= 6:55PM CDT / 5:55PM CST)
 --    Runs FIRST to expire/resolve old proposals before new ones are generated.
 -- ============================================
 SELECT cron.schedule(
   'proposal-lifecycle',
-  '0 0 * * *',
+  '55 23 * * *',
   $$
   SELECT net.http_post(
     url := 'https://ikyiwnydgedwbmcdzgbe.supabase.co/functions/v1/proposal-lifecycle',
@@ -59,12 +59,12 @@ SELECT cron.schedule(
 );
 
 -- ============================================
--- 2. Generate Proposals — 00:05 UTC daily
+-- 2. Generate Proposals — 00:00 UTC daily (= 7:00PM CDT / 6:00PM CST)
 --    Runs AFTER lifecycle so expired proposals are cleared first.
 -- ============================================
 SELECT cron.schedule(
   'generate-proposals',
-  '5 0 * * *',
+  '0 0 * * *',
   $$
   SELECT net.http_post(
     url := 'https://ikyiwnydgedwbmcdzgbe.supabase.co/functions/v1/generate-proposals',

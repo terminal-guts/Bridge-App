@@ -159,7 +159,7 @@ export async function fetchPendingMatchProposals(): Promise<any[]> {
       if (yesVotes.length > 0) {
         const uniqueVoterIds = [...new Set(yesVotes.map((v) => v.voter_user_id))];
         const [{ data: voterRows }, { data: voterPhotos }] = await Promise.all([
-          supabase.from('user_profiles').select('user_id, first_name, last_name, profile_photo_path').in('user_id', uniqueVoterIds),
+          supabase.from('user_profiles').select('user_id, first_name, last_name, profile_photo_path, photos').in('user_id', uniqueVoterIds),
           supabase.from('user_photos').select('user_id, storage_path, is_main').in('user_id', uniqueVoterIds).eq('is_main', true),
         ]);
 

@@ -119,7 +119,15 @@ export async function decideOnProposal(
   const { data, error } = await supabase.functions.invoke('process-decision', {
     body: { proposal_id: proposalId, decision },
   });
-  if (error) throw new Error(`Decision failed: ${error.message}`);
+  if (error) {
+    // If the user already accepted and the proposal moved to passed_to_match
+    // (e.g. retry after app backgrounded), treat it as a success — don't surface an error.
+    const serverMsg: string = data?.error ?? error.message ?? '';
+    if (decision === 'accepted' && serverMsg.includes('passed_to_match')) {
+      return { status: 'success', proposal_status: 'passed_to_match', your_decision: 'accepted' };
+    }
+    throw new Error(`Decision failed: ${error.message}`);
+  }
   return data;
 }
 

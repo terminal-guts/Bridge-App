@@ -294,9 +294,9 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                         {/* #2 + #4 — Endorser row with polished avatars */}
                         <View style={styles.matchedByRow}>
                             <Text style={styles.matchedByText}>{endorserLabel}</Text>
-                            {matchedByAvatars.length > 0 && (
-                                <View style={styles.avatarRow}>
-                                    {matchedByAvatars.slice(0, 3).map((url, i) => {
+                            <View style={styles.avatarRow}>
+                                {matchedByAvatars.length > 0
+                                    ? matchedByAvatars.slice(0, 3).map((url, i) => {
                                         const optimizedAvatarUrl = getOptimizedImageUrl(url, 28);
                                         return (
                                             <View key={i} style={[styles.avatarShadowWrap, { marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }]}>
@@ -309,9 +309,12 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                                                 />
                                             </View>
                                         );
-                                    })}
-                                </View>
-                            )}
+                                    })
+                                    : [0, 1, 2].map((_, i) => (
+                                        <View key={i} style={[styles.avatarShadowWrap, styles.avatarCircle, { marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i, backgroundColor: 'rgba(255,255,255,0.25)' }]} />
+                                    ))
+                                }
+                            </View>
                         </View>
 
                         {/* #2 — Date in smaller, lighter style */}

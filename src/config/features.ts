@@ -171,7 +171,7 @@ export const FEATURES: FeatureFlags = {
   ENABLE_GLASSMORPHISM: false,
   ENABLE_DEEP_QUESTIONS_PREVIEW: true,
   DAILY_PAIRING_ENABLED: true,
-  ENABLE_DEV_STATE_TOGGLE: true, // ✅ ENABLED for dev testing
+  ENABLE_DEV_STATE_TOGGLE: false, // ❌ DISABLED for production
 };
 
 /**

@@ -272,14 +272,6 @@ export function ProposalReviewView({
             </View>
           )}
 
-          {/* Live Vote Bar */}
-          <View style={{ position: 'relative' }}>
-            <LiveVoteBar
-              yesVotes={proposal.yesVotes ?? 0}
-              noVotes={proposal.noVotes ?? 0}
-              totalVotes={proposal.totalVotes ?? 0}
-            />
-          </View>
         </View>
 
         {/* ── Friend Badges ─────────────────────────────────────────── */}
@@ -290,8 +282,8 @@ export function ProposalReviewView({
           <SectionCard title="Questions" matched={undefined} total={undefined} accentColor={COLORS.primary}>
             <QuestionCarousel
               questions={resolvedDeepQuestions}
-              userAName={userA.firstName}
-              userBName={userB.firstName}
+              userAName={`${userA.firstName} ${userA.lastName || ''}`}
+              userBName={`${userB.firstName} ${userB.lastName || ''}`}
             />
           </SectionCard>
         )}
@@ -344,6 +336,15 @@ export function ProposalReviewView({
 
       </ScrollView>
       </Animated.View>
+
+      {/* ── Sticky vote bar — always visible above vote buttons ──────── */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle }}>
+        <LiveVoteBar
+          yesVotes={proposal.yesVotes ?? 0}
+          noVotes={proposal.noVotes ?? 0}
+          totalVotes={proposal.totalVotes ?? 0}
+        />
+      </View>
 
       {/* ── Fixed bottom vote buttons ───────────────────────────────── */}
       <VoteButtons
