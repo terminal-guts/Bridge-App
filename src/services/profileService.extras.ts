@@ -10,6 +10,7 @@
 import { ApiResponse, UserProfile } from '../types';
 import { Profile } from '../types/profile';
 import { supabase } from '../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createLogger } from '../utils/secureLogger';
 import { getMultiplePhotoSignedUrls } from './photoService';
 import { getQuestionById } from '../utils/deepQuestions';
@@ -204,6 +205,30 @@ export const getGuideCompletionStatus = async (
 // SUSPENSION CHECK
 // ============================================================================
 
+const MINIMAL_STATUS_CACHE_KEY = 'bridge_minimal_profile_status';
+const MINIMAL_STATUS_DEFAULT = { isSuspended: false, reason: null as string | null, role: 'dater' as const };
+
+/**
+ * Read cached minimal profile status from AsyncStorage (no network).
+ * Returns null if nothing is cached yet.
+ */
+export async function getCachedMinimalProfileStatus(): Promise<{ isSuspended: boolean; reason: string | null; role: 'dater' | 'matchmaker' } | null> {
+  try {
+    const raw = await AsyncStorage.getItem(MINIMAL_STATUS_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Clear cached minimal profile status (call on sign-out).
+ */
+export function clearMinimalProfileStatusCache(): void {
+  AsyncStorage.removeItem(MINIMAL_STATUS_CACHE_KEY).catch(() => {});
+}
+
 export async function checkMinimalProfileStatus(): Promise<{ isSuspended: boolean; reason: string | null; role: 'dater' | 'matchmaker' }> {
   try {
     const userId = await getCurrentUserId();
@@ -213,14 +238,19 @@ export async function checkMinimalProfileStatus(): Promise<{ isSuspended: boolea
       .eq('user_id', userId)
       .maybeSingle();
 
-    if (error || !data) return { isSuspended: false, reason: null, role: 'dater' };
-    return {
+    if (error || !data) return MINIMAL_STATUS_DEFAULT;
+    const result = {
       isSuspended: data.is_suspended ?? false,
       reason: data.suspension_reason ?? null,
-      role: data.role || 'dater',
+      role: (data.role || 'dater') as 'dater' | 'matchmaker',
     };
+
+    // Persist for instant startup on next launch
+    AsyncStorage.setItem(MINIMAL_STATUS_CACHE_KEY, JSON.stringify(result)).catch(() => {});
+
+    return result;
   } catch {
-    return { isSuspended: false, reason: null, role: 'dater' };
+    return MINIMAL_STATUS_DEFAULT;
   }
 }
 

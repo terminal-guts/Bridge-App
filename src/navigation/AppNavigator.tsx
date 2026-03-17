@@ -14,7 +14,7 @@ import { supabase } from '../lib/supabase';
 import { FEATURES } from '../config/features';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { Sentry } from '../lib/sentry';
-import { fetchAndSetUserProfile, invalidateProfileCache, checkMinimalProfileStatus, getUserProfile } from '../services/profileService';
+import { fetchAndSetUserProfile, invalidateProfileCache, checkMinimalProfileStatus, getCachedMinimalProfileStatus, clearMinimalProfileStatusCache, getUserProfile } from '../services/profileService';
 import { calculateOverallProfileStrength } from '../utils/profileCompleteness';
 import Svg, { Circle } from 'react-native-svg';
 import { isIntentionalSignOut, resetIntentionalSignOut } from '../services/authService';
@@ -477,8 +477,8 @@ export const AppNavigator = () => {
     const isMountedRef = { current: true };
 
     // Check for existing Supabase session on app start.
-    // Strategy: confirm auth + lightweight suspension check → render MainTabs ASAP,
-    // then fetch full profile in background so screens have data when needed.
+    // Strategy: confirm auth + use cached status → render MainTabs instantly,
+    // then verify status and fetch full profile in background.
     const initializeAuth = async () => {
       try {
         if (FEATURES.DEVELOPMENT_FORCE_FRESH_SESSION) {
@@ -501,15 +501,25 @@ export const AppNavigator = () => {
           setCachedUserId(user.id);
           logger.info('[AppNavigator] Authenticated user:', user.id);
 
-          // Lightweight status check (suspension + role) — unblocks navigation fast
-          const status = await checkMinimalProfileStatus();
-          if (!isMountedRef.current) return;
-          setIsSuspended(status.isSuspended);
-          setSuspensionReason(status.reason);
-          setUserRole(status.role);
+          // Use cached status (AsyncStorage, no network) to unblock navigation instantly.
+          // Falls back to defaults (not suspended, dater) if no cache exists yet.
+          const cachedStatus = await getCachedMinimalProfileStatus();
+          const initialStatus = cachedStatus || { isSuspended: false, reason: null, role: 'dater' as const };
 
-          // Render MainTabs or MatchmakerHome NOW — don't wait for full profile
+          setIsSuspended(initialStatus.isSuspended);
+          setSuspensionReason(initialStatus.reason);
+          setUserRole(initialStatus.role);
+
+          // Render MainTabs or MatchmakerHome NOW — no network wait
           setIsAuthenticated(true);
+
+          // Verify status in background — update UI if it changed (e.g. user got suspended)
+          checkMinimalProfileStatus().then(freshStatus => {
+            if (!isMountedRef.current) return;
+            if (freshStatus.isSuspended !== initialStatus.isSuspended) setIsSuspended(freshStatus.isSuspended);
+            if (freshStatus.reason !== initialStatus.reason) setSuspensionReason(freshStatus.reason);
+            if (freshStatus.role !== initialStatus.role) setUserRole(freshStatus.role);
+          });
 
           // Full profile fetch runs in background — populates cache for screens
           fetchAndSetUserProfile(user.id).then(profileResult => {
@@ -574,6 +584,7 @@ export const AppNavigator = () => {
       } else if (event === 'SIGNED_OUT' && wasAuthenticated) {
         clearCachedUserId();
         invalidateProfileCache();
+        clearMinimalProfileStatusCache();
         if (isIntentionalSignOut()) {
           resetIntentionalSignOut();
           logger.info('[AppNavigator] Intentional sign-out');
