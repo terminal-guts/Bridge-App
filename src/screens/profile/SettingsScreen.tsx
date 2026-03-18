@@ -78,7 +78,6 @@ const SettingRow = ({
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [tutorialEnabled, setTutorialEnabled] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Notification Preferences — all default false until loaded from storage
@@ -202,16 +201,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               icon="book"
               title="Tutorial"
               subtitle="Replay the app walkthrough"
-              toggle
-              toggleValue={tutorialEnabled}
-              onToggle={async (newValue: boolean) => {
+              onPress={async () => {
                 selectionHaptic();
-                setTutorialEnabled(newValue);
-                if (newValue) {
-                  await resetGuide('beginner_tour' as any);
-                }
+                await resetGuide('beginner_tour' as any);
+                navigation.navigate('MainTabs' as any, { screen: 'Community' });
               }}
-              showArrow={false}
             />
           </Card>
 
