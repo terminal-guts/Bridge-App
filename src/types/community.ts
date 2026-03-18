@@ -191,6 +191,8 @@ export interface FriendWithGridStatus {
   addedAt: string;
   streakDays: number; // Days in a row both users filled out grids for each other
   assistsCount: number; // Total successful setups this friend has made
+  hasCrushed?: boolean; // Current user has crushed on this friend
+  crushedOnMe?: boolean; // This friend has crushed on current user (secret — only used for mutual detection)
 }
 
 // Extended type for UI rendering with variant (pending vs completed)

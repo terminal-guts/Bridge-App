@@ -28,6 +28,7 @@ import { showToast } from '../../utils/toast';
 import { BadgeAwardModal } from '../../components/badges/BadgeAwardModal';
 import { getBadgeForFriend } from '../../services/badgeService';
 import { FriendBadge } from '../../types/badges';
+import { sendCrush, removeCrush } from '../../services/crushService';
 
 // Extracted
 import {
@@ -75,6 +76,48 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     setBadgeTargetFriend({ id: friendId, name: friendName });
     setBadgeModalVisible(true);
   }, []);
+
+  const handleCrushPress = useCallback(async (friendId: string, friendName: string) => {
+    // Find the friend in current state to check crush status
+    const friend = alreadyHelped.find(f => f.friendId === friendId);
+    if (!friend) return;
+
+    if (friend.hasCrushed) {
+      // Un-crush: optimistic update + remove
+      setAlreadyHelped(prev =>
+        prev.map(f => f.friendId === friendId ? { ...f, hasCrushed: false } : f)
+      );
+      const result = await removeCrush(friendId);
+      if (!result.ok) {
+        // Revert on failure
+        setAlreadyHelped(prev =>
+          prev.map(f => f.friendId === friendId ? { ...f, hasCrushed: true } : f)
+        );
+      }
+    } else {
+      // Crush: optimistic update + send
+      setAlreadyHelped(prev =>
+        prev.map(f => f.friendId === friendId ? { ...f, hasCrushed: true } : f)
+      );
+      successHaptic();
+      const result = await sendCrush(friendId);
+      if (!result.ok) {
+        // Revert on failure
+        setAlreadyHelped(prev =>
+          prev.map(f => f.friendId === friendId ? { ...f, hasCrushed: false } : f)
+        );
+        showToast.error('Could not send crush. Try again.');
+      } else if (result.isMutual) {
+        // Mutual crush! Both friends crushed on each other
+        showToast.success(
+          'It\'s mutual!',
+          `You and ${friendName} both crushed — a match proposal has been created!`
+        );
+        // Refresh friends data to show the new proposal in the grid
+        loadFriendsData();
+      }
+    }
+  }, [alreadyHelped, loadFriendsData]);
 
   const loadUnreadCounts = useCallback(async (friends: FriendWithGridStatus[]) => {
     if (!profile?.userId || friends.length === 0) return;
@@ -344,8 +387,8 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     [usersToMatch, navigation],
   );
   const crewHandlers = useMemo(
-    () => buildCrewHandlers(alreadyHelped, navigation, handleBadgePress),
-    [alreadyHelped, navigation, handleBadgePress],
+    () => buildCrewHandlers(alreadyHelped, navigation, handleBadgePress, handleCrushPress),
+    [alreadyHelped, navigation, handleBadgePress, handleCrushPress],
   );
 
   if (loading || hasCompletedVoting === null) {
@@ -489,6 +532,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                     onViewProfile={crewHandlers.viewProfile[user.friendId]}
                     onChat={crewHandlers.chatHandlers[user.friendId]}
                     onBadgePress={crewHandlers.badgeHandlers[user.friendId]}
+                    onCrushPress={crewHandlers.crushHandlers[user.friendId]}
                   />
                 </StaggerItem>
             ))}
