@@ -51,19 +51,30 @@ async function setEntry<T>(key: string, data: T, cycleId?: string): Promise<void
 // Friends Data Cache (stale-while-revalidate)
 // ============================================================================
 
+// In-memory mirror — avoids AsyncStorage reads on hot path (tab switches)
+let inMemoryFriendsData: { data: unknown; ts: number } | null = null;
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- cached DB data has dynamic shape
 export async function getCachedFriendsData(): Promise<any | null> {
+  // Return in-memory mirror instantly if fresh
+  if (inMemoryFriendsData && (Date.now() - inMemoryFriendsData.ts) < FRIENDS_DATA_TTL_MS) {
+    return inMemoryFriendsData.data;
+  }
   const entry = await getEntry<unknown>(KEY_FRIENDS_DATA, FRIENDS_DATA_TTL_MS);
   if (!entry) return null;
+  // Warm the in-memory mirror
+  inMemoryFriendsData = { data: entry.data, ts: Date.now() };
   // Return even if stale — caller will revalidate in background
   return entry.data;
 }
 
 export async function setCachedFriendsData(data: unknown): Promise<void> {
+  inMemoryFriendsData = { data, ts: Date.now() };
   await setEntry(KEY_FRIENDS_DATA, data);
 }
 
 export async function invalidateCachedFriendsData(): Promise<void> {
+  inMemoryFriendsData = null;
   try {
     await AsyncStorage.removeItem(KEY_FRIENDS_DATA);
   } catch { /* non-critical */ }
@@ -107,11 +118,18 @@ export async function invalidateCachedPhotoUrls(): Promise<void> {
 // Voting Gate Cache
 // ============================================================================
 
+// In-memory mirror for voting gate
+let inMemoryVotingGate: { completed: boolean; cycleId: string } | null = null;
+
 /**
  * Check if the user has already completed voting for the current cycle.
  * Returns true if cached as completed, false if cached as not completed, null if no cache.
  */
 export async function getCachedVotingGate(currentCycleId: string): Promise<boolean | null> {
+  // Check in-memory first — instant
+  if (inMemoryVotingGate && inMemoryVotingGate.cycleId === currentCycleId) {
+    return inMemoryVotingGate.completed || null;
+  }
   try {
     const raw = await AsyncStorage.getItem(KEY_VOTING_GATE);
     if (!raw) return null;
@@ -120,6 +138,8 @@ export async function getCachedVotingGate(currentCycleId: string): Promise<boole
     if (entry.cycleId !== currentCycleId) return null;
     // Only trust a "completed" cache — "not completed" should always recheck
     if (!entry.data) return null;
+    // Warm in-memory mirror
+    inMemoryVotingGate = { completed: entry.data, cycleId: currentCycleId };
     return entry.data;
   } catch {
     return null;
@@ -128,5 +148,6 @@ export async function getCachedVotingGate(currentCycleId: string): Promise<boole
 
 /** Mark voting as completed for the current cycle */
 export async function setCachedVotingGate(completed: boolean, cycleId: string): Promise<void> {
+  inMemoryVotingGate = { completed, cycleId };
   await setEntry(KEY_VOTING_GATE, completed, cycleId);
 }

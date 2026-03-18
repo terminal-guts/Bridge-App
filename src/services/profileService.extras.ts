@@ -208,15 +208,21 @@ export const getGuideCompletionStatus = async (
 const MINIMAL_STATUS_CACHE_KEY = 'bridge_minimal_profile_status';
 const MINIMAL_STATUS_DEFAULT = { isSuspended: false, reason: null as string | null, role: 'dater' as const };
 
+// In-memory mirror — avoids AsyncStorage read on the auth critical path
+let inMemoryMinimalStatus: { isSuspended: boolean; reason: string | null; role: 'dater' | 'matchmaker' } | null = null;
+
 /**
- * Read cached minimal profile status from AsyncStorage (no network).
+ * Read cached minimal profile status — in-memory first, then AsyncStorage.
  * Returns null if nothing is cached yet.
  */
 export async function getCachedMinimalProfileStatus(): Promise<{ isSuspended: boolean; reason: string | null; role: 'dater' | 'matchmaker' } | null> {
+  if (inMemoryMinimalStatus) return inMemoryMinimalStatus;
   try {
     const raw = await AsyncStorage.getItem(MINIMAL_STATUS_CACHE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    inMemoryMinimalStatus = parsed;
+    return parsed;
   } catch {
     return null;
   }
@@ -226,6 +232,7 @@ export async function getCachedMinimalProfileStatus(): Promise<{ isSuspended: bo
  * Clear cached minimal profile status (call on sign-out).
  */
 export function clearMinimalProfileStatusCache(): void {
+  inMemoryMinimalStatus = null;
   AsyncStorage.removeItem(MINIMAL_STATUS_CACHE_KEY).catch(() => {});
 }
 
@@ -246,6 +253,7 @@ export async function checkMinimalProfileStatus(): Promise<{ isSuspended: boolea
     };
 
     // Persist for instant startup on next launch
+    inMemoryMinimalStatus = result;
     AsyncStorage.setItem(MINIMAL_STATUS_CACHE_KEY, JSON.stringify(result)).catch(() => {});
 
     return result;

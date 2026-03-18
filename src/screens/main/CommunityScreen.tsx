@@ -13,7 +13,7 @@ import { communityService } from '../../services/communityServiceIndex';
 import { getUserFriendCode, getIncomingRequests, acceptFriendRequest, declineFriendRequest, FriendRequest } from '../../services/friendService';
 import { FriendWithGridStatus } from '../../types/community';
 import { getUserProfile } from '../../services/profileService';
-import { supabase } from '../../lib/supabase';
+import { getAuthenticatedUserId } from '../../utils/auth';
 import { UserProfile } from '../../types';
 import { ProfileCompletionBanner } from '../../components/profile/ProfileCompletionBanner';
 import { useGuide } from '../../hooks/useGuide';
@@ -123,8 +123,8 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   }, [loadUnreadCounts]);
 
   const onRefresh = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    const userId = await getAuthenticatedUserId();
+    if (!userId) return;
     lightHaptic();
     setRefreshing(true);
     // Invalidate in-memory + AsyncStorage cache so pull-to-refresh always fetches fresh data
@@ -147,8 +147,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   const initialize = useCallback(async () => {
     // Bail out if not authenticated (e.g. after sign-out while screen is still mounted)
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    // Uses in-memory cached userId — instant, no AsyncStorage or network
+    const userId = await getAuthenticatedUserId();
+    if (!userId) return;
 
     const cycleId = String(getLast7PMCentral());
 
@@ -200,10 +201,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
         if (result.ok && result.data) setProfile(result.data);
       });
 
-      // Fire voting gate queries in parallel with communityService.ready —
-      // they don't depend on the timer state, just on Supabase auth
-      const [, task, available] = await Promise.all([
-        communityService.ready,
+      // Fire voting gate queries in parallel — they don't depend on timer state.
+      // communityService.ready (timer init) runs in background, not on critical path.
+      const [task, available] = await Promise.all([
         communityService.getCommunityTaskProgress(),
         communityService.getProposalsToVote(),
       ]);

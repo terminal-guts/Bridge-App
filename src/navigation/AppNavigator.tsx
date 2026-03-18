@@ -485,8 +485,12 @@ export const AppNavigator = () => {
           await supabase.auth.signOut();
         }
 
-        // Read cached session from AsyncStorage (no network call) for fast startup.
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Read session + cached status in parallel (both AsyncStorage reads)
+        const [sessionResult, cachedStatus] = await Promise.all([
+          supabase.auth.getSession(),
+          getCachedMinimalProfileStatus(),
+        ]);
+        const { data: { session }, error } = sessionResult;
 
         if (!isMountedRef.current) return;
 
@@ -501,9 +505,8 @@ export const AppNavigator = () => {
           setCachedUserId(user.id);
           logger.info('[AppNavigator] Authenticated user:', user.id);
 
-          // Use cached status (AsyncStorage, no network) to unblock navigation instantly.
+          // Use cached status to unblock navigation instantly.
           // Falls back to defaults (not suspended, dater) if no cache exists yet.
-          const cachedStatus = await getCachedMinimalProfileStatus();
           const initialStatus = cachedStatus || { isSuspended: false, reason: null, role: 'dater' as const };
 
           setIsSuspended(initialStatus.isSuspended);
@@ -512,6 +515,15 @@ export const AppNavigator = () => {
 
           // Render MainTabs or MatchmakerHome NOW — no network wait
           setIsAuthenticated(true);
+
+          // Pre-warm community data while CommunityScreen is mounting —
+          // by the time it calls initialize(), cache or in-flight query is ready
+          if (initialStatus.role === 'dater') {
+            import('../services/communityServiceIndex').then(({ communityService }) => {
+              communityService.getCommunityTaskProgress().catch(() => {});
+              communityService.getProposalsToVote().catch(() => {});
+            });
+          }
 
           // Verify status in background — update UI if it changed (e.g. user got suspended)
           checkMinimalProfileStatus().then(freshStatus => {
