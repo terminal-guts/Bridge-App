@@ -12,7 +12,7 @@ import { computeApprovalPercent } from '../../utils/matchCardGenerator';
 import { COLORS } from '../../theme/colors';
 import { useMatchesScreen } from './useMatchesScreen';
 
-import
+import {
     type ScreenState,
     CARD_STATUS,
     timerColor,
@@ -20,7 +20,7 @@ import
     timerBorderColor,
     formatMatchDate,
     MatchesLoadingView,
-    MatchesLockedView,
+    MatchesLockedV
     EmptyStateView,
     EndedMatchPopupModal,
     EndMatchModal,
