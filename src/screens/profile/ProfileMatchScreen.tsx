@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
     ImageBackground, ActivityIndicator, StyleSheet,
+    Modal, Pressable, Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,9 +18,22 @@ import { IconScoutIcon, EvaIcon } from '../../components/icons';
 import { WineGlassIcon, CigaretteIcon, PillIcon } from '../../components/icons/Icons';
 import { formatProfileValue } from '../../utils/formatProfileValue';
 import { showToast } from '../../utils/toast';
+import { removeFriend } from '../../services/friendService';
+import { blockUser } from '../../services/blockService';
 import { COLORS } from '../../theme/colors';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { SHADOWS } from '../../theme/shadows';
+import Svg, { Circle } from 'react-native-svg';
+
+// ── Inline SVG icons ────────────────────────────────────────────────
+
+const MoreVerticalIcon = ({ size = 24, color = '#FFF' }: { size?: number; color?: string }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Circle cx="12" cy="5" r="1.5" fill={color} />
+        <Circle cx="12" cy="12" r="1.5" fill={color} />
+        <Circle cx="12" cy="19" r="1.5" fill={color} />
+    </Svg>
+);
 
 // ── Helpers (module-level, no re-creation) ─────────────────────────
 
@@ -51,7 +65,12 @@ export default function ProfileMatchScreen() {
     const [loading, setLoading] = useState(isPreview);
     const [showKarmaModal, setShowKarmaModal] = useState(false);
     const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
+    const [showActionSheet, setShowActionSheet] = useState(false);
     const isMountedRef = React.useRef(true);
+
+    // ProfileView mode = viewing another user (not proposal, not preview)
+    const isProfileView = !isProposal && !isPreview && !!params.profile;
+    const viewedUserId: string | undefined = params.profile?.userId;
 
     useEffect(() => {
         isMountedRef.current = true;
@@ -204,6 +223,56 @@ export default function ProfileMatchScreen() {
         }
     }, [submitting, canRespond, proposalId, navigation]);
 
+    const handleRemoveFriend = useCallback(() => {
+        if (!viewedUserId) return;
+        setShowActionSheet(false);
+        Alert.alert(
+            'Remove Friend',
+            `Are you sure you want to remove ${partnerProfile?.firstName ?? 'this person'} as a friend?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Remove',
+                    style: 'destructive',
+                    onPress: async () => {
+                        const result = await removeFriend(viewedUserId);
+                        if (result.ok) {
+                            showToast.success('Friend removed');
+                            navigation.goBack();
+                        } else {
+                            showToast.error('Failed to remove friend');
+                        }
+                    },
+                },
+            ],
+        );
+    }, [viewedUserId, partnerProfile, navigation]);
+
+    const handleBlockUser = useCallback(() => {
+        if (!viewedUserId) return;
+        setShowActionSheet(false);
+        Alert.alert(
+            'Block User',
+            `Block ${partnerProfile?.firstName ?? 'this person'}? This will remove your friendship, cancel any active proposals, and end any matches between you.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Block',
+                    style: 'destructive',
+                    onPress: async () => {
+                        const result = await blockUser(viewedUserId);
+                        if (result.ok) {
+                            showToast.success('User blocked');
+                            navigation.goBack();
+                        } else {
+                            showToast.error('Failed to block user');
+                        }
+                    },
+                },
+            ],
+        );
+    }, [viewedUserId, partnerProfile, navigation]);
+
     // ── Early return ────────────────────────────────────────────────
 
     if (loading || !partnerProfile) {
@@ -253,13 +322,18 @@ export default function ProfileMatchScreen() {
                             style={StyleSheet.absoluteFillObject}
                         />
 
-                        {/* Header row — back button + photo count */}
+                        {/* Header row — back button + menu */}
                         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
                             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
                                 <ArrowLeft size={24} color="#FFFFFF" strokeWidth={2} />
                             </TouchableOpacity>
-                            {/* Photo count removed — scroll down to see more */}
-                            <View />
+                            {isProfileView ? (
+                                <TouchableOpacity style={styles.backButton} onPress={() => setShowActionSheet(true)}>
+                                    <MoreVerticalIcon size={24} color="#FFFFFF" />
+                                </TouchableOpacity>
+                            ) : (
+                                <View />
+                            )}
                         </View>
 
                         {/* Bottom overlay — name, subtitle, matched-by */}
@@ -458,6 +532,30 @@ export default function ProfileMatchScreen() {
             )}
 
             <KarmaInfoModal visible={showKarmaModal} onClose={() => setShowKarmaModal(false)} />
+
+            {/* ── Action Sheet (Block / Remove Friend) ─────────── */}
+            <Modal
+                visible={showActionSheet}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowActionSheet(false)}
+            >
+                <Pressable style={styles.sheetOverlay} onPress={() => setShowActionSheet(false)}>
+                    <Pressable style={styles.sheetContainer}>
+                        <TouchableOpacity style={styles.sheetOption} onPress={handleRemoveFriend}>
+                            <Text style={styles.sheetOptionText}>Remove Friend</Text>
+                        </TouchableOpacity>
+                        <View style={styles.sheetDivider} />
+                        <TouchableOpacity style={styles.sheetOption} onPress={handleBlockUser}>
+                            <Text style={[styles.sheetOptionText, styles.sheetDestructive]}>Block User</Text>
+                        </TouchableOpacity>
+                        <View style={styles.sheetDivider} />
+                        <TouchableOpacity style={styles.sheetOption} onPress={() => setShowActionSheet(false)}>
+                            <Text style={styles.sheetCancelText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </Pressable>
+                </Pressable>
+            </Modal>
         </View>
     );
 }
@@ -852,5 +950,42 @@ const styles = StyleSheet.create({
         fontFamily: FONTS.medium,
         fontSize: FONT_SIZES.base,
         color: COLORS.waitingAmber,
+    },
+
+    // ── Action Sheet ──────────────────────────────────────────────
+
+    sheetOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        justifyContent: 'flex-end',
+    },
+    sheetContainer: {
+        backgroundColor: COLORS.card,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        paddingBottom: 34,
+        ...SHADOWS.lg,
+    },
+    sheetOption: {
+        paddingVertical: 18,
+        alignItems: 'center',
+    },
+    sheetOptionText: {
+        fontFamily: FONTS.medium,
+        fontSize: FONT_SIZES.lg,
+        color: COLORS.text.primary,
+    },
+    sheetDestructive: {
+        color: '#EF4444',
+    },
+    sheetCancelText: {
+        fontFamily: FONTS.semiBold,
+        fontSize: FONT_SIZES.lg,
+        color: COLORS.text.secondary,
+    },
+    sheetDivider: {
+        height: 1,
+        backgroundColor: COLORS.borderSubtle,
+        marginHorizontal: 20,
     },
 });
