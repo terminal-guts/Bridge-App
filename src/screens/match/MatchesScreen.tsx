@@ -20,7 +20,7 @@ import {
     timerBorderColor,
     formatMatchDate,
     MatchesLoadingView,
-    MatchesLockedV
+    MatchesLockedView,
     EmptyStateView,
     EndedMatchPopupModal,
     EndMatchModal,
