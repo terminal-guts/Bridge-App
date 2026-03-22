@@ -306,10 +306,12 @@ export function buildCrewHandlers(
   alreadyHelped: FriendWithGridStatus[],
   navigation: any,
   onBadgePress: (friendId: string, friendName: string) => void,
-): { viewProfile: HandlerMap; chatHandlers: HandlerMap; badgeHandlers: HandlerMap } {
+  onCrushPress?: (friendId: string, friendName: string) => void,
+): { viewProfile: HandlerMap; chatHandlers: HandlerMap; badgeHandlers: HandlerMap; crushHandlers: HandlerMap } {
   const viewProfile: HandlerMap = {};
   const chatHandlers: HandlerMap = {};
   const badgeHandlers: HandlerMap = {};
+  const crushHandlers: HandlerMap = {};
   for (const user of alreadyHelped) {
     viewProfile[user.friendId] = () =>
       navigation.navigate('ProfileView', { profile: user.friend });
@@ -323,8 +325,12 @@ export function buildCrewHandlers(
       });
     badgeHandlers[user.friendId] = () =>
       onBadgePress(user.friendId, user.friend.firstName || 'Friend');
+    if (onCrushPress) {
+      crushHandlers[user.friendId] = () =>
+        onCrushPress(user.friendId, user.friend.firstName || 'Friend');
+    }
   }
-  return { viewProfile, chatHandlers, badgeHandlers };
+  return { viewProfile, chatHandlers, badgeHandlers, crushHandlers };
 }
 
 // ── Pending Friend Requests Section ──────────────────────────────────────────

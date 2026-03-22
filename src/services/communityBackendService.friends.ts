@@ -13,6 +13,7 @@ import {
 import { getBlockedUserIds } from './blockService';
 import { setCachedFriendsData } from './communityCache';
 import { mapProfileRow, resolveProfilePhotos, getCurrentUserId } from './communityBackendService.helpers';
+import { getMyCrushIds, getCrushedOnMeIds } from './crushService';
 
 /**
  * Fetch all friends as anchors with grid status.
@@ -53,8 +54,8 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
     f.user_id === userId ? f.friend_id : f.user_id
   );
 
-  // Fetch friend profiles, proposals, matches, karma, photos, AND user's own votes
-  // all in ONE parallel batch — eliminates the sequential vote-check round-trip
+  // Fetch friend profiles, proposals, matches, karma, photos, votes, AND crush data
+  // all in ONE parallel batch — eliminates sequential round-trips
   const [
     { data: profiles },
     { data: friendProposalsA },
@@ -64,6 +65,8 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
     { data: userPhotos },
     { data: karmaScores },
     { data: allUserVotes },
+    myCrushIds,
+    crushedOnMeIds,
   ] = await Promise.all([
     supabase
       .from('user_profiles')
@@ -110,6 +113,9 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
       .select('proposal_id')
       .eq('voter_user_id', userId)
       .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
+    // Crush data for heart button state
+    getMyCrushIds(),
+    getCrushedOnMeIds(),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DB rows have dynamic shape
@@ -231,6 +237,8 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
         addedAt: f.added_at || new Date().toISOString(),
         streakDays,
         assistsCount: friendKarma?.total_assists || 0,
+        hasCrushed: myCrushIds.has(friendId),
+        crushedOnMe: crushedOnMeIds.has(friendId),
         karmaScore: friendKarma ? {
           userId: friendId,
           karmaPoints: friendKarma.karma_points || 0,

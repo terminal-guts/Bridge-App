@@ -34,6 +34,7 @@ interface UserRowProps {
     showVoteRing?: boolean;
     hasUnread?: boolean;
     onBadgePress?: () => void;
+    onCrushPress?: () => void;
     onStreakMilestone?: (days: number, friendName: string) => void;
     previousStreakDays?: number;
 }
@@ -54,7 +55,7 @@ function getStreakTier(days: number) {
     return STREAK_TIERS.find(t => days >= t.min) ?? DEFAULT_STREAK_TIER;
 }
 
-export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onViewProfile, onChat, rank, onRankPress, statusLine, showVoteRing, hasUnread, onBadgePress, onStreakMilestone, previousStreakDays }) => {
+export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onViewProfile, onChat, rank, onRankPress, statusLine, showVoteRing, hasUnread, onBadgePress, onCrushPress, onStreakMilestone, previousStreakDays }) => {
     const name = item.friend.firstName || 'User';
     const rawImageUrl = item.friend.photos?.[0]?.url || undefined;
     const imageUrl = useMemo(() => getOptimizedImageUrl(rawImageUrl, 68), [rawImageUrl]);
@@ -241,6 +242,23 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                 {infoBlock}
             </View>
             <View style={styles.rightActions}>
+                {onCrushPress && (
+                    <TouchableOpacity
+                        onPress={() => { lightHaptic(); onCrushPress(); }}
+                        activeOpacity={0.7}
+                        style={styles.crushBtn}
+                        accessibilityLabel={item.hasCrushed ? `Remove crush on ${name}` : `Crush on ${name}`}
+                        accessibilityRole="button"
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                        <EvaIcon
+                            name="heart"
+                            variant={item.hasCrushed ? 'fill' : 'outline'}
+                            size={20}
+                            color={item.hasCrushed ? '#EF4444' : COLORS.text.muted}
+                        />
+                    </TouchableOpacity>
+                )}
                 {onBadgePress && (
                     <TouchableOpacity
                         onPress={() => { lightHaptic(); onBadgePress(); }}
@@ -419,6 +437,9 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.backgroundSuccessBadge,
         gap: 6,
         ...SHADOWS.accentGreen,
+    },
+    crushBtn: {
+        padding: 6,
     },
     badgeBtn: {
         padding: 6,
