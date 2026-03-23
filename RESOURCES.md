@@ -16,7 +16,7 @@
 > | Invite copy, referral flow | [Referral & Invite Psychology](#referral--invite-psychology) |
 > | Rice beta, campus rollout | [Campus Launch & College Market](#campus-launch--college-market) |
 > | Moderation, safety, trust | [Community, Trust & Safety](#community-trust--safety) |
-> | RN performance, Expo, optimization | [React Native, Expo & Performance](#react-native-expo--performance) |
+> | RN performance, Expo, optimization | [React Native, Expo & Performance](#react-native-expo--performance) — JS thread, memory leaks, FlatList, images, bundle size |
 > | Supabase, edge functions, infra | [Backend & Infrastructure](#backend--infrastructure) |
 > | Jest, E2E, pgTAP | [Testing](#testing) |
 > | App Store submission, ASO | [App Store & Distribution](#app-store--distribution) |
@@ -183,11 +183,51 @@
 
 ## React Native, Expo & Performance
 
-- [React Native Performance (Official)](https://reactnative.dev/docs/performance) — 60 FPS targets, JS/UI thread profiling, FlatList optimization
+### Core References
+
+- [React Native Performance (Official)](https://reactnative.dev/docs/performance) — 60 FPS targets, JS/UI thread profiling, FlatList optimization, `useNativeDriver`
 - [React Native Optimization (Callstack)](https://www.callstack.com/ebooks/the-ultimate-guide-to-react-native-optimization) — Comprehensive ebook from the leading RN consultancy
-- [Expo — Dev vs Production Mode](https://docs.expo.dev/workflow/development-mode/) — Performance differences, testing with `--no-dev --minify`
+- [Expo — Dev vs Production Mode](https://docs.expo.dev/workflow/development-mode/) — Always profile in release builds; dev mode is 10–20× slower
 - [Expo — Asset Optimization](https://docs.expo.dev/eas-update/optimize-assets/) — Image compression and asset optimization for EAS Update
+- [Hidden Performance Killers in React Native (Medium)](https://medium.com/@nomanakram1999/the-hidden-performance-killers-in-react-native-apps-and-how-i-fixed-them-in-production-f7877268b861) — Production case studies: memory leaks, re-renders, heavy useEffects
+- [Why Your Mobile App Is Slow (TopDevs)](https://topdevs.org/blog/why-your-mobile-app-is-slow-and-how-to-fix-it-topdevs-blog) — Root causes by category: network, UI rendering, memory, background processes
+- [Why Apps Run Slowly and How to Fix It (Glance)](https://thisisglance.com/learning-centre/why-is-my-app-running-slowly-and-how-do-i-fix-it) — 1-second delay = 16% drop in satisfaction; image compression, caching, thread blocking overview
+
+### JS Thread / InteractionManager
+
+- [Overcoming Single-Threaded Limitations (LogRocket)](https://blog.logrocket.com/overcoming-single-threaded-limitations-in-react-native/) — `InteractionManager.runAfterInteractions`, background threads, batching patterns — essential for navigation transitions
+- [React Native — When JS Is Too Busy (DEV)](https://dev.to/matteoboschi/react-native-when-js-is-too-busy-5fhn) — Diagnosing JS thread saturation, yielding with `setTimeout(fn, 0)`, breaking loops into chunks
+
+### Memory Leaks
+
+- [React Native Memory Leak Fixes (instamobile)](https://instamobile.io/blog/react-native-memory-leak-fixes/) — Flipper heap snapshots, Hermes profiling, component-level fixes
+- [Memory Leaks: How to Find and Fix (DEV Community)](https://dev.to/rushilbhuptani/react-native-memory-leaks-how-to-find-and-fix-your-apps-biggest-performance-issue-1pak) — `useEffect` cleanup patterns, `setState` after unmount, FlatList virtualization
+- Key patterns: always return cleanup from `useEffect`, cancel async operations with a mounted ref, remove Supabase realtime channels on unmount
+
+### List Performance (FlatList / ScrollView)
+
+- [Optimizing FlatList Configuration (Official)](https://reactnative.dev/docs/optimizing-flatlist-configuration) — `getItemLayout`, `removeClippedSubviews`, `initialNumToRender`, `maxToRenderPerBatch`, `windowSize`
+- [Guide to Optimizing FlatLists (obytes)](https://www.obytes.com/blog/a-guide-to-optimizing-flatlists-in-react-native) — Practical guide including FlashList migration; `React.memo` on item components reduces re-renders 40–70%
+- [Large List Optimization Techniques (Medium)](https://gabrielvrl.medium.com/large-list-optimization-techniques-with-flatlist-in-react-native-ab7c651746a5) — `keyExtractor` with stable IDs, cell recycling, batch rendering tuning
+- [FlashList by Shopify](https://github.com/shopify/flash-list) — Drop-in FlatList replacement; recycles cell components like RecyclerView. `npx expo install @shopify/flash-list`
+
+### Image Optimization
+
+- [expo-image Documentation](https://docs.expo.dev/versions/latest/sdk/image/) — `cachePolicy`, `priority`, BlurHash/ThumbHash placeholders, WebP format support
+- [React Native Image Optimization Essentials (Medium)](https://medium.com/@engin.bolat/react-native-image-optimization-performance-essentials-9e8ce6a1193e) — Resize to display dimensions before delivery, WebP (25–35% smaller than JPEG), memory vs disk caching
+- Key: `cachePolicy="memory-disk"` → RAM first (sub-ms) → disk → network. `priority="high"` on above-the-fold images. `backgroundColor` in style eliminates white flash before load.
+
+### Bundle Size and Startup
+
+- [Customizing Metro (Expo Docs)](https://docs.expo.dev/guides/customizing-metro/) — Tree shaking, platform shaking (~8% size reduction), `resolver.sourceExts`
+- [Optimize React Native JS Bundle (Callstack)](https://www.callstack.com/blog/optimize-react-native-apps-javascript-bundle) — Barrel import cost, dead code elimination, `npx react-native-bundle-visualizer`
+- Hermes (`"jsEngine": "hermes"` in app.json) pre-compiles JS to bytecode at build time → 15–25% smaller bundle, near-zero parse time at runtime, ~50% lower peak memory
+- Strip `console.log` in production: add `babel-plugin-transform-remove-console` under `env.production.plugins` in `babel.config.js`
+
+### Accessibility
+
 - [React Native Accessibility (Official)](https://reactnative.dev/docs/accessibility) — VoiceOver/TalkBack support, accessibility properties
+- [Reanimated — useReducedMotion](https://docs.swmansion.com/react-native-reanimated/docs/device/useReducedMotion) — Respect system "Reduce Motion" preference in animations
 
 ## Backend & Infrastructure
 

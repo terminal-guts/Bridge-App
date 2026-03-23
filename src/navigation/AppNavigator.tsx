@@ -85,6 +85,7 @@ const SupportChatScreen = withSuspense(React.lazy(() => import('../screens/suppo
 // Community sub-screens
 const LeaderboardScreen = withSuspense(React.lazy(() => import('../screens/community/LeaderboardScreen').then(m => ({ default: m.LeaderboardScreen }))));
 const StatsScreen = withSuspense(React.lazy(() => import('../screens/community/StatsScreen').then(m => ({ default: m.StatsScreen }))));
+const SuggestMatchScreen = withSuspense(React.lazy(() => import('../screens/community/SuggestMatchScreen')));
 
 // Auth sub-screens
 const SuspendedScreen = withSuspense(React.lazy(() => import('../screens/auth/SuspendedScreen')));
@@ -707,6 +708,7 @@ export const AppNavigator = () => {
           <Stack.Screen name="SupportChat" component={SupportChatScreen} />
           <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
           <Stack.Screen name="Stats" component={StatsScreen} />
+          <Stack.Screen name="SuggestMatch" component={SuggestMatchScreen} />
           <Stack.Screen name="BadgeManagement" component={BadgeManagementScreen} />
 
           {/* Friends */}

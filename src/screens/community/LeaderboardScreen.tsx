@@ -198,7 +198,14 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
           </View>
           <View style={s.listAvatarWrap}>
             {item.avatarUrl ? (
-              <Image source={{ uri: item.avatarUrl }} style={s.listAvatar} />
+              <Image
+                source={{ uri: item.avatarUrl }}
+                style={[s.listAvatar, { backgroundColor: '#E5E7EB' }]}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                priority="normal"
+                recyclingKey={item.id}
+              />
             ) : (
               <InitialAvatar name={item.firstName} size={48} isAnonymous={item.isAnonymous} />
             )}
@@ -331,7 +338,14 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
                     <View style={s.avatarWrapperMedium}>
                       <View style={[s.avatarRing, s.avatarRingSilver]}>
                         {top3[1]?.avatarUrl ? (
-                          <Image source={{ uri: top3[1].avatarUrl }} style={s.avatarMedium} />
+                          <Image
+                            source={{ uri: top3[1].avatarUrl }}
+                            style={[s.avatarMedium, { backgroundColor: '#E5E7EB' }]}
+                            contentFit="cover"
+                            cachePolicy="memory-disk"
+                            priority="high"
+                            recyclingKey={top3[1].id}
+                          />
                         ) : (
                           <InitialAvatar name={top3[1]?.firstName ?? ''} size={72} isAnonymous={top3[1]?.isAnonymous} />
                         )}
@@ -353,7 +367,14 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
                     <View style={s.avatarWrapperLarge}>
                       <View style={[s.avatarRing, s.avatarRingGold]}>
                         {top3[0]?.avatarUrl ? (
-                          <Image source={{ uri: top3[0].avatarUrl }} style={s.avatarLarge} />
+                          <Image
+                            source={{ uri: top3[0].avatarUrl }}
+                            style={[s.avatarLarge, { backgroundColor: '#E5E7EB' }]}
+                            contentFit="cover"
+                            cachePolicy="memory-disk"
+                            priority="high"
+                            recyclingKey={top3[0].id}
+                          />
                         ) : (
                           <InitialAvatar name={top3[0]?.firstName ?? ''} size={88} isAnonymous={top3[0]?.isAnonymous} />
                         )}
@@ -372,7 +393,14 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
                     <View style={s.avatarWrapperSmall}>
                       <View style={[s.avatarRing, s.avatarRingBronze]}>
                         {top3[2]?.avatarUrl ? (
-                          <Image source={{ uri: top3[2].avatarUrl }} style={s.avatarSmall} />
+                          <Image
+                            source={{ uri: top3[2].avatarUrl }}
+                            style={[s.avatarSmall, { backgroundColor: '#E5E7EB' }]}
+                            contentFit="cover"
+                            cachePolicy="memory-disk"
+                            priority="high"
+                            recyclingKey={top3[2].id}
+                          />
                         ) : (
                           <InitialAvatar name={top3[2]?.firstName ?? ''} size={64} isAnonymous={top3[2]?.isAnonymous} />
                         )}
@@ -413,6 +441,10 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
           renderItem={renderListItem}
           contentContainerStyle={s.listContent}
           showsVerticalScrollIndicator={false}
+          removeClippedSubviews={true}
+          initialNumToRender={7}
+          maxToRenderPerBatch={7}
+          windowSize={5}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -433,7 +465,14 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
                 <Text style={s.stickyRankText}>#{currentUserRank}</Text>
               </View>
               {currentUser!.avatarUrl ? (
-                <Image source={{ uri: currentUser!.avatarUrl }} style={s.stickyAvatar} />
+                <Image
+                  source={{ uri: currentUser!.avatarUrl }}
+                  style={[s.stickyAvatar, { backgroundColor: '#E5E7EB' }]}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  priority="normal"
+                  recyclingKey={currentUser!.id}
+                />
               ) : (
                 <View style={{ marginRight: 12 }}>
                   <InitialAvatar name={currentUser!.firstName} size={36} />

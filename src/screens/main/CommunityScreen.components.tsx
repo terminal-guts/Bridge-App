@@ -779,6 +779,22 @@ export const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xs,
     color: COLORS.card,
   },
+  // ── Suggest a Match row ───────────────────────────────────────────
+  suggestMatchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E8EDFB',
+  },
+  suggestMatchText: {
+    flex: 1,
+    fontFamily: FONTS.semiBold,
+    fontSize: FONT_SIZES.lg,
+    color: COLORS.primaryAccent,
+  },
   // ── Caught up footer ──────────────────────────────────────────────
   caughtUpFooter: {
     fontFamily: FONTS.regular,

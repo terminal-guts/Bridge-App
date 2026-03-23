@@ -58,20 +58,19 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
 
   // Trigger animation when voted
   useEffect(() => {
-    if (hasVoted) {
-      scaleAnim.value = withSequence(
-        withSpring(1.02, SPRINGS.bouncy),
-        withSpring(1, SPRINGS.responsive),
-      );
-      glowAnim.value = withSequence(
-        withTiming(1, { duration: 200 }),
-        withTiming(0, { duration: 300 }),
-      );
-      if (onVoteAnimationComplete) {
-        setTimeout(onVoteAnimationComplete, 500);
-      }
-    }
-  }, [hasVoted]);
+    if (!hasVoted) return;
+    scaleAnim.value = withSequence(
+      withSpring(1.02, SPRINGS.bouncy),
+      withSpring(1, SPRINGS.responsive),
+    );
+    glowAnim.value = withSequence(
+      withTiming(1, { duration: 200 }),
+      withTiming(0, { duration: 300 }),
+    );
+    if (!onVoteAnimationComplete) return;
+    const timer = setTimeout(onVoteAnimationComplete, 500);
+    return () => clearTimeout(timer);
+  }, [hasVoted, onVoteAnimationComplete]);
 
   const handleVote = async (vote: boolean) => {
     if (hasVoted) return; // Already voted
@@ -99,8 +98,11 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
         <StyledImage
           source={user.photos?.[0]?.url ? { uri: user.photos[0].url } : null}
           className="rounded-full mb-2"
-          style={{ width: 60, height: 60 }}
+          style={{ width: 60, height: 60, backgroundColor: '#E5E7EB' }}
           contentFit="cover"
+          cachePolicy="memory-disk"
+          priority="high"
+          recyclingKey={user.id ?? user.firstName}
         />
 
         {/* Name & Age */}
@@ -144,12 +146,15 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
             <StyledView key={endorsement.id} className="flex-row items-center" style={{ marginTop: index > 0 ? 8 : 0 }}>
               {isFriend && (
                 <StyledImage
-                  source={{
-                    uri: endorsement.endorserProfile.photos?.[0]?.url,
-                  }}
+                  source={endorsement.endorserProfile.photos?.[0]?.url
+                    ? { uri: endorsement.endorserProfile.photos[0].url }
+                    : null}
                   className="rounded-full"
-                  style={{ width: 24, height: 24, marginRight: 8 }}
+                  style={{ width: 24, height: 24, marginRight: 8, backgroundColor: '#E5E7EB' }}
                   contentFit="cover"
+                  cachePolicy="memory-disk"
+                  priority="normal"
+                  recyclingKey={endorsement.id}
                 />
               )}
               <StyledText className="text-xs text-neutral-700">

@@ -3,7 +3,6 @@ module.exports = function (api) {
   return {
     presets: ["babel-preset-expo"],
     plugins: [
-      ["babel-plugin-react-compiler", { compilationMode: "infer" }],
       "nativewind/babel",
     ],
   };

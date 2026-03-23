@@ -160,6 +160,7 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
             value={profile.currentJob || ''}
             onChangeText={(text) => updateProfile({ currentJob: text })}
             placeholder="What do you do?"
+            maxLength={80}
           />
         </StyledView>
         <StyledView className="mb-4">
@@ -170,6 +171,7 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
             value={profile.companyPosition || ''}
             onChangeText={(text) => updateProfile({ companyPosition: text })}
             placeholder="Where do you work?"
+            maxLength={80}
           />
         </StyledView>
 
@@ -224,6 +226,7 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
             value={profile.school || ''}
             onChangeText={(text) => updateProfile({ school: text })}
             placeholder="e.g., Harvard Business School"
+            maxLength={100}
           />
         </StyledView>
       </Card>

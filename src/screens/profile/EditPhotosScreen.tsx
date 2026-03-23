@@ -183,6 +183,11 @@ export const EditPhotosScreen: React.FC<EditPhotosScreenProps> = ({ navigation }
       profile={profile}
       originalProfileJson={originalProfileJson}
       onGoBack={() => navigation.goBack()}
+      validateBeforeSave={() =>
+        profile.photos.length === 0
+          ? 'Add at least one photo before saving your profile.'
+          : null
+      }
     >
       <Card className="mb-6">
         <StyledView className="flex-row items-center justify-between mb-2">

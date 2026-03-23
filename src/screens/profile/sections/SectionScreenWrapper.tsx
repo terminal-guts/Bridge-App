@@ -23,6 +23,7 @@ interface SectionScreenWrapperProps {
   profile: UserProfile;
   originalProfileJson: string | null;
   onGoBack: () => void;
+  validateBeforeSave?: () => string | null;
 }
 
 /**
@@ -36,6 +37,7 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
   profile,
   originalProfileJson,
   onGoBack,
+  validateBeforeSave,
 }) => {
   const { isOffline } = useNetworkStatus();
   const savingRef = useRef(false);
@@ -55,8 +57,12 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
     savingRef.current = true;
 
     try {
-      // Upload any new photos (file:// URIs) to Supabase Storage first
+      // Upload any new photos (file:// URIs) to Supabase Storage first.
+      // If a photo upload fails, skip it rather than aborting — text field
+      // changes must always be persisted regardless of photo upload outcome.
       const uploadedPhotos = [];
+      let hadPhotoUploadFailure = false;
+
       for (const photo of profileSnapshot.photos || []) {
         if (photo.url.startsWith('file://')) {
           const uploadRes = await uploadPhoto(photo.url, photo.order, photo.isMain);
@@ -64,8 +70,8 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
             uploadedPhotos.push(uploadRes.data.photo);
           } else {
             logger.error('Background photo upload failed:', uploadRes.error?.message);
-            Alert.alert('Save Failed', 'Failed to upload photo. Please try editing again.');
-            return;
+            hadPhotoUploadFailure = true;
+            // Do not push failed photo — continue to save all other changes
           }
         } else {
           uploadedPhotos.push(photo);
@@ -78,6 +84,11 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
       if (!result.ok) {
         logger.error('Background profile save failed:', result.error?.message);
         Alert.alert('Save Failed', 'Your changes could not be saved. Please try again.');
+      } else if (hadPhotoUploadFailure) {
+        Alert.alert(
+          'Photo Upload Failed',
+          'Your other changes were saved, but one or more photos could not be uploaded. Please try adding them again.'
+        );
       }
     } catch (error: any) {
       logger.error('Background save exception:', error);
@@ -105,11 +116,21 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
       return;
     }
 
+    // Run optional pre-save validation (e.g. photo count checks).
+    // If it returns an error string, block the save and stay on screen.
+    if (validateBeforeSave) {
+      const validationError = validateBeforeSave();
+      if (validationError) {
+        Alert.alert('Cannot Save', validationError);
+        return;
+      }
+    }
+
     // Navigate back immediately — save happens in background
     const profileSnapshot = { ...profile };
     onGoBack();
     saveInBackground(profileSnapshot);
-  }, [profile, isOffline, onGoBack, hasChanges, saveInBackground]);
+  }, [profile, isOffline, onGoBack, hasChanges, saveInBackground, validateBeforeSave]);
 
   return (
     <ScreenWrapper>

@@ -20,3 +20,4 @@ export { InterestsStep } from './InterestsStep';
 export { PhotoUploadStep } from './PhotoUploadStep';
 export { DeepQuestionsStep } from './DeepQuestionsStep';
 export { WelcomeToBridgeStep } from './WelcomeToBridgeStep';
+export { OnboardingProposalStep } from './OnboardingProposalStep';

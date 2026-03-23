@@ -50,6 +50,7 @@ import { WelcomeToBridgeStep } from './steps/WelcomeToBridgeStep';
 import { MatchmakingModeStep } from './steps/MatchmakingModeStep';
 import { MatchmakerProfileStep } from './steps/MatchmakerProfileStep';
 import { MatchmakerInviteStep } from './steps/MatchmakerInviteStep';
+import { OnboardingProposalStep } from './steps/OnboardingProposalStep';
 
 interface OnboardingScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Onboarding'>;
@@ -89,6 +90,7 @@ const AnimatedProgressSegment: React.FC<{ active: boolean }> = ({ active }) => {
 // Profile steps shared by both signup paths
 const PROFILE_STEPS: StepDefinition[] = [
   { component: NameStep, title: 'Name', hasTextInput: true, mappingKey: 'name' },
+  { component: OnboardingProposalStep, title: 'First Votes', hasTextInput: false },
   { component: AgeStep, title: 'Birthday', hasTextInput: false, mappingKey: 'age' },
   { component: GenderStep, title: 'Gender', hasTextInput: false, mappingKey: 'gender' },
   { component: PronounsStep, title: 'Pronouns', hasTextInput: false, mappingKey: 'pronouns' },
