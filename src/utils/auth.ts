@@ -7,7 +7,6 @@
  */
 
 import { supabase } from '../lib/supabase';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createLogger } from './secureLogger';
 
 const logger = createLogger('Auth');
@@ -33,17 +32,6 @@ export async function getAuthenticatedUserId(): Promise<string | null> {
   if (cachedUserId) return cachedUserId;
 
   try {
-    // Priority 1: Custom auth storage (required by architecture)
-    const storedUserJson = await AsyncStorage.getItem('bridge_auth_user');
-    if (storedUserJson) {
-      const userData = JSON.parse(storedUserJson);
-      if (userData?.id) {
-        cachedUserId = userData.id;
-        return userData.id;
-      }
-    }
-
-    // Priority 2: Fallback to Supabase session (no network call)
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user?.id) {
       cachedUserId = session.user.id;
@@ -82,20 +70,6 @@ export async function requireAuthWithPhone(): Promise<{ userId: string; phone: s
       return { userId: cachedUserId, phone: '' };
     }
 
-    // Priority 1: Custom auth storage
-    const storedUserJson = await AsyncStorage.getItem('bridge_auth_user');
-    if (storedUserJson) {
-      const userData = JSON.parse(storedUserJson);
-      if (userData?.id) {
-        cachedUserId = userData.id;
-        return {
-          userId: userData.id,
-          phone: userData.phone || '',
-        };
-      }
-    }
-
-    // Priority 2: Fallback to Supabase session (no network call)
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
       cachedUserId = session.user.id;

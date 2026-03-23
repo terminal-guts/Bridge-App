@@ -117,6 +117,7 @@ function mapBackendToUserProfile(data: Record<string, any>): UserProfile {
       url: p.url,
       isMain: p.is_main || false,
       order: p.display_order || 0,
+      ...(p.blurhash ? { blurhash: p.blurhash as string } : {}),
     })),
     preferences: {
       ageMin: data.preferences?.age_min ?? data.preferences?.ageMin ?? 22,
@@ -340,8 +341,11 @@ export const updateUserProfile = async (
       profilePayload.photos = updates.photos
         .filter(p => p.url && !p.url.startsWith('file://'))
         .map(p => ({
-          ...p,
+          id: p.id,
           url: extractStoragePath(p.url),
+          is_main: p.isMain,
+          display_order: p.order,
+          ...(p.blurhash ? { blurhash: p.blurhash } : {}),
         }));
     }
 

@@ -26,6 +26,7 @@ import { COLORS } from '../../../theme/colors';
 import { FONTS } from '../../../constants/typography';
 import { glowShadow } from '../../../theme/shadows';
 import { EvaIcon } from '../../icons';
+import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
 
 const StyledView = styled(View) as typeof View;
 const StyledText = styled(Text) as typeof Text;
@@ -81,13 +82,15 @@ export function AwaitingResponseCard({ proposal }: AwaitingResponseCardProps) {
       <StyledView className="items-center mb-5">
         <StyledImage
           source={{
-            uri: proposal.partnerProfile.photos?.[0]?.url,
+            uri: getOptimizedPhotoUrl(proposal.partnerProfile.photos?.[0]?.url, 'match'),
           }}
+          placeholder={proposal.partnerProfile.photos?.[0]?.blurhash ? { blurhash: proposal.partnerProfile.photos[0].blurhash } : undefined}
           className="w-32 h-32 rounded-full mb-3"
           style={{
             borderWidth: 4,
             borderColor: COLORS.borderGold,
           }}
+          transition={300}
         />
 
         {/* Partner Info */}

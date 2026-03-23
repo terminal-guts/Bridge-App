@@ -132,22 +132,23 @@ export async function browseCandidates(): Promise<{ ok: boolean; data?: UserProf
     const userId = await getAuthenticatedUserId();
     if (!userId) throw new Error('Not authenticated');
 
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .neq('user_id', userId)
-      .eq('role', 'dater') // Essential: Matchmakers never show up in browse
-      .order('created_at', { ascending: false })
-      .limit(20);
+    // Fetch candidates and roster in parallel (independent queries)
+    const [{ data, error }, { data: rosterData }] = await Promise.all([
+      supabase
+        .from('user_profiles')
+        .select('*')
+        .neq('user_id', userId)
+        .eq('role', 'dater') // Essential: Matchmakers never show up in browse
+        .order('created_at', { ascending: false })
+        .limit(20),
+      supabase
+        .from('roster')
+        .select('user_id')
+        .eq('matchmaker_id', userId),
+    ]);
 
     if (error) throw error;
 
-    // Filter out users already in roster (frontend filtering for now, should be server-side)
-    const { data: rosterData } = await supabase
-      .from('roster')
-      .select('user_id')
-      .eq('matchmaker_id', userId);
-    
     const rosterIds = new Set((rosterData || []).map(r => r.user_id).filter(Boolean));
     const filteredProfiles = (data || [])
       .filter(p => !rosterIds.has(p.user_id))

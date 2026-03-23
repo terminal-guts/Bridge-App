@@ -119,8 +119,23 @@ Deno.serve(async (req: Request) => {
 
     const selected = eligible.slice(0, GATE_SIZE);
 
+    // ── Daily assignment quota: cap at 6 new assignments per user per day ──
+    const DAILY_ASSIGNMENT_CAP = 6;
+    const todayMidnightUTC = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z').toISOString();
+    const { count: todayAssignmentCount } = await supabase
+      .from('pool_vote_assignments')
+      .select('*', { count: 'exact', head: true })
+      .eq('voter_id', userId)
+      .gte('created_at', todayMidnightUTC);
+
+    const remainingQuota = Math.max(0, DAILY_ASSIGNMENT_CAP - (todayAssignmentCount ?? 0));
+
     // ── Create pool_vote_assignments for any newly assigned proposals ────
-    const newAssignments = selected.filter(p => !userAssignedIds.has(p.id));
+    // Only create new rows for proposals not already assigned, up to remaining quota.
+    const newAssignments = selected
+      .filter(p => !userAssignedIds.has(p.id))
+      .slice(0, remainingQuota);
+
     if (newAssignments.length > 0) {
       await supabase
         .from('pool_vote_assignments')
@@ -159,7 +174,7 @@ Deno.serve(async (req: Request) => {
           .in('user_id', profileIds),
         supabase
           .from('user_preferences')
-          .select('user_id, age_min, age_max, preferred_height_min_inches, preferred_height_max_inches, partner_drinking, partner_cannabis, partner_tobacco, partner_other_drugs, preferred_ethnicities, preferred_politics')
+          .select('user_id, age_min, age_max, preferred_height_min_inches, preferred_height_max_inches, partner_drinking, partner_cannabis, partner_tobacco, partner_other_drugs')
           .in('user_id', profileIds),
       ]);
 
@@ -186,8 +201,6 @@ Deno.serve(async (req: Request) => {
           partner_cannabis: prefs.partner_cannabis || null,
           partner_tobacco: prefs.partner_tobacco || null,
           partner_other_drugs: prefs.partner_other_drugs || null,
-          preferred_ethnicities: prefs.preferred_ethnicities,
-          preferred_politics: prefs.preferred_politics,
         };
       }
     }
@@ -207,7 +220,7 @@ Deno.serve(async (req: Request) => {
   } catch (err: unknown) {
     console.error('get-proposals-for-voting error:', err);
     return Response.json(
-      { error: err instanceof Error ? err.message : 'Internal server error' },
+      { error: 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

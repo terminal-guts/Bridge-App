@@ -142,7 +142,7 @@ export const ShareableMatchCard = React.forwardRef<ViewShot, ShareableMatchCardP
                   source={{ uri: user1Photo }}
                   style={styles.photo}
                   contentFit="cover"
-                  cachePolicy="disk"
+                  cachePolicy="memory-disk"
                 />
               ) : (
                 <LinearGradient colors={[COLORS.primaryButton, '#162850']} style={styles.photo} />
@@ -161,7 +161,7 @@ export const ShareableMatchCard = React.forwardRef<ViewShot, ShareableMatchCardP
                   source={{ uri: user2Photo }}
                   style={styles.photo}
                   contentFit="cover"
-                  cachePolicy="disk"
+                  cachePolicy="memory-disk"
                 />
               ) : (
                 <LinearGradient colors={[COLORS.primaryButton, '#162850']} style={styles.photo} />
@@ -191,7 +191,7 @@ export const ShareableMatchCard = React.forwardRef<ViewShot, ShareableMatchCardP
                         { marginLeft: i === 0 ? 0 : AVATAR_OVERLAP, zIndex: MAX_AVATARS - i },
                       ]}
                       contentFit="cover"
-                      cachePolicy="disk"
+                      cachePolicy="memory-disk"
                     />
                   ))}
                 </View>

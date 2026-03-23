@@ -5,7 +5,7 @@
  * Handles different contexts: own profile, grid candidates, match proposals, active matches.
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Modal, ScrollView, Text, TouchableOpacity, Dimensions, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { formatProfileValue, formatGenderDisplay } from '../../utils/formatProfileValue';
@@ -60,6 +60,14 @@ export function ProfileView({
 }: ProfileViewProps) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
+
+  // Reset photo index and scroll position when the displayed profile changes so
+  // the dot indicator and scroll offset don't carry over from a previous profile.
+  useEffect(() => {
+    if (!profile) return;
+    setCurrentPhotoIndex(0);
+    scrollRef.current?.scrollTo({ x: SCREEN_WIDTH - 40, y: 0, animated: false });
+  }, [profile?.id]);
 
   if (!profile) return null;
 
@@ -120,10 +128,12 @@ export function ProfileView({
             {photos.length === 1 ? (
               <StyledImage
                 source={{ uri: photos[0].url }}
+                placeholder={photos[0].blurhash ? { blurhash: photos[0].blurhash } : undefined}
                 style={{ width: '100%', height: 280, borderRadius: 16, backgroundColor: COLORS.backgroundGrayMedium }}
                 contentFit="cover"
-                transition={0}
-                cachePolicy="disk"
+                transition={300}
+                cachePolicy="memory-disk"
+                priority="high"
               />
             ) : (
               <>
@@ -154,10 +164,12 @@ export function ProfileView({
                     <StyledView key={`loop-${index}`} style={{ width: SCREEN_WIDTH - 40 }}>
                       <StyledImage
                         source={{ uri: photo.url }}
+                        placeholder={photo.blurhash ? { blurhash: photo.blurhash } : undefined}
                         style={{ width: '100%', height: 280, borderRadius: 16, backgroundColor: COLORS.backgroundGrayMedium }}
                         contentFit="cover"
-                        transition={0}
-                        cachePolicy="disk"
+                        transition={300}
+                        cachePolicy="memory-disk"
+                        priority={index === 1 ? 'high' : 'normal'}
                       />
                     </StyledView>
                   ))}

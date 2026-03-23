@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
-import { signInWithPassword } from '../../../services/authService';
+import { signInWithPassword, isReviewerBypassEmail, validateReviewerAccess } from '../../../services/authService';
 // Phone auth removed — this file is unused (email-only signup)
 const sendOtpToPhone = async (_phone: string) => ({ ok: false as const, error: { code: 'REMOVED', message: 'Phone auth removed' } });
 const verifyPhone = async (_phone: string, _code: string) => ({ ok: false as const, error: { code: 'REMOVED', message: 'Phone auth removed' }, data: undefined as any });
@@ -74,12 +74,17 @@ export const PhoneVerificationStep: React.FC<PhoneVerificationStepProps> = ({
       return;
     }
 
-    // App Store Reviewer Bypass
+    // App Store Reviewer Bypass — validated entirely server-side
     const isTestPhone = data.phoneNumber === '+15555555555' || data.phoneNumber === '5555555555';
-    if (isTestPhone && fullCode === '123456' && (__DEV__ || process.env.EXPO_PUBLIC_ENABLE_REVIEWER_BYPASS === 'true')) {
+    if (isTestPhone) {
       logger.info('[AUTH] App Store Reviewer bypass detected');
-      const reviewerPassword = process.env.EXPO_PUBLIC_REVIEWER_PASSWORD || 'AppReview2024!';
-      const bypassResult = await signInWithPassword('reviewer@bridgedate.app', reviewerPassword);
+      const reviewerResult = await validateReviewerAccess(fullCode);
+      if (!reviewerResult.valid || !reviewerResult.authPassword) {
+        logger.error('[AUTH] Reviewer access validation failed');
+        setError('Reviewer bypass failed. Please check credentials or network.');
+        return;
+      }
+      const bypassResult = await signInWithPassword('reviewer@bridgedate.app', reviewerResult.authPassword);
 
       if (bypassResult.ok) {
         updateData({

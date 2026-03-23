@@ -51,13 +51,17 @@ export async function castProposalVote(
   voteType: ProposalVoteType,
 ): Promise<VoteResult> {
   // Edge Function extracts voter ID from JWT — no need to pass voterId
-  const { data, error } = await supabase.functions.invoke('process-vote', {
+  const { data, error, response } = await supabase.functions.invoke('process-vote', {
     body: {
       proposal_id: proposalId,
       vote_type: voteType,
     },
   });
-  if (error) throw new Error(`Cast vote failed: ${error.message}`);
+  if (error) {
+    const err: Error & { status?: number } = new Error(`Cast vote failed: ${error.message}`);
+    err.status = response?.status;
+    throw err;
+  }
   return data;
 }
 
@@ -71,7 +75,7 @@ export async function getPendingDecisions(userId: string): Promise<{
   // Direct Supabase query — no Edge Function needed
   const { data: proposals, error } = await supabase
     .from('proposals')
-    .select('*')
+    .select('id, user_a_id, user_b_id, status, pool_yes_votes, pool_no_votes, friend_yes_votes, friend_no_votes, compatibility_score, category_scores, voting_started_at, confirmed_at, rejected_at, expired_at, sent_to_users_at, decision_deadline_at, user_a_decision, user_b_decision, user_a_decided_at, user_b_decided_at, created_at, updated_at, vote_context, voting_expires_at')
     .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`)
     .eq('status', 'deciding');
 

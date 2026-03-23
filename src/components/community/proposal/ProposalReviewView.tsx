@@ -27,9 +27,12 @@ import {
   Platform,
   UIManager,
   Dimensions,
+  Image as RNImage,
 } from 'react-native';
 import LottieView from 'lottie-react-native';
-const CONFETTI_ANIM = require('../../../../assets/Icons/AnimatedIcons/confetti.json');
+// Confetti JSON is loaded lazily on first Yes vote — avoids parsing it at module init
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let confettiAnimSource: any = null;
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -55,6 +58,7 @@ import {
 // Sub-components
 import { SectionCard, SmartPillCloudSection } from './SmartPillCloud';
 import { ProposalPhotoCard, PHOTO_HEIGHT } from './ProposalPhotoCard';
+import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
 import { QuestionCarousel } from './QuestionCarousel';
 import { LiveVoteBar } from './LiveVoteBar';
 import { BadgeComparisonSection } from '../../badges/BadgeComparisonSection';
@@ -123,12 +127,42 @@ export function ProposalReviewView({
   const fetchedDeepQuestions = useDeepQuestions(proposals, currentIndex);
   const resolvedDeepQuestions = deepQuestions ?? fetchedDeepQuestions;
 
+  // ── Prefetch next proposal's images ──────────────────────────────────────
+  useEffect(() => {
+    const nextIndex = currentIndex + 1;
+    if (nextIndex >= proposals.length) return;
+    const next = proposals[nextIndex];
+    const allPhotos = [
+      ...(next.userA.photos || []),
+      ...(next.userB.photos || []),
+    ];
+    let cancelled = false;
+    for (const photo of allPhotos) {
+      if (photo.url) {
+        const optimized = getOptimizedPhotoUrl(photo.url, 'card');
+        if (optimized) {
+          RNImage.prefetch(optimized).catch(() => {
+            // Ignore errors — prefetch is best-effort
+          }).then(() => {
+            // Ignore result if component unmounted before prefetch completed
+            if (cancelled) return;
+          }).catch(() => {});
+        }
+      }
+    }
+    return () => { cancelled = true; };
+  }, [currentIndex, proposals]);
+
   // ── Confetti on Yes vote ──────────────────────────────────────────────────
   const confettiRef = useRef<LottieView>(null);
   const [showConfetti, setShowConfetti] = useState(false);
 
   const handleVoteWithEffects = useCallback(async (vote: 'yes' | 'no' | 'unsure') => {
     if (vote === 'yes') {
+      // Load confetti JSON once on first yes-vote, cache in module variable
+      if (!confettiAnimSource) {
+        confettiAnimSource = require('../../../../assets/Icons/AnimatedIcons/confetti.json');
+      }
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 2500);
     }
@@ -357,24 +391,28 @@ export function ProposalReviewView({
         unsureButtonAnimatedStyle={unsureButtonAnimatedStyle}
       />
 
-      {/* ── For Friend Modal ──────────────────────────────────────────── */}
-      <ForFriendModal
-        visible={showForFriendModal}
-        forFriendStep={forFriendStep}
-        userA={userA}
-        userB={userB}
-        photoAUrl={photoA?.url}
-        photoBUrl={photoB?.url}
-        proposalId={proposal.id}
-        selectedPersonSide={selectedPersonSide}
-        selectedFriendId={selectedFriendId}
-        friendsList={friendsList}
-        loadingFriends={loadingFriends}
-        onPersonSelect={handlePersonSelect}
-        onFriendSelect={setSelectedFriendId}
-        onCancel={handleForFriendCancel}
-        onConfirm={handleForFriendConfirm}
-      />
+      {/* ── For Friend Modal — only mounted when visible ────────────── */}
+      {showForFriendModal && (
+        <ForFriendModal
+          visible={showForFriendModal}
+          forFriendStep={forFriendStep}
+          userA={userA}
+          userB={userB}
+          photoAUrl={photoA?.url}
+          photoBUrl={photoB?.url}
+          photoABlurhash={photoA?.blurhash}
+          photoBBlurhash={photoB?.blurhash}
+          proposalId={proposal.id}
+          selectedPersonSide={selectedPersonSide}
+          selectedFriendId={selectedFriendId}
+          friendsList={friendsList}
+          loadingFriends={loadingFriends}
+          onPersonSelect={handlePersonSelect}
+          onFriendSelect={setSelectedFriendId}
+          onCancel={handleForFriendCancel}
+          onConfirm={handleForFriendConfirm}
+        />
+      )}
 
       {/* Vote flash overlay */}
       {voteFlashColor && (
@@ -388,7 +426,7 @@ export function ProposalReviewView({
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           <LottieView
             ref={confettiRef}
-            source={CONFETTI_ANIM}
+            source={confettiAnimSource!}
             autoPlay
             loop={false}
             style={StyleSheet.absoluteFill}

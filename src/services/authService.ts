@@ -11,8 +11,7 @@ import { invalidateProfileCache } from './profileService';
 import { supabase } from '../lib/supabase';
 import { clearCachedUserId } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
-
-declare const __DEV__: boolean;
+import { checkRateLimit, recordRateLimitAttempt, RateLimitAction } from '../utils/rateLimiter';
 
 const logger = createLogger('AuthService');
 
@@ -32,11 +31,30 @@ export const isAllowedEmailDomain = (email: string): boolean => {
 };
 
 /**
- * Check if this is the App Store reviewer bypass email and bypass is enabled.
+ * Check if this is the App Store reviewer bypass email.
+ * Only checks the email format — actual password validation is server-side.
  */
 export const isReviewerBypassEmail = (email: string): boolean => {
-  return email.toLowerCase() === REVIEWER_EMAIL &&
-    (__DEV__ || process.env.EXPO_PUBLIC_ENABLE_REVIEWER_BYPASS === 'true');
+  return email.toLowerCase() === REVIEWER_EMAIL;
+};
+
+/**
+ * Validate the reviewer access password via server-side edge function.
+ * Returns the Supabase Auth password on success so the client never embeds it.
+ */
+export const validateReviewerAccess = async (password: string): Promise<{ valid: boolean; authPassword?: string }> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('validate-reviewer-access', {
+      body: { password },
+    });
+    if (error) return { valid: false };
+    if (data?.valid === true) {
+      return { valid: true, authPassword: data.authPassword };
+    }
+    return { valid: false };
+  } catch {
+    return { valid: false };
+  }
 };
 
 // Flag set before intentional sign-outs so AppNavigator doesn't show a "Session Expired" toast
@@ -127,6 +145,19 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
       return { ok: true };
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+    const rateLimitCheck = await checkRateLimit(normalizedEmail, RateLimitAction.OTP_SEND);
+    if (rateLimitCheck.ok && rateLimitCheck.data && !rateLimitCheck.data.allowed) {
+      return {
+        ok: false,
+        error: {
+          code: 'RATE_LIMITED',
+          message: 'Too many requests. Please wait before requesting another code.',
+        },
+      };
+    }
+    await recordRateLimitAttempt(normalizedEmail, RateLimitAction.OTP_SEND);
+
     logger.info('[EMAIL] Sending OTP via Supabase to:', email);
 
     const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
@@ -174,11 +205,24 @@ export const sendLoginOtpToEmail = async (email: string): Promise<ApiResponse<vo
       return { ok: true };
     }
 
+    const normalizedLoginEmail = email.toLowerCase().trim();
+    const loginRateLimitCheck = await checkRateLimit(normalizedLoginEmail, RateLimitAction.OTP_SEND);
+    if (loginRateLimitCheck.ok && loginRateLimitCheck.data && !loginRateLimitCheck.data.allowed) {
+      return {
+        ok: false,
+        error: {
+          code: 'RATE_LIMITED',
+          message: 'Too many requests. Please wait before requesting another code.',
+        },
+      };
+    }
+    await recordRateLimitAttempt(normalizedLoginEmail, RateLimitAction.OTP_SEND);
+
     logger.info('[EMAIL] Sending login OTP to:', email);
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: true },
+      options: { shouldCreateUser: false },
     });
 
     if (error) {
@@ -206,8 +250,10 @@ export const signOut = async (): Promise<ApiResponse<void>> => {
     logger.info('[AUTH] Signing out user');
     _intentionalSignOut = true;
 
-    // Clean up message subscriptions and cached profile data
-    import('./messageService').then(m => m.cleanupSubscriptions());
+    // Clean up message subscriptions and cached profile data.
+    // Awaited so subscriptions are released before the session is torn down,
+    // preventing Realtime subscription leaks on sign-out.
+    await import('./messageService').then(m => m.cleanupSubscriptions());
     invalidateProfileCache();
     clearCachedUserId();
     await AsyncStorage.removeItem('bridge_auth_user');

@@ -64,6 +64,7 @@ Deno.serve(async (req: Request) => {
 
       const { error: otpError } = await anonClient.auth.signInWithOtp({
         email: normalizedEmail,
+        options: { shouldCreateUser: false },
       });
 
       if (otpError) {
@@ -112,7 +113,7 @@ Deno.serve(async (req: Request) => {
           email_verified: true,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", user.id);
+        .eq("user_id", user.id);
 
       if (updateError) {
         console.error("Failed to update profile:", updateError.message);

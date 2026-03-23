@@ -47,7 +47,7 @@ export const StaggerItem: React.FC<{
   slideDistance?: number;
   maxAnimated?: number;
   style?: ViewStyle;
-}> = ({
+}> = React.memo(({
   index,
   children,
   staggerDelay = STAGGER.fast,
@@ -83,4 +83,4 @@ export const StaggerItem: React.FC<{
       {children}
     </Animated.View>
   );
-};
+});

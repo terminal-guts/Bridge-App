@@ -30,16 +30,17 @@ export async function getFriendActiveProposal(
   friendName: string,
 ): Promise<{ proposal: Proposal; deepQuestions: DeepQuestionData[] } | { error: string }> {
   // Find the friend's active proposal (they could be user_a or user_b)
+  const proposalColumns = 'id, user_a_id, user_b_id, status, pool_yes_votes, pool_no_votes, friend_yes_votes, friend_no_votes, compatibility_score, category_scores, voting_started_at, confirmed_at, rejected_at, expired_at, sent_to_users_at, decision_deadline_at, user_a_decision, user_b_decision, user_a_decided_at, user_b_decided_at, created_at, updated_at, vote_context, voting_expires_at';
   const [{ data: proposalA }, { data: proposalB }] = await Promise.all([
     supabase
       .from('proposals')
-      .select('*')
+      .select(proposalColumns)
       .eq('user_a_id', friendId)
       .eq('status', 'pending')
       .maybeSingle(),
     supabase
       .from('proposals')
-      .select('*')
+      .select(proposalColumns)
       .eq('user_b_id', friendId)
       .eq('status', 'pending')
       .maybeSingle(),

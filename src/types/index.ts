@@ -160,6 +160,7 @@ export interface Photo {
   url: string;
   isMain: boolean;
   order: number;
+  blurhash?: string;
 }
 
 export interface LifestylePreferences {

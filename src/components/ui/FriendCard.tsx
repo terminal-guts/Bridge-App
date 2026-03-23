@@ -77,6 +77,7 @@ export const FriendCard = React.memo<FriendCardProps>(({
     // Normalize data
     const name = friend.friend?.firstName || friend.name || 'Friend';
     const photoUrl = friend.friend?.photos?.[0]?.url || friend.photoUrl || undefined;
+    const photoBlurhash = friend.friend?.photos?.[0]?.blurhash || undefined;
     const streak = friend.streakDays ?? friend.streak ?? 0;
     const points = friend.karmaScore?.karmaPoints ?? friend.karmaPoints ?? 0;
 
@@ -129,12 +130,13 @@ export const FriendCard = React.memo<FriendCardProps>(({
                 <StyledView style={styles.avatarContainer}>
                     <StyledImage
                         source={photoUrl ? { uri: photoUrl } : null}
+                        placeholder={photoBlurhash ? { blurhash: photoBlurhash } : undefined}
                         style={[
                             styles.avatar,
                             { borderColor: variant === 'pending' ? '#EFF6FF' : '#F0FDF4', backgroundColor: '#E5E7EB' }
                         ]}
-                        cachePolicy="disk"
-                        transition={0}
+                        cachePolicy="memory-disk"
+                        transition={300}
                         accessibilityRole="image"
                         accessibilityLabel={`${name}'s photo`}
                     />

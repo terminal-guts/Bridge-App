@@ -44,7 +44,7 @@ Deno.serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const forbidden = requireServiceRole(req);
+  const forbidden = await requireServiceRole(req);
   if (forbidden) return forbidden;
 
   try {

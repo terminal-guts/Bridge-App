@@ -349,7 +349,7 @@ export const BlurredPhoto: React.FC<{ uri: string; style?: object; index: number
   const BLUR_LEVELS = [5, 10, 12, 15];
   return (
     <StyledView style={style}>
-      <StyledImage source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" blurRadius={BLUR_LEVELS[Math.min(index, BLUR_LEVELS.length - 1)]} transition={0} cachePolicy="disk" />
+      <StyledImage source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" blurRadius={BLUR_LEVELS[Math.min(index, BLUR_LEVELS.length - 1)]} transition={0} cachePolicy="memory-disk" priority="high" />
       <StyledView className="absolute inset-0" style={{ backgroundColor: `rgba(255,255,255,${0.03 + index * 0.02})` }} />
     </StyledView>
   );

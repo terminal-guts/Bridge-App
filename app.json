@@ -1,5 +1,6 @@
 {
   "expo": {
+    "newArchEnabled": true,
     "name": "Bridge: Social Matchmaking",
     "slug": "bridge",
     "version": "1.0.0",
@@ -18,11 +19,13 @@
       "assets/*.json"
     ],
     "ios": {
+      "jsEngine": "hermes",
       "supportsTablet": false,
       "bundleIdentifier": "com.bridgedate.app",
       "buildNumber": "1",
       "appleTeamId": "D9C93RG4RZ",
       "infoPlist": {
+        "CADisableMinimumFrameDurationOnPhone": true,
         "NSCameraUsageDescription": "Bridge needs camera access to take profile photos.",
         "NSPhotoLibraryUsageDescription": "Bridge needs photo library access to upload profile photos.",
         "NSPhotoLibraryAddUsageDescription": "Bridge needs permission to save photos.",
@@ -34,6 +37,7 @@
       "runtimeVersion": "1.0.0"
     },
     "android": {
+      "jsEngine": "hermes",
       "adaptiveIcon": {
         "foregroundImage": "./assets/BridgeLogo-Photoroom.png",
         "backgroundColor": "#ffffff"
@@ -56,7 +60,15 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font",
+      ["expo-font", {
+        "fonts": [
+          "node_modules/@expo-google-fonts/plus-jakarta-sans/400Regular/PlusJakartaSans_400Regular.ttf",
+          "node_modules/@expo-google-fonts/plus-jakarta-sans/500Medium/PlusJakartaSans_500Medium.ttf",
+          "node_modules/@expo-google-fonts/plus-jakarta-sans/600SemiBold/PlusJakartaSans_600SemiBold.ttf",
+          "node_modules/@expo-google-fonts/plus-jakarta-sans/700Bold/PlusJakartaSans_700Bold.ttf",
+          "node_modules/@expo-google-fonts/plus-jakarta-sans/800ExtraBold/PlusJakartaSans_800ExtraBold.ttf"
+        ]
+      }],
       "expo-image-picker",
       "expo-av",
       [

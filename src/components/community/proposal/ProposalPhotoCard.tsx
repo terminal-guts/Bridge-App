@@ -3,12 +3,12 @@
  * Extracted from ProposalReviewView.tsx.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS, FONT_SIZES } from '../../../constants/typography';
-import { getOptimizedImageUrl } from '../../../utils/imageUtils';
+import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const PHOTO_HEIGHT = Math.max(220, Math.min(Math.round(SCREEN_HEIGHT * 0.36), 340));
@@ -16,7 +16,7 @@ const PHOTO_RADIUS = 16;
 
 export { PHOTO_HEIGHT, PHOTO_RADIUS };
 
-export function ProposalPhotoCard({
+export const ProposalPhotoCard = React.memo(function ProposalPhotoCard({
   photos,
   name,
   age,
@@ -25,7 +25,7 @@ export function ProposalPhotoCard({
   side,
   proposalId,
 }: {
-  photos: Array<{ url?: string; isMain?: boolean }>;
+  photos: Array<{ url?: string; isMain?: boolean; blurhash?: string }>;
   name: string;
   age?: number;
   width: number;
@@ -34,10 +34,11 @@ export function ProposalPhotoCard({
   proposalId: string;
 }) {
   const [currentPage, setCurrentPage] = useState(0);
-  const validPhotos = (photos || []).filter((p: any) => p.url).map((p: any) => ({
+  const validPhotos = useMemo(() => (photos || []).filter((p: any) => p.url).map((p: any) => ({
     ...p,
-    url: getOptimizedImageUrl(p.url, width) || p.url,
-  }));
+    url: getOptimizedPhotoUrl(p.url, 'card') || p.url,
+    blurhash: p.blurhash,
+  })), [photos]);
   const showCarousel = validPhotos.length > 1;
   const mainPhoto = validPhotos.find((p: any) => p.isMain) || validPhotos[0];
 
@@ -65,10 +66,12 @@ export function ProposalPhotoCard({
             <Image
               key={`${proposalId}-${side}-${i}`}
               source={{ uri: photo.url }}
-              style={{ width, height }}
+              placeholder={photo.blurhash ? { blurhash: photo.blurhash } : undefined}
+              style={{ width, height, backgroundColor: '#E5E7EB' }}
               contentFit="cover"
-              transition={0}
-              cachePolicy="disk"
+              transition={300}
+              cachePolicy="memory-disk"
+              priority={i === 0 ? 'high' : 'normal'}
               recyclingKey={`${proposalId}-${side}-${i}`}
             />
           ))}
@@ -76,10 +79,12 @@ export function ProposalPhotoCard({
       ) : (
         <Image
           source={mainPhoto?.url ? { uri: mainPhoto.url } : null}
+          placeholder={mainPhoto?.blurhash ? { blurhash: mainPhoto.blurhash } : undefined}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, ...borderRadiusStyle, backgroundColor: '#E5E7EB' }}
           contentFit="cover"
-          transition={0}
-          cachePolicy="disk"
+          transition={300}
+          cachePolicy="memory-disk"
+          priority="high"
           recyclingKey={`${proposalId}-${side}`}
         />
       )}
@@ -117,9 +122,9 @@ export function ProposalPhotoCard({
       )}
       <View style={{ position: 'absolute', bottom: 14, left: 14 }} pointerEvents="none">
         <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: FONT_SIZES['5xl'], color: '#FFF', letterSpacing: -0.3 }}>
-          {name.split(' ').map(n => n.charAt(0).toUpperCase()).join('').slice(0, 2).split('').join('.')}.{age ? `, ${age}` : ''}
+          {name.split(' ').map(n => n.charAt(0).toUpperCase()).join('').slice(0, 2).split('').join('.')}{age ? `, ${age}` : ''}
         </Text>
       </View>
     </View>
   );
-}
+});

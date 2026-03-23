@@ -4,6 +4,12 @@
 
 This is the **production codebase** for Bridge — the app being deployed to the App Store. It contains both the frontend (React Native/Expo) and backend (Supabase, in the `supabase/` subdirectory). Treat all code here as production-quality.
 
+## App Store Reviewer Bypass — Intentionally Kept, Do Not Remove Yet
+
+The reviewer bypass (`EXPO_PUBLIC_ENABLE_REVIEWER_BYPASS`, `EXPO_PUBLIC_REVIEWER_PASSWORD`, and the `isReviewerBypassEmail` logic in `src/services/authService.ts`) is a **known, deliberate short-term decision**. It exists so Apple reviewers can log in without a Rice email address.
+
+**Do not remove or flag this as a bug.** It will be removed after the app is accepted to the App Store. Once accepted, the bypass will be stripped from production builds.
+
 ## LOCKED: Bottom Navigation Bar
 
 The bottom nav bar values in `src/navigation/AppNavigator.tsx` (`CustomTabBar`) are **finalized and must not be changed** without explicit user instruction. Do not adjust any of the following:

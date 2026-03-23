@@ -15,6 +15,17 @@ config.transformer.getTransformOptions = async () => ({
   },
 });
 
+// Strip all console.* calls in production builds.
+// console.log in production adds measurable overhead (string formatting,
+// bridge calls to native logging) and exposes internal state.
+config.transformer.minifierConfig = {
+  ...config.transformer.minifierConfig,
+  compress: {
+    ...config.transformer.minifierConfig?.compress,
+    drop_console: true,
+  },
+};
+
 // Stub out web-only Sentry modules that ship in @sentry/react-native but are
 // never used on iOS. Saves ~475KB from the JS bundle.
 const SENTRY_WEB_STUBS = [

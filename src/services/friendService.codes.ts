@@ -94,7 +94,7 @@ export const getUserFriendCode = async (): Promise<ApiResponse<FriendCode>> => {
 
     const { data, error } = await supabase
       .from('friend_codes')
-      .select('*')
+      .select('id, user_id, code, created_at, updated_at')
       .eq('user_id', userId)
       .single();
 

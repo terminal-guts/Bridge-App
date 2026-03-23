@@ -19,6 +19,7 @@ import LottieView from 'lottie-react-native';
 import { Image } from 'expo-image';
 import { EvaIcon } from '../../components/icons';
 import { communityService } from '../../services/communityServiceIndex';
+import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 import { FriendWithGridStatus } from '../../types/community';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
@@ -236,8 +237,10 @@ export function InviteBanner({ avatarFriends, onPress }: InviteBannerProps) {
         {avatarFriends.map((f, i) => (
           <Image
             key={f.friendId}
-            source={f.friend.photos?.[0]?.url ? { uri: f.friend.photos[0].url } : null}
+            source={f.friend.photos?.[0]?.url ? { uri: getOptimizedPhotoUrl(f.friend.photos[0].url, 'avatar')! } : null}
+            placeholder={f.friend.photos?.[0]?.blurhash ? { blurhash: f.friend.photos[0].blurhash } : undefined}
             style={[styles.crewAvatar, i > 0 && { marginLeft: -10 }]}
+            transition={300}
           />
         ))}
         <View style={[styles.crewAddCircle, avatarFriends.length > 0 && { marginLeft: -10 }]}>

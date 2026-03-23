@@ -27,6 +27,7 @@ import {
 import { FONTS } from '../../../constants/typography';
 import { SHADOWS } from '../../../theme/shadows';
 import { EvaIcon } from '../../icons';
+import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
 
 const StyledView = styled(View) as typeof View;
 const StyledText = styled(Text) as typeof Text;
@@ -78,10 +79,12 @@ export function ActiveMatchCard({ match, onMessage, onEndMatch }: ActiveMatchCar
           <StyledImage
             source={{
               uri:
-                match.partnerProfile.photos?.[0]?.url ||
+                getOptimizedPhotoUrl(match.partnerProfile.photos?.[0]?.url, 'avatar') ||
                 'https://i.pravatar.cc/100',
             }}
+            placeholder={match.partnerProfile.photos?.[0]?.blurhash ? { blurhash: match.partnerProfile.photos[0].blurhash } : undefined}
             className="w-16 h-16 rounded-full border-3 border-rose-200"
+            transition={300}
           />
           {/* Heart Badge */}
           <StyledView

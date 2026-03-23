@@ -264,7 +264,7 @@ export const getBadgeForFriend = async (friendId: string): Promise<ApiResponse<F
 
     const { data, error } = await supabase
       .from('friend_badges')
-      .select('*')
+      .select('id, giver_id, receiver_id, icon_name, message, is_featured, is_hidden, created_at, updated_at')
       .eq('giver_id', userId)
       .eq('receiver_id', friendId)
       .maybeSingle();

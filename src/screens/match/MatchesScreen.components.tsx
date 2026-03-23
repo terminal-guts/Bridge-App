@@ -800,6 +800,7 @@ export function buildCardProps(
       : currentProposal!.partnerProfile;
 
   const partnerPhoto = partner?.photos?.[0]?.url || '';
+  const partnerPhotoBlurhash = partner?.photos?.[0]?.blurhash || undefined;
   const partnerName = partner?.firstName || 'Unknown';
   const partnerAge = partner?.age;
 
@@ -825,5 +826,5 @@ export function buildCardProps(
     return `Proposed ${dateStr}`;
   })();
 
-  return { partner, partnerPhoto, partnerName, partnerAge, endorserAvatars, endorserNames, matchDate };
+  return { partner, partnerPhoto, partnerPhotoBlurhash, partnerName, partnerAge, endorserAvatars, endorserNames, matchDate };
 }

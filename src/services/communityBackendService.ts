@@ -100,6 +100,10 @@ class CommunityBackendService {
   private sessionVoteCount = 0;
   // Track which proposal IDs were voted on this session to prevent double-counting re-votes
   private sessionVotedProposals = new Set<string>();
+  // Track which proposal IDs had a recommendation submitted this session.
+  // Used alongside sessionVotedProposals to compute an accurate pending-action floor
+  // in getCommunityTaskProgress before DB writes propagate.
+  private sessionRecommendedProposals = new Set<string>();
   // Short-lived cache for friends area data (60s TTL)
   private friendsAreaCache: { data: FriendWithGridStatus[]; ts: number } | null = null;
   private static readonly FRIENDS_CACHE_TTL_MS = 60_000;
@@ -128,24 +132,10 @@ class CommunityBackendService {
     const userId = await getCurrentUserId();
 
     if (vote === 'unsure') {
-      // UNSURE counts as a completed action — insert directly (no tally impact)
-      const { error: unsureErr } = await supabase
-        .from('proposal_votes')
-        .upsert({
-          proposal_id: proposalId,
-          voter_user_id: userId,
-          vote_type: 'UNSURE',
-          is_friend_vote: false,
-          vote_weight: 1.0,
-          created_at: new Date().toISOString(),
-        }, { onConflict: 'proposal_id,voter_user_id' });
-      if (unsureErr) {
-        console.error('[UNSURE VOTE] upsert failed:', unsureErr.message, unsureErr.details, unsureErr.code);
-        throw new Error(`Unsure vote failed: ${unsureErr.message}`);
-      }
-      // +1 karma and mark assignment as voted (fire-and-forget, non-blocking)
-      supabase.rpc('increment_karma_for_vote', { p_user_id: userId }).then(null, (e: unknown) => Sentry.captureException(e));
-      supabase.from('pool_vote_assignments').update({ has_voted: true }).match({ proposal_id: proposalId, voter_id: userId }).then(null, (e: unknown) => Sentry.captureException(e));
+      // Route UNSURE through the process-vote edge function (same as YES/NO)
+      // so all server-side checks (suspended, daily cap, self-vote, blocked,
+      // pool-assignment) are enforced consistently.
+      await castProposalVote(proposalId, userId, 'UNSURE' as 'YES' | 'NO');
       this.invalidateFriendsCache();
       if (!this.sessionVotedProposals.has(proposalId)) {
         this.sessionVotedProposals.add(proposalId);
@@ -169,6 +159,12 @@ class CommunityBackendService {
   // ========================================================================
   // Friends (Supabase)
   // ========================================================================
+
+  // Record a recommendation submitted this session so getCommunityTaskProgress
+  // counts it in the pending floor before the DB write propagates.
+  recordSessionRecommendation(proposalId: string): void {
+    this.sessionRecommendedProposals.add(proposalId);
+  }
 
   invalidateFriendsCache(): void {
     this.friendsAreaCache = null;
@@ -317,10 +313,10 @@ class CommunityBackendService {
     ]);
 
     const dbActions = (voteCount || 0) + (recCount || 0);
-    // DB is source of truth. Session count is only used as a floor for votes
-    // cast THIS session that may not have propagated to DB yet.
-    const pendingSessionVotes = this.sessionVotedProposals.size;
-    const votesCompleted = Math.max(dbActions, pendingSessionVotes);
+    // DB is source of truth. Session count is used as a floor for actions (votes
+    // + recommendations) taken this session that may not have propagated to DB yet.
+    const pendingSessionActions = this.sessionVotedProposals.size + this.sessionRecommendedProposals.size;
+    const votesCompleted = Math.max(dbActions, pendingSessionActions);
     const hasVoted = votesCompleted >= 3;
 
     return {
@@ -476,6 +472,7 @@ class CommunityBackendService {
     this.nextResetAt = getNext7PMCentral();
     this.sessionVoteCount = 0;
     this.sessionVotedProposals.clear();
+    this.sessionRecommendedProposals.clear();
     AsyncStorage.setItem(STORAGE_KEY_NEXT_RESET, String(this.nextResetAt)).catch(() => {});
     AsyncStorage.setItem(STORAGE_KEY_VOTES, '0').catch(() => {});
     this.notifyStateChange();

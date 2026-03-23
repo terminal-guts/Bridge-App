@@ -124,7 +124,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                   } as any}
                   contentFit="cover"
                   transition={0}
-                  cachePolicy="disk"
+                  cachePolicy="memory-disk"
+                  priority="high"
                   onError={(e) => { logger.warn('Failed to load profile photo:', e.error); }}
                 />
               ) : (

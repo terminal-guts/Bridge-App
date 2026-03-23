@@ -128,7 +128,9 @@ let inMemoryVotingGate: { completed: boolean; cycleId: string } | null = null;
 export async function getCachedVotingGate(currentCycleId: string): Promise<boolean | null> {
   // Check in-memory first — instant
   if (inMemoryVotingGate && inMemoryVotingGate.cycleId === currentCycleId) {
-    return inMemoryVotingGate.completed || null;
+    // Return the cached value directly so callers can distinguish a cached
+    // false ("not completed") from a cache miss (null) and avoid re-fetching.
+    return inMemoryVotingGate.completed;
   }
   try {
     const raw = await AsyncStorage.getItem(KEY_VOTING_GATE);
@@ -136,8 +138,6 @@ export async function getCachedVotingGate(currentCycleId: string): Promise<boole
     const entry: CacheEntry<boolean> = JSON.parse(raw);
     // Only trust cache if it's for the current cycle
     if (entry.cycleId !== currentCycleId) return null;
-    // Only trust a "completed" cache — "not completed" should always recheck
-    if (!entry.data) return null;
     // Warm in-memory mirror
     inMemoryVotingGate = { completed: entry.data, cycleId: currentCycleId };
     return entry.data;
@@ -150,4 +150,59 @@ export async function getCachedVotingGate(currentCycleId: string): Promise<boole
 export async function setCachedVotingGate(completed: boolean, cycleId: string): Promise<void> {
   inMemoryVotingGate = { completed, cycleId };
   await setEntry(KEY_VOTING_GATE, completed, cycleId);
+}
+
+// ============================================================================
+// Batch Preload — single multiGet round-trip on cold launch
+// ============================================================================
+
+/**
+ * Read all three community cache keys in one AsyncStorage round-trip.
+ * Call this once after auth is confirmed (before CommunityScreen mounts) so
+ * subsequent individual reads always hit the in-memory mirrors instead of disk.
+ */
+export async function preloadCommunityCache(): Promise<void> {
+  // Skip if all mirrors are already warm (hot restart / fast refresh)
+  if (inMemoryFriendsData && inMemoryPhotoUrls && inMemoryVotingGate) return;
+
+  try {
+    const results = await AsyncStorage.multiGet([
+      KEY_FRIENDS_DATA,
+      KEY_PHOTO_URLS,
+      KEY_VOTING_GATE,
+    ]);
+
+    const [friendsRaw, photoUrlsRaw, votingGateRaw] = results.map(r => r[1]);
+
+    if (friendsRaw && !inMemoryFriendsData) {
+      try {
+        const entry: CacheEntry<unknown> = JSON.parse(friendsRaw);
+        const age = Date.now() - entry.ts;
+        if (age < FRIENDS_DATA_TTL_MS) {
+          inMemoryFriendsData = { data: entry.data, ts: Date.now() };
+        }
+      } catch { /* corrupt entry — ignore */ }
+    }
+
+    if (photoUrlsRaw && !inMemoryPhotoUrls) {
+      try {
+        const entry: CacheEntry<Record<string, string>> = JSON.parse(photoUrlsRaw);
+        const age = Date.now() - entry.ts;
+        if (age < PHOTO_URL_TTL_MS) {
+          inMemoryPhotoUrls = entry.data;
+        }
+      } catch { /* corrupt entry — ignore */ }
+    }
+
+    if (votingGateRaw && !inMemoryVotingGate) {
+      try {
+        const entry: CacheEntry<boolean> = JSON.parse(votingGateRaw);
+        if (entry.data && entry.cycleId) {
+          inMemoryVotingGate = { completed: entry.data, cycleId: entry.cycleId };
+        }
+      } catch { /* corrupt entry — ignore */ }
+    }
+  } catch {
+    // Non-critical — individual reads will fall back to AsyncStorage if needed
+  }
 }

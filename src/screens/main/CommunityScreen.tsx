@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { FlashList, ListRenderItemInfo } from '@shopify/flash-list';
 
 import { UserRow } from '../../components/community/UserRow';
 import { StaggerItem } from '../../hooks/useStaggeredList';
@@ -45,6 +46,9 @@ import {
   PendingRequestsSection,
   styles,
 } from './CommunityScreen.components';
+
+// UserRow height: paddingVertical 16*2 + avatar 68 + hairline border ~= 101px
+const USER_ROW_ESTIMATED_HEIGHT = 101;
 
 interface CommunityScreenProps {
   navigation: NavigationProp<MainTabParamList, 'Community'>;
@@ -292,6 +296,23 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       initialize();
     });
   }, [initialize]);
+
+  // Preload Matches tab after Community finishes loading — users commonly switch to it next.
+  // React Navigation 7 preload() begins loading the screen component subtree early.
+  useEffect(() => {
+    if (!loading && hasCompletedVoting) {
+      const timer = setTimeout(() => {
+        try {
+          // preload is available on React Navigation 7 tab navigators
+          (navigation as any).preload?.('Matches');
+        } catch {
+          // Silently ignore if preload is unavailable
+        }
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, hasCompletedVoting, navigation]);
+
   // Single focus handler: refresh profile + friends + guide on every tab/screen focus
   useFocusEffect(useCallback(() => {
     // Check if beginner tour should play (first visit or re-enabled from Settings)
@@ -391,6 +412,39 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     () => buildCrewHandlers(alreadyHelped, navigation, handleBadgePress, handleCrushPress),
     [alreadyHelped, navigation, handleBadgePress, handleCrushPress],
   );
+
+  // Stable key extractors for FlatLists (avoids re-creating on each render)
+  const voteKeyExtractor = useCallback((item: FriendWithGridStatus) => item.friendId, []);
+  const crewKeyExtractor = useCallback((item: FriendWithGridStatus) => item.friendId, []);
+
+  // Stable renderItem callbacks — avoids re-creating inline closures on each render,
+  // which would defeat React.memo on UserRow and StaggerItem
+  const renderVoteItem = useCallback(({ item: user, index }: ListRenderItemInfo<FriendWithGridStatus>) => (
+    <StaggerItem index={index}>
+      <UserRow
+        item={user}
+        index={index}
+        showVoteRing
+        onViewProfile={voteHandlers.viewProfile[user.friendId]}
+        onMatch={voteHandlers.matchHandlers[user.friendId]}
+      />
+    </StaggerItem>
+  ), [voteHandlers]);
+
+  const renderCrewItem = useCallback(({ item: user, index }: ListRenderItemInfo<FriendWithGridStatus>) => (
+    <StaggerItem index={index}>
+      <UserRow
+        item={user}
+        index={index}
+        statusLine={getFriendStatusLine(user)}
+        hasUnread={!!unreadMap[user.friendId]}
+        onViewProfile={crewHandlers.viewProfile[user.friendId]}
+        onChat={crewHandlers.chatHandlers[user.friendId]}
+        onBadgePress={crewHandlers.badgeHandlers[user.friendId]}
+        onCrushPress={crewHandlers.crushHandlers[user.friendId]}
+      />
+    </StaggerItem>
+  ), [crewHandlers, unreadMap]);
 
   if (loading || hasCompletedVoting === null) {
     return (
@@ -500,18 +554,13 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           {/* Main list — #3: vote ring + #9: vote-only action */}
           {usersToMatch.length > 0 && (
             <View style={styles.voteListBg}>
-              {usersToMatch.map((user, index) => (
-                <StaggerItem key={user.friendId} index={index}>
-                  <UserRow
-                    item={user}
-                    index={index}
-                    showVoteRing
-
-                    onViewProfile={voteHandlers.viewProfile[user.friendId]}
-                    onMatch={voteHandlers.matchHandlers[user.friendId]}
-                  />
-                </StaggerItem>
-              ))}
+              <FlashList
+                data={usersToMatch}
+                keyExtractor={voteKeyExtractor}
+                renderItem={renderVoteItem}
+                scrollEnabled={false}
+                drawDistance={USER_ROW_ESTIMATED_HEIGHT * 8}
+              />
             </View>
           )}
 
@@ -524,22 +573,13 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           )}
 
           <View className="pb-8">
-            {alreadyHelped.map((user, index) => (
-                <StaggerItem key={user.friendId} index={index}>
-                  <UserRow
-                    item={user}
-                    index={index}
-                    statusLine={getFriendStatusLine(user)}
-                    hasUnread={!!unreadMap[user.friendId]}
-
-                    onViewProfile={crewHandlers.viewProfile[user.friendId]}
-                    onChat={crewHandlers.chatHandlers[user.friendId]}
-                    onBadgePress={crewHandlers.badgeHandlers[user.friendId]}
-                    onCrushPress={crewHandlers.crushHandlers[user.friendId]}
-                  />
-                </StaggerItem>
-            ))}
-
+            <FlashList
+              data={alreadyHelped}
+              keyExtractor={crewKeyExtractor}
+              renderItem={renderCrewItem}
+              scrollEnabled={false}
+              drawDistance={USER_ROW_ESTIMATED_HEIGHT * 8}
+            />
           </View>
 
           {/* Slim caught-up footer — only when no pending votes */}

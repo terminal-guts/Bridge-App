@@ -63,6 +63,7 @@ export function mapProfileRow(row: Record<string, any>): UserProfile {
       url: p.url as string,
       isMain: (p.is_main ?? p.isMain ?? false) as boolean,
       order: (p.display_order ?? p.order ?? 0) as number,
+      ...(p.blurhash ? { blurhash: p.blurhash as string } : {}),
     })),
     interests: row.interests || [],
     values: row.values || [],

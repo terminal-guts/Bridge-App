@@ -133,12 +133,18 @@ export async function endMatch(
 ): Promise<void> {
   const userId = await getCurrentUserId();
 
-  // Get match details for exit record
-  const { data: match } = await supabase
-    .from('matches')
-    .select('*')
-    .eq('id', matchId)
-    .maybeSingle();
+  // Fetch match details and message count in parallel (independent queries)
+  const [{ data: match }, { count: messageCount }] = await Promise.all([
+    supabase
+      .from('matches')
+      .select('id, created_at')
+      .eq('id', matchId)
+      .maybeSingle(),
+    supabase
+      .from('messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('match_id', matchId),
+  ]);
 
   if (!match) throw new Error('Match not found');
 
@@ -149,26 +155,20 @@ export async function endMatch(
     throw new Error(`Cannot end match for ${ACTIVE_MATCH_MINIMUM_DAYS - daysSinceMatch} more day(s)`);
   }
 
-  // Count messages exchanged
-  const { count: messageCount } = await supabase
-    .from('messages')
-    .select('id', { count: 'exact', head: true })
-    .eq('match_id', matchId);
-
-  // Create exit record
-  await supabase.from('match_exits').insert({
-    match_id: matchId,
-    exiting_user_id: userId,
-    exit_reason: reason,
-    days_since_match: daysSinceMatch,
-    messages_exchanged: messageCount || 0,
-  });
-
-  // Update match status
-  await supabase
-    .from('matches')
-    .update({ status: 'ended', updated_at: new Date().toISOString() })
-    .eq('id', matchId);
+  // Create exit record and update match status in parallel
+  await Promise.all([
+    supabase.from('match_exits').insert({
+      match_id: matchId,
+      exiting_user_id: userId,
+      exit_reason: reason,
+      days_since_match: daysSinceMatch,
+      messages_exchanged: messageCount || 0,
+    }),
+    supabase
+      .from('matches')
+      .update({ status: 'ended', updated_at: new Date().toISOString() })
+      .eq('id', matchId),
+  ]);
 
   // Set ended event so MatchesScreen shows the "A Fresh Start" popup
   if (partnerInfo) {

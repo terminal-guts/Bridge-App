@@ -9,7 +9,7 @@
  * - Smooth animations
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Modal,
@@ -28,6 +28,7 @@ import { EvaIcon } from '../icons';
 interface Photo {
   url: string;
   id?: string;
+  blurhash?: string;
 }
 
 interface PhotoCarouselProps {
@@ -55,6 +56,14 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({
   const [currentIndex, setCurrentIndex] = useState(validatedIndex);
   const flatListRef = useRef<FlatList>(null);
 
+  // Reset to index 0 each time the modal opens so a stale index is never shown.
+  useEffect(() => {
+    if (visible) {
+      setCurrentIndex(0);
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+    }
+  }, [visible]);
+
   const handleClose = () => {
     lightHaptic();
     onClose();
@@ -73,9 +82,11 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({
     >
       <StyledImage
         source={{ uri: item.url }}
+        placeholder={item.blurhash ? { blurhash: item.blurhash } : undefined}
         style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
         contentFit="contain"
-        cachePolicy="disk"
+        transition={300}
+        cachePolicy="memory-disk"
       />
     </StyledView>
   );
@@ -206,11 +217,12 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
         >
           <StyledImage
             source={{ uri: photo.url }}
+            placeholder={photo.blurhash ? { blurhash: photo.blurhash } : undefined}
             className="rounded-lg bg-neutral-200"
             style={{ width: photoSize, height: photoSize }}
             contentFit="cover"
-            transition={0}
-            cachePolicy="disk"
+            transition={300}
+            cachePolicy="memory-disk"
           />
 
           {/* Photo number badge */}

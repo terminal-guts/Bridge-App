@@ -96,15 +96,8 @@ describe('isAllowedEmailDomain', () => {
     expect(isAllowedEmailDomain('noemail')).toBeFalsy();
   });
 
-  it('accepts the reviewer bypass email when __DEV__ is true', () => {
-    (global as any).__DEV__ = true;
+  it('accepts the reviewer bypass email (validation is server-side)', () => {
     expect(isAllowedEmailDomain('reviewer@bridgedate.app')).toBe(true);
-  });
-
-  it('rejects the reviewer bypass email when bypass is disabled', () => {
-    (global as any).__DEV__ = false;
-    delete process.env.EXPO_PUBLIC_ENABLE_REVIEWER_BYPASS;
-    expect(isAllowedEmailDomain('reviewer@bridgedate.app')).toBe(false);
   });
 });
 
@@ -113,33 +106,23 @@ describe('isAllowedEmailDomain', () => {
 // ============================================================================
 
 describe('isReviewerBypassEmail', () => {
-  it('matches the exact reviewer email in dev mode', () => {
-    (global as any).__DEV__ = true;
+  it('matches the exact reviewer email', () => {
     expect(isReviewerBypassEmail('reviewer@bridgedate.app')).toBe(true);
   });
 
   it('is case insensitive', () => {
-    (global as any).__DEV__ = true;
     expect(isReviewerBypassEmail('Reviewer@BridgeDate.App')).toBe(true);
   });
 
   it('does not match random emails', () => {
-    (global as any).__DEV__ = true;
     expect(isReviewerBypassEmail('random@gmail.com')).toBe(false);
     expect(isReviewerBypassEmail('reviewer@other.app')).toBe(false);
   });
 
-  it('rejects reviewer email when __DEV__ is false and env var is unset', () => {
+  it('matches reviewer email regardless of __DEV__ (validation is server-side)', () => {
     (global as any).__DEV__ = false;
     delete process.env.EXPO_PUBLIC_ENABLE_REVIEWER_BYPASS;
-    expect(isReviewerBypassEmail('reviewer@bridgedate.app')).toBe(false);
-  });
-
-  it('accepts reviewer email when env var is set to "true" (production bypass)', () => {
-    (global as any).__DEV__ = false;
-    process.env.EXPO_PUBLIC_ENABLE_REVIEWER_BYPASS = 'true';
     expect(isReviewerBypassEmail('reviewer@bridgedate.app')).toBe(true);
-    delete process.env.EXPO_PUBLIC_ENABLE_REVIEWER_BYPASS;
   });
 });
 

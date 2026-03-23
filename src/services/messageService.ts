@@ -110,7 +110,7 @@ export const getMatchMessages = async (matchId: string): Promise<ApiResponse<Mes
 
     const { data, error } = await supabase
       .from('messages')
-      .select('*')
+      .select('id, match_id, sender_id, receiver_id, type, content, duration, sent_at, read_at')
       .eq('match_id', matchId)
       .order('sent_at', { ascending: true });
 
@@ -514,11 +514,13 @@ export const getUnreadCount = async (
  * Clean up all active subscriptions
  * Call this when the user logs out or the app closes
  */
-export const cleanupSubscriptions = (): void => {
+export const cleanupSubscriptions = async (): Promise<void> => {
   logger.info('[MESSAGE SERVICE] Cleaning up all subscriptions');
-  activeChannels.forEach((channel, matchId) => {
-    supabase.removeChannel(channel);
+  const removePromises: Promise<unknown>[] = [];
+  activeChannels.forEach((channel) => {
+    removePromises.push(supabase.removeChannel(channel));
   });
+  await Promise.all(removePromises);
   activeChannels.clear();
   resetMockState();
 };

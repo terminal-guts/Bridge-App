@@ -17,6 +17,7 @@ import {
   formatRetryTime,
 } from '../utils/rateLimiter';
 import { createLogger } from '../utils/secureLogger';
+import { generateBlurhash } from '../utils/blurhashService';
 
 // Create namespaced logger for this service
 const logger = createLogger('PhotoService');
@@ -195,13 +196,25 @@ const uploadPhotoInternal = async (
       return createErrorResponse('UPLOAD_FAILED', uploadError.message);
     }
 
-    // Step 5: Create photo metadata with storage path
+    // Step 5: Generate blurhash via edge function (non-blocking — if it fails, photo still works)
+    let blurhash: string | undefined;
+    try {
+      blurhash = await generateBlurhash(storagePath);
+      if (blurhash) {
+        logger.info('Blurhash generated for photo:', photoId);
+      }
+    } catch (blurhashError: unknown) {
+      logger.warn('Blurhash generation failed (non-blocking):', blurhashError instanceof Error ? blurhashError.message : String(blurhashError));
+    }
+
+    // Step 6: Create photo metadata with storage path
     // SECURITY: We no longer use public URLs - clients will request signed URLs as needed
     const photo: Photo = {
       id: photoId,
       url: storagePath, // Store the path instead of public URL
       isMain,
       order,
+      ...(blurhash ? { blurhash } : {}),
     };
 
     logger.info('Photo uploaded successfully:', photo);

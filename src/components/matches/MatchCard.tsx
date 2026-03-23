@@ -92,6 +92,7 @@ interface MatchCardProps {
     age?: number;
     matchDate?: string;
     imageUrl: string;
+    imageBlurhash?: string;
     matchedByAvatars: string[];
     hasUnread?: boolean;
     celebrate?: boolean;
@@ -119,6 +120,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
     age,
     matchDate,
     imageUrl,
+    imageBlurhash,
     matchedByAvatars,
     hasUnread,
     celebrate,
@@ -141,9 +143,18 @@ export const MatchCard: React.FC<MatchCardProps> = ({
     const endorserLabel = ENDORSER_LABEL[status];
     const optimizedImageUrl = useMemo(() => getOptimizedImageUrl(imageUrl, 400), [imageUrl]);
 
-    // #5 — Slower pulse (1600ms) on the action button
+    // #5 — Slower pulse (1600ms) on the action button.
+    // Only run when the card is in a state that requires user action; idle cards
+    // (awaiting_them, no_match) don't need the animation and running it
+    // unconditionally wastes CPU on every inactive card in the list.
+    const requiresUserAction = status === 'awaiting_you' || status === 'new_match';
     const pulseAnim = useSharedValue(1);
     useEffect(() => {
+        if (!requiresUserAction) {
+            cancelAnimation(pulseAnim);
+            pulseAnim.value = 1;
+            return;
+        }
         pulseAnim.value = withRepeat(
             withSequence(
                 withTiming(1.08, { duration: 1600, easing: Easing.inOut(Easing.ease) }),
@@ -151,7 +162,9 @@ export const MatchCard: React.FC<MatchCardProps> = ({
             ), -1, false
         );
         return () => cancelAnimation(pulseAnim);
-    }, []);
+        // pulseAnim is a stable useSharedValue ref — intentionally omitted from deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [requiresUserAction]);
 
     // Entrance animation — fade + slide-up, only on status *changes* (not initial mount)
     const slideAnim = useSharedValue(0);
@@ -225,10 +238,12 @@ export const MatchCard: React.FC<MatchCardProps> = ({
             <View style={[styles.accentLine, { backgroundColor: accentColor }]} />
             <ImageBackground
                 source={{ uri: optimizedImageUrl }}
+                placeholder={imageBlurhash ? { blurhash: imageBlurhash } : undefined}
                 style={[StyleSheet.absoluteFillObject, { backgroundColor: COLORS.backgroundGrayMedium }]}
                 contentFit="cover"
-                transition={0}
-                cachePolicy="disk"
+                transition={300}
+                cachePolicy="memory-disk"
+                priority="high"
                 recyclingKey={name}
             >
                 {/* #3 — Top vignette for badge legibility on bright photos */}
@@ -305,7 +320,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                                                     style={[styles.avatarCircle, { backgroundColor: COLORS.backgroundGrayMedium }]}
                                                     contentFit="cover"
                                                     transition={0}
-                                                    cachePolicy="disk"
+                                                    cachePolicy="memory-disk"
                                                 />
                                             </View>
                                         );

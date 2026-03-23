@@ -18,9 +18,16 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Function to increment karma for casting a vote
+-- SECURITY: callable only by service_role (PostgREST anon/authenticated are blocked).
 CREATE OR REPLACE FUNCTION increment_karma_for_vote(p_user_id UUID)
 RETURNS VOID AS $$
 BEGIN
+    -- Internal authorization guard: only service_role may call this function.
+    IF current_setting('request.jwt.claims', true)::jsonb ->> 'role' <> 'service_role'
+       AND SESSION_USER <> 'postgres' THEN
+        RAISE EXCEPTION 'Permission denied';
+    END IF;
+
     INSERT INTO karma_scores (user_id, total_votes, karma_points)
     VALUES (p_user_id, 1, 1)
     ON CONFLICT (user_id) DO UPDATE
@@ -29,6 +36,10 @@ BEGIN
         updated_at = NOW();
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Restrict execute permission to service_role only.
+REVOKE EXECUTE ON FUNCTION increment_karma_for_vote(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION increment_karma_for_vote(uuid) TO service_role;
 ALTER TABLE karma_scores ADD COLUMN IF NOT EXISTS total_inaccurate_votes INTEGER DEFAULT 0;
 
 -- Update badge_tier based on karma_points logic

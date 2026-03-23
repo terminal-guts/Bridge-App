@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { Button, H2, Body, ScreenWrapper } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { verifyEmail, sendOtpToEmail, signInWithPassword, isReviewerBypassEmail } from '../../services/authService';
+import { verifyEmail, sendOtpToEmail, signInWithPassword, isReviewerBypassEmail, validateReviewerAccess } from '../../services/authService';
 import { fetchAndSetUserProfile } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
 import { EvaIcon } from '../../components/icons';
@@ -88,11 +88,17 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
 
     const otpCode = code.join('');
 
-    // App Store Reviewer Bypass
-    if (isReviewerBypassEmail(email) && otpCode === '123456') {
+    // App Store Reviewer Bypass — validated entirely server-side
+    if (isReviewerBypassEmail(email)) {
       logger.info('[AUTH] App Store Reviewer bypass detected');
-      const reviewerPassword = process.env.EXPO_PUBLIC_REVIEWER_PASSWORD || 'AppReview2024!';
-      const bypassResult = await signInWithPassword('reviewer@bridgedate.app', reviewerPassword);
+      const reviewerResult = await validateReviewerAccess(otpCode);
+      if (!reviewerResult.valid || !reviewerResult.authPassword) {
+        logger.error('[AUTH] Reviewer access validation failed');
+        setLoading(false);
+        Alert.alert('Bypass Failed', 'Reviewer access validation failed.');
+        return;
+      }
+      const bypassResult = await signInWithPassword('reviewer@bridgedate.app', reviewerResult.authPassword);
 
       if (bypassResult.ok) {
         const userId = bypassResult.data!.id;

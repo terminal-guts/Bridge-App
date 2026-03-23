@@ -362,7 +362,7 @@ export default function ProfileMatchScreen() {
                                                             style={styles.stackAvatar}
                                                             contentFit="cover"
                                                             transition={0}
-                                                            cachePolicy="disk"
+                                                            cachePolicy="memory-disk"
                                                         />
                                                     </View>
                                                 ))
@@ -422,7 +422,7 @@ export default function ProfileMatchScreen() {
                                         source={{ uri: item.data.url }}
                                         style={styles.inlinePhoto}
                                         contentFit="cover"
-                                        cachePolicy="disk"
+                                        cachePolicy="memory-disk"
                                         transition={0}
                                     />
                                 </View>

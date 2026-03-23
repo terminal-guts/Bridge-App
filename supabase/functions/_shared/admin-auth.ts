@@ -1,14 +1,15 @@
 import { corsHeaders } from './cors.ts';
+import * as jose from 'https://deno.land/x/jose@v4.15.4/index.ts';
 
 /**
  * Verifies that the caller has service_role access.
- * Accepts either:
- *   1. The short env-var key (SUPABASE_SERVICE_ROLE_KEY — set by Supabase runtime)
- *   2. A full service_role JWT (used by cron jobs and local .env)
+ * Accepts a full service_role JWT (used by cron jobs).
+ * Verifies the JWT signature using the Supabase JWT secret and checks that
+ * the `role` claim equals `service_role`.
  *
  * Returns null if authorized, or a 403 Response to return immediately if not.
  */
-export function requireServiceRole(req: Request): Response | null {
+export async function requireServiceRole(req: Request): Promise<Response | null> {
   const authHeader = req.headers.get('Authorization');
   const token = authHeader?.replace('Bearer ', '');
 
@@ -16,20 +17,20 @@ export function requireServiceRole(req: Request): Response | null {
     return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
   }
 
-  // Check 1: exact match against the runtime env var (short key format)
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (serviceRoleKey && token === serviceRoleKey) return null;
-
-  // Check 2: decode JWT and verify it has service_role claim
-  try {
-    const parts = token.split('.');
-    if (parts.length === 3) {
-      const payload = JSON.parse(atob(parts[1]));
-      if (payload.role === 'service_role') return null;
-    }
-  } catch {
-    // Invalid JWT — fall through to forbidden
+  const jwtSecret = Deno.env.get('SUPABASE_JWT_SECRET');
+  if (!jwtSecret) {
+    console.error('requireServiceRole: SUPABASE_JWT_SECRET not set');
+    return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
   }
 
-  return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
+  try {
+    const secret = new TextEncoder().encode(jwtSecret);
+    const { payload } = await jose.jwtVerify(token, secret);
+    if (payload.role !== 'service_role') {
+      return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
+    }
+    return null;
+  } catch {
+    return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
+  }
 }

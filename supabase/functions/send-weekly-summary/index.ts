@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { requireServiceRole } from '../_shared/admin-auth.ts';
 
 // ── Weekly Summary Push Notification ─────────────────────────────────────────
 // Runs every Sunday at 7 PM Central (Monday 00:00 UTC), right after
@@ -170,6 +171,10 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+
+  // Only service_role (cron or snapshot-weekly-karma chain) may trigger this
+  const forbidden = await requireServiceRole(req);
+  if (forbidden) return forbidden;
 
   try {
     // Day-of-week guard: only run on Sunday 7PM Central boundary

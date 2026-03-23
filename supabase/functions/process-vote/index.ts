@@ -98,6 +98,11 @@ Deno.serve(async (req: Request) => {
       return Response.json({ error: 'Missing proposal_id or vote_type' }, { status: 400, headers: corsHeaders });
     }
 
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID_RE.test(proposal_id)) {
+      return Response.json({ error: 'Invalid proposal_id format' }, { status: 400, headers: corsHeaders });
+    }
+
     const validVoteTypes = ['YES', 'NO', 'UNSURE', 'RECOMMEND'];
     if (!validVoteTypes.includes(vote_type)) {
       return Response.json({ error: `Invalid vote_type. Must be one of: ${validVoteTypes.join(', ')}` }, { status: 400, headers: corsHeaders });
@@ -179,6 +184,19 @@ Deno.serve(async (req: Request) => {
     const isFriendVote = isFriendOfA || isFriendOfB;
     const friendOf = isFriendOfA ? proposal.user_a_id : (isFriendOfB ? proposal.user_b_id : null);
 
+    // 4a. Pool assignment authorization: non-friend voters must have a pool_vote_assignment row.
+    if (!isFriendVote) {
+      const { data: assignment } = await supabase
+        .from('pool_vote_assignments')
+        .select('voter_id')
+        .eq('proposal_id', proposal_id)
+        .eq('voter_id', voterId)
+        .maybeSingle();
+      if (!assignment) {
+        return Response.json({ error: 'Not assigned to this proposal' }, { status: 403, headers: corsHeaders });
+      }
+    }
+
     const voterTier = voterKarma?.badge_tier || 'new';
     const weightMultiplier = KARMA_WEIGHTS[voterTier] || 1.0;
 
@@ -187,6 +205,8 @@ Deno.serve(async (req: Request) => {
       ? weightMultiplier * FRIEND_VOTE_WEIGHT
       : weightMultiplier;
 
+    // created_at is intentionally omitted so that on conflict (re-vote) the
+    // original vote timestamp is preserved. The DB default sets it for new rows.
     const { error: voteErr } = await supabase
       .from('proposal_votes')
       .upsert({
@@ -197,7 +217,6 @@ Deno.serve(async (req: Request) => {
         vote_weight: effectiveVoteWeight,
         friend_of: friendOf,
         recommend_to_id: recommend_to_id || null,
-        created_at: new Date().toISOString(),
       }, { onConflict: 'proposal_id,voter_user_id' });
 
     if (voteErr) {
@@ -210,61 +229,69 @@ Deno.serve(async (req: Request) => {
       await supabase.rpc('increment_karma_for_vote', { p_user_id: voterId });
     }
 
-    // 7. Incremental tally logic
+    // 7. Atomic tally update via SQL expressions (eliminates read-modify-write race)
+    const tallyChanged = isNewVote || (existingVote && existingVote.vote_type !== vote_type);
 
-    let poolYes = proposal.pool_yes_votes || 0;
-    let poolNo = proposal.pool_no_votes || 0;
-    let friendYes = proposal.friend_yes_votes || 0;
-    let friendNo = proposal.friend_no_votes || 0;
-    let weightedYes = proposal.weighted_yes || 0;
-    let weightedNo = proposal.weighted_no || 0;
+    if (tallyChanged) {
+      // Build per-column signed deltas so a single UPDATE is atomic.
+      let dPoolYes = 0, dPoolNo = 0, dFriendYes = 0, dFriendNo = 0;
+      let dWeightedYes = 0.0, dWeightedNo = 0.0;
 
-    // A. Subtract old vote weight if it was a different vote type
-    //    Only YES/NO ever touched tallies — UNSURE/RECOMMEND never added anything, so skip subtraction.
-    if (existingVote && existingVote.vote_type !== vote_type && (existingVote.vote_type === 'YES' || existingVote.vote_type === 'NO')) {
-      // Use stored vote_weight for accurate subtraction (avoids tier-drift)
-      const oldWeight = existingVote.vote_weight || (existingVote.is_friend_vote ? weightMultiplier * FRIEND_VOTE_WEIGHT : weightMultiplier);
-      if (existingVote.is_friend_vote) {
-        if (existingVote.vote_type === 'YES') { friendYes--; weightedYes -= oldWeight; }
-        else if (existingVote.vote_type === 'NO') { friendNo--; weightedNo -= oldWeight; }
-      } else {
-        if (existingVote.vote_type === 'YES') { poolYes--; weightedYes -= oldWeight; }
-        else if (existingVote.vote_type === 'NO') { poolNo--; weightedNo -= oldWeight; }
+      // A. Subtract old vote contribution when the voter is changing their vote type.
+      if (existingVote && existingVote.vote_type !== vote_type && (existingVote.vote_type === 'YES' || existingVote.vote_type === 'NO')) {
+        const oldWeight = existingVote.vote_weight || (existingVote.is_friend_vote ? weightMultiplier * FRIEND_VOTE_WEIGHT : weightMultiplier);
+        if (existingVote.is_friend_vote) {
+          if (existingVote.vote_type === 'YES') { dFriendYes--; dWeightedYes -= oldWeight; }
+          else { dFriendNo--; dWeightedNo -= oldWeight; }
+        } else {
+          if (existingVote.vote_type === 'YES') { dPoolYes--; dWeightedYes -= oldWeight; }
+          else { dPoolNo--; dWeightedNo -= oldWeight; }
+        }
       }
-    }
 
-    // B. Add new vote weight if it's new or the type changed
-    if (isNewVote || (existingVote && existingVote.vote_type !== vote_type)) {
+      // B. Add new vote contribution.
       if (isFriendVote) {
         const friendWeight = weightMultiplier * FRIEND_VOTE_WEIGHT;
-        if (vote_type === 'YES') { friendYes++; weightedYes += friendWeight; }
-        else if (vote_type === 'NO') { friendNo++; weightedNo += friendWeight; }
+        if (vote_type === 'YES') { dFriendYes++; dWeightedYes += friendWeight; }
+        else if (vote_type === 'NO') { dFriendNo++; dWeightedNo += friendWeight; }
       } else {
-        if (vote_type === 'YES') { poolYes++; weightedYes += weightMultiplier; }
-        else if (vote_type === 'NO') { poolNo++; weightedNo += weightMultiplier; }
+        if (vote_type === 'YES') { dPoolYes++; dWeightedYes += weightMultiplier; }
+        else if (vote_type === 'NO') { dPoolNo++; dWeightedNo += weightMultiplier; }
       }
 
-      // 7. Update vote tallies & weighted totals on the proposal
-      const { error: tallyErr } = await supabase
-        .from('proposals')
-        .update({
-          pool_yes_votes: poolYes,
-          pool_no_votes: poolNo,
-          friend_yes_votes: friendYes,
-          friend_no_votes: friendNo,
-          weighted_yes: weightedYes,
-          weighted_no: weightedNo,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', proposal_id);
+      // Atomic increment via raw SQL so concurrent votes never clobber each other.
+      const { error: tallyErr } = await supabase.rpc('increment_proposal_tallies', {
+        p_proposal_id: proposal_id,
+        p_pool_yes: dPoolYes,
+        p_pool_no: dPoolNo,
+        p_friend_yes: dFriendYes,
+        p_friend_no: dFriendNo,
+        p_weighted_yes: dWeightedYes,
+        p_weighted_no: dWeightedNo,
+      });
 
       if (tallyErr) {
         console.error('Tally update error:', tallyErr);
       }
     }
 
+    // Re-fetch the proposal row so lifecycle evaluation uses post-increment values.
+    const { data: refreshedProposal, error: refreshErr } = await supabase
+      .from('proposals')
+      .select('*')
+      .eq('id', proposal_id)
+      .single();
+
+    const updatedProposal = (refreshErr || !refreshedProposal) ? proposal : refreshedProposal;
+
+    const poolYes = updatedProposal.pool_yes_votes || 0;
+    const poolNo = updatedProposal.pool_no_votes || 0;
+    const friendYes = updatedProposal.friend_yes_votes || 0;
+    const friendNo = updatedProposal.friend_no_votes || 0;
+    const weightedYes = updatedProposal.weighted_yes || 0;
+    const weightedNo = updatedProposal.weighted_no || 0;
+
     // 8. Inline lifecycle evaluation
-    const updatedProposal = { ...proposal, pool_yes_votes: poolYes, pool_no_votes: poolNo, friend_yes_votes: friendYes, friend_no_votes: friendNo, weighted_yes: weightedYes, weighted_no: weightedNo };
     const nowIso = new Date().toISOString();
     let newStatus = 'pending';
     const lifecycleUpdate: Record<string, unknown> = {};
@@ -404,7 +431,7 @@ Deno.serve(async (req: Request) => {
   } catch (err: unknown) {
     console.error('process-vote error:', err);
     return Response.json(
-      { error: err instanceof Error ? err.message : 'Internal server error' },
+      { error: 'Internal server error' },
       { status: 500, headers: corsHeaders },
     );
   }

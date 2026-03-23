@@ -22,6 +22,7 @@ import { EvaIcon } from '../../icons';
 import { proposalStyles, styles, BLUE, BOX_BG, BOX_BORDER } from './ProposalReviewView.styles';
 import { MatchResult } from '../../../utils/proposalMatching';
 import { SectionCard, MatchIcon, ValueBox, ComparisonValueRow } from './SmartPillCloud';
+import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
 
 // ─── ProgressDots ────────────────────────────────────────────────────────────
 
@@ -170,6 +171,8 @@ interface ForFriendModalProps {
   userB: { firstName: string; age?: number; id: string };
   photoAUrl: string | undefined;
   photoBUrl: string | undefined;
+  photoABlurhash?: string;
+  photoBBlurhash?: string;
   proposalId: string;
   selectedPersonSide: 'userA' | 'userB' | null;
   selectedFriendId: string | null;
@@ -188,6 +191,8 @@ export function ForFriendModal({
   userB,
   photoAUrl,
   photoBUrl,
+  photoABlurhash,
+  photoBBlurhash,
   proposalId,
   selectedPersonSide,
   selectedFriendId,
@@ -230,10 +235,12 @@ export function ForFriendModal({
                 >
                   <Image
                     source={photoAUrl ? { uri: photoAUrl } : null}
+                    placeholder={photoABlurhash ? { blurhash: photoABlurhash } : undefined}
                     style={{ width: '100%', height: '100%', backgroundColor: '#E5E7EB' }}
                     contentFit="cover"
-                    transition={0}
-                    cachePolicy="disk"
+                    transition={300}
+                    cachePolicy="memory-disk"
+                    priority="high"
                     recyclingKey={`${proposalId}-modal-a`}
                   />
                   <LinearGradient
@@ -254,10 +261,12 @@ export function ForFriendModal({
                 >
                   <Image
                     source={photoBUrl ? { uri: photoBUrl } : null}
+                    placeholder={photoBBlurhash ? { blurhash: photoBBlurhash } : undefined}
                     style={{ width: '100%', height: '100%', backgroundColor: '#E5E7EB' }}
                     contentFit="cover"
-                    transition={0}
-                    cachePolicy="disk"
+                    transition={300}
+                    cachePolicy="memory-disk"
+                    priority="high"
                     recyclingKey={`${proposalId}-modal-b`}
                   />
                   <LinearGradient
@@ -298,7 +307,8 @@ export function ForFriendModal({
                 >
                   {filteredFriends.map(item => {
                     const isSelected = selectedFriendId === item.friendId;
-                    const friendPhoto = item.friend?.photos?.[0]?.url;
+                    const friendPhoto = getOptimizedPhotoUrl(item.friend?.photos?.[0]?.url, 'avatar');
+                    const friendBlurhash = item.friend?.photos?.[0]?.blurhash;
                     return (
                       <TouchableOpacity
                         key={item.friendId}
@@ -314,10 +324,11 @@ export function ForFriendModal({
                       >
                         <Image
                           source={friendPhoto ? { uri: friendPhoto } : null}
+                          placeholder={friendBlurhash ? { blurhash: friendBlurhash } : undefined}
                           style={[styles.modalFriendAvatar, { backgroundColor: '#E5E7EB' }]}
                           contentFit="cover"
-                          transition={0}
-                          cachePolicy="disk"
+                          transition={300}
+                          cachePolicy="memory-disk"
                         />
                         <View style={{ flex: 1 }}>
                           <Text style={styles.modalFriendName}>{item.friend?.firstName}</Text>

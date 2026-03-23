@@ -1,12 +1,17 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { requireServiceRole } from '../_shared/admin-auth.ts';
 
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+
+  // Only service_role (cron) may trigger this function
+  const forbidden = await requireServiceRole(req);
+  if (forbidden) return forbidden;
 
   try {
     // 1. Day-of-week check: only snapshot on Sundays at 7 PM Central.

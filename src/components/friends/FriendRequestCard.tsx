@@ -14,6 +14,7 @@ import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
 import { EvaIcon } from '../icons';
+import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -33,7 +34,8 @@ export const FriendRequestCard: React.FC<FriendRequestCardProps> = ({
   isProcessing = false,
 }) => {
   const name = request.senderProfile.firstName || 'Someone';
-  const photoUrl = request.senderProfile.photos?.[0]?.url || undefined;
+  const photoUrl = getOptimizedPhotoUrl(request.senderProfile.photos?.[0]?.url, 'avatar') || undefined;
+  const photoBlurhash = request.senderProfile.photos?.[0]?.blurhash || undefined;
   const school = request.senderProfile.school || '';
 
   return (
@@ -41,9 +43,10 @@ export const FriendRequestCard: React.FC<FriendRequestCardProps> = ({
       {/* Avatar */}
       <Image
         source={photoUrl ? { uri: photoUrl } : null}
+        placeholder={photoBlurhash ? { blurhash: photoBlurhash } : undefined}
         style={styles.avatar}
-        cachePolicy="disk"
-        transition={0}
+        cachePolicy="memory-disk"
+        transition={300}
       />
 
       {/* Info */}

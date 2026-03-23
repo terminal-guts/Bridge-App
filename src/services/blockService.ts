@@ -179,7 +179,7 @@ export const getBlockedUsers = async (): Promise<ApiResponse<BlockedUser[]>> => 
 
     const { data: blocks, error: blocksError } = await supabase
       .from('blocked_users')
-      .select('*')
+      .select('id, user_id, blocked_user_id, reason, blocked_at, created_at')
       .eq('user_id', currentUserId)
       .order('created_at', { ascending: false });
 

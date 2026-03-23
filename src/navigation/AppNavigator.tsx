@@ -20,6 +20,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { isIntentionalSignOut, resetIntentionalSignOut } from '../services/authService';
 // expo-notifications is imported dynamically to defer 84KB from startup
 import { setCachedUserId, clearCachedUserId } from '../utils/auth';
+import { preloadCommunityCache } from '../services/communityCache';
 import { showToast } from '../utils/toast';
 import { selectionHaptic } from '../utils/haptics';
 import { CommunitySkeleton } from '../components/ui/SkeletonLoader';
@@ -27,7 +28,10 @@ import { CommunitySkeleton } from '../components/ui/SkeletonLoader';
 // ── All screens are lazy-loaded to minimize startup parsing ──
 
 // ── Lazy-loaded screens (only evaluated when navigated to) ──────────────────
-const LazyFallback = () => <CommunitySkeleton />;
+// Solid-color fallback prevents white flash / layout shift during lazy screen loads.
+// Uses the app's default background (#F9FAFB) to blend seamlessly with the card style.
+const LAZY_FALLBACK_STYLE = { flex: 1, backgroundColor: '#F9FAFB' } as const;
+const LazyFallback = () => <View style={LAZY_FALLBACK_STYLE} />;
 
 function withSuspense<P extends object>(LazyComponent: React.LazyExoticComponent<React.ComponentType<P>>) {
   return function SuspenseWrapped(props: P) {
@@ -337,6 +341,11 @@ export const AppNavigator = () => {
       }
     } else if (parsed.path?.startsWith('claim/')) {
         const token = parsed.path.replace('claim/', '');
+        // Validate token format: 8 alphanumeric chars (base-36 uppercase), e.g. "A1B2C3D4"
+        if (!/^[A-Z0-9]{8}$/.test(token)) {
+          console.warn('[DeepLink] claim token failed format validation:', token);
+          return;
+        }
         if (authStateRef.current && navigationRef.current) {
             navigationRef.current.navigate('MatchmakerClaim', { token });
         } else {
@@ -516,8 +525,9 @@ export const AppNavigator = () => {
           // Render MainTabs or MatchmakerHome NOW — no network wait
           setIsAuthenticated(true);
 
-          // Pre-warm community data while CommunityScreen is mounting —
-          // by the time it calls initialize(), cache or in-flight query is ready
+          // Batch-preload community cache keys in one AsyncStorage round-trip,
+          // then pre-warm network data — both fire before CommunityScreen mounts
+          preloadCommunityCache().catch(() => {});
           if (initialStatus.role === 'dater') {
             import('../services/communityServiceIndex').then(({ communityService }) => {
               communityService.getCommunityTaskProgress().catch(() => {});

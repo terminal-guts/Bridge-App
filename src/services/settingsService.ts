@@ -75,7 +75,7 @@ export const getUserSettings = async (userId?: string): Promise<ApiResponse<User
 
     const { data, error } = await supabase
       .from('user_settings')
-      .select('*')
+      .select('id, user_id, notifications, privacy, created_at, updated_at')
       .eq('user_id', finalUserId)
       .maybeSingle();
 
@@ -122,7 +122,7 @@ export const updateUserSettings = async (
     // Fetch existing to merge
     const { data: existing } = await supabase
       .from('user_settings')
-      .select('*')
+      .select('id, user_id, notifications, privacy, created_at, updated_at')
       .eq('user_id', finalUserId)
       .maybeSingle();
 

@@ -80,15 +80,13 @@ export const checkRateLimit = async (
     }
 
     if (!data || data.length === 0) {
-      // No data returned, fail safe by allowing
+      // No data returned — fail closed to prevent bypassing rate limiting.
+      logger.error('Rate limit check returned no data — blocking request');
       return {
-        ok: true,
-        data: {
-          allowed: true,
-          attemptsMade: 0,
-          maxAttempts: 999999,
-          windowSeconds: 3600,
-          retryAfterSeconds: 0,
+        ok: false,
+        error: {
+          code: 'RATE_LIMIT_CHECK_FAILED',
+          message: 'Rate limit check returned no data',
         },
       };
     }
@@ -106,7 +104,7 @@ export const checkRateLimit = async (
       },
     };
   } catch (error: unknown) {
-    console.error('Rate limit check error:', error);
+    logger.error('Rate limit check error:', error);
     return {
       ok: false,
       error: {
@@ -160,7 +158,7 @@ export const recordRateLimitAttempt = async (
       data: data,
     };
   } catch (error: unknown) {
-    console.error('Record rate limit attempt error:', error);
+    logger.error('Record rate limit attempt error:', error);
     return {
       ok: false,
       error: {

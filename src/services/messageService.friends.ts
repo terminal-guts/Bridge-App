@@ -80,7 +80,7 @@ export const getFriendMessages = async (userId: string, friendId: string): Promi
     // Query messages where both users are involved (as sender or receiver)
     const { data, error } = await supabase
       .from('friend_messages')
-      .select('*')
+      .select('id, friendship_id, sender_id, receiver_id, type, content, duration, sent_at, read_at')
       .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
       .or(`sender_id.eq.${friendId},receiver_id.eq.${friendId}`)
       .order('sent_at', { ascending: true });

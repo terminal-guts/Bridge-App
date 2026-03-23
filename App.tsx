@@ -1,4 +1,12 @@
 import React from 'react';
+import { enableScreens, enableFreeze } from 'react-native-screens';
+
+// Enable native screen optimizations before any component renders.
+// enableScreens: uses native screen containers for stack navigators (faster transitions).
+// enableFreeze: background screens stop rendering entirely while frozen — up to 70% faster navigation.
+enableScreens(true);
+enableFreeze(true);
+
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, InteractionManager } from 'react-native';

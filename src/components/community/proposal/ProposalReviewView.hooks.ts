@@ -223,7 +223,11 @@ export function useProposalVoting(
       logger.error('[ProposalReviewView] Vote submission failed:', err);
       if (isMountedRef.current) {
         setVoting(false);
-        showToast.error('Vote failed', 'Check your connection and try again');
+        if (err?.status === 429) {
+          showToast.info('Daily limit reached', "You've reached your daily vote limit.");
+        } else {
+          showToast.error('Vote failed', 'Check your connection and try again');
+        }
       }
       return;
     }
@@ -328,7 +332,8 @@ export function useForFriendModal(
     const current = proposals[currentIndex];
     if (current) {
       const recommendedPersonId = selectedPersonSide === 'userA' ? current.userA.id : current.userB.id;
-
+      void recommendedPersonId; // used for DB write (handled by server); record session action for progress counter
+      communityService.recordSessionRecommendation(current.id);
     }
     setShowForFriendModal(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });

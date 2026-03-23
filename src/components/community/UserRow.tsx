@@ -58,6 +58,7 @@ function getStreakTier(days: number) {
 export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onViewProfile, onChat, rank, onRankPress, statusLine, showVoteRing, hasUnread, onBadgePress, onCrushPress, onStreakMilestone, previousStreakDays }) => {
     const name = item.friend.firstName || 'User';
     const rawImageUrl = item.friend.photos?.[0]?.url || undefined;
+    const photoBlurhash = item.friend.photos?.[0]?.blurhash || undefined;
     const imageUrl = useMemo(() => getOptimizedImageUrl(rawImageUrl, 68), [rawImageUrl]);
     const streak = item.streakDays || 0;
     const friendProfileComplete = item.friend.profileCompleted === true;
@@ -88,6 +89,8 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
             ), -1, false
         );
         return () => cancelAnimation(voteScale);
+        // voteScale is a stable useSharedValue ref — intentionally omitted from deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showVoteRing]);
     const voteAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: voteScale.value }] }));
     const handleVotePress = useCallback(() => {
@@ -98,6 +101,8 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
             withSpring(1, SPRINGS.snappy),
         );
         onMatch();
+        // voteScale is a stable useSharedValue ref — intentionally omitted from deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [friendProfileComplete, onMatch]);
 
     // #7: Karma tap haptic
@@ -125,6 +130,8 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
             ), -1, false
         );
         return () => cancelAnimation(pulseAnim);
+        // pulseAnim is a stable useSharedValue ref — intentionally omitted from deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [streak]);
 
     const pulseAnimStyle = useAnimatedStyle(() => streak >= 30 ? { transform: [{ scale: pulseAnim.value }] } : {});
@@ -133,6 +140,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
             <TouchableOpacity onPress={onViewProfile} activeOpacity={onViewProfile ? 0.8 : 1} disabled={!onViewProfile} accessibilityLabel={`View ${name}'s profile`} accessibilityRole="button" style={avatarShadow}>
                 <Image
                     source={{ uri: imageUrl }}
+                    placeholder={photoBlurhash ? { blurhash: photoBlurhash } : undefined}
                     style={[
                         styles.avatar,
                         { borderColor: streakTier.ringColor, backgroundColor: '#E5E7EB' },
@@ -140,8 +148,8 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                         streak >= 30 && { borderColor: '#EF4444' },
                     ]}
                     contentFit="cover"
-                    transition={0}
-                    cachePolicy="disk"
+                    transition={300}
+                    cachePolicy="memory-disk"
                     recyclingKey={item.friendId}
                 />
             </TouchableOpacity>

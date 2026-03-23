@@ -18,6 +18,7 @@ interface AvatarProps {
   rounded?: 'full' | 'lg' | '2xl';
   blurRadius?: number;
   accessibilityLabel?: string;
+  blurhash?: string;
 }
 
 export const Avatar: React.FC<AvatarProps> = ({
@@ -27,6 +28,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   rounded = '2xl',
   blurRadius,
   accessibilityLabel = 'Profile photo',
+  blurhash,
 }) => {
   const [hasError, setHasError] = useState(false);
   const optimizedUri = useMemo(() => getOptimizedImageUrl(uri, size), [uri, size]);
@@ -56,14 +58,15 @@ export const Avatar: React.FC<AvatarProps> = ({
       source={{ uri: optimizedUri }}
       className={`${roundedClass} ${className}`}
       style={{ width: size, height: size, backgroundColor: '#E5E7EB' }}
+      placeholder={blurhash ? { blurhash } : undefined}
       blurRadius={blurRadius}
       contentFit="cover"
-      transition={0}
-      cachePolicy="disk"
+      transition={300}
+      cachePolicy="memory-disk"
       recyclingKey={uri}
       accessibilityRole="image"
       accessibilityLabel={accessibilityLabel}
-      onError={(e) => {
+      onError={() => {
         logger.warn('Failed to load image:', uri);
         setHasError(true);
       }}

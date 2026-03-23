@@ -91,7 +91,7 @@ export function MatchesScreen() {
         state.now,
     );
 
-    const { partner, partnerPhoto, partnerName, partnerAge, endorserAvatars, endorserNames, matchDate } =
+    const { partner, partnerPhoto, partnerPhotoBlurhash, partnerName, partnerAge, endorserAvatars, endorserNames, matchDate } =
         buildCardProps(state.screenState, state.activeMatch, state.currentProposal);
 
     const handleCardPress = () => {
@@ -152,6 +152,7 @@ export function MatchesScreen() {
                         age={partnerAge}
                         matchDate={matchDate}
                         imageUrl={partnerPhoto}
+                        imageBlurhash={partnerPhotoBlurhash}
                         matchedByAvatars={endorserAvatars}
                         hasUnread={state.hasUnreadMatch}
                         celebrate={state.celebrationActive}
