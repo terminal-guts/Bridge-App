@@ -153,9 +153,24 @@ export async function resolveProfilePhotos(profiles: UserProfile[]): Promise<voi
   const alreadyCached: Record<string, string> = {};
   const needsSigning: string[] = [];
 
+  // Returns true if a Supabase signed URL's JWT token has expired
+  const isSignedUrlExpired = (url: string): boolean => {
+    try {
+      const tokenMatch = url.match(/[?&]token=([^&]+)/);
+      if (!tokenMatch) return false;
+      const parts = tokenMatch[1].split('.');
+      if (parts.length < 2) return false;
+      const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+      return typeof payload.exp === 'number' && payload.exp * 1000 < Date.now();
+    } catch {
+      return false;
+    }
+  };
+
   for (const path of pathsToSign) {
-    if (cachedUrls[path]) {
-      alreadyCached[path] = cachedUrls[path];
+    const cachedUrl = cachedUrls[path];
+    if (cachedUrl && !isSignedUrlExpired(cachedUrl)) {
+      alreadyCached[path] = cachedUrl;
     } else {
       needsSigning.push(path);
     }

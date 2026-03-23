@@ -29,9 +29,9 @@ export const beginnerTourGuide: GuideDefinition = {
       id: 'matching_gates',
       highlightType: 'none',
       tooltipPosition: 'center',
-      title: 'Unlock Friends',
+      title: 'Vote before anyone sees it',
       message:
-        'Before helping your friends, help others on Bridge. Takes about 2 minutes!',
+        'Each pairing is voted on by the community before it reaches either person. Vote yes, no, or nominate a better match.',
       image: require('../../../assets/guide-voting-example.png'),
       primaryButtonText: 'Got it',
     },

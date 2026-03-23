@@ -1,18 +1,38 @@
 import React from 'react';
-import { View, Image } from 'react-native';
-import { styled } from 'nativewind';
-import { H1, H3, Body, Card } from '../../../components/ui';
+import { View, Text, StyleSheet } from 'react-native';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import { EvaIcon } from '../../../components/icons';
 import { COLORS } from '../../../theme/colors';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../../constants/typography';
 
 interface WelcomeToBridgeStepProps {
   onNext: () => void;
   onBack: () => void;
 }
 
-const StyledView = styled(View);
-const StyledImage = styled(Image);
+const STEPS = [
+  {
+    icon: 'flash' as const,
+    color: COLORS.primaryButton,
+    bgColor: '#EEF3FF',
+    title: 'Our AI proposes a match',
+    description: 'Based on who you are, not just how you look.',
+  },
+  {
+    icon: 'people' as const,
+    color: COLORS.emerald,
+    bgColor: '#ECFDF5',
+    title: 'Your community votes first',
+    description: 'Friends vote yes, no, or nominate a better match.',
+  },
+  {
+    icon: 'checkmark-circle-2' as const,
+    color: COLORS.primaryButton,
+    bgColor: '#EEF3FF',
+    title: 'If it passed, it\'s yours to decide.',
+    description: 'Every match you see has already been vetted.',
+  },
+];
 
 export const WelcomeToBridgeStep: React.FC<WelcomeToBridgeStepProps> = ({
   onNext,
@@ -22,65 +42,125 @@ export const WelcomeToBridgeStep: React.FC<WelcomeToBridgeStepProps> = ({
     <OnboardingLayout
       onContinue={onNext}
       onBack={onBack}
-      continueLabel="Go to Bridge"
+      continueLabel="Let's go"
       hasTextInput={false}
     >
-      <StyledView>
       {/* Header */}
-      <StyledView className="items-center mb-6">
-        <StyledImage
-          source={require('../../../../assets/favicon.png')}
-          style={{ width: 104, height: 104 }}
-          resizeMode="contain"
-        />
-        <H1 className="text-center mt-1">Welcome to Bridge!</H1>
-      </StyledView>
+      <View style={styles.header}>
+        <Text style={styles.title}>Matched by our AI.{'\n'}Approved by your community.</Text>
+      </View>
 
-      {/* Feature 1: One Best Match */}
-      <Card className="mb-5 p-5">
-        <StyledView className="flex-row items-start mb-2">
-          <StyledView className="bg-primary-100 p-2 rounded-full mr-3">
-            <EvaIcon name="sun" variant="outline" size={24} color={COLORS.primaryAccent} />
-          </StyledView>
-          <StyledView className="flex-1">
-            <H3 className="mb-2">One Best Match, Every Day</H3>
-            <Body className="text-neutral-600 text-sm">
-              One thoughtful pairing picked for you each evening.
-            </Body>
-          </StyledView>
-        </StyledView>
-      </Card>
+      {/* Steps */}
+      <View style={styles.stepsContainer}>
+        {STEPS.map((step, i) => (
+          <View key={i} style={styles.stepRow}>
+            {/* Left column: icon circle + connector */}
+            <View style={styles.leftCol}>
+              <View style={[styles.iconCircle, { backgroundColor: step.bgColor }]}>
+                <EvaIcon name={step.icon} variant="outline" size={20} color={step.color} />
+              </View>
+              {i < STEPS.length - 1 && <View style={styles.connector} />}
+            </View>
 
-      {/* Feature 2: Friends Vote */}
-      <Card className="mb-5 p-5">
-        <StyledView className="flex-row items-start mb-2">
-          <StyledView className="bg-primary-100 p-2 rounded-full mr-3">
-            <EvaIcon name="message-circle" variant="outline" size={24} color={COLORS.primaryAccent} />
-          </StyledView>
-          <StyledView className="flex-1">
-            <H3 className="mb-2">Your Friends Weigh In</H3>
-            <Body className="text-neutral-600 text-sm">
-              Your community votes before a match is ever sent.
-            </Body>
-          </StyledView>
-        </StyledView>
-      </Card>
+            {/* Right column: text */}
+            <View style={[styles.rightCol, i < STEPS.length - 1 && styles.rightColSpaced]}>
+              <Text style={styles.stepTitle}>{step.title}</Text>
+              <Text style={styles.stepDescription}>{step.description}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
 
-      {/* Feature 3: Low time */}
-      <Card className="mb-5 p-5">
-        <StyledView className="flex-row items-start mb-2">
-          <StyledView className="bg-primary-100 p-2 rounded-full mr-3">
-            <EvaIcon name="flash" variant="outline" size={24} color={COLORS.primaryAccent} />
-          </StyledView>
-          <StyledView className="flex-1">
-            <H3 className="mb-2">Done in 5 Minutes</H3>
-            <Body className="text-neutral-600 text-sm">
-              No endless feed.
-            </Body>
-          </StyledView>
-        </StyledView>
-      </Card>
-      </StyledView>
+      {/* Callout */}
+      <View style={styles.callout}>
+        <View style={styles.calloutAccent} />
+        <Text style={styles.calloutText}>
+          No more scrolling. The only app where your people help you find your person.
+        </Text>
+      </View>
     </OnboardingLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  header: {
+    marginBottom: 28,
+  },
+  title: {
+    fontFamily: FONTS.bold,
+    fontSize: FONT_SIZES['2xl'],
+    color: COLORS.text.heading,
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.base,
+    color: COLORS.text.secondary,
+    lineHeight: LINE_HEIGHTS.base,
+  },
+  stepsContainer: {
+    gap: 0,
+  },
+  stepRow: {
+    flexDirection: 'row',
+  },
+  leftCol: {
+    alignItems: 'center',
+    width: 44,
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  connector: {
+    width: 2,
+    flex: 1,
+    minHeight: 20,
+    backgroundColor: COLORS.borderSubtle,
+    marginVertical: 6,
+  },
+  rightCol: {
+    flex: 1,
+    paddingLeft: 14,
+    paddingTop: 8,
+  },
+  rightColSpaced: {
+    paddingBottom: 20,
+  },
+  stepTitle: {
+    fontFamily: FONTS.semiBold,
+    fontSize: FONT_SIZES.base,
+    color: COLORS.text.heading,
+    marginBottom: 4,
+  },
+  stepDescription: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.text.secondary,
+    lineHeight: LINE_HEIGHTS.sm,
+  },
+  callout: {
+    marginTop: 28,
+    backgroundColor: '#EEF3FF',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  calloutAccent: {
+    width: 3,
+    borderRadius: 2,
+    backgroundColor: COLORS.primaryButton,
+    alignSelf: 'stretch',
+  },
+  calloutText: {
+    flex: 1,
+    fontFamily: FONTS.medium,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.primaryButton,
+    lineHeight: LINE_HEIGHTS.sm,
+  },
+});
