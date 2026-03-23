@@ -191,6 +191,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   const swipeOpacity = useRef(new Animated.Value(1)).current;
   const navigationTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasPassedThresholdRef = useRef(false);
+  const acceptingRef = useRef(false);
 
   const profile = effectiveProfile;
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
@@ -220,6 +221,9 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
 
   // Accept immediately without confirmation - reduced friction!
   const handleAcceptInitiate = useCallback(async () => {
+    if (acceptingRef.current) return;
+    acceptingRef.current = true;
+
     // Guard: don't allow accept on expired proposals
     const expiresAt = route.params?.match?.expiresAt;
     if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) {
@@ -238,6 +242,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
         logger.info('[MatchProposalScreen] Proposal accepted:', route.params.proposalId);
       } catch (error) {
         logger.error('[MatchProposalScreen] Error accepting proposal:', error);
+        acceptingRef.current = false;
         if (isMountedRef.current) {
           setIsAccepting(false);
           swipeX.setValue(0);

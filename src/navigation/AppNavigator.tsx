@@ -140,7 +140,11 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
   const [profileStrength, setProfileStrength] = useState(100);
   const [profileCompleted, setProfileCompleted] = useState(true); // default true = hidden until loaded
   const ringProgress = useSharedValue(profileStrength < 100 ? profileStrength / 100 : 1);
+  const lastProfileFetchRef = useRef(0);
   useEffect(() => {
+    const now = Date.now();
+    if (now - lastProfileFetchRef.current < 30000) return;
+    lastProfileFetchRef.current = now;
     getUserProfile().then(result => {
       if (result.ok && result.data) {
         const strength = calculateOverallProfileStrength(result.data);

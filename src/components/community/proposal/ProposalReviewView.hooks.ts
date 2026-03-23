@@ -332,8 +332,9 @@ export function useForFriendModal(
     const current = proposals[currentIndex];
     if (current) {
       const recommendedPersonId = selectedPersonSide === 'userA' ? current.userA.id : current.userB.id;
-      void recommendedPersonId; // used for DB write (handled by server); record session action for progress counter
       communityService.recordSessionRecommendation(current.id);
+      // Fire-and-forget: persist to DB; swallows errors so UX is unblocked
+      communityService.submitRecommendation(recommendedPersonId, selectedFriendId, current.id).catch(() => {});
     }
     setShowForFriendModal(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });

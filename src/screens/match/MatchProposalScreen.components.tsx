@@ -173,7 +173,7 @@ export const ExpirationTimer: React.FC<{ expiresAt: string }> = ({ expiresAt }) 
   const [timeLeft, setTimeLeft] = useState(() => calculateTimeRemaining(expiresAt));
 
   useEffect(() => {
-    const interval = setInterval(() => setTimeLeft(calculateTimeRemaining(expiresAt)), 60000);
+    const interval = setInterval(() => setTimeLeft(calculateTimeRemaining(expiresAt)), 1000);
     return () => clearInterval(interval);
   }, [expiresAt]);
 

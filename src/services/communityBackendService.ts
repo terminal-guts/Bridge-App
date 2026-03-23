@@ -166,6 +166,29 @@ class CommunityBackendService {
     this.sessionRecommendedProposals.add(proposalId);
   }
 
+  // Fire-and-forget: persist the recommendation to the DB via edge function.
+  // Errors are swallowed — the session record is the source of truth for UX.
+  async submitRecommendation(
+    recommendedPersonId: string,
+    recommendedToFriendId: string,
+    sourceProposalId: string,
+  ): Promise<void> {
+    try {
+      const { error } = await supabase.functions.invoke('submit-recommendation', {
+        body: {
+          recommended_person_id: recommendedPersonId,
+          recommended_to_friend_id: recommendedToFriendId,
+          source_proposal_id: sourceProposalId,
+        },
+      });
+      if (error) {
+        Sentry.captureException(error, { extra: { fn: 'submitRecommendation' } });
+      }
+    } catch (err) {
+      Sentry.captureException(err, { extra: { fn: 'submitRecommendation' } });
+    }
+  }
+
   invalidateFriendsCache(): void {
     this.friendsAreaCache = null;
     this.friendsAreaResultCache = null;
