@@ -3,7 +3,8 @@
  * Extracted from CommunityScreen.tsx for maintainability.
  */
 
-import React, { useState, useEffect, useRef, useReducer } from 'react';
+import React, { useState, useEffect, useRef, useReducer, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import ReanimatedAnimated, {
     useSharedValue,
@@ -274,6 +275,113 @@ export function CaughtUpFooter() {
     </Text>
   );
 }
+
+// ── How Bridge Works card ─────────────────────────────────────────────────────
+
+const HOW_IT_WORKS_DISMISSED_KEY = '@bridge_how_it_works_dismissed';
+
+const HOW_IT_WORKS_STEPS = [
+  {
+    icon: 'flash' as const,
+    color: COLORS.primaryButton,
+    label: 'A pairing is proposed by the algorithm or a friend',
+  },
+  {
+    icon: 'people' as const,
+    color: COLORS.emerald,
+    label: 'Your community votes to approve or reject it',
+  },
+  {
+    icon: 'checkmark-circle-2' as const,
+    color: COLORS.primaryButton,
+    label: 'Only approved pairings become matches — no open feed',
+  },
+];
+
+export function HowItWorksCard() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(HOW_IT_WORKS_DISMISSED_KEY).then(val => {
+      if (val !== 'true') setVisible(true);
+    }).catch(() => {});
+  }, []);
+
+  const dismiss = useCallback(() => {
+    setVisible(false);
+    AsyncStorage.setItem(HOW_IT_WORKS_DISMISSED_KEY, 'true').catch(() => {});
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <View style={howStyles.card}>
+      <View style={howStyles.howHeader}>
+        <Text style={howStyles.heading}>How Bridge works</Text>
+        <TouchableOpacity
+          onPress={dismiss}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityLabel="Dismiss"
+        >
+          <EvaIcon name="close" variant="outline" size={16} color={COLORS.text.secondary} />
+        </TouchableOpacity>
+      </View>
+
+      {HOW_IT_WORKS_STEPS.map((step, i) => (
+        <View key={i} style={howStyles.stepRow}>
+          <View style={[howStyles.iconDot, { backgroundColor: step.color + '18' }]}>
+            <EvaIcon name={step.icon} variant="outline" size={14} color={step.color} />
+          </View>
+          <Text style={howStyles.stepText}>{step.label}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const howStyles = StyleSheet.create({
+  card: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    backgroundColor: '#EEF3FF',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#D4E0FF',
+  },
+  howHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  heading: {
+    fontFamily: FONTS.semiBold,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.primaryButton,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 10,
+  },
+  iconDot: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  stepText: {
+    flex: 1,
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.text.muted,
+    lineHeight: LINE_HEIGHTS.xs,
+  },
+});
 
 // ── Handler map builders ─────────────────────────────────────────────────────
 

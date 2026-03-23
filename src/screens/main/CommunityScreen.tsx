@@ -39,6 +39,7 @@ import {
   InviteBanner,
   ImpactCard,
   CaughtUpFooter,
+  HowItWorksCard,
   buildVoteHandlers,
   buildCrewHandlers,
   PendingRequestsSection,
@@ -455,6 +456,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primaryButton} />
           }
         >
+          <HowItWorksCard />
           <PendingRequestsSection
             requests={pendingRequests}
             processingIds={processingRequestIds}
@@ -471,6 +473,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primaryButton} />
           }
         >
+          <HowItWorksCard />
           <PendingRequestsSection
             requests={pendingRequests}
             processingIds={processingRequestIds}
