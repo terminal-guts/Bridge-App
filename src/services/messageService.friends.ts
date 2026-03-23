@@ -11,7 +11,6 @@ import { supabase, isRealSupabase } from '../lib/supabase';
 import { getAuthenticatedUserId } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
 import { FEATURES } from '../config/features';
-import { contentModerationService } from './contentModerationService';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
 const logger = createLogger('MessageService');
@@ -121,18 +120,6 @@ export const sendFriendMessage = async (
     const senderId = await getCurrentUserId();
     if (!senderId) {
       return { ok: false, error: { code: 'AUTH_ERROR', message: 'User not authenticated' } };
-    }
-
-    // Content moderation for text messages (skip for date proposals — system-generated)
-    if (type === 'text' && !content.startsWith('\u{1F4C5} Date Proposal:')) {
-      const moderationResult = await contentModerationService.analyzeText(content);
-      if (!moderationResult.isSafe) {
-        logger.warn('[MESSAGE SERVICE] Friend message blocked by content filter:', moderationResult.reason);
-        return {
-          ok: false,
-          error: { code: 'CONTENT_VIOLATION', message: moderationResult.reason || 'Message contains inappropriate content.' },
-        };
-      }
     }
 
     // Handle audio upload
