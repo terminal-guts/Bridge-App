@@ -82,48 +82,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     setBadgeModalVisible(true);
   }, []);
 
-  const handleCrushPress = useCallback(async (friendId: string, friendName: string) => {
-    // Find the friend in current state to check crush status
-    const friend = alreadyHelped.find(f => f.friendId === friendId);
-    if (!friend) return;
-
-    if (friend.hasCrushed) {
-      // Un-crush: optimistic update + remove
-      setAlreadyHelped(prev =>
-        prev.map(f => f.friendId === friendId ? { ...f, hasCrushed: false } : f)
-      );
-      const result = await removeCrush(friendId);
-      if (!result.ok) {
-        // Revert on failure
-        setAlreadyHelped(prev =>
-          prev.map(f => f.friendId === friendId ? { ...f, hasCrushed: true } : f)
-        );
-      }
-    } else {
-      // Crush: optimistic update + send
-      setAlreadyHelped(prev =>
-        prev.map(f => f.friendId === friendId ? { ...f, hasCrushed: true } : f)
-      );
-      successHaptic();
-      const result = await sendCrush(friendId);
-      if (!result.ok) {
-        // Revert on failure
-        setAlreadyHelped(prev =>
-          prev.map(f => f.friendId === friendId ? { ...f, hasCrushed: false } : f)
-        );
-        showToast.error('Could not send crush. Try again.');
-      } else if (result.isMutual) {
-        // Mutual crush! Both friends crushed on each other
-        showToast.success(
-          'It\'s mutual!',
-          `You and ${friendName} both crushed — a match proposal has been created!`
-        );
-        // Refresh friends data to show the new proposal in the grid
-        loadFriendsData();
-      }
-    }
-  }, [alreadyHelped, loadFriendsData]);
-
   const loadUnreadCounts = useCallback(async (friends: FriendWithGridStatus[]) => {
     if (!profile?.userId || friends.length === 0) return;
     try {
@@ -169,6 +127,48 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       Alert.alert('Error', 'Failed to load community data. Pull down to refresh.');
     }
   }, [loadUnreadCounts]);
+
+  const handleCrushPress = useCallback(async (friendId: string, friendName: string) => {
+    // Find the friend in current state to check crush status
+    const friend = alreadyHelped.find(f => f.friendId === friendId);
+    if (!friend) return;
+
+    if (friend.hasCrushed) {
+      // Un-crush: optimistic update + remove
+      setAlreadyHelped(prev =>
+        prev.map(f => f.friendId === friendId ? { ...f, hasCrushed: false } : f)
+      );
+      const result = await removeCrush(friendId);
+      if (!result.ok) {
+        // Revert on failure
+        setAlreadyHelped(prev =>
+          prev.map(f => f.friendId === friendId ? { ...f, hasCrushed: true } : f)
+        );
+      }
+    } else {
+      // Crush: optimistic update + send
+      setAlreadyHelped(prev =>
+        prev.map(f => f.friendId === friendId ? { ...f, hasCrushed: true } : f)
+      );
+      successHaptic();
+      const result = await sendCrush(friendId);
+      if (!result.ok) {
+        // Revert on failure
+        setAlreadyHelped(prev =>
+          prev.map(f => f.friendId === friendId ? { ...f, hasCrushed: false } : f)
+        );
+        showToast.error('Could not send crush. Try again.');
+      } else if (result.isMutual) {
+        // Mutual crush! Both friends crushed on each other
+        showToast.success(
+          'It\'s mutual!',
+          `You and ${friendName} both crushed — a match proposal has been created!`
+        );
+        // Refresh friends data to show the new proposal in the grid
+        loadFriendsData();
+      }
+    }
+  }, [alreadyHelped, loadFriendsData]);
 
   const onRefresh = useCallback(async () => {
     const userId = await getAuthenticatedUserId();
@@ -558,7 +558,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                 data={usersToMatch}
                 keyExtractor={voteKeyExtractor}
                 renderItem={renderVoteItem}
-                estimatedItemSize={USER_ROW_ESTIMATED_HEIGHT}
                 scrollEnabled={false}
                 drawDistance={USER_ROW_ESTIMATED_HEIGHT * 8}
               />
@@ -578,7 +577,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
               data={alreadyHelped}
               keyExtractor={crewKeyExtractor}
               renderItem={renderCrewItem}
-              estimatedItemSize={USER_ROW_ESTIMATED_HEIGHT}
               scrollEnabled={false}
               drawDistance={USER_ROW_ESTIMATED_HEIGHT * 8}
             />
