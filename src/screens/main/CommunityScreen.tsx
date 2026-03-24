@@ -581,18 +581,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
               drawDistance={USER_ROW_ESTIMATED_HEIGHT * 8}
             />
 
-            {/* Suggest a Match — inline row at bottom of crew list */}
-            {(usersToMatch.length + alreadyHelped.length) >= 2 && (
-              <TouchableOpacity
-                style={styles.suggestMatchRow}
-                activeOpacity={0.75}
-                onPress={() => { lightHaptic(); navigation.getParent()?.navigate('SuggestMatch'); }}
-              >
-                <EvaIcon name="heart" variant="outline" size={16} color="#437FFF" />
-                <Text style={styles.suggestMatchText}>Suggest a Match</Text>
-                <EvaIcon name="arrow-ios-forward" variant="outline" size={14} color="#437FFF" />
-              </TouchableOpacity>
-            )}
+            {/* DEFERRED: Suggest a Match entry point */}
           </View>
 
           {/* Slim caught-up footer — only when no pending votes */}

@@ -47,9 +47,9 @@ import { PhotoUploadStep } from './steps/PhotoUploadStep';
 import { PreferencesStep } from './steps/PreferencesStep';
 import { AddFriendsStep } from './steps/AddFriendsStep';
 import { WelcomeToBridgeStep } from './steps/WelcomeToBridgeStep';
-import { MatchmakingModeStep } from './steps/MatchmakingModeStep';
-import { MatchmakerProfileStep } from './steps/MatchmakerProfileStep';
-import { MatchmakerInviteStep } from './steps/MatchmakerInviteStep';
+// DEFERRED: import { MatchmakingModeStep } from './steps/MatchmakingModeStep';
+// DEFERRED: import { MatchmakerProfileStep } from './steps/MatchmakerProfileStep';
+// DEFERRED: import { MatchmakerInviteStep } from './steps/MatchmakerInviteStep';
 import { OnboardingProposalStep } from './steps/OnboardingProposalStep';
 
 interface OnboardingScreenProps {
@@ -177,7 +177,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
       { component: EmailSignUpStep, title: 'Email', hasTextInput: true },
       { component: EmailSignUpVerificationStep, title: 'Verify Email', hasTextInput: true },
       { component: NameStep, title: 'Name', hasTextInput: true, mappingKey: 'name' },
-      { component: MatchmakingModeStep, title: 'Role', hasTextInput: false, mappingKey: 'role' },
+      // DEFERRED: { component: MatchmakingModeStep, title: 'Role', hasTextInput: false, mappingKey: 'role' },
     ];
 
     if (onboardingData.role === 'matchmaker') {
