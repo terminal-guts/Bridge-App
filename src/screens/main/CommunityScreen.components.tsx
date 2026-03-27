@@ -5,21 +5,12 @@
 
 import React, { useState, useEffect, useRef, useReducer, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
-import ReanimatedAnimated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withRepeat,
-    withSequence,
-    withTiming,
-    cancelAnimation,
-    Easing,
-} from 'react-native-reanimated';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Animated } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { Image } from 'expo-image';
+import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 import { EvaIcon } from '../../components/icons';
 import { communityService } from '../../services/communityServiceIndex';
-import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 import { FriendWithGridStatus } from '../../types/community';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
@@ -72,9 +63,9 @@ export function MatchResetTimer() {
   // Incrementing counter just to force a re-render every second
   const [, tick] = useReducer((n: number) => n + 1, 0);
   const [infoVisible, setInfoVisible] = useState(false);
-  const pulseAnim = useSharedValue(1);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulsingRef = useRef(false);
-  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulseAnim.value }] }));
+  const pulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -88,16 +79,18 @@ export function MatchResetTimer() {
       const shouldPulse = ms > 0 && ms < 30 * 60 * 1000;
       if (shouldPulse && !pulsingRef.current) {
         pulsingRef.current = true;
-        pulseAnim.value = withRepeat(
-          withSequence(
-            withTiming(1.08, { duration: 600, easing: Easing.inOut(Easing.ease) }),
-            withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) }),
-          ), -1, false
+        pulseLoopRef.current = Animated.loop(
+          Animated.sequence([
+            Animated.timing(pulseAnim, { toValue: 1.08, duration: 600, useNativeDriver: true }),
+            Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+          ])
         );
+        pulseLoopRef.current.start();
       } else if (!shouldPulse && pulsingRef.current) {
         pulsingRef.current = false;
-        cancelAnimation(pulseAnim);
-        pulseAnim.value = 1;
+        pulseLoopRef.current?.stop();
+        pulseLoopRef.current = null;
+        pulseAnim.setValue(1);
       }
 
       tick(); // force re-render
@@ -112,9 +105,10 @@ export function MatchResetTimer() {
     return () => {
       clearInterval(id);
       unsub();
-      cancelAnimation(pulseAnim);
+      pulseLoopRef.current?.stop();
+      pulseLoopRef.current = null;
     };
-  }, []);
+  }, [pulseAnim]);
 
   // Computed fresh every render — never stale
   const remaining = Math.max(0, targetRef.current - Date.now());
@@ -153,13 +147,13 @@ export function MatchResetTimer() {
   return (
     <>
       <TouchableOpacity activeOpacity={0.7} onPress={() => setInfoVisible(true)} accessibilityRole="button" accessibilityLabel={`Daily reset timer, ${label} remaining`}>
-        <ReanimatedAnimated.View style={[pulseStyle, timerPillStyles.container, {
+        <Animated.View style={[{ transform: [{ scale: pulseAnim }] }, timerPillStyles.container, {
           backgroundColor: bgColor,
           borderColor,
         }]}>
           <EvaIcon name="clock" variant="outline" size={13} color={color} />
           <Text style={[timerPillStyles.label, { color }]}>{label}</Text>
-        </ReanimatedAnimated.View>
+        </Animated.View>
       </TouchableOpacity>
 
       <Modal visible={infoVisible} transparent animationType="fade" onRequestClose={() => setInfoVisible(false)}>
@@ -398,8 +392,11 @@ export function buildVoteHandlers(
   const viewProfile: HandlerMap = {};
   const matchHandlers: HandlerMap = {};
   for (const user of usersToMatch) {
-    viewProfile[user.friendId] = () =>
+    viewProfile[user.friendId] = () => {
+      const photoUrl = getOptimizedPhotoUrl(user.friend.photos?.[0]?.url, 'profile');
+      if (photoUrl) Image.prefetch(photoUrl).catch(() => {});
       navigation.navigate('ProfileView', { profile: user.friend });
+    };
     matchHandlers[user.friendId] = () =>
       navigation.navigate('FriendProposal', {
         friendId: user.friendId,
@@ -424,8 +421,11 @@ export function buildCrewHandlers(
   const badgeHandlers: HandlerMap = {};
   const crushHandlers: HandlerMap = {};
   for (const user of alreadyHelped) {
-    viewProfile[user.friendId] = () =>
+    viewProfile[user.friendId] = () => {
+      const photoUrl = getOptimizedPhotoUrl(user.friend.photos?.[0]?.url, 'profile');
+      if (photoUrl) Image.prefetch(photoUrl).catch(() => {});
       navigation.navigate('ProfileView', { profile: user.friend });
+    };
     chatHandlers[user.friendId] = () =>
       navigation.navigate('Chat', {
         friendshipId: user.friendshipId,
@@ -791,9 +791,9 @@ export const styles = StyleSheet.create({
   },
   suggestMatchText: {
     flex: 1,
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.lg,
-    color: COLORS.primaryAccent,
+    fontFamily: FONTS.medium,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.text.secondary,
   },
   // ── Caught up footer ──────────────────────────────────────────────
   caughtUpFooter: {

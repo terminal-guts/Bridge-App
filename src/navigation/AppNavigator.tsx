@@ -5,7 +5,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { UsersTabIcon, HandshakeTabIcon, ProfileTabIcon } from '../components/icons/Icons';
 import { AppState, View, Text, TouchableOpacity, useWindowDimensions, LayoutChangeEvent, StyleSheet as RNStyleSheet } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, useAnimatedProps, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, cancelAnimation } from 'react-native-reanimated';
 import { SPRINGS } from '../constants/animations';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGuideContext } from '../contexts/GuideContext';
@@ -14,7 +14,7 @@ import { supabase } from '../lib/supabase';
 import { FEATURES } from '../config/features';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { Sentry } from '../lib/sentry';
-import { fetchAndSetUserProfile, invalidateProfileCache, checkMinimalProfileStatus, getCachedMinimalProfileStatus, clearMinimalProfileStatusCache, getUserProfile } from '../services/profileService';
+import { fetchAndSetUserProfile, invalidateProfileCache, checkMinimalProfileStatus, getCachedMinimalProfileStatus, clearMinimalProfileStatusCache, getUserProfile, getInMemoryMinimalStatus } from '../services/profileService';
 import { calculateOverallProfileStrength } from '../utils/profileCompleteness';
 import Svg, { Circle } from 'react-native-svg';
 import { isIntentionalSignOut, resetIntentionalSignOut } from '../services/authService';
@@ -85,13 +85,10 @@ const SupportChatScreen = withSuspense(React.lazy(() => import('../screens/suppo
 // Community sub-screens
 const LeaderboardScreen = withSuspense(React.lazy(() => import('../screens/community/LeaderboardScreen').then(m => ({ default: m.LeaderboardScreen }))));
 const StatsScreen = withSuspense(React.lazy(() => import('../screens/community/StatsScreen').then(m => ({ default: m.StatsScreen }))));
-// DEFERRED: const SuggestMatchScreen = withSuspense(React.lazy(() => import('../screens/community/SuggestMatchScreen')));
+const SuggestMatchScreen = withSuspense(React.lazy(() => import('../screens/community/SuggestMatchScreen')));
 
 // Auth sub-screens
 const SuspendedScreen = withSuspense(React.lazy(() => import('../screens/auth/SuspendedScreen')));
-
-// Badge management
-const BadgeManagementScreen = withSuspense(React.lazy(() => import('../screens/profile/BadgeManagementScreen').then(m => ({ default: m.BadgeManagementScreen }))));
 
 // Matchmaker screens
 const MatchmakerHomeScreen = withSuspense(React.lazy(() => import('../screens/matchmaker/MatchmakerHomeScreen').then(m => ({ default: m.MatchmakerHomeScreen }))));
@@ -119,9 +116,62 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 const MatchmakerTab = createBottomTabNavigator<MatchmakerTabParamList>();
 
 // ── Custom Tab Bar ───────────────────────────────────────────────────────────
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const TAB_ICONS = [UsersTabIcon, HandshakeTabIcon, ProfileTabIcon];
 const TAB_TARGET_IDS = ['tab-community', 'tab-matches', 'tab-profile'];
+
+// Static (non-animated) SVG ring for profile completion.
+//
+// WHY NOT useAnimatedProps here:
+// Reanimated 4.x runs useAnimatedProps worklets on the UI thread. When the
+// enclosing tab navigator unmounts during stack navigation (e.g. stale 'dater'
+// cache corrected to 'matchmaker'), those worklets can fire AFTER the native
+// SVG view is already destroyed → "Cannot read property 'props' of undefined".
+// cancelAnimation() in useEffect cleanup does not prevent this because the
+// worklet frame is already scheduled on the UI thread before cleanup runs.
+//
+// The static approach sets strokeDashoffset directly from profileStrength state,
+// which updates on React re-renders. The ring shows accurate completion; it just
+// snaps to the new value instead of animating smoothly — an acceptable trade-off.
+const ProfileRingIcon: React.FC<{
+  profileStrength: number;
+  iconSize: number;
+  focused: boolean;
+}> = ({ profileStrength, iconSize, focused }) => {
+  const ringSize = iconSize + 8;
+  const ringRadius = ringSize / 2 - 2;
+  const ringCircumference = 2 * Math.PI * ringRadius;
+
+  return (
+    <View style={{ width: ringSize, height: ringSize, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg
+        width={ringSize}
+        height={ringSize}
+        style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}
+      >
+        <Circle
+          cx={ringSize / 2}
+          cy={ringSize / 2}
+          r={ringRadius}
+          fill="none"
+          stroke="rgba(103,112,133,0.15)"
+          strokeWidth={2.5}
+        />
+        <Circle
+          cx={ringSize / 2}
+          cy={ringSize / 2}
+          r={ringRadius}
+          fill="none"
+          stroke="#437FFF"
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeDasharray={ringCircumference}
+          strokeDashoffset={ringCircumference * (1 - profileStrength / 100)}
+        />
+      </Svg>
+      <ProfileTabIcon size={iconSize} color={focused ? '#437FFF' : '#667085'} />
+    </View>
+  );
+};
 
 const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetIdsProp }: any) => {
   const resolvedIcons = iconsProp ?? TAB_ICONS;
@@ -140,7 +190,6 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
   // One-way gate: once profileCompleted is true, never show the ring again
   const [profileStrength, setProfileStrength] = useState(100);
   const [profileCompleted, setProfileCompleted] = useState(true); // default true = hidden until loaded
-  const ringProgress = useSharedValue(profileStrength < 100 ? profileStrength / 100 : 1);
   const lastProfileFetchRef = useRef(0);
   useEffect(() => {
     const now = Date.now();
@@ -148,10 +197,15 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
     lastProfileFetchRef.current = now;
     getUserProfile().then(result => {
       if (result.ok && result.data) {
+        if (result.data.role === 'matchmaker') {
+          setProfileStrength(100);
+          setProfileCompleted(true);
+          return;
+        }
         const strength = calculateOverallProfileStrength(result.data);
-        setProfileStrength(strength);
-        setProfileCompleted(result.data.profileCompleted ?? false);
-        ringProgress.value = withTiming(strength / 100, { duration: 800 });
+        const completed = result.data.profileCompleted ?? false;
+        setProfileStrength(prev => prev !== strength ? strength : prev);
+        setProfileCompleted(prev => prev !== completed ? completed : prev);
       }
     });
   }, [state.index]);
@@ -160,6 +214,14 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
   // Each tab is 1/3 of screen width; indicator centers within the active tab.
   const tabWidth = screenWidth / state.routes.length;
   const indicatorX = useSharedValue(state.index * tabWidth + (tabWidth - 40) / 2);
+
+  // Cancel spring on unmount so Reanimated doesn't flush a stale frame to the
+  // Animated.View after the tab bar is destroyed (defensive, mirrors the SVG ring fix).
+  useEffect(() => {
+    return () => {
+      cancelAnimation(indicatorX);
+    };
+  }, []);
 
   useEffect(() => {
     indicatorX.value = withSpring(
@@ -170,15 +232,6 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
 
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: indicatorX.value }],
-  }));
-
-  // ── Animated ring props (for profile tab completion ring) ─────────────────
-  const ringSize = iconSize + 8;
-  const ringRadius = ringSize / 2 - 2;
-  const ringCircumference = 2 * Math.PI * ringRadius;
-
-  const ringAnimatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: ringCircumference * (1 - ringProgress.value),
   }));
 
   return (
@@ -211,6 +264,9 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
       {state.routes.map((route: any, index: number) => {
         const focused = state.index === index;
         const Icon = resolvedIcons[index];
+        // Ring only shows on the Profile tab (index 2 in 3-tab MainTabs)
+        // when the dater's profile is incomplete. Never shown in MatchmakerTabs
+        // (only 2 tabs, so index never reaches 2).
         const showRing = index === 2 && profileStrength < 100 && !profileCompleted;
 
         const onPress = () => {
@@ -240,34 +296,7 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
               activeOpacity={0.7}
             >
               {showRing ? (
-                <View style={{ width: ringSize, height: ringSize, alignItems: 'center', justifyContent: 'center' }}>
-                  <Svg
-                    width={ringSize}
-                    height={ringSize}
-                    style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}
-                  >
-                    <Circle
-                      cx={ringSize / 2}
-                      cy={ringSize / 2}
-                      r={ringRadius}
-                      fill="none"
-                      stroke="rgba(103,112,133,0.15)"
-                      strokeWidth={2.5}
-                    />
-                    <AnimatedCircle
-                      cx={ringSize / 2}
-                      cy={ringSize / 2}
-                      r={ringRadius}
-                      fill="none"
-                      stroke="#437FFF"
-                      strokeWidth={2.5}
-                      strokeLinecap="round"
-                      strokeDasharray={ringCircumference}
-                      animatedProps={ringAnimatedProps}
-                    />
-                  </Svg>
-                  <Icon size={iconSize} color={focused ? '#437FFF' : '#667085'} />
-                </View>
+                <ProfileRingIcon profileStrength={profileStrength} iconSize={iconSize} focused={focused} />
               ) : (
                 <Icon size={iconSize} color={focused ? '#437FFF' : '#667085'} />
               )}
@@ -295,11 +324,11 @@ const MainTabs = () => {
   );
 };
 
-// Matchmaker icons — handshake (hub), users (community), profile
-const MATCHMAKER_TAB_ICONS = [HandshakeTabIcon, UsersTabIcon, ProfileTabIcon];
-const MATCHMAKER_TAB_TARGET_IDS = ['tab-matchmaker', 'tab-community', 'tab-profile'];
+// Matchmaker icons — community, profile only
+const MATCHMAKER_TAB_ICONS = [UsersTabIcon, ProfileTabIcon];
+const MATCHMAKER_TAB_TARGET_IDS = ['tab-community', 'tab-profile'];
 
-// Matchmaker Tab Navigator — same visual bar, no Matches tab
+// Matchmaker Tab Navigator — Community + Profile only, no Matches or Hub tab
 const MatchmakerTabs = () => {
   return (
     <MatchmakerTab.Navigator
@@ -312,7 +341,6 @@ const MatchmakerTabs = () => {
       )}
       screenOptions={{ headerShown: false }}
     >
-      <MatchmakerTab.Screen name="MatchmakerHub" component={MatchmakerHomeScreen} />
       <MatchmakerTab.Screen name="Community" component={CommunityScreen} />
       <MatchmakerTab.Screen name="Profile" component={ProfileScreen} />
     </MatchmakerTab.Navigator>
@@ -321,10 +349,35 @@ const MatchmakerTabs = () => {
 
 // Root Stack Navigator
 export const AppNavigator = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [isSuspended, setIsSuspended] = useState(false);
-  const [suspensionReason, setSuspensionReason] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<'dater' | 'matchmaker'>('dater');
+  // ── EARLIEST POSSIBLE CACHE WARM ────────────────────────────────────────────
+  // useRef initializer fires synchronously during render, BEFORE any useEffect.
+  // We start both AsyncStorage reads immediately — in parallel — so that by the
+  // time initializeAuth() awaits the result, both are already complete (or almost).
+  // This also means CommunityScreen hits warm in-memory mirrors on first mount
+  // instead of triggering a second round of AsyncStorage reads.
+  const startupDataRef = useRef(
+    Promise.all([
+      getCachedMinimalProfileStatus(),
+      preloadCommunityCache(),
+    ] as const)
+  );
+
+  // Lazy initializers read the module-level in-memory mirror synchronously.
+  // On a warm start (app backgrounded → foregrounded), inMemoryMinimalStatus is
+  // already populated from the previous session → isAuthenticated starts as true
+  // and NO skeleton is ever rendered. On a cold start the mirror is null and we
+  // fall through to the async path in initializeAuth() as before.
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(() => {
+    const warm = getInMemoryMinimalStatus();
+    if (warm?.userId) {
+      setCachedUserId(warm.userId); // enable instant service calls before useEffect fires
+    }
+    return warm?.userId ? true : null;
+  });
+  const [isSuspended, setIsSuspended] = useState(() => getInMemoryMinimalStatus()?.isSuspended ?? false);
+  const [suspensionReason, setSuspensionReason] = useState<string | null>(() => getInMemoryMinimalStatus()?.reason ?? null);
+  const [userRole, setUserRole] = useState<'dater' | 'matchmaker'>(() => getInMemoryMinimalStatus()?.role ?? 'dater');
+  const { stopGuide, isPlaying } = useGuideContext();
   const navigationRef = React.useRef<any>(null);
   const authStateRef = React.useRef<boolean | null>(null);
   const pendingInviteCode = useRef<string | null>(null);
@@ -491,67 +544,132 @@ export const AppNavigator = () => {
     const isMountedRef = { current: true };
 
     // Check for existing Supabase session on app start.
-    // Strategy: confirm auth + use cached status → render MainTabs instantly,
-    // then verify status and fetch full profile in background.
+    // Strategy: read the small cached status entry first (fast AsyncStorage read).
+    // If it contains a userId, render the main UI IMMEDIATELY (optimistic auth) and
+    // validate the Supabase session in the background — no skeleton flash for returning users.
+    // If no userId is cached, fall back to the full getSession() path (new/signed-out users).
     const initializeAuth = async () => {
       try {
         if (FEATURES.DEVELOPMENT_FORCE_FRESH_SESSION) {
           await supabase.auth.signOut();
+          // Also clear minimal status so optimistic path doesn't fire with stale userId
+          clearMinimalProfileStatusCache();
         }
 
-        // Read session + cached status in parallel (both AsyncStorage reads)
-        const [sessionResult, cachedStatus] = await Promise.all([
-          supabase.auth.getSession(),
-          getCachedMinimalProfileStatus(),
-        ]);
-        const { data: { session }, error } = sessionResult;
+        // ── FAST PATH: optimistic auth from cached userId ─────────────────────────
+        // Await the startupDataRef promise (started during render, before useEffect).
+        // Both reads ran in parallel: getCachedMinimalProfileStatus() + preloadCommunityCache().
+        // By the time we await here, they are likely already complete.
+        // Community in-memory mirrors are now warm — CommunityScreen renders from cache.
+        const [cachedStatus] = await startupDataRef.current;
+        if (!isMountedRef.current) return;
 
+        if (cachedStatus?.userId) {
+          const userId = cachedStatus.userId;
+          logger.info('[AppNavigator] Optimistic auth — userId from cache:', userId);
+          setCachedUserId(userId);
+          setIsSuspended(cachedStatus.isSuspended);
+          setSuspensionReason(cachedStatus.reason);
+          setUserRole(cachedStatus.role);
+          // Render main app immediately — no waiting for JWT validation
+          setIsAuthenticated(true);
+
+          // Network prefetches (community cache already warmed above)
+          if (cachedStatus.role === 'dater') {
+            import('../services/communityServiceIndex').then(({ communityService }) => {
+              communityService.getCommunityTaskProgress().catch(() => {});
+              communityService.getProposalsToVote().catch(() => {});
+              communityService.getFriendsAreaData().catch(() => {});
+            });
+          }
+
+          // Background: validate JWT. If expired/invalid, kick to login.
+          supabase.auth.getSession().then(({ data: { session }, error }) => {
+            if (!isMountedRef.current) return;
+            if (error || !session?.user) {
+              logger.info('[AppNavigator] Background session check failed — signing out');
+              clearCachedUserId();
+              clearMinimalProfileStatusCache();
+              setIsAuthenticated(false);
+              showToast.error('Session expired. Please sign in again.');
+              return;
+            }
+            // Session valid — verify status and load full profile in background
+            checkMinimalProfileStatus().then(freshStatus => {
+              if (!isMountedRef.current) return;
+              if (freshStatus.isSuspended !== cachedStatus.isSuspended) setIsSuspended(freshStatus.isSuspended);
+              if (freshStatus.reason !== cachedStatus.reason) setSuspensionReason(freshStatus.reason);
+              if (freshStatus.role !== cachedStatus.role) {
+                setUserRole(freshStatus.role);
+                if (freshStatus.role === 'matchmaker' && navigationRef.current) {
+                  if (isPlaying) stopGuide();
+                  navigationRef.current.navigate('MatchmakerTabs' as never);
+                }
+              }
+            });
+            fetchAndSetUserProfile(session.user.id).then(profileResult => {
+              if (!isMountedRef.current) return;
+              if (!profileResult.ok) {
+                if (profileResult.error?.code === 'PROFILE_NOT_FOUND') {
+                  logger.info('[AppNavigator] No profile found — resuming onboarding');
+                  navigationRef.current?.reset({ index: 0, routes: [{ name: 'Onboarding' as any }] });
+                } else {
+                  logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
+                }
+              }
+            });
+          });
+          return;
+        }
+
+        // ── SLOW PATH: no cached userId (new user or explicit sign-out) ──────────
+        // Must validate session synchronously before deciding what to show.
+        const { data: { session }, error } = await supabase.auth.getSession();
         if (!isMountedRef.current) return;
 
         if (error || !session?.user) {
-          if (error) {
-            logger.info('Auth session check failed:', error.message);
-          }
+          if (error) logger.info('Auth session check failed:', error.message);
           clearCachedUserId();
           setIsAuthenticated(false);
         } else {
           const user = session.user;
           setCachedUserId(user.id);
-          logger.info('[AppNavigator] Authenticated user:', user.id);
+          logger.info('[AppNavigator] Authenticated user (slow path):', user.id);
 
-          // Use cached status to unblock navigation instantly.
-          // Falls back to defaults (not suspended, dater) if no cache exists yet.
-          const initialStatus = cachedStatus || { isSuspended: false, reason: null, role: 'dater' as const };
-
-          setIsSuspended(initialStatus.isSuspended);
-          setSuspensionReason(initialStatus.reason);
-          setUserRole(initialStatus.role);
-
-          // Render MainTabs or MatchmakerHome NOW — no network wait
+          // Defaults — checkMinimalProfileStatus() will fill in real values in background
+          // Community cache already warmed by startupDataRef (ran in parallel before this path)
+          setIsSuspended(false);
+          setSuspensionReason(null);
+          setUserRole('dater');
           setIsAuthenticated(true);
-
-          // Batch-preload community cache keys in one AsyncStorage round-trip,
-          // then pre-warm network data — both fire before CommunityScreen mounts
-          preloadCommunityCache().catch(() => {});
-          if (initialStatus.role === 'dater') {
-            import('../services/communityServiceIndex').then(({ communityService }) => {
-              communityService.getCommunityTaskProgress().catch(() => {});
-              communityService.getProposalsToVote().catch(() => {});
-            });
-          }
-
-          // Verify status in background — update UI if it changed (e.g. user got suspended)
-          checkMinimalProfileStatus().then(freshStatus => {
-            if (!isMountedRef.current) return;
-            if (freshStatus.isSuspended !== initialStatus.isSuspended) setIsSuspended(freshStatus.isSuspended);
-            if (freshStatus.reason !== initialStatus.reason) setSuspensionReason(freshStatus.reason);
-            if (freshStatus.role !== initialStatus.role) setUserRole(freshStatus.role);
+          import('../services/communityServiceIndex').then(({ communityService }) => {
+            communityService.getCommunityTaskProgress().catch(() => {});
+            communityService.getProposalsToVote().catch(() => {});
+            communityService.getFriendsAreaData().catch(() => {});
           });
 
-          // Full profile fetch runs in background — populates cache for screens
+          checkMinimalProfileStatus().then(freshStatus => {
+            if (!isMountedRef.current) return;
+            setIsSuspended(freshStatus.isSuspended);
+            setSuspensionReason(freshStatus.reason);
+            if (freshStatus.role !== 'dater') {
+              setUserRole(freshStatus.role);
+              if (freshStatus.role === 'matchmaker' && navigationRef.current) {
+                if (isPlaying) stopGuide();
+                navigationRef.current.navigate('MatchmakerTabs' as never);
+              }
+            }
+          });
+
           fetchAndSetUserProfile(user.id).then(profileResult => {
-            if (!profileResult.ok && profileResult.error?.code !== 'PROFILE_NOT_FOUND') {
-              logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
+            if (!isMountedRef.current) return;
+            if (!profileResult.ok) {
+              if (profileResult.error?.code === 'PROFILE_NOT_FOUND') {
+                logger.info('[AppNavigator] No profile found — resuming onboarding');
+                navigationRef.current?.reset({ index: 0, routes: [{ name: 'Onboarding' as any }] });
+              } else {
+                logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
+              }
             }
           });
         }
@@ -588,6 +706,14 @@ export const AppNavigator = () => {
               setIsSuspended(status.isSuspended);
               setSuspensionReason(status.reason);
               setUserRole(status.role);
+              if (status.role === 'matchmaker' && navigationRef.current) {
+                const rootState = navigationRef.current.getState();
+                const currentRootRoute = rootState?.routes?.[rootState.index ?? 0]?.name;
+                if (currentRootRoute !== 'MatchmakerTabs') {
+                  if (isPlaying) stopGuide();
+                  navigationRef.current.navigate('MatchmakerTabs' as never);
+                }
+              }
             } catch {}
           }
         });
@@ -708,9 +834,7 @@ export const AppNavigator = () => {
           <Stack.Screen name="SupportChat" component={SupportChatScreen} />
           <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
           <Stack.Screen name="Stats" component={StatsScreen} />
-          {/* DEFERRED: <Stack.Screen name="SuggestMatch" component={SuggestMatchScreen} /> */}
-          <Stack.Screen name="BadgeManagement" component={BadgeManagementScreen} />
-
+          <Stack.Screen name="SuggestMatch" component={SuggestMatchScreen} />
           {/* Friends */}
           <Stack.Screen name="ContactInvite" component={ContactInviteScreen} />
 
