@@ -91,6 +91,91 @@ const dbToMessage = (dbMsg: DbMessage): Message => ({
   readAt: dbMsg.read_at ?? undefined,
 });
 
+/**
+ * Generate a unique message ID
+ */
+const generateMessageId = (): string => {
+  return `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
+
+async function getCurrentUserId(): Promise<string> {
+  if (!USE_REAL_BACKEND) {
+    return '00000000-0000-0000-0000-000000000001';
+  }
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.id) throw new Error('Not authenticated');
+  return user.id;
+}
+
+// ============================================================================
+// Audio Upload Functions
+// ============================================================================
+
+/**
+ * Upload audio file to Supabase Storage
+ * Returns the public URL of the uploaded file
+ */
+const uploadAudioFile = async (
+  localUri: string,
+  matchId: string,
+  senderId: string
+): Promise<{ url: string; error: string | null }> => {
+  if (!USE_REAL_BACKEND) {
+    // In mock mode, just return the local URI
+    logger.info('[MESSAGE SERVICE] Mock mode: using local URI for audio');
+    return { url: localUri, error: null };
+  }
+
+  try {
+    // Generate unique filename
+    const timestamp = Date.now();
+    // Determine extension from the URI, default to .m4a
+    const uriExt = localUri.match(/\.(\w+)$/)?.[1] || 'm4a';
+    const ext = ['m4a', 'mp4', 'webm', 'aac', 'mpeg'].includes(uriExt) ? uriExt : 'm4a';
+    const contentTypeMap: Record<string, string> = {
+      m4a: 'audio/mp4',
+      mp4: 'audio/mp4',
+      webm: 'audio/webm',
+      aac: 'audio/aac',
+      mpeg: 'audio/mpeg',
+    };
+    const filename = `${matchId}/${senderId}/${timestamp}.${ext}`;
+    const contentType = contentTypeMap[ext] || 'audio/mp4';
+
+    // Read the file as blob via fetch (expo-file-system readAsStringAsync is deprecated in SDK 54)
+    const response = await fetch(localUri);
+    const blob = await response.blob();
+
+    // Convert blob to ArrayBuffer
+    const arrayBuffer = await blob.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(filename, bytes.buffer, {
+        contentType,
+        upsert: false,
+      });
+
+    if (error) {
+      logger.error('[MESSAGE SERVICE] Audio upload error:', error);
+      return { url: '', error: error.message };
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(filename);
+
+    logger.info('[MESSAGE SERVICE] Audio uploaded:', urlData.publicUrl);
+    return { url: urlData.publicUrl, error: null };
+  } catch (error: any) {
+    logger.error('[MESSAGE SERVICE] Audio upload exception:', error);
+    return { url: '', error: error.message || 'Failed to upload audio' };
+  }
+};
+
 // ============================================================================
 // Message Operations
 // ============================================================================
