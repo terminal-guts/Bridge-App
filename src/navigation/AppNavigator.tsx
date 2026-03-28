@@ -4,9 +4,7 @@ import * as Linking from 'expo-linking';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { UsersTabIcon, HandshakeTabIcon, ProfileTabIcon } from '../components/icons/Icons';
-import { AppState, View, Text, TouchableOpacity, useWindowDimensions, LayoutChangeEvent, StyleSheet as RNStyleSheet } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, cancelAnimation } from 'react-native-reanimated';
-import { SPRINGS } from '../constants/animations';
+import { AppState, View, Text, TouchableOpacity, useWindowDimensions, LayoutChangeEvent, StyleSheet as RNStyleSheet, Animated as RNAnimated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGuideContext } from '../contexts/GuideContext';
 import { GuideTarget } from '../components/guides/GuideTarget';
@@ -206,28 +204,24 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
   }, [state.index]);
 
   // ── Animated indicator ────────────────────────────────────────────────────
-  // Each tab is 1/3 of screen width; indicator centers within the active tab.
+  // Uses RN Animated (not Reanimated) so cleanup is synchronous and cannot
+  // fire after the native view is destroyed during role-correction navigation.
   const tabWidth = screenWidth / state.routes.length;
-  const indicatorX = useSharedValue(state.index * tabWidth + (tabWidth - 40) / 2);
-
-  // Cancel spring on unmount so Reanimated doesn't flush a stale frame to the
-  // Animated.View after the tab bar is destroyed (defensive, mirrors the SVG ring fix).
-  useEffect(() => {
-    return () => {
-      cancelAnimation(indicatorX);
-    };
-  }, []);
+  const indicatorX = useRef(new RNAnimated.Value(state.index * tabWidth + (tabWidth - 40) / 2)).current;
 
   useEffect(() => {
-    indicatorX.value = withSpring(
-      state.index * tabWidth + (tabWidth - 40) / 2,
-      SPRINGS.responsive,
-    );
+    RNAnimated.spring(indicatorX, {
+      toValue: state.index * tabWidth + (tabWidth - 40) / 2,
+      useNativeDriver: true,
+      tension: 200,
+      friction: 20,
+    }).start();
   }, [state.index, tabWidth]);
 
-  const indicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: indicatorX.value }],
-  }));
+  // Stop animation synchronously on unmount — guaranteed before native view destruction.
+  useEffect(() => {
+    return () => { indicatorX.stopAnimation(); };
+  }, []);
 
   return (
     <View style={{
@@ -244,7 +238,7 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
       elevation: 5,
     }}>
       {/* Sliding indicator — sits flush at the very top of the bar */}
-      <Animated.View style={[indicatorStyle, {
+      <RNAnimated.View style={{
         position: 'absolute',
         top: 0,
         left: 0,
@@ -254,7 +248,8 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
         borderBottomLeftRadius: 2,
         borderBottomRightRadius: 2,
         zIndex: 1,
-      }]} />
+        transform: [{ translateX: indicatorX }],
+      }} />
 
       {state.routes.map((route: any, index: number) => {
         const focused = state.index === index;
