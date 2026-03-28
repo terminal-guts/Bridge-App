@@ -122,8 +122,8 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
           {renderOption(
             'matchmaker',
             'people',
-            'Already taken?',
-            "Set up your friends without being in anyone's stack.",
+            'Help my friends find theirs',
+            "Vote on proposals and set up your friends. You won't be in the dating pool.",
             450,
             () => setShowMatchmakerInfo(true)
           )}

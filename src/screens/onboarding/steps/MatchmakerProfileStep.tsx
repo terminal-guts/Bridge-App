@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Image, Alert, Linking, Platform } from 'react-native';
+import { View, TouchableOpacity, Alert } from 'react-native';
+import { Image } from 'expo-image';
 import { styled } from 'nativewind';
-import { H1, Body, Input } from '../../../components/ui';
+import { H1, Body } from '../../../components/ui';
 import * as ImagePicker from 'expo-image-picker';
 import { OnboardingData, Photo } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
@@ -19,7 +20,6 @@ interface MatchmakerProfileStepProps {
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-const StyledImage = styled(Image);
 
 export const MatchmakerProfileStep: React.FC<MatchmakerProfileStepProps> = ({
   data,
@@ -28,7 +28,6 @@ export const MatchmakerProfileStep: React.FC<MatchmakerProfileStepProps> = ({
   onBack,
 }) => {
   const [photo, setPhoto] = useState<Photo | null>(data.photos?.[0] || null);
-  const [bio, setBio] = useState(data.bio || '');
 
   const openImagePicker = async () => {
     try {
@@ -54,7 +53,6 @@ export const MatchmakerProfileStep: React.FC<MatchmakerProfileStepProps> = ({
 
   const validateAndContinue = () => {
     updateData({
-      bio,
       photos: photo ? [photo] : [],
     });
     onNext();
@@ -64,12 +62,12 @@ export const MatchmakerProfileStep: React.FC<MatchmakerProfileStepProps> = ({
     <OnboardingLayout
       onBack={onBack}
       onContinue={validateAndContinue}
-      hasTextInput={true}
+      hasTextInput={false}
     >
       <StyledView className="mt-8 flex-1">
-        <H1 className="mb-2">Set up your profile</H1>
+        <H1 className="mb-2">Add a photo</H1>
         <Body className="text-neutral-500 mb-8">
-          This helps your friends' matches trust who they're talking to.
+          We need a photo to show you are a real person.
         </Body>
 
         <StyledView className="items-center mb-8">
@@ -78,7 +76,11 @@ export const MatchmakerProfileStep: React.FC<MatchmakerProfileStepProps> = ({
             className="w-32 h-32 rounded-full overflow-hidden bg-neutral-100 items-center justify-center border-2 border-dashed border-neutral-300"
           >
             {photo ? (
-              <StyledImage source={{ uri: photo.url }} className="w-full h-full" />
+              <Image
+                source={{ uri: photo.url }}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
+              />
             ) : (
               <StyledView className="items-center">
                 <EvaIcon name="camera" variant="outline" size={32} color={COLORS.text.placeholder} />
@@ -88,21 +90,7 @@ export const MatchmakerProfileStep: React.FC<MatchmakerProfileStepProps> = ({
               </StyledView>
             )}
           </StyledTouchableOpacity>
-          <Body className="text-neutral-500 text-xs mt-3">(Optional but highly recommended)</Body>
-        </StyledView>
-
-        <StyledView className="flex-1 mt-4">
-          <Input
-            label="Why are you a great matchmaker?"
-            placeholder="I set up my roommate with their partner"
-            value={bio}
-            onChangeText={setBio}
-            autoCapitalize="sentences"
-            returnKeyType="done"
-            maxLength={100}
-            multiline
-            numberOfLines={2}
-          />
+          <Body className="text-neutral-500 text-xs mt-3">(Optional)</Body>
         </StyledView>
       </StyledView>
     </OnboardingLayout>

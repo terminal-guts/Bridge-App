@@ -6,6 +6,7 @@ import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { signOut } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
+import { getUserProfile, checkMinimalProfileStatus } from '../../services/profileService';
 import { resetGuide } from '../../services/guideService';
 import { createLogger } from '../../utils/secureLogger';
 import { FONTS } from '../../constants/typography';
@@ -79,6 +80,8 @@ const SettingRow = ({
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [userRole, setUserRole] = useState<string>('dater');
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   // Notification Preferences — all default false until loaded from storage
   const [prefsLoaded, setPrefsLoaded] = useState(false);
@@ -90,6 +93,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
   useEffect(() => {
     loadCurrentUser();
     loadPreferences();
+    getUserProfile().then(res => {
+      if (res.ok && res.data) {
+        setUserRole(res.data.role || 'dater');
+        setUserProfile(res.data);
+      }
+    });
   }, []);
 
   const loadPreferences = async () => {
@@ -164,15 +173,51 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
             />
           </Card>
 
+          {/* Switch to Dater — matchmakers only */}
+          {userRole === 'matchmaker' && (
+            <Card className="mb-6">
+              <H3 className="mb-4">Your Role</H3>
+              <SettingRow
+                icon="swap"
+                title="Switch to Dater"
+                subtitle="Join the dating pool yourself"
+                onPress={() => {
+                  Alert.alert(
+                    'Switch to Dater?',
+                    "You'll need to complete your dating profile (age, photos, interests, etc.) to enter the dating pool.",
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Switch',
+                        onPress: () => {
+                          navigation.navigate('Onboarding', {
+                            isRoleSwitch: true,
+                            initialData: {
+                              role: 'dater',
+                              firstName: userProfile?.firstName || '',
+                              photos: userProfile?.photos || [],
+                            },
+                          });
+                        },
+                      },
+                    ]
+                  );
+                }}
+              />
+            </Card>
+          )}
+
           {/* Preferences */}
           <Card className="mb-6">
             <H3 className="mb-4">Preferences</H3>
+            {userRole !== 'matchmaker' && (
             <SettingRow
               icon="pause-circle"
               title="Pause Profile"
               subtitle="Take a break from Bridge"
               onPress={() => navigation.navigate('PauseProfile')}
             />
+            )}
             <SettingRow
               icon="slash"
               title="Blocked Users"

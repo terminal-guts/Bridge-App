@@ -10,6 +10,7 @@ import { EvaIcon, IconScoutIcon } from '../../icons';
 import { WineGlassIcon, LeafIcon, CigaretteIcon } from '../../icons/Icons';
 import { ProfileBadgesSection } from '../../badges/ProfileBadgesSection';
 import { formatProfileValue } from '../../../utils/formatProfileValue';
+import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -46,13 +47,17 @@ export const ProposalProfileView: React.FC<ProposalProfileViewProps> = ({ user }
             {mainPhoto && (
                 <StyledView style={{ marginBottom: 20, alignItems: 'center' }}>
                     <Image
-                        source={{ uri: mainPhoto.url }}
+                        source={{ uri: getOptimizedPhotoUrl(mainPhoto.url, 'profile') }}
                         style={{
                             width: '100%',
                             height: 400,
                             borderRadius: 16,
+                            backgroundColor: '#E5E7EB',
                         }}
                         contentFit="cover"
+                        cachePolicy="memory-disk"
+                        priority="high"
+                        transition={300}
                     />
                 </StyledView>
             )}

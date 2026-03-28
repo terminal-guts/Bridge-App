@@ -7,7 +7,9 @@
  */
 
 import React from 'react';
-import { View, Text, Image, ScrollView } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
+import { Image } from 'expo-image';
+import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
 import { styled } from 'nativewind';
 import { UserProfile, Photo } from '../../../types';
 import { FONTS, FONT_SIZES } from '../../../constants/typography';
@@ -16,7 +18,6 @@ import { EvaIcon } from '../../icons';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
-const StyledImage = styled(Image);
 const StyledScrollView = styled(ScrollView);
 
 interface AnchorPreferencesSectionProps {
@@ -73,15 +74,15 @@ export function AnchorPreferencesSection({ anchor }: AnchorPreferencesSectionPro
     <StyledView style={{ flex: 1, width: '100%', paddingHorizontal: 24, paddingTop: 32 }}>
       {/* Anchor Photo - Large, centered, no name */}
       <StyledView style={{ alignItems: 'center', marginBottom: 24, width: '100%' }}>
-        <StyledImage
-          source={{ uri: mainPhoto?.url || 'https://via.placeholder.com/150' }}
+        <Image
+          source={mainPhoto?.url ? { uri: getOptimizedPhotoUrl(mainPhoto.url, 'avatar') } : null}
           style={{
-            width: 130,
-            height: 130,
-            borderRadius: 65,
-            backgroundColor: COLORS.backgroundGrayMedium
+            width: 130, height: 130, borderRadius: 65,
+            backgroundColor: COLORS.backgroundGrayMedium,
           }}
-          resizeMode="cover"
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          priority="high"
         />
         <StyledText style={{
           fontSize: FONT_SIZES.xl,

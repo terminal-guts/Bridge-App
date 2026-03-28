@@ -27,7 +27,7 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
   route
 }) => {
   const { phoneNumber } = route.params;
-  const email = phoneNumber; // Route param is named phoneNumber for compat, but it's always email now
+  const email = phoneNumber.trim(); // Route param is named phoneNumber for compat, but it's always email now
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);

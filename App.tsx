@@ -18,14 +18,11 @@ import { GuideProvider } from './src/contexts/GuideContext';
 import { GuideOverlay } from './src/components/guides/GuideOverlay';
 import { ErrorBoundary } from './src/components/ui/ErrorBoundary';
 import { createLogger } from './src/utils/secureLogger';
-import {
-  useFonts,
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
-} from '@expo-google-fonts/plus-jakarta-sans';
+// Import useFonts from expo-font directly (not the @expo-google-fonts package root).
+// The package root index.js has require() calls for all 16 font variants — importing
+// from there causes Metro to bundle ~1.5MB of TTF files we never use. Importing
+// useFonts directly and requiring only the 5 needed TTF files saves ~1MB of bundle assets.
+import { useFonts } from 'expo-font';
 
 // Keep the native splash screen visible until fonts are loaded.
 // This avoids showing a blank screen or spinner during font loading —
@@ -38,18 +35,31 @@ const fontsPatchApplied = { current: false };
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    PlusJakartaSans_400Regular,
-    PlusJakartaSans_500Medium,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold,
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    PlusJakartaSans_400Regular: require('@expo-google-fonts/plus-jakarta-sans/400Regular/PlusJakartaSans_400Regular.ttf'),
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    PlusJakartaSans_500Medium: require('@expo-google-fonts/plus-jakarta-sans/500Medium/PlusJakartaSans_500Medium.ttf'),
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    PlusJakartaSans_600SemiBold: require('@expo-google-fonts/plus-jakarta-sans/600SemiBold/PlusJakartaSans_600SemiBold.ttf'),
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    PlusJakartaSans_700Bold: require('@expo-google-fonts/plus-jakarta-sans/700Bold/PlusJakartaSans_700Bold.ttf'),
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    PlusJakartaSans_800ExtraBold: require('@expo-google-fonts/plus-jakarta-sans/800ExtraBold/PlusJakartaSans_800ExtraBold.ttf'),
   });
 
-  // Apply global font patch once fonts are loaded, then hide the splash screen
+  // Apply font patch immediately on first mount — fonts are embedded natively via the
+  // expo-font plugin so they're already registered before JS starts. We don't need to
+  // wait for useFonts() to confirm before patching Text defaults.
   React.useEffect(() => {
-    if (fontsLoaded && !fontsPatchApplied.current) {
+    if (!fontsPatchApplied.current) {
       require('./src/utils/setDefaultFonts');
       fontsPatchApplied.current = true;
+    }
+  }, []);
+
+  // Hide splash screen once fonts are confirmed loaded
+  React.useEffect(() => {
+    if (fontsLoaded) {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
@@ -82,8 +92,11 @@ export default function App() {
     };
   }, []);
 
-  // Keep splash screen visible until fonts are ready
-  if (!fontsLoaded) return null;
+  // NOTE: We intentionally do NOT gate rendering on fontsLoaded here.
+  // Fonts are embedded natively via the expo-font plugin so they're already registered
+  // before JS starts. The splash screen stays visible until SplashScreen.hideAsync() fires
+  // (which happens when fontsLoaded=true above), so users never see the pre-font frame.
+  // Removing this gate lets AppNavigator mount and start its cache reads one frame earlier.
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

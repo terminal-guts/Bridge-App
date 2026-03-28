@@ -146,8 +146,8 @@ export async function createFriendSuggestion(
   const { data, error } = await supabase.functions.invoke('suggest-friend-match', {
     body: { user_a_id: userAId, user_b_id: userBId },
   });
-  if (error) throw new Error(error.message);
   if (data?.error) throw new Error(data.error);
+  if (error) throw new Error(error.message);
   return { suggestionId: data.suggestion_id, expiresAt: data.expires_at };
 }
 
@@ -214,12 +214,16 @@ export async function getEligibleFriends(): Promise<UserProfile[]> {
       usersWithSuggestion.add(s.user_b_id);
     });
 
-    return profiles
+    const mapped = profiles
       .filter(p =>
+        p.role !== 'matchmaker' &&
         !usersInAdvancedState.has(p.user_id) &&
         !usersWithSuggestion.has(p.user_id)
       )
       .map(mapProfileRow);
+
+    await resolveProfilePhotos(mapped);
+    return mapped;
   } catch {
     return [];
   }

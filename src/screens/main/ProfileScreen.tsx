@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Image } from 'expo-image';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
 import { AVATAR_SIZE_XL } from '../../constants';
@@ -15,6 +15,7 @@ import { GuideTarget } from '../../components/guides';
 import { EvaIcon } from '../../components/icons';
 import { lightHaptic } from '../../utils/haptics';
 import { createLogger } from '../../utils/secureLogger';
+import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { useProfileScreen } from './ProfileScreen.hooks';
 import { AboutTab, BadgesTab } from './ProfileScreen.sections';
 import { QuestionsTab } from './ProfileScreen.questions';
@@ -62,10 +63,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
   return (
     <ScreenWrapper>
       <OfflineBanner />
-      <ProfileCompletionBanner
-        profile={profile}
-        onPress={() => navigation.navigate('ProfileEdit')}
-      />
+      {profile.role !== 'matchmaker' && (
+        <ProfileCompletionBanner
+          profile={profile}
+          onPress={() => navigation.navigate('ProfileEdit')}
+        />
+      )}
 
       <StyledScrollView
         className="flex-1"
@@ -80,25 +83,29 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
           />
         }
       >
-        {/* Header with Preview, Edit and Settings */}
+        {/* Header with Settings (and Preview/Edit for daters) */}
         <StyledView className="bg-white border-b border-neutral-200">
           <StyledView className="px-4 py-3 flex-row justify-between items-center">
             <Display>Your Profile</Display>
             <StyledView className="flex-row items-center space-x-3">
-              <StyledTouchableOpacity
-                onPress={() => { lightHaptic(); navigation.navigate('ProfilePreview'); }}
-                accessibilityLabel="Preview profile"
-                accessibilityRole="button"
-              >
-                <EvaIcon name="eye" variant="outline" size={24} color={COLORS.purple} />
-              </StyledTouchableOpacity>
-              <StyledTouchableOpacity
-                onPress={() => { lightHaptic(); navigation.navigate('ProfileEdit'); }}
-                accessibilityLabel="Edit profile"
-                accessibilityRole="button"
-              >
-                <EvaIcon name="edit-2" variant="outline" size={24} color={COLORS.primaryAccent} />
-              </StyledTouchableOpacity>
+              {profile.role !== 'matchmaker' && (
+                <StyledTouchableOpacity
+                  onPress={() => { lightHaptic(); navigation.navigate('ProfilePreview'); }}
+                  accessibilityLabel="Preview profile"
+                  accessibilityRole="button"
+                >
+                  <EvaIcon name="eye" variant="outline" size={24} color={COLORS.purple} />
+                </StyledTouchableOpacity>
+              )}
+              {profile.role !== 'matchmaker' && (
+                <StyledTouchableOpacity
+                  onPress={() => { lightHaptic(); navigation.navigate('ProfileEdit'); }}
+                  accessibilityLabel="Edit profile"
+                  accessibilityRole="button"
+                >
+                  <EvaIcon name="edit-2" variant="outline" size={24} color={COLORS.primaryAccent} />
+                </StyledTouchableOpacity>
+              )}
               <StyledTouchableOpacity
                 onPress={() => { lightHaptic(); navigation.navigate('Settings'); }}
                 accessibilityLabel="Settings"
@@ -115,7 +122,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               {/* Profile Photo Circle */}
               {profile.photos && profile.photos.length > 0 && (profile.photos.find(p => p.isMain) || profile.photos[0])?.url ? (
                 <StyledImage
-                  source={{ uri: (profile.photos.find(p => p.isMain) || profile.photos[0]).url }}
+                  source={{ uri: getOptimizedImageUrl((profile.photos.find(p => p.isMain) || profile.photos[0]).url, AVATAR_SIZE_XL) }}
                   className="rounded-full mb-3 bg-neutral-200 border-2 border-neutral-100"
                   style={{
                     width: AVATAR_SIZE_XL,
@@ -185,27 +192,84 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
             </StyledView>
           </StyledView>
 
-          {/* Tab Bar */}
-          <TabBar
-            activeTab={hook.activeTab}
-            onTabChange={hook.setActiveTab}
-            questionsCount={profile.deepQuestions?.length || 0}
-            badgesCount={hook.badges.length}
-          />
+          {/* Matchmaker locked section — replaces tab bar and tab content */}
+          {profile.role === 'matchmaker' ? (
+            <View style={{ paddingHorizontal: 24, paddingBottom: 32, paddingTop: 16, alignItems: 'center' }}>
+              {/* Matchmaker pill badge */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: COLORS.primaryButton,
+                  borderRadius: 999,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  gap: 6,
+                  marginBottom: 10,
+                }}
+                accessibilityLabel="Matchmaker role badge"
+              >
+                <EvaIcon name="lock" variant="fill" size={14} color="white" />
+                <Body style={{ color: 'white', fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.sm }}>
+                  Matchmaker
+                </Body>
+              </View>
+
+              {/* Subtext */}
+              <Body
+                style={{
+                  color: COLORS.text.secondary,
+                  fontFamily: FONTS.regular,
+                  fontSize: FONT_SIZES.sm,
+                  textAlign: 'center',
+                  marginBottom: 20,
+                }}
+              >
+                {"You're not in the dating pool. Your friends are."}
+              </Body>
+
+              {/* Change Photo button */}
+              <TouchableOpacity
+                onPress={() => { lightHaptic(); navigation.navigate('EditPhotos'); }}
+                style={{
+                  borderWidth: 1,
+                  borderColor: COLORS.primaryAccent,
+                  borderRadius: 999,
+                  paddingHorizontal: 24,
+                  paddingVertical: 10,
+                }}
+                accessibilityLabel="Change photo"
+                accessibilityRole="button"
+              >
+                <Body style={{ color: COLORS.primaryAccent, fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.base }}>
+                  Change Photo
+                </Body>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            /* Tab Bar — dater only */
+            <TabBar
+              activeTab={hook.activeTab}
+              onTabChange={hook.setActiveTab}
+              questionsCount={profile.deepQuestions?.length || 0}
+              badgesCount={hook.badges.length}
+            />
+          )}
         </StyledView>
 
-        {/* Tab Content */}
-        {hook.activeTab === 'about' && (
+        {/* Tab Content — dater only */}
+        {profile.role !== 'matchmaker' && hook.activeTab === 'about' && (
           <AboutTab profile={profile} navigation={navigation} />
         )}
-        {hook.activeTab === 'badges' && (
+        {profile.role !== 'matchmaker' && hook.activeTab === 'badges' && (
           <BadgesTab
             badges={hook.badges}
             badgesLoading={hook.badgesLoading}
             onToggleFeatured={hook.handleToggleFeaturedBadge}
+            onToggleHidden={hook.handleToggleHiddenBadge}
           />
         )}
-        {hook.activeTab === 'questions' && (
+        {profile.role !== 'matchmaker' && hook.activeTab === 'questions' && (
           <QuestionsTab
             profile={profile}
             loading={hook.loading}

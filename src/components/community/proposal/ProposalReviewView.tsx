@@ -29,6 +29,7 @@ import {
   Dimensions,
   Image as RNImage,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LottieView from 'lottie-react-native';
 // Confetti JSON is loaded lazily on first Yes vote — avoids parsing it at module init
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -72,7 +73,15 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 // ─── Layout constants ────────────────────────────────────────────────────────
 const SCREEN_WIDTH = Dimensions.get('window').width;
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 const DIVIDER_WIDTH = 13;
+
+// ─── Section accent spectrum ──────────────────────────────────────────────────
+// Colors sweep the visible spectrum (cool → warm → violet) as sections appear
+// in scroll order: Badges → Questions → Interests → Values → Lifestyle → Beliefs
+const ACCENT_QUESTIONS = '#06B6D4'; // cyan — no COLORS entry
+const ACCENT_INTERESTS = COLORS.emerald;
+const ACCENT_VALUES    = COLORS.warning.icon;
 const PHOTO_WIDTH = (SCREEN_WIDTH - 32 - DIVIDER_WIDTH) / 2;
 
 const SCROLL_CONTENT_STYLE = { paddingHorizontal: 16, paddingBottom: 160 } as const;
@@ -102,6 +111,11 @@ export function ProposalReviewView({
   onVoteComplete,
   deepQuestions,
 }: ProposalReviewViewProps) {
+  const insets = useSafeAreaInsets();
+  // Proportional header spacing — ~0.5% of screen height above button, ~0.9% below
+  const headerTopPadding = insets.top + Math.round(SCREEN_HEIGHT * 0.005);
+  const headerBottomPadding = Math.round(SCREEN_HEIGHT * 0.009);
+
   const {
     proposals, currentIndex, loading, voting, voteFlashColor,
     scrollViewRef, isMountedRef,
@@ -229,17 +243,18 @@ export function ProposalReviewView({
 
       {/* Header row */}
       {showBackButton ? (
-        <View style={proposalStyles.headerRow}>
+        <View style={[proposalStyles.headerRow, { paddingTop: headerTopPadding, paddingBottom: headerBottomPadding }]}>
           <TouchableOpacity
             onPress={onBack}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             activeOpacity={0.7}
+            style={{ backgroundColor: 'rgba(255,255,255,0.90)', borderRadius: 20, padding: 6 }}
           >
             <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.heading} />
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={proposalStyles.progressRow}>
+        <View style={[proposalStyles.progressRow, { paddingTop: headerTopPadding, paddingBottom: headerBottomPadding }]}>
           <View style={{ width: 40 }} />
           <View style={proposalStyles.progressDotsCenter}>
             <GuideTarget id="matching-gates">
@@ -313,7 +328,7 @@ export function ProposalReviewView({
 
         {/* ── Questions ─────────────────────────────────────────────── */}
         {resolvedDeepQuestions && resolvedDeepQuestions.length > 0 && (
-          <SectionCard title="Questions" matched={undefined} total={undefined} accentColor={COLORS.primary}>
+          <SectionCard title="Questions" matched={undefined} total={undefined} accentColor={ACCENT_QUESTIONS}>
             <QuestionCarousel
               questions={resolvedDeepQuestions}
               userAName={`${userA.firstName} ${userA.lastName || ''}`}
@@ -327,7 +342,7 @@ export function ProposalReviewView({
           <SectionCard
             title="Interests"
             percentBadge={interestsPillResult.percentMatch}
-            accentColor={COLORS.emerald}
+            accentColor={ACCENT_INTERESTS}
           >
             <SmartPillCloudSection
               pillResult={interestsPillResult}
@@ -342,7 +357,7 @@ export function ProposalReviewView({
           <SectionCard
             title="Values"
             percentBadge={valuesPillResult.percentMatch}
-            accentColor={COLORS.purple}
+            accentColor={ACCENT_VALUES}
           >
             <SmartPillCloudSection
               pillResult={valuesPillResult}

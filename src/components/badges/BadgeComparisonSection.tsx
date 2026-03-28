@@ -22,7 +22,8 @@ const logger = createLogger('BadgeComparisonSection');
 
 // Match SectionCard design tokens from SmartPillCloud.tsx
 const CARD_BORDER = 'rgba(1, 1, 1, 0.1)';
-const ACCENT_COLOR = COLORS.pink;
+// Spectrum position 1 of 6 — brand blue anchors the cool→warm→violet sweep
+const ACCENT_COLOR = COLORS.primaryAccent;
 
 interface BadgeComparisonSectionProps {
   userAId: string;

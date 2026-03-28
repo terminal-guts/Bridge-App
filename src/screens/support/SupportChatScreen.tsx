@@ -230,6 +230,10 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
           renderItem={renderMessage}
           contentContainerStyle={s.listContent}
           showsVerticalScrollIndicator={false}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          removeClippedSubviews
         />
 
         {/* Failed banner */}

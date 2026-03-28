@@ -28,6 +28,8 @@ export const ProfileBadgesSection: React.FC<ProfileBadgesSectionProps> = React.m
       if (mounted && result.ok && result.data) {
         setBadges(result.data);
       }
+    }).catch(() => {
+      // Silently ignore fetch errors — badges section simply stays empty
     });
     return () => { mounted = false; };
   }, [userId]);

@@ -44,6 +44,13 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Cannot match a person with themselves' }, { status: 400, headers: corsHeaders });
     }
 
+    if (user_a_id === suggesterId || user_b_id === suggesterId) {
+      return Response.json(
+        { error: 'You cannot suggest yourself as part of a match' },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
     const supabase = createAdminClient();
 
     // 2. Validate both are friends of the suggester

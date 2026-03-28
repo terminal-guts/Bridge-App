@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   StyleSheet,
   Dimensions,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -17,6 +18,7 @@ import { getEligibleFriends, createFriendSuggestion } from '../../services/frien
 import { showToast } from '../../utils/toast';
 import type { UserProfile } from '../../types';
 import { EvaIcon } from '../../components/icons';
+import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -39,6 +41,15 @@ export default function SuggestMatchScreen() {
     })();
   }, []);
 
+  useEffect(() => {
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (submitting) return true;
+      handleBack();
+      return true;
+    });
+    return () => handler.remove();
+  }, [submitting, step]);
+
   const handleSelectFriendA = (friend: UserProfile) => {
     setFriendA(friend);
     setStep('pick_b');
@@ -50,6 +61,7 @@ export default function SuggestMatchScreen() {
   };
 
   const handleBack = () => {
+    if (submitting) return;
     if (step === 'pick_b') {
       setStep('pick_a');
       setFriendA(null);
@@ -67,7 +79,8 @@ export default function SuggestMatchScreen() {
 
     try {
       await createFriendSuggestion(friendA.userId, friendB.userId);
-      showToast.success('Suggestion sent!', 'It\'ll go live at the next voting cycle.');
+      showToast.success('Suggestion sent!', 'They\'ll get a boost in matchmaking.');
+      setSubmitting(false);
       navigation.goBack();
     } catch (err: any) {
       const msg = err.message || 'Something went wrong';
@@ -97,7 +110,14 @@ export default function SuggestMatchScreen() {
         onPress={() => step === 'pick_a' ? handleSelectFriendA(item) : handleSelectFriendB(item)}
       >
         {photoUrl ? (
-          <Image source={{ uri: photoUrl }} style={styles.friendPhoto} contentFit="cover" />
+          <Image
+            source={{ uri: getOptimizedPhotoUrl(photoUrl, 'avatar') }}
+            style={styles.friendPhoto}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            priority="normal"
+            recyclingKey={item.userId}
+          />
         ) : (
           <View style={[styles.friendPhoto, styles.photoPlaceholder]}>
             <EvaIcon name="person" variant="outline" size={24} color="#D0D5DD" />
@@ -143,7 +163,13 @@ export default function SuggestMatchScreen() {
           <View style={styles.confirmPhotos}>
             <View style={styles.confirmCard}>
               {getPhotoUrl(friendA) ? (
-                <Image source={{ uri: getPhotoUrl(friendA)! }} style={styles.confirmPhoto} contentFit="cover" />
+                <Image
+                  source={{ uri: getOptimizedPhotoUrl(getPhotoUrl(friendA)!, 'card') }}
+                  style={styles.confirmPhoto}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  priority="high"
+                />
               ) : (
                 <View style={[styles.confirmPhoto, styles.photoPlaceholder]}>
                   <EvaIcon name="person" variant="outline" size={40} color="#D0D5DD" />
@@ -158,7 +184,13 @@ export default function SuggestMatchScreen() {
 
             <View style={styles.confirmCard}>
               {getPhotoUrl(friendB) ? (
-                <Image source={{ uri: getPhotoUrl(friendB)! }} style={styles.confirmPhoto} contentFit="cover" />
+                <Image
+                  source={{ uri: getOptimizedPhotoUrl(getPhotoUrl(friendB)!, 'card') }}
+                  style={styles.confirmPhoto}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  priority="high"
+                />
               ) : (
                 <View style={[styles.confirmPhoto, styles.photoPlaceholder]}>
                   <EvaIcon name="person" variant="outline" size={40} color="#D0D5DD" />

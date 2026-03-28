@@ -13,7 +13,8 @@ import {
 import { getBlockedUserIds } from './blockService';
 import { setCachedFriendsData } from './communityCache';
 import { mapProfileRow, resolveProfilePhotos, getCurrentUserId } from './communityBackendService.helpers';
-import { getMyCrushIds, getCrushedOnMeIds } from './crushService';
+// DEFERRED: Crush — import dormant until feature is re-enabled
+// import { getMyCrushIds, getCrushedOnMeIds } from './crushService';
 
 /**
  * Fetch all friends as anchors with grid status.
@@ -54,8 +55,9 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
     f.user_id === userId ? f.friend_id : f.user_id
   );
 
-  // Fetch friend profiles, proposals, matches, karma, photos, votes, AND crush data
+  // Fetch friend profiles, proposals, matches, karma, photos, and votes
   // all in ONE parallel batch — eliminates sequential round-trips
+  // DEFERRED: Crush data excluded while feature is dormant
   const [
     { data: profiles },
     { data: friendProposalsA },
@@ -65,12 +67,10 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
     { data: userPhotos },
     { data: karmaScores },
     { data: allUserVotes },
-    myCrushIds,
-    crushedOnMeIds,
   ] = await Promise.all([
     supabase
       .from('user_profiles')
-      .select('user_id, first_name, last_name, age, gender, pronouns, location, current_job, profile_photo_path, photos, profile_completed, interests, values')
+      .select('user_id, first_name, last_name, age, gender, pronouns, location, current_job, profile_photo_path, photos, profile_completed, interests, values, role')
       .in('user_id', friendIds),
     // Proposals where friend is user_a
     supabase
@@ -113,9 +113,9 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
       .select('proposal_id')
       .eq('voter_user_id', userId)
       .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
-    // Crush data for heart button state
-    getMyCrushIds(),
-    getCrushedOnMeIds(),
+    // DEFERRED: Crush data — restore these two lines when crush feature is re-enabled:
+    // getMyCrushIds(),
+    // getCrushedOnMeIds(),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DB rows have dynamic shape
@@ -237,8 +237,9 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
         addedAt: f.added_at || new Date().toISOString(),
         streakDays,
         assistsCount: friendKarma?.total_assists || 0,
-        hasCrushed: myCrushIds.has(friendId),
-        crushedOnMe: crushedOnMeIds.has(friendId),
+        // DEFERRED: Crush — restore when feature is re-enabled
+        // hasCrushed: myCrushIds.has(friendId),
+        // crushedOnMe: crushedOnMeIds.has(friendId),
         karmaScore: friendKarma ? {
           userId: friendId,
           karmaPoints: friendKarma.karma_points || 0,
@@ -274,7 +275,17 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
   // Resolve all photos
   await resolveProfilePhotos(friends.map(f => f.friend));
 
+  // Filter out friends with missing/null profiles (e.g. deleted accounts or failed joins)
+  const validFriends = friends.filter(f => {
+    const p = f.friend;
+    // Profile join failed — mapProfileRow was never called, so we got the fallback stub
+    if (!p || (!p.firstName && !p.lastName)) return false;
+    // Fallback stub from line 216: { id: friendId, firstName: 'Friend' }
+    if (p.firstName === 'Friend' && !p.lastName && (!p.photos || p.photos.length === 0)) return false;
+    return true;
+  });
+
   // Persist to AsyncStorage for stale-while-revalidate on next cold open
-  setCachedFriendsData(friends).catch(() => {});
-  return friends;
+  setCachedFriendsData(validFriends).catch(() => {});
+  return validFriends;
 }

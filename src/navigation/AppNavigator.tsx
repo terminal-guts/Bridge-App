@@ -90,11 +90,6 @@ const SuggestMatchScreen = withSuspense(React.lazy(() => import('../screens/comm
 // Auth sub-screens
 const SuspendedScreen = withSuspense(React.lazy(() => import('../screens/auth/SuspendedScreen')));
 
-// Matchmaker screens
-const MatchmakerHomeScreen = withSuspense(React.lazy(() => import('../screens/matchmaker/MatchmakerHomeScreen').then(m => ({ default: m.MatchmakerHomeScreen }))));
-const MatchmakerGhostProfileScreen = withSuspense(React.lazy(() => import('../screens/matchmaker/MatchmakerGhostProfileScreen').then(m => ({ default: m.MatchmakerGhostProfileScreen }))));
-const MatchmakerClaimScreen = withSuspense(React.lazy(() => import('../screens/matchmaker/MatchmakerClaimScreen').then(m => ({ default: m.MatchmakerClaimScreen }))));
-
 // Friends sub-screens
 const ContactInviteScreen = withSuspense(React.lazy(() => import('../screens/friends/ContactInviteScreen').then(m => ({ default: m.ContactInviteScreen }))));
 // ChangePhoneNumberScreen removed — email-only auth
@@ -381,7 +376,7 @@ export const AppNavigator = () => {
   const navigationRef = React.useRef<any>(null);
   const authStateRef = React.useRef<boolean | null>(null);
   const pendingInviteCode = useRef<string | null>(null);
-  const pendingClaimToken = useRef<string | null>(null);
+  // pendingClaimToken removed — ghost profile claim flow deferred
 
   // Handle deep links: bridge://invite/BRIDGE-XXXX-XXXX
   const handleDeepLink = useCallback((url: string) => {
@@ -397,19 +392,8 @@ export const AppNavigator = () => {
           pendingInviteCode.current = code;
         }
       }
-    } else if (parsed.path?.startsWith('claim/')) {
-        const token = parsed.path.replace('claim/', '');
-        // Validate token format: 8 alphanumeric chars (base-36 uppercase), e.g. "A1B2C3D4"
-        if (!/^[A-Z0-9]{8}$/.test(token)) {
-          console.warn('[DeepLink] claim token failed format validation:', token);
-          return;
-        }
-        if (authStateRef.current && navigationRef.current) {
-            navigationRef.current.navigate('MatchmakerClaim', { token });
-        } else {
-            pendingClaimToken.current = token;
-        }
     }
+    // Ghost profile claim deep links deferred
   }, []);
 
   // Route to the correct screen when a push notification is tapped
@@ -419,6 +403,10 @@ export const AppNavigator = () => {
 
     const screen = data?.screen as string | undefined;
     const type = data?.type as string | undefined;
+
+    // Role-aware tab navigator: matchmakers use MatchmakerTabs (no Matches tab)
+    const isMatchmaker = getInMemoryMinimalStatus()?.role === 'matchmaker';
+    const tabs = isMatchmaker ? 'MatchmakerTabs' : 'MainTabs';
 
     // Explicit screen routing (set in notification data payload)
     if (screen === 'Leaderboard') {
@@ -433,42 +421,39 @@ export const AppNavigator = () => {
       nav.navigate('Chat', { matchId: data.matchId });
       return;
     }
-    if (screen === 'Chat') {
-      nav.navigate('MainTabs', { screen: 'Matches' });
-      return;
-    }
-    if (screen === 'Matches') {
-      nav.navigate('MainTabs', { screen: 'Matches' });
+    if (screen === 'Chat' || screen === 'Matches') {
+      // Matchmakers have no Matches tab — route to Community instead
+      nav.navigate(tabs, { screen: isMatchmaker ? 'Community' : 'Matches' });
       return;
     }
     if (screen === 'Community') {
-      nav.navigate('MainTabs', { screen: 'Community' });
+      nav.navigate(tabs, { screen: 'Community' });
       return;
     }
     if (screen === 'Profile') {
-      nav.navigate('MainTabs', { screen: 'Profile' });
+      nav.navigate(tabs, { screen: 'Profile' });
       return;
     }
 
     // Fallback: route by notification type
     if (type === 'match' || type === 'pending_decision' || type === 'proposal_deciding' || type === 'match_expiring') {
-      nav.navigate('MainTabs', { screen: 'Matches' });
+      nav.navigate(tabs, { screen: isMatchmaker ? 'Community' : 'Matches' });
       return;
     }
     if (type === 'message' || type === 'ghosting') {
-      nav.navigate('MainTabs', { screen: 'Matches' });
+      nav.navigate(tabs, { screen: isMatchmaker ? 'Community' : 'Matches' });
       return;
     }
     if (type === 'ice_breaker') {
       if (data?.matchId) {
         nav.navigate('Chat', { matchId: data.matchId });
       } else {
-        nav.navigate('MainTabs', { screen: 'Matches' });
+        nav.navigate(tabs, { screen: isMatchmaker ? 'Community' : 'Matches' });
       }
       return;
     }
     if (type === 'new_proposals' || type === 'vote_reminder' || type === 'streak_at_risk' || type === 'shared_celebration' || type === 'dormant') {
-      nav.navigate('MainTabs', { screen: 'Community' });
+      nav.navigate(tabs, { screen: 'Community' });
       return;
     }
     if (type === 'weekly_summary' || type === 'leaderboard' || type === 'morning_leaderboard') {
@@ -476,7 +461,7 @@ export const AppNavigator = () => {
       return;
     }
     if (type === 'profile_incomplete') {
-      nav.navigate('MainTabs', { screen: 'Profile' });
+      nav.navigate(tabs, { screen: 'Profile' });
       return;
     }
 
@@ -524,12 +509,6 @@ export const AppNavigator = () => {
         pendingInviteCode.current = null;
         setTimeout(() => {
           navigationRef.current?.navigate('ContactInvite', { autoAddCode: code });
-        }, 800);
-      } else if (pendingClaimToken.current) {
-        const token = pendingClaimToken.current;
-        pendingClaimToken.current = null;
-        setTimeout(() => {
-          navigationRef.current?.navigate('MatchmakerClaim', { token });
         }, 800);
       }
     }
@@ -797,9 +776,6 @@ export const AppNavigator = () => {
 
           {/* Matchmaker Experience */}
           <Stack.Screen name="MatchmakerTabs" component={MatchmakerTabs} options={fadeTransition} />
-          <Stack.Screen name="MatchmakerHome" component={MatchmakerHomeScreen} options={fadeTransition} />
-          <Stack.Screen name="MatchmakerGhostProfile" component={MatchmakerGhostProfileScreen} options={fadeTransition} />
-          <Stack.Screen name="MatchmakerClaim" component={MatchmakerClaimScreen} options={fadeTransition} />
 
           {/* Community Screens */}
           <Stack.Screen name="FriendProposal" component={FriendProposalScreen} />

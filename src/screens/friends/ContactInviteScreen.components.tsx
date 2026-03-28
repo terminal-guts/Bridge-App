@@ -11,8 +11,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   SectionList,
-  Image,
 } from 'react-native';
+import { Image } from 'expo-image';
 import * as Clipboard from 'expo-clipboard';
 import { styled } from 'nativewind';
 import { EvaIcon } from '../../components/icons';
@@ -44,6 +44,8 @@ export const ContactAvatar = React.memo(({ contact, bgColor, textColor }: { cont
       <Image
         source={{ uri: contact.imageUri }}
         style={contactStyles.avatar}
+        contentFit="cover"
+        cachePolicy="memory-disk"
       />
     );
   }

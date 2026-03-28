@@ -222,26 +222,27 @@ export const removeFriend = async (
     // SECURITY: Get user ID from authenticated session
     const userId = await requireAuth();
 
-    // Remove both directions of the friendship
-    const { error: error1 } = await supabase
+    // Remove both directions of the friendship atomically
+    const { error } = await supabase
       .from('friends')
       .delete()
-      .eq('user_id', userId)
-      .eq('friend_id', friendId);
+      .or(`and(user_id.eq.${userId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${userId})`);
 
-    if (error1) {
-      return createErrorResponse('DELETE_ERROR', error1.message);
-    }
+    if (error) return createErrorResponse('DELETE_ERROR', error.message);
 
-    const { error: error2 } = await supabase
-      .from('friends')
+    // Clean up friend_badges in both directions (giver<->receiver)
+    await supabase
+      .from('friend_badges')
       .delete()
-      .eq('user_id', friendId)
-      .eq('friend_id', userId);
+      .or(`and(giver_id.eq.${userId},receiver_id.eq.${friendId}),and(giver_id.eq.${friendId},receiver_id.eq.${userId})`);
 
-    if (error2) {
-      return createErrorResponse('DELETE_ERROR', error2.message);
-    }
+    // Expire any active friend_suggestions involving the removed friend from this user
+    await supabase
+      .from('friend_suggestions')
+      .update({ status: 'expired' })
+      .eq('suggested_by', userId)
+      .or(`user_a_id.eq.${friendId},user_b_id.eq.${friendId}`)
+      .in('status', ['queued', 'stashed']);
 
     _invalidate(); // invalidate on removal
 

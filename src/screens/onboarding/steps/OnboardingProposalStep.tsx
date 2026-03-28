@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import { ProposalReviewView } from '../../../components/community/proposal/ProposalReviewView';
+import { OnboardingVotingTutorial } from '../../../components/onboarding/OnboardingVotingTutorial';
 import { communityService } from '../../../services/communityServiceIndex';
 import { Proposal } from '../../../types/community';
 import { createLogger } from '../../../utils/secureLogger';
@@ -24,6 +25,7 @@ export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
 }) => {
   const [proposals, setProposals] = useState<Proposal[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showTutorial, setShowTutorial] = useState(true);
   const didSkip = useRef(false);
 
   useEffect(() => {
@@ -39,7 +41,9 @@ export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
           }
           return;
         }
-        setProposals(result);
+        // Only show 1 proposal in onboarding — the rest surface in the Community
+        // gate so the user has something to engage with on first open.
+        setProposals(result.slice(0, 1));
       } catch (error: any) {
         logger.error('Failed to load proposals during onboarding:', error.message);
         // On error, skip gracefully so onboarding isn't blocked
@@ -71,6 +75,10 @@ export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
         showBackButton={true}
         onBack={onBack}
         onVoteComplete={onNext}
+      />
+      <OnboardingVotingTutorial
+        visible={showTutorial}
+        onDismiss={() => setShowTutorial(false)}
       />
     </StyledView>
   );

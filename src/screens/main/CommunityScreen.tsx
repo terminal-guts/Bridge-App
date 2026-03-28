@@ -184,8 +184,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
         (async () => {
           const profileResult = await getUserProfile();
           if (profileResult.ok && profileResult.data) setProfile(profileResult.data);
-          // Matchmakers never need to pass the voting gate
-          if (profileResult.data?.role === 'matchmaker') return;
           // Re-check voting gate in background to self-correct if vote was removed
           const task = await communityService.getCommunityTaskProgress();
           let votingDone = task.hasVotedOnProposals;
@@ -218,16 +216,13 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
       if (profileResult.ok && profileResult.data) setProfile(profileResult.data);
 
-      // Matchmakers bypass the voting gate — they help others match, not in the pool
-      const isMatchmaker = profileResult.data?.role === 'matchmaker';
-
-      let votingDone = isMatchmaker || task.hasVotedOnProposals;
+      let votingDone = task.hasVotedOnProposals;
       if (!votingDone && available.length === 0) votingDone = true;
 
-      // Only cache "done" for daters who actually voted on 3+ proposals this cycle.
+      // Only cache "done" for users who actually voted on 3+ proposals this cycle.
       // If votingDone is true merely because no proposals exist, don't cache —
       // new proposals may appear later in the same cycle.
-      if (!isMatchmaker && task.hasVotedOnProposals) {
+      if (task.hasVotedOnProposals) {
         communityService.cacheVotingComplete(true, cycleId).catch(() => {});
       }
 
@@ -430,7 +425,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   // Gate: must vote on 3 proposals before entering the community area.
   // Matchmakers are exempt — they help friends match but aren't in the dating pool.
-  if (!hasCompletedVoting && profile?.role !== 'matchmaker') {
+  if (!hasCompletedVoting) {
     return (
       <ScreenWrapper>
         <ProposalReviewView

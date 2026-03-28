@@ -13,11 +13,8 @@
 import React, { useState, useEffect } from 'react';
 import { View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
-import { styled } from 'nativewind';
 
-const StyledView = styled(View);
-
-// Lazy-loaded registries — null until first EvaIcon renders
+// Lazy-loaded registries — null until registry loads
 let cachedFill: Record<string, string> | null = null;
 let cachedOutline: Record<string, string> | null = null;
 let registryPromise: Promise<void> | null = null;
@@ -32,6 +29,10 @@ function loadRegistry(): Promise<void> {
   }
   return registryPromise;
 }
+
+// Pre-warm registry at module import time — prevents the placeholder→SVG two-step
+// render transition that crashes React 19 + NativeWind v2 styled() HOC reconciliation
+loadRegistry();
 
 // Bridge color scheme mapping
 const BRIDGE_COLORS = {
@@ -82,7 +83,7 @@ export function EvaIcon({
   }, []);
 
   if (!ready) {
-    return <StyledView style={[{ width: size, height: size }, style]} />;
+    return <View style={[{ width: size, height: size }, style]} />;
   }
 
   const resolvedColor = (BRIDGE_COLORS[color as BridgeColor] || color) as string;
@@ -100,9 +101,9 @@ export function EvaIcon({
     .replace(/^<svg /, `<svg fill="${resolvedColor}" `);
 
   return (
-    <StyledView style={[{ width: size, height: size }, style]}>
+    <View style={[{ width: size, height: size }, style]}>
       <SvgXml xml={colorizedSvg} width={size} height={size} />
-    </StyledView>
+    </View>
   );
 }
 

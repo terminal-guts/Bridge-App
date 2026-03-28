@@ -38,6 +38,9 @@ Deno.serve(async (req: Request) => {
     const userId = user.id;
     const supabase = createAdminClient();
 
+    // Matchmakers vote on proposals like daters (they are excluded as SUBJECTS
+    // in generate-proposals, but participate in community voting).
+
     // ── Parallel: fetch everything we need (no proposal body, no global assignments) ──
     const [
       { data: blockedOutgoing },

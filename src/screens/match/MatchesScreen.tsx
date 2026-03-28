@@ -9,6 +9,8 @@ import { ProfileCompletionBanner } from '../../components/profile/ProfileComplet
 import { ShareMatchSheet } from '../../components/matches/ShareMatchSheet';
 import { ShareableMatchCard } from '../../components/matches/ShareableMatchCard';
 import { computeApprovalPercent } from '../../utils/matchCardGenerator';
+import { Image } from 'expo-image';
+import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 import { COLORS } from '../../theme/colors';
 import { useMatchesScreen } from './useMatchesScreen';
 
@@ -104,6 +106,10 @@ export function MatchesScreen() {
                 recipientPhoto: partnerPhoto,
             });
         } else {
+            const heroUrl = getOptimizedPhotoUrl(
+                state.currentProposal!.partnerProfile?.photos?.[0]?.url, 'profile'
+            );
+            if (heroUrl) Image.prefetch(heroUrl).catch(() => {});
             state.navigation.navigate('ProposalProfile', {
                 partnerProfile: state.currentProposal!.partnerProfile,
                 communityScore: computeApprovalPercent(state.currentProposal!.proposalId || ''),

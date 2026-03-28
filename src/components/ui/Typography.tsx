@@ -1,9 +1,6 @@
 import React from 'react';
-import { Text, TextProps, StyleSheet } from 'react-native';
-import { styled } from 'nativewind';
+import { Text, TextProps } from 'react-native';
 import { FONTS } from '../../constants/typography';
-
-const StyledText = styled(Text);
 
 interface TypographyProps extends TextProps {
   children: React.ReactNode;
@@ -25,49 +22,49 @@ function resolveFontFamily(className: string, defaultFont: string): string {
 }
 
 export const H1: React.FC<TypographyProps> = ({ children, className = '', style, ...props }) => (
-  <StyledText className={`text-2xl text-neutral-900 ${className}`} style={[{ fontFamily: resolveFontFamily(className, FONTS.semiBold) }, style]} {...props}>
+  <Text className={`text-2xl text-neutral-900 ${className}`} style={[{ fontFamily: resolveFontFamily(className, FONTS.semiBold) }, style]} {...props}>
     {children}
-  </StyledText>
+  </Text>
 );
 
 export const H2: React.FC<TypographyProps> = ({ children, className = '', style, ...props }) => (
-  <StyledText className={`text-xl text-neutral-900 ${className}`} style={[{ fontFamily: resolveFontFamily(className, FONTS.semiBold) }, style]} {...props}>
+  <Text className={`text-xl text-neutral-900 ${className}`} style={[{ fontFamily: resolveFontFamily(className, FONTS.semiBold) }, style]} {...props}>
     {children}
-  </StyledText>
+  </Text>
 );
 
 export const H3: React.FC<TypographyProps> = ({ children, className = '', style, ...props }) => (
-  <StyledText className={`text-lg text-neutral-900 ${className}`} style={[{ fontFamily: resolveFontFamily(className, FONTS.semiBold) }, style]} {...props}>
+  <Text className={`text-lg text-neutral-900 ${className}`} style={[{ fontFamily: resolveFontFamily(className, FONTS.semiBold) }, style]} {...props}>
     {children}
-  </StyledText>
+  </Text>
 );
 
 export const Body: React.FC<TypographyProps> = ({ children, className = '', style, ...props }) => (
-  <StyledText className={`text-base text-neutral-900 ${className}`} style={[{ fontFamily: resolveFontFamily(className, FONTS.regular) }, style]} {...props}>
+  <Text className={`text-base text-neutral-900 ${className}`} style={[{ fontFamily: resolveFontFamily(className, FONTS.regular) }, style]} {...props}>
     {children}
-  </StyledText>
+  </Text>
 );
 
 export const BodySmall: React.FC<TypographyProps> = ({ children, className = '', style, ...props }) => (
-  <StyledText className={`text-sm text-neutral-900 ${className}`} style={[{ fontFamily: resolveFontFamily(className, FONTS.regular) }, style]} {...props}>
+  <Text className={`text-sm text-neutral-900 ${className}`} style={[{ fontFamily: resolveFontFamily(className, FONTS.regular) }, style]} {...props}>
     {children}
-  </StyledText>
+  </Text>
 );
 
 export const Label: React.FC<TypographyProps> = ({ children, className = '', style, ...props }) => (
-  <StyledText className={`text-xs text-neutral-700 ${className}`} style={[{ fontFamily: resolveFontFamily(className, FONTS.medium) }, style]} {...props}>
+  <Text className={`text-xs text-neutral-700 ${className}`} style={[{ fontFamily: resolveFontFamily(className, FONTS.medium) }, style]} {...props}>
     {children}
-  </StyledText>
+  </Text>
 );
 
 export const Caption: React.FC<TypographyProps> = ({ children, className = '', style, ...props }) => (
-  <StyledText className={`text-xs text-neutral-600 ${className}`} style={[{ fontFamily: resolveFontFamily(className, FONTS.regular) }, style]} {...props}>
+  <Text className={`text-xs text-neutral-600 ${className}`} style={[{ fontFamily: resolveFontFamily(className, FONTS.regular) }, style]} {...props}>
     {children}
-  </StyledText>
+  </Text>
 );
 
 export const Display: React.FC<TypographyProps> = ({ children, className = '', style, ...props }) => (
-  <StyledText className={`text-3xl text-neutral-900 ${className}`} style={[{ fontFamily: resolveFontFamily(className, FONTS.bold) }, style]} {...props}>
+  <Text className={`text-3xl text-neutral-900 ${className}`} style={[{ fontFamily: resolveFontFamily(className, FONTS.bold) }, style]} {...props}>
     {children}
-  </StyledText>
+  </Text>
 );

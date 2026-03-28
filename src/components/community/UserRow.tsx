@@ -34,7 +34,7 @@ interface UserRowProps {
     showVoteRing?: boolean;
     hasUnread?: boolean;
     onBadgePress?: () => void;
-    onCrushPress?: () => void;
+    onCrushPress?: () => void; // DEFERRED: Crush feature — dormant by product decision
     onStreakMilestone?: (days: number, friendName: string) => void;
     previousStreakDays?: number;
 }
@@ -62,10 +62,18 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
     const imageUrl = useMemo(() => getOptimizedImageUrl(rawImageUrl, 68), [rawImageUrl]);
     const streak = item.streakDays || 0;
     const friendProfileComplete = item.friend.profileCompleted === true;
-    const actionType = item.hasCompletedGrid ? 'points' : 'match';
+    const isFriendMatchmaker = item.friend.role === 'matchmaker';
+    // Matchmakers are not in the dating pool — show points row instead of Vote button
+    const actionType = (item.hasCompletedGrid || isFriendMatchmaker) ? 'points' : 'match';
     const points = item.karmaScore?.karmaPoints || 0;
     const [showKarmaModal, setShowKarmaModal] = useState(false);
     const streakTier = useMemo(() => getStreakTier(streak), [streak]);
+    const avatarStyle = useMemo(() => [
+        styles.avatar,
+        { borderColor: streakTier.ringColor, backgroundColor: COLORS.backgroundGrayMedium },
+        streak >= 14 && { borderWidth: 2.5, borderColor: COLORS.darkAmber },
+        streak >= 30 && { borderColor: COLORS.error },
+    ], [streak, streakTier.ringColor]);
 
     // Streak milestone / death detection
     useEffect(() => {
@@ -141,12 +149,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                 <Image
                     source={{ uri: imageUrl }}
                     placeholder={photoBlurhash ? { blurhash: photoBlurhash } : undefined}
-                    style={[
-                        styles.avatar,
-                        { borderColor: streakTier.ringColor, backgroundColor: '#E5E7EB' },
-                        streak >= 14 && { borderWidth: 2.5, borderColor: '#D97706' },
-                        streak >= 30 && { borderColor: '#EF4444' },
-                    ]}
+                    style={avatarStyle}
                     contentFit="cover"
                     transition={300}
                     cachePolicy="memory-disk"
@@ -263,7 +266,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                             name="heart"
                             variant={item.hasCrushed ? 'fill' : 'outline'}
                             size={20}
-                            color={item.hasCrushed ? '#EF4444' : COLORS.text.muted}
+                            color={item.hasCrushed ? COLORS.error : COLORS.text.muted}
                         />
                     </TouchableOpacity>
                 )}
@@ -375,7 +378,7 @@ const styles = StyleSheet.create({
     },
     // #1: Streak text color upgrades at tiers
     streakTextWarm: {
-        color: '#D97706',
+        color: COLORS.darkAmber,
         fontFamily: FONTS.medium,
     },
     streakTextHot14: {

@@ -22,6 +22,7 @@ import { createLogger } from '../../../utils/secureLogger';
 import { SHADOWS } from '../../../theme/shadows';
 import { COLORS } from '../../../theme/colors';
 import { FONT_SIZES } from '../../../constants/typography';
+import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
 
 const logger = createLogger('SimpleCandidatePhotos');
 
@@ -107,12 +108,17 @@ function CandidatePhoto({ candidate, onPress, disabled = false }: CandidatePhoto
           overflow: 'hidden',
         }}>
           <Image
-            source={{ uri: mainPhoto?.url || 'https://via.placeholder.com/200' }}
+            source={mainPhoto?.url ? { uri: getOptimizedPhotoUrl(mainPhoto.url, 'match') } : null}
             style={{
               width: '100%',
               height: '100%',
+              backgroundColor: '#E5E7EB',
             }}
             contentFit="cover"
+            cachePolicy="memory-disk"
+            priority="high"
+            transition={300}
+            recyclingKey={candidate.id}
           />
         </StyledView>
       </StyledView>

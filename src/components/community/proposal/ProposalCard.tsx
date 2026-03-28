@@ -28,6 +28,7 @@ import { FONTS } from '../../../constants/typography';
 import { COLORS } from '../../../theme/colors';
 import { SHADOWS } from '../../../theme/shadows';
 import { EvaIcon } from '../../icons';
+import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
 
 const StyledView = styled(View) as typeof View;
 const StyledText = styled(Text) as typeof Text;
@@ -96,7 +97,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
       <StyledView className="flex-1 items-center">
         {/* Photo */}
         <StyledImage
-          source={user.photos?.[0]?.url ? { uri: user.photos[0].url } : null}
+          source={user.photos?.[0]?.url ? { uri: getOptimizedPhotoUrl(user.photos[0].url, 'avatar') } : null}
           className="rounded-full mb-2"
           style={{ width: 60, height: 60, backgroundColor: '#E5E7EB' }}
           contentFit="cover"
@@ -147,7 +148,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
               {isFriend && (
                 <StyledImage
                   source={endorsement.endorserProfile.photos?.[0]?.url
-                    ? { uri: endorsement.endorserProfile.photos[0].url }
+                    ? { uri: getOptimizedPhotoUrl(endorsement.endorserProfile.photos[0].url, 'avatar') }
                     : null}
                   className="rounded-full"
                   style={{ width: 24, height: 24, marginRight: 8, backgroundColor: '#E5E7EB' }}

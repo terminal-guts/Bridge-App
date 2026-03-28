@@ -320,14 +320,14 @@ export type RootStackParamList = {
     onboardingData?: Partial<OnboardingData>;
     isEmail?: boolean;
   };
-  Onboarding: undefined;
+  Onboarding: {
+    isRoleSwitch?: boolean;
+    initialData?: Partial<OnboardingData>;
+  } | undefined;
 
   // Main Stack
   MainTabs: { screen?: string; params?: Record<string, unknown> } | undefined;
   MatchmakerTabs: undefined;
-  MatchmakerHome: undefined;
-  MatchmakerGhostProfile: undefined;
-  MatchmakerClaim: { token: string };
   MatchProposal: { match?: Match; profile?: UserProfile; proposalId?: string };
   ProposalProfile: {
     partnerProfile: UserProfile;
@@ -363,10 +363,9 @@ export type RootStackParamList = {
   SupportChat: undefined;
   Leaderboard: undefined;
   Stats: undefined;
-  // DEFERRED: SuggestMatch: undefined;
+  SuggestMatch: undefined;
   Suspended: undefined;
   ContactInvite: { autoAddCode?: string } | undefined;
-  BadgeManagement: undefined;
 };
 
 export type MainTabParamList = {
@@ -376,7 +375,6 @@ export type MainTabParamList = {
 };
 
 export type MatchmakerTabParamList = {
-  MatchmakerHub: undefined;
   Community: { initialPage?: 0 | 1 | 2 } | undefined;
   Profile: { initialTab?: 'about' | 'badges' | 'questions' } | undefined;
 };
@@ -449,6 +447,7 @@ export interface OnboardingData {
   // Matchmaking role
   role?: 'dater' | 'matchmaker';
   matchmakingOnly?: boolean;
+  matchmakerFirstAction?: 'invite' | 'build';
 
   // Legacy fields (kept for backward compatibility)
   pronouns?: 'he/him' | 'she/her' | 'they/them' | 'custom';

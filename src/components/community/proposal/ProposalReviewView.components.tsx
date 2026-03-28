@@ -20,6 +20,10 @@ import { COLORS } from '../../../theme/colors';
 import { OVERLAYS } from '../../../theme/shadows';
 import { EvaIcon } from '../../icons';
 import { proposalStyles, styles, BLUE, BOX_BG, BOX_BORDER } from './ProposalReviewView.styles';
+
+// Section accent spectrum — positions 5 & 6 of the cool→warm→violet sweep
+const ACCENT_LIFESTYLE = '#F97316'; // orange — no COLORS entry
+const ACCENT_BELIEFS   = COLORS.violet;
 import { MatchResult } from '../../../utils/proposalMatching';
 import { SectionCard, MatchIcon, ValueBox, ComparisonValueRow } from './SmartPillCloud';
 import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
@@ -404,7 +408,7 @@ export function LifestyleSection({
       title="Lifestyle"
       matched={countMatch(lifestyleResults.filter(r => r.status !== 'unknown'))}
       total={countKnown(lifestyleResults)}
-      accentColor={COLORS.warning.icon}
+      accentColor={ACCENT_LIFESTYLE}
     >
       {drinkResult.status !== 'unknown' && (
         <ComparisonValueRow result={drinkResult} label="Drink" />
@@ -453,7 +457,7 @@ export function BeliefsSection({
       title="Beliefs"
       matched={countMatch(beliefsResults.filter(r => r.status !== 'unknown'))}
       total={countKnown(beliefsResults)}
-      accentColor={COLORS.primary}
+      accentColor={ACCENT_BELIEFS}
     >
       {politicsResult.status !== 'unknown' && (
         <ComparisonValueRow result={politicsResult} label="Politics" />

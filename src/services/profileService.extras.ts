@@ -208,14 +208,33 @@ export const getGuideCompletionStatus = async (
 const MINIMAL_STATUS_CACHE_KEY = 'bridge_minimal_profile_status';
 const MINIMAL_STATUS_DEFAULT = { isSuspended: false, reason: null as string | null, role: 'dater' as const };
 
+export type MinimalProfileStatus = {
+  isSuspended: boolean;
+  reason: string | null;
+  role: 'dater' | 'matchmaker';
+  // userId enables optimistic auth on cold start: AppNavigator can render the main
+  // UI immediately after reading this one small cache entry, without waiting for
+  // supabase.auth.getSession() (which reads a larger blob and validates the JWT).
+  userId?: string;
+};
+
 // In-memory mirror — avoids AsyncStorage read on the auth critical path
-let inMemoryMinimalStatus: { isSuspended: boolean; reason: string | null; role: 'dater' | 'matchmaker' } | null = null;
+let inMemoryMinimalStatus: MinimalProfileStatus | null = null;
+
+/**
+ * Synchronous accessor for the in-memory minimal status mirror.
+ * Returns null on cold start (process was killed), populated value on warm start.
+ * Used by AppNavigator to initialize auth state without any async overhead.
+ */
+export function getInMemoryMinimalStatus(): MinimalProfileStatus | null {
+  return inMemoryMinimalStatus;
+}
 
 /**
  * Read cached minimal profile status — in-memory first, then AsyncStorage.
  * Returns null if nothing is cached yet.
  */
-export async function getCachedMinimalProfileStatus(): Promise<{ isSuspended: boolean; reason: string | null; role: 'dater' | 'matchmaker' } | null> {
+export async function getCachedMinimalProfileStatus(): Promise<MinimalProfileStatus | null> {
   if (inMemoryMinimalStatus) return inMemoryMinimalStatus;
   try {
     const raw = await AsyncStorage.getItem(MINIMAL_STATUS_CACHE_KEY);
@@ -236,7 +255,7 @@ export function clearMinimalProfileStatusCache(): void {
   AsyncStorage.removeItem(MINIMAL_STATUS_CACHE_KEY).catch(() => {});
 }
 
-export async function checkMinimalProfileStatus(): Promise<{ isSuspended: boolean; reason: string | null; role: 'dater' | 'matchmaker' }> {
+export async function checkMinimalProfileStatus(): Promise<MinimalProfileStatus> {
   try {
     const userId = await getCurrentUserId();
     const { data, error } = await supabase
@@ -246,10 +265,12 @@ export async function checkMinimalProfileStatus(): Promise<{ isSuspended: boolea
       .maybeSingle();
 
     if (error || !data) return MINIMAL_STATUS_DEFAULT;
-    const result = {
+    const result: MinimalProfileStatus = {
       isSuspended: data.is_suspended ?? false,
       reason: data.suspension_reason ?? null,
       role: (data.role || 'dater') as 'dater' | 'matchmaker',
+      // Store userId so cold-start optimistic auth can skip supabase.auth.getSession()
+      userId,
     };
 
     // Persist for instant startup on next launch

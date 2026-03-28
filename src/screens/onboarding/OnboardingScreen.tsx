@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { View, StatusBar, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, StatusBar, Alert, TouchableOpacity, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import Animated, {
   FadeIn,
   FadeOut,
@@ -12,10 +17,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
-import { NavigationProp } from '@react-navigation/native';
+import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { DURATIONS } from '../../constants/animations';
 import { RootStackParamList, OnboardingData } from '../../types';
-import { createUserProfile, saveOnboardingStep } from '../../services/profileService';
+import { createUserProfile, saveOnboardingStep, checkMinimalProfileStatus, updateUserProfile } from '../../services/profileService';
 import { uploadMultiplePhotos } from '../../services/photoService';
 import { supabase } from '../../lib/supabase';
 import { Body } from '../../components/ui';
@@ -23,6 +28,7 @@ import { ONBOARDING_STEP_MAPPING } from '../../config/onboardingMapping';
 import { createLogger } from '../../utils/secureLogger';
 import { successHaptic } from '../../utils/haptics';
 import { assignNewUserProposals, generateProposalForUser } from '../../services/proposalApiService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const logger = createLogger('OnboardingScreen');
 import { resetAllGuides } from '../../services/guideService';
@@ -47,13 +53,13 @@ import { PhotoUploadStep } from './steps/PhotoUploadStep';
 import { PreferencesStep } from './steps/PreferencesStep';
 import { AddFriendsStep } from './steps/AddFriendsStep';
 import { WelcomeToBridgeStep } from './steps/WelcomeToBridgeStep';
-// DEFERRED: import { MatchmakingModeStep } from './steps/MatchmakingModeStep';
-// DEFERRED: import { MatchmakerProfileStep } from './steps/MatchmakerProfileStep';
-// DEFERRED: import { MatchmakerInviteStep } from './steps/MatchmakerInviteStep';
+import { MatchmakingModeStep } from './steps/MatchmakingModeStep';
+import { MatchmakerProfileStep } from './steps/MatchmakerProfileStep';
 import { OnboardingProposalStep } from './steps/OnboardingProposalStep';
 
 interface OnboardingScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Onboarding'>;
+  route: RouteProp<RootStackParamList, 'Onboarding'>;
 }
 
 interface StepDefinition {
@@ -90,6 +96,7 @@ const AnimatedProgressSegment: React.FC<{ active: boolean }> = ({ active }) => {
 // Profile steps shared by both signup paths
 const PROFILE_STEPS: StepDefinition[] = [
   { component: NameStep, title: 'Name', hasTextInput: true, mappingKey: 'name' },
+  { component: MatchmakingModeStep, title: 'Role', hasTextInput: false, mappingKey: 'role' },
   { component: OnboardingProposalStep, title: 'First Votes', hasTextInput: false },
   { component: AgeStep, title: 'Birthday', hasTextInput: false, mappingKey: 'age' },
   { component: GenderStep, title: 'Gender', hasTextInput: false, mappingKey: 'gender' },
@@ -109,7 +116,9 @@ const PROFILE_STEPS: StepDefinition[] = [
   { component: WelcomeToBridgeStep, title: 'Welcome', hasTextInput: false, mappingKey: 'welcome' },
 ];
 
-export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
+export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }) => {
+  const isRoleSwitch = route.params?.isRoleSwitch ?? false;
+  const initialData = route.params?.initialData;
   const [currentStep, setCurrentStep] = useState(0);
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
@@ -118,6 +127,12 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   // Background photo upload: starts after PhotoUploadStep, results used by completeOnboarding
   const photoUploadPromiseRef = useRef<Promise<any> | null>(null);
   const photoUploadResultRef = useRef<Array<{ id: string; url: string }> | null>(null);
+
+  // Clear the "seen post-proposal prompt" flag so AgeStep's motivational
+  // bottom sheet always fires for any fresh onboarding run.
+  useEffect(() => {
+    AsyncStorage.removeItem('@bridge/seen_post_proposal_prompt').catch(() => {});
+  }, []);
 
   // Fetch the authenticated user ID from Supabase session.
   // Re-checks on step changes because the user gets authenticated during
@@ -162,33 +177,63 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
       heightMax: 84,
     } as any,
     photos: [],
+    // Merge any pre-filled data (used when switching from matchmaker to dater)
+    ...initialData,
   });
 
-  // Separate Matchmaker steps path
   const MATCHMAKER_STEPS: StepDefinition[] = [
-    { component: MatchmakerProfileStep, title: 'Profile', hasTextInput: true, mappingKey: 'bio' },
-    { component: MatchmakerInviteStep, title: 'Add Person', hasTextInput: false },
+    { component: MatchmakerProfileStep, title: 'Photo', hasTextInput: false },
+    { component: AddFriendsStep, title: 'Add Friends', hasTextInput: false },
   ];
 
   // Build steps array dynamically
   const steps = useMemo((): StepDefinition[] => {
-    // Both paths share these initial three screens
+    // Role switch: matchmaker → dater (skip auth, name, role, first votes, add friends, welcome)
+    if (isRoleSwitch) {
+      const skipComponents = new Set([
+        NameStep, MatchmakingModeStep, OnboardingProposalStep,
+        AddFriendsStep, WelcomeToBridgeStep,
+      ]);
+      return PROFILE_STEPS.filter(step => !skipComponents.has(step.component));
+    }
+
+    // Both paths share these initial two auth screens
     const baseSteps = [
       { component: EmailSignUpStep, title: 'Email', hasTextInput: true },
       { component: EmailSignUpVerificationStep, title: 'Verify Email', hasTextInput: true },
-      { component: NameStep, title: 'Name', hasTextInput: true, mappingKey: 'name' },
-      // DEFERRED: { component: MatchmakingModeStep, title: 'Role', hasTextInput: false, mappingKey: 'role' },
     ];
 
     if (onboardingData.role === 'matchmaker') {
-      return [...baseSteps, ...MATCHMAKER_STEPS];
-    } else {
-      // Need to filter out NameStep from PROFILE_STEPS if it's there
-      return [...baseSteps, ...PROFILE_STEPS.filter(step => step.component !== NameStep)];
+      // Matchmaker path: Name → Role → First Votes → Photo → Add Friends
+      return [
+        ...baseSteps,
+        ...PROFILE_STEPS.filter(step =>
+          step.component === NameStep ||
+          step.component === MatchmakingModeStep ||
+          step.component === OnboardingProposalStep
+        ),
+        ...MATCHMAKER_STEPS,
+      ];
     }
-  }, [onboardingData.role]);
+
+    // Dater path: all PROFILE_STEPS (Name, Role, proposals, demographics, etc.)
+    return [...baseSteps, ...PROFILE_STEPS];
+  }, [onboardingData.role, isRoleSwitch]);
 
   const totalSteps = steps.length;
+
+  // Smooth progress bar animation when step count changes (role switch)
+  const prevStepCountRef = useRef(totalSteps);
+  useEffect(() => {
+    if (prevStepCountRef.current !== totalSteps) {
+      LayoutAnimation.configureNext(LayoutAnimation.create(
+        300,
+        LayoutAnimation.Types.easeInEaseOut,
+        LayoutAnimation.Properties.scaleX,
+      ));
+      prevStepCountRef.current = totalSteps;
+    }
+  }, [totalSteps]);
 
   // Bounds check — reset to step 0 if currentStep is out of range.
   React.useEffect(() => {
@@ -338,6 +383,25 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
         };
       }
 
+      // Role switch: update existing profile instead of creating new one
+      if (isRoleSwitch) {
+        logger.info('Role switch: updating profile from matchmaker to dater');
+        const updateResult = await updateUserProfile({
+          ...dataForProfile,
+          role: 'dater',
+        } as any);
+        setIsCreatingProfile(false);
+        if (!updateResult.ok) {
+          Alert.alert('Update Failed', updateResult.error?.message || 'Something went wrong. Please try again.');
+          return;
+        }
+        await checkMinimalProfileStatus();
+        successHaptic();
+        setTimeout(() => successHaptic(), 300);
+        (navigation as any).navigate('MainTabs');
+        return;
+      }
+
       // Create user profile with all onboarding data
       const profileResult = await createUserProfile(userId, dataForProfile);
 
@@ -378,9 +442,12 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
 
       // Skip proposal generation for matchmakers — they don't date
       if (onboardingData.role === 'matchmaker') {
+        // Flush the minimal status cache with the correct role so any screen that
+        // mounts in MatchmakerTabs immediately knows the user is a matchmaker.
+        await checkMinimalProfileStatus();
         successHaptic();
         setTimeout(() => successHaptic(), 300);
-        (navigation as any).navigate('MatchmakerHome');
+        (navigation as any).navigate('MatchmakerTabs');
         return;
       }
 

@@ -40,6 +40,7 @@ import {
   Easing,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
 import { Body } from '../../components/ui';
@@ -59,6 +60,7 @@ import { COLORS as THEME_COLORS } from '../../theme/colors';
 import { EvaIcon, IconScoutIcon } from '../../components/icons';
 import { WineGlassIcon, LeafIcon, CigaretteIcon, PillIcon } from '../../components/icons/Icons';
 import { SHADOWS } from '../../theme/shadows';
+import { ProfileBadgesSection } from '../../components/badges/ProfileBadgesSection';
 
 // Extracted components
 import {
@@ -349,6 +351,28 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
 
   const handleViewDeepQuestions = useCallback(() => { /* Deep Questions screen removed */ }, []);
 
+  // Memoized derivations — computed once per profile load, not on every scroll/state change
+  const displayedQuestions = useMemo(() => {
+    if (!profile) return [];
+    return (profile.displayedQuestions || [])
+      .map(id => profile.deepQuestions?.find(q => q.questionId === id))
+      .filter((q): q is DeepQuestionAnswer => q !== undefined)
+      .sort((a, b) => (a.tier || 0) - (b.tier || 0));
+  }, [profile]);
+
+  const basicInfoPills = useMemo(() => {
+    if (!profile) return [] as Array<{ icon: string; text: string }>;
+    const pills: Array<{ icon: string; text: string }> = [];
+    if (profile.gender?.length) pills.push({ icon: 'person', text: profile.gender.join(', ') });
+    if (profile.pronounsList?.length) pills.push({ icon: 'message-circle', text: profile.pronounsList.join('/') });
+    if (profile.height) pills.push({ icon: 'maximize', text: profile.height });
+    if (profile.location) pills.push({ icon: 'pin', text: profile.location });
+    if (profile.ethnicity) pills.push({ icon: 'globe', text: profile.ethnicity });
+    if (profile.religion) pills.push({ icon: 'star', text: profile.religion });
+    if (profile.politicalLeaning) pills.push({ icon: 'flag', text: formatFrequency(profile.politicalLeaning) || '' });
+    return pills;
+  }, [profile]);
+
   // Cleanup navigation timer on unmount
   useEffect(() => {
     return () => {
@@ -378,16 +402,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   // Hash-based decorative score (70–99) seeded by proposal ID — see CLAUDE.md
   const communityScore = computeApprovalPercent(match?.id || '') / 100;
   const expiresAt = match?.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-  const displayedQuestions = (profile.displayedQuestions || []).map(id => profile.deepQuestions?.find(q => q.questionId === id)).filter((q): q is DeepQuestionAnswer => q !== undefined).sort((a, b) => (a.tier || 0) - (b.tier || 0));
   const hasLifestyleInfo = profile.drinkingFrequency || profile.cannabisFrequency || profile.tobaccoFrequency || profile.otherDrugsFrequency;
-  const basicInfoPills: Array<{ icon: string; text: string }> = [];
-  if (profile.gender?.length) basicInfoPills.push({ icon: 'person', text: profile.gender.join(', ') });
-  if (profile.pronounsList?.length) basicInfoPills.push({ icon: 'message-circle', text: profile.pronounsList.join('/') });
-  if (profile.height) basicInfoPills.push({ icon: 'maximize', text: profile.height });
-  if (profile.location) basicInfoPills.push({ icon: 'pin', text: profile.location });
-  if (profile.ethnicity) basicInfoPills.push({ icon: 'globe', text: profile.ethnicity });
-  if (profile.religion) basicInfoPills.push({ icon: 'star', text: profile.religion });
-  if (profile.politicalLeaning) basicInfoPills.push({ icon: 'flag', text: formatFrequency(profile.politicalLeaning) || '' });
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
@@ -419,7 +434,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
         <View style={{ height: PHOTO_HEIGHT, backgroundColor: '#111' }}>
           {photos.length > 0 ? (
             <>
-              <FlatList ref={flatListRef} data={photos} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onScroll={handlePhotoScroll} scrollEventThrottle={16} keyExtractor={(item, index) => item.id || `photo-${index}`} renderItem={({ item, index }) => <BlurredPhoto uri={item.url} style={{ width: SCREEN_WIDTH, height: PHOTO_HEIGHT }} index={index} />} />
+              <FlatList ref={flatListRef} data={photos} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onScroll={handlePhotoScroll} scrollEventThrottle={16} keyExtractor={(item, index) => item.id || `photo-${index}`} renderItem={({ item, index }) => <BlurredPhoto uri={getOptimizedPhotoUrl(item.url, 'profile') ?? item.url} style={{ width: SCREEN_WIDTH, height: PHOTO_HEIGHT }} index={index} />} initialNumToRender={1} maxToRenderPerBatch={2} windowSize={3} getItemLayout={(_, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })} />
               {photos.length > 1 && (
                 <>
                   <TouchableWithoutFeedback onPress={() => { if (currentPhotoIndex > 0) { goToPhoto(currentPhotoIndex - 1); mediumHaptic(); } }}><View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: TAP_ZONE_WIDTH }} /></TouchableWithoutFeedback>
@@ -460,6 +475,9 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
           <CommunityScore score={communityScore} endorsement={endorsement} />
           <WhyThisMatch mutualInterests={mutualInterests} mutualValues={mutualValues} compatibilityHighlights={compatibilityHighlights} />
           {basicInfoPills.length > 0 && <StyledView className="flex-row flex-wrap mb-6">{basicInfoPills.map((pill) => <InfoPill key={`${pill.icon}-${pill.text}`} icon={pill.icon} text={pill.text} />)}</StyledView>}
+          {profile.userId && (
+            <ProfileBadgesSection userId={profile.userId} revealAuthor={false} />
+          )}
           {profile.interests?.length > 0 && <Section title="Interests" icon="heart" delay={50}><StyledView className="flex-row flex-wrap">{profile.interests.map((interest) => <Tag key={interest} label={interest} iconName={interestIconName(interest)} variant="primary" isMutual={mutualInterests.includes(interest)} />)}</StyledView></Section>}
           {profile.values?.length > 0 && <Section title="Values" icon="award" delay={100}><StyledView className="flex-row flex-wrap">{profile.values.map((value) => <Tag key={value} label={value} iconName={valueIconName(value)} variant="success" isMutual={mutualValues.includes(value)} />)}</StyledView></Section>}
           {(profile.hasChildren || profile.familyPlans) && (

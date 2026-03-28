@@ -87,27 +87,13 @@ Deno.serve(async (req: Request) => {
     let checkedCount = 0;
 
     for (const user of allUsers) {
-      // Get last activity — try app_sessions first, then user_profiles
-      let lastActiveDate: string | null = null;
-
-      const { data: session } = await supabase
-        .from('app_sessions')
-        .select('ended_at')
+      // Get last activity from user_profiles.updated_at
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('updated_at')
         .eq('user_id', user.user_id)
-        .order('ended_at', { ascending: false })
-        .limit(1)
         .maybeSingle();
-
-      if (session?.ended_at) {
-        lastActiveDate = session.ended_at;
-      } else {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('updated_at')
-          .eq('user_id', user.user_id)
-          .maybeSingle();
-        lastActiveDate = profile?.updated_at || null;
-      }
+      const lastActiveDate: string | null = profile?.updated_at || null;
 
       if (!lastActiveDate) continue;
 

@@ -1,3 +1,17 @@
+// DEFERRED: Crush feature — dormant by product decision.
+// Do not import or call any functions from this file until re-enabled.
+//
+// To re-enable, make changes in ALL of the following files:
+// 1. communityBackendService.friends.ts — uncomment the getMyCrushIds/getCrushedOnMeIds imports
+//    and the hasCrushed/crushedOnMe field assignments in the friend data builder
+// 2. CommunityScreen.tsx — uncomment the onCrushPress callback prop
+// 3. CommunityScreen.components.tsx — uncomment the buildCrewHandlers crush parameter
+//
+// IMPORTANT: When re-enabling, mutual crush proposal creation MUST go through an edge function.
+// Do NOT use client-side Supabase inserts to create proposals (security risk — clients can
+// forge proposals for arbitrary user pairs). Replace createCrushProposal() in this file with
+// a call to a server-side edge function that validates the mutual crush and creates the proposal.
+
 /**
  * Crush Service
  *

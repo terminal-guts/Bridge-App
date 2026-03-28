@@ -7,7 +7,9 @@
  */
 
 import React from 'react';
-import { View, Image } from 'react-native';
+import { View } from 'react-native';
+import { Image } from 'expo-image';
+import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
 import { styled } from 'nativewind';
 import { UserProfile, Photo } from '../../../types';
 import { createLogger } from '../../../utils/secureLogger';
@@ -17,7 +19,6 @@ import { COLORS } from '../../../theme/colors';
 const logger = createLogger('AnchorPhotoSection');
 
 const StyledView = styled(View);
-const StyledImage = styled(Image);
 
 interface AnchorPhotoSectionProps {
   anchor: UserProfile;
@@ -43,13 +44,12 @@ export function AnchorPhotoSection({ anchor }: AnchorPhotoSectionProps) {
       borderWidth: 1,
       borderColor: 'rgba(251, 249, 246, 0.8)', // Subtle warm border for glow effect
     }}>
-      <StyledImage
-        source={{ uri: mainPhoto?.url || 'https://via.placeholder.com/400' }}
-        style={{
-          width: '100%',
-          height: '100%',
-        }}
-        resizeMode="cover"
+      <Image
+        source={mainPhoto?.url ? { uri: getOptimizedPhotoUrl(mainPhoto.url, 'profile') } : null}
+        style={{ width: '100%', height: '100%', backgroundColor: COLORS.backgroundGrayMedium }}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        priority="high"
       />
     </StyledView>
   );

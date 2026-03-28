@@ -17,7 +17,7 @@ import { getUserProfile, updateUserProfile } from '../../services/profileService
 import { supabase } from '../../lib/supabase';
 import { getFriendCount } from '../../services/friendService';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
-import { getReceivedBadges, toggleFeatured } from '../../services/badgeService';
+import { getReceivedBadges, toggleFeatured, toggleHidden } from '../../services/badgeService';
 import { useGuide } from '../../hooks/useGuide';
 import { profileGuide } from '../../config/guides';
 import { lightHaptic, mediumHaptic, successHaptic, heavyHaptic } from '../../utils/haptics';
@@ -189,9 +189,9 @@ export function useProfileScreen(navigation: any) {
     }, [route.params?.initialTab])
   );
 
-  // Start profile guide once per session
+  // Start profile guide once per session — skip for matchmakers (guide references dater-only UI)
   useEffect(() => {
-    if (!loading && profile && !hasTriggeredGuide) {
+    if (!loading && profile && !hasTriggeredGuide && profile.role !== 'matchmaker') {
       setHasTriggeredGuide(true);
       const timer = setTimeout(() => {
         startGuideIfNeeded(profileGuide);
@@ -484,6 +484,16 @@ export function useProfileScreen(navigation: any) {
     }
   };
 
+  const handleToggleHiddenBadge = async (badge: FriendBadgeWithGiver) => {
+    lightHaptic();
+    const result = await toggleHidden(badge.id, !badge.isHidden);
+    if (result.ok) {
+      loadBadges();
+    } else {
+      showToast.error(result.error?.message || 'Failed to update');
+    }
+  };
+
   return {
     // State
     profile,
@@ -543,5 +553,6 @@ export function useProfileScreen(navigation: any) {
     handleChangeToAnsweredQuestion,
     handleSaveNewAnswer,
     handleToggleFeaturedBadge,
+    handleToggleHiddenBadge,
   };
 }

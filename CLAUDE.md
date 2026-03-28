@@ -4,11 +4,24 @@
 
 This is the **production codebase** for Bridge — the app being deployed to the App Store. It contains both the frontend (React Native/Expo) and backend (Supabase, in the `supabase/` subdirectory). Treat all code here as production-quality.
 
-## App Store Reviewer Bypass — Intentionally Kept, Do Not Remove Yet
+**Notable removals:**
+- `src/screens/profile/BadgeManagementScreen.tsx` — deleted. Badge management is now fully in-modal via `BadgeAwardModal.tsx`.
+- Railway has been fully removed (2026-03-23). Content moderation runs in `supabase/functions/moderate-text/index.ts`.
 
-The reviewer bypass (`EXPO_PUBLIC_ENABLE_REVIEWER_BYPASS`, `EXPO_PUBLIC_REVIEWER_PASSWORD`, and the `isReviewerBypassEmail` logic in `src/services/authService.ts`) is a **known, deliberate short-term decision**. It exists so Apple reviewers can log in without a Rice email address.
+**Deferred features (not in the live app, backend tables still exist):**
+- **Suggest a Match** (suggest two friends as a match) and **Recommend to Friend** (recommend someone during voting) — both fully built but pulled from UI pre-launch. See `_deferred/suggest-a-match/DEFERRED.md` for what was removed and how to re-enable. Do not reference these as live features.
 
-**Do not remove or flag this as a bug.** It will be removed after the app is accepted to the App Store. Once accepted, the bypass will be stripped from production builds.
+**React Compiler:** `babel-plugin-react-compiler` is active — it auto-memoizes components and hooks. Do not add manual `useMemo`/`useCallback` solely for performance unless there's a specific reason.
+
+## App Store Reviewer Bypass — Permanent, Do Not Remove
+
+The reviewer bypass (`EXPO_PUBLIC_REVIEWER_PASSWORD` and the `isReviewerBypassEmail` logic in `src/services/authService.ts`) is a **permanent feature** that must stay in the app. It exists so Apple reviewers can log in without a Rice email address on every future update submission.
+
+**Do not remove or flag this as a bug.** The app is accepted to the App Store and the bypass must be kept for all future review cycles.
+
+**How it works:** `reviewer@bridgedate.app` is the hardcoded reviewer email. The password is validated server-side by the `validate-reviewer-access` Supabase edge function — the actual auth credentials are never in the app bundle. This is secure.
+
+**Note:** `EXPO_PUBLIC_ENABLE_REVIEWER_BYPASS` is referenced in tests but is not read by the app code — the bypass is always active for the reviewer email. Do not add a runtime check on that flag without testing it end-to-end.
 
 ## LOCKED: Bottom Navigation Bar
 
@@ -57,7 +70,7 @@ The entire app uses **Plus Jakarta Sans** (Google Fonts, OFL license). This is a
 - **Always set `fontFamily`** when using inline styles with `fontWeight`. Use `FONTS.bold` etc., never raw strings.
 - **Import `FONTS`** from `src/constants/typography` — never hardcode `'PlusJakartaSans_700Bold'` in components.
 - **Typography components** handle font resolution automatically — prefer `<Body className="font-bold">` over manual fontFamily.
-- **Font loading** happens in `App.tsx` via `useFonts` hook from `@expo-google-fonts/plus-jakarta-sans`. The app shows a loading indicator until fonts are ready.
+- **Font loading** happens in `App.tsx` via `useFonts` from `expo-font` directly. Individual TTF files are `require()`d by path (e.g. `@expo-google-fonts/plus-jakarta-sans/400Regular/...ttf`) — do NOT import from the package root index, which bundles all 16 variants (~1MB wasted assets).
 - **Weight mapping**:
   - `FONTS.regular` = 400 (body text, descriptions)
   - `FONTS.medium` = 500 (labels, secondary emphasis)
@@ -99,6 +112,14 @@ The app uses a centralized shadow system at **`src/theme/shadows.ts`**. This is 
 - **Do not** use `src/utils/shadows.ts` — this legacy file has been removed
 - Shadow colors use warm brown palette on iOS (`#4A3428`, `#3D2817`, `#2E1810`) for natural depth
 - Android uses numeric `elevation` (no color support) — this is a platform limitation
+
+## Communication Style
+
+The user is a non-technical business student. When explaining or discussing code:
+- Use plain English — no CS jargon without explanation
+- When pasting a terminal command, explain in one sentence what it does and why
+- When an error occurs, describe what went wrong in plain language before fixing it
+- Don't assume familiarity with programming concepts
 
 ## Invite System
 

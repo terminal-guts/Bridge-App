@@ -1,10 +1,10 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, ScrollView, SafeAreaView, TouchableOpacity, Linking } from 'react-native';
-import { styled } from 'nativewind';
 import { H2, Body, Button } from '.';
 import { createLogger } from '../../utils/secureLogger';
 import { Sentry } from '../../lib/sentry';
 import { EvaIcon } from '../icons';
+import { COLORS } from '../../theme/colors';
 
 const logger = createLogger('ErrorBoundary');
 
@@ -18,10 +18,6 @@ interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
 }
-
-const StyledView = styled(View);
-const StyledSafeAreaView = styled(SafeAreaView);
-const StyledScrollView = styled(ScrollView);
 
 /**
  * ErrorBoundary Component
@@ -81,16 +77,16 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
       // Default fallback UI
       return (
-        <StyledSafeAreaView className="flex-1 bg-neutral-50">
-          <StyledScrollView
-            className="flex-1"
+        <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.backgroundOffWhite }}>
+          <ScrollView
+            style={{ flex: 1 }}
             contentContainerStyle={{ padding: 24, justifyContent: 'center', minHeight: '100%' }}
           >
-            <StyledView className="items-center">
+            <View style={{ alignItems: 'center' }}>
               {/* Error Icon */}
-              <StyledView className="w-20 h-20 bg-error-100 rounded-full items-center justify-center mb-6">
-                <EvaIcon name="alert-circle" variant="outline" size={48} color="#EF4444" />
-              </StyledView>
+              <View style={{ width: 80, height: 80, backgroundColor: COLORS.mismatch.bg, borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+                <EvaIcon name="alert-circle" variant="outline" size={48} color={COLORS.error} />
+              </View>
 
               {/* Error Title */}
               <H2 className="text-neutral-900 text-center mb-3">
@@ -104,7 +100,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
               {/* Error Details (Development Only) */}
               {__DEV__ && this.state.error && (
-                <StyledView className="w-full bg-error-50 border border-error-200 rounded-xl p-4 mb-6">
+                <View style={{ width: '100%', backgroundColor: COLORS.backgroundSoftRed, borderWidth: 1, borderColor: COLORS.borderPink, borderRadius: 12, padding: 16, marginBottom: 24 }}>
                   <Body className="text-error-800 font-semibold mb-2">
                     Error Details (Dev Mode):
                   </Body>
@@ -116,14 +112,14 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                       {this.state.error.stack.split('\n').slice(0, 5).join('\n')}
                     </Body>
                   )}
-                </StyledView>
+                </View>
               )}
 
               {/* Reset Button */}
               <TouchableOpacity
                 onPress={this.resetError}
                 activeOpacity={0.7}
-                className="bg-primary-500 px-8 py-4 rounded-xl flex-row items-center mb-3"
+                style={{ backgroundColor: COLORS.primaryAccent, paddingHorizontal: 32, paddingVertical: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}
               >
                 <EvaIcon name="refresh" variant="outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
                 <Body className="text-white font-semibold text-base">
@@ -143,15 +139,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                   });
                 }}
                 activeOpacity={0.7}
-                className="py-2"
+                style={{ paddingVertical: 8 }}
               >
                 <Body className="text-primary-600 text-sm">
                   Contact Support
                 </Body>
               </TouchableOpacity>
-            </StyledView>
-          </StyledScrollView>
-        </StyledSafeAreaView>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
       );
     }
 
@@ -208,9 +204,9 @@ export class CardErrorBoundary extends Component<ErrorBoundaryProps, ErrorBounda
           activeOpacity={0.7}
           className="items-center justify-center py-8 px-4"
         >
-          <StyledView className="w-12 h-12 bg-error-100 rounded-full items-center justify-center mb-3">
-            <EvaIcon name="alert-triangle" variant="outline" size={24} color="#EF4444" />
-          </StyledView>
+          <View style={{ width: 48, height: 48, backgroundColor: COLORS.mismatch.bg, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+            <EvaIcon name="alert-triangle" variant="outline" size={24} color={COLORS.error} />
+          </View>
 
           <Body className="text-neutral-700 font-medium text-center mb-1">
             Error loading content

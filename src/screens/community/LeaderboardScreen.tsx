@@ -2,27 +2,30 @@ import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react'
 import {
   View,
   TouchableOpacity,
-  FlatList,
   Text,
   Alert,
-  ActivityIndicator,
   RefreshControl,
   ViewToken,
 } from 'react-native';
+import { FlashList, ViewToken as FlashViewToken } from '@shopify/flash-list';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { EvaIcon } from '../../components/icons';
 import { IconScoutIcon } from '../../components/icons/IconScoutIcon';
 import { StaggerItem } from '../../hooks/useStaggeredList';
 import { RootStackParamList } from '../../types';
 import { Image } from 'expo-image';
+import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../../theme/colors';
 import { ScreenWrapper } from '../../components/ui';
+import { LeaderboardSkeleton } from '../../components/ui/SkeletonLoader';
 import { getCentralOffsetHours } from '../../utils/centralTime';
 import {
   fetchLeaderboard,
   LeaderboardEntry,
   LeaderboardCurrentUser,
+  LeaderboardResponse,
+  invalidateLeaderboardCache,
 } from '../../services/leaderboardService';
 
 // Extracted
@@ -69,7 +72,7 @@ const toLeaderboardUser = (
   firstName: isCurrentUser ? 'You' : entry.firstName,
   karma: entry.weeklyKarma,
   rankChange: entry.rankChange ?? 0,
-  avatarUrl: entry.photoUrl,
+  avatarUrl: getOptimizedPhotoUrl(entry.photoUrl ?? undefined, 'avatar') ?? entry.photoUrl,
   isCurrentUser,
   isFriend: entry.isFriend,
   isAnonymous: isCurrentUser ? false : (entry.isAnonymous ?? false),
@@ -82,6 +85,13 @@ interface LeaderboardScreenProps {
 }
 
 export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation }) => {
+  // Stable avatar URL map: userId → optimized URL.
+  // Signed URLs rotate every ~10 min (new token each API call), which would bust expo-image's
+  // disk cache on every background refresh. By keeping the first URL we see per user and
+  // reusing it across refreshes, the same token is passed to expo-image so its disk cache
+  // always hits. URLs are valid for 24h (edge function TTL) and this ref lives for the session.
+  const stableAvatarUrls = useRef<Map<string, string>>(new Map());
+
   const [data, setData] = useState<LeaderboardUser[]>([]);
   const [currentUserData, setCurrentUserData] = useState<LeaderboardCurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,38 +108,65 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
     }, [])
   );
 
+  const applyData = useCallback((response: LeaderboardResponse) => {
+    const currentUserId = response.currentUser?.userId;
+    const rawUsers = response.leaderboard.map(entry =>
+      toLeaderboardUser(entry, entry.userId === currentUserId)
+    );
+    if (currentUserId && !rawUsers.some(u => u.isCurrentUser) && response.currentUser) {
+      rawUsers.push(toLeaderboardUser(response.currentUser, true));
+    }
+
+    // Stabilize avatar URLs: keep the first URL we've seen per user so expo-image's disk
+    // cache is never invalidated by rotating signed tokens across background refreshes.
+    const urlsToFetch: string[] = [];
+    const users = rawUsers.map(u => {
+      if (!u.avatarUrl) return u;
+      const existing = stableAvatarUrls.current.get(u.id);
+      if (existing) return { ...u, avatarUrl: existing };
+      stableAvatarUrls.current.set(u.id, u.avatarUrl);
+      urlsToFetch.push(u.avatarUrl);
+      return u;
+    });
+
+    setData(users);
+    setCurrentUserData(response.currentUser);
+    // Prefetch only newly-seen URLs (already-stable ones are already in expo-image's cache)
+    if (urlsToFetch.length > 0) Image.prefetch(urlsToFetch).catch(() => {});
+  }, []);
+
   const loadData = useCallback(async () => {
-    const result = await fetchLeaderboard();
+    const result = await fetchLeaderboard(50);
     if (result.ok) {
-      const currentUserId = result.data.currentUser?.userId;
-      const users = result.data.leaderboard.map(entry =>
-        toLeaderboardUser(entry, entry.userId === currentUserId)
-      );
-      if (currentUserId && !users.some(u => u.isCurrentUser) && result.data.currentUser) {
-        users.push(toLeaderboardUser(result.data.currentUser, true));
-      }
-      setData(users);
-      setCurrentUserData(result.data.currentUser);
+      applyData(result.data);
     } else {
       setError(result.error);
     }
     return result.ok;
-  }, []);
+  }, [applyData]);
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
-      setLoading(true);
       setError(null);
-      await loadData();
+      // fetchLeaderboard returns cached data instantly if available (no spinner for repeat visits)
+      const result = await fetchLeaderboard(50, (fresh) => {
+        if (mounted) applyData(fresh);
+      });
+      if (result.ok) {
+        if (mounted) applyData(result.data);
+      } else {
+        if (mounted) setError(result.error);
+      }
       if (mounted) setLoading(false);
     };
     load();
     return () => { mounted = false; };
-  }, [loadData]);
+  }, [applyData]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
+    invalidateLeaderboardCache();
     await loadData();
     setRefreshing(false);
   }, [loadData]);
@@ -160,7 +197,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
   const currentUserListIndexRef = useRef(currentUserListIndex);
   currentUserListIndexRef.current = currentUserListIndex;
 
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: FlashViewToken<LeaderboardUser>[] }) => {
     const idx = currentUserListIndexRef.current;
     if (idx < 0) return;
     const isVisible = viewableItems.some(v => v.index === idx);
@@ -200,7 +237,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
             {item.avatarUrl ? (
               <Image
                 source={{ uri: item.avatarUrl }}
-                style={[s.listAvatar, { backgroundColor: '#E5E7EB' }]}
+                style={[s.listAvatar, { backgroundColor: COLORS.backgroundGrayMedium }]}
                 contentFit="cover"
                 cachePolicy="memory-disk"
                 priority="normal"
@@ -251,10 +288,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
   if (loading) {
     return (
       <ScreenWrapper>
-        {renderHeader()}
-        <View style={s.loadingWrap}>
-          <ActivityIndicator size="large" color={COLORS.primaryAccent} />
-        </View>
+        <LeaderboardSkeleton />
       </ScreenWrapper>
     );
   }
@@ -340,7 +374,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
                         {top3[1]?.avatarUrl ? (
                           <Image
                             source={{ uri: top3[1].avatarUrl }}
-                            style={[s.avatarMedium, { backgroundColor: '#E5E7EB' }]}
+                            style={[s.avatarMedium, { backgroundColor: COLORS.backgroundGrayMedium }]}
                             contentFit="cover"
                             cachePolicy="memory-disk"
                             priority="high"
@@ -369,7 +403,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
                         {top3[0]?.avatarUrl ? (
                           <Image
                             source={{ uri: top3[0].avatarUrl }}
-                            style={[s.avatarLarge, { backgroundColor: '#E5E7EB' }]}
+                            style={[s.avatarLarge, { backgroundColor: COLORS.backgroundGrayMedium }]}
                             contentFit="cover"
                             cachePolicy="memory-disk"
                             priority="high"
@@ -395,7 +429,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
                         {top3[2]?.avatarUrl ? (
                           <Image
                             source={{ uri: top3[2].avatarUrl }}
-                            style={[s.avatarSmall, { backgroundColor: '#E5E7EB' }]}
+                            style={[s.avatarSmall, { backgroundColor: COLORS.backgroundGrayMedium }]}
                             contentFit="cover"
                             cachePolicy="memory-disk"
                             priority="high"
@@ -435,16 +469,12 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
         )}
 
         {/* List */}
-        <FlatList
+        <FlashList
           data={rest}
           keyExtractor={keyExtractor}
           renderItem={renderListItem}
           contentContainerStyle={s.listContent}
           showsVerticalScrollIndicator={false}
-          removeClippedSubviews={true}
-          initialNumToRender={7}
-          maxToRenderPerBatch={7}
-          windowSize={5}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -467,7 +497,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
               {currentUser!.avatarUrl ? (
                 <Image
                   source={{ uri: currentUser!.avatarUrl }}
-                  style={[s.stickyAvatar, { backgroundColor: '#E5E7EB' }]}
+                  style={[s.stickyAvatar, { backgroundColor: COLORS.backgroundGrayMedium }]}
                   contentFit="cover"
                   cachePolicy="memory-disk"
                   priority="normal"

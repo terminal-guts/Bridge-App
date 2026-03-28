@@ -9,6 +9,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Modal, ScrollView, Text, TouchableOpacity, Dimensions, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { formatProfileValue, formatGenderDisplay } from '../../utils/formatProfileValue';
+import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 import { styled } from 'nativewind';
 import { UserProfile } from '../../types';
 import { clampDisplayScore } from '../../utils/compatibilityHelpers';
@@ -127,7 +128,7 @@ export function ProfileView({
           <StyledView style={{ paddingHorizontal: 20, marginBottom: 20 }}>
             {photos.length === 1 ? (
               <StyledImage
-                source={{ uri: photos[0].url }}
+                source={{ uri: getOptimizedPhotoUrl(photos[0].url, 'profile') }}
                 placeholder={photos[0].blurhash ? { blurhash: photos[0].blurhash } : undefined}
                 style={{ width: '100%', height: 280, borderRadius: 16, backgroundColor: COLORS.backgroundGrayMedium }}
                 contentFit="cover"
@@ -163,7 +164,7 @@ export function ProfileView({
                   {[photos[photos.length - 1], ...photos, photos[0]].map((photo, index) => (
                     <StyledView key={`loop-${index}`} style={{ width: SCREEN_WIDTH - 40 }}>
                       <StyledImage
-                        source={{ uri: photo.url }}
+                        source={{ uri: getOptimizedPhotoUrl(photo.url, 'profile') }}
                         placeholder={photo.blurhash ? { blurhash: photo.blurhash } : undefined}
                         style={{ width: '100%', height: 280, borderRadius: 16, backgroundColor: COLORS.backgroundGrayMedium }}
                         contentFit="cover"
