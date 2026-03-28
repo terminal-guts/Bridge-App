@@ -182,7 +182,7 @@ export function useProposalVoting(
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         setCurrentIndex(prev => prev + 1);
       }
-    }, 500);
+    }, 250);
   }, [onVoteComplete, onBack, onVotesComplete]);
 
   const handleVote = useCallback(async (vote: 'yes' | 'no' | 'unsure') => {

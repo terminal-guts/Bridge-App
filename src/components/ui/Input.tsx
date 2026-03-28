@@ -30,6 +30,7 @@ export const Input: React.FC<InputProps> = ({
   onFocus,
   onBlur,
   autoFocus,
+  autoCapitalize,
   ...props
 }) => {
   const [isFocused, setIsFocused] = useState(false);
@@ -77,6 +78,7 @@ export const Input: React.FC<InputProps> = ({
         accessibilityRole="text"
         {...props}
         autoFocus={false}
+        autoCapitalize={autoCapitalize ?? 'none'}
         onFocus={handleFocus}
         onBlur={handleBlur}
         className={`border rounded-md px-3 py-3 text-base text-neutral-900 ${borderColor} ${className}`}

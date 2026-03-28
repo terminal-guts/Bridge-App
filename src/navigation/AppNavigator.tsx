@@ -42,7 +42,12 @@ function withSuspense<P extends object>(LazyComponent: React.LazyExoticComponent
 }
 
 // Auth screens — lazy (only parsed when unauthenticated)
-const WelcomeScreen = withSuspense(React.lazy(() => import('../screens/auth/WelcomeScreen').then(m => ({ default: m.WelcomeScreen }))));
+// WelcomeScreen import is fired at module-evaluation time (not inside the factory fn).
+// This means it starts loading during the splash/auth-check phase — so by the time
+// isAuthenticated resolves to false, the module is already parsed and ready.
+// New users go: splash → Welcome screen (no CommunitySkeleton flash in between).
+const _welcomePreload = import('../screens/auth/WelcomeScreen');
+const WelcomeScreen = withSuspense(React.lazy(() => _welcomePreload.then(m => ({ default: m.WelcomeScreen }))));
 const LoginScreen = withSuspense(React.lazy(() => import('../screens/auth/LoginScreen').then(m => ({ default: m.LoginScreen }))));
 const PhoneVerificationScreen = withSuspense(React.lazy(() => import('../screens/auth/PhoneVerificationScreen').then(m => ({ default: m.PhoneVerificationScreen }))));
 
@@ -338,7 +343,7 @@ const MatchmakerTabs = () => {
 };
 
 // Root Stack Navigator
-export const AppNavigator = () => {
+export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
   // ── EARLIEST POSSIBLE CACHE WARM ────────────────────────────────────────────
   // useRef initializer fires synchronously during render, BEFORE any useEffect.
   // We start both AsyncStorage reads immediately — in parallel — so that by the
@@ -370,8 +375,25 @@ export const AppNavigator = () => {
   const { stopGuide, isPlaying } = useGuideContext();
   const navigationRef = React.useRef<any>(null);
   const authStateRef = React.useRef<boolean | null>(null);
+  const onReadyCalledRef = React.useRef(false);
   const pendingInviteCode = useRef<string | null>(null);
   // pendingClaimToken removed — ghost profile claim flow deferred
+
+  // Signal App.tsx that the navigator has a definitive auth state and the first
+  // screen is ready to show. App.tsx holds the splash screen until this fires,
+  // so new users go: native splash → Welcome screen (no skeleton flash between).
+  // For new users (isAuthenticated === false): we wait for _welcomePreload so the
+  // lazy component is already parsed before the splash hides — zero loading flash.
+  // For returning users (isAuthenticated === true): signal immediately.
+  useEffect(() => {
+    if (isAuthenticated === null || onReadyCalledRef.current) return;
+    onReadyCalledRef.current = true;
+    if (isAuthenticated === false) {
+      _welcomePreload.then(() => onReady?.()).catch(() => onReady?.());
+    } else {
+      onReady?.();
+    }
+  }, [isAuthenticated, onReady]);
 
   // Handle deep links: bridge://invite/BRIDGE-XXXX-XXXX
   const handleDeepLink = useCallback((url: string) => {
@@ -577,7 +599,7 @@ export const AppNavigator = () => {
                 setUserRole(freshStatus.role);
                 if (freshStatus.role === 'matchmaker' && navigationRef.current) {
                   if (isPlaying) stopGuide();
-                  navigationRef.current.navigate('MatchmakerTabs' as never);
+                  navigationRef.current.reset({ index: 0, routes: [{ name: 'MatchmakerTabs' as never }] });
                 }
               }
             });
@@ -630,7 +652,7 @@ export const AppNavigator = () => {
               setUserRole(freshStatus.role);
               if (freshStatus.role === 'matchmaker' && navigationRef.current) {
                 if (isPlaying) stopGuide();
-                navigationRef.current.navigate('MatchmakerTabs' as never);
+                navigationRef.current.reset({ index: 0, routes: [{ name: 'MatchmakerTabs' as never }] });
               }
             }
           });
@@ -685,7 +707,7 @@ export const AppNavigator = () => {
                 const currentRootRoute = rootState?.routes?.[rootState.index ?? 0]?.name;
                 if (currentRootRoute !== 'MatchmakerTabs') {
                   if (isPlaying) stopGuide();
-                  navigationRef.current.navigate('MatchmakerTabs' as never);
+                  navigationRef.current.reset({ index: 0, routes: [{ name: 'MatchmakerTabs' as never }] });
                 }
               }
             } catch {}
@@ -740,9 +762,24 @@ export const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer
+      ref={navigationRef}
+      onStateChange={(state) => {
+        if (__DEV__ && state) {
+          const routeNames = JSON.stringify(state.routes.map((r: any) => r.name));
+          console.log('[NAV_DEBUG] Root state routes:', routeNames);
+        }
+      }}
+    >
       <ErrorBoundary
         onError={(error, errorInfo) => {
+          // DEBUG: log navigation state at crash time
+          try {
+            const navState = navigationRef.current?.getState();
+            const routes = navState?.routes?.map((r: any) => r.name);
+            console.error('[CRASH_DEBUG] Nav routes at crash:', JSON.stringify(routes));
+            console.error('[CRASH_DEBUG] Full state:', JSON.stringify(navState, null, 2));
+          } catch {}
           logger.error('[App Error Boundary]', error, errorInfo);
           Sentry.captureException(error, {
             contexts: { react: { componentStack: errorInfo.componentStack } },

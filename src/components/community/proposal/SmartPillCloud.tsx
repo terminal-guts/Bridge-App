@@ -230,7 +230,7 @@ export const MatchBadge = React.memo(function MatchBadge({ matched, total }: { m
 });
 
 export const PercentBadge = React.memo(function PercentBadge({ percent }: { percent: number }) {
-  const allMatch = percent >= 80;
+  const allMatch = percent >= 70;
   const noneMatch = percent === 0;
   const GREEN_BG = 'rgba(52, 199, 89, 0.1)';
   const RED_BG = 'rgba(255, 56, 60, 0.1)';

@@ -20,7 +20,7 @@ import { calculateProfileStrengthBreakdown } from '../utils/profileCompleteness'
 
 // Re-export from sub-modules so existing imports keep working
 export { addProfilePhotos, removeProfilePhoto, reorderProfilePhotos, setMainProfilePhoto } from './profileService.photos';
-export { updateProfilePauseStatus, getProfilePauseStatus, markGuideCompleted, getGuideCompletionStatus, checkMinimalProfileStatus, getCachedMinimalProfileStatus, clearMinimalProfileStatusCache, fetchAndSetUserProfile, getProfileById, getFullUserProfileById, checkEmailRegistered, findProfileByEmail, MinimalProfileStatus, getInMemoryMinimalStatus } from './profileService.extras';
+export { updateProfilePauseStatus, getProfilePauseStatus, markGuideCompleted, getGuideCompletionStatus, checkMinimalProfileStatus, getCachedMinimalProfileStatus, clearMinimalProfileStatusCache, setCachedRole, fetchAndSetUserProfile, getProfileById, getFullUserProfileById, checkEmailRegistered, findProfileByEmail, MinimalProfileStatus, getInMemoryMinimalStatus } from './profileService.extras';
 export { saveOnboardingStep, createUserProfile } from './profileService.onboarding';
 
 const logger = createLogger('ProfileService');

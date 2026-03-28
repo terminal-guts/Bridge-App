@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Modal, View, TouchableWithoutFeedback, StyleSheet } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { Modal, View, TouchableWithoutFeedback, TouchableOpacity, PanResponder, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -23,27 +23,27 @@ const StyledView = styled(View);
 const SLIDES = [
   {
     icon: 'people' as const,
-    title: "You're the matchmaker.",
-    body: "You don't swipe for yourself. You vote on whether two people from your campus would make a great couple.",
+    title: "No swiping here.",
+    body: "Help others find their match. You'll see two people and vote on whether they'd be great together.",
     cta: 'Next',
   },
   {
     icon: 'eye' as const,
-    title: "Judge the pair.",
-    body: "Browse their photos, answers, and shared interests.",
+    title: "Get to know the pair.",
+    body: "Browse their photos, answers, and shared interests to see if they'd click.",
     cta: 'Next',
   },
   {
     icon: 'checkmark-circle-2' as const,
-    title: "Your four votes.",
-    body: "Yes · No · Recommend (to a friend) · Not Sure.\n\nAll votes are anonymous.",
+    title: "Your four options.",
+    body: "Yes · No · Recommend (to a friend) · Not Sure.\n\nVotes are anonymous unless you're friends.",
     cta: 'Next',
   },
   {
     icon: 'heart' as const,
-    title: "The community decides.",
-    body: "Enough Yes votes? Both people get quietly notified and choose privately whether to connect.",
-    cta: "Let's vote!",
+    title: "Your votes matter.",
+    body: "If the community signals yes, both people get notified and decide privately to match or not.\n\nIf the community signals no, it quietly disappears.",
+    cta: "Let's go!",
   },
 ] as const;
 
@@ -55,25 +55,40 @@ export const OnboardingVotingTutorial: React.FC<OnboardingVotingTutorialProps> =
 }) => {
   const insets = useSafeAreaInsets();
   const [currentSlide, setCurrentSlide] = useState(0);
+  // Ref so PanResponder (created once) always reads current index
+  const currentSlideRef = useRef(0);
   const opacity = useSharedValue(1);
   const contentStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
-  const advanceTo = (next: number) => {
-    if (next >= TOTAL) {
-      onDismiss();
-    } else {
-      setCurrentSlide(next);
-    }
+  const updateSlide = (n: number) => {
+    currentSlideRef.current = n;
+    setCurrentSlide(n);
   };
 
-  const handleNext = () => {
+  // navigateRef so PanResponder can call the latest version of navigate
+  const navigateRef = useRef<(next: number) => void>(() => {});
+  navigateRef.current = (next: number) => {
+    if (next < 0) return;
+    if (next >= TOTAL) { onDismiss(); return; }
     lightHaptic();
-    const next = currentSlide + 1;
     opacity.value = withTiming(0, { duration: 120 }, () => {
-      runOnJS(advanceTo)(next);
+      runOnJS(updateSlide)(next);
       opacity.value = withTiming(1, { duration: 180 });
     });
   };
+
+  const handleNext = () => navigateRef.current(currentSlide + 1);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+        Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10,
+      onPanResponderRelease: (_, { dx }) => {
+        if (dx < -50) navigateRef.current(currentSlideRef.current + 1);
+        else if (dx > 50) navigateRef.current(currentSlideRef.current - 1);
+      },
+    })
+  ).current;
 
   const slide = SLIDES[currentSlide];
 
@@ -94,17 +109,23 @@ export const OnboardingVotingTutorial: React.FC<OnboardingVotingTutorialProps> =
               { paddingBottom: Math.max(insets.bottom + 16, 32) },
               contentStyle,
             ]}
+            {...panResponder.panHandlers}
           >
-            {/* Progress dots */}
+            {/* Progress dots — tappable to jump to any slide */}
             <StyledView className="flex-row justify-center gap-2 mb-8">
               {SLIDES.map((_, i) => (
-                <StyledView
+                <TouchableOpacity
                   key={i}
-                  style={[
-                    styles.dot,
-                    { backgroundColor: i === currentSlide ? '#437FFF' : '#D1D5DB' },
-                  ]}
-                />
+                  onPress={() => navigateRef.current(i)}
+                  hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                >
+                  <View
+                    style={[
+                      styles.dot,
+                      { backgroundColor: i === currentSlide ? '#437FFF' : '#D1D5DB' },
+                    ]}
+                  />
+                </TouchableOpacity>
               ))}
             </StyledView>
 

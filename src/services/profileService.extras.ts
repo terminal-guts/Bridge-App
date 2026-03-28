@@ -255,6 +255,17 @@ export function clearMinimalProfileStatusCache(): void {
   AsyncStorage.removeItem(MINIMAL_STATUS_CACHE_KEY).catch(() => {});
 }
 
+/**
+ * Update the cached role immediately (e.g., when matchmaker is selected during onboarding).
+ * This ensures app reloads mid-onboarding route to the correct tab navigator.
+ */
+export function setCachedRole(role: 'dater' | 'matchmaker'): void {
+  const current = inMemoryMinimalStatus ?? { ...MINIMAL_STATUS_DEFAULT };
+  const updated = { ...current, role };
+  inMemoryMinimalStatus = updated;
+  AsyncStorage.setItem(MINIMAL_STATUS_CACHE_KEY, JSON.stringify(updated)).catch(() => {});
+}
+
 export async function checkMinimalProfileStatus(): Promise<MinimalProfileStatus> {
   try {
     const userId = await getCurrentUserId();

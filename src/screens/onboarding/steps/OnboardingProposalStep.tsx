@@ -32,6 +32,7 @@ export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
     const load = async () => {
       try {
         const result = await communityService.getProposalsToVote();
+        console.log('[ONBOARDING_VOTE_DEBUG] getProposalsToVote returned:', result.length, 'proposals');
         if (result.length === 0) {
           // No proposals available — skip this step silently
           logger.info('No proposals available during onboarding, skipping step');
@@ -45,6 +46,7 @@ export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
         // gate so the user has something to engage with on first open.
         setProposals(result.slice(0, 1));
       } catch (error: any) {
+        console.error('[ONBOARDING_VOTE_DEBUG] Error loading proposals:', error.message, error);
         logger.error('Failed to load proposals during onboarding:', error.message);
         // On error, skip gracefully so onboarding isn't blocked
         if (!didSkip.current) {
@@ -63,7 +65,7 @@ export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
     return (
       <StyledSafeAreaView className="flex-1 bg-white items-center justify-center">
         <ActivityIndicator size="large" color="#437FFF" />
-        <Body className="mt-4 text-neutral-500">Finding people for you to vote on...</Body>
+        <Body className="mt-4 text-neutral-500">Searching the community...</Body>
       </StyledSafeAreaView>
     );
   }
@@ -72,8 +74,7 @@ export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
     <StyledView className="flex-1 bg-white">
       <ProposalReviewView
         initialProposals={proposals}
-        showBackButton={true}
-        onBack={onBack}
+        showBackButton={false}
         onVoteComplete={onNext}
       />
       <OnboardingVotingTutorial

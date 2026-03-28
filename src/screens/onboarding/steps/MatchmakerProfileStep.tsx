@@ -60,14 +60,14 @@ export const MatchmakerProfileStep: React.FC<MatchmakerProfileStepProps> = ({
 
   return (
     <OnboardingLayout
-      onBack={onBack}
       onContinue={validateAndContinue}
       hasTextInput={false}
+      showBackButton={false}
     >
       <StyledView className="mt-8 flex-1">
         <H1 className="mb-2">Add a photo</H1>
         <Body className="text-neutral-500 mb-8">
-          We need a photo to show you are a real person.
+          This shows when you match friends. Use a clear photo of your face.
         </Body>
 
         <StyledView className="items-center mb-8">
@@ -90,7 +90,6 @@ export const MatchmakerProfileStep: React.FC<MatchmakerProfileStepProps> = ({
               </StyledView>
             )}
           </StyledTouchableOpacity>
-          <Body className="text-neutral-500 text-xs mt-3">(Optional)</Body>
         </StyledView>
       </StyledView>
     </OnboardingLayout>

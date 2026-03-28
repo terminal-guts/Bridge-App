@@ -7,7 +7,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { H1, Body, H3, AnimatedPressable } from '../../../components/ui';
 import { COLORS } from '../../../theme/colors';
 import { EvaIcon } from '../../../components/icons';
-import { InfoModal, InfoSection } from '../../../components/ui/InfoModal';
 
 interface MatchmakingModeStepProps {
   data: any;
@@ -30,7 +29,6 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
 }) => {
   // Use existing role if it exists, otherwise default to dater
   const [selectedRole, setSelectedRole] = useState<Role>(data.role || 'dater');
-  const [showMatchmakerInfo, setShowMatchmakerInfo] = useState(false);
 
   const handleContinue = () => {
     updateData({ role: selectedRole });
@@ -114,18 +112,17 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
           {renderOption(
             'dater',
             'person',
-            'Find my person',
-            "Get matched and set up your friends — you're in the pool.",
+            'Standard',
+            "Find your person. Help your friends find theirs.",
             300
           )}
 
           {renderOption(
             'matchmaker',
             'people',
-            'Help my friends find theirs',
-            "Vote on proposals and set up your friends. You won't be in the dating pool.",
-            450,
-            () => setShowMatchmakerInfo(true)
+            "I'm taken",
+            "Help your friends find someone. You won't have a dating profile or get matched yourself.",
+            450
           )}
         </StyledView>
 
@@ -146,28 +143,6 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
         </Animated.View>
       </StyledView>
 
-      {/* Matchmaker Info Explainer Bottom Sheet */}
-      <InfoModal
-        visible={showMatchmakerInfo}
-        onClose={() => setShowMatchmakerInfo(false)}
-        title="Be a Matchmaker"
-        icon="people"
-      >
-        <InfoSection>
-          As a matchmaker, you'll build profiles for your friends and browse candidates on their behalf. You can suggest introductions and track how they go. You won't have a dating profile yourself.
-        </InfoSection>
-        <StyledView className="mt-4">
-          <AnimatedPressable
-            onPress={() => setShowMatchmakerInfo(false)}
-            scale="standard"
-            className="bg-primary-500 rounded-full py-4 px-8 items-center"
-          >
-            <Body className="text-white text-center font-semibold">
-              Got it, let's go
-            </Body>
-          </AnimatedPressable>
-        </StyledView>
-      </InfoModal>
     </StyledSafeAreaView>
   );
 };

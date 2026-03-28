@@ -20,7 +20,7 @@ import { styled } from 'nativewind';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { DURATIONS } from '../../constants/animations';
 import { RootStackParamList, OnboardingData } from '../../types';
-import { createUserProfile, saveOnboardingStep, checkMinimalProfileStatus, updateUserProfile } from '../../services/profileService';
+import { createUserProfile, saveOnboardingStep, checkMinimalProfileStatus, updateUserProfile, setCachedRole } from '../../services/profileService';
 import { uploadMultiplePhotos } from '../../services/photoService';
 import { supabase } from '../../lib/supabase';
 import { Body } from '../../components/ui';
@@ -251,6 +251,10 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
 
   const updateData = (data: Partial<OnboardingData>) => {
     setOnboardingData(prev => ({ ...prev, ...data }));
+    // Cache role immediately so app reloads mid-onboarding route correctly
+    if (data.role) {
+      setCachedRole(data.role as 'dater' | 'matchmaker');
+    }
   };
 
   const goNext = async () => {
@@ -329,8 +333,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     } else {
-      // On first step, go back to previous screen (Welcome)
-      navigation.goBack();
+      navigation.navigate('Welcome');
     }
   };
 
@@ -398,7 +401,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         await checkMinimalProfileStatus();
         successHaptic();
         setTimeout(() => successHaptic(), 300);
-        (navigation as any).navigate('MainTabs');
+        (navigation as any).reset({ index: 0, routes: [{ name: 'MainTabs' }] });
         return;
       }
 
@@ -447,7 +450,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         await checkMinimalProfileStatus();
         successHaptic();
         setTimeout(() => successHaptic(), 300);
-        (navigation as any).navigate('MatchmakerTabs');
+        (navigation as any).reset({ index: 0, routes: [{ name: 'MatchmakerTabs' }] });
         return;
       }
 
@@ -470,8 +473,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
       successHaptic();
       setTimeout(() => successHaptic(), 300);
 
-      // Navigate to main app after proposals are assigned
-      (navigation as any).navigate('MainTabs');
+      // Navigate to main app after proposals are assigned — reset clears
+      // the stack so Onboarding doesn't linger beneath MainTabs.
+      (navigation as any).reset({ index: 0, routes: [{ name: 'MainTabs' }] });
     } catch (error: any) {
       logger.error('Onboarding error:', error);
       setIsCreatingProfile(false);

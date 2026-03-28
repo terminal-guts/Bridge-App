@@ -253,14 +253,18 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   // Preload Matches tab after Community finishes loading — users commonly switch to it next.
   // React Navigation 7 preload() begins loading the screen component subtree early.
+  // Only for daters — matchmakers have no Matches tab (preloading it crashes the navigator).
   // Also warm the leaderboard cache so navigating there is instant.
   useEffect(() => {
     if (!loading && hasCompletedVoting) {
       const timer = setTimeout(() => {
-        try {
-          (navigation as any).preload?.('Matches');
-        } catch {
-          // Silently ignore if preload is unavailable
+        // Only preload Matches for daters — MatchmakerTabs has no Matches screen
+        if (profile?.role !== 'matchmaker') {
+          try {
+            (navigation as any).preload?.('Matches');
+          } catch {
+            // Silently ignore if preload is unavailable
+          }
         }
         // Background-warm the leaderboard cache — no spinner when user taps Leaderboard
         fetchLeaderboard(50).catch(() => {});
@@ -277,9 +281,11 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     // 2. Async: check the cached role — prevents the guide from starting even when
     //    a matchmaker's stale 'dater' cache causes them to open in MainTabs. The
     //    async check is fast (AsyncStorage in-memory mirror, < 1ms on warm start).
+    // Triple guard: synchronous route check + synchronous profile check + async cache check.
+    // All three must agree this is NOT a matchmaker before starting the dater tour.
     const routeNames: string[] = (navigation as any).getState?.()?.routeNames ?? [];
     const isInMatchmakerTabs = !routeNames.includes('Matches');
-    if (!isInMatchmakerTabs) {
+    if (!isInMatchmakerTabs && profile?.role !== 'matchmaker') {
       getCachedMinimalProfileStatus().then(status => {
         if (status?.role !== 'matchmaker') {
           startGuideIfNeeded(beginnerTourGuide);

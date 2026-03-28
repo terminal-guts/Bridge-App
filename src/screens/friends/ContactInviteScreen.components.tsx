@@ -245,7 +245,7 @@ export const FriendCodeCard = React.memo(({ friendCode, onShareCode, onEnterCode
       <StyledText style={contactStyles.friendCodeText}>
         {friendCode}
       </StyledText>
-      <StyledText style={{ fontSize: FONT_SIZES.xs, color: copied ? COLORS.success : COLORS.text.disabled, marginTop: 2 }}>
+      <StyledText style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.regular, color: copied ? COLORS.success : COLORS.text.disabled, marginTop: 2 }}>
         {copied ? 'Copied!' : 'Tap to copy'}
       </StyledText>
     </TouchableOpacity>
@@ -290,7 +290,7 @@ export const EnterCodeInput = React.memo(({ inputRef, value, onChangeText, onSub
       <StyledView className="flex-1 flex-row items-center bg-neutral-100 rounded-lg px-3 py-2 mr-2">
         <TextInput
           ref={inputRef}
-          style={{ flex: 1, fontSize: FONT_SIZES.base, color: '#0B1226' }}
+          style={{ flex: 1, fontSize: FONT_SIZES.base, fontFamily: FONTS.regular, color: '#0B1226' }}
           placeholder="Enter friend code"
           placeholderTextColor={COLORS.text.disabled}
           value={value}
@@ -436,7 +436,7 @@ export const GrantedHeaderStrip = React.memo(({ friendCode, enterCodeValue, ente
           accessibilityRole="button"
           accessibilityLabel="Copy friend code"
         >
-          <EvaIcon name="copy" variant="outline" size={16} color="#437FFF" />
+          <EvaIcon name="copy" variant="outline" size={16} color={COLORS.primaryAccent} />
         </StyledTouchableOpacity>
         <StyledTouchableOpacity
           className="p-1.5 rounded-full bg-primary-50 ml-1"
@@ -445,7 +445,7 @@ export const GrantedHeaderStrip = React.memo(({ friendCode, enterCodeValue, ente
           accessibilityRole="button"
           accessibilityLabel="Share friend code"
         >
-          <EvaIcon name="share" variant="outline" size={16} color="#437FFF" />
+          <EvaIcon name="share" variant="outline" size={16} color={COLORS.primaryAccent} />
         </StyledTouchableOpacity>
       </StyledView>
     ) : null}
@@ -642,6 +642,7 @@ export interface GrantedContactListProps {
   onAddAllBridge: () => void;
   onSendInvites: () => void;
   keyExtractor: (item: NormalizedContact) => string;
+  hideFloatingButton?: boolean;
 }
 
 export const GrantedContactList = React.memo(({
@@ -667,6 +668,7 @@ export const GrantedContactList = React.memo(({
   onAddAllBridge,
   onSendInvites,
   keyExtractor,
+  hideFloatingButton,
 }: GrantedContactListProps) => {
   const renderItem = React.useCallback(
     ({ item }: { item: NormalizedContact }) => (
@@ -733,12 +735,14 @@ export const GrantedContactList = React.memo(({
         <EmptyContactsView />
       )}
 
-      <FloatingSendButton
-        selectedCount={selectedIds.size}
-        invitesRemaining={invitesRemaining}
-        sending={sending}
-        onSend={onSendInvites}
-      />
+      {!hideFloatingButton && (
+        <FloatingSendButton
+          selectedCount={selectedIds.size}
+          invitesRemaining={invitesRemaining}
+          sending={sending}
+          onSend={onSendInvites}
+        />
+      )}
     </>
   );
 });

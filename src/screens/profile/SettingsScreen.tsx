@@ -358,7 +358,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
                                 const result = await deleteAccount();
                                 setIsDeleting(false);
                                 if (result.ok) {
-                                  showToast.success('Account Deleted', 'Your account has been permanently removed.');
+                                  showToast.success('Account Deleted', 'All data permanently removed.');
                                   navigation.navigate('Welcome');
                                 } else {
                                   Alert.alert('Error', result.error?.message || 'Failed to delete account. Please contact support.');

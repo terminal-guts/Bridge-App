@@ -3,10 +3,10 @@ module.exports = function (api) {
   return {
     presets: ["babel-preset-expo"],
     plugins: [
-      // React Compiler: automatically memoizes components and hooks across the
-      // entire codebase. Eliminates unnecessary re-renders without manual
-      // useMemo/useCallback. Requires React 17+ (we use React 19).
-      "babel-plugin-react-compiler",
+      // React Compiler disabled — it breaks Reanimated worklets by auto-memoizing
+      // useAnimatedStyle callbacks, causing "Cannot read property 'props' of undefined"
+      // crashes when animated views unmount. Can revisit after Reanimated v4 adds
+      // official React Compiler support.
       "nativewind/babel",
     ],
   };

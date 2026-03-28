@@ -173,6 +173,15 @@ export const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = (
           keyboardShouldPersistTaps="handled"
         >
           <StyledView className="flex-1 px-6 pt-16">
+            {/* Back Button */}
+            <StyledTouchableOpacity
+              onPress={() => navigation.goBack()}
+              className="mb-8 flex-row items-center"
+            >
+              <EvaIcon name="arrow-back" variant="outline" size={24} color="#3B82F6" />
+              <Body className="text-primary-500 ml-2 font-medium">Back</Body>
+            </StyledTouchableOpacity>
+
             {/* Icon */}
             <StyledView className="items-center mb-6">
               <StyledView className="w-20 h-20 bg-primary-100 rounded-full items-center justify-center mb-4">
