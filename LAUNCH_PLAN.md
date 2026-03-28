@@ -23,11 +23,11 @@
 - [x] Phase 4: Profile screen (verified — existing matchmaker rendering intact)
 - [x] Phase 10: Edge case fixes (no dangling imports, guide check preserved, profileCompleted verified)
 
-### 10:30 PM - 12:00 AM: Build Verification
-- [ ] Run `npx tsc --noEmit` — verify no TypeScript errors
-- [ ] Fix any compilation issues
-- [ ] Review all changes in `git diff` for correctness
-- [ ] Commit all changes
+### 10:30 PM - 12:00 AM: Build Verification (DONE)
+- [x] Run `npx tsc --noEmit` — zero errors in src/
+- [x] Review all changes in `git diff` for correctness
+- [x] Commit all changes (`8ae6d3a`)
+- [x] Push to remote
 
 **Goal**: All implementation complete, code compiles clean
 
@@ -35,7 +35,28 @@
 
 ## Saturday Morning (March 28)
 
-### 8:00 AM - 10:00 AM: Manual Testing — Matchmaker Flows
+### 8:00 AM - 8:30 AM: Merge Audio Recording Feature
+Merge Oneal's `feature/audio-recording` branch — iMessage-style audio recorder for chat.
+- [ ] `git merge origin/feature/audio-recording` — resolve any conflicts
+- [ ] Verify AudioRecorder.tsx, ChatScreen.tsx, messageService.ts changes
+- [ ] Deploy audio storage migration if needed (`supabase/migrations/20260305_chat_audio_storage.sql`)
+- [ ] Run `npx tsc --noEmit` — verify no new TypeScript errors
+- [ ] Commit merge
+
+**Note**: This is Oneal's (LivingW123) protected code — merge as-is, do not modify.
+
+### 8:30 AM - 9:00 AM: Audio Feature Testing
+- [ ] Open a match chat → tap record button → recording starts
+- [ ] Live waveform visualization renders during recording
+- [ ] Timer counts up during recording
+- [ ] Tap stop → audio message sends to Supabase storage
+- [ ] Audio message appears in chat thread
+- [ ] Tap audio message → playback works
+- [ ] Cancel recording → no message sent
+- [ ] 2-minute max duration → auto-stops
+- [ ] Record with no microphone permission → graceful error/permission prompt
+
+### 9:00 AM - 11:00 AM: Manual Testing — Matchmaker Flows
 Test on simulator or physical device via Expo Dev Client.
 
 **Matchmaker Onboarding (Critical Path):**
@@ -268,7 +289,8 @@ Push the app to its limits to find edge cases and crashes.
 The currently accepted build (1.0.0 build 20) is approved and held for manual release. If the new build doesn't pass review in time, release the accepted build to go live on schedule. Submit the matchmaker update afterward.
 
 ## Test Summary
-- **72 total test cases**
+- **81 total test cases**
+- Audio recording: 9 tests (merge + feature verification)
 - Tests 1-23: Matchmaker-specific flows (onboarding, community, profile, settings)
 - Tests 24-45: Dater regression (onboarding, community, matches, profile, settings)
 - Tests 46-72: Stress testing (navigation, onboarding, voting, profile, role switch, notifications, data integrity)
