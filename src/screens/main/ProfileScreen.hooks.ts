@@ -16,6 +16,7 @@ import { signOut } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { supabase } from '../../lib/supabase';
 import { getFriendCount } from '../../services/friendService';
+import { getUserFriendCode } from '../../services/friendService.codes';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { getReceivedBadges, toggleFeatured, toggleHidden } from '../../services/badgeService';
 import { useGuide } from '../../hooks/useGuide';
@@ -39,6 +40,7 @@ export function useProfileScreen(navigation: any) {
   const [badgesLoading, setBadgesLoading] = useState(false);
   const [showKarmaInfoModal, setShowKarmaInfoModal] = useState(false);
   const [showPhotoCarousel, setShowPhotoCarousel] = useState(false);
+  const [friendCode, setFriendCode] = useState<string | null>(null);
   const [photoCarouselIndex] = useState(0);
   const [showEditAnswerModal, setShowEditAnswerModal] = useState(false);
   const [selectedQuestionForEdit, setSelectedQuestionForEdit] = useState<DeepQuestionAnswer | null>(null);
@@ -145,6 +147,17 @@ export function useProfileScreen(navigation: any) {
     }
   }, []);
 
+  const loadFriendCode = useCallback(async () => {
+    try {
+      const result = await getUserFriendCode();
+      if (result.ok && result.data?.code && isMountedRef.current) {
+        setFriendCode(result.data.code);
+      }
+    } catch (error) {
+      logger.error('Failed to load friend code:', error);
+    }
+  }, []);
+
   const loadBadges = useCallback(async () => {
     setBadgesLoading(true);
     const result = await getReceivedBadges();
@@ -166,6 +179,7 @@ export function useProfileScreen(navigation: any) {
         loadProfile(),
         loadFriendCount(),
         loadBadges(),
+        loadFriendCode(),
       ]).then(() => {
         lastFetchRef.current = Date.now();
       }).catch(error => {
@@ -175,7 +189,7 @@ export function useProfileScreen(navigation: any) {
           'Please pull down to refresh or try again later.'
         );
       });
-    }, [loadProfile, loadFriendCount, loadBadges])
+    }, [loadProfile, loadFriendCount, loadBadges, loadFriendCode])
   );
 
   // Deep-link: switch to a specific tab
@@ -516,6 +530,7 @@ export function useProfileScreen(navigation: any) {
     setSelectedQuestionForEdit,
     editingAnswer,
     isOffline,
+    friendCode,
     starringQuestions,
     selectedSlotIndex,
     setSelectedSlotIndex,
