@@ -102,8 +102,8 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
         if (!showVoteRing) { voteScale.value = 1; return; }
         voteScale.value = withRepeat(
             withSequence(
-                withTiming(1.04, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
-                withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
+                withTiming(1.07, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+                withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
             ), -1, false
         );
         return () => cancelAnimation(voteScale);
@@ -111,15 +111,30 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showVoteRing]);
     const voteAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: voteScale.value }] }));
+
+    // Ripple burst on vote tap — separate from pulse/shimmer
+    const rippleScale = useSharedValue(0);
+    const rippleOpacity = useSharedValue(0);
+    const rippleAnimStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: rippleScale.value }],
+        opacity: rippleOpacity.value,
+    }));
+
     const handleVotePress = useCallback(() => {
         if (!friendProfileComplete || !onMatch) return;
         mediumHaptic();
+        // Tap squish (existing)
         voteScale.value = withSequence(
             withTiming(0.92, { duration: 80 }),
             withSpring(1, SPRINGS.snappy),
         );
-        onMatch();
-        // voteScale is a stable useSharedValue ref — intentionally omitted from deps
+        // Ripple burst
+        rippleScale.value = 0.5;
+        rippleOpacity.value = 0.5;
+        rippleScale.value = withTiming(2.5, { duration: 450, easing: Easing.out(Easing.ease) });
+        rippleOpacity.value = withTiming(0, { duration: 450, easing: Easing.out(Easing.ease) });
+        // Navigate after brief delay so ripple is visible
+        setTimeout(() => onMatch(), 150);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [friendProfileComplete, onMatch]);
 
@@ -256,6 +271,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                                 />
                             </Animated.View>
                         )}
+                        <Animated.View style={[styles.rippleBurst, rippleAnimStyle]} pointerEvents="none" />
                         <Text style={[
                             styles.matchBtnText,
                             showVoteRing && friendProfileComplete && styles.matchBtnTextGlow,
@@ -453,6 +469,14 @@ const styles = StyleSheet.create({
         borderRadius: 4,
         backgroundColor: COLORS.primaryButton,
         marginLeft: 2,
+    },
+    rippleBurst: {
+        position: 'absolute' as const,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: 'rgba(255,255,255,0.3)',
+        alignSelf: 'center',
     },
     shimmerContainer: {
         position: 'absolute' as const,

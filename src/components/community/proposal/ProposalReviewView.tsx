@@ -91,7 +91,7 @@ const ACCENT_INTERESTS = COLORS.emerald;
 const ACCENT_VALUES    = '#D97706'; // deep amber — distinct from YellowPill border (#F59E0B)
 const PHOTO_WIDTH = (SCREEN_WIDTH - 32 - DIVIDER_WIDTH) / 2;
 
-const SCROLL_CONTENT_STYLE = { paddingHorizontal: 16, paddingBottom: 220 } as const;
+const SCROLL_CONTENT_PAD_H = 16;
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface ProposalReviewViewProps {
@@ -313,7 +313,7 @@ export function ProposalReviewView({
         ref={scrollViewRef}
         key={proposal.id}
         style={{ flex: 1 }}
-        contentContainerStyle={SCROLL_CONTENT_STYLE}
+        contentContainerStyle={{ paddingHorizontal: SCROLL_CONTENT_PAD_H, paddingBottom: 16 }}
         showsVerticalScrollIndicator={false}
       >
 
@@ -420,7 +420,7 @@ export function ProposalReviewView({
       </ScrollView>
       </Animated.View>
 
-      {/* ── Sticky vote bar — revealed after voting to prevent anchoring bias ── */}
+      {/* ── Vote bar — revealed after voting to prevent anchoring bias ── */}
       <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, backgroundColor: COLORS.screenBackground }}>
         <LiveVoteBar
           yesVotes={hasVotedCurrent ? (proposal.yesVotes ?? 0) : 0}
@@ -430,7 +430,7 @@ export function ProposalReviewView({
         />
       </View>
 
-      {/* ── Fixed bottom vote buttons ───────────────────────────────── */}
+      {/* ── Vote buttons — normal flow, scroll naturally ends above them ── */}
       <VoteButtons
         voting={voting}
         handleVote={handleVoteWithEffects}
