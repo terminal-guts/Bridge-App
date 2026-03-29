@@ -19,6 +19,7 @@ import { getFriendCount } from '../../services/friendService';
 import { getUserFriendCode } from '../../services/friendService.codes';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { getReceivedBadges, toggleFeatured, toggleHidden } from '../../services/badgeService';
+import { fetchLeaderboard } from '../../services/leaderboardService';
 import { useGuide } from '../../hooks/useGuide';
 import { profileGuide } from '../../config/guides';
 import { lightHaptic, mediumHaptic, successHaptic, heavyHaptic } from '../../utils/haptics';
@@ -42,6 +43,8 @@ export function useProfileScreen(navigation: any) {
   const [showPhotoCarousel, setShowPhotoCarousel] = useState(false);
   const [friendCode, setFriendCode] = useState<string | null>(null);
   const [photoCarouselIndex] = useState(0);
+  const [communityRank, setCommunityRank] = useState<number | null>(null);
+  const [rankChange, setRankChange] = useState<number>(0);
   const [showEditAnswerModal, setShowEditAnswerModal] = useState(false);
   const [selectedQuestionForEdit, setSelectedQuestionForEdit] = useState<DeepQuestionAnswer | null>(null);
   const [editingAnswer, setEditingAnswer] = useState('');
@@ -158,6 +161,18 @@ export function useProfileScreen(navigation: any) {
     }
   }, []);
 
+  const loadRank = useCallback(async () => {
+    try {
+      const result = await fetchLeaderboard(50);
+      if (result.ok && result.data.currentUser && isMountedRef.current) {
+        setCommunityRank(result.data.currentUser.rank);
+        setRankChange(result.data.currentUser.rankChange);
+      }
+    } catch (error) {
+      logger.error('Failed to load rank:', error);
+    }
+  }, []);
+
   const loadBadges = useCallback(async () => {
     setBadgesLoading(true);
     const result = await getReceivedBadges();
@@ -180,6 +195,7 @@ export function useProfileScreen(navigation: any) {
         loadFriendCount(),
         loadBadges(),
         loadFriendCode(),
+        loadRank(),
       ]).then(() => {
         lastFetchRef.current = Date.now();
       }).catch(error => {
@@ -189,7 +205,7 @@ export function useProfileScreen(navigation: any) {
           'Please pull down to refresh or try again later.'
         );
       });
-    }, [loadProfile, loadFriendCount, loadBadges, loadFriendCode])
+    }, [loadProfile, loadFriendCount, loadBadges, loadFriendCode, loadRank])
   );
 
   // Deep-link: switch to a specific tab
@@ -554,6 +570,8 @@ export function useProfileScreen(navigation: any) {
     celebrationActive,
     confettiRef,
     isMountedRef,
+    communityRank,
+    rankChange,
 
     // Handlers
     loadProfile,

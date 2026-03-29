@@ -1,14 +1,14 @@
-import React from 'react';
-import { View, ScrollView, TouchableOpacity, RefreshControl, Text } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, ScrollView, TouchableOpacity, RefreshControl, Text, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Clipboard from 'expo-clipboard';
+import Svg, { Circle } from 'react-native-svg';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
 import { AVATAR_SIZE_XL } from '../../constants';
 import { styled } from 'nativewind';
-import { H2, Body, Button, ProfileSkeleton, ScreenWrapper, Display } from '../../components/ui';
+import { H2, Body, Button, ProfileSkeleton, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { MainTabParamList } from '../../types';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
@@ -18,7 +18,6 @@ import { EvaIcon } from '../../components/icons';
 import { lightHaptic } from '../../utils/haptics';
 import { createLogger } from '../../utils/secureLogger';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
-import { showToast } from '../../utils/toast';
 import { useProfileScreen } from './ProfileScreen.hooks';
 import { AboutTab, BadgesTab } from './ProfileScreen.sections';
 import { QuestionsTab } from './ProfileScreen.questions';
@@ -26,21 +25,74 @@ import { ProfileModals } from './ProfileScreen.modals';
 
 const logger = createLogger('ProfileScreen');
 
-// Rotating matchmaker tips — one shown per day
-const MATCHMAKER_TIPS = [
-  { icon: 'people' as const, text: 'The best matches come from friends who really know each other.' },
-  { icon: 'message-circle' as const, text: 'When you vote, think about who would genuinely make each other smile.' },
-  { icon: 'star' as const, text: 'Your karma grows every time you vote — and even more when you get it right.' },
-  { icon: 'heart' as const, text: 'Every assist means you helped two people find their person.' },
-  { icon: 'trending-up' as const, text: 'Invite more friends to unlock better matches for everyone.' },
-  { icon: 'award' as const, text: 'Accurate votes earn 3x more karma than just showing up.' },
-  { icon: 'eye' as const, text: 'Pay attention to shared values — they matter more than shared hobbies.' },
-];
+/** Karma progress toward next milestone (25 → 100 → beyond) */
+const getKarmaProgress = (karma: number): number => {
+  if (karma >= 100) return 1;
+  if (karma >= 25) return (karma - 25) / 75;
+  return karma / 25;
+};
 
-/** Returns a daily-rotating tip index (stable for the whole day) */
-const getDailyTipIndex = () => {
-  const daysSinceEpoch = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
-  return daysSinceEpoch % MATCHMAKER_TIPS.length;
+/** Color for karma progress ring based on tier */
+const getKarmaRingColor = (karma: number): string => {
+  if (karma >= 100) return '#F59E0B'; // gold
+  if (karma >= 25) return COLORS.primaryAccent; // blue
+  return COLORS.emerald; // green
+};
+
+/** Format "Matchmaker since Mar 2026" */
+const formatJoinDate = (iso: string): string => {
+  const d = new Date(iso);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `Matchmaker since ${months[d.getMonth()]} ${d.getFullYear()}`;
+};
+
+/** Progress ring around avatar */
+const AvatarProgressRing: React.FC<{ size: number; progress: number; color: string; children: React.ReactNode }> = ({ size, progress, color, children }) => {
+  const strokeWidth = 3;
+  const radius = (size + strokeWidth * 2) / 2;
+  const svgSize = size + strokeWidth * 4;
+  const circumference = 2 * Math.PI * radius;
+
+  return (
+    <View style={{ width: svgSize, height: svgSize, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={svgSize} height={svgSize} style={{ position: 'absolute' }}>
+        {/* Background track */}
+        <Circle
+          cx={svgSize / 2} cy={svgSize / 2} r={radius}
+          stroke="rgba(0,0,0,0.04)" strokeWidth={strokeWidth} fill="none"
+        />
+        {/* Progress arc */}
+        <Circle
+          cx={svgSize / 2} cy={svgSize / 2} r={radius}
+          stroke={color} strokeWidth={strokeWidth} fill="none"
+          strokeLinecap="round"
+          strokeDasharray={`${circumference * progress} ${circumference * (1 - progress)}`}
+          strokeDashoffset={circumference * 0.25}
+          rotation={-90} origin={`${svgSize / 2}, ${svgSize / 2}`}
+        />
+      </Svg>
+      {children}
+    </View>
+  );
+};
+
+/** Hook for staggered fade-in animations */
+const useStaggeredFadeIn = (count: number, delay = 80) => {
+  const anims = useRef(Array.from({ length: count }, () => new Animated.Value(0))).current;
+
+  useEffect(() => {
+    const animations = anims.map((anim, i) =>
+      Animated.timing(anim, {
+        toValue: 1,
+        duration: 350,
+        delay: i * delay,
+        useNativeDriver: true,
+      })
+    );
+    Animated.stagger(delay, animations).start();
+  }, []);
+
+  return anims;
 };
 
 interface ProfileScreenProps {
@@ -104,9 +156,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
         }
       >
         {/* Header with Settings (and Preview/Edit for daters) */}
-        <StyledView className="bg-white border-b border-neutral-200">
+        <StyledView className={profile.role === 'matchmaker' ? '' : 'bg-white border-b border-neutral-200'}>
+          {/* Warm gradient behind avatar area for matchmakers (#10) */}
+          {profile.role === 'matchmaker' && (
+            <LinearGradient
+              colors={['#FFF5ED', '#FEF0E3', COLORS.screenBackground]}
+              locations={[0, 0.5, 1]}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 280 }}
+            />
+          )}
           <StyledView className="px-4 py-3 flex-row justify-between items-center">
-            <Display>Your Profile</Display>
+            <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: FONT_SIZES['6xl'], lineHeight: 38, color: COLORS.text.black, letterSpacing: -0.5 }}>Your Profile</Text>
             <StyledView className="flex-row items-center space-x-3">
               {profile.role !== 'matchmaker' && (
                 <StyledTouchableOpacity
@@ -139,22 +199,55 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
           {/* Profile Photo and Name */}
           <StyledView className="px-4 pb-4">
             <StyledView className="items-center">
-              {/* Profile Photo Circle */}
+              {/* Profile Photo Circle — with progress ring for matchmakers (#6) */}
               {profile.photos && profile.photos.length > 0 && (profile.photos.find(p => p.isMain) || profile.photos[0])?.url ? (
-                <StyledImage
-                  source={{ uri: getOptimizedImageUrl((profile.photos.find(p => p.isMain) || profile.photos[0]).url, AVATAR_SIZE_XL) }}
-                  className="rounded-full mb-3 bg-neutral-200 border-2 border-neutral-100"
-                  style={{
-                    width: AVATAR_SIZE_XL,
-                    height: AVATAR_SIZE_XL,
+                profile.role === 'matchmaker' ? (
+                  <View style={{
+                    marginBottom: 12,
+                    borderRadius: (AVATAR_SIZE_XL + 16) / 2,
                     ...SHADOWS.xl,
-                  } as any}
-                  contentFit="cover"
-                  transition={0}
-                  cachePolicy="memory-disk"
-                  priority="high"
-                  onError={(e) => { logger.warn('Failed to load profile photo:', e.error); }}
-                />
+                  }}>
+                    <AvatarProgressRing
+                      size={AVATAR_SIZE_XL}
+                      progress={getKarmaProgress(profile.karma?.karma_points ?? 0)}
+                      color={getKarmaRingColor(profile.karma?.karma_points ?? 0)}
+                    >
+                      <StyledImage
+                        source={{ uri: getOptimizedImageUrl((profile.photos.find(p => p.isMain) || profile.photos[0]).url, AVATAR_SIZE_XL) }}
+                        className="rounded-full bg-neutral-200"
+                        style={{ width: AVATAR_SIZE_XL, height: AVATAR_SIZE_XL } as any}
+                        contentFit="cover"
+                        transition={0}
+                        cachePolicy="memory-disk"
+                        priority="high"
+                        onError={(e) => { logger.warn('Failed to load profile photo:', e.error); }}
+                      />
+                    </AvatarProgressRing>
+                  </View>
+                ) : (
+                  <View style={{
+                    marginBottom: 12,
+                    borderRadius: AVATAR_SIZE_XL / 2,
+                    ...SHADOWS.xl,
+                  }}>
+                    <StyledImage
+                      source={{ uri: getOptimizedImageUrl((profile.photos.find(p => p.isMain) || profile.photos[0]).url, AVATAR_SIZE_XL) }}
+                      style={{
+                        width: AVATAR_SIZE_XL,
+                        height: AVATAR_SIZE_XL,
+                        borderRadius: AVATAR_SIZE_XL / 2,
+                        borderWidth: 2,
+                        borderColor: 'rgba(255,255,255,0.9)',
+                        backgroundColor: COLORS.backgroundGrayMedium,
+                      } as any}
+                      contentFit="cover"
+                      transition={0}
+                      cachePolicy="memory-disk"
+                      priority="high"
+                      onError={(e) => { logger.warn('Failed to load profile photo:', e.error); }}
+                    />
+                  </View>
+                )
               ) : (
                 <StyledView
                   className="w-24 h-24 rounded-full mb-3 bg-neutral-200 items-center justify-center border-2 border-neutral-100"
@@ -166,7 +259,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
 
               {/* Name & Karma Badge — hidden for matchmakers */}
               <StyledView className="flex-row items-center mb-4" style={{ gap: 8 }}>
-                <H2 style={{ fontFamily: FONTS.bold, fontSize: 28 }}>{profile.firstName}</H2>
+                <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: FONT_SIZES['5xl'], color: COLORS.text.black, letterSpacing: -0.3 }}>{profile.firstName}</Text>
                 {profile.role !== 'matchmaker' && (
                   <StyledTouchableOpacity
                     onPress={() => hook.setShowKarmaInfoModal(true)}
@@ -218,296 +311,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
 
           {/* Matchmaker profile section — v6 warm layout */}
           {profile.role === 'matchmaker' ? (
-            <StyledView style={{ paddingHorizontal: 24, paddingBottom: 32, paddingTop: 0, flex: 1, backgroundColor: COLORS.screenBackground }}>
-              {/* Matchmaker badge */}
-              <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: COLORS.tier1.lightBg,
-                    borderWidth: 1,
-                    borderColor: 'rgba(67, 127, 255, 0.15)',
-                    borderRadius: 999,
-                    paddingHorizontal: 14,
-                    paddingVertical: 6,
-                    gap: 6,
-                  }}
-                  accessibilityLabel="Matchmaker role badge"
-                >
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primaryAccent }} />
-                  <Text style={{ color: COLORS.primaryAccent, fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: FONT_SIZES.sm }}>
-                    Matchmaker
-                  </Text>
-                </View>
-              </View>
-
-              {/* Your Role explainer card */}
-              <View
-                style={{
-                  backgroundColor: COLORS.tier1.lightBg,
-                  borderRadius: 14,
-                  paddingVertical: 16,
-                  paddingHorizontal: 18,
-                  marginBottom: 16,
-                  borderWidth: 1,
-                  borderColor: 'rgba(67, 127, 255, 0.10)',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                }}
-              >
-                <View
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    backgroundColor: COLORS.backgroundIconBlue,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <EvaIcon name="heart" variant="outline" size={18} color={COLORS.primaryAccent} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: FONT_SIZES.base, color: COLORS.text.heading, marginBottom: 2 }}>
-                    Your Role
-                  </Text>
-                  <Text style={{ fontFamily: FONTS.regular, fontWeight: '400', fontSize: FONT_SIZES.sm, color: COLORS.text.secondary, lineHeight: 18 }}>
-                    You help friends find their person by voting on community proposals
-                  </Text>
-                </View>
-              </View>
-
-              {/* Stats dashboard — 3-column with colored backgrounds */}
-              <View
-                style={{
-                  flexDirection: 'row',
-                  gap: 10,
-                  marginBottom: 16,
-                }}
-              >
-                {/* Karma column */}
-                <View
-                  style={{
-                    flex: 1,
-                    backgroundColor: '#ECFDF5',
-                    borderRadius: 14,
-                    paddingVertical: 16,
-                    paddingHorizontal: 8,
-                    alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: 'rgba(16, 185, 129, 0.12)',
-                    ...SHADOWS.sm,
-                  }}
-                >
-                  <Text style={{ fontSize: FONT_SIZES['4xl'], fontFamily: FONTS.extraBold, fontWeight: '800', lineHeight: FONT_SIZES['4xl'] * 1.2, color: COLORS.emerald, letterSpacing: -0.5 }}>
-                    {profile.karma?.karma_points ?? 0}
-                  </Text>
-                  <Text style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.semiBold, fontWeight: '600', color: COLORS.emerald, marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                    Karma
-                  </Text>
-                </View>
-                {/* Votes column */}
-                <View
-                  style={{
-                    flex: 1,
-                    backgroundColor: COLORS.tier1.lightBg,
-                    borderRadius: 14,
-                    paddingVertical: 16,
-                    paddingHorizontal: 8,
-                    alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: 'rgba(67, 127, 255, 0.12)',
-                    ...SHADOWS.sm,
-                  }}
-                >
-                  <Text style={{ fontSize: FONT_SIZES['4xl'], fontFamily: FONTS.extraBold, fontWeight: '800', lineHeight: FONT_SIZES['4xl'] * 1.2, color: COLORS.primaryAccent, letterSpacing: -0.5 }}>
-                    {(profile.karma as any)?.total_votes ?? 0}
-                  </Text>
-                  <Text style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.semiBold, fontWeight: '600', color: COLORS.primaryAccent, marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                    Votes
-                  </Text>
-                </View>
-                {/* Assists column */}
-                <View
-                  style={{
-                    flex: 1,
-                    backgroundColor: COLORS.backgroundSoftYellow,
-                    borderRadius: 14,
-                    paddingVertical: 16,
-                    paddingHorizontal: 8,
-                    alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: 'rgba(245, 158, 11, 0.12)',
-                    ...SHADOWS.sm,
-                  }}
-                >
-                  <Text style={{ fontSize: FONT_SIZES['4xl'], fontFamily: FONTS.extraBold, fontWeight: '800', lineHeight: FONT_SIZES['4xl'] * 1.2, color: COLORS.warning.icon, letterSpacing: -0.5 }}>
-                    {profile.karma?.total_assists ?? 0}
-                  </Text>
-                  <Text style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.semiBold, fontWeight: '600', color: COLORS.warning.icon, marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                    Assists
-                  </Text>
-                </View>
-              </View>
-
-              {/* Not in the dating pool info line */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 16 }}>
-                <EvaIcon name="info" variant="outline" size={14} color={COLORS.text.light} />
-                <Text style={{ color: COLORS.text.light, fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.sm }}>
-                  Not in the dating pool
-                </Text>
-              </View>
-
-              {/* Next milestone indicator */}
-              <View
-                style={{
-                  backgroundColor: COLORS.card,
-                  borderRadius: 12,
-                  paddingVertical: 12,
-                  paddingHorizontal: 16,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 10,
-                  marginBottom: 24,
-                  borderWidth: 1,
-                  borderColor: COLORS.borderSubtle,
-                }}
-              >
-                <EvaIcon name="trending-up" variant="outline" size={18} color={COLORS.primaryAccent} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: FONT_SIZES.sm, color: COLORS.text.heading }}>
-                    Next milestone
-                  </Text>
-                  <Text style={{ fontFamily: FONTS.regular, fontWeight: '400', fontSize: FONT_SIZES.xs, color: COLORS.text.secondary, marginTop: 2 }}>
-                    {(profile.karma?.karma_points ?? 0) < 25
-                      ? `${25 - (profile.karma?.karma_points ?? 0)} karma to unlock accuracy stats`
-                      : (profile.karma?.karma_points ?? 0) < 100
-                        ? `${100 - (profile.karma?.karma_points ?? 0)} karma to reach Top Matchmaker`
-                        : 'Top Matchmaker — keep the streak going!'}
-                  </Text>
-                </View>
-                <View style={{
-                  backgroundColor: COLORS.tier1.lightBg,
-                  borderRadius: 8,
-                  paddingHorizontal: 8,
-                  paddingVertical: 4,
-                }}>
-                  <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: FONT_SIZES.xs, color: COLORS.primaryAccent }}>
-                    {(profile.karma?.karma_points ?? 0) < 25
-                      ? `${Math.round(((profile.karma?.karma_points ?? 0) / 25) * 100)}%`
-                      : (profile.karma?.karma_points ?? 0) < 100
-                        ? `${Math.round(((profile.karma?.karma_points ?? 0) / 100) * 100)}%`
-                        : '100%'}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Quick Actions section */}
-              <Text style={{ fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: FONT_SIZES.xl, color: COLORS.text.heading, marginBottom: 12 }}>
-                Quick Actions
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
-                {/* Vote on Proposals card */}
-                <TouchableOpacity
-                  onPress={() => { lightHaptic(); navigation.navigate('Community'); }}
-                  style={{
-                    flex: 1,
-                    backgroundColor: COLORS.card,
-                    borderRadius: 14,
-                    paddingVertical: 20,
-                    paddingHorizontal: 14,
-                    alignItems: 'center',
-                    ...SHADOWS.md,
-                    borderWidth: 1,
-                    borderColor: COLORS.borderSubtle,
-                  }}
-                  activeOpacity={0.7}
-                  accessibilityLabel="Vote on proposals"
-                  accessibilityRole="button"
-                >
-                  <View
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 22,
-                      backgroundColor: COLORS.tier1.lightBg,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: 10,
-                    }}
-                  >
-                    <EvaIcon name="checkmark-circle-2" variant="outline" size={22} color={COLORS.primaryAccent} />
-                  </View>
-                  <Text style={{ fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: FONT_SIZES.base, color: COLORS.text.heading, textAlign: 'center' }}>
-                    Vote on Proposals
-                  </Text>
-                  <Text style={{ fontFamily: FONTS.regular, fontWeight: '400', fontSize: FONT_SIZES.xs, color: COLORS.text.secondary, marginTop: 4, textAlign: 'center' }}>
-                    Help your community
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Invite Friends card */}
-                <TouchableOpacity
-                  onPress={() => { lightHaptic(); navigation.navigate('ContactInvite'); }}
-                  style={{
-                    flex: 1,
-                    backgroundColor: COLORS.card,
-                    borderRadius: 14,
-                    paddingVertical: 20,
-                    paddingHorizontal: 14,
-                    alignItems: 'center',
-                    ...SHADOWS.md,
-                    borderWidth: 1,
-                    borderColor: COLORS.borderSubtle,
-                  }}
-                  activeOpacity={0.7}
-                  accessibilityLabel="Invite friends"
-                  accessibilityRole="button"
-                >
-                  <View
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 22,
-                      backgroundColor: 'rgba(52, 199, 89, 0.08)',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: 10,
-                    }}
-                  >
-                    <EvaIcon name="person-add" variant="outline" size={22} color={COLORS.success} />
-                  </View>
-                  <Text style={{ fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: FONT_SIZES.base, color: COLORS.text.heading, textAlign: 'center' }}>
-                    Invite Friends
-                  </Text>
-                  <Text style={{ fontFamily: FONTS.regular, fontWeight: '400', fontSize: FONT_SIZES.xs, color: COLORS.text.secondary, marginTop: 4, textAlign: 'center' }}>
-                    Grow the community
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Change Photo link */}
-              <TouchableOpacity
-                onPress={() => { lightHaptic(); navigation.navigate('EditPhotos'); }}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  paddingVertical: 12,
-                  gap: 6,
-                }}
-                activeOpacity={0.6}
-                accessibilityLabel="Change photo"
-                accessibilityRole="button"
-              >
-                <EvaIcon name="camera" variant="outline" size={16} color={COLORS.text.secondary} />
-                <Text style={{ color: COLORS.text.secondary, fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.base }}>
-                  Change Photo
-                </Text>
-              </TouchableOpacity>
-            </StyledView>
+            <MatchmakerSection profile={profile} hook={hook} navigation={navigation} />
           ) : (
             /* Tab Bar — dater only */
             <TabBar
@@ -598,6 +402,213 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
         confettiRef={hook.confettiRef}
       />
     </ScreenWrapper>
+  );
+};
+
+// ─── Matchmaker Section (private component) ─────────────────────────
+
+interface MatchmakerSectionProps {
+  profile: any;
+  hook: ReturnType<typeof useProfileScreen>;
+  navigation: any;
+}
+
+const MatchmakerSection: React.FC<MatchmakerSectionProps> = ({ profile, hook, navigation }) => {
+  // Staggered fade-in for stats (#5) — 4 items: karma, votes, assists, rank card
+  const fadeAnims = useStaggeredFadeIn(4);
+
+  return (
+    <StyledView style={{ paddingHorizontal: 24, paddingBottom: 32, paddingTop: 0, flex: 1, backgroundColor: 'transparent' }}>
+      {/* Matchmaker badge + since date (#7) */}
+      <View style={{ alignItems: 'center', marginBottom: 16 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: COLORS.tier1.lightBg,
+            borderWidth: 1,
+            borderColor: 'rgba(67, 127, 255, 0.15)',
+            borderRadius: 999,
+            paddingHorizontal: 14,
+            paddingVertical: 6,
+            gap: 6,
+          }}
+          accessibilityLabel="Matchmaker role badge"
+        >
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primaryAccent }} />
+          <Text style={{ color: COLORS.primaryAccent, fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: FONT_SIZES.sm }}>
+            Matchmaker
+          </Text>
+        </View>
+        {profile.createdAt && (
+          <Text style={{ color: COLORS.text.light, fontFamily: FONTS.regular, fontWeight: '400', fontSize: FONT_SIZES.xs, marginTop: 6 }}>
+            {formatJoinDate(profile.createdAt)}
+          </Text>
+        )}
+      </View>
+
+      {/* YOUR IMPACT section header (#2) */}
+      <Text style={{
+        fontFamily: FONTS.semiBold,
+        fontWeight: '600',
+        fontSize: FONT_SIZES.xs,
+        color: COLORS.text.light,
+        textTransform: 'uppercase',
+        letterSpacing: 1.2,
+        marginBottom: 10,
+      }}>
+        Your Impact
+      </Text>
+
+      {/* Stats dashboard — 3-column with animated entrance (#5) */}
+      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+        {/* Karma */}
+        <Animated.View style={{ flex: 1, opacity: fadeAnims[0], transform: [{ translateY: fadeAnims[0].interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
+          <View
+            style={{
+              backgroundColor: '#ECFDF5',
+              borderRadius: 14,
+              paddingVertical: 16,
+              paddingHorizontal: 8,
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: 'rgba(16, 185, 129, 0.12)',
+              ...SHADOWS.sm,
+            }}
+          >
+            <Text style={{ fontSize: FONT_SIZES['4xl'], fontFamily: FONTS.extraBold, fontWeight: '800', lineHeight: FONT_SIZES['4xl'] * 1.2, color: COLORS.emerald, letterSpacing: -0.5 }}>
+              {profile.karma?.karma_points ?? 0}
+            </Text>
+            <Text style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.semiBold, fontWeight: '600', color: COLORS.emerald, marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+              Karma
+            </Text>
+          </View>
+        </Animated.View>
+        {/* Votes */}
+        <Animated.View style={{ flex: 1, opacity: fadeAnims[1], transform: [{ translateY: fadeAnims[1].interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
+          <View
+            style={{
+              backgroundColor: COLORS.tier1.lightBg,
+              borderRadius: 14,
+              paddingVertical: 16,
+              paddingHorizontal: 8,
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: 'rgba(67, 127, 255, 0.12)',
+              ...SHADOWS.sm,
+            }}
+          >
+            <Text style={{ fontSize: FONT_SIZES['4xl'], fontFamily: FONTS.extraBold, fontWeight: '800', lineHeight: FONT_SIZES['4xl'] * 1.2, color: COLORS.primaryAccent, letterSpacing: -0.5 }}>
+              {(profile.karma as any)?.total_votes ?? 0}
+            </Text>
+            <Text style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.semiBold, fontWeight: '600', color: COLORS.primaryAccent, marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+              Votes
+            </Text>
+          </View>
+        </Animated.View>
+        {/* Assists */}
+        <Animated.View style={{ flex: 1, opacity: fadeAnims[2], transform: [{ translateY: fadeAnims[2].interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
+          <View
+            style={{
+              backgroundColor: COLORS.backgroundSoftYellow,
+              borderRadius: 14,
+              paddingVertical: 16,
+              paddingHorizontal: 8,
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: 'rgba(245, 158, 11, 0.12)',
+              ...SHADOWS.sm,
+            }}
+          >
+            <Text style={{ fontSize: FONT_SIZES['4xl'], fontFamily: FONTS.extraBold, fontWeight: '800', lineHeight: FONT_SIZES['4xl'] * 1.2, color: COLORS.warning.icon, letterSpacing: -0.5 }}>
+              {profile.karma?.total_assists ?? 0}
+            </Text>
+            <Text style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.semiBold, fontWeight: '600', color: COLORS.warning.icon, marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+              Assists
+            </Text>
+          </View>
+        </Animated.View>
+      </View>
+
+      {/* Not in the dating pool info line */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 16 }}>
+        <EvaIcon name="info" variant="outline" size={14} color={COLORS.text.light} />
+        <Text style={{ color: COLORS.text.light, fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.sm }}>
+          Not in the matching pool
+        </Text>
+      </View>
+
+      {/* Community Rank card — tappable to open leaderboard (#4), animated (#5) */}
+      <Animated.View style={{ opacity: fadeAnims[3], transform: [{ translateY: fadeAnims[3].interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
+        <TouchableOpacity
+          onPress={() => { lightHaptic(); navigation.navigate('Leaderboard'); }}
+          activeOpacity={0.7}
+          accessibilityLabel={hook.communityRank != null ? `Community rank ${hook.communityRank}, tap to view leaderboard` : 'View leaderboard'}
+          accessibilityRole="button"
+          style={{
+            backgroundColor: COLORS.card,
+            borderRadius: 14,
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            marginBottom: 20,
+            borderWidth: 1,
+            borderColor: COLORS.borderSubtle,
+            ...SHADOWS.sm,
+          }}
+        >
+          <View style={{ width: 3, height: 36, borderRadius: 2, backgroundColor: '#7C3AED' }} />
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              backgroundColor: 'rgba(124, 58, 237, 0.08)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <EvaIcon name="award" variant="outline" size={18} color="#7C3AED" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: FONT_SIZES['3xl'], fontFamily: FONTS.extraBold, fontWeight: '800', color: COLORS.text.heading, letterSpacing: -0.5 }}>
+              {hook.communityRank != null ? `#${hook.communityRank}` : '—'}
+            </Text>
+            <Text style={{ fontFamily: FONTS.regular, fontWeight: '400', fontSize: FONT_SIZES.xs, color: COLORS.text.secondary, marginTop: 1 }}>
+              Community rank
+            </Text>
+          </View>
+          {hook.rankChange !== 0 && (
+            <Text style={{ color: hook.rankChange > 0 ? COLORS.success : COLORS.error, fontSize: FONT_SIZES.xs, fontFamily: FONTS.semiBold, fontWeight: '600' }}>
+              {hook.rankChange > 0 ? '▲' : '▼'} {Math.abs(hook.rankChange)}
+            </Text>
+          )}
+          <EvaIcon name="chevron-right" variant="outline" size={20} color={COLORS.text.light} />
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Change Photo link */}
+      <TouchableOpacity
+        onPress={() => { lightHaptic(); navigation.navigate('EditPhotos'); }}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: 12,
+          gap: 6,
+        }}
+        activeOpacity={0.6}
+        accessibilityLabel="Change photo"
+        accessibilityRole="button"
+      >
+        <EvaIcon name="camera" variant="outline" size={16} color={COLORS.text.secondary} />
+        <Text style={{ color: COLORS.text.secondary, fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.base }}>
+          Change Photo
+        </Text>
+      </TouchableOpacity>
+    </StyledView>
   );
 };
 

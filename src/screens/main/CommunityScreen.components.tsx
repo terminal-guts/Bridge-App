@@ -568,6 +568,7 @@ const timerInfoStyles = StyleSheet.create({
     paddingBottom: 24,
     marginHorizontal: 32,
     alignItems: 'center',
+    ...SHADOWS.xxl,
   },
   title: {
     fontFamily: FONTS.bold,

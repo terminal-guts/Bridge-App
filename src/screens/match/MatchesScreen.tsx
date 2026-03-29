@@ -81,6 +81,7 @@ export function MatchesScreen() {
                 animateEntrance={animateEntrance}
                 popupEvent={state.popupEvent}
                 handlePopupContinue={state.handlePopupContinue}
+                headerPad={headerPad}
             />
         );
     }

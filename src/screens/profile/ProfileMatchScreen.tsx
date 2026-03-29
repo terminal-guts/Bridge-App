@@ -22,7 +22,7 @@ import { removeFriend } from '../../services/friendService';
 import { blockUser } from '../../services/blockService';
 import { COLORS } from '../../theme/colors';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
-import { SHADOWS } from '../../theme/shadows';
+import { SHADOWS, OVERLAYS } from '../../theme/shadows';
 import Svg, { Circle } from 'react-native-svg';
 import { ProfileBadgesSection } from '../../components/badges/ProfileBadgesSection';
 
@@ -1000,22 +1000,22 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     btnX: {
-        width: 62,
-        height: 62,
-        borderRadius: 31,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         backgroundColor: COLORS.passButton,
         alignItems: 'center',
         justifyContent: 'center',
-        ...SHADOWS.lg,
+        ...SHADOWS.md,
     },
     btnHeart: {
-        width: 62,
-        height: 62,
-        borderRadius: 31,
+        width: 72,
+        height: 72,
+        borderRadius: 36,
         backgroundColor: COLORS.primary,
         alignItems: 'center',
         justifyContent: 'center',
-        ...SHADOWS.lg,
+        ...SHADOWS.xl,
     },
     waitingBadge: {
         alignSelf: 'center',
@@ -1038,7 +1038,7 @@ const styles = StyleSheet.create({
 
     sheetOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.45)',
+        backgroundColor: OVERLAYS.medium,
         justifyContent: 'flex-end',
     },
     sheetContainer: {

@@ -130,8 +130,11 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
 
   // Clear the "seen post-proposal prompt" flag so AgeStep's motivational
   // bottom sheet always fires for any fresh onboarding run.
+  // Skip for role switch — the prompt is irrelevant when switching from matchmaker to dater.
   useEffect(() => {
-    AsyncStorage.removeItem('@bridge/seen_post_proposal_prompt').catch(() => {});
+    if (!isRoleSwitch) {
+      AsyncStorage.removeItem('@bridge/seen_post_proposal_prompt').catch(() => {});
+    }
   }, []);
 
   // Fetch the authenticated user ID from Supabase session.

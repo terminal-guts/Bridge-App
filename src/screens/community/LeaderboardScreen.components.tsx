@@ -22,7 +22,7 @@ export const KarmaPill = ({ karma, size = 'medium' }: { karma: number; size?: 's
     <View style={[s.karmaPillShadow, size === 'large' && s.karmaPillShadowLarge]}>
       <View style={[s.karmaPill, { paddingVertical: paddingV, paddingHorizontal: paddingH }]}>
         <EvaIcon name="star" variant="outline" size={iconSize} color={COLORS.success} style={{ marginRight: 4 }} />
-        <Text style={[s.karmaPillText, { fontSize }]}>{karma} pts</Text>
+        <Text style={[s.karmaPillText, { fontSize }]}>{karma} {karma === 1 ? 'pt' : 'pts'}</Text>
       </View>
     </View>
   );
@@ -39,7 +39,7 @@ export const FriendBadge = () => (
 // ─── Initial Avatar ──────────────────────────────────────────────────────────
 
 export const InitialAvatar = ({ name, size, isAnonymous }: { name: string; size: number; isAnonymous?: boolean }) => {
-  const bg = isAnonymous ? COLORS.borderDivider : getInitialColor(name);
+  const bg = isAnonymous ? '#B0B8C4' : getInitialColor(name);
   const fontSize = size * 0.42;
   if (isAnonymous) {
     return (

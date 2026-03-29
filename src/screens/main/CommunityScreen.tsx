@@ -536,6 +536,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                 data={usersToMatch}
                 keyExtractor={voteKeyExtractor}
                 renderItem={renderVoteItem}
+                estimatedItemSize={USER_ROW_ESTIMATED_HEIGHT}
                 scrollEnabled={false}
                 drawDistance={USER_ROW_ESTIMATED_HEIGHT * 8}
               />
@@ -547,6 +548,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             <View style={[styles.sectionHeader, usersToMatch.length > 0 && { marginTop: 20 }]}>
               <View style={[styles.sectionAccent, { backgroundColor: COLORS.successAlt }]} />
               <Text style={styles.sectionTitle}>Your crew</Text>
+              <View style={[styles.helpCountBadge, { backgroundColor: COLORS.successAlt }]}>
+                <Text style={styles.helpCountText}>{alreadyHelped.length}</Text>
+              </View>
             </View>
           )}
 
@@ -555,6 +559,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
               data={alreadyHelped}
               keyExtractor={crewKeyExtractor}
               renderItem={renderCrewItem}
+              estimatedItemSize={USER_ROW_ESTIMATED_HEIGHT}
               scrollEnabled={false}
               drawDistance={USER_ROW_ESTIMATED_HEIGHT * 8}
             />
