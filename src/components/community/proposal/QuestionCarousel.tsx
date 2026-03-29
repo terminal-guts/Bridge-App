@@ -205,7 +205,7 @@ function QuestionPage({
         lineHeight: LINE_HEIGHTS.xl,
         marginBottom: 12,
       }}>
-        <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: FONT_SIZES['3xl'], color: QUOTE_COLOR, opacity: 0.25 }}>{'\u201C'}</Text>
+        <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: FONT_SIZES['3xl'], color: QUOTE_COLOR, opacity: 0.25 }}>{'\u201C'}{' '}</Text>
         {question.questionText}
       </Text>
 

@@ -99,7 +99,7 @@ export function LiveVoteBar({
   }
 
   return (
-    <View style={{ marginTop: 10, marginBottom: 4 }} accessibilityLabel={`Vote results: ${yesVotes} yes, ${noVotes} no out of ${total} votes`}>
+    <View style={{ marginTop: 4, marginBottom: 0 }} accessibilityLabel={`Vote results: ${yesVotes} yes, ${noVotes} no out of ${total} votes`}>
       <View style={{
         height: 14, borderRadius: 7, overflow: 'hidden',
         backgroundColor: COLORS.borderSubtle,
@@ -132,7 +132,7 @@ export function LiveVoteBar({
         />
       </View>
 
-      <View style={{ alignItems: 'center', marginTop: 8, gap: 2 }}>
+      <View style={{ alignItems: 'center', marginTop: 6, gap: 1 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12 }}>
           <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, color: '#15803D' }}>{yesVotes} Yes</Text>
           <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, color: COLORS.borderGray }}>&middot;</Text>

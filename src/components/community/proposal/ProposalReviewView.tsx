@@ -271,7 +271,7 @@ export function ProposalReviewView({
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.screenBackground }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.card }}>
       {isGateVoting && !loading && proposals.length > 0 && (
         <View style={proposalStyles.votingGateBanner}>
           <Text style={proposalStyles.votingGateText}>
@@ -420,15 +420,17 @@ export function ProposalReviewView({
       </ScrollView>
       </Animated.View>
 
-      {/* ── Vote bar — revealed after voting to prevent anchoring bias ── */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, backgroundColor: COLORS.screenBackground }}>
-        <LiveVoteBar
-          yesVotes={hasVotedCurrent ? (proposal.yesVotes ?? 0) : 0}
-          noVotes={hasVotedCurrent ? (proposal.noVotes ?? 0) : 0}
-          totalVotes={hasVotedCurrent ? (proposal.totalVotes ?? 0) : 0}
-          hasVoted={hasVotedCurrent}
-        />
-      </View>
+      {/* ── Vote bar — only visible after voting ── */}
+      {hasVotedCurrent && (
+        <View style={{ paddingHorizontal: 16, paddingTop: 6, backgroundColor: COLORS.card }}>
+          <LiveVoteBar
+            yesVotes={proposal.yesVotes ?? 0}
+            noVotes={proposal.noVotes ?? 0}
+            totalVotes={proposal.totalVotes ?? 0}
+            hasVoted={true}
+          />
+        </View>
+      )}
 
       {/* ── Vote buttons — normal flow, scroll naturally ends above them ── */}
       <VoteButtons

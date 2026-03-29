@@ -19,7 +19,7 @@ export const proposalStyles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.screenBackground,
+    backgroundColor: COLORS.card,
   },
   loadingText: {
     fontSize: FONT_SIZES.xl,
@@ -29,7 +29,7 @@ export const proposalStyles = StyleSheet.create({
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
-    backgroundColor: COLORS.screenBackground,
+    backgroundColor: COLORS.card,
   },
   votingGateBanner: {
     backgroundColor: COLORS.backgroundBlueTint,
@@ -114,20 +114,23 @@ export const styles = StyleSheet.create({
     textAlign: 'center' as const,
   },
 
-  // Vote button container — normal flow (not absolute) so scroll adapts naturally
+  // Vote button container — normal flow, white card with upward shadow
   voteContainer: {
-    backgroundColor: COLORS.screenBackground,
+    backgroundColor: COLORS.card,
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 10,
     paddingBottom: 16, // Overridden with safe area inset in component
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    gap: 12,
+    shadowColor: '#1E293B',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 4,
+    gap: 8,
   },
 
   // Secondary vote button
   secondaryButton: {
-    height: 48,
+    height: 44,
     backgroundColor: '#F5F2EE',
     borderWidth: 1,
     borderColor: '#D9D2C9',
@@ -202,7 +205,7 @@ export const styles = StyleSheet.create({
   // Yes button
   yesButton: {
     borderRadius: 12,
-    height: 52,
+    height: 48,
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
@@ -218,7 +221,7 @@ export const styles = StyleSheet.create({
   // Secondary buttons row
   secondaryButtonsRow: {
     flexDirection: 'row' as const,
-    gap: 12,
+    gap: 10,
   },
 
   // Vote flash overlay
