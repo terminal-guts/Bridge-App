@@ -4,6 +4,7 @@ import { styled } from 'nativewind';
 import { Card } from '../../../components/ui/Card';
 import { H3, Body } from '../../../components/ui/Typography';
 import { SimpleChip } from '../../../components/ui/SimpleChip';
+import { interestIconName } from '../../../utils/emojiMaps';
 import { lightHaptic } from '../../../utils/haptics';
 import { COLORS } from '../../../theme/colors';
 import { FONTS } from '../../../constants/typography';
@@ -76,6 +77,7 @@ export const InterestsSection = React.memo<InterestsSectionProps>(({
                 label={interest}
                 selected={interestsSet.has(interest)}
                 onPress={() => handleToggleInterest(interest)}
+                iconName={interestIconName(interest)}
               />
             ))}
           </StyledView>

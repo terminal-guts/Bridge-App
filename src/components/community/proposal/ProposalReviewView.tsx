@@ -60,6 +60,7 @@ import {
 import { SectionCard, SmartPillCloudSection } from './SmartPillCloud';
 import { ProposalPhotoCard, PHOTO_HEIGHT } from './ProposalPhotoCard';
 import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
+import { getVerifiedTags } from '../../../utils/badgeMappings';
 import { QuestionCarousel } from './QuestionCarousel';
 import { LiveVoteBar } from './LiveVoteBar';
 import { BadgeComparisonSection } from '../../badges/BadgeComparisonSection';
@@ -136,6 +137,15 @@ export function ProposalReviewView({
   );
 
   const matchData = useMatchData(proposals, currentIndex);
+
+  const verifiedA = useMemo(() =>
+    getVerifiedTags((matchData?.badgesA || []).map(b => b.iconName)),
+    [matchData?.badgesA]
+  );
+  const verifiedB = useMemo(() =>
+    getVerifiedTags((matchData?.badgesB || []).map(b => b.iconName)),
+    [matchData?.badgesB]
+  );
 
   // Fetch deep questions from DB when not provided as a prop (e.g. community gate voting)
   const fetchedDeepQuestions = useDeepQuestions(proposals, currentIndex);
@@ -348,6 +358,9 @@ export function ProposalReviewView({
               pillResult={interestsPillResult}
               userAName={userA.firstName}
               userBName={userB.firstName}
+              type="interest"
+              verifiedA={verifiedA}
+              verifiedB={verifiedB}
             />
           </SectionCard>
         )}
@@ -363,6 +376,9 @@ export function ProposalReviewView({
               pillResult={valuesPillResult}
               userAName={userA.firstName}
               userBName={userB.firstName}
+              type="value"
+              verifiedA={verifiedA}
+              verifiedB={verifiedB}
             />
           </SectionCard>
         )}

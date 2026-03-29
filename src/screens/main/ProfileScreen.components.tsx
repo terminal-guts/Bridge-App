@@ -611,9 +611,10 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, message }) 
 interface AboutMeSummaryProps {
   profile: UserProfile;
   onEdit: () => void;
+  verifiedTags?: Set<string>;
 }
 
-export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit }) => {
+export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit, verifiedTags = new Set() }) => {
   // Count how many profile sections are filled
   const getSectionCounts = () => {
     let count = 0;
@@ -702,13 +703,27 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
             {(profile.values?.length || 0) > 0 && (
               <StyledView className="flex-1 py-2">
                 <Body className="text-neutral-600 text-xs mb-1">Values</Body>
-                <Body className="text-primary-700 font-bold text-sm">{profile.values.length} selected</Body>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Body className="text-primary-700 font-bold text-sm">{profile.values.length} selected</Body>
+                    {profile.values.some(v => verifiedTags.has(v.toLowerCase())) && (
+                        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', marginLeft: 4 }}>
+                            <EvaIcon name="sparkles" variant="fill" size={8} color="#FFF" />
+                        </View>
+                    )}
+                </View>
               </StyledView>
             )}
             {(profile.interests?.length || 0) > 0 && (
               <StyledView className="flex-1 py-2">
                 <Body className="text-neutral-600 text-xs mb-1">Interests</Body>
-                <Body className="text-primary-700 font-bold text-sm">{profile.interests.length} selected</Body>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Body className="text-primary-700 font-bold text-sm">{profile.interests.length} selected</Body>
+                    {profile.interests.some(i => verifiedTags.has(i.toLowerCase())) && (
+                        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', marginLeft: 4 }}>
+                            <EvaIcon name="sparkles" variant="fill" size={8} color="#FFF" />
+                        </View>
+                    )}
+                </View>
               </StyledView>
             )}
           </StyledView>
@@ -729,6 +744,7 @@ interface MatchPreferencesSummaryProps {
   interestsCount?: number;
   valuesCount?: number;
   onEdit: () => void;
+  verifiedTags?: Set<string>;
 }
 
 export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = ({
@@ -738,6 +754,7 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
   interestsCount = 0,
   valuesCount = 0,
   onEdit,
+  verifiedTags = new Set(),
 }) => {
   return (
     <Card

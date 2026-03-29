@@ -14,12 +14,16 @@ import { getUserProfile, getFullUserProfileById } from '../../services/profileSe
 import { getOptimizedImageUrl, getOptimizedPhotoUrl } from '../../utils/imageUtils';
 import { KarmaInfoModal } from '../../components/community/karma/KarmaInfoModal';
 import { valueIconName, interestIconName } from '../../utils/emojiMaps';
+import { getVerifiedTags } from '../../utils/badgeMappings';
 import { IconScoutIcon, EvaIcon } from '../../components/icons';
 import { WineGlassIcon, CigaretteIcon, PillIcon } from '../../components/icons/Icons';
 import { formatProfileValue } from '../../utils/formatProfileValue';
 import { showToast } from '../../utils/toast';
-import { removeFriend } from '../../services/friendService';
+import { removeFriend, areFriends } from '../../services/friendService';
 import { blockUser } from '../../services/blockService';
+import { getReceivedBadges, getBadgeForFriend } from '../../services/badgeService';
+import { FriendBadge, FriendBadgeWithGiver } from '../../types/badges';
+import { BadgeAwardModal } from '../../components/badges/BadgeAwardModal';
 import { COLORS } from '../../theme/colors';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { SHADOWS, OVERLAYS } from '../../theme/shadows';
@@ -71,12 +75,36 @@ export default function ProfileMatchScreen() {
 
     // ProfileView mode = viewing another user (not proposal, not preview)
     const isProfileView = !isProposal && !isPreview && !!params.profile;
-    const viewedUserId: string | undefined = params.profile?.userId;
+    const viewedUserId: string | undefined = profileData?.userId || params.profile?.userId;
+
+    const [receivedBadges, setReceivedBadges] = useState<FriendBadgeWithGiver[]>([]);
+    const [friendshipStatus, setFriendshipStatus] = useState<boolean>(false);
+    const [badgeModalVisible, setBadgeModalVisible] = useState(false);
+    const [existingBadge, setExistingBadge] = useState<FriendBadge | null>(null);
 
     useEffect(() => {
         isMountedRef.current = true;
         return () => { isMountedRef.current = false; };
     }, []);
+
+    // Fetch badges and friendship status
+    useEffect(() => {
+        if (isPreview) {
+            getReceivedBadges().then(res => {
+                if (isMountedRef.current && res.ok && res.data) setReceivedBadges(res.data);
+            });
+        } else if (viewedUserId) {
+            getReceivedBadges(viewedUserId).then(res => {
+                if (isMountedRef.current && res.ok && res.data) setReceivedBadges(res.data);
+            });
+            areFriends(viewedUserId).then(res => {
+                if (isMountedRef.current && res.ok) setFriendshipStatus(res.data || false);
+            });
+            getBadgeForFriend(viewedUserId).then(res => {
+                if (isMountedRef.current && res.ok) setExistingBadge(res.data || null);
+            });
+        }
+    }, [viewedUserId, isPreview]);
 
     // Fetch the profile being viewed
     useEffect(() => {
@@ -362,6 +390,11 @@ export default function ProfileMatchScreen() {
 
     const heroPhoto = allPhotos[0]?.url ?? '';
     const karmaPts = partnerProfile.karma?.karma_points ?? 0;
+
+    const verifiedTags = useMemo(() =>
+        getVerifiedTags(receivedBadges.map(b => b.iconName)),
+        [receivedBadges]
+    );
     const heightStr = formatHeight(partnerProfile.height);
     const hasInCommon = !isPreview && (inCommon.interests.length > 0 || inCommon.values.length > 0);
     const sharedInterestsSet = new Set(inCommon.interests.map((i: string) => i.toLowerCase()));
@@ -494,7 +527,21 @@ export default function ProfileMatchScreen() {
 
                     {/* Friend Badges */}
                     {partnerProfile.userId && (
-                        <ProfileBadgesSection userId={partnerProfile.userId} revealAuthor={false} />
+                        <View>
+                            <ProfileBadgesSection userId={partnerProfile.userId} revealAuthor={false} />
+                            {friendshipStatus && (
+                                <TouchableOpacity
+                                    onPress={() => setBadgeModalVisible(true)}
+                                    style={styles.awardBadgeBtn}
+                                    activeOpacity={0.7}
+                                >
+                                    <EvaIcon name="award" variant="outline" size={18} color={COLORS.primary} />
+                                    <Text style={styles.awardBadgeBtnText}>
+                                        {existingBadge ? 'Edit your badge' : `Award ${partnerProfile.firstName} a badge`}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
                     )}
 
                     {/* ── Photo + Prompt Interleave ────────────────── */}
@@ -533,10 +580,16 @@ export default function ProfileMatchScreen() {
                                     <View style={styles.chipRow}>
                                         {partnerProfile.values.map((v: string) => {
                                             const shared = sharedValuesSet.has(v.toLowerCase());
+                                            const isVerified = verifiedTags.has(v.toLowerCase());
                                             return (
                                                 <View key={v} style={[styles.tag, styles.tagValue, shared && styles.tagSharedValue]}>
                                                     {valueIconName(v) && <IconScoutIcon name={valueIconName(v)!} size={15} style={{ marginRight: 5 }} />}
                                                     <Text style={[styles.tagText, styles.tagTextValue, shared && styles.tagTextSharedValue]}>{v}</Text>
+                                                    {isVerified && (
+                                                        <View style={styles.verifiedBadge}>
+                                                            <EvaIcon name="sparkles" variant="fill" size={10} color="#FFF" />
+                                                        </View>
+                                                    )}
                                                 </View>
                                             );
                                         })}
@@ -549,10 +602,16 @@ export default function ProfileMatchScreen() {
                                     <View style={styles.chipRow}>
                                         {partnerProfile.interests.map((i: string) => {
                                             const shared = sharedInterestsSet.has(i.toLowerCase());
+                                            const isVerified = verifiedTags.has(i.toLowerCase());
                                             return (
                                                 <View key={i} style={[styles.tag, styles.tagInterest, shared && styles.tagSharedInterest]}>
                                                     {interestIconName(i) && <IconScoutIcon name={interestIconName(i)!} size={15} style={{ marginRight: 5 }} />}
                                                     <Text style={[styles.tagText, styles.tagTextInterest, shared && styles.tagTextSharedInterest]}>{i}</Text>
+                                                    {isVerified && (
+                                                        <View style={styles.verifiedBadge}>
+                                                            <EvaIcon name="sparkles" variant="fill" size={10} color="#FFF" />
+                                                        </View>
+                                                    )}
                                                 </View>
                                             );
                                         })}
@@ -617,6 +676,27 @@ export default function ProfileMatchScreen() {
             )}
 
             <KarmaInfoModal visible={showKarmaModal} onClose={() => setShowKarmaModal(false)} />
+
+            {/* Badge Award Modal */}
+            {viewedUserId && (
+                <BadgeAwardModal
+                    visible={badgeModalVisible}
+                    onClose={() => setBadgeModalVisible(false)}
+                    friendId={viewedUserId}
+                    friendName={partnerProfile?.firstName || 'Friend'}
+                    existingBadge={existingBadge}
+                    onSuccess={() => {
+                        // Refresh badges
+                        getReceivedBadges(viewedUserId).then(res => {
+                            if (res.ok && res.data) setReceivedBadges(res.data);
+                        });
+                        getBadgeForFriend(viewedUserId).then(res => {
+                            if (res.ok) setExistingBadge(res.data || null);
+                        });
+                        showToast.success('Badge updated!');
+                    }}
+                />
+            )}
 
             {/* ── Action Sheet (Block / Remove Friend) ─────────── */}
             <Modal
@@ -964,6 +1044,33 @@ const styles = StyleSheet.create({
     tagTextSharedInterest: {
         color: '#7C2D12',
         fontFamily: FONTS.bold,
+    },
+    verifiedBadge: {
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        backgroundColor: COLORS.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 4,
+    },
+    awardBadgeBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        backgroundColor: COLORS.backgroundInfoBlue,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: COLORS.borderBlue,
+        marginTop: -8,
+        marginBottom: 16,
+        gap: 8,
+    },
+    awardBadgeBtnText: {
+        fontFamily: FONTS.medium,
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.primary,
     },
 
     // ── Lifestyle ────────────────────────────────────────────────

@@ -22,6 +22,7 @@ import { SHADOWS } from '../../theme/shadows';
 import { H3, Body, Card } from '../../components/ui';
 import { UserProfile, DeepQuestionAnswer } from '../../types';
 import { FriendBadgeWithGiver } from '../../types/badges';
+import { getVerifiedTags } from '../../utils/badgeMappings';
 import { EvaIcon } from '../../components/icons';
 import { BadgeIcon } from '../../components/icons/BadgeIcon';
 import { GuideTarget } from '../../components/guides';
@@ -163,9 +164,16 @@ export const AnsweredQuestionCard = React.memo<{
 interface AboutTabProps {
   profile: UserProfile;
   navigation: any;
+  badges?: FriendBadgeWithGiver[];
 }
 
-export const AboutTab: React.FC<AboutTabProps> = ({ profile, navigation }) => (
+export const AboutTab: React.FC<AboutTabProps> = ({ profile, navigation, badges = [] }) => {
+  const verifiedTags = React.useMemo(() =>
+    getVerifiedTags(badges.map(b => b.iconName)),
+    [badges]
+  );
+
+  return (
   <StyledView className="px-4 py-6">
     {/* Profile Strength Dashboard */}
     <GuideTarget id="profile-strength-card">
@@ -195,6 +203,7 @@ export const AboutTab: React.FC<AboutTabProps> = ({ profile, navigation }) => (
     <AboutMeSummary
       profile={profile}
       onEdit={() => navigation.navigate('ProfileEdit')}
+      verifiedTags={verifiedTags}
     />
 
     {/* Match Preferences Summary Card */}
@@ -206,10 +215,12 @@ export const AboutTab: React.FC<AboutTabProps> = ({ profile, navigation }) => (
         interestsCount={profile.interests?.length || 0}
         valuesCount={profile.values?.length || 0}
         onEdit={() => navigation.navigate('MatchPreferences')}
+        verifiedTags={verifiedTags}
       />
     )}
   </StyledView>
-);
+  );
+};
 
 // ─── Badges Tab ──────────────────────────────────────────────────────
 

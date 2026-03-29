@@ -10,7 +10,8 @@ import { SPACING } from '../../../constants/dimensions';
 import { COLORS } from '../../../theme/colors';
 import { SHADOWS } from '../../../theme/shadows';
 import { MatchResult, MatchStatus } from '../../../utils/proposalMatching';
-import { EvaIcon } from '../../icons';
+import { EvaIcon, IconScoutIcon } from '../../icons';
+import { valueIconName, interestIconName } from '../../../utils/emojiMaps';
 import type { SmartPillResult } from './proposalHelpers';
 
 // ─── Design tokens ───────────────────────────────────────────────────────────
@@ -34,7 +35,8 @@ export function MatchIcon({ status }: { status: MatchStatus }) {
 }
 
 // ─── TagPill (grey/neutral) ──────────────────────────────────────────────────
-export function TagPill({ label }: { label: string }) {
+export function TagPill({ label, type, isVerified }: { label: string; type: 'value' | 'interest'; isVerified?: boolean }) {
+  const icon = type === 'value' ? valueIconName(label) : interestIconName(label);
   return (
     <View style={{
       backgroundColor: TAG_BG,
@@ -44,14 +46,23 @@ export function TagPill({ label }: { label: string }) {
       paddingHorizontal: 10,
       paddingVertical: 6,
       alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
     }}>
+      {icon && <IconScoutIcon name={icon} size={14} style={{ marginRight: 6 }} />}
       <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.base, color: COLORS.text.black, opacity: 0.85 }}>{label}</Text>
+      {isVerified && (
+        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', marginLeft: 4 }}>
+          <EvaIcon name="sparkles" variant="fill" size={8} color="#FFF" />
+        </View>
+      )}
     </View>
   );
 }
 
 // ─── GreenPill (exact match) ─────────────────────────────────────────────────
-export function GreenPill({ label }: { label: string }) {
+export function GreenPill({ label, type, isVerified }: { label: string; type: 'value' | 'interest'; isVerified?: boolean }) {
+  const icon = type === 'value' ? valueIconName(label) : interestIconName(label);
   return (
     <View style={{
       backgroundColor: COLORS.backgroundSuccessBadge,
@@ -61,14 +72,26 @@ export function GreenPill({ label }: { label: string }) {
       paddingHorizontal: 10,
       paddingVertical: 6,
       alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
     }}>
+      {icon && <IconScoutIcon name={icon} size={14} style={{ marginRight: 6 }} />}
       <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.base, color: GREEN }}>{label}</Text>
+      {isVerified && (
+        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', marginLeft: 4 }}>
+          <EvaIcon name="sparkles" variant="fill" size={8} color="#FFF" />
+        </View>
+      )}
     </View>
   );
 }
 
 // ─── YellowPill (similar match) ──────────────────────────────────────────────
-export function YellowPill({ label }: { label: string }) {
+export function YellowPill({ label, type, isVerified }: { label: string; type: 'value' | 'interest'; isVerified?: boolean }) {
+  // label might be "Item A <-> Item B"
+  const items = label.split(' \u2194 ');
+  const icon = type === 'value' ? valueIconName(items[0]) : interestIconName(items[0]);
+
   return (
     <View style={{
       backgroundColor: COLORS.backgroundSoftYellow,
@@ -78,8 +101,16 @@ export function YellowPill({ label }: { label: string }) {
       paddingHorizontal: 10,
       paddingVertical: 6,
       alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
     }}>
+      {icon && <IconScoutIcon name={icon} size={14} style={{ marginRight: 6 }} />}
       <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.base, color: COLORS.warning.text }}>{label}</Text>
+      {isVerified && (
+        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', marginLeft: 4 }}>
+          <EvaIcon name="sparkles" variant="fill" size={8} color="#FFF" />
+        </View>
+      )}
     </View>
   );
 }
@@ -123,11 +154,11 @@ export function EthnicityComparisonRow({ result }: { result: MatchResult }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
       <View style={{ flex: 1, gap: 8 }}>
-        {leftTags.map(t => <TagPill key={t} label={t} />)}
+        {leftTags.map(t => <TagPill key={t} label={t} type="interest" />)}
       </View>
       <MatchIcon status={result.status} />
       <View style={{ flex: 1, gap: 8 }}>
-        {rightTags.map(t => <TagPill key={t} label={t} />)}
+        {rightTags.map(t => <TagPill key={t} label={t} type="interest" />)}
       </View>
     </View>
   );
@@ -138,11 +169,11 @@ export function TagCloudSection({ leftTags, rightTags }: { leftTags: string[]; r
   return (
     <View style={{ flexDirection: 'row', gap: 0 }}>
       <View style={{ flex: 1, gap: 8 }}>
-        {leftTags.map((t) => <TagPill key={t} label={t} />)}
+        {leftTags.map((t) => <TagPill key={t} label={t} type="interest" />)}
       </View>
       <View style={{ width: 1, backgroundColor: COLORS.border, marginHorizontal: SPACING.lg }} />
       <View style={{ flex: 1, gap: 8 }}>
-        {rightTags.map((t) => <TagPill key={t} label={t} />)}
+        {rightTags.map((t) => <TagPill key={t} label={t} type="interest" />)}
       </View>
     </View>
   );
@@ -153,10 +184,16 @@ export function SmartPillCloudSection({
   pillResult,
   userAName,
   userBName,
+  type,
+  verifiedA = new Set(),
+  verifiedB = new Set(),
 }: {
   pillResult: SmartPillResult;
   userAName: string;
   userBName: string;
+  type: 'value' | 'interest';
+  verifiedA?: Set<string>;
+  verifiedB?: Set<string>;
 }) {
   const { greenPairs, yellowPairs, greyA, greyB } = pillResult;
 
@@ -164,25 +201,34 @@ export function SmartPillCloudSection({
     <View>
       {/* Green pairs (exact matches) */}
       {greenPairs.length > 0 && (
-        <View style={{ marginBottom: greenPairs.length > 0 && (yellowPairs.length > 0 || greyA.length > 0 || greyB.length > 0) ? 10 : 0 }}>
+        <View style={{ marginBottom: (yellowPairs.length > 0 || greyA.length > 0 || greyB.length > 0) ? 10 : 0 }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {greenPairs.map(p => (
-              <GreenPill key={`green-${p.item}`} label={p.item} />
-            ))}
+            {greenPairs.map(p => {
+                const labelLower = p.item.toLowerCase();
+                const isVerified = verifiedA.has(labelLower) || verifiedB.has(labelLower);
+                return (
+                    <GreenPill key={`green-${p.item}`} label={p.item} type={type} isVerified={isVerified} />
+                );
+            })}
           </View>
         </View>
       )}
 
       {/* Yellow pairs (similar matches) */}
       {yellowPairs.length > 0 && (
-        <View style={{ marginBottom: yellowPairs.length > 0 && (greyA.length > 0 || greyB.length > 0) ? 10 : 0 }}>
+        <View style={{ marginBottom: (greyA.length > 0 || greyB.length > 0) ? 10 : 0 }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {yellowPairs.map(p => (
-              <YellowPill
-                key={`yellow-${p.itemA}-${p.itemB}`}
-                label={`${p.itemA} \u2194 ${p.itemB}`}
-              />
-            ))}
+            {yellowPairs.map(p => {
+                const isVerified = verifiedA.has(p.itemA.toLowerCase()) || verifiedB.has(p.itemB.toLowerCase());
+                return (
+                    <YellowPill
+                        key={`yellow-${p.itemA}-${p.itemB}`}
+                        label={`${p.itemA} \u2194 ${p.itemB}`}
+                        type={type}
+                        isVerified={isVerified}
+                    />
+                );
+            })}
           </View>
         </View>
       )}
@@ -194,14 +240,28 @@ export function SmartPillCloudSection({
             {greyA.length > 0 && (
               <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.xs, color: COLORS.text.disabled, marginBottom: 4 }}>{userAName}</Text>
             )}
-            {greyA.map(t => <TagPill key={`greyA-${t}`} label={t} />)}
+            {greyA.map(t => (
+                <TagPill
+                    key={`greyA-${t}`}
+                    label={t}
+                    type={type}
+                    isVerified={verifiedA.has(t.toLowerCase())}
+                />
+            ))}
           </View>
           <View style={{ width: 1, backgroundColor: COLORS.border, marginHorizontal: SPACING.lg }} />
           <View style={{ flex: 1, gap: 8 }}>
             {greyB.length > 0 && (
               <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.xs, color: COLORS.text.disabled, marginBottom: 4 }}>{userBName}</Text>
             )}
-            {greyB.map(t => <TagPill key={`greyB-${t}`} label={t} />)}
+            {greyB.map(t => (
+                <TagPill
+                    key={`greyB-${t}`}
+                    label={t}
+                    type={type}
+                    isVerified={verifiedB.has(t.toLowerCase())}
+                />
+            ))}
           </View>
         </View>
       )}

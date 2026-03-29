@@ -1,19 +1,22 @@
 import React from 'react';
-import { TouchableOpacity, Text } from 'react-native';
+import { TouchableOpacity, Text, View } from 'react-native';
 import { styled } from 'nativewind';
 import { FONTS } from '../../constants/typography';
+import { IconScoutIcon } from '../icons';
 
 interface SimpleChipProps {
   label: string;
   selected: boolean;
   onPress: () => void;
+  iconName?: string;
 }
 
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledText = styled(Text);
+const StyledView = styled(View);
 
 // Ultra-simplified chip with minimal overhead - NO haptics, NO variant logic
-const SimpleChipComponent: React.FC<SimpleChipProps> = ({ label, selected, onPress }) => {
+const SimpleChipComponent: React.FC<SimpleChipProps> = ({ label, selected, onPress, iconName }) => {
   return (
     <StyledTouchableOpacity
       onPress={onPress}
@@ -28,12 +31,22 @@ const SimpleChipComponent: React.FC<SimpleChipProps> = ({ label, selected, onPre
       accessibilityLabel={label}
       accessibilityState={{ selected }}
     >
-      <StyledText
-        className={`text-sm ${selected ? 'text-white font-medium' : 'text-neutral-700'}`}
-        style={{ fontFamily: selected ? FONTS.medium : FONTS.regular }}
-      >
-        {label}
-      </StyledText>
+      <StyledView className="flex-row items-center">
+        {iconName && (
+          <IconScoutIcon
+            name={iconName}
+            size={14}
+            style={{ marginRight: 6 }}
+            color={selected ? '#FFF' : undefined}
+          />
+        )}
+        <StyledText
+          className={`text-sm ${selected ? 'text-white font-medium' : 'text-neutral-700'}`}
+          style={{ fontFamily: selected ? FONTS.medium : FONTS.regular }}
+        >
+          {label}
+        </StyledText>
+      </StyledView>
     </StyledTouchableOpacity>
   );
 };

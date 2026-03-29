@@ -23,6 +23,8 @@ import { Proposal } from '../../../types/community';
 import { RateLimiter } from '../../../utils/inputValidation';
 import { showToast } from '../../../utils/toast';
 import { communityService } from '../../../services/communityServiceIndex';
+import { getReceivedBadges } from '../../../services/badgeService';
+import { FriendBadgeWithGiver } from '../../../types/badges';
 import { createLogger } from '../../../utils/secureLogger';
 import { COLORS } from '../../../theme/colors';
 import {
@@ -359,6 +361,21 @@ export function useForFriendModal(
 // ─── Match Data Hook ─────────────────────────────────────────────────────────
 
 export function useMatchData(proposals: Proposal[], currentIndex: number) {
+  const [badgesA, setBadgesA] = useState<FriendBadgeWithGiver[]>([]);
+  const [badgesB, setBadgesB] = useState<FriendBadgeWithGiver[]>([]);
+
+  useEffect(() => {
+    if (proposals.length > 0 && currentIndex < proposals.length) {
+      const proposal = proposals[currentIndex];
+      getReceivedBadges(proposal.userA.userId).then(res => {
+        if (res.ok && res.data) setBadgesA(res.data);
+      });
+      getReceivedBadges(proposal.userB.userId).then(res => {
+        if (res.ok && res.data) setBadgesB(res.data);
+      });
+    }
+  }, [proposals, currentIndex]);
+
   return useMemo(() => {
     if (proposals.length === 0 || currentIndex >= proposals.length) return null;
     const proposal = proposals[currentIndex];
@@ -394,6 +411,7 @@ export function useMatchData(proposals: Proposal[], currentIndex: number) {
 
     return {
       proposal, userA, userB, photoA, photoB,
+      badgesA, badgesB,
       politicsResult, religionResult,
       drinkResult, weedResult, tobaccoResult, otherSubstancesResult,
       beliefsResults, lifestyleResults,

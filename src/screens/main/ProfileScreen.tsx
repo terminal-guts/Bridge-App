@@ -325,7 +325,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
 
         {/* Tab Content — dater only */}
         {profile.role !== 'matchmaker' && hook.activeTab === 'about' && (
-          <AboutTab profile={profile} navigation={navigation} />
+          <AboutTab profile={profile} navigation={navigation} badges={hook.badges} />
         )}
         {profile.role !== 'matchmaker' && hook.activeTab === 'badges' && (
           <BadgesTab
