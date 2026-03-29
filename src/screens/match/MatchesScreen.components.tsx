@@ -17,7 +17,7 @@ import { MatchEndedEvent, ActiveMatch, MatchProposal } from '../../types/communi
 import { UserProfile } from '../../types';
 import { ProfileCompletionBanner } from '../../components/profile/ProfileCompletionBanner';
 import { MatchPoolLockedView } from '../../components/matches/MatchPoolLockedView';
-import { ScreenWrapper } from '../../components/ui';
+import { ScreenWrapper, ScreenTitle } from '../../components/ui';
 import { MatchesSkeleton } from '../../components/ui/SkeletonLoader';
 
 // ── Screen state type ─────────────────────────────────────────────────────────
@@ -230,7 +230,10 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 4,
   },
-  headerTitle: { fontFamily: FONTS.bold, fontWeight: '700' as const, fontSize: FONT_SIZES['5xl'], lineHeight: LINE_HEIGHTS['5xl'], color: COLORS.text.black, letterSpacing: -0.5 },
+  // fontWeight must stay explicit — setDefaultFonts.ts only injects a derived
+  // weight when none is present, so this is never stripped. Keeping it ensures
+  // iOS renders the correct 700-weight variant even if fontFamily alone is set.
+  headerTitle: { fontFamily: FONTS.bold, fontWeight: '700' as const, fontSize: FONT_SIZES['5xl'], lineHeight: LINE_HEIGHTS['5xl'], color: COLORS.text.heading, letterSpacing: -0.5 },
   timerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -514,7 +517,7 @@ export function EmptyStateView({
         onPress={() => navigation.navigate('Profile')}
       />
       <View style={[styles.headerRow, headerPad != null && { paddingTop: headerPad }]}>
-        <Text style={styles.headerTitle} accessibilityRole="header">Match</Text>
+        <ScreenTitle>Match</ScreenTitle>
       </View>
       <ScrollView
         contentContainerStyle={styles.emptyContainer}
@@ -523,8 +526,8 @@ export function EmptyStateView({
         }
       >
         <IllustrationAnimation />
-        <Text style={styles.tagline}>No matches yet</Text>
-        <Text style={[styles.subtitle, { marginBottom: subtitleMB }]}>Help your friends find their person and they'll do the same for you.</Text>
+        <Text style={styles.tagline}>Still looking</Text>
+        <Text style={[styles.subtitle, { marginBottom: subtitleMB }]}>You're in the matchmaking pool. Help your friends find their person and they'll do the same for you.</Text>
         <TouchableOpacity
           style={[styles.ctaButton, { width: ctaWidth, height: ctaHeight }]}
           activeOpacity={0.85}

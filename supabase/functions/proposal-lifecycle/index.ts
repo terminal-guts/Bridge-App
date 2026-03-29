@@ -46,11 +46,6 @@ function poolYesRate(poolYes: number, poolNo: number): number {
   return total === 0 ? 0.0 : poolYes / total;
 }
 
-function friendYesRate(friendYes: number, friendNo: number): number {
-  const total = friendYes + friendNo;
-  return total === 0 ? 0.0 : friendYes / total;
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });

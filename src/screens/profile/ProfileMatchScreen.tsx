@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-    View, Text, ScrollView, TouchableOpacity,
-    ActivityIndicator, StyleSheet,
+    View, Text, ScrollView, TouchableOpacity, TextInput,
+    ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform,
     Modal, Pressable, Alert, useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -73,6 +73,9 @@ export default function ProfileMatchScreen() {
     const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
     const [showActionSheet, setShowActionSheet] = useState(false);
     const [showReportSheet, setShowReportSheet] = useState(false);
+    const [reportOtherText, setReportOtherText] = useState('');
+    const [showReportOtherInput, setShowReportOtherInput] = useState(false);
+    const reportInputRef = React.useRef<TextInput>(null);
     const isMountedRef = React.useRef(true);
 
     const isProfileView = !isProposal && !isPreview && !!params.profile;
@@ -684,30 +687,119 @@ export default function ProfileMatchScreen() {
                 visible={showReportSheet}
                 transparent
                 animationType="slide"
-                onRequestClose={() => setShowReportSheet(false)}
+                onRequestClose={() => {
+                    setShowReportSheet(false);
+                    setShowReportOtherInput(false);
+                    setReportOtherText('');
+                }}
             >
-                <Pressable style={styles.sheetOverlay} onPress={() => setShowReportSheet(false)}>
-                    <Pressable style={[styles.sheetContainer, { paddingBottom: insets.bottom + 16 }]}>
-                        <Text style={styles.reportSheetTitle}>Why are you reporting this person?</Text>
-                        {REPORT_REASONS.map((reason, idx) => (
-                            <React.Fragment key={reason}>
-                                {idx > 0 && <View style={styles.sheetDivider} />}
-                                <TouchableOpacity
-                                    style={styles.sheetOption}
-                                    onPress={() => handleReportUser(reason)}
-                                    accessibilityLabel={`Report for: ${reason}`}
-                                    accessibilityRole="button"
-                                >
-                                    <Text style={styles.sheetOptionText}>{reason}</Text>
-                                </TouchableOpacity>
-                            </React.Fragment>
-                        ))}
-                        <View style={styles.sheetDivider} />
-                        <TouchableOpacity style={styles.sheetOption} onPress={() => setShowReportSheet(false)} accessibilityLabel="Cancel report" accessibilityRole="button">
-                            <Text style={styles.sheetCancelText}>Cancel</Text>
-                        </TouchableOpacity>
+                <KeyboardAvoidingView
+                    style={{ flex: 1 }}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                >
+                    <Pressable
+                        style={styles.sheetOverlay}
+                        onPress={() => {
+                            setShowReportSheet(false);
+                            setShowReportOtherInput(false);
+                            setReportOtherText('');
+                        }}
+                    >
+                        <Pressable style={[styles.sheetContainer, { paddingBottom: insets.bottom + 16 }]}>
+                            {showReportOtherInput ? (
+                                <>
+                                    <Text style={styles.reportSheetTitle}>Tell us what happened</Text>
+                                    <View style={styles.reportOtherInputContainer}>
+                                        <TextInput
+                                            ref={reportInputRef}
+                                            style={styles.reportOtherInput}
+                                            placeholder="Please describe the issue..."
+                                            placeholderTextColor={COLORS.text.light}
+                                            value={reportOtherText}
+                                            onChangeText={(text) => setReportOtherText(text.slice(0, 300))}
+                                            multiline
+                                            maxLength={300}
+                                            autoFocus
+                                            textAlignVertical="top"
+                                            accessibilityLabel="Describe the issue"
+                                        />
+                                        <Text style={styles.reportOtherCharCount}>
+                                            {reportOtherText.length}/300
+                                        </Text>
+                                    </View>
+                                    <View style={styles.reportOtherActions}>
+                                        <TouchableOpacity
+                                            style={styles.reportOtherCancelBtn}
+                                            onPress={() => {
+                                                setShowReportOtherInput(false);
+                                                setReportOtherText('');
+                                            }}
+                                            accessibilityLabel="Back to reasons"
+                                            accessibilityRole="button"
+                                        >
+                                            <Text style={styles.sheetCancelText}>Back</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.reportOtherSubmitBtn,
+                                                !reportOtherText.trim() && styles.reportOtherSubmitBtnDisabled,
+                                            ]}
+                                            onPress={() => {
+                                                if (reportOtherText.trim()) {
+                                                    handleReportUser(`Other: ${reportOtherText.trim()}`);
+                                                    setShowReportOtherInput(false);
+                                                    setReportOtherText('');
+                                                }
+                                            }}
+                                            disabled={!reportOtherText.trim()}
+                                            accessibilityLabel="Submit report"
+                                            accessibilityRole="button"
+                                        >
+                                            <Text style={[
+                                                styles.reportOtherSubmitText,
+                                                !reportOtherText.trim() && styles.reportOtherSubmitTextDisabled,
+                                            ]}>
+                                                Submit
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </>
+                            ) : (
+                                <>
+                                    <Text style={styles.reportSheetTitle}>Why are you reporting this person?</Text>
+                                    {REPORT_REASONS.map((reason, idx) => (
+                                        <React.Fragment key={reason}>
+                                            {idx > 0 && <View style={styles.sheetDivider} />}
+                                            <TouchableOpacity
+                                                style={styles.sheetOption}
+                                                onPress={() => {
+                                                    if (reason === 'Other') {
+                                                        setShowReportOtherInput(true);
+                                                    } else {
+                                                        handleReportUser(reason);
+                                                    }
+                                                }}
+                                                accessibilityLabel={`Report for: ${reason}`}
+                                                accessibilityRole="button"
+                                            >
+                                                <Text style={styles.sheetOptionText}>{reason}</Text>
+                                            </TouchableOpacity>
+                                        </React.Fragment>
+                                    ))}
+                                    <View style={styles.sheetDivider} />
+                                    <TouchableOpacity
+                                        style={styles.sheetOption}
+                                        onPress={() => setShowReportSheet(false)}
+                                        accessibilityLabel="Cancel report"
+                                        accessibilityRole="button"
+                                    >
+                                        <Text style={styles.sheetCancelText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                </>
+                            )}
+                        </Pressable>
                     </Pressable>
-                </Pressable>
+                </KeyboardAvoidingView>
             </Modal>
         </View>
     );
@@ -1119,5 +1211,62 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         paddingVertical: 16,
         paddingHorizontal: 20,
+    },
+    reportOtherInputContainer: {
+        paddingHorizontal: 20,
+        marginBottom: 12,
+    },
+    reportOtherInput: {
+        borderWidth: 1.5,
+        borderColor: COLORS.border,
+        borderRadius: 12,
+        padding: 14,
+        fontFamily: FONTS.regular,
+        fontSize: FONT_SIZES.lg,
+        lineHeight: LINE_HEIGHTS.lg,
+        color: COLORS.text.primary,
+        minHeight: 100,
+        maxHeight: 140,
+        backgroundColor: COLORS.screenBackground,
+    },
+    reportOtherCharCount: {
+        fontFamily: FONTS.regular,
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.text.light,
+        textAlign: 'right',
+        marginTop: 6,
+    },
+    reportOtherActions: {
+        flexDirection: 'row',
+        paddingHorizontal: 20,
+        gap: 12,
+    },
+    reportOtherCancelBtn: {
+        flex: 1,
+        paddingVertical: 14,
+        alignItems: 'center',
+        borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: COLORS.border,
+        minHeight: 44,
+    },
+    reportOtherSubmitBtn: {
+        flex: 1,
+        paddingVertical: 14,
+        alignItems: 'center',
+        borderRadius: 12,
+        backgroundColor: '#EF4444',
+        minHeight: 44,
+    },
+    reportOtherSubmitBtnDisabled: {
+        backgroundColor: '#FECACA',
+    },
+    reportOtherSubmitText: {
+        fontFamily: FONTS.semiBold,
+        fontSize: FONT_SIZES.lg,
+        color: COLORS.card,
+    },
+    reportOtherSubmitTextDisabled: {
+        color: '#F87171',
     },
 });

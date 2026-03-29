@@ -128,26 +128,12 @@ class CommunityBackendService {
     return fetchProposalsToVote();
   }
 
-  async submitProposalVote(proposalId: string, vote: 'yes' | 'no' | 'unsure'): Promise<void> {
+  async submitProposalVote(proposalId: string, vote: 'yes' | 'no'): Promise<void> {
     const userId = await getCurrentUserId();
+    const voteTypeMap = { yes: 'YES', no: 'NO' } as const;
+    const voteType = voteTypeMap[vote];
 
-    if (vote === 'unsure') {
-      // Route UNSURE through the process-vote edge function (same as YES/NO)
-      // so all server-side checks (suspended, daily cap, self-vote, blocked,
-      // pool-assignment) are enforced consistently.
-      await castProposalVote(proposalId, userId, 'UNSURE' as 'YES' | 'NO');
-      this.invalidateFriendsCache();
-      if (!this.sessionVotedProposals.has(proposalId)) {
-        this.sessionVotedProposals.add(proposalId);
-        this.sessionVoteCount++;
-        AsyncStorage.setItem(STORAGE_KEY_VOTES, String(this.sessionVoteCount)).catch(() => {});
-      }
-      return;
-    }
-
-    const voteType = vote === 'yes' ? 'YES' : 'NO';
-
-    await castProposalVote(proposalId, userId, voteType as 'YES' | 'NO');
+    await castProposalVote(proposalId, userId, voteType);
     this.invalidateFriendsCache();
     if (!this.sessionVotedProposals.has(proposalId)) {
       this.sessionVotedProposals.add(proposalId);
@@ -160,8 +146,10 @@ class CommunityBackendService {
   // Friends (Supabase)
   // ========================================================================
 
-  // Record a recommendation submitted this session so getCommunityTaskProgress
-  // counts it in the pending floor before the DB write propagates.
+  /**
+   * Record a recommendation submitted this session so getCommunityTaskProgress
+   * counts it in the pending floor before the DB write propagates.
+   */
   recordSessionRecommendation(proposalId: string): void {
     this.sessionRecommendedProposals.add(proposalId);
   }
@@ -221,24 +209,25 @@ class CommunityBackendService {
 
     // Optimistically update the cached result so MatchesScreen reflects the new
     // decision state instantly when it refocuses — no network round-trip needed.
+    // Clone to avoid mutating references held by callers from previous reads.
     if (this.friendsAreaResultCache) {
+      const updatedData = { ...this.friendsAreaResultCache.data };
       if (accept) {
-        // Mark yourDecision = accepted in the cached proposal
-        const proposal = this.friendsAreaResultCache.data.pendingProposals
-          .find((p: any) => p.proposalId === proposalId || p.id === proposalId);
-        if (proposal) {
-          proposal.yourDecision = 'accepted';
-          proposal.hasResponded = true;
-        }
+        // Mark yourDecision = accepted in the cached proposal (clone the array + matching item)
+        updatedData.pendingProposals = updatedData.pendingProposals.map((p: any) => {
+          if (p.proposalId === proposalId || p.id === proposalId) {
+            return { ...p, yourDecision: 'accepted', hasResponded: true };
+          }
+          return p;
+        });
       } else {
         // Remove the proposal from cache — declined proposals disappear from the list
-        this.friendsAreaResultCache.data.pendingProposals =
-          this.friendsAreaResultCache.data.pendingProposals
-            .filter((p: any) => p.proposalId !== proposalId && p.id !== proposalId);
+        updatedData.pendingProposals = updatedData.pendingProposals
+          .filter((p: any) => p.proposalId !== proposalId && p.id !== proposalId);
       }
       // Keep cache timestamp fresh so stale-while-revalidate serves it immediately,
       // but reset backgroundRefreshInFlight so a real fetch runs in the background.
-      this.friendsAreaResultCache.ts = Date.now();
+      this.friendsAreaResultCache = { data: updatedData, ts: Date.now() };
       this.backgroundRefreshInFlight = false;
     }
 
@@ -279,11 +268,15 @@ class CommunityBackendService {
   async getKarmaScore(): Promise<KarmaScore> {
     const userId = await getCurrentUserId();
 
-    const { data: karma } = await supabase
+    const { data: karma, error: karmaError } = await supabase
       .from('karma_scores')
       .select('user_id, karma_points, total_assists, total_proposals, badge_tier, proposal_success_rate, voting_accuracy_rate, updated_at')
       .eq('user_id', userId)
       .maybeSingle();
+
+    if (karmaError) {
+      logger.error('Failed to fetch karma score', karmaError.message);
+    }
 
     if (!karma) {
       return {
@@ -322,7 +315,7 @@ class CommunityBackendService {
 
     // Count votes + recommendations since the last 7PM Central reset
     const resetISO = new Date(lastReset).toISOString();
-    const [{ count: voteCount }, { count: recCount }] = await Promise.all([
+    const [voteResult, recResult] = await Promise.all([
       supabase
         .from('proposal_votes')
         .select('id', { count: 'exact', head: true })
@@ -334,6 +327,16 @@ class CommunityBackendService {
         .eq('recommender_id', userId)
         .gte('created_at', resetISO),
     ]);
+
+    if (voteResult.error) {
+      logger.error('Failed to fetch vote count', voteResult.error.message);
+    }
+    if (recResult.error) {
+      logger.error('Failed to fetch recommendation count', recResult.error.message);
+    }
+
+    const voteCount = voteResult.count;
+    const recCount = recResult.count;
 
     const dbActions = (voteCount || 0) + (recCount || 0);
     // DB is source of truth. Session count is used as a floor for actions (votes
@@ -399,28 +402,40 @@ class CommunityBackendService {
       // Trigger background refresh if not already in-flight
       if (!this.backgroundRefreshInFlight) {
         this.backgroundRefreshInFlight = true;
-        this._fetchFriendsAreaData().then(result => {
+        this._fetchFriendsAreaData(true).then(result => {
           this.friendsAreaResultCache = { data: result, ts: Date.now() };
-        }).catch(() => {}).finally(() => {
+        }).catch((err) => {
+          logger.error('Background friends-area refresh failed', err instanceof Error ? err.message : String(err));
+        }).finally(() => {
           this.backgroundRefreshInFlight = false;
         });
       }
       return this.friendsAreaResultCache.data;
     }
 
-    const result = await this._fetchFriendsAreaData();
-    this.friendsAreaResultCache = { data: result, ts: Date.now() };
-    this.lastFriendsAreaLoadAt = Date.now();
-    return result;
+    try {
+      const result = await this._fetchFriendsAreaData(false);
+      this.friendsAreaResultCache = { data: result, ts: Date.now() };
+      this.lastFriendsAreaLoadAt = Date.now();
+      return result;
+    } catch (error) {
+      // If we have stale cache, return it rather than crashing the screen
+      if (this.friendsAreaResultCache) {
+        logger.error('getFriendsAreaData failed, returning stale cache', error instanceof Error ? error.message : String(error));
+        this.lastFriendsAreaLoadAt = Date.now();
+        return this.friendsAreaResultCache.data;
+      }
+      throw error;
+    }
   }
 
-  private async _fetchFriendsAreaData(): Promise<{
+  private async _fetchFriendsAreaData(forceRefresh: boolean): Promise<{
     friends: FriendWithGridStatus[];
     pendingProposals: any[];
     activeMatch: ActiveMatch | null;
   }> {
     const [friends, pendingProposals, activeMatch] = await Promise.all([
-      this.getFriendsAsAnchors(),
+      this.getFriendsAsAnchors(forceRefresh),
       this.getPendingMatchProposals(),
       this.getActiveMatch(),
     ]);
@@ -443,18 +458,6 @@ class CommunityBackendService {
   }
 
   // ========================================================================
-  // Friend Helped Tracking (backend records proposal submission for friend)
-  // ========================================================================
-
-  /**
-   * Mark a friend as helped (i.e., the current user voted on their proposal).
-   */
-  async markFriendAsHelped(_friendId: string): Promise<void> {
-    // No-op: streak updates are handled server-side in process-vote edge function.
-    // hasCompletedGrid uses proposal_votes directly, not this function.
-  }
-
-  // ========================================================================
   // Match ended event tracking
   // ========================================================================
 
@@ -467,8 +470,6 @@ class CommunityBackendService {
   clearEndedMatchEvent(): void {
     this.pendingEndedEvent = null;
   }
-
-  // detectEndedMatchEvent extracted to communityBackendService.matches.ts
 
   // ========================================================================
   // 24h daily-cycle timer + state-change events
@@ -485,6 +486,38 @@ class CommunityBackendService {
 
   private notifyStateChange(): void {
     this.stateChangeListeners.forEach(l => l());
+  }
+
+  /**
+   * Called on app foreground — checks whether the daily cycle boundary (7 PM Central)
+   * passed while the app was backgrounded. If so, resets vote counts and invalidates
+   * stale caches so the user sees fresh data instead of yesterday's state.
+   *
+   * Also invalidates the friends area cache if the app was backgrounded for more than
+   * 2 minutes, since match/proposal states may have changed server-side.
+   */
+  checkForegroundStaleness(): void {
+    const now = Date.now();
+
+    // If the daily cycle boundary passed, reset session state
+    if (now >= this.nextResetAt) {
+      logger.info('Daily cycle boundary passed while backgrounded — resetting');
+      this.nextResetAt = getNext7PMCentral();
+      this.sessionVoteCount = 0;
+      this.sessionVotedProposals.clear();
+      this.sessionRecommendedProposals.clear();
+      AsyncStorage.setItem(STORAGE_KEY_NEXT_RESET, String(this.nextResetAt)).catch(() => {});
+      AsyncStorage.setItem(STORAGE_KEY_VOTES, '0').catch(() => {});
+      this.invalidateFriendsCache();
+      this.notifyStateChange();
+      return; // notifyStateChange triggers reloads — no need to also invalidate below
+    }
+
+    // If the cached data is older than 2 minutes, invalidate so the next read
+    // does a real fetch instead of serving stale-while-revalidate data
+    if (this.friendsAreaResultCache && now - this.friendsAreaResultCache.ts > 120_000) {
+      this.friendsAreaResultCache = null;
+    }
   }
 
   getNextResetAt(): number {

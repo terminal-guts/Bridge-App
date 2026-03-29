@@ -17,6 +17,7 @@
 
 import { COLORS } from '../../../theme/colors';
 import { EmptyState } from '../../ui/EmptyState';
+import { SkeletonLoader } from '../../ui/SkeletonLoader';
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import {
   View,
@@ -52,8 +53,7 @@ import {
   ProgressDots,
   VoteButtons,
   ForFriendModal,
-  LifestyleSection,
-  BeliefsSection,
+  LifestyleBeliefsSection,
 } from './ProposalReviewView.components';
 
 // Sub-components
@@ -61,6 +61,13 @@ import { SectionCard, SmartPillCloudSection } from './SmartPillCloud';
 import { ProposalPhotoCard, PHOTO_HEIGHT } from './ProposalPhotoCard';
 import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
 import { QuestionCarousel } from './QuestionCarousel';
+
+/** "John Smith" → "J.S." — privacy-safe initials for voting screen */
+function toInitials(first: string, last?: string | null): string {
+  const f = (first || '?').charAt(0).toUpperCase();
+  const l = (last || '').charAt(0).toUpperCase();
+  return l ? `${f}.${l}.` : `${f}.`;
+}
 import { LiveVoteBar } from './LiveVoteBar';
 import { BadgeComparisonSection } from '../../badges/BadgeComparisonSection';
 import type { DeepQuestionData } from './proposalHelpers';
@@ -79,12 +86,12 @@ const DIVIDER_WIDTH = 13;
 // ─── Section accent spectrum ──────────────────────────────────────────────────
 // Colors sweep the visible spectrum (cool → warm → violet) as sections appear
 // in scroll order: Badges → Questions → Interests → Values → Lifestyle → Beliefs
-const ACCENT_QUESTIONS = '#06B6D4'; // cyan — no COLORS entry
+const ACCENT_QUESTIONS = '#06B6D4'; // cyan
 const ACCENT_INTERESTS = COLORS.emerald;
-const ACCENT_VALUES    = COLORS.warning.icon;
+const ACCENT_VALUES    = '#D97706'; // deep amber — distinct from YellowPill border (#F59E0B)
 const PHOTO_WIDTH = (SCREEN_WIDTH - 32 - DIVIDER_WIDTH) / 2;
 
-const SCROLL_CONTENT_STYLE = { paddingHorizontal: 16, paddingBottom: 160 } as const;
+const SCROLL_CONTENT_STYLE = { paddingHorizontal: 16, paddingBottom: 220 } as const;
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface ProposalReviewViewProps {
@@ -94,6 +101,8 @@ interface ProposalReviewViewProps {
   isActive?: boolean;
   initialProposals?: Proposal[];
   showBackButton?: boolean;
+  /** Controls gate-specific UI (banner + progress dots). Defaults to !showBackButton for backward compat. */
+  isGateVoting?: boolean;
   onBack?: () => void;
   onVoteComplete?: () => void;
   deepQuestions?: DeepQuestionData[];
@@ -107,11 +116,16 @@ export function ProposalReviewView({
   isActive: _isActive = false,
   initialProposals,
   showBackButton = false,
+  isGateVoting: isGateVotingProp,
   onBack,
   onVoteComplete,
   deepQuestions,
 }: ProposalReviewViewProps) {
   const insets = useSafeAreaInsets();
+  // Gate-specific UI (banner + progress dots) — defaults to !showBackButton for backward compat
+  const isGateVoting = isGateVotingProp ?? !showBackButton;
+  // Track whether the user has voted on the current proposal (for vote bar reveal)
+  const [hasVotedCurrent, setHasVotedCurrent] = useState(false);
   // Proportional header spacing — ~0.5% of screen height above button, ~0.9% below
   const headerTopPadding = insets.top + Math.round(SCREEN_HEIGHT * 0.005);
   const headerBottomPadding = Math.round(SCREEN_HEIGHT * 0.009);
@@ -121,7 +135,7 @@ export function ProposalReviewView({
     scrollViewRef, isMountedRef,
     entranceAnimatedStyle, flashAnimatedStyle,
     yesButtonAnimatedStyle, noButtonAnimatedStyle,
-    recommendButtonAnimatedStyle, unsureButtonAnimatedStyle,
+    recommendButtonAnimatedStyle,
     recommendButtonScale,
     handleVote, advanceProposal, animateButtonPress,
   } = useProposalVoting(initialProposals, onVotesComplete, onBack, onVoteComplete);
@@ -169,19 +183,34 @@ export function ProposalReviewView({
 
   // ── Confetti on Yes vote ──────────────────────────────────────────────────
   const confettiRef = useRef<LottieView>(null);
+  const confettiTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
 
-  const handleVoteWithEffects = useCallback(async (vote: 'yes' | 'no' | 'unsure') => {
+  // Clean up confetti timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (confettiTimeoutRef.current) clearTimeout(confettiTimeoutRef.current);
+    };
+  }, []);
+
+  const handleVoteWithEffects = useCallback(async (vote: 'yes' | 'no') => {
     if (vote === 'yes') {
       // Load confetti JSON once on first yes-vote, cache in module variable
       if (!confettiAnimSource) {
         confettiAnimSource = require('../../../../assets/Icons/AnimatedIcons/confetti.json');
       }
       setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 2500);
+      if (confettiTimeoutRef.current) clearTimeout(confettiTimeoutRef.current);
+      confettiTimeoutRef.current = setTimeout(() => setShowConfetti(false), 2500);
     }
+    setHasVotedCurrent(true);
     await handleVote(vote);
   }, [handleVote]);
+
+  // Reset vote state when advancing to next proposal
+  useEffect(() => {
+    setHasVotedCurrent(false);
+  }, [currentIndex]);
 
   // Active dot pulse animation
   const dotPulse = useSharedValue(1);
@@ -197,11 +226,21 @@ export function ProposalReviewView({
     transform: [{ scaleX: 0.85 + dotPulse.value * 0.15 }],
   }));
 
-  // ── Loading ──────────────────────────────────────────────────────────────
+  // ── Loading skeleton — matches photo pair + section card layout ──────────
   if (loading) {
     return (
       <View style={proposalStyles.loadingContainer}>
-        <Text style={proposalStyles.loadingText}>Loading proposals...</Text>
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+          {/* Photo pair skeleton */}
+          <View style={{ flexDirection: 'row', gap: 13, marginBottom: 16 }}>
+            <SkeletonLoader width={PHOTO_WIDTH} height={PHOTO_HEIGHT} borderRadius="rounded-2xl" />
+            <SkeletonLoader width={PHOTO_WIDTH} height={PHOTO_HEIGHT} borderRadius="rounded-2xl" />
+          </View>
+          {/* Section card skeletons */}
+          <SkeletonLoader width="100%" height={120} borderRadius="rounded-xl" className="mb-4" />
+          <SkeletonLoader width="100%" height={100} borderRadius="rounded-xl" className="mb-4" />
+          <SkeletonLoader width="100%" height={80} borderRadius="rounded-xl" />
+        </View>
       </View>
     );
   }
@@ -232,8 +271,8 @@ export function ProposalReviewView({
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.card }}>
-      {!showBackButton && !loading && proposals.length > 0 && (
+    <View style={{ flex: 1, backgroundColor: COLORS.screenBackground }}>
+      {isGateVoting && !loading && proposals.length > 0 && (
         <View style={proposalStyles.votingGateBanner}>
           <Text style={proposalStyles.votingGateText}>
             Vote on {proposals.length} proposal{proposals.length > 1 ? 's' : ''} to unlock the Friends Area
@@ -241,19 +280,18 @@ export function ProposalReviewView({
         </View>
       )}
 
-      {/* Header row */}
+      {/* Header row — back button for standalone, progress dots for gate, nothing for friend proposals */}
       {showBackButton ? (
         <View style={[proposalStyles.headerRow, { paddingTop: headerTopPadding, paddingBottom: headerBottomPadding }]}>
           <TouchableOpacity
             onPress={onBack}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             activeOpacity={0.7}
-            style={{ backgroundColor: 'rgba(255,255,255,0.90)', borderRadius: 20, padding: 6 }}
           >
             <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.heading} />
           </TouchableOpacity>
         </View>
-      ) : (
+      ) : isGateVoting ? (
         <View style={[proposalStyles.progressRow, { paddingTop: headerTopPadding, paddingBottom: headerBottomPadding }]}>
           <View style={{ width: 40 }} />
           <View style={proposalStyles.progressDotsCenter}>
@@ -267,7 +305,7 @@ export function ProposalReviewView({
           </View>
           <View style={{ width: 40 }} />
         </View>
-      )}
+      ) : null}
 
       {/* Scrollable content */}
       <Animated.View style={[{ flex: 1 }, entranceAnimatedStyle]}>
@@ -323,9 +361,6 @@ export function ProposalReviewView({
 
         </View>
 
-        {/* ── Friend Badges ─────────────────────────────────────────── */}
-        <BadgeComparisonSection userAId={userA.userId} userBId={userB.userId} />
-
         {/* ── Questions ─────────────────────────────────────────────── */}
         {resolvedDeepQuestions && resolvedDeepQuestions.length > 0 && (
           <SectionCard title="Questions" matched={undefined} total={undefined} accentColor={ACCENT_QUESTIONS}>
@@ -346,8 +381,8 @@ export function ProposalReviewView({
           >
             <SmartPillCloudSection
               pillResult={interestsPillResult}
-              userAName={userA.firstName}
-              userBName={userB.firstName}
+              userAName={toInitials(userA.firstName, userA.lastName)}
+              userBName={toInitials(userB.firstName, userB.lastName)}
             />
           </SectionCard>
         )}
@@ -361,37 +396,37 @@ export function ProposalReviewView({
           >
             <SmartPillCloudSection
               pillResult={valuesPillResult}
-              userAName={userA.firstName}
-              userBName={userB.firstName}
+              userAName={toInitials(userA.firstName, userA.lastName)}
+              userBName={toInitials(userB.firstName, userB.lastName)}
             />
           </SectionCard>
         )}
 
-        {/* ── Lifestyle ─────────────────────────────────────────────── */}
-        <LifestyleSection
+        {/* ── Lifestyle & Beliefs (merged) ─────────────────────────── */}
+        <LifestyleBeliefsSection
           lifestyleResults={lifestyleResults}
           drinkResult={drinkResult}
           weedResult={weedResult}
           tobaccoResult={tobaccoResult}
           otherSubstancesResult={otherSubstancesResult}
-        />
-
-        {/* ── Beliefs ───────────────────────────────────────────────── */}
-        <BeliefsSection
           beliefsResults={beliefsResults}
           politicsResult={politicsResult}
           religionResult={religionResult}
         />
 
+        {/* ── Friend Badges (last — least relevant to voting decision) ── */}
+        <BadgeComparisonSection userAId={userA.userId} userBId={userB.userId} />
+
       </ScrollView>
       </Animated.View>
 
-      {/* ── Sticky vote bar — always visible above vote buttons ──────── */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle }}>
+      {/* ── Sticky vote bar — revealed after voting to prevent anchoring bias ── */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, backgroundColor: COLORS.screenBackground }}>
         <LiveVoteBar
-          yesVotes={proposal.yesVotes ?? 0}
-          noVotes={proposal.noVotes ?? 0}
-          totalVotes={proposal.totalVotes ?? 0}
+          yesVotes={hasVotedCurrent ? (proposal.yesVotes ?? 0) : 0}
+          noVotes={hasVotedCurrent ? (proposal.noVotes ?? 0) : 0}
+          totalVotes={hasVotedCurrent ? (proposal.totalVotes ?? 0) : 0}
+          hasVoted={hasVotedCurrent}
         />
       </View>
 
@@ -403,7 +438,7 @@ export function ProposalReviewView({
         yesButtonAnimatedStyle={yesButtonAnimatedStyle}
         noButtonAnimatedStyle={noButtonAnimatedStyle}
         recommendButtonAnimatedStyle={recommendButtonAnimatedStyle}
-        unsureButtonAnimatedStyle={unsureButtonAnimatedStyle}
+        bottomInset={insets.bottom}
       />
 
       {/* ── For Friend Modal — only mounted when visible ────────────── */}

@@ -3,6 +3,7 @@ import { View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { styled } from 'nativewind';
 import { H3, Body, Button, ScreenWrapper } from '../../components/ui';
+import { BackHeader } from '../../components/ui/BackHeader';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile } from '../../types';
 import { getCurrentUser, signOut } from '../../services/authService';
@@ -198,44 +199,34 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
       <OfflineBanner />
 
       {/* Header */}
-      <StyledView className="bg-white border-b border-neutral-200 px-4 py-3">
-        <StyledView className="flex-row items-center justify-between">
-          <StyledTouchableOpacity
-            onPress={() => navigation.goBack()}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            className="mr-3"
-            style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <EvaIcon name="close" variant="outline" size={24} color={COLORS.textDarkHeading} />
-          </StyledTouchableOpacity>
-          <StyledView className="flex-1">
-            <H3>Edit Profile</H3>
+      <BackHeader
+        title="Edit Profile"
+        onBack={() => navigation.goBack()}
+        showBorder={profileCompletion.completedCount >= profileCompletion.totalCount}
+      />
+
+      {/* Completion Progress Bar */}
+      {profileCompletion.completedCount < profileCompletion.totalCount && (
+        <StyledView className="bg-white border-b border-neutral-200 px-4 pb-3">
+          <StyledView className="flex-row items-center justify-between mb-1.5">
+            <Body className="text-xs text-neutral-600">
+              {profileCompletion.completedCount} of {profileCompletion.totalCount} completed
+            </Body>
+            <Body className="text-xs font-semibold" style={{ color: COLORS.primaryAccent }}>
+              {profileCompletion.percentage}%
+            </Body>
+          </StyledView>
+          <StyledView className="bg-neutral-200 rounded-full h-1.5 overflow-hidden">
+            <StyledView
+              className="h-full rounded-full transition-all"
+              style={{
+                width: `${profileCompletion.percentage}%`,
+                backgroundColor: COLORS.primaryAccent,
+              }}
+            />
           </StyledView>
         </StyledView>
-
-        {/* Completion Progress Bar */}
-        {profileCompletion.completedCount < profileCompletion.totalCount && (
-          <StyledView className="mt-3">
-            <StyledView className="flex-row items-center justify-between mb-1.5">
-              <Body className="text-xs text-neutral-600">
-                {profileCompletion.completedCount} of {profileCompletion.totalCount} completed
-              </Body>
-              <Body className="text-xs font-semibold" style={{ color: COLORS.primaryAccent }}>
-                {profileCompletion.percentage}%
-              </Body>
-            </StyledView>
-            <StyledView className="bg-neutral-200 rounded-full h-1.5 overflow-hidden">
-              <StyledView
-                className="h-full rounded-full transition-all"
-                style={{
-                  width: `${profileCompletion.percentage}%`,
-                  backgroundColor: COLORS.primaryAccent,
-                }}
-              />
-            </StyledView>
-          </StyledView>
-        )}
-      </StyledView>
+      )}
 
       <StyledScrollView
         className="flex-1"

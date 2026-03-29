@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Dimensions } from 'react-native';
+import { AppState, View, Text, ScrollView, TouchableOpacity, RefreshControl, Dimensions } from 'react-native';
 import { FlashList, ListRenderItemInfo } from '@shopify/flash-list';
 
 import { UserRow } from '../../components/community/UserRow';
@@ -10,6 +10,7 @@ import { NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { EvaIcon } from '../../components/icons';
 import { MainTabParamList } from '../../types';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { communityService } from '../../services/communityServiceIndex';
 import { getIncomingRequests, acceptFriendRequest, declineFriendRequest, FriendRequest } from '../../services/friendService';
 import { FriendWithGridStatus } from '../../types/community';
@@ -22,7 +23,7 @@ import { beginnerTourGuide } from '../../config/guides';
 import { CommunitySkeleton } from '../../components/ui/SkeletonLoader';
 import { fetchLeaderboard } from '../../services/leaderboardService';
 import { COLORS } from '../../theme/colors';
-import { ScreenWrapper } from '../../components/ui';
+import { ScreenWrapper, ScreenTitle } from '../../components/ui';
 import { getLast7PMCentral } from '../../utils/centralTime';
 import { successHaptic, lightHaptic } from '../../utils/haptics';
 import { getBatchUnreadFriendIds } from '../../services/messageService';
@@ -66,6 +67,15 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
   const [processingRequestIds, setProcessingRequestIds] = useState<Set<string>>(new Set());
 
+  // Auto-refresh data when connectivity is restored after being offline
+  const reconnectHandlerRef = useRef<(() => void) | null>(null);
+  useNetworkStatus(useCallback(() => {
+    // Small delay to let the connection stabilize before fetching
+    setTimeout(() => {
+      reconnectHandlerRef.current?.();
+    }, 1500);
+  }, []));
+
   // Badge award modal state
   const [badgeModalVisible, setBadgeModalVisible] = useState(false);
   const [badgeTargetFriend, setBadgeTargetFriend] = useState<{ id: string; name: string } | null>(null);
@@ -88,11 +98,19 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
         profile.userId,
         friends.map(f => f.friendId),
       );
-      const map: Record<string, boolean> = {};
-      for (const id of unreadSet) {
-        map[id] = true;
-      }
-      setUnreadMap(map);
+      // Only update state if the unread set actually changed — avoids
+      // re-rendering the entire crew FlashList when nothing is new.
+      setUnreadMap(prev => {
+        const prevKeys = Object.keys(prev);
+        if (prevKeys.length === unreadSet.size && prevKeys.every(k => unreadSet.has(k))) {
+          return prev; // identical — skip state update
+        }
+        const map: Record<string, boolean> = {};
+        for (const id of unreadSet) {
+          map[id] = true;
+        }
+        return map;
+      });
     } catch {
       // Silent fail — unread dots are non-critical
     }
@@ -114,7 +132,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       setAlreadyHelped(helped);
       setLoadError(false);
 
-      // Load unread counts for sitting tight friends (they have chat)
+      // Load unread counts for "your crew" friends (they have chat)
       loadUnreadCounts(helped);
     } catch (error) {
       console.error("Failed to load community data:", error);
@@ -122,9 +140,12 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     }
   }, [loadUnreadCounts]);
 
+  const refreshingRef = useRef(false);
   const onRefresh = useCallback(async () => {
+    if (refreshingRef.current) return;
     const userId = await getAuthenticatedUserId();
     if (!userId) return;
+    refreshingRef.current = true;
     lightHaptic();
     setRefreshing(true);
     // Invalidate in-memory + AsyncStorage cache so pull-to-refresh always fetches fresh data
@@ -144,6 +165,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       showToast.error('Refresh failed. Check your connection.');
     } finally {
       setRefreshing(false);
+      refreshingRef.current = false;
     }
   }, [loadFriendsData]);
 
@@ -232,6 +254,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   const initializedRef = useRef(false);
 
+  // Wire up reconnect handler to re-initialize on connectivity restore
+  reconnectHandlerRef.current = initialize;
+
   useEffect(() => {
     initialize();
 
@@ -240,6 +265,26 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       initializedRef.current = true; // prevent useFocusEffect double-load
       initialize();
     });
+  }, [initialize]);
+
+  // Re-initialize when the app returns from background after 2+ minutes.
+  // useFocusEffect only fires on navigation events, not AppState changes, so
+  // without this the Community tab shows stale friend/voting data after the
+  // app was backgrounded for hours.
+  const lastActiveCommunityRef = useRef(Date.now());
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        const elapsed = Date.now() - lastActiveCommunityRef.current;
+        if (elapsed > 120_000) {
+          initializedRef.current = false; // allow full re-init
+          initialize();
+        }
+      } else if (nextState === 'background') {
+        lastActiveCommunityRef.current = Date.now();
+      }
+    });
+    return () => sub.remove();
   }, [initialize]);
 
   // Preload Matches tab after Community finishes loading — users commonly switch to it next.
@@ -300,11 +345,11 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       return;
     }
 
-    // Invalidate friends cache when returning from stack screens (e.g. ContactInvite)
-    if ('invalidateFriendsCache' in communityService) {
-      (communityService as any).invalidateFriendsCache();
-    }
     // Refresh profile + friends in parallel
+    // NOTE: Do NOT invalidate the friends cache here — getFriendsAreaData()
+    // uses stale-while-revalidate internally (serves cached data instantly,
+    // refreshes in background). Invalidating on every focus defeats the
+    // pattern and forces a full network round-trip on every tab switch.
     getUserProfile().then(result => {
       if (result.ok && result.data) setProfile(result.data);
     });
@@ -324,7 +369,10 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     navigation.navigate('Community');
   }, [loadFriendsData, navigation]);
 
+  const processingRequestRef = useRef(new Set<string>());
   const handleAcceptRequest = useCallback(async (requestId: string) => {
+    if (processingRequestRef.current.has(requestId)) return;
+    processingRequestRef.current.add(requestId);
     setProcessingRequestIds(prev => new Set([...prev, requestId]));
     const result = await acceptFriendRequest(requestId);
     if (result.ok) {
@@ -337,6 +385,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     } else {
       showToast.error('Could not accept request. Try again.');
     }
+    processingRequestRef.current.delete(requestId);
     setProcessingRequestIds(prev => {
       const next = new Set(prev);
       next.delete(requestId);
@@ -369,13 +418,22 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     return { kind: 'impact' as const, totalAssists };
   }, [totalFriends, usersToMatch, alreadyHelped]);
 
+  // Stable keys derived from friend IDs — prevents handler map re-creation
+  // when the arrays are new references but contain the same friends.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const voteIdsKey = useMemo(() => usersToMatch.map(u => u.friendId).join(','), [usersToMatch]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const crewIdsKey = useMemo(() => alreadyHelped.map(u => u.friendId).join(','), [alreadyHelped]);
+
   const voteHandlers = useMemo(
     () => buildVoteHandlers(usersToMatch, navigation),
-    [usersToMatch, navigation],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [voteIdsKey, navigation],
   );
   const crewHandlers = useMemo(
     () => buildCrewHandlers(alreadyHelped, navigation, handleBadgePress),
-    [alreadyHelped, navigation, handleBadgePress],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [crewIdsKey, navigation, handleBadgePress],
   );
 
   const voteKeyExtractor = useCallback((item: FriendWithGridStatus) => item.friendId, []);
@@ -407,6 +465,8 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     </StaggerItem>
   ), [crewHandlers, unreadMap]);
 
+  const navigateToContactInvite = useCallback(() => (navigation as any).navigate('ContactInvite'), [navigation]);
+
   if (loading || hasCompletedVoting === null) {
     return (
       <ScreenWrapper>
@@ -426,8 +486,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     );
   }
 
-  const navigateToContactInvite = () => (navigation as any).navigate('ContactInvite');
-
   return (
     <ScreenWrapper>
       <OfflineBanner />
@@ -441,9 +499,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       {/* Header section */}
       <View className="px-6 pt-4">
         <View className="flex-row items-center justify-between">
-          <Text style={styles.headerTitle} accessibilityRole="header">
-            Community
-          </Text>
+          <ScreenTitle>Community</ScreenTitle>
           <View style={styles.headerRight}>
             <MatchResetTimer />
             {!showInviteBanner && (
@@ -512,8 +568,8 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           {usersToMatch.length > 0 && (
             <View style={styles.sectionHeader}>
               <View style={[styles.sectionAccent, { backgroundColor: COLORS.primaryButton }]} />
-              <Text style={styles.sectionTitle}>Waiting on you</Text>
-              <View style={styles.helpCountBadge}>
+              <Text style={styles.sectionTitle} accessibilityRole="header">Waiting on you</Text>
+              <View style={styles.helpCountBadge} accessibilityLabel={`${usersToMatch.length} friends need your help`}>
                 <Text style={styles.helpCountText}>{usersToMatch.length}</Text>
               </View>
             </View>
@@ -537,8 +593,8 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           {alreadyHelped.length > 0 && (
             <View style={styles.sectionHeader}>
               <View style={[styles.sectionAccent, { backgroundColor: COLORS.successAlt }]} />
-              <Text style={styles.sectionTitle}>Sitting tight</Text>
-              <View style={[styles.helpCountBadge, { backgroundColor: COLORS.successAlt }]}>
+              <Text style={styles.sectionTitle} accessibilityRole="header">Your crew</Text>
+              <View style={[styles.helpCountBadge, { backgroundColor: COLORS.successAlt }]} accessibilityLabel={`${alreadyHelped.length} friends all set`}>
                 <Text style={styles.helpCountText}>{alreadyHelped.length}</Text>
               </View>
             </View>

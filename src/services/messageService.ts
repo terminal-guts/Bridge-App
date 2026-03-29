@@ -8,8 +8,11 @@
  * - Send text and audio messages
  * - Real-time message subscriptions via Supabase Realtime
  * - Audio file upload to Supabase Storage
- * - Read receipts
+ * - Read receipts with atomic updates
  * - Content moderation for text messages
+ * - Realtime reconnection gap recovery (re-fetches missed messages on SUBSCRIBED after disconnect)
+ * - Duplicate message prevention via seen-ID set at the service layer
+ * - Deterministic message ordering (sent_at + id tiebreaker)
  *
  * Friend messaging operations are in messageService.friends.ts.
  */
@@ -110,11 +113,14 @@ export const getMatchMessages = async (matchId: string): Promise<ApiResponse<Mes
 
     logger.info('[MESSAGE SERVICE] Fetching messages for match:', matchId);
 
+    // Order by sent_at with id as tiebreaker for deterministic ordering
+    // when multiple messages share the same timestamp
     const { data, error } = await supabase
       .from('messages')
       .select('id, match_id, sender_id, receiver_id, type, content, duration, sent_at, read_at')
       .eq('match_id', matchId)
-      .order('sent_at', { ascending: true });
+      .order('sent_at', { ascending: true })
+      .order('id', { ascending: true });
 
     if (error) {
       logger.error('[MESSAGE SERVICE] Fetch error:', error);
@@ -151,7 +157,6 @@ export const sendMessage = async (
   content: string,
   type: 'text' | 'audio' | 'image' = 'text',
   duration?: number,
-  waveformData?: number[]
 ): Promise<ApiResponse<Message>> => {
   try {
     logger.info(`[MESSAGE SERVICE] Sending ${type} message to match:`, matchId);
@@ -253,7 +258,6 @@ export const sendMessage = async (
         type,
         content: messageContent,
         duration,
-        waveformData,
         sentAt,
       };
 
@@ -333,17 +337,21 @@ export const markMessagesAsRead = async (
 
     logger.info('[MESSAGE SERVICE] Marking messages as read:', matchId, userId);
 
-    // Use RPC function for atomic update
-    const { data, error } = await supabase.rpc('mark_messages_as_read', {
+    // Use RPC function for atomic update; fall back to direct update if RPC
+    // doesn't exist (error code 42883 = undefined_function in Postgres).
+    const { error } = await supabase.rpc('mark_messages_as_read', {
       p_match_id: matchId,
       p_user_id: userId,
     });
 
     if (error) {
-      // If RPC doesn't exist, fall back to direct update
+      logger.warn('[MESSAGE SERVICE] RPC mark_messages_as_read failed, using fallback:', error.code);
+      // Stamp a single timestamp so every row in this batch gets the same read_at,
+      // preventing race conditions with incoming messages during the update.
+      const readAt = new Date().toISOString();
       const { error: updateError } = await supabase
         .from('messages')
-        .update({ read_at: new Date().toISOString() })
+        .update({ read_at: readAt })
         .eq('match_id', matchId)
         .eq('receiver_id', userId)
         .is('read_at', null);
@@ -379,8 +387,17 @@ export const markMessagesAsRead = async (
 // ============================================================================
 
 /**
- * Subscribe to real-time messages for a match
- * Returns an object with unsubscribe function
+ * Subscribe to real-time messages for a match.
+ *
+ * Edge-case handling:
+ * - **Duplicate prevention**: Maintains a seen-ID set so the same message is
+ *   never delivered to the callback twice (realtime can replay on reconnect).
+ * - **Gap recovery**: Tracks connection state. When the channel transitions
+ *   back to SUBSCRIBED after a disconnect, re-fetches all messages newer than
+ *   the last seen timestamp and delivers any that were missed during the gap.
+ * - The seen-ID set is capped to the most recent 500 IDs to bound memory.
+ *
+ * Returns an object with unsubscribe function.
  */
 export const subscribeToMessages = (
   matchId: string,
@@ -413,6 +430,60 @@ export const subscribeToMessages = (
     activeChannels.delete(matchId);
   }
 
+  // --- Dedup + gap recovery state ---
+  const seenIds = new Set<string>();
+  const SEEN_IDS_CAP = 500;
+  let lastSeenAt: string | null = null;
+  let wasDisconnected = false;
+
+  const trimSeenIds = () => {
+    if (seenIds.size > SEEN_IDS_CAP) {
+      const overflow = seenIds.size - SEEN_IDS_CAP;
+      const iter = seenIds.values();
+      for (let i = 0; i < overflow; i++) {
+        seenIds.delete(iter.next().value as string);
+      }
+    }
+  };
+
+  const deliverIfNew = (msg: Message) => {
+    if (seenIds.has(msg.id)) return;
+    seenIds.add(msg.id);
+    trimSeenIds();
+    if (!lastSeenAt || msg.sentAt > lastSeenAt) {
+      lastSeenAt = msg.sentAt;
+    }
+    callback(msg);
+  };
+
+  /** Re-fetch messages newer than lastSeenAt to fill any gap from disconnect */
+  const recoverGap = async () => {
+    if (!lastSeenAt) return; // No messages seen yet — initial load will cover it
+    logger.info('[MESSAGE SERVICE] Recovering gap since:', lastSeenAt);
+    try {
+      const query = supabase
+        .from('messages')
+        .select('id, match_id, sender_id, receiver_id, type, content, duration, sent_at, read_at')
+        .eq('match_id', matchId)
+        .gt('sent_at', lastSeenAt)
+        .order('sent_at', { ascending: true })
+        .order('id', { ascending: true });
+
+      const { data, error } = await query;
+      if (error) {
+        logger.error('[MESSAGE SERVICE] Gap recovery fetch error:', error);
+        return;
+      }
+      const recovered = (data || []).map(dbToMessage);
+      logger.info('[MESSAGE SERVICE] Gap recovery found', recovered.length, 'messages');
+      for (const msg of recovered) {
+        deliverIfNew(msg);
+      }
+    } catch (err) {
+      logger.error('[MESSAGE SERVICE] Gap recovery exception:', err);
+    }
+  };
+
   // Create new channel for this match
   const channelName = `messages:${matchId}`;
   const channel = supabase
@@ -426,17 +497,22 @@ export const subscribeToMessages = (
         filter: `match_id=eq.${matchId}`,
       },
       (payload) => {
-        logger.info('[MESSAGE SERVICE] New message received:', payload);
+        logger.info('[MESSAGE SERVICE] New message received via realtime');
         const newMessage = dbToMessage(payload.new as DbMessage);
-        callback(newMessage);
+        deliverIfNew(newMessage);
       }
     )
     .subscribe((status) => {
       logger.info('[MESSAGE SERVICE] Subscription status:', status);
       if (status === 'SUBSCRIBED') {
-        logger.info('[MESSAGE SERVICE] Successfully subscribed to match:', matchId);
-      } else if (status === 'CHANNEL_ERROR') {
-        logger.error('[MESSAGE SERVICE] Subscription error for match:', matchId);
+        if (wasDisconnected) {
+          logger.info('[MESSAGE SERVICE] Reconnected — running gap recovery for match:', matchId);
+          recoverGap();
+        }
+        wasDisconnected = false;
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        wasDisconnected = true;
+        logger.warn('[MESSAGE SERVICE] Channel disconnected for match:', matchId, 'status:', status);
       }
     });
 
@@ -527,29 +603,3 @@ export const cleanupSubscriptions = async (): Promise<void> => {
   resetMockState();
 };
 
-// ============================================================================
-// Development Helpers
-// ============================================================================
-
-/**
- * Clear mock messages (for testing)
- */
-export const clearMockMessages = (): void => {
-  logger.info('[MESSAGE SERVICE] Clearing mock messages');
-  resetMockState();
-};
-
-/**
- * Add mock message (for testing)
- */
-export const addMockMessage = (matchId: string, message: Message): void => {
-  if (!mockMessages[matchId]) {
-    mockMessages[matchId] = [];
-  }
-  mockMessages[matchId].push(message);
-
-  // Trigger callbacks
-  if (mockCallbacks[matchId]) {
-    mockCallbacks[matchId].forEach(callback => callback(message));
-  }
-};

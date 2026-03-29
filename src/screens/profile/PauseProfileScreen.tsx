@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
+import { View, ScrollView, Switch, Alert } from 'react-native';
 import { styled } from 'nativewind';
-import { H3, Body, BodySmall, Card, ScreenWrapper } from '../../components/ui';
+import { H3, Body, BodySmall, Card, ScreenWrapper, BackHeader } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { getUserProfile, updateProfilePauseStatus } from '../../services/profileService';
@@ -20,7 +20,6 @@ interface PauseProfileScreenProps {
 
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
-const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledSwitch = styled(Switch);
 
 /** Reusable bullet row for the "what happens" lists */
@@ -172,23 +171,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
   return (
     <ScreenWrapper>
       {/* Header */}
-      <StyledView
-        className="border-b px-4 py-3 flex-row items-center"
-        style={{
-          backgroundColor: COLORS.card,
-          borderBottomColor: COLORS.border,
-        }}
-      >
-        <StyledTouchableOpacity
-          onPress={() => navigation.goBack()}
-          className="mr-3"
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={{ minWidth: 44, minHeight: 44, justifyContent: 'center' }}
-        >
-          <EvaIcon name="arrow-back" variant="outline" size={24} color="text" />
-        </StyledTouchableOpacity>
-        <H3>Pause Profile</H3>
-      </StyledView>
+      <BackHeader title="Pause Profile" />
 
       <StyledScrollView className="flex-1">
         <StyledView className="px-4 py-4">

@@ -3,8 +3,9 @@
  * Modals and styles extracted to ChatScreen.components.tsx
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
+  AppState,
   View,
   SafeAreaView,
   StatusBar,
@@ -46,6 +47,8 @@ import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { EvaIcon } from '../../components/icons';
+import { OfflineBanner } from '../../components/ui/OfflineBanner';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 
 import {
   formatMessageDate,
@@ -82,6 +85,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
   const [imageLoadError, setImageLoadError] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sendingRef = useRef(false);
+
+  // Network status — shows OfflineBanner, guards send, auto-recovers on reconnect
+  const loadMessagesRef = useRef<((isRefresh?: boolean) => Promise<void>) | null>(null);
+  const { isOffline } = useNetworkStatus(useCallback(() => {
+    // Re-fetch messages on reconnect to recover any missed during the gap
+    setTimeout(() => {
+      loadMessagesRef.current?.(true);
+    }, 1500);
+  }, []));
 
   // Dropdown + action modals
   const [menuVisible, setMenuVisible] = useState(false);
@@ -155,7 +168,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     return () => { if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current); };
   }, [messages]);
 
+  const loadingRef = useRef(false);
   const loadMessages = useCallback(async (isRefresh = false) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     if (isRefresh) setRefreshing(true); else setLoading(true);
     setError(null);
     try {
@@ -195,15 +211,43 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       }
     } catch (err: any) {
       setError(err.message || 'Couldn\'t load your conversation right now');
-    } finally { setLoading(false); setRefreshing(false); }
+    } finally { setLoading(false); setRefreshing(false); loadingRef.current = false; }
   }, [matchId, recipientId, isFriend]);
+
+  // Wire up ref so reconnect handler can call loadMessages
+  loadMessagesRef.current = loadMessages;
+
+  // Re-fetch messages when app returns from background — covers the case where
+  // the realtime channel silently disconnected without firing CHANNEL_ERROR
+  // (e.g. OS killed the WebSocket after 24h+ in background).
+  const lastActiveRef = useRef(Date.now());
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        const elapsed = Date.now() - lastActiveRef.current;
+        // Only re-fetch if backgrounded for more than 2 minutes
+        if (elapsed > 120_000) {
+          logger.info('App foregrounded after', Math.round(elapsed / 1000), 's — re-fetching messages');
+          loadMessages(true);
+        }
+      } else if (nextState === 'background') {
+        lastActiveRef.current = Date.now();
+      }
+    });
+    return () => sub.remove();
+  }, [loadMessages]);
 
   const handleRefresh = useCallback(() => loadMessages(true), [loadMessages]);
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !currentUserId || sendingMessage) return;
+    if (!newMessage.trim() || !currentUserId || sendingRef.current) return;
+    if (isOffline) {
+      setSendError('You\'re offline. Your message will send when you reconnect.');
+      return;
+    }
     if (!isFriend && !match) return;
     if (isFriend && (!friendshipId || !recipientId)) return;
+    sendingRef.current = true;
     const targetRecipientId = isFriend ? recipientId! : (match!.currentUserId === match!.user1Id ? match!.user2Id : match!.user1Id);
     const messageText = newMessage.trim();
     setNewMessage(''); setSendingMessage(true); setSendError(null);
@@ -220,13 +264,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       const isRestricted = msg.toLowerCase().includes('restricted');
       setSendError(isRestricted ? 'That message has a restricted phrase. Use "Propose a Date" in the menu instead.' : msg);
       setNewMessage(messageText);
-    } finally { setSendingMessage(false); }
+    } finally { setSendingMessage(false); sendingRef.current = false; }
   };
 
   const handleAudioRecordingComplete = async (uri: string, durationMillis: number) => {
-    if (!currentUserId || sendingMessage) return;
+    if (!currentUserId || sendingRef.current) return;
+    if (isOffline) {
+      setSendError('You\'re offline. Your voice note will send when you reconnect.');
+      return;
+    }
     if (!isFriend && !match) return;
     if (isFriend && (!friendshipId || !recipientId)) return;
+    sendingRef.current = true;
     const targetRecipientId = isFriend ? recipientId! : (match!.currentUserId === match!.user1Id ? match!.user2Id : match!.user1Id);
     setSendingMessage(true); setSendError(null);
     try {
@@ -238,7 +287,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       const sentMsg = result.data;
       setMessages(prev => { if (prev.some(m => m.id === sentMsg.id)) return prev; return [...prev, sentMsg]; });
     } catch (err: any) { setSendError(err.message || 'Voice note failed to send. Please try again.'); }
-    finally { setSendingMessage(false); }
+    finally { setSendingMessage(false); sendingRef.current = false; }
   };
 
   // ── Menu action handlers ─────────────────────────────────────────────────
@@ -246,8 +295,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
   const openReportModal = () => { setMenuVisible(false); setTimeout(() => setReportModalVisible(true), 150); };
   const openProposeDateModal = () => { setMenuVisible(false); setTimeout(() => setProposeDateModalVisible(true), 150); };
 
+  const endMatchRef = useRef(false);
   const handleEndMatchConfirm = async () => {
-    if (!endMatchReason || endMatchSubmitting) return;
+    if (!endMatchReason || endMatchRef.current) return;
+    endMatchRef.current = true;
     const reason = endMatchReason === 'Other' ? endMatchCustomReason.trim() || 'Other' : endMatchReason;
     setEndMatchSubmitting(true);
     try {
@@ -255,24 +306,29 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       setEndMatchModalVisible(false); setEndMatchReason(''); setEndMatchCustomReason('');
       navigation.goBack();
     } catch (error: any) { Alert.alert('Hmm, that didn\'t work', 'We couldn\'t end the match right now. Give it another try?'); }
-    finally { setEndMatchSubmitting(false); }
+    finally { setEndMatchSubmitting(false); endMatchRef.current = false; }
   };
 
+  const reportSubmittingRef = useRef(false);
   const handleReportConfirm = async () => {
-    if (!reportReason || !currentUserId) return;
+    if (!reportReason || !currentUserId || reportSubmittingRef.current) return;
+    reportSubmittingRef.current = true;
     try {
-      await submitUserReport({ reporterId: currentUserId, reportedUserId: recipientId || '', reportedUserName: recipientName, reason: reportReason, details: reportDetails });
+      const finalReason = reportReason === 'Other' && reportDetails.trim() ? `Other: ${reportDetails.trim()}` : reportReason;
+      await submitUserReport({ reporterId: currentUserId, reportedUserId: recipientId || '', reportedUserName: recipientName, reason: finalReason, details: reportReason === 'Other' ? '' : reportDetails });
       setReportModalVisible(false); setReportReason(''); setReportDetails('');
       Alert.alert('Thanks for letting us know', 'Our team will look into this within 24 hours.');
     } catch (err) { Alert.alert('Hmm, that didn\'t work', 'We couldn\'t send your report right now. Give it another try?'); }
+    finally { reportSubmittingRef.current = false; }
   };
 
   const handleProposeDateConfirm = async () => {
     const text = dateProposalText.trim();
-    if (!text || !currentUserId || sendingMessage) return;
+    if (!text || !currentUserId || sendingRef.current) return;
     setProposeDateModalVisible(false); setDateProposalText('');
     const targetRecipientId = isFriend ? recipientId! : (match ? (match.currentUserId === match.user1Id ? match.user2Id : match.user1Id) : recipientId!);
     if (!targetRecipientId) return;
+    sendingRef.current = true;
     const messageText = `📅 Date Proposal: ${text}`;
     setSendingMessage(true); setSendError(null);
     try {
@@ -284,8 +340,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       const sentMsg = result.data;
       setMessages(prev => prev.some(m => m.id === sentMsg.id) ? prev : [...prev, sentMsg]);
     } catch (e: any) { setSendError(e.message || 'Date proposal failed to send. Please try again.'); }
-    finally { setSendingMessage(false); }
+    finally { setSendingMessage(false); sendingRef.current = false; }
   };
+
+  // Pre-compute which message indices need a date separator so renderMessage
+  // doesn't need `messages` in its dependency array (avoids re-creating the
+  // callback — and re-rendering every cell — on each new message).
+  const dateSeparatorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (let i = 0; i < messages.length; i++) {
+      const dateLabel = formatMessageDate(new Date(messages[i].sentAt));
+      const prevLabel = i > 0 ? formatMessageDate(new Date(messages[i - 1].sentAt)) : null;
+      if (i === 0 || dateLabel !== prevLabel) {
+        map.set(messages[i].id, dateLabel);
+      }
+    }
+    return map;
+  }, [messages]);
 
   const renderDateSeparator = useCallback((date: string) => (
     <View style={cs.dateSepWrap}>
@@ -295,16 +366,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     </View>
   ), []);
 
-  const renderMessage = useCallback(({ item, index }: { item: Message; index: number }) => {
+  const renderMessage = useCallback(({ item }: { item: Message }) => {
     const isOwnMessage = item.senderId === currentUserId;
     const messageDate = new Date(item.sentAt);
     const timeString = messageDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    const showDateSeparator = index === 0 || (index > 0 && formatMessageDate(new Date(messages[index - 1].sentAt)) !== formatMessageDate(messageDate));
+    const dateSepLabel = dateSeparatorMap.get(item.id);
     const isDateProposal = item.type === 'text' && item.content.startsWith('📅 Date Proposal:');
     const dateProposalBody = isDateProposal ? item.content.replace('📅 Date Proposal: ', '') : '';
     return (
       <>
-        {showDateSeparator && renderDateSeparator(formatMessageDate(messageDate))}
+        {dateSepLabel != null && renderDateSeparator(dateSepLabel)}
         <View style={[cs.messageRow, isOwnMessage ? cs.messageRowOwn : cs.messageRowOther]}>
           {isDateProposal ? (
             <View style={dateProposalStyles.card}>
@@ -336,7 +407,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
         </View>
       </>
     );
-  }, [currentUserId, messages, renderDateSeparator]);
+  }, [currentUserId, dateSeparatorMap, renderDateSeparator]);
 
   const renderEmptyState = useCallback(() => {
     if (isFriend) {
@@ -361,6 +432,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       </View>
     );
   }, [isFriend, recipientName, currentUserProfile, matchRecipientProfile]);
+
+  const keyExtractor = useCallback((item: Message) => item.id, []);
 
   const renderHeader = useCallback(() => {
     if (isFriend || messages.length === 0) return null;
@@ -402,6 +475,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
   return (
     <SafeAreaView style={cs.screen}>
       <StatusBar barStyle="dark-content" />
+      <OfflineBanner />
       {/* Chat Header */}
       <View style={cs.header}>
         <View style={cs.headerLeft}>
@@ -439,7 +513,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={cs.flex1} keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET}>
         <FlatList
-          ref={flatListRef} data={messages} keyExtractor={(item) => item.id}
+          ref={flatListRef} data={messages} keyExtractor={keyExtractor}
           renderItem={renderMessage} contentContainerStyle={FLAT_LIST_CONTENT_STYLE}
           showsVerticalScrollIndicator={false} ListHeaderComponent={renderHeader}
           ListEmptyComponent={renderEmptyState}

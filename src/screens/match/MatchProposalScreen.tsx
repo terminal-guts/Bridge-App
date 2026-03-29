@@ -159,6 +159,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   const navigationTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasPassedThresholdRef = useRef(false);
   const acceptingRef = useRef(false);
+  const passingRef = useRef(false);
 
   const profile = effectiveProfile;
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
@@ -274,6 +275,8 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
 
   const handlePassConfirmed = useCallback(() => { setShowPassConfirm(false); setShowPassFeedback(true); }, []);
   const handlePassFeedbackSubmit = useCallback(async (_feedbackId?: string) => {
+    if (passingRef.current) return;
+    passingRef.current = true;
     setShowPassFeedback(false);
     setIsPassing(true);
 

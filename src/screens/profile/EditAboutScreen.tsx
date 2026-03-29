@@ -5,7 +5,7 @@ import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { H3, Body } from '../../components/ui/Typography';
 import { Card, Input, ScreenWrapper } from '../../components/ui';
-import { lightHaptic, mediumHaptic } from '../../utils/haptics';
+import { selectionHaptic, mediumHaptic } from '../../utils/haptics';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SectionScreenWrapper } from './sections/SectionScreenWrapper';
@@ -111,7 +111,7 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
                 delayPressIn={0}
                 style={{ minHeight: MIN_TOUCH_TARGET }}
                 onPress={() => {
-                  lightHaptic();
+                  selectionHaptic();
                   const updated = isSelected
                     ? religionArray.filter((r: string) => r !== option)
                     : [...religionArray, option];
@@ -142,7 +142,7 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
                 delayPressIn={0}
                 style={{ minHeight: MIN_TOUCH_TARGET }}
                 onPress={() => {
-                  lightHaptic();
+                  selectionHaptic();
                   updateProfile({ politicalLeaning: isSelected ? '' : option.value });
                 }}
                 className={`px-3 justify-center rounded-full border ${isSelected
@@ -207,7 +207,7 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
                 delayPressIn={0}
                 style={{ minHeight: MIN_TOUCH_TARGET }}
                 onPress={() => {
-                  lightHaptic();
+                  selectionHaptic();
                   updateProfile({ educationLevel: isSelected ? '' : option.value });
                 }}
                 className={`px-3 justify-center rounded-full border ${isSelected

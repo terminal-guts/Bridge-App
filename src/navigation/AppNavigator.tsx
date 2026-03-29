@@ -378,6 +378,7 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
   const authStateRef = React.useRef<boolean | null>(null);
   const onReadyCalledRef = React.useRef(false);
   const pendingInviteCode = useRef<string | null>(null);
+  const pendingNotificationData = useRef<Record<string, any> | null>(null);
   // pendingClaimToken removed — ghost profile claim flow deferred
 
   // Signal App.tsx that the navigator has a definitive auth state and the first
@@ -398,29 +399,43 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
 
   // Handle deep links: bridge://invite/BRIDGE-XXXX-XXXX
   const handleDeepLink = useCallback((url: string) => {
-    const parsed = Linking.parse(url);
-    if (parsed.path?.startsWith('invite/')) {
-      const code = parsed.path.replace('invite/', '').toUpperCase();
-      if (/^BRIDGE-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)) {
-        if (authStateRef.current && navigationRef.current) {
-          // App is ready — navigate and auto-add
-          navigationRef.current.navigate('ContactInvite', { autoAddCode: code });
-        } else {
-          // App not ready yet — save for later
-          pendingInviteCode.current = code;
+    try {
+      const parsed = Linking.parse(url);
+      if (parsed.path?.startsWith('invite/')) {
+        const code = parsed.path.replace('invite/', '').toUpperCase();
+        if (/^BRIDGE-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)) {
+          if (authStateRef.current && navigationRef.current) {
+            // App is ready — navigate and auto-add
+            navigationRef.current.navigate('ContactInvite', { autoAddCode: code });
+          } else {
+            // App not ready yet — save for later
+            pendingInviteCode.current = code;
+          }
         }
       }
+      // Ghost profile claim deep links deferred
+    } catch (e) {
+      logger.warn('[AppNavigator] Failed to parse deep link:', url);
     }
-    // Ghost profile claim deep links deferred
   }, []);
 
-  // Route to the correct screen when a push notification is tapped
+  // Route to the correct screen when a push notification is tapped.
+  // If the user isn't authenticated yet, stash the payload so it can be
+  // replayed once auth resolves (see the pending-notification effect below).
   const handleNotificationNavigation = useCallback((data: Record<string, any>) => {
     const nav = navigationRef.current;
-    if (!nav || !authStateRef.current) return;
+    if (!nav || !authStateRef.current) {
+      // Not ready — queue for replay after auth
+      pendingNotificationData.current = data;
+      return;
+    }
 
-    const screen = data?.screen as string | undefined;
-    const type = data?.type as string | undefined;
+    // Sanitize: only allow known string fields through to prevent injection
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const VALID_SCREENS = ['Community', 'Matches', 'Chat', 'Profile', 'Leaderboard', 'SupportChat'];
+    const screen = typeof data?.screen === 'string' && VALID_SCREENS.includes(data.screen) ? data.screen : undefined;
+    const type = typeof data?.type === 'string' ? data.type : undefined;
+    const safeMatchId = typeof data?.matchId === 'string' && UUID_RE.test(data.matchId) ? data.matchId : undefined;
 
     // Role-aware tab navigator: matchmakers use MatchmakerTabs (no Matches tab)
     const isMatchmaker = getInMemoryMinimalStatus()?.role === 'matchmaker';
@@ -435,8 +450,8 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
       nav.navigate('SupportChat');
       return;
     }
-    if (screen === 'Chat' && data?.matchId) {
-      nav.navigate('Chat', { matchId: data.matchId });
+    if (screen === 'Chat' && safeMatchId) {
+      nav.navigate('Chat', { matchId: safeMatchId });
       return;
     }
     if (screen === 'Chat' || screen === 'Matches') {
@@ -459,12 +474,17 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
       return;
     }
     if (type === 'message' || type === 'ghosting') {
-      nav.navigate(tabs, { screen: isMatchmaker ? 'Community' : 'Matches' });
+      // Only deep-link to Chat if we have a valid matchId; otherwise go to Matches list
+      if (safeMatchId) {
+        nav.navigate('Chat', { matchId: safeMatchId });
+      } else {
+        nav.navigate(tabs, { screen: isMatchmaker ? 'Community' : 'Matches' });
+      }
       return;
     }
     if (type === 'ice_breaker') {
-      if (data?.matchId) {
-        nav.navigate('Chat', { matchId: data.matchId });
+      if (safeMatchId) {
+        nav.navigate('Chat', { matchId: safeMatchId });
       } else {
         nav.navigate(tabs, { screen: isMatchmaker ? 'Community' : 'Matches' });
       }
@@ -492,6 +512,8 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
     // Check if app was opened via deep link
     Linking.getInitialURL().then((url) => {
       if (url) handleDeepLink(url);
+    }).catch(() => {
+      // getInitialURL can reject on some Android devices — non-critical
     });
     return () => subscription.remove();
   }, [handleDeepLink]);
@@ -519,7 +541,7 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
     return () => responseSubscription?.remove();
   }, [handleNotificationNavigation]);
 
-  // Process pending invite or claim once authenticated
+  // Process pending invite or notification once authenticated
   useEffect(() => {
     if (isAuthenticated && navigationRef.current) {
       if (pendingInviteCode.current) {
@@ -529,8 +551,14 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
           navigationRef.current?.navigate('ContactInvite', { autoAddCode: code });
         }, 800);
       }
+      // Replay any notification tap that arrived before auth was ready
+      if (pendingNotificationData.current) {
+        const data = pendingNotificationData.current;
+        pendingNotificationData.current = null;
+        setTimeout(() => handleNotificationNavigation(data), 800);
+      }
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, handleNotificationNavigation]);
 
   useEffect(() => {
     authStateRef.current = isAuthenticated;
@@ -697,6 +725,32 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
         appStateSubscription = AppState.addEventListener('change', async (nextState) => {
           if (nextState === 'active') {
             notificationService.scheduleAppOpenChecks();
+
+            // Check if the daily cycle boundary (7 PM Central) passed while
+            // backgrounded. Resets stale vote counts and invalidates caches so
+            // screens show fresh data instead of yesterday's state.
+            try {
+              const { communityBackendService } = await import('../services/communityBackendService');
+              communityBackendService.checkForegroundStaleness();
+            } catch {}
+
+            // Validate session is still alive after returning from background.
+            // autoRefreshToken handles normal expiry, but the refresh token itself
+            // can expire (e.g. user backgrounds the app for days) or be revoked.
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            if (!isMountedRef.current) return;
+            if (sessionError || !session?.user) {
+              logger.info('[AppNavigator] Foreground session check failed — signing out');
+              clearCachedUserId();
+              clearMinimalProfileStatusCache();
+              setIsAuthenticated(false);
+              showToast.error('Session Expired', 'Your session expired. Please sign in again.');
+              if (navigationRef.current) {
+                navigationRef.current.navigate('Welcome');
+              }
+              return;
+            }
+
             // Re-check suspension status on foreground
             try {
               const status = await checkMinimalProfileStatus();
@@ -731,6 +785,17 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
         setCachedUserId(session.user.id);
         setupNotifications();
         // Development mock data creation removed — use real Supabase data
+      } else if (event === 'TOKEN_REFRESHED' && !session) {
+        // Auto-refresh failed (refresh token expired or revoked) — treat as sign-out
+        logger.info('[AppNavigator] TOKEN_REFRESHED with null session — forcing sign-out');
+        clearCachedUserId();
+        invalidateProfileCache();
+        clearMinimalProfileStatusCache();
+        setIsAuthenticated(false);
+        showToast.error('Session Expired', 'Your session expired. Please sign in again.');
+        if (navigationRef.current) {
+          navigationRef.current.navigate('Welcome');
+        }
       } else if (event === 'SIGNED_OUT' && wasAuthenticated) {
         clearCachedUserId();
         invalidateProfileCache();

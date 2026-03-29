@@ -78,12 +78,47 @@ The entire app uses **Plus Jakarta Sans** (Google Fonts, OFL license). This is a
   - `FONTS.bold` = 700 (section headings, names, card titles)
   - `FONTS.extraBold` = 800 (screen titles, tab headers, hero text, large numbers — anything that anchors a screen)
 - **Screen title hierarchy** (always include explicit `fontWeight` alongside `fontFamily` to ensure iOS renders the correct weight):
-  - **Primary tab titles** ("Community", "Match", "Profile"): `FONTS.bold` + `fontWeight: '700'` at `FONT_SIZES['5xl']` (28px).
-  - **Secondary screen titles** (Settings, Leaderboard, etc.): `FONTS.bold` + `fontWeight: '700'` at `FONT_SIZES['4xl']` (24px).
-  - **Empty state headlines** ("No matches yet", "Bring your people"): `FONTS.bold` at `FONT_SIZES['4xl']` (24px). Same size, visually consistent.
-  - **User names** (below avatar on profile): `FONTS.bold` at `FONT_SIZES['4xl']` (24px). One step below the screen title.
+  - **Primary tab titles** ("Community", "Match", "Profile"): Use the `<ScreenTitle>` component — never compose the style manually. This is the single source of truth (bold 700, 28px, -0.5 letterSpacing).
+  - **Secondary screen titles** (Settings, Leaderboard, etc.): Use `<BackHeader>` which handles its own title at 24px.
+  - **Empty state headlines** ("No matches yet", "Bring your people"): `FONTS.bold` at `FONT_SIZES['4xl']` (24px).
+  - **User names** (below avatar on profile): `FONTS.bold` + `fontWeight: '700'` at `FONT_SIZES['4xl']` (24px). Must be the clear secondary anchor after the screen title.
+  - **Section card titles** ("About Me", "Match Preferences", "Profile Strength"): `FONTS.semiBold` (600) at `FONT_SIZES.lg` (15px). Never bold 700 — at small sizes bold competes with the user name and screen title.
+  - **Section card subtitles** ("The basics about you"): `FONTS.regular` at `FONT_SIZES.md` (13px), `COLORS.text.secondary`.
   - `FONTS.extraBold` (800) is reserved for hero/display text only (welcome screen headline, large stat numbers).
 - **Header icon groups** (eye, pencil, settings on Profile; timer + add-friend on Community): Icons must be tightly grouped with `gap: 4` — not `space-x-3` or `minWidth: 44` per icon. Use `hitSlop` for touch targets instead of padding/minWidth, which spaces icons too far apart.
+
+## Back Button Standard
+
+Every screen with a back button MUST use the `<BackHeader>` component from `src/components/ui/BackHeader.tsx`. No hand-rolled back buttons.
+
+### The standard:
+- **Icon**: `arrow-back` (EvaIcon, outline variant, 24px) — never `arrow-ios-back`, never a close X (use `backIcon="close"` prop for modals)
+- **No text**: Never show "Back" text next to the arrow. The icon alone is sufficient.
+- **No background circle**: The arrow is plain — no gray circle, no pill, no container behind it.
+- **Touch target**: 44x44px minimum via the BackHeader component (built in)
+- **Color**: `COLORS.text.heading` (#1E293B) — never blue, never gray
+- **Position**: Left-aligned in the header row
+
+### Usage:
+```tsx
+// Simple — just a title
+<BackHeader title="Settings" />
+
+// Centered title with right action
+<BackHeader title="Stats" titleAlign="center" right={<ShareButton />} />
+
+// Custom back behavior (e.g., save before navigating)
+<BackHeader title="Edit Profile" onBack={handleSaveAndGoBack} />
+
+// Modal-style close button
+<BackHeader title="Details" backIcon="close" />
+```
+
+### Exceptions (do NOT use BackHeader):
+- **Main tab screens** (Community, Match, Profile) — these have no back button, just a title + action icons
+- **MatchProposalScreen** — uses a floating close button over a photo, not a header
+- **ProfileMatchScreen** — uses a floating back button over a photo hero
+- **ChatScreen** — has a complex header with avatar + name + menu that doesn't fit the simple pattern
 - **Do not** use `Outfit`, `Satoshi`, `Inter`, or any other font family — these have been fully removed.
 - **Do not** rely on `fontWeight` alone — React Native with custom fonts requires the specific font file via `fontFamily`.
 - **Always use `TEXT_STYLES` presets** when a semantic match exists (e.g., `TEXT_STYLES.headingSm` instead of manually composing `fontFamily` + `fontSize` + `lineHeight`). Only compose raw styles when no preset fits.
@@ -158,6 +193,40 @@ All interactive elements must meet iOS Human Interface Guidelines minimum touch 
 - If the visual element is smaller than 44px (e.g., a 24px icon), use `padding`, `hitSlop`, or a wrapper `View` to expand the tappable area to at least 44x44.
 - **`hitSlop`** is preferred for icon buttons: `hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}`.
 - Test touch targets on the **smallest supported device** (iPhone SE, 375pt width).
+
+## "Other" Free-Text Input Pattern
+
+When a selection list (report reasons, end-match reasons, pass feedback, etc.) includes an "Other" or "Something else" option, tapping it must reveal a text input — never submit a bare "Other" string.
+
+### Required behavior
+
+1. **In-place transition**: The option list swaps to a text input view *within the same bottom sheet* — no second modal.
+2. **`KeyboardAvoidingView`**: Wrap the modal content so the sheet pushes above the keyboard on iOS. Use `behavior="padding"` on iOS, `"height"` on Android.
+3. **Auto-focus**: The `TextInput` sets `autoFocus` so the keyboard opens immediately.
+4. **Character limit**: 300 characters max. Show a `{length}/300` counter below the input, right-aligned.
+5. **Validation**: Submit button is disabled (visually dimmed) until the user types at least 1 non-whitespace character.
+6. **Back button**: A "Back" button returns to the reason list so the user can pick a different option.
+7. **Submit format**: Send the reason as `"Other: {user text}"` so the backend can distinguish from predefined reasons.
+8. **Cleanup**: On dismiss (overlay tap, cancel, or submit), reset the text and hide the input view.
+
+### Styling (match existing sheet styles)
+
+- Input: `borderWidth: 1.5`, `borderRadius: 12`, `borderColor: COLORS.border`, `backgroundColor: COLORS.screenBackground`, `minHeight: 100`, `maxHeight: 140`, `multiline`, `textAlignVertical: 'top'`
+- Char count: `FONTS.regular`, `FONT_SIZES.sm`, `COLORS.text.light`, right-aligned
+- Buttons: side-by-side in a `flexDirection: 'row'` container with `gap: 12`. "Back" has outline style, "Submit" has solid destructive style (red for reports, primary for neutral flows).
+
+### Reference implementation
+
+`ProfileMatchScreen.tsx` — report flow. Uses the full in-place transition pattern (reason list swaps to text input view with Back/Submit buttons). This is the canonical example.
+
+### Where this pattern is applied
+
+| File | Flow | Pattern |
+|------|------|---------|
+| `ProfileMatchScreen.tsx` | Report user from profile | Full in-place transition (canonical) |
+| `ChatScreen.components.tsx` | ReportModal in chat | Inline — text input becomes required + char count when "Other" selected |
+| `MatchProposalScreen.components.tsx` | PassFeedbackModal | Inline — text input slides in below "Something else" option |
+| `EndMatchModal.tsx` | End match modal | Conditional input + validation (pre-existing, already correct) |
 
 ## Loading, Empty & Error States
 

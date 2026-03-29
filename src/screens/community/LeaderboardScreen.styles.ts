@@ -413,6 +413,13 @@ export const s = StyleSheet.create({
     lineHeight: LINE_HEIGHTS.xs,
   },
 
+  // Back button — 44x44 touch target per Back Button Standard
+  headerBackButton: {
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center' as const,
+  },
+
   // Spacer to balance header row when info icon is hidden
   headerSpacer: {
     width: 24,

@@ -5,6 +5,7 @@ import { styled } from 'nativewind';
 import { createLogger } from '../../utils/secureLogger';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { EvaIcon } from '../icons';
+import { COLORS } from '../../theme/colors';
 
 const logger = createLogger('Avatar');
 
@@ -48,7 +49,7 @@ export const Avatar: React.FC<AvatarProps> = ({
         accessibilityRole="image"
         accessibilityLabel={accessibilityLabel}
       >
-        <EvaIcon name="person" variant="outline" size={size} color="#A3A3A3" />
+        <EvaIcon name="person" variant="outline" size={size} color={COLORS.text.disabled} />
       </StyledView>
     );
   }
@@ -57,7 +58,7 @@ export const Avatar: React.FC<AvatarProps> = ({
     <StyledImage
       source={{ uri: optimizedUri }}
       className={`${roundedClass} ${className}`}
-      style={{ width: size, height: size, backgroundColor: '#E5E7EB' }}
+      style={{ width: size, height: size, backgroundColor: COLORS.backgroundGrayMedium }}
       placeholder={blurhash ? { blurhash } : undefined}
       blurRadius={blurRadius}
       contentFit="cover"

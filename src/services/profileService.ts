@@ -20,7 +20,7 @@ import { calculateProfileStrengthBreakdown } from '../utils/profileCompleteness'
 
 // Re-export from sub-modules so existing imports keep working
 export { addProfilePhotos, removeProfilePhoto, reorderProfilePhotos, setMainProfilePhoto } from './profileService.photos';
-export { updateProfilePauseStatus, getProfilePauseStatus, markGuideCompleted, getGuideCompletionStatus, checkMinimalProfileStatus, getCachedMinimalProfileStatus, clearMinimalProfileStatusCache, setCachedRole, fetchAndSetUserProfile, getProfileById, getFullUserProfileById, checkEmailRegistered, findProfileByEmail, MinimalProfileStatus, getInMemoryMinimalStatus } from './profileService.extras';
+export { updateProfilePauseStatus, getProfilePauseStatus, markGuideCompleted, getGuideCompletionStatus, checkMinimalProfileStatus, getCachedMinimalProfileStatus, clearMinimalProfileStatusCache, setCachedRole, fetchAndSetUserProfile, getProfileById, getFullUserProfileById, findProfileByEmail, MinimalProfileStatus, getInMemoryMinimalStatus } from './profileService.extras';
 export { saveOnboardingStep, createUserProfile } from './profileService.onboarding';
 
 const logger = createLogger('ProfileService');
@@ -30,7 +30,8 @@ const logger = createLogger('ProfileService');
 // ============================================================================
 
 const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-let profileCache: { data: UserProfile; ts: number } | null = null;
+const SIGNED_URL_TTL_MS = 23 * 60 * 60 * 1000; // 23 hours — re-sign before 24h expiry
+let profileCache: { data: UserProfile; ts: number; signedAt: number } | null = null;
 
 let pendingProfileFetch: Promise<ApiResponse<UserProfile>> | null = null;
 
@@ -195,15 +196,22 @@ function mapBackendToUserProfile(data: Record<string, any>): UserProfile {
 /**
  * Get the current user's profile directly from Supabase tables.
  * Uses stale-while-revalidate: returns stale cache immediately + refreshes in background.
+ * If signed URLs have expired (>23h), forces a fresh fetch to avoid gray circles.
  */
 export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
   // Return cached profile if still fresh
   if (profileCache && Date.now() - profileCache.ts < PROFILE_CACHE_TTL_MS) {
-    return { ok: true, data: profileCache.data };
+    // Even if the profile data is fresh, check if signed URLs are about to expire
+    if (Date.now() - profileCache.signedAt < SIGNED_URL_TTL_MS) {
+      return { ok: true, data: profileCache.data };
+    }
+    // Signed URLs expired — fall through to re-fetch
   }
 
-  // Stale-while-revalidate: if cache exists but expired, return stale + refresh
-  if (profileCache) {
+  // Stale-while-revalidate: if cache exists but profile data expired (not signed URLs),
+  // return stale + refresh in background. But if signed URLs are expired, we MUST
+  // wait for a fresh fetch — stale signed URLs render as gray circles.
+  if (profileCache && Date.now() - profileCache.signedAt < SIGNED_URL_TTL_MS) {
     // Trigger background refresh (deduplicated)
     if (!pendingProfileFetch) {
       pendingProfileFetch = _fetchUserProfile().finally(() => { pendingProfileFetch = null; });
@@ -211,7 +219,7 @@ export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
     return { ok: true, data: profileCache.data };
   }
 
-  // No cache at all — must wait for network
+  // No cache, or signed URLs expired — must wait for network
   if (pendingProfileFetch) {
     return pendingProfileFetch;
   }
@@ -243,12 +251,15 @@ const _fetchUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
       throw new Error(profileResult.error.message);
     }
 
-    // Extract photo storage paths and start signing in parallel with remaining queries
+    // Extract photo storage paths and start signing in parallel with remaining queries.
+    // Photos may be stored as raw paths ("userId/photo.jpg") or legacy full URLs
+    // ("https://...supabase.co/.../profile-photos/userId/photo.jpg"). Both need
+    // signed URLs now that the bucket is private.
     const rawPhotos: Array<{ url: string }> = profileResult.data?.photos || [];
     const validPhotos = rawPhotos.filter((p) => p.url && !p.url.startsWith('file://'));
     const storagePaths = validPhotos
-      .map((p) => p.url)
-      .filter((url: string) => url && !url.startsWith('http'));
+      .map((p) => extractStoragePath(p.url))
+      .filter((path: string) => !!path);
 
     // Start photo signing NOW — runs in parallel with prefs/dq/karma queries
     const signedUrlsPromise = storagePaths.length > 0
@@ -277,15 +288,32 @@ const _fetchUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
       profile.photos = profile.photos.filter(p => p.url && !p.url.startsWith('file://'));
     }
 
-    // Apply signed URLs (already resolved in parallel)
+    // Apply signed URLs (already resolved in parallel).
+    // Look up by extracted storage path so both raw paths and legacy full URLs resolve.
     if (urlMapRes && urlMapRes.ok && urlMapRes.data && profile.photos) {
-      profile.photos = profile.photos.map(p => ({
-        ...p,
-        url: urlMapRes.data![p.url] || p.url,
-      }));
+      const urlMap = urlMapRes.data!;
+      profile.photos = profile.photos.map(p => {
+        const path = extractStoragePath(p.url);
+        return { ...p, url: urlMap[path] || p.url };
+      });
     }
 
-    profileCache = { data: profile, ts: Date.now() };
+    // Fallback: if any photo URL is still a raw storage path (signing failed or was
+    // skipped), generate a public URL so the image component has a valid HTTP URL.
+    // Private buckets will 403 on public URLs, but that is a better failure mode than
+    // a non-HTTP string which guarantees a gray circle with no retry possible.
+    if (profile.photos) {
+      profile.photos = profile.photos.map(p => {
+        if (p.url && !p.url.startsWith('http')) {
+          const { data } = supabase.storage.from('profile-photos').getPublicUrl(p.url);
+          return { ...p, url: data.publicUrl };
+        }
+        return p;
+      });
+    }
+
+    const now = Date.now();
+    profileCache = { data: profile, ts: now, signedAt: now };
     return { ok: true, data: profile };
   } catch (error: unknown) {
     logger.error('[ProfileService] getUserProfile error:', error);
@@ -413,6 +441,9 @@ export const updateUserProfile = async (
         logger.warn('[ProfileService] Could not save deep question answers:', dqError.message);
       }
     }
+
+    // Invalidate cache so the profile completion check below reads fresh data
+    invalidateProfileCache();
 
     // Check if profile strength reached 100% → set profile_completed = true
     try {

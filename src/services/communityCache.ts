@@ -197,7 +197,7 @@ export async function preloadCommunityCache(): Promise<void> {
     if (votingGateRaw && !inMemoryVotingGate) {
       try {
         const entry: CacheEntry<boolean> = JSON.parse(votingGateRaw);
-        if (entry.data && entry.cycleId) {
+        if (typeof entry.data === 'boolean' && entry.cycleId) {
           inMemoryVotingGate = { completed: entry.data, cycleId: entry.cycleId };
         }
       } catch { /* corrupt entry — ignore */ }

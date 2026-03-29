@@ -49,7 +49,13 @@ export function useProfileScreen(navigation: any) {
   const [showEditAnswerModal, setShowEditAnswerModal] = useState(false);
   const [selectedQuestionForEdit, setSelectedQuestionForEdit] = useState<DeepQuestionAnswer | null>(null);
   const [editingAnswer, setEditingAnswer] = useState('');
-  const { isOffline } = useNetworkStatus();
+  // Auto-refresh profile data when connectivity is restored after being offline
+  const reconnectHandlerRef = useRef<(() => void) | null>(null);
+  const { isOffline } = useNetworkStatus(useCallback(() => {
+    setTimeout(() => {
+      reconnectHandlerRef.current?.();
+    }, 1500);
+  }, []));
 
   // Loading states for star/unstar operations
   const [starringQuestions, setStarringQuestions] = useState<Set<number>>(new Set());
@@ -183,6 +189,12 @@ export function useProfileScreen(navigation: any) {
     setBadgesLoading(false);
   }, []);
 
+  // Wire up reconnect handler now that loaders are defined
+  reconnectHandlerRef.current = () => {
+    lastFetchRef.current = 0; // force fresh fetch
+    Promise.all([loadProfile(), loadFriendCount(), loadBadges()]).catch(() => {});
+  };
+
   // Reload profile data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
@@ -278,6 +290,11 @@ export function useProfileScreen(navigation: any) {
   }, []);
 
   const handleSaveEditedAnswer = async (newAnswer: string): Promise<boolean> => {
+    if (isOffline) {
+      showToast.error('You\'re offline', 'Your changes will need to be saved when you reconnect.');
+      return false;
+    }
+
     const questionToEdit = selectedQuestionForEdit || currentEditingQuestion;
 
     if (!questionToEdit || !newAnswer.trim()) {
@@ -335,6 +352,10 @@ export function useProfileScreen(navigation: any) {
   };
 
   const handleInlineSave = async (slotIndex: number, question: DeepQuestionAnswer) => {
+    if (isOffline) {
+      showToast.error('You\'re offline', 'Your changes will need to be saved when you reconnect.');
+      return;
+    }
     const trimmed = inlineEditText.trim();
     if (!trimmed || !profile) return;
     if (trimmed === question.answer) {
@@ -445,6 +466,10 @@ export function useProfileScreen(navigation: any) {
   };
 
   const handleSaveNewAnswer = async (answer: string): Promise<boolean> => {
+    if (isOffline) {
+      showToast.error('You\'re offline', 'Your changes will need to be saved when you reconnect.');
+      return false;
+    }
     if (!selectedQuestionToAnswer || selectedSlotIndex === null || !profile) {
       Alert.alert('Error', 'Invalid state. Please try again.');
       return false;

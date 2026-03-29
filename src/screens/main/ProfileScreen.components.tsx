@@ -16,7 +16,7 @@ import { WineGlassIcon, LeafIcon, CigaretteIcon, PillIcon } from '../../componen
 import { formatProfileValue, formatGenderDisplay } from '../../utils/formatProfileValue';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
 
 const StyledView = styled(View);
 const StyledImage = Image;
@@ -87,11 +87,11 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
       defaultExpanded={true}
     >
       <StyledView className="space-y-3">
-        <ProfileInfoItem icon="calendar" label="Age" value={`${profile.age} years old`} />
+        <ProfileInfoItem icon="calendar" label="Age" value={profile.age ? `${profile.age} years old` : 'Not specified'} />
         {profile.height && (
           <ProfileInfoItem icon="maximize" label="Height" value={profile.height} />
         )}
-        <ProfileInfoItem icon="person" label="Ethnicity" value={profile.ethnicity} />
+        <ProfileInfoItem icon="person" label="Ethnicity" value={profile.ethnicity || 'Not specified'} />
         {profile.location && (
           <ProfileInfoItem icon="pin" label="Lives in" value={profile.location} />
         )}
@@ -468,17 +468,12 @@ export const PreferencesSection: React.FC<PreferencesSectionProps> = ({ preferen
         <LifestyleItem
           icon="calendar"
           label="Age Range"
-          value={`${preferences.ageMin}-${preferences.ageMax}`}
+          value={preferences.ageMin && preferences.ageMax ? `${preferences.ageMin}-${preferences.ageMax}` : 'Not set'}
         />
         <LifestyleItem
           icon="people"
           label="Interested In (Gender)"
-          value={preferences.gender === 'both' ? 'Men & Women' : formatGenderDisplay(preferences.gender)}
-        />
-        <LifestyleItem
-          icon="heart"
-          label="Looking For"
-          value={preferences.lookingFor.charAt(0).toUpperCase() + preferences.lookingFor.slice(1)}
+          value={preferences.gender ? (preferences.gender === 'both' ? 'Men & Women' : formatGenderDisplay(preferences.gender)) : 'Not specified'}
         />
       </StyledView>
     </Card>
@@ -655,8 +650,8 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
             <EvaIcon name="file-text" variant="outline" size={20} color="white" />
           </StyledView>
           <StyledView className="flex-1">
-            <Body className="text-neutral-900 font-bold text-base">About Me</Body>
-            <Body style={{ color: COLORS.text.secondary, fontSize: 12 }}>The basics about you</Body>
+            <H3 className="font-semibold text-base">About Me</H3>
+            <Body style={{ color: COLORS.text.secondary, fontSize: FONT_SIZES.md }}>The basics about you</Body>
           </StyledView>
         </StyledView>
         <StyledTouchableOpacity
@@ -702,14 +697,14 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
           <StyledView className="flex-row pt-3" style={{ gap: 16 }}>
             {(profile.values?.length || 0) > 0 && (
               <StyledView className="flex-1">
-                <Body style={{ color: COLORS.text.secondary, fontSize: 12, marginBottom: 2 }}>Values</Body>
-                <Body style={{ color: COLORS.primaryAccent, fontFamily: FONTS.semiBold, fontSize: 13 }}>{profile.values.length} selected</Body>
+                <Body style={{ color: COLORS.text.secondary, fontSize: FONT_SIZES.sm, marginBottom: 2 }}>Values</Body>
+                <Body style={{ color: COLORS.primaryAccent, fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.md }}>{profile.values?.length ?? 0} selected</Body>
               </StyledView>
             )}
             {(profile.interests?.length || 0) > 0 && (
               <StyledView className="flex-1">
-                <Body style={{ color: COLORS.text.secondary, fontSize: 12, marginBottom: 2 }}>Interests</Body>
-                <Body style={{ color: COLORS.primaryAccent, fontFamily: FONTS.semiBold, fontSize: 13 }}>{profile.interests.length} selected</Body>
+                <Body style={{ color: COLORS.text.secondary, fontSize: FONT_SIZES.sm, marginBottom: 2 }}>Interests</Body>
+                <Body style={{ color: COLORS.primaryAccent, fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.md }}>{profile.interests?.length ?? 0} selected</Body>
               </StyledView>
             )}
           </StyledView>
@@ -725,6 +720,7 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
  */
 interface MatchPreferencesSummaryProps {
   preferences: UserProfile['preferences'];
+  interestedInGenders?: string[];
   preferredPolitics?: string[];
   preferredEthnicitiesCount?: number;
   interestsCount?: number;
@@ -732,8 +728,16 @@ interface MatchPreferencesSummaryProps {
   onEdit: () => void;
 }
 
+const GENDER_LABELS: Record<string, string> = {
+  male: 'Man',
+  female: 'Woman',
+  'non-binary': 'Non-binary',
+  other: 'Other',
+};
+
 export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = ({
   preferences,
+  interestedInGenders,
   preferredPolitics,
   preferredEthnicitiesCount = 0,
   interestsCount = 0,
@@ -752,8 +756,8 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
             <EvaIcon name="heart" variant="outline" size={20} color="white" />
           </StyledView>
           <StyledView className="flex-1">
-            <Body className="text-neutral-900 font-bold text-base">Match Preferences</Body>
-            <Body style={{ color: COLORS.text.secondary, fontSize: 12 }}>What matters to you in a match</Body>
+            <Body className="text-neutral-900 font-semibold text-base">Match Preferences</Body>
+            <Body style={{ color: COLORS.text.secondary, fontSize: FONT_SIZES.md }}>What matters to you in a match</Body>
           </StyledView>
         </StyledView>
         <StyledTouchableOpacity
@@ -767,14 +771,19 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
       </StyledView>
 
       <StyledView>
-        {/* Looking For */}
+        {/* Looking For (gender) */}
         <StyledView className="flex-row items-center justify-between py-2.5" style={{ borderBottomWidth: 1, borderBottomColor: COLORS.borderSubtle }}>
           <StyledView className="flex-row items-center">
             <EvaIcon name="search" variant="outline" size={15} color={COLORS.text.secondary} />
             <Body className="text-neutral-600 text-sm ml-2">Looking For</Body>
           </StyledView>
           <Body className="text-neutral-900 font-medium text-sm">
-            {formatProfileValue(preferences.lookingFor) || '-'}
+            {(() => {
+              if (!interestedInGenders || interestedInGenders.length === 0) return '-';
+              const first = GENDER_LABELS[interestedInGenders[0]] || formatProfileValue(interestedInGenders[0]);
+              if (interestedInGenders.length === 1) return first;
+              return `${first} +${interestedInGenders.length - 1}`;
+            })()}
           </Body>
         </StyledView>
 

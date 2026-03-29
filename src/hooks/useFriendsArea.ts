@@ -104,9 +104,6 @@ export function useFriendsArea(): UseFriendsAreaResult {
       try {
         // Voting on a friend's proposal is recorded via proposal_votes
         // (handled by ProposalReviewView → submitProposalVote).
-        // Here we just mark helped and update UI.
-        await communityService.markFriendAsHelped(friendId);
-
         // Update friend's completion status optimistically
         setFriends((prev) =>
           prev.map((f) =>

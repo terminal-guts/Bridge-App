@@ -8,13 +8,14 @@ import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
 import { AVATAR_SIZE_XL } from '../../constants';
 import { styled } from 'nativewind';
-import { Body, Button, ProfileSkeleton, ScreenWrapper } from '../../components/ui';
+import { Body, Button, ProfileSkeleton, ScreenWrapper, ScreenTitle } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { MainTabParamList } from '../../types';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { ProfileCompletionBanner } from '../../components/profile/ProfileCompletionBanner';
 import { GuideTarget } from '../../components/guides';
 import { EvaIcon } from '../../components/icons';
+import { StarIcon } from '../../components/icons/Icons';
 import { lightHaptic } from '../../utils/haptics';
 import { createLogger } from '../../utils/secureLogger';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
@@ -166,7 +167,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
             />
           )}
           <StyledView className="px-4 py-3 flex-row justify-between items-center">
-            <Text style={{ fontFamily: FONTS.bold, fontWeight: '700' as const, fontSize: FONT_SIZES['5xl'], lineHeight: LINE_HEIGHTS['5xl'], color: COLORS.text.black, letterSpacing: -0.5 }}>Your Profile</Text>
+            <ScreenTitle>Your Profile</ScreenTitle>
             <StyledView className="flex-row items-center" style={{ gap: 4 }}>
               {profile.role !== 'matchmaker' && (
                 <StyledTouchableOpacity
@@ -223,6 +224,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                         transition={200}
                         cachePolicy="memory-disk"
                         priority="high"
+                        accessibilityLabel={`${profile.firstName}'s profile photo`}
                         onError={() => { logger.warn('Profile photo failed to load'); hook.setPhotoLoadFailed(true); }}
                       />
                     </AvatarProgressRing>
@@ -246,6 +248,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                       contentFit="cover"
                       transition={200}
                       cachePolicy="memory-disk"
+                      accessibilityLabel={`${profile.firstName}'s profile photo`}
                       priority="high"
                       onError={() => { logger.warn('Profile photo failed to load'); hook.setPhotoLoadFailed(true); }}
                     />
@@ -255,6 +258,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                 <StyledView
                   className="w-24 h-24 rounded-full mb-3 bg-neutral-200 items-center justify-center border-2 border-neutral-100"
                   style={{ ...SHADOWS.lg }}
+                  accessibilityLabel="No profile photo set"
+                  accessibilityRole="image"
                 >
                   <EvaIcon name="person" variant="outline" size={40} color={COLORS.text.placeholder} />
                 </StyledView>
@@ -262,20 +267,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
 
               {/* Name & Karma Badge — hidden for matchmakers */}
               <StyledView className="flex-row items-center mb-4" style={{ gap: 8 }}>
-                <Text style={{ fontFamily: FONTS.bold, fontWeight: '700' as const, fontSize: FONT_SIZES['4xl'], lineHeight: LINE_HEIGHTS['4xl'], color: COLORS.text.black, letterSpacing: -0.3 }}>{profile.firstName}</Text>
+                <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: FONT_SIZES['4xl'], lineHeight: LINE_HEIGHTS['4xl'], color: COLORS.text.black, letterSpacing: -0.3 }}>{profile.firstName || 'You'}</Text>
                 {profile.role !== 'matchmaker' && (
                   <StyledTouchableOpacity
                     onPress={() => hook.setShowKarmaInfoModal(true)}
                     activeOpacity={0.75}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${profile.karma?.karma_points ?? 0} karma points, tap for details`}
                     style={{
                       flexDirection: 'row', alignItems: 'center',
-                      paddingHorizontal: 10, paddingVertical: 10,
-                      backgroundColor: 'rgba(52, 199, 89, 0.1)',
-                      borderWidth: 1, borderColor: COLORS.success,
-                      borderRadius: 999, gap: 4,
+                      paddingHorizontal: 12, paddingVertical: 8,
+                      backgroundColor: COLORS.backgroundSuccessBadge,
+                      borderWidth: 1.5, borderColor: COLORS.successAlt,
+                      borderRadius: 999, gap: 5,
+                      ...SHADOWS.accentGreen,
                     }}>
-                    <EvaIcon name="star" variant="outline" size={12} color={COLORS.success} />
-                    <Text style={{ fontSize: FONT_SIZES.xs, lineHeight: LINE_HEIGHTS.xs, color: COLORS.success, fontFamily: FONTS.semiBold }}>
+                    <StarIcon size={13} color={COLORS.successAlt} />
+                    <Text style={{ fontSize: FONT_SIZES.sm, lineHeight: LINE_HEIGHTS.sm, color: COLORS.successAlt, fontFamily: FONTS.bold }}>
                       {profile.karma?.karma_points ?? 0} pts
                     </Text>
                   </StyledTouchableOpacity>
@@ -459,7 +467,7 @@ const MatchmakerSection: React.FC<MatchmakerSectionProps> = ({ profile, hook, na
         textTransform: 'uppercase',
         letterSpacing: 1.2,
         marginBottom: 10,
-      }}>
+      }} accessibilityRole="header">
         Your Impact
       </Text>
 
@@ -478,6 +486,7 @@ const MatchmakerSection: React.FC<MatchmakerSectionProps> = ({ profile, hook, na
               borderColor: 'rgba(16, 185, 129, 0.12)',
               ...SHADOWS.sm,
             }}
+            accessibilityLabel={`${profile.karma?.karma_points ?? 0} karma`}
           >
             <Text style={{ fontSize: FONT_SIZES['4xl'], fontFamily: FONTS.extraBold, lineHeight: LINE_HEIGHTS['4xl'], color: COLORS.emerald, letterSpacing: -0.5 }}>
               {profile.karma?.karma_points ?? 0}
@@ -500,6 +509,7 @@ const MatchmakerSection: React.FC<MatchmakerSectionProps> = ({ profile, hook, na
               borderColor: 'rgba(67, 127, 255, 0.12)',
               ...SHADOWS.sm,
             }}
+            accessibilityLabel={`${(profile.karma as any)?.total_votes ?? 0} votes`}
           >
             <Text style={{ fontSize: FONT_SIZES['4xl'], fontFamily: FONTS.extraBold, lineHeight: LINE_HEIGHTS['4xl'], color: COLORS.primaryAccent, letterSpacing: -0.5 }}>
               {(profile.karma as any)?.total_votes ?? 0}
@@ -522,6 +532,7 @@ const MatchmakerSection: React.FC<MatchmakerSectionProps> = ({ profile, hook, na
               borderColor: 'rgba(245, 158, 11, 0.12)',
               ...SHADOWS.sm,
             }}
+            accessibilityLabel={`${profile.karma?.total_assists ?? 0} assists`}
           >
             <Text style={{ fontSize: FONT_SIZES['4xl'], fontFamily: FONTS.extraBold, lineHeight: LINE_HEIGHTS['4xl'], color: COLORS.warning.icon, letterSpacing: -0.5 }}>
               {profile.karma?.total_assists ?? 0}

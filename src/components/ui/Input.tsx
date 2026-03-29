@@ -95,7 +95,7 @@ export const Input: React.FC<InputProps> = ({
         style={{
           fontFamily: FONTS.regular,
           fontSize: FONT_SIZES.lg,
-          lineHeight: 20,
+          lineHeight: LINE_HEIGHTS.lg,
           paddingVertical: 12,
           color: COLORS.text.primary,
           borderWidth: 1.5,

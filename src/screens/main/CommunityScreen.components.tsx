@@ -29,26 +29,23 @@ const SECTION_H_PADDING = isCompact ? 16 : 24;
 // Prevents layout bloat when a popular user has dozens of incoming requests.
 const MAX_VISIBLE_REQUESTS = 5;
 
-// ── Mock leaderboard karma thresholds for rank interpolation ─────────────────
-// Sorted descending — same values as LeaderboardScreen MOCK_WEEKLY
-const MOCK_LEADERBOARD_KARMA = [87, 74, 68, 62, 55, 51, 48, 44, 39, 36, 32, 29, 25, 21, 18, 14, 11, 8, 5, 3];
-
-/** Given a karma score, return approximate global leaderboard rank (1-indexed) */
-function getApproxRank(karma: number): number {
-  for (let i = 0; i < MOCK_LEADERBOARD_KARMA.length; i++) {
-    if (karma >= MOCK_LEADERBOARD_KARMA[i]) return i + 1;
-  }
-  return MOCK_LEADERBOARD_KARMA.length + 1;
-}
-
-/** Split friends into needs-help vs already-helped, sorted by karma rank */
+/** Split friends into needs-help vs already-helped, sorted by karma (highest first) */
 export function partitionFriends(friends: FriendWithGridStatus[]) {
-  const toMatch = friends.filter(f => !f.hasCompletedGrid);
-  const helped = friends
-    .filter(f => f.hasCompletedGrid)
-    .sort((a, b) =>
-      getApproxRank(a.karmaScore?.karmaPoints ?? 0) - getApproxRank(b.karmaScore?.karmaPoints ?? 0)
-    );
+  const toMatch: FriendWithGridStatus[] = [];
+  const helped: FriendWithGridStatus[] = [];
+  // Single pass partition — avoids two filter() calls that each scan the full array
+  for (const f of friends) {
+    if (f.hasCompletedGrid) {
+      helped.push(f);
+    } else {
+      toMatch.push(f);
+    }
+  }
+  // Sort helped by karma descending — higher karma = better rank = appears first.
+  // Direct numeric compare avoids the old getApproxRank linear-scan per comparison.
+  helped.sort((a, b) =>
+    (b.karmaScore?.karmaPoints ?? 0) - (a.karmaScore?.karmaPoints ?? 0)
+  );
   return { toMatch, helped };
 }
 
@@ -308,15 +305,36 @@ export function InviteBanner({ avatarFriends, onPress }: InviteBannerProps) {
       accessibilityLabel="Add your people, invite from contacts"
     >
       <View style={styles.crewAvatarRow}>
-        {avatarFriends.map((f, i) => (
-          <Image
-            key={f.friendId}
-            source={f.friend.photos?.[0]?.url ? { uri: getOptimizedPhotoUrl(f.friend.photos[0].url, 'avatar')! } : null}
-            placeholder={f.friend.photos?.[0]?.blurhash ? { blurhash: f.friend.photos[0].blurhash } : undefined}
-            style={[styles.crewAvatar, i > 0 && { marginLeft: -10 }]}
-            transition={300}
-          />
-        ))}
+        {avatarFriends.map((f, i) => {
+          const photoUrl = f.friend.photos?.[0]?.url;
+          if (photoUrl) {
+            return (
+              <Image
+                key={f.friendId}
+                source={{ uri: getOptimizedPhotoUrl(photoUrl, 'avatar')! }}
+                placeholder={f.friend.photos?.[0]?.blurhash ? { blurhash: f.friend.photos[0].blurhash } : undefined}
+                style={[styles.crewAvatar, i > 0 && { marginLeft: -10 }]}
+                transition={300}
+              />
+            );
+          }
+          // No-photo fallback: show initials circle
+          const initial = (f.friend.firstName?.[0] ?? '?').toUpperCase();
+          return (
+            <View
+              key={f.friendId}
+              style={[
+                styles.crewAvatar,
+                i > 0 && { marginLeft: -10 },
+                { alignItems: 'center', justifyContent: 'center' },
+              ]}
+            >
+              <Text style={{ fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.sm, color: COLORS.text.secondary }}>
+                {initial}
+              </Text>
+            </View>
+          );
+        })}
         <View style={[styles.crewAddCircle, avatarFriends.length > 0 && { marginLeft: -10 }]}>
           <EvaIcon name="plus" variant="outline" size={16} color={COLORS.primaryButton} />
         </View>
@@ -394,11 +412,12 @@ export function HowItWorksCard() {
   return (
     <View style={howStyles.card}>
       <View style={howStyles.howHeader}>
-        <Text style={howStyles.heading}>How Bridge works</Text>
+        <Text style={howStyles.heading} accessibilityRole="header">How Bridge works</Text>
         <TouchableOpacity
           onPress={dismiss}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          accessibilityLabel="Dismiss"
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss how Bridge works card"
         >
           <EvaIcon name="close" variant="outline" size={16} color={COLORS.text.secondary} />
         </TouchableOpacity>
@@ -810,10 +829,13 @@ export const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: FONTS.bold,
+    // fontWeight must stay explicit — setDefaultFonts.ts only injects a derived
+    // weight when none is present, so this is never stripped. Keeping it ensures
+    // iOS renders the correct 700-weight variant even if fontFamily alone is set.
     fontWeight: '700' as const,
-    fontSize: isCompact ? FONT_SIZES['4xl'] : FONT_SIZES['5xl'],
-    lineHeight: isCompact ? LINE_HEIGHTS['4xl'] : LINE_HEIGHTS['5xl'],
-    color: COLORS.text.black,
+    fontSize: FONT_SIZES['5xl'],
+    lineHeight: LINE_HEIGHTS['5xl'],
+    color: COLORS.text.heading,
     letterSpacing: -0.5,
   },
   headerRight: {
@@ -856,7 +878,6 @@ export const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.borderPeriwinkle,
-    paddingVertical: 4,
   },
   sectionDivider: {
     height: 1,

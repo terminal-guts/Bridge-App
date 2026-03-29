@@ -175,25 +175,13 @@ export const FEATURES: FeatureFlags = {
 };
 
 /**
- * Helper function to check if a feature is enabled
- */
-export const isFeatureEnabled = (feature: keyof FeatureFlags): boolean => {
-  return FEATURES[feature] as boolean;
-};
-
-/**
  * USAGE EXAMPLES:
  *
- * import { FEATURES, isFeatureEnabled } from '@/config/features';
+ * import { FEATURES } from '@/config/features';
  *
  * // Check if feature is enabled
  * if (FEATURES.ENABLE_PHOTO_CAROUSEL) {
  *   return <PhotoCarousel photos={photos} />;
- * }
- *
- * // Or use helper function
- * if (isFeatureEnabled('ENABLE_CELEBRATION_ANIMATIONS')) {
- *   showConfetti();
  * }
  *
  * // Conditional rendering

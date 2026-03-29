@@ -7,7 +7,7 @@ import { RootStackParamList } from '../../types';
 import { OnboardingLayout } from '../../components/onboarding/OnboardingLayout';
 import { sendLoginOtpToEmail, isAllowedEmailDomain } from '../../services/authService';
 import { createLogger } from '../../utils/secureLogger';
-import { EvaIcon } from '../../components/icons';
+import { BackHeader } from '../../components/ui/BackHeader';
 import { COLORS } from '../../theme/colors';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS, TEXT_STYLES } from '../../constants/typography';
 
@@ -69,39 +69,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       keyboardPersistent={true}
       topPadding={20}
     >
-      {/* Back Button — icon only, 44px min touch target per iOS HIG */}
-      <StyledTouchableOpacity
-        onPress={() => navigation.goBack()}
-        style={{
-          minHeight: 44,
-          minWidth: 44,
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          backgroundColor: COLORS.backgroundGray,
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: 24,
-        }}
-        accessibilityLabel="Go back"
-        accessibilityRole="button"
-      >
-        <EvaIcon name="arrow-back" variant="outline" size={22} color={COLORS.text.heading} />
-      </StyledTouchableOpacity>
+      <BackHeader title="Hey, welcome back" showBorder={false} />
 
       <StyledView>
-        {/* Title — bold 700 at 28px per .impeccable.md screen title standard */}
-        <StyledText
-          style={{
-            ...TEXT_STYLES.displaySm,
-            fontWeight: '700',
-            color: COLORS.text.heading,
-            marginBottom: 6,
-          }}
-        >
-          Hey, welcome back
-        </StyledText>
-
         {/* Subtitle — tighter spacing to title */}
         <StyledText
           style={{

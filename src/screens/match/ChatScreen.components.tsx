@@ -227,52 +227,62 @@ interface ReportModalProps {
 export const ReportModal: React.FC<ReportModalProps> = ({
   visible, onClose, onConfirm, recipientName, reportReason,
   onSelectReason, reportDetails, onChangeDetails,
-}) => (
-  <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={ts.overlay}>
-      <View style={ts.card}>
-        <TouchableOpacity style={ts.closeBtn} onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <EvaIcon name="close" variant="outline" size={22} color={COLORS.navInactiveIcon} />
-        </TouchableOpacity>
-        <View style={[ts.iconWrap, { backgroundColor: COLORS.backgroundSoftRed }]}>
-          <EvaIcon name="flag" variant="outline" size={26} color={COLORS.danger} />
+}) => {
+  const isOther = reportReason === 'Other';
+  const canSubmit = reportReason && (!isOther || reportDetails.trim().length > 0);
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={ts.overlay}>
+        <View style={ts.card}>
+          <TouchableOpacity style={ts.closeBtn} onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <EvaIcon name="close" variant="outline" size={22} color={COLORS.navInactiveIcon} />
+          </TouchableOpacity>
+          <View style={[ts.iconWrap, { backgroundColor: COLORS.backgroundSoftRed }]}>
+            <EvaIcon name="flag" variant="outline" size={26} color={COLORS.danger} />
+          </View>
+          <Text style={ts.title}>Report {recipientName}</Text>
+          <Text style={ts.subtitle}>We take this seriously — our team looks into every report within 24 hours</Text>
+          <View style={ts.pillRow}>
+            {REPORT_REASONS.map(reason => (
+              <TouchableOpacity
+                key={reason}
+                style={[ts.pill, reportReason === reason && ts.pillActive]}
+                onPress={() => onSelectReason(reason)}
+              >
+                <Text style={[ts.pillText, reportReason === reason && ts.pillTextActive]}>
+                  {reason}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TextInput
+            style={[ts.textArea, isOther && ts.textAreaRequired]}
+            placeholder={isOther ? 'Please describe the issue...' : 'Anything else we should know? (optional)'}
+            placeholderTextColor={COLORS.text.placeholder}
+            value={reportDetails}
+            onChangeText={(text) => onChangeDetails(text.slice(0, 300))}
+            multiline
+            maxLength={300}
+            autoFocus={isOther}
+            textAlignVertical="top"
+          />
+          {isOther && (
+            <Text style={ts.charCount}>{reportDetails.length}/300</Text>
+          )}
+          <TouchableOpacity
+            style={[ts.submitBtn, !canSubmit && ts.submitBtnDisabled]}
+            onPress={onConfirm}
+            disabled={!canSubmit}
+          >
+            <Text style={ts.submitBtnText}>Submit Report</Text>
+          </TouchableOpacity>
         </View>
-        <Text style={ts.title}>Report {recipientName}</Text>
-        <Text style={ts.subtitle}>We take this seriously — our team looks into every report within 24 hours</Text>
-        <View style={ts.pillRow}>
-          {REPORT_REASONS.map(reason => (
-            <TouchableOpacity
-              key={reason}
-              style={[ts.pill, reportReason === reason && ts.pillActive]}
-              onPress={() => onSelectReason(reason)}
-            >
-              <Text style={[ts.pillText, reportReason === reason && ts.pillTextActive]}>
-                {reason}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <TextInput
-          style={ts.textArea}
-          placeholder="Anything else we should know? (optional)"
-          placeholderTextColor={COLORS.text.placeholder}
-          value={reportDetails}
-          onChangeText={onChangeDetails}
-          multiline
-          maxLength={500}
-        />
-        <TouchableOpacity
-          style={[ts.submitBtn, !reportReason && ts.submitBtnDisabled]}
-          onPress={onConfirm}
-          disabled={!reportReason}
-        >
-          <Text style={ts.submitBtnText}>Submit Report</Text>
-        </TouchableOpacity>
-      </View>
-      <TouchableOpacity activeOpacity={1} style={{ flex: 1 }} onPress={onClose} />
-    </KeyboardAvoidingView>
-  </Modal>
-);
+        <TouchableOpacity activeOpacity={1} style={{ flex: 1 }} onPress={onClose} />
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+};
 
 // ── Date proposal message card styles ─────────────────────────────────────────
 
@@ -434,6 +444,18 @@ export const ts = StyleSheet.create({
     textAlignVertical: 'top',
     marginBottom: 20,
     backgroundColor: COLORS.backgroundOffWhite,
+  },
+  textAreaRequired: {
+    borderColor: COLORS.border,
+    minHeight: 100,
+    marginBottom: 4,
+  },
+  charCount: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.text.light,
+    textAlign: 'right' as const,
+    marginBottom: 16,
   },
   submitBtn: {
     paddingVertical: 16,

@@ -19,7 +19,7 @@ export const proposalStyles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.screenBackground,
   },
   loadingText: {
     fontSize: FONT_SIZES.xl,
@@ -29,7 +29,7 @@ export const proposalStyles = StyleSheet.create({
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.screenBackground,
   },
   votingGateBanner: {
     backgroundColor: COLORS.backgroundBlueTint,
@@ -120,21 +120,21 @@ export const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.screenBackground,
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 16,
+    paddingBottom: 16, // Overridden with safe area inset in component
     borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
+    borderTopColor: COLORS.border,
     gap: 12,
   },
 
   // Secondary vote button
   secondaryButton: {
     height: 48,
-    backgroundColor: BOX_BG,
+    backgroundColor: '#F5F2EE',
     borderWidth: 1,
-    borderColor: BOX_BORDER,
+    borderColor: '#D9D2C9',
     borderRadius: 12,
     flexDirection: 'row' as const,
     alignItems: 'center' as const,

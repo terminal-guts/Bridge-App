@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   SafeAreaView,
@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { NavigationProp } from '@react-navigation/native';
 import { EvaIcon } from '../../components/icons';
+import { BackHeader, LoadingState } from '../../components/ui';
 import { RootStackParamList } from '../../types';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
@@ -93,7 +94,7 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
   }, []);
 
   // Prepend welcome message
-  const displayMessages = [WELCOME_MESSAGE, ...messages];
+  const displayMessages = useMemo(() => [WELCOME_MESSAGE, ...messages], [messages]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -147,25 +148,40 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
 
   const charRemaining = 1000 - input.length;
 
-  const renderMessage = ({ item, index }: { item: SupportMessage; index: number }) => {
+  // Pre-compute date separators so renderMessage doesn't need displayMessages
+  // in its dependency array (avoids re-creating the callback on each new message).
+  const dateSeparatorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (let i = 0; i < displayMessages.length; i++) {
+      const msg = displayMessages[i];
+      const messageDate = new Date(msg.created_at);
+      if (messageDate.getFullYear() <= 1970) continue;
+      const dateLabel = formatMessageDate(messageDate);
+      const prevLabel = i > 0 ? formatMessageDate(new Date(displayMessages[i - 1].created_at)) : null;
+      if (i === 0 || dateLabel !== prevLabel) {
+        map.set(msg.id, dateLabel);
+      }
+    }
+    return map;
+  }, [displayMessages]);
+
+  const keyExtractor = useCallback((item: SupportMessage) => item.id, []);
+
+  const renderMessage = useCallback(({ item }: { item: SupportMessage }) => {
     const isUser = item.sender === 'user';
     const messageDate = new Date(item.created_at);
     const timeString = messageDate.getFullYear() > 1970
       ? messageDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
       : '';
 
-    // Date separator
-    const prevDate = index > 0 ? new Date(displayMessages[index - 1].created_at) : null;
-    const showDateSep =
-      index === 0 ||
-      (prevDate && formatMessageDate(prevDate) !== formatMessageDate(messageDate) && messageDate.getFullYear() > 1970);
+    const dateSepLabel = dateSeparatorMap.get(item.id);
 
     return (
       <>
-        {showDateSep && messageDate.getFullYear() > 1970 && (
+        {dateSepLabel != null && (
           <View style={s.dateSep}>
             <View style={s.dateSepPill}>
-              <Text style={s.dateSepText}>{formatMessageDate(messageDate)}</Text>
+              <Text style={s.dateSepText}>{dateSepLabel}</Text>
             </View>
           </View>
         )}
@@ -184,15 +200,13 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
         </View>
       </>
     );
-  };
+  }, [dateSeparatorMap]);
 
   if (loading) {
     return (
       <SafeAreaView style={s.container}>
         <StatusBar barStyle="dark-content" />
-        <View style={s.loadingWrap}>
-          <ActivityIndicator size="large" color={COLORS.primaryAccent} />
-        </View>
+        <LoadingState fullScreen />
       </SafeAreaView>
     );
   }
@@ -201,18 +215,7 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
     <SafeAreaView style={s.container}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
-      <View style={s.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={s.backButton}
-        >
-          <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.textDarkHeading} />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>Feedback</Text>
-        <View style={s.headerSpacer} />
-      </View>
+      <BackHeader title="Feedback" titleAlign="center" />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -223,7 +226,7 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
         <FlatList
           ref={flatListRef}
           data={displayMessages}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           renderItem={renderMessage}
           contentContainerStyle={s.listContent}
           showsVerticalScrollIndicator={false}

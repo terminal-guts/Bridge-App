@@ -39,10 +39,10 @@ export const SimpleChip: React.FC<SimpleChipProps> = ({ label, selected, onPress
       accessibilityHint={accessibilityHint}
     >
       <StyledText
-        className={`text-sm ${selected ? 'text-white' : ''}`}
+        className="text-sm"
         style={{
           fontFamily: selected ? FONTS.medium : FONTS.regular,
-          color: selected ? undefined : COLORS.text.muted,
+          color: selected ? '#FFFFFF' : COLORS.text.muted,
         }}
       >
         {label}

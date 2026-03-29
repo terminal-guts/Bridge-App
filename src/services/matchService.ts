@@ -1,103 +1,13 @@
 /**
  * Match Service
  *
- * Handles match proposals, acceptance/rejection, and match data retrieval.
- * Integrates with matches table and Edge Functions.
+ * User reports and shared match utilities.
  */
 
 import { supabase } from '../lib/supabase';
-import { ApiResponse } from '../types';
-import { requireAuth } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('MatchService');
-
-/**
- * Exit an active match
- */
-export const exitMatch = async (
-  matchId: string,
-  exitReason: string,
-  exitDetails?: string
-): Promise<ApiResponse<void>> => {
-  try {
-    const { data, error } = await supabase.functions.invoke('exit-match', {
-      body: {
-        match_id: matchId,
-        exit_reason: exitReason,
-        exit_details: exitDetails,
-      },
-    });
-
-    if (error) {
-      return {
-        ok: false,
-        error: {
-          code: 'EXIT_MATCH_FAILED',
-          message: error.message,
-        },
-      };
-    }
-
-    if (!data?.ok) {
-      return {
-        ok: false,
-        error: {
-          code: data?.error?.code || 'EXIT_MATCH_FAILED',
-          message: data?.error?.message || 'Failed to exit match',
-        },
-      };
-    }
-
-    return { ok: true };
-  } catch (error: unknown) {
-    return {
-      ok: false,
-      error: {
-        code: 'EXIT_MATCH_ERROR',
-        message: error instanceof Error ? error.message : 'An unexpected error occurred',
-      },
-    };
-  }
-};
-
-/**
- * Update exit feedback for a match
- */
-export const updateMatchExitFeedback = async (
-  matchId: string,
-  exitDetails: string
-): Promise<ApiResponse<void>> => {
-  try {
-    const userId = await requireAuth();
-
-    const { error } = await supabase
-      .from('match_exits')
-      .update({ exit_details: exitDetails, updated_at: new Date().toISOString() })
-      .eq('match_id', matchId)
-      .eq('exiting_user_id', userId);
-
-    if (error) {
-      return {
-        ok: false,
-        error: {
-          code: 'UPDATE_FEEDBACK_FAILED',
-          message: error.message,
-        },
-      };
-    }
-
-    return { ok: true };
-  } catch (error: unknown) {
-    return {
-      ok: false,
-      error: {
-        code: 'UPDATE_FEEDBACK_ERROR',
-        message: error instanceof Error ? error.message : 'An unexpected error occurred',
-      },
-    };
-  }
-};
 
 // ============================================================================
 // USER REPORTS
@@ -106,6 +16,11 @@ export const updateMatchExitFeedback = async (
 /**
  * Submit a user report and send a notification to the team.
  * Inserts a record into `user_reports` and fires a background edge function.
+ *
+ * Guards:
+ * - Validates required fields before hitting the DB
+ * - Prevents self-reports
+ * - Deduplicates: skips insert if an identical report already exists (same reporter + reported + reason)
  */
 export const submitUserReport = async (params: {
   reporterId: string;
@@ -116,11 +31,38 @@ export const submitUserReport = async (params: {
 }): Promise<void> => {
   const { reporterId, reportedUserId, reason, details, reportedUserName } = params;
 
+  // Basic validation
+  if (!reporterId || !reportedUserId || !reason) {
+    throw new Error('Missing required report fields');
+  }
+  if (reporterId === reportedUserId) {
+    throw new Error('Cannot report yourself');
+  }
+
+  const trimmedDetails = details.trim() || '';
+
+  // Dedup: check for an existing report with the same reporter + reported + reason
+  // within the last 24 hours to prevent accidental double-submission
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: existing } = await supabase
+    .from('user_reports')
+    .select('id')
+    .eq('reporter_id', reporterId)
+    .eq('reported_user_id', reportedUserId)
+    .eq('reason', reason)
+    .gte('created_at', cutoff)
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    // Already reported — silently succeed so the UI doesn't show an error
+    return;
+  }
+
   const { error } = await supabase.from('user_reports').insert({
     reporter_id: reporterId,
     reported_user_id: reportedUserId,
     reason,
-    details: details.trim() || '',
+    details: trimmedDetails,
   });
   if (error) throw error;
 
@@ -136,7 +78,7 @@ export const submitUserReport = async (params: {
       reporter_name: reporterProfile?.first_name || 'Unknown',
       reported_name: reportedUserName,
       reason,
-      details: details.trim() || '',
+      details: trimmedDetails,
     },
   }).catch((err) => {
     logger.warn('[Report] Failed to notify founder via email:', err);

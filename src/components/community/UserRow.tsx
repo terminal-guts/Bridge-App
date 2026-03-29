@@ -11,6 +11,7 @@ import Animated, {
     cancelAnimation,
 } from 'react-native-reanimated';
 import { SPRINGS } from '../../constants/animations';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { FriendWithGridStatus } from '../../types/community';
@@ -101,8 +102,8 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
         if (!showVoteRing) { voteScale.value = 1; return; }
         voteScale.value = withRepeat(
             withSequence(
-                withTiming(1.07, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-                withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+                withTiming(1.04, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
+                withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
             ), -1, false
         );
         return () => cancelAnimation(voteScale);
@@ -121,6 +122,26 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
         // voteScale is a stable useSharedValue ref — intentionally omitted from deps
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [friendProfileComplete, onMatch]);
+
+    // Vote button shimmer sweep animation
+    const shimmerX = useSharedValue(-1);
+    useEffect(() => {
+        if (!showVoteRing || !friendProfileComplete) { shimmerX.value = -1; return; }
+        const runShimmer = () => {
+            shimmerX.value = -1;
+            shimmerX.value = withSequence(
+                withTiming(-1, { duration: 4000 }), // longer pause between sweeps
+                withTiming(1.5, { duration: 900, easing: Easing.inOut(Easing.ease) }),
+            );
+        };
+        runShimmer();
+        const interval = setInterval(runShimmer, 4900);
+        return () => { clearInterval(interval); cancelAnimation(shimmerX); };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [showVoteRing, friendProfileComplete]);
+    const shimmerStyle = useAnimatedStyle(() => ({
+        transform: [{ translateX: shimmerX.value * 80 }],
+    }));
 
     // #7: Karma tap haptic
     const handleKarmaTap = useCallback(() => {
@@ -225,6 +246,16 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                         accessibilityRole="button"
                         accessibilityState={{ disabled: !friendProfileComplete }}
                     >
+                        {showVoteRing && friendProfileComplete && (
+                            <Animated.View style={[styles.shimmerContainer, shimmerStyle]} pointerEvents="none">
+                                <LinearGradient
+                                    colors={['transparent', 'rgba(255,255,255,0.35)', 'transparent']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={styles.shimmerGradient}
+                                />
+                            </Animated.View>
+                        )}
                         <Text style={[
                             styles.matchBtnText,
                             showVoteRing && friendProfileComplete && styles.matchBtnTextGlow,
@@ -423,6 +454,19 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.primaryButton,
         marginLeft: 2,
     },
+    shimmerContainer: {
+        position: 'absolute' as const,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        overflow: 'hidden',
+        borderRadius: 999,
+    },
+    shimmerGradient: {
+        width: 40,
+        height: '100%' as unknown as number,
+    },
     matchBtn: {
         paddingHorizontal: 22,
         paddingVertical: 10,
@@ -430,6 +474,7 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
         borderColor: COLORS.primaryButton,
         backgroundColor: COLORS.backgroundFriendActive,
+        overflow: 'hidden' as const,
     },
     matchBtnText: {
         fontFamily: FONTS.bold,

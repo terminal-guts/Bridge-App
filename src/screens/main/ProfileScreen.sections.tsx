@@ -201,6 +201,7 @@ export const AboutTab: React.FC<AboutTabProps> = ({ profile, navigation }) => (
     {profile.preferences && (
       <MatchPreferencesSummary
         preferences={profile.preferences}
+        interestedInGenders={profile.interestedInGenders}
         preferredPolitics={profile.preferredPolitics}
         preferredEthnicitiesCount={profile.preferredEthnicities?.length || 0}
         interestsCount={profile.interests?.length || 0}
@@ -241,10 +242,10 @@ export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onT
       <StyledView className="px-6 py-12 items-center">
         <StyledView style={{
           width: 80, height: 80, borderRadius: 40,
-          backgroundColor: COLORS.warning.bg,
+          backgroundColor: COLORS.backgroundBlueTint,
           alignItems: 'center', justifyContent: 'center', marginBottom: 16,
         }}>
-          <EvaIcon name="award" variant="outline" size={40} color={COLORS.warning.icon} />
+          <EvaIcon name="award" variant="outline" size={40} color={COLORS.primaryAccent} />
         </StyledView>
         <H3 style={{ fontFamily: FONTS.bold, color: COLORS.text.primary, marginBottom: 8 }}>
           No badges yet

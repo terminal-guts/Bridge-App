@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
 import { styled } from 'nativewind';
-import { H2, H3, Body, Card, ScreenWrapper } from '../../components/ui';
+import { H2, H3, Body, Card, ScreenWrapper, BackHeader } from '../../components/ui';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
 import { NavigationProp } from '@react-navigation/native';
@@ -61,20 +61,7 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
   return (
     <ScreenWrapper>
 
-      {/* Header */}
-      <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center">
-        <StyledTouchableOpacity
-          onPress={() => navigation.goBack()}
-          className="mr-3"
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={{ minWidth: 44, minHeight: 44, justifyContent: 'center' }}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.heading} />
-        </StyledTouchableOpacity>
-        <H3 accessibilityRole="header">Help & Support</H3>
-      </StyledView>
+      <BackHeader title="Help & Support" />
 
       <StyledScrollView className="flex-1">
         <StyledView className="px-4 py-4">

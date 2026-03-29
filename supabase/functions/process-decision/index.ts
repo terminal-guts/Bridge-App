@@ -109,7 +109,18 @@ Deno.serve(async (req: Request) => {
       return Response.json({ error: 'You are not part of this proposal' }, { status: 403, headers: corsHeaders });
     }
 
-    // 4. Write this user's decision first (before checking the other user's)
+    // 4a. Guard: if the user already decided, return their existing decision
+    // This prevents overwriting a previous decision (e.g. retry after app backgrounded)
+    const existingDecision = isUserA ? proposal.user_a_decision : proposal.user_b_decision;
+    if (existingDecision && existingDecision !== 'pending') {
+      return Response.json({
+        status: 'already_decided',
+        proposal_status: proposal.status,
+        your_decision: existingDecision,
+      }, { headers: corsHeaders });
+    }
+
+    // 5. Write this user's decision first (before checking the other user's)
     const updateData: Record<string, unknown> = { updated_at: nowIso };
 
     if (isUserA) {
@@ -126,19 +137,36 @@ Deno.serve(async (req: Request) => {
       updateData.declined_at = nowIso;
     }
 
-    // 5. Write the decision
-    const { error: updateErr } = await supabase
+    // 6. Write the decision (optimistic lock: only update if still in 'deciding')
+    const { data: updateRows, error: updateErr } = await supabase
       .from('proposals')
       .update(updateData)
       .eq('id', proposal_id)
-      .eq('status', 'deciding'); // optimistic lock: only update if still deciding
+      .eq('status', 'deciding')
+      .select('id');
 
     if (updateErr) {
       console.error('Proposal update error:', updateErr);
       return Response.json({ error: 'Failed to update proposal' }, { status: 500, headers: corsHeaders });
     }
 
-    // 6. Re-fetch proposal AFTER write to check the other user's decision
+    // If 0 rows updated, the proposal status changed between our read and write
+    // (e.g. deadline expired, other user declined, etc.) — re-read and return current state
+    if (!updateRows || updateRows.length === 0) {
+      const { data: current } = await supabase
+        .from('proposals')
+        .select('status, user_a_decision, user_b_decision')
+        .eq('id', proposal_id)
+        .single();
+      return Response.json({
+        status: 'conflict',
+        proposal_status: current?.status || 'unknown',
+        your_decision: isUserA ? (current?.user_a_decision || 'pending') : (current?.user_b_decision || 'pending'),
+        message: 'Proposal status changed before your decision could be recorded',
+      }, { headers: corsHeaders });
+    }
+
+    // 7. Re-fetch proposal AFTER write to check the other user's decision
     // This prevents the both-accept race condition: even if both users write
     // simultaneously, the re-fetch will see the other user's written decision.
     let newStatus = decision === 'declined' ? 'declined' : proposal.status;
@@ -158,23 +186,35 @@ Deno.serve(async (req: Request) => {
       const otherDecision = isUserA ? fresh.user_b_decision : fresh.user_a_decision;
 
       if (otherDecision === 'accepted') {
-        // Both accepted → match! Use update with status check to prevent duplicate match creation
-        const { error: matchStatusErr } = await supabase
+        // Both accepted → match! Use update with status check to prevent duplicate match creation.
+        // The `.eq('status', 'deciding')` acts as an optimistic lock — only ONE concurrent
+        // request can win this transition. The loser gets 0 rows updated (not an error).
+        const { data: lockRows, error: matchStatusErr } = await supabase
           .from('proposals')
           .update({ status: 'passed_to_match', confirmed_at: nowIso, updated_at: nowIso })
           .eq('id', proposal_id)
-          .eq('status', 'deciding'); // only one concurrent request wins this update
+          .eq('status', 'deciding')
+          .select('id');
 
-        if (!matchStatusErr) {
+        const wonLock = !matchStatusErr && lockRows && lockRows.length > 0;
+
+        if (wonLock) {
           newStatus = 'passed_to_match';
         } else {
-          // Other request already promoted it — re-read final status
+          // Other request already promoted it — re-read final status but do NOT create the match
           const { data: final } = await supabase
             .from('proposals')
             .select('status')
             .eq('id', proposal_id)
             .single();
           newStatus = final?.status || 'passed_to_match';
+
+          // Return success — the other request will handle match creation
+          return Response.json({
+            status: 'success',
+            proposal_status: newStatus,
+            your_decision: decision,
+          }, { headers: corsHeaders });
         }
       } else if (otherDecision === 'declined') {
         newStatus = 'declined';
@@ -186,7 +226,7 @@ Deno.serve(async (req: Request) => {
       // else: other user still pending — wait for them
     }
 
-    // 7. If both accepted, create a match (only the winner of the optimistic lock reaches here)
+    // 8. If both accepted, create a match (only the winner of the optimistic lock reaches here)
     if (newStatus === 'passed_to_match') {
       // Ensure user_id_1 < user_id_2 for consistent ordering
       const [u1, u2] = proposal.user_a_id < proposal.user_b_id

@@ -24,6 +24,7 @@ import * as Clipboard from 'expo-clipboard';
 import { styled } from 'nativewind';
 import { EvaIcon } from '../../components/icons';
 import { H3, Body } from '../../components/ui';
+import { BackHeader } from '../../components/ui/BackHeader';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
@@ -831,17 +832,11 @@ export const GrantedContactList = React.memo(({
 // ── Screen Header with Progress ───────────────────────────────────────────────
 
 export const ScreenHeader = React.memo(({ onGoBack, bridgeUserCount, invitesRemaining, invitesSentCount }: ScreenHeaderProps) => (
-  <StyledView className="px-4 py-3 border-b border-neutral-200 bg-white">
-    <StyledView className="flex-row items-center justify-between">
-      <StyledTouchableOpacity onPress={onGoBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel="Go back">
-        <EvaIcon name="arrow-back" variant="outline" color="text" size={24} />
-      </StyledTouchableOpacity>
-      <H3 accessibilityRole="header">Build Your Crew</H3>
-      <StyledView className="w-6" />
-    </StyledView>
+  <StyledView>
+    <BackHeader title="Build Your Crew" titleAlign="center" onBack={onGoBack} showBorder={false} />
 
     {/* Progress bar + social proof */}
-    <StyledView className="mt-2">
+    <StyledView className="px-4 pb-3 border-b border-neutral-200 bg-white">
       <StyledView className="flex-row items-center justify-between mb-1">
         <StyledText className="text-xs text-neutral-500" style={{ fontFamily: FONTS.medium }}>
           {bridgeUserCount > 0 ? `${bridgeUserCount}+ people on Bridge` : 'Invite friends to start getting matched'}

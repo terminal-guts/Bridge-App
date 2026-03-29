@@ -178,14 +178,14 @@ export const s = StyleSheet.create({
   // Archetype card
   archetypeCard: {
     borderRadius: sw(20),
-    padding: sw(24),
+    padding: sw(16),
     alignItems: 'center',
     marginBottom: sh(20),
-    ...SHADOWS.xl,
+    ...SHADOWS.md,
   },
   archetypeEmoji: {
-    fontSize: sf(38),
-    marginBottom: sh(8),
+    fontSize: sf(32),
+    marginBottom: sh(6),
   },
   archetypeLabel: {
     fontSize: FONT_SIZES.sm,
@@ -196,10 +196,10 @@ export const s = StyleSheet.create({
     marginBottom: sh(4),
   },
   archetypeName: {
-    fontSize: sf(28),
+    fontSize: sf(24),
     fontFamily: FONTS.bold,
     color: COLORS.card,
-    marginBottom: sh(8),
+    marginBottom: sh(6),
   },
   archetypeDesc: {
     fontSize: FONT_SIZES.base,
@@ -218,7 +218,9 @@ export const s = StyleSheet.create({
     borderRadius: sw(16),
     padding: sw(18),
     marginBottom: sh(20),
-    ...SHADOWS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...SHADOWS.md,
   },
   impactLeft: {
     flex: 1,
@@ -253,7 +255,9 @@ export const s = StyleSheet.create({
     borderRadius: sw(16),
     padding: sw(18),
     marginBottom: sh(24),
-    ...SHADOWS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...SHADOWS.md,
   },
   accuracyRingWrap: {
     position: 'relative',
@@ -314,14 +318,16 @@ export const s = StyleSheet.create({
     width: STAT_CARD_WIDTH,
     backgroundColor: COLORS.card,
     borderRadius: sw(16),
-    padding: sw(14),
+    padding: sw(16),
+    borderWidth: 1,
+    borderColor: COLORS.border,
     ...SHADOWS.sm,
   },
   statCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: sh(10),
+    marginBottom: sh(12),
   },
   statIconCircle: {
     width: sw(34),
@@ -347,6 +353,8 @@ export const s = StyleSheet.create({
     backgroundColor: COLORS.card,
     borderRadius: sw(16),
     padding: sw(14),
+    borderWidth: 1,
+    borderColor: COLORS.border,
     ...SHADOWS.sm,
   },
   highlightRow: {
@@ -379,7 +387,7 @@ export const s = StyleSheet.create({
   },
   highlightDivider: {
     height: 1,
-    backgroundColor: COLORS.borderSubtle,
+    backgroundColor: COLORS.borderWarm,
   },
 
   // Rank card
@@ -387,7 +395,9 @@ export const s = StyleSheet.create({
     borderRadius: sw(16),
     overflow: 'hidden',
     marginBottom: sh(24),
-    ...SHADOWS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...SHADOWS.md,
   },
   rankGradient: {
     flexDirection: 'row',
@@ -481,6 +491,8 @@ export const st = StyleSheet.create({
     backgroundColor: COLORS.card,
     borderRadius: sw(16),
     padding: sw(14),
+    borderWidth: 1,
+    borderColor: COLORS.border,
     ...SHADOWS.sm,
   },
   funFactRow: {

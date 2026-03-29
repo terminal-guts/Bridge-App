@@ -23,24 +23,19 @@ import { createLogger } from './src/utils/secureLogger';
 // Called at module level per Expo docs — must not be inside a component or hook.
 SplashScreen.preventAutoHideAsync();
 
-const logger = createLogger('App');
+// Apply font patch at module level — fonts are embedded natively via the expo-font
+// config plugin in app.json, so they're registered before JS starts. Running the
+// patch here (not in useEffect) ensures the very first React render already has
+// the correct fontFamily mappings applied to Text and TextInput.
+require('./src/utils/setDefaultFonts');
 
-const fontsPatchApplied = { current: false };
+const logger = createLogger('App');
 
 export default function App() {
   // useFonts removed: the expo-font config plugin in app.json embeds all five Plus Jakarta Sans
   // variants as native resources at build time. Fonts are registered before JS starts — no async
   // wait needed. Font.isLoaded('PlusJakartaSans_400Regular') returns true synchronously.
   // Removing useFonts eliminates one async round-trip from the startup critical path.
-
-  // Apply font patch immediately on first mount — fonts are embedded natively so they're
-  // already registered before JS starts. No need to wait for any font loading.
-  React.useEffect(() => {
-    if (!fontsPatchApplied.current) {
-      require('./src/utils/setDefaultFonts');
-      fontsPatchApplied.current = true;
-    }
-  }, []);
 
   // appReady is set by AppNavigator once it has a definitive auth state AND the
   // first screen's module is loaded. Hiding splash here (not on font load) means:

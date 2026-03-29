@@ -38,6 +38,12 @@ export async function getAuthenticatedUserId(): Promise<string | null> {
       return session.user.id;
     }
 
+    // Session is gone — clear any stale cached value so subsequent calls
+    // don't use an old userId after the JWT has expired.
+    if (cachedUserId) {
+      logger.info('Session expired — clearing cached userId');
+      cachedUserId = null;
+    }
     return null;
   } catch (error) {
     logger.error('Error getting authenticated user:', error);

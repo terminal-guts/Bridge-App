@@ -22,41 +22,38 @@ import { lightHaptic } from '../../../utils/haptics';
 const BLUE = COLORS.primary;
 const GREEN = COLORS.success;
 const RED = COLORS.rejectRed;
-const GREY_VOTE = COLORS.text.secondary;  // #64748B — WCAG AA compliant (was text.disabled #9CA3AF, failed AA at small sizes)
 
 export function LiveVoteBar({
   yesVotes,
   noVotes,
   totalVotes,
+  hasVoted = true,
 }: {
   yesVotes: number;
   noVotes: number;
   totalVotes: number;
+  hasVoted?: boolean;
 }) {
-  const unsureVotes = Math.max(0, totalVotes - yesVotes - noVotes);
-  const total = yesVotes + noVotes + unsureVotes;
+  const total = yesVotes + noVotes;
 
   const [barWidth, setBarWidth] = useState(0);
   const hasMounted = useSharedValue(false);
 
   const yesPct = useSharedValue(0);
   const noPct = useSharedValue(0);
-  const unsurePct = useSharedValue(0);
 
   useEffect(() => {
     if (total === 0) return;
     const yp = (yesVotes / total) * 100;
     const np = (noVotes / total) * 100;
-    const up = (unsureVotes / total) * 100;
 
     yesPct.value = withTiming(yp, { duration: DURATIONS.slow });
-    noPct.value = withTiming(np, { duration: DURATIONS.slow });
-    unsurePct.value = withTiming(up, { duration: DURATIONS.slow }, (finished) => {
+    noPct.value = withTiming(np, { duration: DURATIONS.slow }, (finished) => {
       // Only fire haptic on user-initiated vote changes, not initial mount
       if (finished && hasMounted.value) runOnJS(lightHaptic)();
     });
     hasMounted.value = true;
-  }, [yesVotes, noVotes, unsureVotes, total]);
+  }, [yesVotes, noVotes, total]);
 
   const onBarLayout = (e: LayoutChangeEvent) => {
     setBarWidth(e.nativeEvent.layout.width);
@@ -75,13 +72,7 @@ export function LiveVoteBar({
     overflow: 'hidden' as const,
   }));
 
-  const unsureStyle = useAnimatedStyle(() => ({
-    width: barWidth > 0 ? interpolate(unsurePct.value, [0, 100], [0, barWidth]) : 0,
-    height: 14,
-    overflow: 'hidden' as const,
-  }));
-
-  if (total === 0) {
+  if (total === 0 || !hasVoted) {
     return (
       <View style={{ marginTop: 10, marginBottom: 4, alignItems: 'center' }}>
         <View style={{
@@ -100,7 +91,7 @@ export function LiveVoteBar({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: BLUE }} />
           <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, color: BLUE }}>
-            Be the first to weigh in!
+            {hasVoted ? 'Be the first to weigh in!' : 'Vote to see how others voted'}
           </Text>
         </View>
       </View>
@@ -108,7 +99,7 @@ export function LiveVoteBar({
   }
 
   return (
-    <View style={{ marginTop: 10, marginBottom: 4 }} accessibilityLabel={`Vote results: ${yesVotes} yes, ${noVotes} no, ${unsureVotes} unsure out of ${total} votes`}>
+    <View style={{ marginTop: 10, marginBottom: 4 }} accessibilityLabel={`Vote results: ${yesVotes} yes, ${noVotes} no out of ${total} votes`}>
       <View style={{
         height: 14, borderRadius: 7, overflow: 'hidden',
         backgroundColor: COLORS.borderSubtle,
@@ -131,11 +122,6 @@ export function LiveVoteBar({
               <LinearGradient colors={[COLORS.urgentRed, RED, '#E11D48']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={{ flex: 1 }} />
             </Animated.View>
           )}
-          {unsureVotes > 0 && (
-            <Animated.View style={unsureStyle}>
-              <LinearGradient colors={['#C4C9D4', GREY_VOTE, '#8B93A1']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={{ flex: 1 }} />
-            </Animated.View>
-          )}
         </View>
         <LinearGradient
           colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.1)', 'transparent']}
@@ -148,18 +134,16 @@ export function LiveVoteBar({
 
       <View style={{ alignItems: 'center', marginTop: 8, gap: 2 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12 }}>
-          <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, color: GREEN }}>{yesVotes} Yes</Text>
+          <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, color: '#15803D' }}>{yesVotes} Yes</Text>
           <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, color: COLORS.borderGray }}>&middot;</Text>
-          <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, color: RED }}>{noVotes} No</Text>
-          <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, color: COLORS.borderGray }}>&middot;</Text>
-          <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, color: GREY_VOTE }}>{unsureVotes} Unsure</Text>
+          <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, color: '#DC2626' }}>{noVotes} No</Text>
         </View>
-        <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.xs, color: COLORS.text.disabled }}>
+        <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.xs, color: COLORS.text.secondary }}>
           {total} voted{' \u00b7 '}
-          {yesVotes > noVotes + unsureVotes ? 'strong yes' :
-           noVotes > yesVotes + unsureVotes ? 'strong no' :
-           yesVotes === noVotes && unsureVotes === 0 ? 'evenly split' :
-           'community is split'}
+          {yesVotes > noVotes * 2 ? 'strong yes' :
+           noVotes > yesVotes * 2 ? 'strong no' :
+           yesVotes === noVotes ? 'evenly split' :
+           yesVotes > noVotes ? 'leaning yes' : 'leaning no'}
         </Text>
       </View>
     </View>
