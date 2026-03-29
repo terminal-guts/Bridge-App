@@ -114,12 +114,8 @@ export const styles = StyleSheet.create({
     textAlign: 'center' as const,
   },
 
-  // Vote button container
+  // Vote button container — normal flow (not absolute) so scroll adapts naturally
   voteContainer: {
-    position: 'absolute' as const,
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: COLORS.screenBackground,
     paddingHorizontal: 16,
     paddingTop: 12,

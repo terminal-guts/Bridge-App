@@ -195,30 +195,19 @@ function QuestionPage({
 
   return (
     <View>
-      {/* Question prompt — italic with decorative quote mark */}
-      <View style={{ marginBottom: 12 }}>
-        <Text style={{
-          fontFamily: FONTS.bold,
-          fontWeight: '700',
-          fontSize: FONT_SIZES['3xl'],
-          color: QUOTE_COLOR,
-          opacity: 0.25,
-          lineHeight: FONT_SIZES['3xl'],
-          marginBottom: -4,
-        }}>
-          {'\u201C'}
-        </Text>
-        <Text style={{
-          fontFamily: FONTS.medium,
-          fontWeight: '500',
-          fontSize: FONT_SIZES.lg,
-          fontStyle: 'italic',
-          color: COLORS.text.heading,
-          lineHeight: LINE_HEIGHTS.xl,
-        }}>
-          {question.questionText}
-        </Text>
-      </View>
+      {/* Question prompt — italic with inline decorative quote mark */}
+      <Text style={{
+        fontFamily: FONTS.medium,
+        fontWeight: '500',
+        fontSize: FONT_SIZES.lg,
+        fontStyle: 'italic',
+        color: COLORS.text.heading,
+        lineHeight: LINE_HEIGHTS.xl,
+        marginBottom: 12,
+      }}>
+        <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: FONT_SIZES['3xl'], color: QUOTE_COLOR, opacity: 0.25 }}>{'\u201C'}</Text>
+        {question.questionText}
+      </Text>
 
       {/* Stacked answer cards */}
       <View style={{ gap: 8 }}>

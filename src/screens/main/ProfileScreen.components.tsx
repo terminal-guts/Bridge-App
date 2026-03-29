@@ -752,7 +752,7 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
     >
       <StyledView className="flex-row items-center justify-between mb-4">
         <StyledView className="flex-row items-center flex-1">
-          <StyledView className="w-10 h-10 bg-purple-500 rounded-lg items-center justify-center mr-3">
+          <StyledView className="w-10 h-10 bg-primary-500 rounded-lg items-center justify-center mr-3">
             <EvaIcon name="heart" variant="outline" size={20} color="white" />
           </StyledView>
           <StyledView className="flex-1">
@@ -764,7 +764,7 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
           onPress={onEdit}
           accessibilityLabel="Edit match preferences"
           accessibilityRole="button"
-          className="bg-purple-500 px-3.5 py-1.5 rounded-lg"
+          className="bg-primary-500 px-3.5 py-1.5 rounded-lg"
         >
           <Body className="text-white font-semibold text-xs">Edit All</Body>
         </StyledTouchableOpacity>
