@@ -1,12 +1,13 @@
 /**
- * MatchesScreen sub-components — popup content, helpers, styles
+ * MatchesScreen sub-components -- popup content, helpers, styles
  * Extracted from MatchesScreen.tsx for maintainability.
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, TextInput, Modal, KeyboardAvoidingView, Platform, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, TextInput, Modal, KeyboardAvoidingView, Platform, RefreshControl, useWindowDimensions } from 'react-native';
 import ReanimatedAnimated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import LottieView from 'lottie-react-native';
+import { DURATIONS } from '../../constants/animations';
 import { EvaIcon } from '../../components/icons';
 import { ClockIcon } from '../../components/icons/Icons';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
@@ -61,8 +62,8 @@ export function computeApprovalPercent(id: string): number {
 }
 
 export function timerColor(hoursLeft: number): string {
-  if (hoursLeft >= 24) return '#34C759';
-  if (hoursLeft >= 12) return '#D4AA01';
+  if (hoursLeft >= 24) return COLORS.success;
+  if (hoursLeft >= 12) return COLORS.waitingAmber;
   if (hoursLeft >= 4) return '#FF8D28';
   return '#FF3B30';
 }
@@ -94,23 +95,23 @@ export function EndedMatchPopupContent({ event }: { event: MatchEndedEvent }) {
   const config: Record<MatchEndedEvent['type'], { icon: string; headline: string; body: string }> = {
     expired: {
       icon: 'clock',
-      headline: 'Your match expired',
-      body: 'The proposal timed out before anyone decided. Stay active — your next match could come soon.',
+      headline: 'This one timed out',
+      body: 'Neither of you decided before the window closed. No worries — your friends are already working on your next match.',
     },
     you_rejected: {
-      icon: 'smiling-face',
+      icon: 'sun',
       headline: 'You passed',
-      body: "That's totally okay — trust your instincts. Keep at it, the right fit is worth waiting for. Every pass brings you closer to someone great.",
+      body: "Totally okay — trust your gut. The right person is worth waiting for, and your friends will keep looking.",
     },
     they_rejected: {
       icon: 'heart',
-      headline: "It didn't work out this time",
-      body: "They decided to go a different direction. Your friends are still out there finding the right match for you.",
+      headline: 'Not the right fit',
+      body: "They weren't feeling it this time. Your friends are still looking out for you — the next one could be the one.",
     },
     match_ended: {
       icon: 'activity',
       headline: 'A Fresh Start',
-      body: "You're back in the matching pool. Your community is still here to help you find your next great connection.",
+      body: "You're back and ready for something new. Your friends are still here to help you find a great connection.",
     },
   };
 
@@ -122,7 +123,7 @@ export function EndedMatchPopupContent({ event }: { event: MatchEndedEvent }) {
       <Text style={popupStyles.headline}>{headline}</Text>
       {type === 'match_ended' && endReason ? (
         <View style={popupStyles.reasonBox}>
-          <Text style={popupStyles.reasonLabel}>{partnerName} wrote:</Text>
+          <Text style={popupStyles.reasonLabel}>{partnerName} shared:</Text>
           <Text style={popupStyles.reasonText}>"{endReason}"</Text>
         </View>
       ) : null}
@@ -131,15 +132,18 @@ export function EndedMatchPopupContent({ event }: { event: MatchEndedEvent }) {
   );
 }
 
-// Animated illustration for the empty state
+// Animated illustration for the empty state — scales proportionally across devices
+// SE (667pt) → ~187px, standard (844pt) → ~236px, Pro Max (932pt) → ~260px
 const VALENTINE_COUPLE_ANIM = require('../../../assets/Icons/AnimatedIcons/valentine-couple.json');
 export function IllustrationAnimation() {
+  const { height } = useWindowDimensions();
+  const illustrationSize = Math.round(Math.min(height * 0.28, 280));
   return (
     <LottieView
       source={VALENTINE_COUPLE_ANIM}
       autoPlay
       loop
-      style={styles.illustration}
+      style={{ width: illustrationSize, height: illustrationSize, marginBottom: 2 }}
     />
   );
 }
@@ -162,12 +166,12 @@ export const popupStyles = StyleSheet.create({
     marginHorizontal: 32,
   },
   content: { alignItems: 'center' },
-  icon: { fontSize: FONT_SIZES['6xl'], marginBottom: 12 },
   headline: {
     fontFamily: FONTS.bold,
     fontSize: FONT_SIZES['3xl'],
     color: COLORS.textDarkHeading,
     textAlign: 'center',
+    marginTop: 12,
     marginBottom: 12,
   },
   reasonBox: {
@@ -192,14 +196,14 @@ export const popupStyles = StyleSheet.create({
     fontSize: FONT_SIZES.base,
     color: COLORS.textGray800,
     fontStyle: 'italic',
-    lineHeight: 20,
+    lineHeight: LINE_HEIGHTS.lg,
   },
   body: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.base,
     color: COLORS.navInactiveIcon,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: LINE_HEIGHTS.lg,
     paddingHorizontal: 8,
     marginBottom: 20,
   },
@@ -219,8 +223,6 @@ export const popupStyles = StyleSheet.create({
 // ── Main Styles ──────────────────────────────────────────────────────────────
 
 export const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.screenBackground },
-  header: { paddingTop: 16, paddingHorizontal: 24, paddingBottom: 8 },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -228,8 +230,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 4,
   },
-  headerTitle: { fontFamily: FONTS.bold, fontWeight: '700', fontSize: FONT_SIZES['6xl'], lineHeight: 38, color: COLORS.text.black, letterSpacing: -0.5 },
-  headerSubtitle: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.base, lineHeight: 18, color: COLORS.navInactiveIcon, paddingHorizontal: 24, paddingBottom: 4 },
+  headerTitle: { fontFamily: FONTS.bold, fontWeight: '700' as const, fontSize: FONT_SIZES['5xl'], lineHeight: LINE_HEIGHTS['5xl'], color: COLORS.text.black, letterSpacing: -0.5 },
   timerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -240,12 +241,11 @@ export const styles = StyleSheet.create({
     height: 34,
   },
   timerText: {
+    fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.md,
-    fontWeight: '600',
   },
   emptyContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 24 },
-  illustration: { width: 260, height: 260, marginBottom: 2 },
-  tagline: { fontFamily: FONTS.bold, fontWeight: '700' as const, fontSize: FONT_SIZES['4xl'], lineHeight: LINE_HEIGHTS['4xl'], color: COLORS.text.heading, textAlign: 'center', marginBottom: 8, letterSpacing: -0.3 },
+  tagline: { fontFamily: FONTS.bold, fontSize: FONT_SIZES['4xl'], lineHeight: LINE_HEIGHTS['4xl'], color: COLORS.text.heading, textAlign: 'center', marginBottom: 8, letterSpacing: -0.3 },
   subtitle: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.base, lineHeight: LINE_HEIGHTS.base, color: COLORS.text.light, textAlign: 'center', marginBottom: 28 },
   ctaButton: {
     backgroundColor: COLORS.primaryButton,
@@ -284,7 +284,7 @@ export const styles = StyleSheet.create({
     fontSize: FONT_SIZES.base,
     color: COLORS.navInactiveIcon,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: LINE_HEIGHTS.lg,
     marginBottom: 20,
   },
   timerInfoBtn: {
@@ -320,10 +320,10 @@ export const tsStyles = StyleSheet.create({
   closeBtn: {
     position: 'absolute',
     top: 58,
-    left: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    left: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: COLORS.backgroundProgressTrack,
     alignItems: 'center',
     justifyContent: 'center',
@@ -351,7 +351,7 @@ export const tsStyles = StyleSheet.create({
     color: COLORS.navInactiveIcon,
     textAlign: 'center',
     marginBottom: 20,
-    lineHeight: 20,
+    lineHeight: LINE_HEIGHTS.lg,
   },
   pillRow: {
     flexDirection: 'row',
@@ -413,31 +413,9 @@ export const tsStyles = StyleSheet.create({
 // ── State-specific layout styles ────────────────────────────────────────────
 
 export const stateStyles = StyleSheet.create({
-  votedBadge: {
+  countdownRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 24,
-    marginBottom: 4,
-    backgroundColor: 'rgba(52, 199, 89, 0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  votedCheckmark: {
-    fontFamily: FONTS.bold,
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.success,
-    marginRight: 4,
-  },
-  votedText: {
-    fontFamily: FONTS.medium,
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.success,
-  },
-  countdownRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
     marginTop: 16,
     gap: 4,
   },
@@ -473,7 +451,7 @@ export function MatchesLockedView({
 }) {
   return (
     <ScreenWrapper>
-      <ReanimatedAnimated.View style={{ flex: 1 }} exiting={FadeOut.duration(300)}>
+      <ReanimatedAnimated.View style={{ flex: 1 }} exiting={FadeOut.duration(DURATIONS.normal)}>
         <MatchPoolLockedView
           profile={profile}
           onNavigateToSection={(section) => {
@@ -522,6 +500,13 @@ export function EmptyStateView({
   handlePopupContinue: () => void;
   headerPad?: number;
 }) {
+  // Responsive CTA and spacing -- scales proportionally across devices
+  // SE (375x667) -> ~225px wide / 44px tall, Pro Max (430x932) -> ~258px wide / 50px tall
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const ctaWidth = Math.round(Math.min(screenWidth * 0.6, 280));
+  const ctaHeight = Math.round(Math.max(screenHeight * 0.058, 44)); // min 44px touch target
+  const subtitleMB = Math.round(screenHeight * 0.033); // ~22px SE, ~28px Pro Max
+
   const emptyContent = (
     <>
       <ProfileCompletionBanner
@@ -538,21 +523,21 @@ export function EmptyStateView({
         }
       >
         <IllustrationAnimation />
-        <Text style={styles.tagline}>Your friends are on it</Text>
-        <Text style={styles.subtitle}>Help them out and they'll return the favor</Text>
+        <Text style={styles.tagline}>No matches yet</Text>
+        <Text style={[styles.subtitle, { marginBottom: subtitleMB }]}>Help your friends find their person and they'll do the same for you.</Text>
         <TouchableOpacity
-          style={styles.ctaButton}
+          style={[styles.ctaButton, { width: ctaWidth, height: ctaHeight }]}
           activeOpacity={0.85}
           onPress={() => navigation.navigate('Community')}
           accessibilityRole="button"
-          accessibilityLabel="Vote for your friends"
+          accessibilityLabel="Help your friends"
         >
-          <Text style={styles.ctaText}>Vote for Your Friends</Text>
+          <Text style={styles.ctaText}>Help Your Friends</Text>
         </TouchableOpacity>
         {emptyCountdown && (
           <View style={stateStyles.countdownRow}>
             <ClockIcon size={13} color={COLORS.text.light} />
-            <Text style={stateStyles.countdownText}>New proposals in {emptyCountdown}</Text>
+            <Text style={stateStyles.countdownText}>Next matches drop in {emptyCountdown}</Text>
           </View>
         )}
       </ScrollView>
@@ -562,7 +547,7 @@ export function EmptyStateView({
   return (
     <ScreenWrapper>
       {animateEntrance ? (
-        <ReanimatedAnimated.View style={{ flex: 1 }} entering={FadeIn.duration(400).delay(200)}>
+        <ReanimatedAnimated.View style={{ flex: 1 }} entering={FadeIn.duration(DURATIONS.slow).delay(DURATIONS.micro)}>
           {emptyContent}
         </ReanimatedAnimated.View>
       ) : (
@@ -637,9 +622,8 @@ export function EndMatchModal({
           <TouchableOpacity
             style={tsStyles.closeBtn}
             onPress={onDismiss}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <Text style={{ fontSize: FONT_SIZES['2xl'], color: COLORS.navInactiveIcon }}>✕</Text>
+            <EvaIcon name="close" variant="outline" size={20} color={COLORS.navInactiveIcon} />
           </TouchableOpacity>
 
           <View style={[tsStyles.iconWrap, { backgroundColor: COLORS.backgroundWarmPeach }]}>
@@ -647,7 +631,7 @@ export function EndMatchModal({
           </View>
           <Text style={tsStyles.title}>End this match?</Text>
           <Text style={tsStyles.subtitle}>
-            You'll re-enter the matchmaking pool.{'\n'}Your reason will be shared with them.
+            Your friends can start finding someone new.{'\n'}Your reason helps them understand what happened.
           </Text>
 
           <View style={tsStyles.pillRow}>
@@ -666,7 +650,7 @@ export function EndMatchModal({
 
           <TextInput
             style={tsStyles.textArea}
-            placeholder={endMatchReason === 'Other' ? 'Tell us a bit more...' : 'Additional details (optional)'}
+            placeholder={endMatchReason === 'Other' ? 'Tell us a bit more...' : 'Any other thoughts? (optional)'}
             placeholderTextColor={COLORS.text.placeholder}
             value={endMatchCustomReason}
             onChangeText={onCustomReasonChange}
@@ -708,16 +692,16 @@ export function TimerInfoModal({
       <TouchableOpacity style={styles.timerInfoOverlay} activeOpacity={1} onPress={onClose}>
         <View style={styles.timerInfoCard}>
           <Text style={styles.timerInfoTitle}>
-            {screenState === 'active_match' ? 'Match Timer' : 'Time to Decide'}
+            {screenState === 'active_match' ? 'Match Timer' : 'How the Timer Works'}
           </Text>
           <Text style={styles.timerInfoBody}>
             {screenState === 'active_match'
-              ? 'Your match window is ticking. Make the most of it — start a conversation!'
+              ? 'You have a limited window to chat. Say hi and see where things go!'
               : screenState === 'awaiting_you'
-              ? "They already said yes. Decide before time runs out — you don't want to miss this."
+              ? "They already said yes — now it's your turn! Take a look and decide before time runs out."
               : screenState === 'awaiting_them'
-              ? "You've made your move. They have until the timer runs out to decide."
-              : 'Both of you have a window to decide. If time runs out, the proposal expires.'}
+              ? "Nice, you said yes! Now it's in their hands. You'll hear back before the timer runs out."
+              : 'You both have a window to check each other out and decide. If time runs out, the match expires and your friends will find someone new.'}
           </Text>
           <TouchableOpacity style={styles.timerInfoBtn} onPress={onClose} activeOpacity={0.85}>
             <Text style={styles.timerInfoBtnText}>Got it</Text>
@@ -746,7 +730,7 @@ export function ConfettiOverlay({
         autoPlay
         loop={false}
         style={{ flex: 1 }}
-        speed={1}
+        speed={0.8}
       />
     </View>
   );
@@ -770,8 +754,8 @@ export function computeTimerInfo(
 
   let timerLabel: string | null = null;
   let timerClr = COLORS.success;
-  let timerBg = 'rgba(52, 199, 89, 0.08)';
-  let timerBdrClr = 'rgba(52, 199, 89, 0.25)';
+  let timerBg = timerBgColor(48);
+  let timerBdrClr = timerBorderColor(48);
 
   if (expiryTs) {
     const diffMs = expiryTs - now;
@@ -798,8 +782,8 @@ export function buildCardProps(
 ) {
   const partner =
     screenState === 'active_match'
-      ? activeMatch!.partnerProfile
-      : currentProposal!.partnerProfile;
+      ? activeMatch?.partnerProfile ?? null
+      : currentProposal?.partnerProfile ?? null;
 
   const partnerPhoto = partner?.photos?.[0]?.url || '';
   const partnerPhotoBlurhash = partner?.photos?.[0]?.blurhash || undefined;
@@ -820,12 +804,13 @@ export function buildCardProps(
 
   const matchDate: string = (() => {
     if (screenState === 'active_match') {
-      return formatMatchDate(activeMatch!.matchedAt);
+      if (!activeMatch?.matchedAt) return '';
+      return formatMatchDate(activeMatch.matchedAt);
     }
     const ref = currentProposal?.approvedAt || currentProposal?.expiresAt;
     if (!ref) return '';
     const dateStr = new Date(ref).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    return `Proposed ${dateStr}`;
+    return `Suggested ${dateStr}`;
   })();
 
   return { partner, partnerPhoto, partnerPhotoBlurhash, partnerName, partnerAge, endorserAvatars, endorserNames, matchDate };

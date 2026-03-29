@@ -13,7 +13,12 @@ import {
   SectionList,
   StyleSheet,
 } from 'react-native';
-import ReanimatedAnimated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import ReanimatedAnimated, {
+  FadeIn,
+  FadeOut,
+  ZoomIn,
+  SlideInDown,
+} from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import * as Clipboard from 'expo-clipboard';
 import { styled } from 'nativewind';
@@ -22,6 +27,7 @@ import { H3, Body } from '../../components/ui';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
+import { DURATIONS } from '../../constants/animations';
 import { NormalizedContact, ContactSection } from '../../services/contactsService';
 import { contactStyles } from './ContactInviteScreen.styles';
 import { lightHaptic } from '../../utils/haptics';
@@ -326,25 +332,30 @@ export interface CelebrationOverlayProps {
 export const CelebrationOverlay = React.memo(({ count }: CelebrationOverlayProps) => {
   if (count <= 0) return null;
   return (
-    <View
+    <ReanimatedAnimated.View
       pointerEvents="none"
+      entering={FadeIn.duration(DURATIONS.micro)}
+      exiting={FadeOut.duration(DURATIONS.slow)}
       style={contactStyles.celebrationOverlay}
     >
       <ReanimatedAnimated.View
-        entering={FadeIn.duration(300)}
-        exiting={FadeOut.duration(400)}
+        entering={ZoomIn.springify().damping(12).stiffness(200).delay(DURATIONS.micro)}
         style={contactStyles.celebrationCard}
       >
-        <EvaIcon name="award" variant="outline" size={48} color={COLORS.primaryAccent} />
+        <ReanimatedAnimated.View
+          entering={SlideInDown.springify().damping(10).stiffness(180).delay(DURATIONS.normal)}
+        >
+          <EvaIcon name="award" variant="outline" size={48} color={COLORS.primaryAccent} />
+        </ReanimatedAnimated.View>
         <View style={{ marginBottom: 8 }} />
         <Text style={contactStyles.celebrationTitle}>
           {count} invite{count === 1 ? '' : 's'} sent!
         </Text>
         <Text style={contactStyles.celebrationSubtitle}>
-          Your friends are going to love Bridge
+          The more friends on Bridge, the better your matches get
         </Text>
       </ReanimatedAnimated.View>
-    </View>
+    </ReanimatedAnimated.View>
   );
 });
 
@@ -361,7 +372,43 @@ export const LoadingView = React.memo(() => (
 
 export const EmptyContactsView = React.memo(() => (
   <StyledView className="flex-1 items-center justify-center px-8">
-    <Body className="text-neutral-500 text-center">No contacts found</Body>
+    <StyledView className="w-16 h-16 bg-primary-100 rounded-full items-center justify-center mb-4">
+      <EvaIcon name="people" variant="outline" color="primary" size={32} />
+    </StyledView>
+    <StyledText
+      className="text-neutral-900 text-center mb-2"
+      style={{ fontSize: FONT_SIZES.lg, fontFamily: FONTS.bold, fontWeight: '700' }}
+    >
+      No contacts to show
+    </StyledText>
+    <Body className="text-neutral-500 text-center" style={{ lineHeight: 20 }}>
+      Try sharing your friend code instead — you can text or DM it to anyone you want on Bridge
+    </Body>
+  </StyledView>
+));
+
+// ── Search Bar ───────────────────────────────────────────────────────────────
+
+export interface ContactSearchBarProps {
+  value: string;
+  onChangeText: (text: string) => void;
+}
+
+export const ContactSearchBar = React.memo(({ value, onChangeText }: ContactSearchBarProps) => (
+  <StyledView className="px-3 py-2 bg-white border-b border-neutral-100">
+    <StyledView className="flex-row items-center bg-neutral-100 rounded-lg px-3 py-2">
+      <EvaIcon name="search" variant="outline" size={18} color={COLORS.text.disabled} />
+      <TextInput
+        style={{ flex: 1, marginLeft: 8, fontSize: FONT_SIZES.sm, fontFamily: FONTS.regular, color: COLORS.text.primary }}
+        placeholder="Search contacts..."
+        placeholderTextColor={COLORS.text.disabled}
+        value={value}
+        onChangeText={onChangeText}
+        autoCorrect={false}
+        clearButtonMode="while-editing"
+        returnKeyType="search"
+      />
+    </StyledView>
   </StyledView>
 ));
 
@@ -378,12 +425,12 @@ export const ContactsAccessPrompt = React.memo(({ bridgeUserCount, onRequestPerm
       <EvaIcon name="people" variant="outline" color="primary" size={30} />
     </StyledView>
     <StyledText className="text-base font-semibold text-neutral-900 text-center mb-1">
-      Find friends from your contacts
+      See who's already here
     </StyledText>
     <StyledText className="text-sm text-neutral-500 text-center mb-4">
       {bridgeUserCount > 0
-        ? `${bridgeUserCount} ${bridgeUserCount === 1 ? 'person is' : 'people are'} already on Bridge`
-        : 'We never store or upload your contacts'}
+        ? `${bridgeUserCount} ${bridgeUserCount === 1 ? 'person' : 'people'} from your contacts ${bridgeUserCount === 1 ? 'is' : 'are'} already on Bridge`
+        : 'Bridge checks your contacts to find friends who can vouch for your matches -- nothing is stored or shared'}
     </StyledText>
     <StyledTouchableOpacity
       className="bg-primary-500 px-6 py-3 rounded-xl"
@@ -405,7 +452,7 @@ export interface SettingsPromptProps {
 export const SettingsPrompt = React.memo(({ onOpenSettings }: SettingsPromptProps) => (
   <StyledView className="items-center mt-4">
     <StyledText className="text-sm text-neutral-500 text-center mb-3">
-      Want to invite contacts via SMS?
+      Allow contacts access to find friends who can help with your matches
     </StyledText>
     <StyledTouchableOpacity
       className="px-5 py-2.5 rounded-xl bg-neutral-100"
@@ -533,13 +580,17 @@ export const FloatingSendButton = React.memo(({ selectedCount, invitesRemaining,
   const exhausted = invitesRemaining <= 0;
   const isDisabled = sending || exhausted;
   return (
-    <StyledView
-      className="absolute left-4 right-4 bottom-8"
-      style={SHADOWS.accentBlue}
+    <ReanimatedAnimated.View
+      entering={SlideInDown.duration(DURATIONS.normal)}
+      exiting={FadeOut.duration(DURATIONS.micro)}
+      style={[
+        { position: 'absolute', left: 16, right: 16, bottom: 32 },
+        SHADOWS.accentBlue,
+      ]}
     >
       <StyledTouchableOpacity
-        className={`rounded-xl py-4 items-center ${isDisabled ? 'bg-primary-300' : 'bg-primary-500'}`}
-        style={exhausted ? { backgroundColor: '#A3BFFF', opacity: 0.7 } : undefined}
+        className={`rounded-xl py-4 items-center ${isDisabled ? 'bg-neutral-300' : 'bg-primary-500'}`}
+        style={exhausted ? { opacity: 0.6 } : undefined}
         onPress={onSend}
         disabled={isDisabled}
         accessibilityRole="button"
@@ -549,13 +600,13 @@ export const FloatingSendButton = React.memo(({ selectedCount, invitesRemaining,
         <StyledText className="text-white font-bold text-base">
           {sending
             ? 'Opening Messages...'
-            : invitesRemaining <= 0
-            ? 'No invites remaining'
+            : exhausted
+            ? 'All invites used'
             : `Send ${sendCount} Invite${sendCount === 1 ? '' : 's'}`
           }
         </StyledText>
       </StyledTouchableOpacity>
-    </StyledView>
+    </ReanimatedAnimated.View>
   );
 });
 
@@ -640,6 +691,8 @@ export interface GrantedContactListProps {
   unadddedBridgeCount: number;
   addingAll: boolean;
   filteredSections: ContactSection[];
+  searchQuery: string;
+  onSearchChange: (text: string) => void;
   sectionListRef: React.RefObject<SectionList<NormalizedContact, ContactSection> | null>;
   onCopyCode: () => void;
   onShareCode: () => void;
@@ -652,6 +705,7 @@ export interface GrantedContactListProps {
   onSendInvites: () => void;
   keyExtractor: (item: NormalizedContact) => string;
   hideFloatingButton?: boolean;
+  totalContactCount: number;
 }
 
 export const GrantedContactList = React.memo(({
@@ -666,6 +720,8 @@ export const GrantedContactList = React.memo(({
   unadddedBridgeCount,
   addingAll,
   filteredSections,
+  searchQuery,
+  onSearchChange,
   sectionListRef,
   onCopyCode,
   onShareCode,
@@ -678,6 +734,7 @@ export const GrantedContactList = React.memo(({
   onSendInvites,
   keyExtractor,
   hideFloatingButton,
+  totalContactCount,
 }: GrantedContactListProps) => {
   const renderItem = React.useCallback(
     ({ item }: { item: NormalizedContact }) => (
@@ -710,6 +767,9 @@ export const GrantedContactList = React.memo(({
     [unadddedBridgeCount, onAddAllBridge, addingAll]
   );
 
+  // Show search bar when there are 20+ contacts
+  const showSearch = totalContactCount >= 20;
+
   return (
     <>
       <GrantedHeaderStrip
@@ -722,6 +782,13 @@ export const GrantedContactList = React.memo(({
         onChangeText={onEnterCodeChangeText}
         onEnterCode={onEnterCode}
       />
+
+      {showSearch && (
+        <ContactSearchBar
+          value={searchQuery}
+          onChangeText={onSearchChange}
+        />
+      )}
 
       {filteredSections.length > 0 ? (
         <View style={contactStyles.contactListWrapper}>
@@ -739,6 +806,8 @@ export const GrantedContactList = React.memo(({
             initialNumToRender={20}
             maxToRenderPerBatch={30}
             windowSize={10}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             contentContainerStyle={selectedIds.size > 0 ? contactStyles.contentWithSelection : contactStyles.contentDefault}
           />
           <AZSidebar sections={filteredSections} sectionListRef={sectionListRef} />
@@ -775,10 +844,10 @@ export const ScreenHeader = React.memo(({ onGoBack, bridgeUserCount, invitesRema
     <StyledView className="mt-2">
       <StyledView className="flex-row items-center justify-between mb-1">
         <StyledText className="text-xs text-neutral-500" style={{ fontFamily: FONTS.medium }}>
-          {bridgeUserCount > 0 ? `${bridgeUserCount}+ students on Bridge` : 'Send invites to build your crew'}
+          {bridgeUserCount > 0 ? `${bridgeUserCount}+ people on Bridge` : 'Invite friends to start getting matched'}
         </StyledText>
         <StyledText className="text-xs font-semibold" style={{ fontFamily: FONTS.semiBold, color: COLORS.primaryAccent }}>
-          {invitesRemaining} invite{invitesRemaining === 1 ? '' : 's'} left
+          {invitesRemaining} invite{invitesRemaining === 1 ? '' : 's'} remaining
         </StyledText>
       </StyledView>
       <StyledView className="bg-neutral-200 rounded-full h-1.5 overflow-hidden">

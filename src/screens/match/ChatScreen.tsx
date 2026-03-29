@@ -3,7 +3,7 @@
  * Modals and styles extracted to ChatScreen.components.tsx
  */
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   SafeAreaView,
@@ -16,13 +16,12 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
-  StyleSheet,
   Text,
+  StyleSheet,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
-import { styled } from 'nativewind';
-import { H3, Body, BodySmall } from '../../components/ui';
+import { H3 } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList, Message, Match, MatchStatus } from '../../types';
 import { getCurrentUser } from '../../services/authService';
@@ -44,6 +43,8 @@ import { getUserProfile, getFullUserProfileById } from '../../services/profileSe
 import { submitUserReport } from '../../services/matchService';
 import { createLogger } from '../../utils/secureLogger';
 import { COLORS } from '../../theme/colors';
+import { SHADOWS } from '../../theme/shadows';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { EvaIcon } from '../../components/icons';
 
 import {
@@ -62,11 +63,8 @@ interface ChatScreenProps {
   route: RouteProp<RootStackParamList, 'Chat'>;
 }
 
-const StyledSafeAreaView = styled(SafeAreaView);
-const StyledView = styled(View);
-const StyledTextInput = styled(TextInput);
-const StyledTouchableOpacity = styled(TouchableOpacity);
-
+/** Header ~56px (paddingVertical 12*2 + avatar 32) + SafeArea inset ~47 = ~103 */
+const KEYBOARD_VERTICAL_OFFSET = Platform.OS === 'ios' ? 100 : 0;
 const FLAT_LIST_CONTENT_STYLE = { padding: 16, paddingBottom: 8, flexGrow: 1 } as const;
 
 export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => {
@@ -76,10 +74,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [audioRecording, setAudioRecording] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [match, setMatch] = useState<Match | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [imageLoadError, setImageLoadError] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -117,10 +117,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
   const currentUserIdRef = useRef<string | null>(null);
   useEffect(() => { currentUserIdRef.current = currentUserId; }, [currentUserId]);
 
-  const recipientProfile = useMemo(() =>
-    match?.currentUserId === match?.user1Id ? match?.user2Profile : match?.user1Profile,
-    [match]
-  );
+  const recipientProfile = match?.currentUserId === match?.user1Id ? match?.user2Profile : match?.user1Profile;
 
   useEffect(() => {
     loadMessages();
@@ -164,8 +161,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     try {
       const userResult = await getCurrentUser();
       if (!userResult.ok || !userResult.data) {
-        setError('User not authenticated');
-        if (!isRefresh) { Alert.alert('Error', 'User not authenticated'); navigation.goBack(); }
+        setError('Looks like you got signed out. Please sign back in to continue.');
         return;
       }
       setCurrentUserId(userResult.data.id);
@@ -176,7 +172,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
           if (messagesResult.data && messagesResult.data.length > 0) {
             await markFriendMessagesAsRead(userResult.data.id, recipientId);
           }
-        } else { setError(messagesResult.error?.message || 'Failed to load messages'); }
+        } else { setError(messagesResult.error?.message || 'Couldn\'t load your conversation right now'); }
         setLoading(false); setRefreshing(false); return;
       }
       if (matchId) {
@@ -190,20 +186,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       }
       const messagesResult = await getMatchMessages(matchId || 'mock-match');
       if (!messagesResult.ok) {
-        setError(messagesResult.error?.message || 'Failed to load messages');
-        if (!isRefresh) Alert.alert('Error', 'Failed to load messages');
+        setError(messagesResult.error?.message || 'Couldn\'t load your conversation right now');
         return;
       }
       setMessages(messagesResult.data || []);
       if (matchId && userResult.data && messagesResult.data && messagesResult.data.length > 0) {
         await markMessagesAsRead(matchId, userResult.data.id);
       }
-    } catch (error: any) {
-      const errorMessage = error.message || 'Failed to load chat';
-      setError(errorMessage);
-      if (!isRefresh) Alert.alert('Error', errorMessage);
+    } catch (err: any) {
+      setError(err.message || 'Couldn\'t load your conversation right now');
     } finally { setLoading(false); setRefreshing(false); }
-  }, [matchId, recipientId, isFriend, navigation]);
+  }, [matchId, recipientId, isFriend]);
 
   const handleRefresh = useCallback(() => loadMessages(true), [loadMessages]);
 
@@ -213,19 +206,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     if (isFriend && (!friendshipId || !recipientId)) return;
     const targetRecipientId = isFriend ? recipientId! : (match!.currentUserId === match!.user1Id ? match!.user2Id : match!.user1Id);
     const messageText = newMessage.trim();
-    setNewMessage(''); setSendingMessage(true);
+    setNewMessage(''); setSendingMessage(true); setSendError(null);
     try {
       let result;
       if (isFriend && friendshipId) result = await sendFriendMessage(friendshipId, targetRecipientId, messageText);
       else if (matchId) result = await sendMessageAPI(matchId, targetRecipientId, messageText);
       else return;
-      if (!result.ok || !result.data) throw new Error(result.error?.message || 'Failed to send message');
+      if (!result.ok || !result.data) throw new Error(result.error?.message || 'Your message didn\'t go through — try again?');
       const sentMsg = result.data;
       setMessages(prev => { if (prev.some(m => m.id === sentMsg.id)) return prev; return [...prev, sentMsg]; });
     } catch (error: any) {
-      const msg = error.message || 'Failed to send message';
+      const msg = error.message || 'Your message didn\'t go through — try again?';
       const isRestricted = msg.toLowerCase().includes('restricted');
-      Alert.alert('Send Failed', isRestricted ? 'This message contains restricted phrases. Use the "Propose a Date" button in the menu to ask them out!' : msg);
+      setSendError(isRestricted ? 'That message has a restricted phrase. Use "Propose a Date" in the menu instead.' : msg);
       setNewMessage(messageText);
     } finally { setSendingMessage(false); }
   };
@@ -235,16 +228,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     if (!isFriend && !match) return;
     if (isFriend && (!friendshipId || !recipientId)) return;
     const targetRecipientId = isFriend ? recipientId! : (match!.currentUserId === match!.user1Id ? match!.user2Id : match!.user1Id);
-    setSendingMessage(true);
+    setSendingMessage(true); setSendError(null);
     try {
       let result;
       if (isFriend && friendshipId) result = await sendFriendMessage(friendshipId, targetRecipientId, uri, 'audio', durationMillis);
       else if (matchId) result = await sendMessageAPI(matchId, targetRecipientId, uri, 'audio', durationMillis);
       else return;
-      if (!result.ok || !result.data) throw new Error(result.error?.message || 'Failed to send voice note');
+      if (!result.ok || !result.data) throw new Error(result.error?.message || 'Your voice note didn\'t go through — try again?');
       const sentMsg = result.data;
       setMessages(prev => { if (prev.some(m => m.id === sentMsg.id)) return prev; return [...prev, sentMsg]; });
-    } catch (error: any) { Alert.alert('Upload Failed', error.message || 'Failed to send voice note'); }
+    } catch (err: any) { setSendError(err.message || 'Voice note failed to send. Please try again.'); }
     finally { setSendingMessage(false); }
   };
 
@@ -261,7 +254,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       if (matchId) await communityService.endActiveMatch(matchId, reason);
       setEndMatchModalVisible(false); setEndMatchReason(''); setEndMatchCustomReason('');
       navigation.goBack();
-    } catch (error: any) { Alert.alert('Error', error.message || 'Could not end match. Try again.'); }
+    } catch (error: any) { Alert.alert('Hmm, that didn\'t work', 'We couldn\'t end the match right now. Give it another try?'); }
     finally { setEndMatchSubmitting(false); }
   };
 
@@ -270,8 +263,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     try {
       await submitUserReport({ reporterId: currentUserId, reportedUserId: recipientId || '', reportedUserName: recipientName, reason: reportReason, details: reportDetails });
       setReportModalVisible(false); setReportReason(''); setReportDetails('');
-      Alert.alert('Report Submitted', 'Thank you. Our team will review this shortly.');
-    } catch (err) { Alert.alert('Error', 'Could not submit report. Please try again.'); }
+      Alert.alert('Thanks for letting us know', 'Our team will look into this within 24 hours.');
+    } catch (err) { Alert.alert('Hmm, that didn\'t work', 'We couldn\'t send your report right now. Give it another try?'); }
   };
 
   const handleProposeDateConfirm = async () => {
@@ -281,25 +274,25 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     const targetRecipientId = isFriend ? recipientId! : (match ? (match.currentUserId === match.user1Id ? match.user2Id : match.user1Id) : recipientId!);
     if (!targetRecipientId) return;
     const messageText = `📅 Date Proposal: ${text}`;
-    setSendingMessage(true);
+    setSendingMessage(true); setSendError(null);
     try {
       let result;
       if (isFriend && friendshipId) result = await sendFriendMessage(friendshipId, targetRecipientId, messageText);
       else if (matchId) result = await sendMessageAPI(matchId, targetRecipientId, messageText);
       else return;
-      if (!result.ok || !result.data) throw new Error(result.error?.message || 'Failed to send');
+      if (!result.ok || !result.data) throw new Error(result.error?.message || 'Your hangout idea didn\'t go through');
       const sentMsg = result.data;
       setMessages(prev => prev.some(m => m.id === sentMsg.id) ? prev : [...prev, sentMsg]);
-    } catch (e: any) { Alert.alert('Failed', e.message || 'Could not send date proposal. Please try again.'); }
+    } catch (e: any) { setSendError(e.message || 'Date proposal failed to send. Please try again.'); }
     finally { setSendingMessage(false); }
   };
 
   const renderDateSeparator = useCallback((date: string) => (
-    <StyledView className="items-center my-4">
-      <StyledView className="bg-neutral-100 px-3 py-1 rounded-full">
-        <BodySmall className="text-neutral-600">{date}</BodySmall>
-      </StyledView>
-    </StyledView>
+    <View style={cs.dateSepWrap}>
+      <View style={cs.dateSepPill}>
+        <Text style={cs.dateSepText}>{date}</Text>
+      </View>
+    </View>
   ), []);
 
   const renderMessage = useCallback(({ item, index }: { item: Message; index: number }) => {
@@ -312,7 +305,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     return (
       <>
         {showDateSeparator && renderDateSeparator(formatMessageDate(messageDate))}
-        <StyledView className={`mb-3 ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+        <View style={[cs.messageRow, isOwnMessage ? cs.messageRowOwn : cs.messageRowOther]}>
           {isDateProposal ? (
             <View style={dateProposalStyles.card}>
               <View style={dateProposalStyles.header}>
@@ -322,23 +315,25 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
               <Text style={dateProposalStyles.body}>{dateProposalBody}</Text>
             </View>
           ) : (
-            <StyledView className={`max-w-[80%] px-4 py-2 rounded-2xl ${isOwnMessage ? 'bg-primary-500 rounded-br-sm' : 'bg-neutral-100 rounded-bl-sm'}`}>
+            <View style={[cs.bubble, isOwnMessage ? cs.bubbleOwn : cs.bubbleOther]}>
               {item.type === 'audio' ? (
                 <AudioPlayer uri={item.content} duration={item.duration} isOwnMessage={isOwnMessage} />
               ) : (
-                <Body className={isOwnMessage ? 'text-white' : 'text-neutral-900'}>{item.content}</Body>
+                <Text style={[cs.bubbleText, isOwnMessage ? cs.bubbleTextOwn : cs.bubbleTextOther]}>
+                  {item.content}
+                </Text>
               )}
-            </StyledView>
+            </View>
           )}
-          <StyledView className="flex-row items-center mt-1 px-1">
-            <BodySmall className="text-neutral-500">{timeString}</BodySmall>
+          <View style={cs.timestampRow}>
+            <Text style={cs.timestampText}>{timeString}</Text>
             {isOwnMessage && item.readAt && (
-              <StyledView className="ml-1">
+              <View style={cs.readReceipt}>
                 <EvaIcon name="done-all" variant="outline" size={12} color={COLORS.primaryAccent} />
-              </StyledView>
+              </View>
             )}
-          </StyledView>
-        </StyledView>
+          </View>
+        </View>
       </>
     );
   }, [currentUserId, messages, renderDateSeparator]);
@@ -346,123 +341,163 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
   const renderEmptyState = useCallback(() => {
     if (isFriend) {
       return (
-        <StyledView className="flex-1 items-center justify-center px-8 py-12">
-          <StyledView className="w-20 h-20 bg-primary-50 rounded-full items-center justify-center mb-4">
+        <View style={cs.emptyWrap}>
+          <View style={cs.emptyIcon}>
             <EvaIcon name="people" variant="outline" size={40} color={COLORS.primaryAccent} />
-          </StyledView>
+          </View>
           <H3 className="mb-2 text-center">Chat with {recipientName}</H3>
-          <BodySmall className="text-neutral-600 text-center">Say hi to your friend! You can coordinate matches and catch up here.</BodySmall>
-        </StyledView>
+          <Text style={cs.emptySubtext}>Send a message to catch up or coordinate your next match together.</Text>
+        </View>
       );
     }
     return (
-      <StyledView className="flex-1 justify-end px-0 pb-4">
+      <View style={cs.emptyMatchWrap}>
         <MatchContextCard currentUserProfile={currentUserProfile} recipientProfile={matchRecipientProfile} />
-      </StyledView>
+        <View style={cs.emptyMatchHint}>
+          <Text style={cs.emptyMatchHintText}>
+            This is the start of your conversation with {recipientName}. Say something genuine — your friends brought you here for a reason.
+          </Text>
+        </View>
+      </View>
     );
-  }, [isFriend, currentUserProfile, matchRecipientProfile]);
+  }, [isFriend, recipientName, currentUserProfile, matchRecipientProfile]);
 
   const renderHeader = useCallback(() => {
     if (isFriend || messages.length === 0) return null;
     return (
-      <StyledView className="mb-2">
+      <View style={cs.listHeader}>
         <MatchContextCard currentUserProfile={currentUserProfile} recipientProfile={matchRecipientProfile} />
-      </StyledView>
+      </View>
     );
   }, [isFriend, messages.length, currentUserProfile, matchRecipientProfile]);
 
   if (loading) {
     return (
-      <StyledSafeAreaView className="flex-1 bg-white justify-center items-center">
-        <ActivityIndicator size="large" color={COLORS.primaryAccent} />
-        <BodySmall className="text-neutral-600 mt-4">Loading messages...</BodySmall>
-      </StyledSafeAreaView>
+      <SafeAreaView style={cs.loadingContainer}>
+        <View style={cs.loadingIcon}>
+          <EvaIcon name="message-circle" variant="outline" size={28} color={COLORS.primaryAccent} />
+        </View>
+        <ActivityIndicator size="small" color={COLORS.primaryAccent} />
+        <Text style={cs.loadingText}>Opening your conversation...</Text>
+      </SafeAreaView>
     );
   }
 
   if (error && !match && !isFriend) {
     return (
-      <StyledSafeAreaView className="flex-1 bg-white justify-center items-center px-8">
+      <SafeAreaView style={cs.errorContainer}>
         <EvaIcon name="alert-circle" variant="outline" size={64} color={COLORS.error} />
         <H3 className="mt-4 mb-2 text-center">Something went wrong</H3>
-        <BodySmall className="text-neutral-600 text-center mb-6">{error}</BodySmall>
-        <StyledTouchableOpacity onPress={() => loadMessages()} className="bg-primary-500 px-6 py-3 rounded-lg" accessibilityRole="button" accessibilityLabel="Try again">
-          <Body className="text-white font-semibold">Try Again</Body>
-        </StyledTouchableOpacity>
-        <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mt-4" accessibilityRole="button" accessibilityLabel="Go back">
-          <Body className="text-neutral-600">Go Back</Body>
-        </StyledTouchableOpacity>
-      </StyledSafeAreaView>
+        <Text style={cs.errorSubtext}>{error}</Text>
+        <TouchableOpacity onPress={() => loadMessages()} style={cs.retryBtn} accessibilityRole="button" accessibilityLabel="Try again">
+          <Text style={cs.retryBtnText}>Try Again</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={cs.goBackBtn} accessibilityRole="button" accessibilityLabel="Go back">
+          <Text style={cs.goBackText}>Go Back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
     );
   }
 
   return (
-    <StyledSafeAreaView className="flex-1 bg-white">
+    <SafeAreaView style={cs.screen}>
       <StatusBar barStyle="dark-content" />
       {/* Chat Header */}
-      <StyledView className="flex-row items-center justify-between px-4 py-3 border-b border-neutral-200">
-        <StyledView className="flex-row items-center flex-1">
-          <StyledTouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Go back">
+      <View style={cs.header}>
+        <View style={cs.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel="Go back">
             <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.textDarkHeading} />
-          </StyledTouchableOpacity>
+          </TouchableOpacity>
           {(() => {
             const photoUrl = (recipientProfile?.photos?.find((p: any) => p.isMain) || recipientProfile?.photos?.[0])?.url || recipientPhoto;
-            return photoUrl ? (
-              <StyledTouchableOpacity onPress={() => navigation.navigate('ProfileView', { userId: recipientId || '', profile: recipientProfile || (recipientId ? { userId: recipientId, firstName: recipientName } as any : undefined), showActions: false })} className="ml-3 mr-3" accessibilityRole="button" accessibilityLabel={`View ${recipientName}'s profile`}>
+            if (!photoUrl || imageLoadError) return null;
+            return (
+              <TouchableOpacity onPress={() => navigation.navigate('ProfileView', { userId: recipientId || '', profile: recipientProfile || (recipientId ? { userId: recipientId, firstName: recipientName } as any : undefined), showActions: false })} style={cs.avatarBtn} accessibilityRole="button" accessibilityLabel={`View ${recipientName}'s profile`}>
                 <Image
-                source={{ uri: getOptimizedPhotoUrl(photoUrl, 'avatar') ?? photoUrl }}
-                style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.backgroundGrayMedium }}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-                priority="high"
-              />
-              </StyledTouchableOpacity>
-            ) : null;
+                  source={{ uri: getOptimizedPhotoUrl(photoUrl, 'avatar') ?? photoUrl }}
+                  style={cs.avatar}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  priority="high"
+                  onError={() => setImageLoadError(true)}
+                  accessibilityLabel={`${recipientName}'s photo`}
+                />
+              </TouchableOpacity>
+            );
           })()}
-          <StyledView className="flex-1">
-            <H3>{recipientName}</H3>
-            {isFriend && <BodySmall className="text-neutral-500">Friend</BodySmall>}
-          </StyledView>
-        </StyledView>
+          <View style={cs.headerTitleWrap}>
+            <H3 numberOfLines={1}>{recipientName}</H3>
+            {isFriend && <Text style={cs.friendLabel}>Friend</Text>}
+          </View>
+        </View>
         {!isFriend && (
-          <StyledTouchableOpacity onPress={() => setMenuVisible(true)} style={{ padding: 4 }} accessibilityRole="button" accessibilityLabel="Chat options menu">
+          <TouchableOpacity onPress={() => setMenuVisible(true)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={cs.menuBtn} accessibilityRole="button" accessibilityLabel="Chat options menu">
             <EvaIcon name="more-vertical" variant="outline" size={22} color={COLORS.navInactiveIcon} />
-          </StyledTouchableOpacity>
+          </TouchableOpacity>
         )}
-      </StyledView>
+      </View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }} keyboardVerticalOffset={0}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={cs.flex1} keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET}>
         <FlatList
           ref={flatListRef} data={messages} keyExtractor={(item) => item.id}
           renderItem={renderMessage} contentContainerStyle={FLAT_LIST_CONTENT_STYLE}
           showsVerticalScrollIndicator={false} ListHeaderComponent={renderHeader}
           ListEmptyComponent={renderEmptyState}
+          keyboardShouldPersistTaps="handled"
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.primaryAccent} />}
           initialNumToRender={8}
           maxToRenderPerBatch={8}
           windowSize={5}
           removeClippedSubviews
+          accessibilityRole="list"
+          accessibilityLabel="Messages"
         />
-        <StyledView className="border-t border-neutral-200 px-4 py-3 bg-white">
-          <StyledView className="flex-row items-end">
+        {sendError && (
+          <View style={cs.sendErrorWrap}>
+            <EvaIcon name="alert-circle" variant="outline" size={16} color={COLORS.error} />
+            <Text style={cs.sendErrorText} numberOfLines={2}>{sendError}</Text>
+            <TouchableOpacity onPress={() => setSendError(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityRole="button" accessibilityLabel="Dismiss error">
+              <EvaIcon name="close" variant="outline" size={16} color={COLORS.text.secondary} />
+            </TouchableOpacity>
+          </View>
+        )}
+        <View style={cs.inputBar}>
+          <View style={cs.inputBarInner}>
             <AudioRecorder onRecordingComplete={handleAudioRecordingComplete} onRecordingStateChange={setAudioRecording} disabled={sendingMessage} />
             {!audioRecording && (
               <>
-                <StyledView className="flex-1 bg-neutral-50 rounded-2xl px-4 py-2 mx-2">
-                  <StyledTextInput value={newMessage} onChangeText={setNewMessage} placeholder="Say something..." multiline maxLength={1000} className="text-neutral-900 text-base max-h-24" placeholderTextColor={COLORS.text.placeholder} editable={!sendingMessage && !newMessage.startsWith('file://')} accessibilityLabel="Message input" />
-                </StyledView>
+                <View style={cs.inputFieldWrap}>
+                  <TextInput
+                    value={newMessage}
+                    onChangeText={(text: string) => { setNewMessage(text); if (sendError) setSendError(null); }}
+                    placeholder="Write a message..."
+                    multiline
+                    maxLength={1000}
+                    style={cs.inputField}
+                    placeholderTextColor={COLORS.text.placeholder}
+                    editable={!sendingMessage}
+                    accessibilityLabel="Message input"
+                  />
+                </View>
                 {newMessage.trim() || sendingMessage ? (
-                  <StyledTouchableOpacity onPress={sendMessage} disabled={!newMessage.trim() || sendingMessage} className={`w-10 h-10 rounded-full items-center justify-center ${newMessage.trim() && !sendingMessage ? 'bg-primary-500' : 'bg-neutral-200'}`} accessibilityRole="button" accessibilityLabel="Send message" accessibilityState={{ disabled: !newMessage.trim() || sendingMessage }}>
-                    {sendingMessage ? <ActivityIndicator size="small" color="white" /> : <EvaIcon name="paper-plane" variant="outline" size={20} color={newMessage.trim() ? COLORS.card : COLORS.text.placeholder} />}
-                  </StyledTouchableOpacity>
+                  <TouchableOpacity
+                    onPress={sendMessage}
+                    disabled={!newMessage.trim() || sendingMessage}
+                    style={[cs.sendBtn, newMessage.trim() && !sendingMessage ? cs.sendBtnActive : cs.sendBtnDisabled]}
+                    accessibilityRole="button"
+                    accessibilityLabel="Send message"
+                    accessibilityState={{ disabled: !newMessage.trim() || sendingMessage }}
+                  >
+                    {sendingMessage ? <ActivityIndicator size="small" color={COLORS.card} /> : <EvaIcon name="paper-plane" variant="outline" size={20} color={newMessage.trim() ? COLORS.card : COLORS.text.placeholder} />}
+                  </TouchableOpacity>
                 ) : null}
               </>
             )}
-          </StyledView>
+          </View>
           {newMessage.length > 900 && (
-            <BodySmall className="text-neutral-500 mt-1 text-right">{1000 - newMessage.length} characters remaining</BodySmall>
+            <Text style={cs.charCount}>{1000 - newMessage.length} characters remaining</Text>
           )}
-        </StyledView>
+        </View>
       </KeyboardAvoidingView>
 
       {/* Modals */}
@@ -470,8 +505,313 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       <ProposeDateModal visible={proposeDateModalVisible} onClose={() => { setProposeDateModalVisible(false); setDateProposalText(''); }} onConfirm={handleProposeDateConfirm} recipientName={recipientName} dateProposalText={dateProposalText} onChangeText={setDateProposalText} />
       <EndMatchModal visible={endMatchModalVisible} onClose={() => { setEndMatchModalVisible(false); setEndMatchReason(''); setEndMatchCustomReason(''); }} onConfirm={handleEndMatchConfirm} endMatchReason={endMatchReason} onSelectReason={setEndMatchReason} endMatchCustomReason={endMatchCustomReason} onChangeCustomReason={setEndMatchCustomReason} submitting={endMatchSubmitting} />
       <ReportModal visible={reportModalVisible} onClose={() => { setReportModalVisible(false); setReportReason(''); setReportDetails(''); }} onConfirm={handleReportConfirm} recipientName={recipientName} reportReason={reportReason} onSelectReason={setReportReason} reportDetails={reportDetails} onChangeDetails={setReportDetails} />
-    </StyledSafeAreaView>
+    </SafeAreaView>
   );
 };
+
+// ── Styles ──────────────────────────────────────────────────────────────────
+
+const cs = StyleSheet.create({
+  flex1: { flex: 1 },
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.screenBackground,
+  },
+
+  // ── Loading ─────────────────────────────────────
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: COLORS.screenBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORS.backgroundIconBlue,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  loadingText: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.base,
+    lineHeight: LINE_HEIGHTS.base,
+    color: COLORS.text.light,
+    marginTop: 12,
+  },
+
+  // ── Error ───────────────────────────────────────
+  errorContainer: {
+    flex: 1,
+    backgroundColor: COLORS.screenBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorSubtext: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.base,
+    lineHeight: LINE_HEIGHTS.base,
+    color: COLORS.text.secondary,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryBtn: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  retryBtnText: {
+    fontFamily: FONTS.semiBold,
+    fontSize: FONT_SIZES.lg,
+    lineHeight: LINE_HEIGHTS.lg,
+    color: COLORS.card,
+  },
+  goBackBtn: {
+    marginTop: 16,
+    paddingVertical: 8,
+  },
+  goBackText: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.lg,
+    lineHeight: LINE_HEIGHTS.lg,
+    color: COLORS.text.secondary,
+  },
+
+  // ── Chat Header ─────────────────────────────────
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.card,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  avatarBtn: {
+    marginLeft: 12,
+    marginRight: 12,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.backgroundGrayMedium,
+  },
+  headerTitleWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  friendLabel: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.sm,
+    lineHeight: LINE_HEIGHTS.sm,
+    color: COLORS.text.secondary,
+  },
+  menuBtn: {
+    padding: 8,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ── List header ─────────────────────────────────
+  listHeader: {
+    marginBottom: 8,
+  },
+
+  // ── Date separator ──────────────────────────────
+  dateSepWrap: {
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  dateSepPill: {
+    backgroundColor: COLORS.backgroundGray,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  dateSepText: {
+    fontFamily: FONTS.medium,
+    fontSize: FONT_SIZES.xs,
+    lineHeight: LINE_HEIGHTS.xs,
+    color: COLORS.text.secondary,
+  },
+
+  // ── Message bubbles ─────────────────────────────
+  messageRow: {
+    marginBottom: 12,
+  },
+  messageRowOwn: {
+    alignItems: 'flex-end',
+  },
+  messageRowOther: {
+    alignItems: 'flex-start',
+  },
+  bubble: {
+    maxWidth: '80%',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    ...SHADOWS.sm,
+  },
+  bubbleOwn: {
+    backgroundColor: COLORS.primary,
+    borderBottomRightRadius: 6,
+  },
+  bubbleOther: {
+    backgroundColor: COLORS.card,
+    borderBottomLeftRadius: 6,
+  },
+  bubbleText: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.lg,
+    lineHeight: LINE_HEIGHTS.lg,
+  },
+  bubbleTextOwn: {
+    color: COLORS.card,
+  },
+  bubbleTextOther: {
+    color: COLORS.text.primary,
+  },
+  timestampRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    paddingHorizontal: 4,
+  },
+  timestampText: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.xs,
+    lineHeight: LINE_HEIGHTS.xs,
+    color: COLORS.text.light,
+  },
+  readReceipt: {
+    marginLeft: 4,
+  },
+
+  // ── Empty state ─────────────────────────────────
+  emptyWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 48,
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    backgroundColor: COLORS.backgroundIconBlue,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptySubtext: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.base,
+    lineHeight: LINE_HEIGHTS.base,
+    color: COLORS.text.secondary,
+    textAlign: 'center',
+  },
+  emptyMatchWrap: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: 16,
+  },
+  emptyMatchHint: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  emptyMatchHintText: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.base,
+    lineHeight: LINE_HEIGHTS.base,
+    color: COLORS.text.muted,
+    textAlign: 'center',
+  },
+
+  // ── Send error banner ───────────────────────────
+  sendErrorWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: COLORS.mismatch.bg,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderPink,
+  },
+  sendErrorText: {
+    flex: 1,
+    marginLeft: 8,
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.sm,
+    lineHeight: LINE_HEIGHTS.sm,
+    color: COLORS.error,
+  },
+
+  // ── Input bar ───────────────────────────────────
+  inputBar: {
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: COLORS.card,
+  },
+  inputBarInner: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  inputFieldWrap: {
+    flex: 1,
+    backgroundColor: COLORS.backgroundGray,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginHorizontal: 8,
+  },
+  inputField: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.lg,
+    lineHeight: LINE_HEIGHTS.lg,
+    color: COLORS.text.primary,
+    maxHeight: 96,
+    paddingTop: 0,
+    paddingBottom: 0,
+  },
+  sendBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendBtnActive: {
+    backgroundColor: COLORS.primary,
+  },
+  sendBtnDisabled: {
+    backgroundColor: COLORS.backgroundGrayMedium,
+  },
+  charCount: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.xs,
+    lineHeight: LINE_HEIGHTS.xs,
+    color: COLORS.text.light,
+    marginTop: 4,
+    textAlign: 'right',
+  },
+});
 
 export default ChatScreen;

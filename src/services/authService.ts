@@ -158,6 +158,24 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
     }
     await recordRateLimitAttempt(normalizedEmail, RateLimitAction.OTP_SEND);
 
+    // Check if this email already has an account — redirect to sign in instead
+    const { data: existing } = await supabase
+      .from('user_profiles')
+      .select('user_id')
+      .eq('email', normalizedEmail)
+      .maybeSingle();
+
+    if (existing) {
+      logger.info('[EMAIL] Account already exists for:', normalizedEmail);
+      return {
+        ok: false,
+        error: {
+          code: 'ACCOUNT_EXISTS',
+          message: 'You already have an account! Tap "Sign In" on the welcome screen to log in.',
+        },
+      };
+    }
+
     logger.info('[EMAIL] Sending OTP via Supabase to:', email);
 
     const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });

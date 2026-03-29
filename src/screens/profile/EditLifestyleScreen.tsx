@@ -1,11 +1,11 @@
-import React, { useCallback } from 'react';
-import { View, TouchableOpacity, Text } from 'react-native';
+import React from 'react';
+import { View, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { H3, Body } from '../../components/ui/Typography';
 import { Card, ScreenWrapper } from '../../components/ui';
-import { lightHaptic, mediumHaptic } from '../../utils/haptics';
+import { Chip } from '../../components/ui/Chip';
 import { FONTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SectionScreenWrapper } from './sections/SectionScreenWrapper';
@@ -13,7 +13,6 @@ import { useEditProfile } from './sections/useEditProfile';
 import { LifestyleSection } from './sections/LifestyleSection';
 
 const StyledView = styled(View);
-const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledText = styled(Text);
 
 const CHILDREN_STATUS_OPTIONS = [
@@ -32,29 +31,29 @@ interface EditLifestyleScreenProps {
 }
 
 export const EditLifestyleScreen: React.FC<EditLifestyleScreenProps> = ({ navigation }) => {
-  const { profile, setProfile, loading, updateProfile, originalProfileJson } = useEditProfile();
+  const { profile, loading, updateProfile, originalProfileJson } = useEditProfile();
 
-  const handleUpdateDrinking = useCallback((value: string) => {
+  const handleUpdateDrinking = (value: string) => {
     updateProfile({ drinkingFrequency: value });
-  }, [updateProfile]);
+  };
 
-  const handleUpdateCannabis = useCallback((value: string) => {
+  const handleUpdateCannabis = (value: string) => {
     updateProfile({ cannabisFrequency: value });
-  }, [updateProfile]);
+  };
 
-  const handleUpdateTobacco = useCallback((value: string) => {
+  const handleUpdateTobacco = (value: string) => {
     updateProfile({ tobaccoFrequency: value });
-  }, [updateProfile]);
+  };
 
-  const handleUpdateOtherDrugs = useCallback((value: string) => {
+  const handleUpdateOtherDrugs = (value: string) => {
     updateProfile({ otherDrugsFrequency: value });
-  }, [updateProfile]);
+  };
 
   if (loading || !profile) {
     return (
       <ScreenWrapper>
         <StyledView className="flex-1 justify-center items-center">
-          <Body className="text-neutral-500">{loading ? 'Loading...' : 'Failed to load profile'}</Body>
+          <Body style={{ color: COLORS.text.secondary }}>{loading ? 'Loading...' : 'Failed to load profile'}</Body>
         </StyledView>
       </ScreenWrapper>
     );
@@ -81,55 +80,39 @@ export const EditLifestyleScreen: React.FC<EditLifestyleScreenProps> = ({ naviga
 
       {/* Family & Children */}
       <Card className="mb-6">
-        <H3 className="mb-4">Family & Children</H3>
+        <H3 className="mb-4">Family &amp; Children</H3>
 
-        <Body className="text-xs font-medium text-neutral-700 mb-2">
-          Do you have children? <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText>
-        </Body>
-        <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
+        {/* Children Status */}
+        <StyledView className="mb-3 mt-2">
+          <Body style={{ fontFamily: FONTS.semiBold, fontSize: 11, lineHeight: 14, color: COLORS.text.secondary, letterSpacing: 0.8 }}>
+            DO YOU HAVE CHILDREN?<StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}> *</StyledText>
+          </Body>
+        </StyledView>
+        <StyledView className="flex-row flex-wrap mb-5" style={{ gap: 10 }}>
           {CHILDREN_STATUS_OPTIONS.map((option) => (
-            <StyledTouchableOpacity
+            <Chip
               key={option.value}
-              activeOpacity={1}
-              delayPressIn={0}
-              onPress={() => {
-                lightHaptic();
-                updateProfile({ hasChildren: option.value });
-              }}
-              className={`px-3 py-2 rounded-full border ${profile.hasChildren === option.value
-                ? 'bg-primary-500 border-primary-500'
-                : 'bg-white border-neutral-300'
-              }`}
-            >
-              <Body className={`text-sm ${profile.hasChildren === option.value ? 'text-white font-medium' : 'text-neutral-700'}`}>
-                {option.label}
-              </Body>
-            </StyledTouchableOpacity>
+              label={option.label}
+              selected={profile.hasChildren === option.value}
+              onPress={() => updateProfile({ hasChildren: profile.hasChildren === option.value ? '' : option.value })}
+            />
           ))}
         </StyledView>
 
-        <Body className="text-xs font-medium text-neutral-700 mb-2">
-          Family Plans <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText>
-        </Body>
-        <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
+        {/* Family Plans */}
+        <StyledView className="mb-3 mt-2">
+          <Body style={{ fontFamily: FONTS.semiBold, fontSize: 11, lineHeight: 14, color: COLORS.text.secondary, letterSpacing: 0.8 }}>
+            FAMILY PLANS<StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}> *</StyledText>
+          </Body>
+        </StyledView>
+        <StyledView className="flex-row flex-wrap mb-5" style={{ gap: 10 }}>
           {FAMILY_PLANS_OPTIONS.map((option) => (
-            <StyledTouchableOpacity
+            <Chip
               key={option.value}
-              activeOpacity={1}
-              delayPressIn={0}
-              onPress={() => {
-                lightHaptic();
-                updateProfile({ familyPlans: option.value });
-              }}
-              className={`px-3 py-2 rounded-full border ${profile.familyPlans === option.value
-                ? 'bg-primary-500 border-primary-500'
-                : 'bg-white border-neutral-300'
-              }`}
-            >
-              <Body className={`text-sm ${profile.familyPlans === option.value ? 'text-white font-medium' : 'text-neutral-700'}`}>
-                {option.label}
-              </Body>
-            </StyledTouchableOpacity>
+              label={option.label}
+              selected={profile.familyPlans === option.value}
+              onPress={() => updateProfile({ familyPlans: profile.familyPlans === option.value ? '' : option.value })}
+            />
           ))}
         </StyledView>
       </Card>

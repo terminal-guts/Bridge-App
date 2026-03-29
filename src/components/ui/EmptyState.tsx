@@ -2,7 +2,8 @@ import React from 'react';
 import { View } from 'react-native';
 import { styled } from 'nativewind';
 import { Button } from './Button';
-import { H2, Body } from './Typography';
+import { H3, Body, Caption } from './Typography';
+import { COLORS } from '../../theme/colors';
 
 interface EmptyStateProps {
   icon?: React.ReactNode;
@@ -61,11 +62,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
         {/* Text Content */}
         <StyledView className="items-center max-w-sm">
-          <H2 className="text-center mb-2 text-neutral-900 font-bold text-lg">
+          <H3 className="text-center mb-2" style={{ color: COLORS.text.heading }}>
             {title}
-          </H2>
+          </H3>
           {description && (
-            <Body className="text-neutral-600 text-center mb-5 text-sm leading-6">
+            <Body className="text-center mb-5" style={{ color: COLORS.text.secondary }}>
               {description}
             </Body>
           )}
@@ -79,26 +80,28 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     );
   }
 
-  // Default variant (backward compatible)
+  // Default variant
   return (
-    <StyledView className={`items-center justify-center px-6 ${className}`} style={{ paddingVertical: 7 }}>
+    <StyledView className={`items-center justify-center px-6 py-2 ${className}`}>
       {icon && (
         <StyledView className="mb-2 opacity-40">
           {icon}
         </StyledView>
       )}
-      <H2 className="text-center mb-1 text-neutral-900 font-bold text-sm" style={{ letterSpacing: -0.3 }}>
+      <H3 className="text-center mb-1" style={{ color: COLORS.text.heading }}>
         {title}
-      </H2>
+      </H3>
       {description && (
-        <Body className="text-neutral-500 text-center mb-3 max-w-xs text-xs" style={{ letterSpacing: 0.1 }}>
+        <Caption className="text-center mb-3 max-w-xs" style={{ color: COLORS.text.secondary }}>
           {description}
-        </Body>
+        </Caption>
       )}
       {action && (
-        <Button onPress={action.onPress} variant="primary">
-          {action.label}
-        </Button>
+        <StyledView style={{ minHeight: 44 }}>
+          <Button onPress={action.onPress} variant="primary">
+            {action.label}
+          </Button>
+        </StyledView>
       )}
     </StyledView>
   );

@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React from 'react';
 import { TouchableOpacity, Text, View } from 'react-native';
 import { styled } from 'nativewind';
 import { Card } from '../../../components/ui/Card';
@@ -14,6 +14,7 @@ const StyledText = styled(Text);
 
 const MIN_INTERESTS = 3;
 const MAX_INTERESTS = 5;
+const CHIP_GAP = 8;
 
 const INTEREST_GROUPS = [
   { label: 'Sports & Fitness', items: ['Tennis', 'Golf', 'Running', 'Yoga', 'Hiking', 'Skiing', 'Basketball', 'Lifting', 'Live Sports', 'Watching Sports'] },
@@ -32,52 +33,73 @@ interface InterestsSectionProps {
   interests: string[];
   onToggleInterest: (interest: string) => void;
   onShowCustomInterestModal: () => void;
+  atLimit: boolean;
 }
 
-export const InterestsSection = React.memo<InterestsSectionProps>(({
+export const InterestsSection: React.FC<InterestsSectionProps> = ({
   interests,
   onToggleInterest,
   onShowCustomInterestModal,
+  atLimit,
 }) => {
-  // Memoize Set conversion for O(1) lookup - CRITICAL for performance
-  const interestsSet = useMemo(() => new Set(interests), [interests]);
+  const interestsSet = new Set(interests);
+  const customInterests = interests.filter(i => !AVAILABLE_INTERESTS_SET.has(i));
 
-  // Filter custom interests using Set for O(1) lookup
-  const customInterests = useMemo(() =>
-    interests.filter(i => !AVAILABLE_INTERESTS_SET.has(i)),
-    [interests]
-  );
-
-  const handleToggleInterest = useCallback((interest: string) => {
+  const handleToggleInterest = (interest: string) => {
     lightHaptic();
     onToggleInterest(interest);
-  }, [onToggleInterest]);
+  };
 
-  const handleRemoveCustomInterest = useCallback((customInterest: string) => {
-    lightHaptic();
-    onToggleInterest(customInterest);
-  }, [onToggleInterest]);
+  const count = interests.length;
 
   return (
     <Card className="mb-8">
-      <H3 className="mb-4">Interests <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
-      <Body className="text-neutral-600 text-sm mb-4">
+      <StyledView className="flex-row items-center justify-between mb-1">
+        <H3>Interests <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
+        <Body
+          className="text-xs font-medium"
+          style={{ color: atLimit ? COLORS.darkAmber : COLORS.text.light }}
+          accessibilityLabel={`${count} of ${MAX_INTERESTS} interests selected`}
+        >
+          {count}/{MAX_INTERESTS}
+        </Body>
+      </StyledView>
+      <Body style={{ color: COLORS.text.secondary }} className="text-sm mb-4">
         Select or add your interests (Select {MIN_INTERESTS}-{MAX_INTERESTS})
       </Body>
+
+      {/* Empty state */}
+      {count === 0 && (
+        <Body className="text-sm italic mb-4" style={{ color: COLORS.text.light }}>
+          Tap any chip below to get started.
+        </Body>
+      )}
+
+      {/* At-limit hint */}
+      {atLimit && (
+        <Body className="text-xs mb-3" style={{ color: COLORS.darkAmber }}>
+          Maximum reached. Remove one to add a different interest.
+        </Body>
+      )}
 
       {/* Grouped Interests */}
       {INTEREST_GROUPS.map((group) => (
         <StyledView key={group.label} className="mb-5">
-          <Body className="text-neutral-400 text-xs font-semibold tracking-wider mb-2.5">{group.label}</Body>
-          <StyledView className="flex-row flex-wrap" style={{ gap: 10 }}>
-            {group.items.map((interest) => (
-              <SimpleChip
-                key={interest}
-                label={interest}
-                selected={interestsSet.has(interest)}
-                onPress={() => handleToggleInterest(interest)}
-              />
-            ))}
+          <Body style={{ color: COLORS.text.light }} className="text-xs font-semibold tracking-wider mb-2.5">{group.label}</Body>
+          <StyledView className="flex-row flex-wrap" style={{ gap: CHIP_GAP }}>
+            {group.items.map((interest) => {
+              const isSelected = interestsSet.has(interest);
+              const isDisabled = atLimit && !isSelected;
+              return (
+                <SimpleChip
+                  key={interest}
+                  label={interest}
+                  selected={isSelected}
+                  disabled={isDisabled}
+                  onPress={() => handleToggleInterest(interest)}
+                />
+              );
+            })}
           </StyledView>
         </StyledView>
       ))}
@@ -85,18 +107,16 @@ export const InterestsSection = React.memo<InterestsSectionProps>(({
       {/* Custom interests */}
       {customInterests.length > 0 && (
         <StyledView className="mb-5">
-          <Body className="text-neutral-400 text-xs font-semibold tracking-wider mb-2.5">Custom</Body>
-          <StyledView className="flex-row flex-wrap" style={{ gap: 10 }}>
+          <Body style={{ color: COLORS.text.light }} className="text-xs font-semibold tracking-wider mb-2.5">Custom</Body>
+          <StyledView className="flex-row flex-wrap" style={{ gap: CHIP_GAP }}>
             {customInterests.map((customInterest) => (
-              <StyledTouchableOpacity
+              <SimpleChip
                 key={customInterest}
-                activeOpacity={1}
-                delayPressIn={0}
-                onPress={() => handleRemoveCustomInterest(customInterest)}
-                className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
-              >
-                <Body className="text-sm text-white font-medium">{customInterest}</Body>
-              </StyledTouchableOpacity>
+                label={customInterest}
+                selected
+                onPress={() => handleToggleInterest(customInterest)}
+                accessibilityHint="Double tap to remove"
+              />
             ))}
           </StyledView>
         </StyledView>
@@ -108,12 +128,21 @@ export const InterestsSection = React.memo<InterestsSectionProps>(({
           lightHaptic();
           onShowCustomInterestModal();
         }}
-        className="px-3 py-2 rounded-full border border-dashed border-neutral-400 bg-neutral-50 self-start"
+        disabled={atLimit}
+        accessibilityRole="button"
+        accessibilityLabel="Add custom interest"
+        accessibilityState={{ disabled: atLimit }}
+        className="px-4 rounded-full border border-dashed self-start"
+        style={{
+          minHeight: 44,
+          justifyContent: 'center',
+          borderColor: atLimit ? COLORS.borderLight : COLORS.borderGray,
+          backgroundColor: atLimit ? COLORS.borderLight : COLORS.backgroundSubtle,
+          opacity: atLimit ? 0.5 : 1,
+        }}
       >
-        <Body className="text-sm text-neutral-600">+ Other</Body>
+        <Body style={{ color: atLimit ? COLORS.text.light : COLORS.text.secondary }} className="text-sm">+ Other</Body>
       </StyledTouchableOpacity>
     </Card>
   );
-});
-
-InterestsSection.displayName = 'InterestsSection';
+};

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
     ActivityIndicator, StyleSheet,
-    Modal, Pressable, Alert,
+    Modal, Pressable, Alert, useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,13 +20,21 @@ import { formatProfileValue } from '../../utils/formatProfileValue';
 import { showToast } from '../../utils/toast';
 import { removeFriend } from '../../services/friendService';
 import { blockUser } from '../../services/blockService';
+import { submitUserReport } from '../../services/matchService';
+import { getCurrentUserId } from '../../services/communityBackendService.helpers';
 import { COLORS } from '../../theme/colors';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { SHADOWS, OVERLAYS } from '../../theme/shadows';
 import Svg, { Circle } from 'react-native-svg';
 import { ProfileBadgesSection } from '../../components/badges/ProfileBadgesSection';
 
-// ── Inline SVG icons ────────────────────────────────────────────────
+const REPORT_REASONS = [
+    'Inappropriate content',
+    'Harassment or bullying',
+    'Spam or fake profile',
+    'Makes me uncomfortable',
+    'Other',
+] as const;
 
 const MoreVerticalIcon = ({ size = 24, color = '#FFF' }: { size?: number; color?: string }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -35,8 +43,6 @@ const MoreVerticalIcon = ({ size = 24, color = '#FFF' }: { size?: number; color?
         <Circle cx="12" cy="19" r="1.5" fill={color} />
     </Svg>
 );
-
-// ── Helpers (module-level, no re-creation) ─────────────────────────
 
 const formatHeight = (height: any): string | null => {
     if (!height) return null;
@@ -49,15 +55,14 @@ const formatHeight = (height: any): string | null => {
     return null;
 };
 
-// ════════════════════════════════════════════════════════════════════
-
 export default function ProfileMatchScreen() {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const params = route.params || {};
     const insets = useSafeAreaInsets();
+    const { height: screenHeight } = useWindowDimensions();
+    const heroPhotoHeight = Math.round(screenHeight * 0.55);
 
-    // Mode detection
     const isProposal = !!params.partnerProfile;
     const isPreview = !params.partnerProfile && !params.profile;
 
@@ -67,9 +72,9 @@ export default function ProfileMatchScreen() {
     const [showKarmaModal, setShowKarmaModal] = useState(false);
     const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
     const [showActionSheet, setShowActionSheet] = useState(false);
+    const [showReportSheet, setShowReportSheet] = useState(false);
     const isMountedRef = React.useRef(true);
 
-    // ProfileView mode = viewing another user (not proposal, not preview)
     const isProfileView = !isProposal && !isPreview && !!params.profile;
     const viewedUserId: string | undefined = params.profile?.userId;
 
@@ -78,7 +83,6 @@ export default function ProfileMatchScreen() {
         return () => { isMountedRef.current = false; };
     }, []);
 
-    // Fetch the profile being viewed
     useEffect(() => {
         if (isPreview) {
             getUserProfile().then(result => {
@@ -88,9 +92,6 @@ export default function ProfileMatchScreen() {
             setLoading(true);
             getFullUserProfileById(params.profile.userId).then(full => {
                 if (!isMountedRef.current || !full) return;
-                // Preserve photos from the navigation params if the full profile has none.
-                // This can happen when user_profiles.photos JSONB is empty but photos live
-                // in the user_photos table (which fetchFriendsAsAnchors queries separately).
                 const mergedPhotos = (full.photos && full.photos.length > 0)
                     ? full.photos
                     : (params.profile?.photos ?? []);
@@ -107,7 +108,6 @@ export default function ProfileMatchScreen() {
         }
     }, [isPreview, isProposal, params.profile?.userId, params.partnerProfile?.userId]);
 
-    // Fetch current user's profile for "in common" highlighting
     useEffect(() => {
         if (!isPreview) {
             getUserProfile().then(result => {
@@ -122,8 +122,6 @@ export default function ProfileMatchScreen() {
     const screenState: string = params.screenState ?? '';
     const proposalId: string = params.proposalId ?? '';
     const canRespond = isProposal && (screenState === 'awaiting_you' || screenState === 'neither_voted');
-
-    // ── Derived data (all hooks before early return) ────────────────
 
     const endorserAvatars = useMemo<string[]>(() =>
         (endorsers ?? [])
@@ -164,17 +162,14 @@ export default function ProfileMatchScreen() {
         };
     }, [currentUserProfile, partnerProfile]);
 
-    // Photos: hero = first, inline = rest (for photo-prompt interleave)
     const allPhotos = useMemo(() => partnerProfile?.photos ?? [], [partnerProfile]);
     const inlinePhotos = useMemo(() => allPhotos.slice(1), [allPhotos]);
 
-    // Interleave: question first (to avoid photo-after-hero), then alternate
     const interleavedContent = useMemo(() => {
         const items: { type: 'photo' | 'question'; data: any }[] = [];
         let pIdx = 0;
         let qIdx = 0;
         while (pIdx < inlinePhotos.length || qIdx < deepQuestions.length) {
-            // Lead with a question so we don't get photo-right-after-hero
             if (qIdx < deepQuestions.length) {
                 items.push({ type: 'question', data: deepQuestions[qIdx] });
                 qIdx++;
@@ -205,8 +200,6 @@ export default function ProfileMatchScreen() {
         }
         return items;
     }, [partnerProfile]);
-
-    // ── Actions ─────────────────────────────────────────────────────
 
     const handlePass = useCallback(async () => {
         if (submitting) return;
@@ -285,53 +278,85 @@ export default function ProfileMatchScreen() {
         );
     }, [viewedUserId, partnerProfile, navigation]);
 
-    // ── Early return ────────────────────────────────────────────────
+    const handleReportUser = useCallback((reason: string) => {
+        if (!viewedUserId) return;
+        setShowReportSheet(false);
+        Alert.alert(
+            'Report User',
+            `Report ${partnerProfile?.firstName ?? 'this person'} for "${reason}"? Our team will review this.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Report',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const reporterId = await getCurrentUserId();
+                            await submitUserReport({
+                                reporterId,
+                                reportedUserId: viewedUserId,
+                                reportedUserName: partnerProfile?.firstName ?? 'Unknown',
+                                reason,
+                                details: '',
+                            });
+                            showToast.success('Report submitted', 'Our team will review this.');
+                        } catch {
+                            showToast.error('Failed to submit report');
+                        }
+                    },
+                },
+            ],
+        );
+    }, [viewedUserId, partnerProfile]);
 
     if (loading || !partnerProfile) {
         return (
-            <View style={styles.loadingContainer}>
+            <View style={styles.loadingContainer} accessibilityLabel="Loading profile">
                 <ActivityIndicator size="large" color={COLORS.primary} />
             </View>
         );
     }
 
-    // ── Matchmaker profile card (simplified, no dating data) ──────
     if (partnerProfile.role === 'matchmaker') {
         const matchmakerPhoto = allPhotos[0]?.url;
         const matchmakerKarma = partnerProfile.karma?.karma_points ?? 0;
         return (
             <View style={styles.container}>
-                <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
-                    {/* Back button */}
+                <View style={{ flex: 1, backgroundColor: COLORS.screenBackground }}>
                     <View style={{ position: 'absolute', top: insets.top + 8, left: 16, zIndex: 10 }}>
                         <TouchableOpacity
                             onPress={() => navigation.goBack()}
-                            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            style={styles.backButton}
+                            accessibilityLabel="Go back"
+                            accessibilityRole="button"
                         >
                             <ArrowLeft size={22} color="#FFF" />
                         </TouchableOpacity>
                     </View>
 
                     <View style={{ alignItems: 'center', paddingTop: insets.top + 60, paddingHorizontal: 24 }}>
-                        {/* Photo */}
                         {matchmakerPhoto ? (
                             <Image
                                 source={{ uri: getOptimizedPhotoUrl(matchmakerPhoto, 'card') }}
                                 style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: '#E5E7EB' }}
                                 contentFit="cover"
+                                accessibilityLabel={`${partnerProfile.firstName}'s photo`}
                             />
                         ) : (
-                            <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' }}>
+                            <View style={styles.photoPlaceholder} accessibilityLabel="No photo available">
                                 <EvaIcon name="person" variant="outline" size={48} color="#9CA3AF" />
                             </View>
                         )}
 
-                        {/* Name */}
-                        <Text style={{ fontFamily: FONTS.bold, fontSize: FONT_SIZES['3xl'], color: '#1F2937', marginTop: 16, textAlign: 'center' }}>
+                        <Text
+                            style={{ fontFamily: FONTS.bold, fontSize: FONT_SIZES['3xl'], color: '#1F2937', marginTop: 16, textAlign: 'center' }}
+                            numberOfLines={2}
+                            accessibilityRole="header"
+                        >
                             {partnerProfile.firstName}
                         </Text>
 
-                        {/* Matchmaker badge */}
                         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, marginTop: 12, gap: 6 }}>
                             <EvaIcon name="lock" variant="fill" size={16} color={COLORS.primary} />
                             <Text style={{ fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.sm, color: COLORS.primary }}>
@@ -343,7 +368,6 @@ export default function ProfileMatchScreen() {
                             Not in the dating pool
                         </Text>
 
-                        {/* Karma + voting stats */}
                         <View style={{ flexDirection: 'row', marginTop: 24, gap: 32 }}>
                             <View style={{ alignItems: 'center' }}>
                                 <Text style={{ fontFamily: FONTS.bold, fontSize: FONT_SIZES.xl, color: '#1F2937' }}>
@@ -363,21 +387,14 @@ export default function ProfileMatchScreen() {
     const heroPhoto = allPhotos[0]?.url ?? '';
     const karmaPts = partnerProfile.karma?.karma_points ?? 0;
     const heightStr = formatHeight(partnerProfile.height);
-    const hasInCommon = !isPreview && (inCommon.interests.length > 0 || inCommon.values.length > 0);
     const sharedInterestsSet = new Set(inCommon.interests.map((i: string) => i.toLowerCase()));
     const sharedValuesSet = new Set(inCommon.values.map((v: string) => v.toLowerCase()));
-    const totalInCommon = inCommon.interests.length + inCommon.values.length;
 
-    // Build hero subtitle: "School · Education · Job" (only non-empty parts)
     const subtitleParts: string[] = [];
     if (partnerProfile.school) subtitleParts.push(partnerProfile.school);
     if (partnerProfile.education) subtitleParts.push(partnerProfile.education);
     if (partnerProfile.currentJob) subtitleParts.push(partnerProfile.currentJob);
     const heroSubtitleStr = subtitleParts.join(' \u00B7 ');
-
-    // ════════════════════════════════════════════════════════════════
-    // RENDER
-    // ════════════════════════════════════════════════════════════════
 
     return (
         <View style={styles.container}>
@@ -386,29 +403,44 @@ export default function ProfileMatchScreen() {
                 contentContainerStyle={{ paddingBottom: isProposal ? 150 : 40 }}
                 showsVerticalScrollIndicator={false}
             >
-                {/* ── Hero Photo ───────────────────────────────────── */}
-                <View style={styles.heroContainer}>
-                    <Image
-                        source={heroPhoto ? { uri: getOptimizedPhotoUrl(heroPhoto, 'profile') } : null}
-                        style={{ width: '100%', height: 480 }}
-                        contentFit="cover"
-                        cachePolicy="memory-disk"
-                        priority="high"
-                        transition={300}
-                    />
+                <View style={[styles.heroContainer, { height: heroPhotoHeight }]}>
+                    {heroPhoto ? (
+                        <Image
+                            source={{ uri: getOptimizedPhotoUrl(heroPhoto, 'profile') }}
+                            style={{ width: '100%', height: heroPhotoHeight }}
+                            contentFit="cover"
+                            cachePolicy="memory-disk"
+                            priority="high"
+                            transition={300}
+                            accessibilityLabel={`${partnerProfile.firstName}'s profile photo`}
+                        />
+                    ) : (
+                        <View style={[styles.heroPlaceholder, { height: heroPhotoHeight }]} accessibilityLabel="No photo available">
+                            <EvaIcon name="person" variant="outline" size={64} color="#9CA3AF" />
+                        </View>
+                    )}
                     <LinearGradient
-                        colors={['rgba(0,0,0,0.35)', 'transparent', 'rgba(0,0,0,0.65)']}
+                        colors={[OVERLAYS.light, 'transparent', OVERLAYS.heavy]}
                         locations={[0, 0.35, 1]}
                         style={StyleSheet.absoluteFillObject}
                     />
 
-                    {/* Header row — back button + menu */}
                     <View style={[styles.header, { position: 'absolute', top: insets.top + 8, left: 0, right: 0 }]}>
-                        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                        <TouchableOpacity
+                            style={styles.backButton}
+                            onPress={() => navigation.goBack()}
+                            accessibilityLabel="Go back"
+                            accessibilityRole="button"
+                        >
                             <ArrowLeft size={24} color="#FFFFFF" strokeWidth={2} />
                         </TouchableOpacity>
                         {isProfileView ? (
-                            <TouchableOpacity style={styles.backButton} onPress={() => setShowActionSheet(true)}>
+                            <TouchableOpacity
+                                style={styles.backButton}
+                                onPress={() => setShowActionSheet(true)}
+                                accessibilityLabel="More options"
+                                accessibilityRole="button"
+                            >
                                 <MoreVerticalIcon size={24} color="#FFFFFF" />
                             </TouchableOpacity>
                         ) : (
@@ -416,21 +448,20 @@ export default function ProfileMatchScreen() {
                         )}
                     </View>
 
-                    {/* Bottom overlay — name, subtitle, matched-by */}
                     <View style={styles.heroBottom}>
                         <View style={styles.heroInfoLeft}>
-                            <Text style={styles.heroName}>
+                            <Text style={styles.heroName} numberOfLines={1} accessibilityRole="header">
                                 {partnerProfile.firstName}, {partnerProfile.age}
                             </Text>
 
                             {(heightStr || heroSubtitleStr.length > 0) && (
                                 <Text style={styles.heroSubtitle} numberOfLines={2}>
-                                    {[heightStr, heroSubtitleStr].filter(Boolean).join(' · ')}
+                                    {[heightStr, heroSubtitleStr].filter(Boolean).join(' \u00B7 ')}
                                 </Text>
                             )}
 
                             {isProposal && (
-                                <View style={styles.matchedByRow}>
+                                <View style={styles.matchedByRow} accessibilityLabel={`Matched by ${endorserAvatars.length} friends`}>
                                     <Sparkles size={12} color="#FFFFFF" fill="#FFFFFF" />
                                     <Text style={styles.matchedByText}>Matched by</Text>
                                     <View style={styles.avatarStack}>
@@ -455,28 +486,29 @@ export default function ProfileMatchScreen() {
                             )}
                         </View>
 
-                        {/* Karma — subtle pill */}
-                        <TouchableOpacity style={styles.karmaPill} onPress={() => setShowKarmaModal(true)} activeOpacity={0.8}>
+                        <TouchableOpacity
+                            style={styles.karmaPill}
+                            onPress={() => setShowKarmaModal(true)}
+                            activeOpacity={0.8}
+                            accessibilityLabel={`${karmaPts} karma points. Tap to learn more`}
+                            accessibilityRole="button"
+                        >
                             <Star size={12} color="#FFFFFF" strokeWidth={2.5} />
                             <Text style={styles.karmaText}>{karmaPts}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
 
-                {/* ── Content Below Hero ────────────────────────────── */}
                 <View style={styles.content}>
-
-                    {/* Preview Mode Banner */}
                     {isPreview && (
-                        <View style={styles.previewBanner}>
+                        <View style={styles.previewBanner} accessibilityLabel="Profile preview mode">
                             <Eye size={16} color={COLORS.primary} strokeWidth={2} />
                             <Text style={styles.previewBannerText}>This is how others see your profile</Text>
                         </View>
                     )}
 
-                    {/* Community Validation — match proposals only */}
                     {isProposal && (
-                        <View style={styles.validationCard}>
+                        <View style={styles.validationCard} accessibilityLabel={`Community validation score: ${communityScore} percent`}>
                             <View style={styles.cardHeaderRow}>
                                 <View style={styles.iconCircle}>
                                     <Users size={16} color={COLORS.primary} />
@@ -490,14 +522,10 @@ export default function ProfileMatchScreen() {
                         </View>
                     )}
 
-                    {/* "What You Have in Common" section removed — shared items are now highlighted inline */}
-
-                    {/* Friend Badges */}
                     {partnerProfile.userId && (
                         <ProfileBadgesSection userId={partnerProfile.userId} revealAuthor={false} />
                     )}
 
-                    {/* ── Photo + Prompt Interleave ────────────────── */}
                     {interleavedContent.map((item, idx) => {
                         if (item.type === 'photo') {
                             return (
@@ -509,6 +537,7 @@ export default function ProfileMatchScreen() {
                                         cachePolicy="memory-disk"
                                         priority="normal"
                                         transition={300}
+                                        accessibilityLabel={`${partnerProfile.firstName}'s photo ${idx + 2}`}
                                     />
                                 </View>
                             );
@@ -524,7 +553,6 @@ export default function ProfileMatchScreen() {
                         );
                     })}
 
-                    {/* ── Interests & Values ────────────────────────── */}
                     {((partnerProfile.values?.length > 0) || (partnerProfile.interests?.length > 0)) && (
                         <View style={styles.card}>
                             {partnerProfile.values?.length > 0 && (
@@ -562,7 +590,6 @@ export default function ProfileMatchScreen() {
                         </View>
                     )}
 
-                    {/* ── Lifestyle ─────────────────────────────────── */}
                     {lifestyleItems.length > 0 && (
                         <View style={styles.card}>
                             <Text style={styles.cardSectionTitle}>Lifestyle</Text>
@@ -586,14 +613,15 @@ export default function ProfileMatchScreen() {
                 </View>
             </ScrollView>
 
-            {/* ── Floating Action Buttons (match proposals only) ───── */}
             {isProposal && (
                 canRespond ? (
-                    <View style={[styles.floatingActions, { bottom: Math.max(insets.bottom + 20, 64) }]}>
+                    <View style={[styles.floatingActions, { bottom: insets.bottom + 20 }]}>
                         <TouchableOpacity
                             style={[styles.btnX, submitting && { opacity: 0.5 }]}
                             onPress={handlePass}
                             disabled={submitting}
+                            accessibilityLabel="Pass on this match"
+                            accessibilityRole="button"
                         >
                             <X size={24} color="#FFFFFF" strokeWidth={3} />
                         </TouchableOpacity>
@@ -601,6 +629,8 @@ export default function ProfileMatchScreen() {
                             style={[styles.btnHeart, submitting && { opacity: 0.5 }]}
                             onPress={handleAccept}
                             disabled={submitting}
+                            accessibilityLabel="Accept this match"
+                            accessibilityRole="button"
                         >
                             {submitting
                                 ? <ActivityIndicator size="small" color="#FFF" />
@@ -608,8 +638,8 @@ export default function ProfileMatchScreen() {
                         </TouchableOpacity>
                     </View>
                 ) : (
-                    <View style={[styles.floatingActions, { bottom: Math.max(insets.bottom + 20, 64) }]}>
-                        <View style={styles.waitingBadge}>
+                    <View style={[styles.floatingActions, { bottom: insets.bottom + 20 }]}>
+                        <View style={styles.waitingBadge} accessibilityLabel="Waiting for their response">
                             <Text style={styles.waitingText}>Waiting for their response</Text>
                         </View>
                     </View>
@@ -618,24 +648,62 @@ export default function ProfileMatchScreen() {
 
             <KarmaInfoModal visible={showKarmaModal} onClose={() => setShowKarmaModal(false)} />
 
-            {/* ── Action Sheet (Block / Remove Friend) ─────────── */}
             <Modal
                 visible={showActionSheet}
                 transparent
-                animationType="fade"
+                animationType="slide"
                 onRequestClose={() => setShowActionSheet(false)}
             >
                 <Pressable style={styles.sheetOverlay} onPress={() => setShowActionSheet(false)}>
-                    <Pressable style={styles.sheetContainer}>
-                        <TouchableOpacity style={styles.sheetOption} onPress={handleRemoveFriend}>
+                    <Pressable style={[styles.sheetContainer, { paddingBottom: insets.bottom + 16 }]}>
+                        <TouchableOpacity style={styles.sheetOption} onPress={handleRemoveFriend} accessibilityLabel="Remove friend" accessibilityRole="button">
                             <Text style={styles.sheetOptionText}>Remove Friend</Text>
                         </TouchableOpacity>
                         <View style={styles.sheetDivider} />
-                        <TouchableOpacity style={styles.sheetOption} onPress={handleBlockUser}>
+                        <TouchableOpacity
+                            style={styles.sheetOption}
+                            onPress={() => { setShowActionSheet(false); setTimeout(() => setShowReportSheet(true), 300); }}
+                            accessibilityLabel="Report user"
+                            accessibilityRole="button"
+                        >
+                            <Text style={[styles.sheetOptionText, styles.sheetDestructive]}>Report User</Text>
+                        </TouchableOpacity>
+                        <View style={styles.sheetDivider} />
+                        <TouchableOpacity style={styles.sheetOption} onPress={handleBlockUser} accessibilityLabel="Block user" accessibilityRole="button">
                             <Text style={[styles.sheetOptionText, styles.sheetDestructive]}>Block User</Text>
                         </TouchableOpacity>
                         <View style={styles.sheetDivider} />
-                        <TouchableOpacity style={styles.sheetOption} onPress={() => setShowActionSheet(false)}>
+                        <TouchableOpacity style={styles.sheetOption} onPress={() => setShowActionSheet(false)} accessibilityLabel="Cancel" accessibilityRole="button">
+                            <Text style={styles.sheetCancelText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </Pressable>
+                </Pressable>
+            </Modal>
+
+            <Modal
+                visible={showReportSheet}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowReportSheet(false)}
+            >
+                <Pressable style={styles.sheetOverlay} onPress={() => setShowReportSheet(false)}>
+                    <Pressable style={[styles.sheetContainer, { paddingBottom: insets.bottom + 16 }]}>
+                        <Text style={styles.reportSheetTitle}>Why are you reporting this person?</Text>
+                        {REPORT_REASONS.map((reason, idx) => (
+                            <React.Fragment key={reason}>
+                                {idx > 0 && <View style={styles.sheetDivider} />}
+                                <TouchableOpacity
+                                    style={styles.sheetOption}
+                                    onPress={() => handleReportUser(reason)}
+                                    accessibilityLabel={`Report for: ${reason}`}
+                                    accessibilityRole="button"
+                                >
+                                    <Text style={styles.sheetOptionText}>{reason}</Text>
+                                </TouchableOpacity>
+                            </React.Fragment>
+                        ))}
+                        <View style={styles.sheetDivider} />
+                        <TouchableOpacity style={styles.sheetOption} onPress={() => setShowReportSheet(false)} accessibilityLabel="Cancel report" accessibilityRole="button">
                             <Text style={styles.sheetCancelText}>Cancel</Text>
                         </TouchableOpacity>
                     </Pressable>
@@ -644,10 +712,6 @@ export default function ProfileMatchScreen() {
         </View>
     );
 }
-
-// ════════════════════════════════════════════════════════════════════
-// STYLES
-// ════════════════════════════════════════════════════════════════════
 
 const styles = StyleSheet.create({
     container: {
@@ -660,13 +724,23 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: COLORS.screenBackground,
     },
-
-    // ── Hero ──────────────────────────────────────────────────────
-
     heroContainer: {
         width: '100%',
-        height: 480,
         overflow: 'hidden',
+    },
+    heroPlaceholder: {
+        width: '100%',
+        backgroundColor: '#E5E7EB',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    photoPlaceholder: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: '#E5E7EB',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     header: {
         flexDirection: 'row',
@@ -675,10 +749,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
     },
     backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(0,0,0,0.3)',
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: OVERLAYS.light,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -718,7 +792,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginTop: 10,
-        backgroundColor: 'rgba(0,0,0,0.35)',
+        backgroundColor: OVERLAYS.light,
         alignSelf: 'flex-start',
         borderRadius: 20,
         paddingHorizontal: 10,
@@ -750,28 +824,23 @@ const styles = StyleSheet.create({
     karmaPill: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.35)',
+        backgroundColor: OVERLAYS.light,
         borderRadius: 16,
         paddingHorizontal: 10,
         paddingVertical: 5,
         gap: 4,
         marginBottom: 4,
+        minHeight: 44,
     },
     karmaText: {
         fontFamily: FONTS.semiBold,
         fontSize: FONT_SIZES.md,
         color: '#FFFFFF',
     },
-
-    // ── Content Area ─────────────────────────────────────────────
-
     content: {
         paddingHorizontal: 16,
         paddingTop: 16,
     },
-
-    // ── Preview Banner ───────────────────────────────────────────
-
     previewBanner: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -790,9 +859,6 @@ const styles = StyleSheet.create({
         fontSize: FONT_SIZES.base,
         color: COLORS.primary,
     },
-
-    // ── Community Validation Card ────────────────────────────────
-
     validationCard: {
         backgroundColor: COLORS.card,
         borderRadius: 20,
@@ -836,11 +902,6 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.scoreBlue,
         borderRadius: 3,
     },
-
-    // ── (in-common card removed — shared items highlighted inline) ──
-
-    // ── Inline Photo ─────────────────────────────────────────────
-
     inlinePhotoWrap: {
         marginBottom: 16,
         borderRadius: 20,
@@ -852,9 +913,6 @@ const styles = StyleSheet.create({
         height: 420,
         borderRadius: 20,
     },
-
-    // ── Prompt Card ──────────────────────────────────────────────
-
     promptCard: {
         backgroundColor: COLORS.card,
         borderRadius: 20,
@@ -874,24 +932,20 @@ const styles = StyleSheet.create({
     },
     promptContent: {
         flex: 1,
-        paddingVertical: 0,
     },
     promptQuestion: {
         fontFamily: FONTS.medium,
         fontSize: FONT_SIZES.base,
         color: COLORS.primary,
         marginBottom: 8,
-        lineHeight: 18,
+        lineHeight: LINE_HEIGHTS.base,
     },
     promptAnswer: {
         fontFamily: FONTS.regular,
-        fontSize: 17,
+        fontSize: FONT_SIZES.lg,
         color: COLORS.text.heading,
-        lineHeight: 26,
+        lineHeight: LINE_HEIGHTS['2xl'],
     },
-
-    // ── Generic Card ─────────────────────────────────────────────
-
     card: {
         backgroundColor: COLORS.card,
         borderRadius: 20,
@@ -905,9 +959,6 @@ const styles = StyleSheet.create({
         color: COLORS.text.heading,
         marginBottom: 12,
     },
-
-    // ── Chip Rows (shared between In Common + Values/Interests) ──
-
     chipRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -965,9 +1016,6 @@ const styles = StyleSheet.create({
         color: '#7C2D12',
         fontFamily: FONTS.bold,
     },
-
-    // ── Lifestyle ────────────────────────────────────────────────
-
     lifestyleRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -989,9 +1037,6 @@ const styles = StyleSheet.create({
         fontSize: FONT_SIZES.lg,
         color: COLORS.text.secondary,
     },
-
-    // ── Floating Actions ─────────────────────────────────────────
-
     floatingActions: {
         position: 'absolute',
         flexDirection: 'row',
@@ -1000,22 +1045,22 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     btnX: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: 62,
+        height: 62,
+        borderRadius: 31,
         backgroundColor: COLORS.passButton,
         alignItems: 'center',
         justifyContent: 'center',
-        ...SHADOWS.md,
+        ...SHADOWS.lg,
     },
     btnHeart: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
+        width: 62,
+        height: 62,
+        borderRadius: 31,
         backgroundColor: COLORS.primary,
         alignItems: 'center',
         justifyContent: 'center',
-        ...SHADOWS.xl,
+        ...SHADOWS.lg,
     },
     waitingBadge: {
         alignSelf: 'center',
@@ -1033,9 +1078,6 @@ const styles = StyleSheet.create({
         fontSize: FONT_SIZES.base,
         color: COLORS.waitingAmber,
     },
-
-    // ── Action Sheet ──────────────────────────────────────────────
-
     sheetOverlay: {
         flex: 1,
         backgroundColor: OVERLAYS.medium,
@@ -1045,12 +1087,12 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.card,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
-        paddingBottom: 34,
         ...SHADOWS.lg,
     },
     sheetOption: {
         paddingVertical: 18,
         alignItems: 'center',
+        minHeight: 44,
     },
     sheetOptionText: {
         fontFamily: FONTS.medium,
@@ -1069,5 +1111,13 @@ const styles = StyleSheet.create({
         height: 1,
         backgroundColor: COLORS.borderSubtle,
         marginHorizontal: 20,
+    },
+    reportSheetTitle: {
+        fontFamily: FONTS.semiBold,
+        fontSize: FONT_SIZES.lg,
+        color: COLORS.text.heading,
+        textAlign: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 20,
     },
 });

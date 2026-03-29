@@ -30,11 +30,11 @@ export const NameStep: React.FC<NameStepProps> = ({
     const newErrors: { firstName?: string; lastName?: string } = {};
 
     if (!firstName.trim()) {
-      newErrors.firstName = 'First name is required';
+      newErrors.firstName = 'We need your first name to continue';
     }
 
     if (!lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
+      newErrors.lastName = 'Last name too, please!';
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -56,9 +56,9 @@ export const NameStep: React.FC<NameStepProps> = ({
       hasTextInput={true}
       keyboardPersistent={true}
     >
-      <H1 className="mb-3">What's your name?</H1>
+      <H1 className="mb-3">First things first</H1>
       <Body className="text-neutral-600 mb-8">
-        Let's get to know you better.
+        This is how you'll show up to your friends and matches.
       </Body>
 
       <StyledView className="flex-row gap-3 mb-4">

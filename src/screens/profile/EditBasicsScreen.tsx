@@ -1,12 +1,11 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState } from 'react';
 import { View, TouchableOpacity, Alert, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { H3, Body } from '../../components/ui/Typography';
-import { Card, Input, ScreenWrapper } from '../../components/ui';
+import { H3, BodySmall, Label, Caption } from '../../components/ui/Typography';
+import { Card, Input } from '../../components/ui';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
-import { FONTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SectionScreenWrapper } from './sections/SectionScreenWrapper';
 import { useEditProfile } from './sections/useEditProfile';
@@ -35,25 +34,17 @@ const ETHNICITY_OPTIONS = [
   'Pacific Islander', 'South Asian', 'Southeast Asian', 'White', 'Other',
 ];
 
-const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
-  <StyledView className="mb-3 mt-2">
-    <Body className="text-neutral-500 text-xs font-semibold tracking-wider">{title}</Body>
-  </StyledView>
-);
-
 interface EditBasicsScreenProps {
   navigation: NavigationProp<RootStackParamList, 'EditBasics'>;
 }
 
 export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }) => {
-  const { profile, setProfile, loading, updateProfile, originalProfileJson } = useEditProfile();
+  const { profile, loading, updateProfile, originalProfileJson } = useEditProfile();
   const [isHeightFocused, setIsHeightFocused] = useState(false);
   const [heightError, setHeightError] = useState('');
-  const ethnicityArray = useMemo(() => {
-    return profile?.ethnicity
-      ? profile.ethnicity.split(' / ').filter(e => e.trim() !== '')
-      : [];
-  }, [profile?.ethnicity]);
+  const ethnicityArray = profile?.ethnicity
+    ? profile.ethnicity.split(' / ').filter(e => e.trim() !== '')
+    : [];
 
   const formatHeight = (value: string): string => {
     if (!value || value === '0') return '';
@@ -78,11 +69,18 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
 
   if (loading || !profile) {
     return (
-      <ScreenWrapper>
-        <StyledView className="flex-1 justify-center items-center">
-          <Body className="text-neutral-500">{loading ? 'Loading...' : 'Failed to load profile'}</Body>
+      <SectionScreenWrapper
+        title="Basics"
+        profile={null}
+        originalProfileJson=""
+        onGoBack={() => navigation.goBack()}
+      >
+        <StyledView className="flex-1 justify-center items-center py-20">
+          <BodySmall style={{ color: COLORS.text.secondary }}>
+            {loading ? 'Loading...' : 'Failed to load profile'}
+          </BodySmall>
         </StyledView>
-      </ScreenWrapper>
+      </SectionScreenWrapper>
     );
   }
 
@@ -166,13 +164,13 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
           containerClassName="mb-4"
         />
         {heightError ? (
-          <Body className="text-error text-sm -mt-2 mb-4">{heightError}</Body>
+          <BodySmall style={{ color: COLORS.error }} className="-mt-2 mb-4">{heightError}</BodySmall>
         ) : null}
 
         {/* Ethnicity */}
-        <Body className="text-xs font-medium text-neutral-700 mb-2 mt-4">
-          Ethnicity <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText> (Select all that apply)
-        </Body>
+        <Label style={{ color: COLORS.text.muted }} className="mb-2 mt-4">
+          Ethnicity <StyledText style={{ color: COLORS.error }}>*</StyledText> (Select all that apply)
+        </Label>
         <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
           {ETHNICITY_OPTIONS.map((option) => {
             const isSelected = ethnicityArray.includes(option);
@@ -191,7 +189,8 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
                   }
                   updateProfile({ ethnicity: updated.filter(e => e.trim() !== '').join(' / ') });
                 }}
-                className={`px-3 py-2 rounded-full border ${isSelected
+                style={{ minHeight: 44 }}
+                className={`px-4 py-2.5 rounded-full border items-center justify-center ${isSelected
                   ? 'bg-primary-500 border-primary-500'
                   : 'bg-white border-neutral-300'
                 }`}
@@ -199,14 +198,13 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
                 accessibilityLabel={option}
                 accessibilityState={{ checked: isSelected }}
               >
-                <Body className={`text-sm ${isSelected ? 'text-white font-medium' : 'text-neutral-700'}`}>
+                <BodySmall className={isSelected ? 'text-white font-medium' : 'text-neutral-700'}>
                   {option}
-                </Body>
+                </BodySmall>
               </StyledTouchableOpacity>
             );
           })}
 
-          {/* Legacy custom ethnicity chips (from before standardization) */}
           {ethnicityArray.filter(e => !ETHNICITY_OPTIONS.includes(e) && e.trim() !== '').map((custom) => (
             <StyledTouchableOpacity
               key={custom}
@@ -215,9 +213,13 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
                 updateProfile({ ethnicity: updated.filter(e => e.trim() !== '').join(' / ') });
                 mediumHaptic();
               }}
-              className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
+              style={{ minHeight: 44 }}
+              className="px-4 py-2.5 rounded-full border bg-primary-500 border-primary-500 items-center justify-center"
+              accessibilityRole="checkbox"
+              accessibilityLabel={custom}
+              accessibilityState={{ checked: true }}
             >
-              <Body className="text-sm text-white font-medium">{custom}</Body>
+              <BodySmall className="text-white font-medium">{custom}</BodySmall>
             </StyledTouchableOpacity>
           ))}
         </StyledView>
@@ -228,12 +230,12 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
         <H3 className="mb-4">Identity & Attraction</H3>
 
         {/* Pronouns */}
-        <Body className="text-xs font-medium text-neutral-700 mb-2">
-          Pronouns <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText> (Select up to {MAX_PRONOUNS})
-        </Body>
-        <Body className="text-primary-500 text-xs font-semibold mb-2">
+        <Label style={{ color: COLORS.text.muted }} className="mb-2">
+          Pronouns <StyledText style={{ color: COLORS.error }}>*</StyledText> (Select up to {MAX_PRONOUNS})
+        </Label>
+        <Caption style={{ color: COLORS.primaryAccent }} className="font-semibold mb-2">
           {(profile.pronounsList?.length || 0)}/{MAX_PRONOUNS} selected
-        </Body>
+        </Caption>
         <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
           {PRONOUN_OPTIONS.map((pronoun) => {
             const isSelected = profile.pronounsList?.includes(pronoun);
@@ -257,23 +259,27 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
                   }
                   updateProfile({ pronounsList: updatedPronouns });
                 }}
-                className={`px-3 py-2 rounded-full border ${isSelected
+                style={{ minHeight: 44 }}
+                className={`px-4 py-2.5 rounded-full border items-center justify-center ${isSelected
                   ? 'bg-primary-500 border-primary-500'
                   : 'bg-white border-neutral-300'
                 }`}
+                accessibilityRole="checkbox"
+                accessibilityLabel={pronoun}
+                accessibilityState={{ checked: !!isSelected }}
               >
-                <Body className={`text-sm ${isSelected ? 'text-white font-medium' : 'text-neutral-700'}`}>
+                <BodySmall className={isSelected ? 'text-white font-medium' : 'text-neutral-700'}>
                   {pronoun}
-                </Body>
+                </BodySmall>
               </StyledTouchableOpacity>
             );
           })}
         </StyledView>
 
         {/* Gender Identity */}
-        <Body className="text-xs font-medium text-neutral-700 mb-2 mt-4">
-          Gender <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText> (Select all that apply)
-        </Body>
+        <Label style={{ color: COLORS.text.muted }} className="mb-2 mt-4">
+          Gender <StyledText style={{ color: COLORS.error }}>*</StyledText> (Select all that apply)
+        </Label>
         <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
           {GENDER_OPTIONS.map((option) => {
             const isSelected = profile.gender?.includes(option.value);
@@ -293,14 +299,18 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
                   }
                   updateProfile({ gender: updatedGenders });
                 }}
-                className={`px-3 py-2 rounded-full border ${isSelected
+                style={{ minHeight: 44 }}
+                className={`px-4 py-2.5 rounded-full border items-center justify-center ${isSelected
                   ? 'bg-primary-500 border-primary-500'
                   : 'bg-white border-neutral-300'
                 }`}
+                accessibilityRole="checkbox"
+                accessibilityLabel={option.label}
+                accessibilityState={{ checked: !!isSelected }}
               >
-                <Body className={`text-sm ${isSelected ? 'text-white font-medium' : 'text-neutral-700'}`}>
+                <BodySmall className={isSelected ? 'text-white font-medium' : 'text-neutral-700'}>
                   {option.label}
-                </Body>
+                </BodySmall>
               </StyledTouchableOpacity>
             );
           })}

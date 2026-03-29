@@ -314,11 +314,10 @@ export type RootStackParamList = {
   // Auth Stack
   Welcome: undefined;
   Login: undefined;
-  PhoneVerification: {
-    phoneNumber: string;
+  EmailVerification: {
+    email: string;
     fromOnboarding?: boolean;
     onboardingData?: Partial<OnboardingData>;
-    isEmail?: boolean;
   };
   Onboarding: {
     isRoleSwitch?: boolean;

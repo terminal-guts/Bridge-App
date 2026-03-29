@@ -18,6 +18,7 @@ import { SvgXml } from 'react-native-svg';
 // The lazy-load approach caused blank placeholders when the async import
 // hadn't resolved before components rendered.
 import { FILL_ICONS, OUTLINE_ICONS } from './iconRegistry';
+import { COLORS } from '../../theme/colors';
 
 // Bridge color scheme mapping
 const BRIDGE_COLORS = {
@@ -52,10 +53,28 @@ interface EvaIconProps {
   style?: any;
 }
 
+// Module-level cache for colorized SVG strings.
+// The same icon+color combo renders hundreds of times across the app,
+// so caching avoids running 3 regex replacements on every render.
+const colorizedSvgCache = new Map<string, string>();
+
+function getColorizedSvg(cacheKey: string, svgContent: string, resolvedColor: string): string {
+  const cached = colorizedSvgCache.get(cacheKey);
+  if (cached) return cached;
+
+  const result = svgContent
+    .replace(/fill="(?!none)[^"]*"/g, `fill="${resolvedColor}"`)
+    .replace(/stroke="(?!none)[^"]*"/g, `stroke="${resolvedColor}"`)
+    .replace(/^<svg /, `<svg fill="${resolvedColor}" `);
+
+  colorizedSvgCache.set(cacheKey, result);
+  return result;
+}
+
 export function EvaIcon({
   name,
   variant = 'outline',
-  color = '#667085',
+  color = COLORS.navInactiveIcon,
   size = 24,
   style,
 }: EvaIconProps) {
@@ -68,10 +87,8 @@ export function EvaIcon({
     return null;
   }
 
-  const colorizedSvg = svgContent
-    .replace(/fill="(?!none)[^"]*"/g, `fill="${resolvedColor}"`)
-    .replace(/stroke="(?!none)[^"]*"/g, `stroke="${resolvedColor}"`)
-    .replace(/^<svg /, `<svg fill="${resolvedColor}" `);
+  const cacheKey = `${name}-${variant}-${resolvedColor}`;
+  const colorizedSvg = getColorizedSvg(cacheKey, svgContent, resolvedColor);
 
   return (
     <View style={[{ width: size, height: size }, style]}>

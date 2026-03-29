@@ -9,8 +9,8 @@ import {
     useSharedValue,
     useAnimatedStyle,
     withTiming,
-    Easing,
 } from 'react-native-reanimated';
+import { DURATIONS, EASINGS } from '../../constants/animations';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { getNext7PMCentral } from '../../utils/centralTime';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -66,15 +66,13 @@ export function useMatchesScreen() {
     const navigation = useNavigation<any>();
     const [endMatchCustomReason, setEndMatchCustomReason] = useState('');
 
-    // Tick every second only when showing the empty countdown
-    const needsTimer = !activeMatch && pendingProposals.length === 0;
+    // Tick every second for proposal/match timer badge AND empty countdown
     useFocusEffect(
         useCallback(() => {
-            if (!needsTimer) return;
             setNow(Date.now());
             const id = setInterval(() => setNow(Date.now()), 1000);
             return () => clearInterval(id);
-        }, [needsTimer])
+        }, [])
     );
 
     const loadMatches = async () => {
@@ -127,7 +125,7 @@ export function useMatchesScreen() {
                 if (!hasAnimatedEntrance.current) {
                     hasAnimatedEntrance.current = true;
                     cardEntrance.value = 0;
-                    cardEntrance.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
+                    cardEntrance.value = withTiming(1, { duration: DURATIONS.slow, easing: EASINGS.enter });
                 }
 
                 if (!data) return;

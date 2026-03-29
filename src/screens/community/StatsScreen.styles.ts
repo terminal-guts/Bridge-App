@@ -1,49 +1,72 @@
 /**
  * StatsScreen styles
  * Extracted from StatsScreen.tsx for maintainability.
+ *
+ * Responsive scaling: layout dimensions scale relative to iPhone 16 (393x852).
+ * On iPhone SE (375x667) values shrink proportionally; on Pro Max (430x932) they grow.
+ * Font sizes use clamped scaling (85%-110% of nominal) to stay readable on all devices.
  */
 
 import { StyleSheet, Dimensions } from 'react-native';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_GAP = 12;
-export const STAT_CARD_WIDTH = (SCREEN_WIDTH - 48 - CARD_GAP) / 2;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// ─── Responsive Scaling ─────────────────────────────────────────────────────
+// Baseline: iPhone 16 (393x852). Scales for SE (375x667) through Pro Max (430x932).
+const BASE_WIDTH = 393;
+const BASE_HEIGHT = 852;
+const wScale = SCREEN_WIDTH / BASE_WIDTH;
+const hScale = SCREEN_HEIGHT / BASE_HEIGHT;
+/** Scale width-relative values (padding, card sizes, icon circles) */
+const sw = (size: number) => Math.round(wScale * size);
+/** Scale height-relative values (vertical padding/margin, spacing) */
+const sh = (size: number) => Math.round(hScale * size);
+/** Scale hero/display font sizes: clamp between 85%-110% of nominal */
+const sf = (size: number) => Math.round(Math.max(size * 0.85, Math.min(wScale * size, size * 1.1)));
+
+const CARD_GAP = sw(12);
+const H_PAD = sw(20);
+export const STAT_CARD_WIDTH = (SCREEN_WIDTH - H_PAD * 2 - CARD_GAP) / 2;
+
+// Exported so ProgressRing in components file can use the scaled ring size
+export const ACCURACY_RING_SIZE = sw(88);
 
 export const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.screenBackground,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: sw(40),
   },
   loadingText: {
-    marginTop: 12,
+    marginTop: sh(12),
     fontSize: FONT_SIZES.lg,
     fontFamily: FONTS.medium,
     color: COLORS.navInactiveIcon,
   },
   errorText: {
-    marginTop: 12,
+    marginTop: sh(12),
     fontSize: FONT_SIZES.lg,
     fontFamily: FONTS.medium,
     color: COLORS.textGray800,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: sh(16),
   },
   retryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.primaryAccent,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingHorizontal: sw(20),
+    paddingVertical: sh(12),
+    borderRadius: sw(10),
+    minHeight: 44,
   },
   retryText: {
     fontSize: FONT_SIZES.lg,
@@ -64,8 +87,8 @@ export const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: H_PAD,
+    paddingVertical: sh(16),
   },
   headerTitle: {
     fontSize: FONT_SIZES['2xl'],
@@ -76,26 +99,27 @@ export const s = StyleSheet.create({
   // Tabs
   tabBar: {
     flexDirection: 'row',
-    marginHorizontal: 20,
+    marginHorizontal: H_PAD,
     backgroundColor: COLORS.backgroundGray,
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 16,
+    borderRadius: sw(12),
+    padding: sw(4),
+    marginBottom: sh(16),
   },
   tabButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: sh(10),
+    borderRadius: sw(10),
+    minHeight: 44, // iOS HIG touch target
   },
   tabButtonActive: {
     backgroundColor: COLORS.primaryAccent,
     ...SHADOWS.accentBlue,
   },
   tabIcon: {
-    marginRight: 8,
+    marginRight: sw(8),
   },
   tabText: {
     fontSize: FONT_SIZES.lg,
@@ -111,57 +135,57 @@ export const s = StyleSheet.create({
     flex: 1,
   },
   tabContentInner: {
-    paddingHorizontal: 20,
+    paddingHorizontal: H_PAD,
   },
 
   // Hero card
   heroCard: {
-    borderRadius: 20,
-    padding: 28,
+    borderRadius: sw(20),
+    padding: sw(24),
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: sh(24),
     ...SHADOWS.xl,
   },
   heroIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: sw(48),
+    height: sw(48),
+    borderRadius: sw(24),
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: sh(10),
   },
   heroValue: {
-    fontSize: 52,
-    fontFamily: FONTS.bold,
+    fontSize: sf(40),
+    fontFamily: FONTS.extraBold,
     color: COLORS.card,
-    lineHeight: 60,
+    lineHeight: sf(48),
   },
   heroLabel: {
     fontSize: FONT_SIZES.xl,
     fontFamily: FONTS.semiBold,
     color: 'rgba(255,255,255,0.9)',
-    marginTop: 4,
+    marginTop: sh(4),
     textAlign: 'center',
   },
   heroSublabel: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
     color: 'rgba(255,255,255,0.6)',
-    marginTop: 2,
+    marginTop: sh(2),
   },
 
   // Archetype card
   archetypeCard: {
-    borderRadius: 20,
-    padding: 28,
+    borderRadius: sw(20),
+    padding: sw(24),
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: sh(20),
     ...SHADOWS.xl,
   },
   archetypeEmoji: {
-    fontSize: 44,
-    marginBottom: 8,
+    fontSize: sf(38),
+    marginBottom: sh(8),
   },
   archetypeLabel: {
     fontSize: FONT_SIZES.sm,
@@ -169,21 +193,21 @@ export const s = StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
-    marginBottom: 4,
+    marginBottom: sh(4),
   },
   archetypeName: {
-    fontSize: FONT_SIZES['5xl'],
+    fontSize: sf(28),
     fontFamily: FONTS.bold,
     color: COLORS.card,
-    marginBottom: 8,
+    marginBottom: sh(8),
   },
   archetypeDesc: {
     fontSize: FONT_SIZES.base,
     fontFamily: FONTS.regular,
     color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 8,
+    lineHeight: LINE_HEIGHTS.lg,
+    paddingHorizontal: sw(8),
   },
 
   // Impact card
@@ -191,9 +215,9 @@ export const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
+    borderRadius: sw(16),
+    padding: sw(18),
+    marginBottom: sh(20),
     ...SHADOWS.sm,
   },
   impactLeft: {
@@ -203,22 +227,22 @@ export const s = StyleSheet.create({
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.semiBold,
     color: COLORS.navInactiveIcon,
-    marginBottom: 4,
+    marginBottom: sh(4),
   },
   impactValue: {
-    fontSize: 40,
+    fontSize: sf(36),
     fontFamily: FONTS.bold,
     color: COLORS.textDarkHeading,
-    lineHeight: 48,
+    lineHeight: sf(44),
   },
   impactSubtext: {
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
     color: COLORS.text.light,
-    marginTop: 4,
+    marginTop: sh(4),
   },
   impactRight: {
-    marginLeft: 16,
+    marginLeft: sw(16),
   },
 
   // Accuracy card
@@ -226,16 +250,16 @@ export const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
+    borderRadius: sw(16),
+    padding: sw(18),
+    marginBottom: sh(24),
     ...SHADOWS.sm,
   },
   accuracyRingWrap: {
     position: 'relative',
-    width: 88,
-    height: 88,
-    marginRight: 16,
+    width: ACCURACY_RING_SIZE,
+    height: ACCURACY_RING_SIZE,
+    marginRight: sw(16),
   },
   accuracyRingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -243,7 +267,7 @@ export const s = StyleSheet.create({
     justifyContent: 'center',
   },
   accuracyValue: {
-    fontSize: FONT_SIZES['4xl'],
+    fontSize: sf(22),
     fontFamily: FONTS.bold,
     color: COLORS.success,
   },
@@ -251,24 +275,24 @@ export const s = StyleSheet.create({
     flex: 1,
   },
   accuracyTitle: {
-    fontSize: 17,
+    fontSize: FONT_SIZES['2xl'],
     fontFamily: FONTS.bold,
     color: COLORS.textDarkHeading,
-    marginBottom: 4,
+    marginBottom: sh(4),
   },
   accuracyDesc: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
     color: COLORS.navInactiveIcon,
-    lineHeight: 18,
-    marginBottom: 8,
+    lineHeight: LINE_HEIGHTS.base,
+    marginBottom: sh(8),
   },
   accuracyHint: {
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
     color: COLORS.text.light,
-    lineHeight: 16,
-    marginTop: 8,
+    lineHeight: LINE_HEIGHTS.sm,
+    marginTop: sh(8),
   },
 
   // Section title
@@ -276,7 +300,7 @@ export const s = StyleSheet.create({
     fontSize: FONT_SIZES.xl,
     fontFamily: FONTS.bold,
     color: COLORS.textDarkHeading,
-    marginBottom: 12,
+    marginBottom: sh(12),
   },
 
   // Stat grid
@@ -284,33 +308,33 @@ export const s = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: CARD_GAP,
-    marginBottom: 24,
+    marginBottom: sh(24),
   },
   statCard: {
     width: STAT_CARD_WIDTH,
     backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: sw(16),
+    padding: sw(14),
     ...SHADOWS.sm,
   },
   statCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: sh(10),
   },
   statIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: sw(34),
+    height: sw(34),
+    borderRadius: sw(10),
     alignItems: 'center',
     justifyContent: 'center',
   },
   statValue: {
-    fontSize: FONT_SIZES['4xl'],
+    fontSize: sf(22),
     fontFamily: FONTS.bold,
     color: COLORS.textDarkHeading,
-    marginBottom: 2,
+    marginBottom: sh(2),
   },
   statLabel: {
     fontSize: FONT_SIZES.md,
@@ -321,25 +345,25 @@ export const s = StyleSheet.create({
   // Highlight card
   highlightCard: {
     backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: sw(16),
+    padding: sw(14),
     ...SHADOWS.sm,
   },
   highlightRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: sh(10),
   },
   highlightLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: sw(12),
   },
   highlightIconDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: sw(32),
+    height: sw(32),
+    borderRadius: sw(8),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -360,27 +384,27 @@ export const s = StyleSheet.create({
 
   // Rank card
   rankCard: {
-    borderRadius: 16,
+    borderRadius: sw(16),
     overflow: 'hidden',
-    marginBottom: 24,
+    marginBottom: sh(24),
     ...SHADOWS.sm,
   },
   rankGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    padding: sw(18),
   },
   rankIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: sw(44),
+    height: sw(44),
+    borderRadius: sw(12),
     backgroundColor: 'rgba(67, 127, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   rankText: {
     flex: 1,
-    marginLeft: 16,
+    marginLeft: sw(16),
   },
   rankTitle: {
     fontSize: FONT_SIZES.xl,
@@ -391,13 +415,13 @@ export const s = StyleSheet.create({
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
     color: COLORS.navInactiveIcon,
-    marginTop: 2,
+    marginTop: sh(2),
   },
   rankBadge: {
     backgroundColor: COLORS.primaryAccent,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingHorizontal: sw(16),
+    paddingVertical: sh(8),
+    borderRadius: sw(12),
   },
   rankValue: {
     fontSize: FONT_SIZES['3xl'],
@@ -413,10 +437,10 @@ export const st = StyleSheet.create({
   trendPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    gap: 2,
+    paddingHorizontal: sw(8),
+    paddingVertical: sh(2),
+    borderRadius: sw(8),
+    gap: sw(2),
   },
   trendText: {
     fontSize: FONT_SIZES.xs,
@@ -427,17 +451,18 @@ export const st = StyleSheet.create({
   periodBar: {
     flexDirection: 'row',
     backgroundColor: COLORS.card,
-    borderRadius: 10,
-    padding: 4,
-    marginBottom: 20,
+    borderRadius: sw(10),
+    padding: sw(4),
+    marginBottom: sh(20),
     borderWidth: 1,
     borderColor: COLORS.border,
   },
   periodBtn: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: sh(8),
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: sw(8),
+    minHeight: 44, // iOS HIG touch target
   },
   periodBtnActive: {
     backgroundColor: COLORS.backgroundLightBlue,
@@ -454,20 +479,20 @@ export const st = StyleSheet.create({
   // Fun facts
   funFactCard: {
     backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: sw(16),
+    padding: sw(14),
     ...SHADOWS.sm,
   },
   funFactRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    gap: 12,
+    paddingVertical: sh(10),
+    gap: sw(12),
   },
   funFactIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: sw(32),
+    height: sw(32),
+    borderRadius: sw(8),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -476,46 +501,47 @@ export const st = StyleSheet.create({
     fontSize: FONT_SIZES.base,
     fontFamily: FONTS.regular,
     color: COLORS.text.muted,
-    lineHeight: 20,
+    lineHeight: LINE_HEIGHTS.lg,
   },
 
   // Empty state
   emptyWrap: {
     alignItems: 'center',
-    paddingTop: 60,
-    paddingHorizontal: 32,
+    paddingTop: sh(60),
+    paddingHorizontal: sw(32),
   },
   emptyIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: sw(72),
+    height: sw(72),
+    borderRadius: sw(36),
     backgroundColor: COLORS.backgroundFriendActive,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: sh(20),
   },
   emptyTitle: {
     fontSize: FONT_SIZES['3xl'],
     fontFamily: FONTS.bold,
     color: COLORS.textDarkHeading,
-    marginBottom: 8,
+    marginBottom: sh(8),
   },
   emptyDesc: {
     fontSize: FONT_SIZES.lg,
     fontFamily: FONTS.regular,
     color: COLORS.navInactiveIcon,
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 28,
+    lineHeight: LINE_HEIGHTS.xl,
+    marginBottom: sh(28),
   },
   emptyCta: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.primaryAccent,
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderRadius: 14,
-    gap: 8,
+    paddingHorizontal: sw(24),
+    paddingVertical: sh(14),
+    borderRadius: sw(14),
+    gap: sw(8),
+    minHeight: 48,
     ...SHADOWS.accentBlue,
   },
   emptyCtaText: {
@@ -526,24 +552,29 @@ export const st = StyleSheet.create({
 });
 
 // ─── Share Card Styles ───────────────────────────────────────────────────────
+// Share card scales proportionally to screen width so it fits all devices.
+// The capture resolution (1080x1920) is fixed in the captureRef call, not here.
+
+const SHARE_CARD_WIDTH = Math.min(SCREEN_WIDTH * 0.92, 400);
+const SHARE_CARD_HEIGHT = SHARE_CARD_WIDTH * (16 / 9);
 
 export const shareStyles = StyleSheet.create({
   card: {
-    width: 360,
-    height: 640,
+    width: SHARE_CARD_WIDTH,
+    height: SHARE_CARD_HEIGHT,
   },
   gradient: {
     flex: 1,
-    padding: 40,
+    padding: sw(36),
     alignItems: 'center',
     justifyContent: 'center',
   },
   topBadge: {
     backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 24,
+    paddingHorizontal: sw(16),
+    paddingVertical: sh(8),
+    borderRadius: sw(20),
+    marginBottom: sh(24),
   },
   topBadgeText: {
     fontSize: FONT_SIZES.xs,
@@ -552,44 +583,44 @@ export const shareStyles = StyleSheet.create({
     letterSpacing: 2,
   },
   archetypeEmoji: {
-    fontSize: 48,
-    marginBottom: 8,
+    fontSize: sf(40),
+    marginBottom: sh(8),
   },
   archetypeName: {
-    fontSize: FONT_SIZES['5xl'],
+    fontSize: sf(28),
     fontFamily: FONTS.bold,
     color: COLORS.card,
-    marginBottom: 8,
+    marginBottom: sh(8),
   },
   archetypeDesc: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
     color: 'rgba(255,255,255,0.7)',
     textAlign: 'center',
-    lineHeight: 18,
-    paddingHorizontal: 16,
-    marginBottom: 24,
+    lineHeight: LINE_HEIGHTS.base,
+    paddingHorizontal: sw(16),
+    marginBottom: sh(24),
   },
   divider: {
-    width: 40,
+    width: sw(40),
     height: 2,
     backgroundColor: 'rgba(255,255,255,0.2)',
-    marginBottom: 24,
+    marginBottom: sh(24),
   },
   statsRow: {
     flexDirection: 'row',
     width: '100%',
     justifyContent: 'space-around',
-    marginBottom: 20,
+    marginBottom: sh(20),
   },
   statBlock: {
     alignItems: 'center',
   },
   statNum: {
-    fontSize: 24,
+    fontSize: sf(22),
     fontFamily: FONTS.bold,
     color: COLORS.card,
-    marginBottom: 2,
+    marginBottom: sh(2),
   },
   statLabel: {
     fontSize: FONT_SIZES.xs,
@@ -603,11 +634,11 @@ export const shareStyles = StyleSheet.create({
     fontFamily: FONTS.semiBold,
     color: 'rgba(255,255,255,0.35)',
     letterSpacing: 1,
-    marginTop: 8,
+    marginTop: sh(8),
   },
   watermark: {
     position: 'absolute',
-    bottom: 30,
+    bottom: sh(30),
   },
   watermarkText: {
     fontSize: FONT_SIZES.xl,

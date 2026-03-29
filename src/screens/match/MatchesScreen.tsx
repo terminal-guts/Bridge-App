@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, useWindowDimensions } from 'react-native';
 import ReanimatedAnimated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MatchCard } from '../../components/matches/MatchCard';
@@ -17,10 +17,6 @@ import { useMatchesScreen } from './useMatchesScreen';
 import {
     type ScreenState,
     CARD_STATUS,
-    timerColor,
-    timerBgColor,
-    timerBorderColor,
-    formatMatchDate,
     MatchesLoadingView,
     MatchesLockedView,
     EmptyStateView,
@@ -99,7 +95,8 @@ export function MatchesScreen() {
 
     const handleCardPress = () => {
         if (state.screenState === 'active_match') {
-            const match = state.activeMatch!;
+            const match = state.activeMatch;
+            if (!match) return;
             state.navigation.navigate('Chat', {
                 matchId: match.matchId ?? match.id,
                 recipientName: partnerName,
@@ -107,16 +104,18 @@ export function MatchesScreen() {
                 recipientPhoto: partnerPhoto,
             });
         } else {
+            const proposal = state.currentProposal;
+            if (!proposal) return;
             const heroUrl = getOptimizedPhotoUrl(
-                state.currentProposal!.partnerProfile?.photos?.[0]?.url, 'profile'
+                proposal.partnerProfile?.photos?.[0]?.url, 'profile'
             );
             if (heroUrl) Image.prefetch(heroUrl).catch(() => {});
             state.navigation.navigate('ProposalProfile', {
-                partnerProfile: state.currentProposal!.partnerProfile,
-                communityScore: computeApprovalPercent(state.currentProposal!.proposalId || ''),
-                endorsers: state.currentProposal!.endorsers ?? [],
+                partnerProfile: proposal.partnerProfile,
+                communityScore: computeApprovalPercent(proposal.proposalId || ''),
+                endorsers: proposal.endorsers ?? [],
                 screenState: state.screenState,
-                proposalId: state.currentProposal!.proposalId,
+                proposalId: proposal.proposalId,
             });
         }
     };

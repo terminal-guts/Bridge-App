@@ -1,24 +1,16 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { View, StatusBar, Alert, TouchableOpacity, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
-
-// Enable LayoutAnimation on Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+import { View, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import Animated, {
   FadeIn,
-  FadeOut,
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  Easing,
-  SlideInRight,
-  SlideOutLeft,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
-import { DURATIONS } from '../../constants/animations';
+import { DURATIONS, EASINGS } from '../../constants/animations';
+import { COLORS } from '../../theme/colors';
 import { RootStackParamList, OnboardingData } from '../../types';
 import { createUserProfile, saveOnboardingStep, checkMinimalProfileStatus, updateUserProfile, setCachedRole } from '../../services/profileService';
 import { uploadMultiplePhotos } from '../../services/photoService';
@@ -33,7 +25,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const logger = createLogger('OnboardingScreen');
 import { resetAllGuides } from '../../services/guideService';
 
-// Import all onboarding steps
 import { EmailSignUpStep } from './steps/EmailSignUpStep';
 import { EmailSignUpVerificationStep } from './steps/EmailSignUpVerificationStep';
 import { NameStep } from './steps/NameStep';
@@ -71,27 +62,6 @@ interface StepDefinition {
 
 const StyledView = styled(View);
 const StyledSafeAreaView = styled(SafeAreaView);
-
-/** Individual progress bar segment with smooth fill animation */
-const AnimatedProgressSegment: React.FC<{ active: boolean }> = ({ active }) => {
-  const progress = useSharedValue(active ? 1 : 0);
-
-  useEffect(() => {
-    progress.value = withTiming(active ? 1 : 0, {
-      duration: DURATIONS.normal,
-      easing: Easing.bezier(0.25, 0.1, 0.25, 1.0),
-    });
-  }, [active]);
-
-  const segmentStyle = useAnimatedStyle(() => ({
-    flex: 1,
-    height: 4,
-    backgroundColor: progress.value > 0.5 ? '#437FFF' : '#E5E7EB',
-    opacity: 0.3 + progress.value * 0.7,
-  }));
-
-  return <Animated.View style={segmentStyle} />;
-};
 
 // Profile steps shared by both signup paths
 const PROFILE_STEPS: StepDefinition[] = [
@@ -225,18 +195,22 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
 
   const totalSteps = steps.length;
 
-  // Smooth progress bar animation when step count changes (role switch)
-  const prevStepCountRef = useRef(totalSteps);
+  // Continuous progress bar — animates fill width as a percentage of total steps
+  const progressWidth = useSharedValue((currentStep + 1) / totalSteps);
+
   useEffect(() => {
-    if (prevStepCountRef.current !== totalSteps) {
-      LayoutAnimation.configureNext(LayoutAnimation.create(
-        300,
-        LayoutAnimation.Types.easeInEaseOut,
-        LayoutAnimation.Properties.scaleX,
-      ));
-      prevStepCountRef.current = totalSteps;
-    }
-  }, [totalSteps]);
+    progressWidth.value = withTiming((currentStep + 1) / totalSteps, {
+      duration: DURATIONS.normal,
+      easing: EASINGS.standard,
+    });
+  }, [currentStep, totalSteps]);
+
+  const progressBarStyle = useAnimatedStyle(() => ({
+    width: `${progressWidth.value * 100}%`,
+    height: 4,
+    backgroundColor: COLORS.primaryAccent,
+    borderRadius: 2,
+  }));
 
   // Bounds check — reset to step 0 if currentStep is out of range.
   React.useEffect(() => {
@@ -505,27 +479,25 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
 
       {/* Loading Overlay */}
       {isCreatingProfile && (
-        <StyledView className="absolute top-0 left-0 right-0 bottom-0 bg-black/50 z-50 flex-1 items-center justify-center">
+        <StyledView
+          className="absolute top-0 left-0 right-0 bottom-0 z-50 flex-1 items-center justify-center"
+          style={{ backgroundColor: COLORS.overlay.medium }}
+        >
           <StyledView className="bg-white rounded-2xl p-8 items-center mx-6 max-w-sm w-full">
-            <ActivityIndicator size="large" color="#437FFF" />
+            <ActivityIndicator size="large" color={COLORS.primaryAccent} />
             <Body className="mt-4 text-neutral-900 font-medium text-center">Creating your profile...</Body>
             <Body className="mt-2 text-neutral-500 text-sm text-center">Uploading photos and setting up your account</Body>
           </StyledView>
         </StyledView>
       )}
 
-      {/* Animated Progress Bar - Absolute positioned at top */}
+      {/* Continuous Progress Bar */}
       <StyledSafeAreaView
         edges={['top']}
         className="absolute top-0 left-0 right-0 z-50 bg-neutral-50"
       >
-        <StyledView className="flex-row items-center">
-          {Array.from({ length: totalSteps }).map((_, index) => (
-            <AnimatedProgressSegment
-              key={index}
-              active={index <= currentStep}
-            />
-          ))}
+        <StyledView style={{ height: 4, backgroundColor: COLORS.backgroundProgressTrack }}>
+          <Animated.View style={progressBarStyle} />
         </StyledView>
       </StyledSafeAreaView>
 

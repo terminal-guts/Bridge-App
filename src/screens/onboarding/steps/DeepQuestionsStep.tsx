@@ -163,7 +163,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
   const handleContinue = () => {
     // Check if all 3 tiers have at least one answer
     if (!tier1Answered || !tier2Answered || !tier3Answered) {
-      Alert.alert('Complete All Tiers', 'Please answer one question from each tier to continue.');
+      Alert.alert('Almost there!', 'Answer one question from each tier and you\'re good to go.');
       return;
     }
 
@@ -334,12 +334,12 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
         hasTextInput={false}
       >
         <StyledView className="mt-8">
-          <H1 className="mb-4">What makes you, you?</H1>
+          <H1 className="mb-4">Let people get to know you</H1>
           <Body className="text-neutral-600 mb-2">
-            Answer <Body className="font-bold text-neutral-900">3 questions minimum</Body> (one from each tier) to enter the matching pool.
+            Answer <Body className="font-bold text-neutral-900">one question from each tier</Body> so your friends and matches can see the real you.
           </Body>
           <Body className="text-neutral-500 text-sm mb-8">
-            You can answer up to 15 questions total if you'd like, but only 3 are required for your profile strength.
+            Feel free to answer more if you're on a roll -- but 3 is all you need to get started.
           </Body>
 
           {/* Tiers */}
@@ -392,7 +392,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
             />
 
             <Body className="text-neutral-400 text-xs mt-3">
-              All answers are used by our algorithm to find better matches for you.
+              Your answers help us find people who really click with you.
             </Body>
 
             <StyledView className="h-20" />

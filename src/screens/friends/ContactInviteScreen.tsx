@@ -25,6 +25,7 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
     permissionStatus,
     loading,
     friendCode,
+    contacts,
     selectedIds,
     bridgeUserCount,
     sending,
@@ -38,6 +39,7 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
     addingAll,
     unadddedBridgeCount,
     filteredSections,
+    searchQuery,
     enterCodeInputRef,
     sectionListRef,
     handleRequestPermission,
@@ -51,6 +53,7 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
     handleAddAllBridge,
     handleOpenSettings,
     handleEnterCodeChangeText,
+    handleSearchChange,
     keyExtractor,
   } = useContactInvite(route);
 
@@ -99,6 +102,8 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
           unadddedBridgeCount={unadddedBridgeCount}
           addingAll={addingAll}
           filteredSections={filteredSections}
+          searchQuery={searchQuery}
+          onSearchChange={handleSearchChange}
           sectionListRef={sectionListRef}
           onCopyCode={handleCopyCode}
           onShareCode={handleShareCode}
@@ -110,6 +115,7 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
           onAddAllBridge={handleAddAllBridge}
           onSendInvites={handleSendInvites}
           keyExtractor={keyExtractor}
+          totalContactCount={contacts.length}
         />
       )}
 

@@ -41,6 +41,7 @@ export function useProfileScreen(navigation: any) {
   const [badgesLoading, setBadgesLoading] = useState(false);
   const [showKarmaInfoModal, setShowKarmaInfoModal] = useState(false);
   const [showPhotoCarousel, setShowPhotoCarousel] = useState(false);
+  const [photoLoadFailed, setPhotoLoadFailed] = useState(false);
   const [friendCode, setFriendCode] = useState<string | null>(null);
   const [photoCarouselIndex] = useState(0);
   const [communityRank, setCommunityRank] = useState<number | null>(null);
@@ -255,6 +256,7 @@ export function useProfileScreen(navigation: any) {
   const handleRefresh = useCallback(async () => {
     if (isMountedRef.current) {
       setRefreshing(true);
+      setPhotoLoadFailed(false);
     }
     lastFetchRef.current = 0;
     await Promise.all([
@@ -539,6 +541,8 @@ export function useProfileScreen(navigation: any) {
     setShowKarmaInfoModal,
     showPhotoCarousel,
     setShowPhotoCarousel,
+    photoLoadFailed,
+    setPhotoLoadFailed,
     photoCarouselIndex,
     showEditAnswerModal,
     setShowEditAnswerModal,

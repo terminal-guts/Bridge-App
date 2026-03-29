@@ -35,7 +35,7 @@ export const contactStyles = StyleSheet.create({
   friendCodeText: {
     fontSize: FONT_SIZES['3xl'],
     fontFamily: FONTS.extraBold,
-    color: '#0B1226',
+    color: COLORS.text.heading,
     letterSpacing: -0.5,
     marginBottom: 16,
   },
@@ -60,9 +60,8 @@ export const contactStyles = StyleSheet.create({
   },
   celebrationTitle: {
     fontSize: FONT_SIZES['3xl'],
-    fontWeight: '700',
     fontFamily: FONTS.bold,
-    color: '#0B1226',
+    color: COLORS.text.heading,
     marginBottom: 4,
   },
   celebrationSubtitle: {

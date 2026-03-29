@@ -91,8 +91,13 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
   const [addingFriendId, setAddingFriendId] = useState<string | null>(null);
   const [invitesSentCount, setInvitesSentCount] = useState(0);
   const [addingAll, setAddingAll] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const enterCodeInputRef = useRef<TextInput>(null);
   const sectionListRef = useRef<SectionList<NormalizedContact, ContactSection>>(null);
+
+  const handleSearchChange = useCallback((text: string) => {
+    setSearchQuery(text);
+  }, []);
 
   const invitesRemaining = Math.max(0, MAX_INVITES - invitesSentCount);
 
@@ -329,15 +334,27 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
   );
 
   const filteredSections = useMemo((): ContactSection[] => {
-    const onBridge = contacts.filter((c) => c.isOnBridge);
-    const notOnBridge = contacts.filter((c) => !c.isOnBridge);
+    let filteredContacts = contacts;
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      filteredContacts = contacts.filter((c) =>
+        c.name.toLowerCase().includes(query) ||
+        c.phoneNumber.includes(query)
+      );
+    }
+
+    const onBridge = filteredContacts.filter((c) => c.isOnBridge);
+    const notOnBridge = filteredContacts.filter((c) => !c.isOnBridge);
     const sections: ContactSection[] = [];
     if (onBridge.length > 0) sections.push({ title: ON_BRIDGE_SECTION, data: onBridge });
-    const suggested = getSuggestedContacts(notOnBridge);
-    if (suggested.length > 0) sections.push({ title: SUGGESTED_SECTION, data: suggested });
+    if (!searchQuery.trim()) {
+      const suggested = getSuggestedContacts(notOnBridge);
+      if (suggested.length > 0) sections.push({ title: SUGGESTED_SECTION, data: suggested });
+    }
     sections.push(...groupContactsAlphabetically(notOnBridge));
     return sections;
-  }, [contacts]);
+  }, [contacts, searchQuery]);
 
   const keyExtractor = useCallback((item: NormalizedContact) => item.id, []);
 
@@ -407,6 +424,8 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
             unadddedBridgeCount={unadddedBridgeCount}
             addingAll={addingAll}
             filteredSections={filteredSections}
+            searchQuery={searchQuery}
+            onSearchChange={handleSearchChange}
             sectionListRef={sectionListRef}
             onCopyCode={handleCopyCode}
             onShareCode={handleShareCode}
@@ -419,6 +438,7 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
             onSendInvites={handleSendInvites}
             keyExtractor={keyExtractor}
             hideFloatingButton
+            totalContactCount={contacts.length}
           />
         )}
       </StyledView>

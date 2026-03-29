@@ -6,21 +6,26 @@
  * Accessed by tapping "Match" on a friend in the Community area.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { ActivityIndicator, View, Text } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 
 import { RootStackParamList } from '../../types';
 import { Proposal } from '../../types/community';
 import { ProposalReviewView, DeepQuestionData } from '../../components/community/proposal/ProposalReviewView';
 import { communityService } from '../../services/communityServiceIndex';
-import { getFriendActiveProposal, DeepQuestionData as DQData } from '../../services/friendProposalService';
+import { getFriendActiveProposal } from '../../services/friendProposalService';
 import { createLogger } from '../../utils/secureLogger';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { TEXT_STYLES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
-import { ScreenWrapper } from '../../components/ui';
+import { ScreenWrapper, EmptyState } from '../../components/ui';
 
 const logger = createLogger('FriendProposalScreen');
+
+/** Safely truncate a name for display to prevent layout overflow. */
+function truncateName(name: string, maxLength = 20): string {
+  return name.length > maxLength ? `${name.slice(0, maxLength)}...` : name;
+}
 
 interface FriendProposalScreenProps {
   navigation: NavigationProp<RootStackParamList, 'FriendProposal'>;
@@ -33,48 +38,47 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
   const [deepQuestions, setDeepQuestions] = useState<DeepQuestionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const cancelledRef = useRef(false);
 
-  // Fetch the friend's active proposal from the service
-  useEffect(() => {
-    let cancelled = false;
+  const displayName = truncateName(friendName);
 
-    async function fetchFriendProposal() {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchProposal = useCallback(async () => {
+    cancelledRef.current = false;
+    try {
+      setLoading(true);
+      setError(null);
 
-        const result = await getFriendActiveProposal(friendId, friendName);
+      const result = await getFriendActiveProposal(friendId, friendName);
 
-        if (cancelled) return;
+      if (cancelledRef.current) return;
 
-        if ('error' in result) {
-          setError(result.error);
-        } else {
-          setProposal(result.proposal);
-          setDeepQuestions(result.deepQuestions);
-        }
-      } catch (err: any) {
-        logger.error('[FriendProposalScreen] Error fetching proposal:', err);
-        if (!cancelled) {
-          setError('Failed to load proposal. Please try again.');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+      if ('error' in result) {
+        setError(result.error);
+      } else {
+        setProposal(result.proposal);
+        setDeepQuestions(result.deepQuestions);
       }
+    } catch (err: unknown) {
+      logger.error('[FriendProposalScreen] Error fetching proposal:', err);
+      if (!cancelledRef.current) {
+        setError('Something went wrong loading the proposal. Tap below to try again.');
+      }
+    } finally {
+      if (!cancelledRef.current) setLoading(false);
     }
-
-    fetchFriendProposal();
-    return () => { cancelled = true; };
   }, [friendId, friendName]);
+
+  useEffect(() => {
+    fetchProposal();
+    return () => { cancelledRef.current = true; };
+  }, [fetchProposal]);
 
   const handleBack = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
 
   const handleVoteComplete = useCallback(() => {
-    // Vote is already recorded via ProposalReviewView → submitProposalVote
     communityService.markFriendAsHelped(friendId).catch(() => {});
-    // Invalidate friends cache so the friends area refreshes on return
     if ('invalidateFriendsCache' in communityService) {
       (communityService as any).invalidateFriendsCache();
     }
@@ -84,34 +88,67 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
   if (loading) {
     return (
       <ScreenWrapper>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={COLORS.primaryAccent} />
-          <Text style={{ marginTop: 12, color: COLORS.text.label, fontSize: FONT_SIZES.base }}>
-            Loading {friendName}'s proposal...
+        <View
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+          accessibilityRole="none"
+          accessibilityLabel={`Loading ${displayName}'s proposal`}
+        >
+          <ActivityIndicator
+            size="large"
+            color={COLORS.primaryAccent}
+            accessibilityLabel="Loading"
+          />
+          <Text
+            style={{ marginTop: 12, color: COLORS.text.label, ...TEXT_STYLES.bodySm }}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            accessibilityRole="text"
+          >
+            Loading {displayName}'s proposal...
           </Text>
         </View>
       </ScreenWrapper>
     );
   }
 
-  if (error || !proposal) {
+  if (error) {
     return (
       <ScreenWrapper>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
-          <Text style={{ fontSize: FONT_SIZES.xl, color: '#344054', textAlign: 'center', marginBottom: 16 }}>
-            {error || 'No proposal found'}
-          </Text>
-          <TouchableOpacity
-            onPress={handleBack}
-            style={{
-              backgroundColor: COLORS.primaryAccent,
-              paddingHorizontal: 24,
-              paddingVertical: 12,
-              borderRadius: 8,
+        <View
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+          accessibilityRole="alert"
+          accessibilityLabel={`Error: ${error}`}
+        >
+          <EmptyState
+            title="Couldn't load proposal"
+            description={error}
+            action={{
+              label: 'Try Again',
+              onPress: fetchProposal,
             }}
-          >
-            <Text style={{ color: '#fff', fontSize: FONT_SIZES.xl, fontWeight: '600', fontFamily: FONTS.semiBold }}>Go Back</Text>
-          </TouchableOpacity>
+            variant="illustrated"
+          />
+        </View>
+      </ScreenWrapper>
+    );
+  }
+
+  if (!proposal) {
+    return (
+      <ScreenWrapper>
+        <View
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+          accessibilityLabel={`No active proposal for ${displayName}`}
+        >
+          <EmptyState
+            title="No active proposal"
+            description={`${displayName} doesn't have a proposal to vote on right now. Check back later!`}
+            action={{
+              label: 'Go Back',
+              onPress: handleBack,
+            }}
+            variant="illustrated"
+          />
         </View>
       </ScreenWrapper>
     );

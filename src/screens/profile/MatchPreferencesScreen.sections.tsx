@@ -5,28 +5,18 @@
  */
 
 import React from 'react';
-import { View, TouchableOpacity, Modal, Keyboard, TextInput, Text } from 'react-native';
-import ReanimatedAnimated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withSpring,
-    interpolate,
-} from 'react-native-reanimated';
-import { SPRINGS } from '../../constants/animations';
+import { View, TouchableOpacity, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { H3, Body, Card } from '../../components/ui';
 import { AgeRangeStepper } from '../../components/ui/AgeRangeStepper';
 import RangeSlider from 'rn-range-slider';
-import { lightHaptic, mediumHaptic } from '../../utils/haptics';
+import { lightHaptic } from '../../utils/haptics';
 import { FONTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { EvaIcon } from '../../components/icons';
-import { useEffect } from 'react';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-const StyledTextInput = styled(TextInput);
-const StyledAnimatedView = styled(ReanimatedAnimated.View);
 const StyledText = styled(Text);
 
 // ── Option Constants ─────────────────────────────────────────────────────────
@@ -44,47 +34,6 @@ export const LIFESTYLE_FREQUENCY_OPTIONS = [
   { value: 'sometimes', label: 'Sometimes' },
   { value: 'yes', label: 'Yes' },
   { value: 'dont_care', label: "Don't Care" },
-];
-
-export const COMMON_VALUES = [
-  // Personal
-  'Honesty', 'Integrity', 'Trust', 'Respect', 'Authenticity', 'Kindness', 'Empathy',
-
-  // Relationship
-  'Communication', 'Commitment', 'Independence', 'Romance',
-
-  // Life
-  'Family', 'Career', 'Ambition', 'Work-Life Balance',
-  'Adventure', 'Stability', 'Growth Mindset', 'Creativity',
-
-  // Social
-  'Community', 'Social Justice', 'Environmentalism', 'Diversity',
-
-  // Personal Growth
-  'Spirituality', 'Health',
-];
-
-export const COMMON_INTERESTS = [
-  // Activities
-  'Tennis', 'Golf', 'Running', 'Yoga', 'Hiking', 'Skiing',
-  'Basketball', 'Lifting', 'Live Sports', 'Watching Sports',
-
-  // Culture & Entertainment
-  'Museums', 'Theater', 'Live Music', 'Comedy Shows',
-  'Film', 'Reading', 'Photography',
-
-  // Food & Drink
-  'Cooking', 'Coffee', 'Cocktails', 'Fine Dining', 'Brunch',
-
-  // Travel & Adventure
-  'Travel', 'Camping',
-
-  // Lifestyle
-  'Startups', 'Investing', 'Real Estate', 'Fashion', 'Meditation', 'Podcasts',
-
-  // Social
-  'Dinner Parties', 'Game Nights', 'Dancing', 'Trivia Nights',
-  'Poker', 'Video Games',
 ];
 
 export const ETHNICITY_OPTIONS = [
@@ -129,12 +78,26 @@ export const POLITICAL_OPTIONS = [
 // ── Stable sub-components for RangeSlider (prevent re-mounting on each render) ──
 
 export const Thumb = () => (
-  <StyledView className="w-6 h-6 rounded-full border-2 border-white shadow-md" style={{ backgroundColor: COLORS.primaryAccent }} />
+  <StyledView
+    className="rounded-full border-2 border-white shadow-md"
+    style={{ width: 28, height: 28, backgroundColor: COLORS.primaryAccent }}
+    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+  />
 );
 
-export const Rail = () => <StyledView className="flex-1 h-1 rounded-full bg-neutral-200" />;
+export const Rail = () => (
+  <StyledView
+    className="flex-1 rounded-full"
+    style={{ height: 6, backgroundColor: COLORS.backgroundProgressTrack }}
+  />
+);
 
-export const RailSelected = () => <StyledView className="h-1 rounded-full" style={{ backgroundColor: COLORS.primaryAccent }} />;
+export const RailSelected = () => (
+  <StyledView
+    className="rounded-full"
+    style={{ height: 6, backgroundColor: COLORS.primaryAccent }}
+  />
+);
 
 // ── Helper ───────────────────────────────────────────────────────────────────
 
@@ -156,26 +119,33 @@ const PillToggle: React.FC<{
   selected: string[];
   onToggle: (value: string) => void;
 }> = ({ options, selected, onToggle }) => (
-  <StyledView className="flex-row flex-wrap gap-2.5">
+  <StyledView className="flex-row flex-wrap gap-2">
     {options.map(option => {
       const isSelected = selected.includes(option.value);
       return (
         <StyledTouchableOpacity
           key={option.value}
-          activeOpacity={1}
+          activeOpacity={0.7}
           onPress={() => {
             lightHaptic();
             onToggle(option.value);
           }}
-          className={`px-3 py-2 rounded-full border ${
+          style={{ minHeight: 44 }}
+          className={`px-4 rounded-full border items-center justify-center ${
             isSelected
-              ? 'bg-primary-500 border-primary-500'
+              ? 'border-primary-500'
               : 'bg-white border-neutral-300'
           }`}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: isSelected }}
+          accessibilityLabel={option.label}
         >
-          <Body className={`text-sm ${
-            isSelected ? 'text-white font-medium' : 'text-neutral-700'
-          }`}>{option.label}</Body>
+          <Body
+            className={`text-sm ${
+              isSelected ? 'text-white font-medium' : 'text-neutral-700'
+            }`}
+            style={isSelected ? { color: '#FFFFFF' } : undefined}
+          >{option.label}</Body>
         </StyledTouchableOpacity>
       );
     })}
@@ -188,22 +158,26 @@ const StringPillToggle: React.FC<{
   selected: string[];
   onToggle: (value: string) => void;
 }> = ({ options, selected, onToggle }) => (
-  <StyledView className="flex-row flex-wrap gap-2.5">
+  <StyledView className="flex-row flex-wrap gap-2">
     {options.map(option => {
       const isSelected = selected.includes(option);
       return (
         <StyledTouchableOpacity
           key={option}
-          activeOpacity={1}
+          activeOpacity={0.7}
           onPress={() => {
             lightHaptic();
             onToggle(option);
           }}
-          className={`px-3 py-2 rounded-full border ${
+          style={{ minHeight: 44 }}
+          className={`px-4 rounded-full border items-center justify-center ${
             isSelected
               ? 'bg-primary-500 border-primary-500'
               : 'bg-white border-neutral-300'
           }`}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: isSelected }}
+          accessibilityLabel={option}
         >
           <Body className={`text-sm ${
             isSelected ? 'text-white font-medium' : 'text-neutral-700'
@@ -225,11 +199,11 @@ const RequiredMark = () => (
 export const LookingForSection: React.FC = () => (
   <Card className="mb-6">
     <H3 className="mb-4">I'm Looking For</H3>
-    <Body className="text-neutral-600 text-sm mb-4">
+    <Body style={{ color: COLORS.text.secondary }} className="text-sm mb-4">
       Bridge promotes genuine connection
     </Body>
     <StyledView className="p-4 rounded-lg border bg-primary-50 border-primary-500">
-      <StyledView className="flex-row items-center justify-between">
+      <StyledView className="flex-row items-center justify-between" style={{ minHeight: 44 }}>
         <StyledView className="flex-1">
           <Body className="text-base font-semibold text-primary-700">
             Relationship
@@ -248,16 +222,16 @@ export const GenderSection: React.FC<{
 }> = ({ interestedInGenders, setInterestedInGenders }) => (
   <Card className="mb-6">
     <H3 className="mb-2">Gender <RequiredMark /></H3>
-    <Body className="text-neutral-600 text-sm mb-4">
+    <Body style={{ color: COLORS.text.secondary }} className="text-sm mb-4">
       Select all gender identities you're open to matching with
     </Body>
-    <StyledView className="flex-row flex-wrap gap-2.5">
+    <StyledView className="flex-row flex-wrap gap-2">
       {GENDER_OPTIONS.map((option) => {
         const isSelected = interestedInGenders.includes(option.value);
         return (
           <StyledTouchableOpacity
             key={option.value}
-            activeOpacity={1}
+            activeOpacity={0.7}
             onPress={() => {
               lightHaptic();
               if (isSelected) {
@@ -266,11 +240,15 @@ export const GenderSection: React.FC<{
                 setInterestedInGenders(prev => [...prev, option.value]);
               }
             }}
-            className={`px-3 py-2 rounded-full border ${
+            style={{ minHeight: 44 }}
+            className={`px-4 rounded-full border items-center justify-center ${
               isSelected
                 ? 'bg-primary-500 border-primary-500'
                 : 'bg-white border-neutral-300'
             }`}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: isSelected }}
+            accessibilityLabel={option.label}
           >
             <Body
               className={`text-sm ${
@@ -317,17 +295,17 @@ export const HeightSection: React.FC<{
 }> = ({ heightMin, heightMax, renderThumb, renderRail, renderRailSelected, onValueChanged }) => (
   <Card className="mb-6">
     <H3 className="mb-3">Height <RequiredMark /></H3>
-    <Body className="text-neutral-600 text-sm mb-4">
+    <Body style={{ color: COLORS.text.secondary }} className="text-sm mb-4">
       Set your height preferences for potential matches
     </Body>
 
     <StyledView className="flex-row justify-between mb-3">
-      <Body className="text-neutral-600">Min: <Body className="text-neutral-900 font-semibold">{formatHeight(heightMin || 60)}</Body></Body>
-      <Body className="text-neutral-600">Max: <Body className="text-neutral-900 font-semibold">{formatHeight(heightMax || 84)}</Body></Body>
+      <Body style={{ color: COLORS.text.secondary }}>Min: <Body className="font-semibold" style={{ color: COLORS.text.primary }}>{formatHeight(heightMin || 60)}</Body></Body>
+      <Body style={{ color: COLORS.text.secondary }}>Max: <Body className="font-semibold" style={{ color: COLORS.text.primary }}>{formatHeight(heightMax || 84)}</Body></Body>
     </StyledView>
-    <StyledView className="px-2">
+    <StyledView className="px-1">
       <RangeSlider
-        style={{ width: '100%', height: 40 }}
+        style={{ width: '100%', height: 48 }}
         min={48}
         max={84}
         step={1}
@@ -351,7 +329,7 @@ export const EthnicitySection: React.FC<{
 }> = ({ preferredEthnicities, setPreferredEthnicities }) => (
   <Card className="mb-6">
     <H3 className="mb-2">Ethnicity <RequiredMark /></H3>
-    <Body className="text-neutral-600 text-sm mb-4">
+    <Body style={{ color: COLORS.text.secondary }} className="text-sm mb-4">
       Select the ethnicities you're interested in for potential matches
     </Body>
     <StringPillToggle
@@ -377,7 +355,7 @@ export const ReligionSection: React.FC<{
 }> = ({ preferredReligions, setPreferredReligions }) => (
   <Card className="mb-6">
     <H3 className="mb-2">Religion <RequiredMark /></H3>
-    <Body className="text-neutral-600 text-sm mb-4">
+    <Body style={{ color: COLORS.text.secondary }} className="text-sm mb-4">
       Select the religious beliefs you're open to matching with
     </Body>
     <StringPillToggle
@@ -403,7 +381,7 @@ export const PoliticsSection: React.FC<{
 }> = ({ preferredPolitics, setPreferredPolitics }) => (
   <Card className="mb-6">
     <H3 className="mb-2">Politics <RequiredMark /></H3>
-    <Body className="text-neutral-600 text-sm mb-4">
+    <Body style={{ color: COLORS.text.secondary }} className="text-sm mb-4">
       Select the political views you're open to matching with
     </Body>
     <PillToggle
@@ -431,14 +409,14 @@ const LifestyleSubSection: React.FC<{
   isLast?: boolean;
 }> = ({ label, selectedValues, substanceKey, onUpdate, isLast }) => (
   <StyledView className={isLast ? '' : 'mb-4'}>
-    <Body className="text-neutral-700 text-sm font-medium mb-2">{label}</Body>
-    <StyledView className="flex-row flex-wrap gap-2.5">
+    <Body style={{ color: COLORS.text.muted, fontFamily: FONTS.medium }} className="text-sm mb-2">{label}</Body>
+    <StyledView className="flex-row flex-wrap gap-2">
       {LIFESTYLE_FREQUENCY_OPTIONS.map(option => {
         const isSelected = selectedValues.includes(option.value);
         return (
           <StyledTouchableOpacity
             key={option.value}
-            activeOpacity={1}
+            activeOpacity={0.7}
             onPress={() => {
               lightHaptic();
               if (isSelected) {
@@ -447,11 +425,15 @@ const LifestyleSubSection: React.FC<{
                 onUpdate(substanceKey, [...selectedValues, option.value]);
               }
             }}
-            className={`px-3 py-2 rounded-full border ${
+            style={{ minHeight: 44 }}
+            className={`px-4 rounded-full border items-center justify-center ${
               isSelected
                 ? 'bg-primary-500 border-primary-500'
                 : 'bg-white border-neutral-300'
             }`}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: isSelected }}
+            accessibilityLabel={`${label}: ${option.label}`}
           >
             <Body className={`text-center text-sm font-medium ${
               isSelected ? 'text-white' : 'text-neutral-700'
@@ -485,7 +467,7 @@ export const LifestyleSection: React.FC<{
   return (
     <Card className="mb-6">
       <H3 className="mb-2">Lifestyle <RequiredMark /></H3>
-      <Body className="text-neutral-600 text-sm mb-4">
+      <Body style={{ color: COLORS.text.secondary }} className="text-sm mb-4">
         What lifestyle habits do you prefer in a partner?
       </Body>
 
@@ -515,116 +497,5 @@ export const LifestyleSection: React.FC<{
         isLast
       />
     </Card>
-  );
-};
-
-/** Custom input modal (for adding custom genders, etc.) */
-export const CustomInputModal: React.FC<{
-  visible: boolean;
-  onClose: () => void;
-  onSave: (value: string) => void;
-}> = ({ visible, onClose, onSave }) => {
-  const [inputValue, setInputValue] = React.useState('');
-  const modalAnim = useSharedValue(0);
-  const overlayStyle = useAnimatedStyle(() => ({ opacity: modalAnim.value }));
-  const scaleStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(modalAnim.value, [0, 1], [0.9, 1]) }],
-  }));
-
-  useEffect(() => {
-    modalAnim.value = withSpring(visible ? 1 : 0, SPRINGS.responsive);
-    if (visible) setInputValue('');
-  }, [visible]);
-
-  const handleSave = () => {
-    const trimmed = inputValue.trim();
-    if (!trimmed) return;
-    onSave(trimmed);
-    setInputValue('');
-    Keyboard.dismiss();
-  };
-
-  const handleClose = () => {
-    Keyboard.dismiss();
-    setInputValue('');
-    onClose();
-  };
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="none"
-      transparent
-      onRequestClose={onClose}
-    >
-      <StyledAnimatedView
-        className="flex-1 bg-black/50 justify-start items-center px-6 pt-24"
-        style={overlayStyle}
-      >
-        <StyledTouchableOpacity
-          activeOpacity={1}
-          onPress={handleClose}
-          className="absolute inset-0"
-        />
-
-        <StyledAnimatedView
-          className="bg-white rounded-2xl w-full max-w-md"
-          style={scaleStyle}
-        >
-          {/* Header */}
-          <StyledView className="px-6 pt-6 pb-4 border-b border-neutral-100">
-            <H3 className="mb-2">Add Custom Gender</H3>
-            <Body className="text-neutral-600 text-sm">
-              Enter gender identity
-            </Body>
-          </StyledView>
-
-          {/* Input Field */}
-          <StyledView className="px-6 py-5">
-            <StyledTextInput
-              value={inputValue}
-              onChangeText={setInputValue}
-              placeholder="Enter gender identity"
-              className="bg-neutral-50 border border-neutral-200 rounded-lg px-4 py-3 text-base text-neutral-900"
-              placeholderTextColor={COLORS.text.disabled}
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={handleSave}
-            />
-          </StyledView>
-
-          {/* Action Buttons */}
-          <StyledView className="px-6 pb-6 flex-row gap-3">
-            <StyledTouchableOpacity
-              onPress={() => {
-                lightHaptic();
-                handleClose();
-              }}
-              className="flex-1 bg-neutral-100 rounded-lg py-3 items-center"
-            >
-              <Body className="text-neutral-700 font-semibold">Cancel</Body>
-            </StyledTouchableOpacity>
-
-            <StyledTouchableOpacity
-              onPress={handleSave}
-              className={`flex-1 rounded-lg py-3 items-center ${
-                inputValue.trim()
-                  ? 'bg-primary-500'
-                  : 'bg-neutral-200'
-              }`}
-              disabled={!inputValue.trim()}
-            >
-              <Body className={`font-semibold ${
-                inputValue.trim()
-                  ? 'text-white'
-                  : 'text-neutral-400'
-              }`}>
-                Add
-              </Body>
-            </StyledTouchableOpacity>
-          </StyledView>
-        </StyledAnimatedView>
-      </StyledAnimatedView>
-    </Modal>
   );
 };

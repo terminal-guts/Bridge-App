@@ -3,12 +3,12 @@ import { View, ScrollView, TouchableOpacity, RefreshControl, Text, Animated } fr
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
 import { AVATAR_SIZE_XL } from '../../constants';
 import { styled } from 'nativewind';
-import { H2, Body, Button, ProfileSkeleton, ScreenWrapper } from '../../components/ui';
+import { Body, Button, ProfileSkeleton, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { MainTabParamList } from '../../types';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
@@ -34,7 +34,7 @@ const getKarmaProgress = (karma: number): number => {
 
 /** Color for karma progress ring based on tier */
 const getKarmaRingColor = (karma: number): string => {
-  if (karma >= 100) return '#F59E0B'; // gold
+  if (karma >= 100) return COLORS.warning.icon;
   if (karma >= 25) return COLORS.primaryAccent; // blue
   return COLORS.emerald; // green
 };
@@ -121,9 +121,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
     return (
       <ScreenWrapper>
         <StyledView className="flex-1 justify-center items-center px-6">
-          <Body className="text-neutral-600">Failed to load profile</Body>
+          <Body className="text-neutral-600">We couldn't load your profile. Check your connection and try again.</Body>
           <Button onPress={hook.loadProfile} variant="primary" className="mt-4">
-            Retry
+            Try Again
           </Button>
         </StyledView>
       </ScreenWrapper>
@@ -166,11 +166,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
             />
           )}
           <StyledView className="px-4 py-3 flex-row justify-between items-center">
-            <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: FONT_SIZES['6xl'], lineHeight: 38, color: COLORS.text.black, letterSpacing: -0.5 }}>Your Profile</Text>
-            <StyledView className="flex-row items-center space-x-3">
+            <Text style={{ fontFamily: FONTS.bold, fontWeight: '700' as const, fontSize: FONT_SIZES['5xl'], lineHeight: LINE_HEIGHTS['5xl'], color: COLORS.text.black, letterSpacing: -0.5 }}>Your Profile</Text>
+            <StyledView className="flex-row items-center" style={{ gap: 4 }}>
               {profile.role !== 'matchmaker' && (
                 <StyledTouchableOpacity
                   onPress={() => { lightHaptic(); navigation.navigate('ProfilePreview'); }}
+                  hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
                   accessibilityLabel="Preview profile"
                   accessibilityRole="button"
                 >
@@ -180,6 +181,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               {profile.role !== 'matchmaker' && (
                 <StyledTouchableOpacity
                   onPress={() => { lightHaptic(); navigation.navigate('ProfileEdit'); }}
+                  hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
                   accessibilityLabel="Edit profile"
                   accessibilityRole="button"
                 >
@@ -188,6 +190,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               )}
               <StyledTouchableOpacity
                 onPress={() => { lightHaptic(); navigation.navigate('Settings'); }}
+                hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
                 accessibilityLabel="Settings"
                 accessibilityRole="button"
               >
@@ -200,7 +203,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
           <StyledView className="px-4 pb-4">
             <StyledView className="items-center">
               {/* Profile Photo Circle — with progress ring for matchmakers (#6) */}
-              {profile.photos && profile.photos.length > 0 && (profile.photos.find(p => p.isMain) || profile.photos[0])?.url ? (
+              {profile.photos && profile.photos.length > 0 && (profile.photos.find(p => p.isMain) || profile.photos[0])?.url && !hook.photoLoadFailed ? (
                 profile.role === 'matchmaker' ? (
                   <View style={{
                     marginBottom: 12,
@@ -217,10 +220,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                         className="rounded-full bg-neutral-200"
                         style={{ width: AVATAR_SIZE_XL, height: AVATAR_SIZE_XL } as any}
                         contentFit="cover"
-                        transition={0}
+                        transition={200}
                         cachePolicy="memory-disk"
                         priority="high"
-                        onError={(e) => { logger.warn('Failed to load profile photo:', e.error); }}
+                        onError={() => { logger.warn('Profile photo failed to load'); hook.setPhotoLoadFailed(true); }}
                       />
                     </AvatarProgressRing>
                   </View>
@@ -231,7 +234,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                     ...SHADOWS.xl,
                   }}>
                     <StyledImage
-                      source={{ uri: getOptimizedImageUrl((profile.photos.find(p => p.isMain) || profile.photos[0]).url, AVATAR_SIZE_XL) }}
+                      source={{ uri: (profile.photos.find(p => p.isMain) || profile.photos[0]).url }}
                       style={{
                         width: AVATAR_SIZE_XL,
                         height: AVATAR_SIZE_XL,
@@ -241,10 +244,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
                         backgroundColor: COLORS.backgroundGrayMedium,
                       } as any}
                       contentFit="cover"
-                      transition={0}
+                      transition={200}
                       cachePolicy="memory-disk"
                       priority="high"
-                      onError={(e) => { logger.warn('Failed to load profile photo:', e.error); }}
+                      onError={() => { logger.warn('Profile photo failed to load'); hook.setPhotoLoadFailed(true); }}
                     />
                   </View>
                 )
@@ -259,22 +262,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
 
               {/* Name & Karma Badge — hidden for matchmakers */}
               <StyledView className="flex-row items-center mb-4" style={{ gap: 8 }}>
-                <Text style={{ fontFamily: FONTS.bold, fontWeight: '700', fontSize: FONT_SIZES['5xl'], color: COLORS.text.black, letterSpacing: -0.3 }}>{profile.firstName}</Text>
+                <Text style={{ fontFamily: FONTS.bold, fontWeight: '700' as const, fontSize: FONT_SIZES['4xl'], lineHeight: LINE_HEIGHTS['4xl'], color: COLORS.text.black, letterSpacing: -0.3 }}>{profile.firstName}</Text>
                 {profile.role !== 'matchmaker' && (
                   <StyledTouchableOpacity
                     onPress={() => hook.setShowKarmaInfoModal(true)}
                     activeOpacity={0.75}
                     style={{
                       flexDirection: 'row', alignItems: 'center',
-                      paddingHorizontal: 8, paddingVertical: 4,
+                      paddingHorizontal: 10, paddingVertical: 10,
                       backgroundColor: 'rgba(52, 199, 89, 0.1)',
                       borderWidth: 1, borderColor: COLORS.success,
                       borderRadius: 999, gap: 4,
                     }}>
                     <EvaIcon name="star" variant="outline" size={12} color={COLORS.success} />
-                    <H2 className="text-xs" style={{ color: COLORS.success, fontWeight: '600', fontFamily: FONTS.semiBold }}>
+                    <Text style={{ fontSize: FONT_SIZES.xs, lineHeight: LINE_HEIGHTS.xs, color: COLORS.success, fontFamily: FONTS.semiBold }}>
                       {profile.karma?.karma_points ?? 0} pts
-                    </H2>
+                    </Text>
                   </StyledTouchableOpacity>
                 )}
               </StyledView>
@@ -436,12 +439,12 @@ const MatchmakerSection: React.FC<MatchmakerSectionProps> = ({ profile, hook, na
           accessibilityLabel="Matchmaker role badge"
         >
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primaryAccent }} />
-          <Text style={{ color: COLORS.primaryAccent, fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: FONT_SIZES.sm }}>
+          <Text style={{ color: COLORS.primaryAccent, fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.sm, lineHeight: LINE_HEIGHTS.sm }}>
             Matchmaker
           </Text>
         </View>
         {profile.createdAt && (
-          <Text style={{ color: COLORS.text.light, fontFamily: FONTS.regular, fontWeight: '400', fontSize: FONT_SIZES.xs, marginTop: 6 }}>
+          <Text style={{ color: COLORS.text.light, fontFamily: FONTS.regular, fontSize: FONT_SIZES.xs, lineHeight: LINE_HEIGHTS.xs, marginTop: 6 }}>
             {formatJoinDate(profile.createdAt)}
           </Text>
         )}
@@ -450,8 +453,8 @@ const MatchmakerSection: React.FC<MatchmakerSectionProps> = ({ profile, hook, na
       {/* YOUR IMPACT section header (#2) */}
       <Text style={{
         fontFamily: FONTS.semiBold,
-        fontWeight: '600',
         fontSize: FONT_SIZES.xs,
+        lineHeight: LINE_HEIGHTS.xs,
         color: COLORS.text.light,
         textTransform: 'uppercase',
         letterSpacing: 1.2,
@@ -466,7 +469,7 @@ const MatchmakerSection: React.FC<MatchmakerSectionProps> = ({ profile, hook, na
         <Animated.View style={{ flex: 1, opacity: fadeAnims[0], transform: [{ translateY: fadeAnims[0].interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
           <View
             style={{
-              backgroundColor: '#ECFDF5',
+              backgroundColor: COLORS.backgroundSuccessBadge,
               borderRadius: 14,
               paddingVertical: 16,
               paddingHorizontal: 8,
@@ -476,10 +479,10 @@ const MatchmakerSection: React.FC<MatchmakerSectionProps> = ({ profile, hook, na
               ...SHADOWS.sm,
             }}
           >
-            <Text style={{ fontSize: FONT_SIZES['4xl'], fontFamily: FONTS.extraBold, fontWeight: '800', lineHeight: FONT_SIZES['4xl'] * 1.2, color: COLORS.emerald, letterSpacing: -0.5 }}>
+            <Text style={{ fontSize: FONT_SIZES['4xl'], fontFamily: FONTS.extraBold, lineHeight: LINE_HEIGHTS['4xl'], color: COLORS.emerald, letterSpacing: -0.5 }}>
               {profile.karma?.karma_points ?? 0}
             </Text>
-            <Text style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.semiBold, fontWeight: '600', color: COLORS.emerald, marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+            <Text style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.semiBold, lineHeight: LINE_HEIGHTS.xs, color: COLORS.emerald, marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.3 }}>
               Karma
             </Text>
           </View>
@@ -498,10 +501,10 @@ const MatchmakerSection: React.FC<MatchmakerSectionProps> = ({ profile, hook, na
               ...SHADOWS.sm,
             }}
           >
-            <Text style={{ fontSize: FONT_SIZES['4xl'], fontFamily: FONTS.extraBold, fontWeight: '800', lineHeight: FONT_SIZES['4xl'] * 1.2, color: COLORS.primaryAccent, letterSpacing: -0.5 }}>
+            <Text style={{ fontSize: FONT_SIZES['4xl'], fontFamily: FONTS.extraBold, lineHeight: LINE_HEIGHTS['4xl'], color: COLORS.primaryAccent, letterSpacing: -0.5 }}>
               {(profile.karma as any)?.total_votes ?? 0}
             </Text>
-            <Text style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.semiBold, fontWeight: '600', color: COLORS.primaryAccent, marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+            <Text style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.semiBold, lineHeight: LINE_HEIGHTS.xs, color: COLORS.primaryAccent, marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.3 }}>
               Votes
             </Text>
           </View>
@@ -520,20 +523,20 @@ const MatchmakerSection: React.FC<MatchmakerSectionProps> = ({ profile, hook, na
               ...SHADOWS.sm,
             }}
           >
-            <Text style={{ fontSize: FONT_SIZES['4xl'], fontFamily: FONTS.extraBold, fontWeight: '800', lineHeight: FONT_SIZES['4xl'] * 1.2, color: COLORS.warning.icon, letterSpacing: -0.5 }}>
+            <Text style={{ fontSize: FONT_SIZES['4xl'], fontFamily: FONTS.extraBold, lineHeight: LINE_HEIGHTS['4xl'], color: COLORS.warning.icon, letterSpacing: -0.5 }}>
               {profile.karma?.total_assists ?? 0}
             </Text>
-            <Text style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.semiBold, fontWeight: '600', color: COLORS.warning.icon, marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+            <Text style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.semiBold, lineHeight: LINE_HEIGHTS.xs, color: COLORS.warning.icon, marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.3 }}>
               Assists
             </Text>
           </View>
         </Animated.View>
       </View>
 
-      {/* Not in the dating pool info line */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 16 }}>
+      {/* Not in the matching pool info line */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 16, minHeight: 44 }}>
         <EvaIcon name="info" variant="outline" size={14} color={COLORS.text.light} />
-        <Text style={{ color: COLORS.text.light, fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.sm }}>
+        <Text style={{ color: COLORS.text.light, fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, lineHeight: LINE_HEIGHTS.sm }}>
           Not in the matching pool
         </Text>
       </View>
@@ -559,7 +562,7 @@ const MatchmakerSection: React.FC<MatchmakerSectionProps> = ({ profile, hook, na
             ...SHADOWS.sm,
           }}
         >
-          <View style={{ width: 3, height: 36, borderRadius: 2, backgroundColor: '#7C3AED' }} />
+          <View style={{ width: 3, height: 36, borderRadius: 2, backgroundColor: COLORS.purple }} />
           <View
             style={{
               width: 36,
@@ -570,18 +573,18 @@ const MatchmakerSection: React.FC<MatchmakerSectionProps> = ({ profile, hook, na
               justifyContent: 'center',
             }}
           >
-            <EvaIcon name="award" variant="outline" size={18} color="#7C3AED" />
+            <EvaIcon name="award" variant="outline" size={18} color={COLORS.purple} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: FONT_SIZES['3xl'], fontFamily: FONTS.extraBold, fontWeight: '800', color: COLORS.text.heading, letterSpacing: -0.5 }}>
+            <Text style={{ fontSize: FONT_SIZES['3xl'], fontFamily: FONTS.extraBold, lineHeight: LINE_HEIGHTS['3xl'], color: COLORS.text.heading, letterSpacing: -0.5 }}>
               {hook.communityRank != null ? `#${hook.communityRank}` : '—'}
             </Text>
-            <Text style={{ fontFamily: FONTS.regular, fontWeight: '400', fontSize: FONT_SIZES.xs, color: COLORS.text.secondary, marginTop: 1 }}>
+            <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.xs, lineHeight: LINE_HEIGHTS.xs, color: COLORS.text.secondary, marginTop: 1 }}>
               Community rank
             </Text>
           </View>
           {hook.rankChange !== 0 && (
-            <Text style={{ color: hook.rankChange > 0 ? COLORS.success : COLORS.error, fontSize: FONT_SIZES.xs, fontFamily: FONTS.semiBold, fontWeight: '600' }}>
+            <Text style={{ color: hook.rankChange > 0 ? COLORS.success : COLORS.error, fontSize: FONT_SIZES.xs, lineHeight: LINE_HEIGHTS.xs, fontFamily: FONTS.semiBold }}>
               {hook.rankChange > 0 ? '▲' : '▼'} {Math.abs(hook.rankChange)}
             </Text>
           )}
@@ -596,6 +599,7 @@ const MatchmakerSection: React.FC<MatchmakerSectionProps> = ({ profile, hook, na
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
+          minHeight: 44,
           paddingVertical: 12,
           gap: 6,
         }}
@@ -604,7 +608,7 @@ const MatchmakerSection: React.FC<MatchmakerSectionProps> = ({ profile, hook, na
         accessibilityRole="button"
       >
         <EvaIcon name="camera" variant="outline" size={16} color={COLORS.text.secondary} />
-        <Text style={{ color: COLORS.text.secondary, fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.base }}>
+        <Text style={{ color: COLORS.text.secondary, fontFamily: FONTS.medium, fontSize: FONT_SIZES.base, lineHeight: LINE_HEIGHTS.base }}>
           Change Photo
         </Text>
       </TouchableOpacity>
@@ -612,7 +616,7 @@ const MatchmakerSection: React.FC<MatchmakerSectionProps> = ({ profile, hook, na
   );
 };
 
-// ─── Tab Bar (private component) ─────────────────────────────────────
+// ─── Tab Bar with animated sliding indicator ───────────────────────
 
 interface TabBarProps {
   activeTab: 'about' | 'badges' | 'questions';
@@ -621,53 +625,83 @@ interface TabBarProps {
   badgesCount: number;
 }
 
-const TabBar: React.FC<TabBarProps> = ({ activeTab, onTabChange, questionsCount, badgesCount }) => (
-  <StyledView className="flex-row border-t border-neutral-100">
-    <StyledTouchableOpacity
-      onPress={() => { lightHaptic(); onTabChange('about'); }}
-      style={{ width: '33.33%' }}
-      className="py-3 items-center relative"
-      accessibilityLabel="About tab"
-      accessibilityRole="tab"
-      accessibilityState={{ selected: activeTab === 'about' }}
+const TAB_ORDER: Array<'about' | 'questions' | 'badges'> = ['about', 'questions', 'badges'];
+
+const TabBar: React.FC<TabBarProps> = ({ activeTab, onTabChange, questionsCount, badgesCount }) => {
+  const indicatorAnim = useRef(new Animated.Value(0)).current;
+  const containerWidthRef = useRef(0);
+
+  useEffect(() => {
+    const idx = TAB_ORDER.indexOf(activeTab);
+    Animated.spring(indicatorAnim, {
+      toValue: idx,
+      damping: 20,
+      stiffness: 200,
+      mass: 0.8,
+      useNativeDriver: true,
+    }).start();
+  }, [activeTab]);
+
+  const tabWidth = containerWidthRef.current / 3;
+
+  return (
+    <View
+      style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: COLORS.borderSubtle, position: 'relative' }}
+      onLayout={(e) => { containerWidthRef.current = e.nativeEvent.layout.width; }}
     >
-      <Body className={`font-medium ${activeTab === 'about' ? 'text-primary-500' : 'text-neutral-600'}`}>
-        About
-      </Body>
-      {activeTab === 'about' && (
-        <StyledView className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500" />
-      )}
-    </StyledTouchableOpacity>
-    <GuideTarget id="questions-tab" style={{ width: '33.33%' }}>
+      {/* Animated sliding indicator */}
+      <Animated.View
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          height: 2,
+          width: '33.33%',
+          backgroundColor: COLORS.primaryAccent,
+          borderRadius: 1,
+          transform: [{
+            translateX: indicatorAnim.interpolate({
+              inputRange: [0, 1, 2],
+              outputRange: [0, tabWidth || 130, (tabWidth || 130) * 2],
+            }),
+          }],
+        }}
+      />
       <StyledTouchableOpacity
-        onPress={() => { lightHaptic(); onTabChange('questions'); }}
-        className="py-3 items-center relative"
-        accessibilityLabel={`Questions tab, ${questionsCount} answered`}
+        onPress={() => { lightHaptic(); onTabChange('about'); }}
+        style={{ width: '33.33%', minHeight: 44, paddingVertical: 12, alignItems: 'center' }}
+        accessibilityLabel="About tab"
         accessibilityRole="tab"
-        accessibilityState={{ selected: activeTab === 'questions' }}
+        accessibilityState={{ selected: activeTab === 'about' }}
       >
-        <Body className={`font-medium ${activeTab === 'questions' ? 'text-primary-500' : 'text-neutral-600'}`}>
-          Questions
+        <Body className={`font-medium ${activeTab === 'about' ? 'text-primary-500' : 'text-neutral-600'}`}>
+          About
         </Body>
-        {activeTab === 'questions' && (
-          <StyledView className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500" />
-        )}
       </StyledTouchableOpacity>
-    </GuideTarget>
-    <StyledTouchableOpacity
-      onPress={() => { lightHaptic(); onTabChange('badges'); }}
-      style={{ width: '33.34%' }}
-      className="py-3 items-center relative"
-      accessibilityLabel={`Badges tab, ${badgesCount} badge${badgesCount !== 1 ? 's' : ''}`}
-      accessibilityRole="tab"
-      accessibilityState={{ selected: activeTab === 'badges' }}
-    >
-      <Body className={`font-medium ${activeTab === 'badges' ? 'text-primary-500' : 'text-neutral-600'}`}>
-        Badges
-      </Body>
-      {activeTab === 'badges' && (
-        <StyledView className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500" />
-      )}
-    </StyledTouchableOpacity>
-  </StyledView>
-);
+      <GuideTarget id="questions-tab" style={{ width: '33.33%' }}>
+        <StyledTouchableOpacity
+          onPress={() => { lightHaptic(); onTabChange('questions'); }}
+          style={{ minHeight: 44, paddingVertical: 12, alignItems: 'center' }}
+          accessibilityLabel={`Questions tab, ${questionsCount} answered`}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === 'questions' }}
+        >
+          <Body className={`font-medium ${activeTab === 'questions' ? 'text-primary-500' : 'text-neutral-600'}`}>
+            Questions
+          </Body>
+        </StyledTouchableOpacity>
+      </GuideTarget>
+      <StyledTouchableOpacity
+        onPress={() => { lightHaptic(); onTabChange('badges'); }}
+        style={{ width: '33.34%', minHeight: 44, paddingVertical: 12, alignItems: 'center' }}
+        accessibilityLabel={`Badges tab, ${badgesCount} badge${badgesCount !== 1 ? 's' : ''}`}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: activeTab === 'badges' }}
+      >
+        <Body className={`font-medium ${activeTab === 'badges' ? 'text-primary-500' : 'text-neutral-600'}`}>
+          Badges
+        </Body>
+      </StyledTouchableOpacity>
+    </View>
+  );
+};

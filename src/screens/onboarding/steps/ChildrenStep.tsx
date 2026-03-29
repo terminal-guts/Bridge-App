@@ -42,6 +42,16 @@ export const ChildrenStep: React.FC<ChildrenStepProps> = ({
   );
   const [errors, setErrors] = useState<{ children?: string; plans?: string }>({});
 
+  const handleSkip = () => {
+    // Save whatever the user selected so the matching algorithm has
+    // partial data (6% weight) rather than nothing.
+    const partial: Partial<OnboardingData> = {};
+    if (childrenStatus) partial.hasChildren = childrenStatus;
+    if (familyPlans) partial.familyPlans = familyPlans;
+    if (Object.keys(partial).length > 0) updateData(partial);
+    onNext();
+  };
+
   const validateAndContinue = () => {
     const newErrors: { children?: string; plans?: string } = {};
 
@@ -98,12 +108,12 @@ export const ChildrenStep: React.FC<ChildrenStepProps> = ({
     <OnboardingLayout
       onBack={onBack}
       onContinue={validateAndContinue}
-      onSkip={onNext}
+      onSkip={handleSkip}
       hasTextInput={false}
     >
       <StyledView className="mt-6">
         <H1 className="mb-2">What are your family plans?</H1>
-        <Body className="text-neutral-600 mb-6">Tell us about your family goals.</Body>
+        <Body className="text-neutral-600 mb-6">So we can match you with someone on the same page.</Body>
 
         {/* Do you have children? */}
         <Card className="mb-4 p-4">

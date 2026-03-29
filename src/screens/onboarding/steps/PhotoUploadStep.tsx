@@ -64,7 +64,7 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
         setError('');
       }
     } catch (err) {
-      Alert.alert('Error', 'Failed to select photo. Please try again.');
+      Alert.alert('Oops', 'Something went wrong picking that photo. Give it another try!');
     }
   };
 
@@ -97,7 +97,7 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
         setError('');
       }
     } catch (err) {
-      Alert.alert('Error', 'Failed to take photo. Please try again.');
+      Alert.alert('Oops', 'Something went wrong with the camera. Give it another try!');
     }
   };
 
@@ -118,7 +118,7 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
         );
       }
     } catch (err) {
-      Alert.alert('Error', 'Failed to access camera. Please try again.');
+      Alert.alert('Oops', 'We couldn\'t open the camera. Give it another try!');
     }
   };
 
@@ -146,7 +146,7 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
         await openImagePicker(slotIndex);
       }
     } catch (err) {
-      Alert.alert('Error', 'Failed to access photo library. Please try again.');
+      Alert.alert('Oops', 'We couldn\'t open your photos. Give it another try!');
     }
   };
 
@@ -172,7 +172,7 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
 
   const validateAndContinue = () => {
     if (photos.length < MIN_PHOTOS) {
-      setError('Please add at least 1 photo');
+      setError('Add at least one photo so your matches can see you');
       return;
     }
 
@@ -191,9 +191,9 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
       hasTextInput={false}
     >
       <StyledScrollView className="mt-8" showsVerticalScrollIndicator={false}>
-        <H1 className="mb-3">What do you look like?</H1>
+        <H1 className="mb-3">Show off a little</H1>
         <Body className="text-neutral-500 text-sm mb-6">
-          Add up to {MAX_PHOTOS} photos. Your first photo will be your main profile photo.
+          Add up to {MAX_PHOTOS} photos so people can put a face to the name. Your first one will be your main pic.
         </Body>
 
         {/* Photo Grid - 2 columns */}

@@ -35,7 +35,7 @@ import {
   type PeriodStats,
   type CampusPeriodStats,
 } from '../../services/statsService';
-import { s, st, shareStyles, STAT_CARD_WIDTH } from './StatsScreen.styles';
+import { s, st, shareStyles, STAT_CARD_WIDTH, ACCURACY_RING_SIZE } from './StatsScreen.styles';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -123,7 +123,7 @@ export const AnimatedNumber = ({ value, delay = 0, duration = 1200, suffix = '',
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-export const ProgressRing = ({ progress, size = 88, strokeWidth = 7, color = COLORS.success, delay = 300 }: {
+export const ProgressRing = ({ progress, size = ACCURACY_RING_SIZE, strokeWidth = 7, color = COLORS.success, delay = 300 }: {
   progress: number;
   size?: number;
   strokeWidth?: number;
@@ -150,7 +150,7 @@ export const ProgressRing = ({ progress, size = 88, strokeWidth = 7, color = COL
     <Svg width={size} height={size}>
       <Circle
         cx={size / 2} cy={size / 2} r={radius}
-        stroke="#F3F4F6" strokeWidth={strokeWidth} fill="none"
+        stroke={COLORS.backgroundGray} strokeWidth={strokeWidth} fill="none"
       />
       <AnimatedCircle
         cx={size / 2} cy={size / 2} r={radius}
@@ -295,7 +295,7 @@ export const StatsEmptyState = React.memo(({ navigation }: { navigation: Navigat
       activeOpacity={0.7}
     >
       <Text style={st.emptyCtaText}>Start Voting</Text>
-      <EvaIcon name="arrow-forward" variant="outline" size={16} color="#FFFFFF" />
+      <EvaIcon name="arrow-forward" variant="outline" size={16} color={COLORS.card} />
     </TouchableOpacity>
   </View>
 ));
@@ -322,7 +322,7 @@ export const CampusTab = React.memo(({ period, onPeriodChange, data }: {
           style={s.heroCard}
         >
           <View style={s.heroIconCircle}>
-            <EvaIcon name="heart" variant="outline" size={28} color="#FFFFFF" />
+            <EvaIcon name="heart" variant="outline" size={28} color={COLORS.card} />
           </View>
           <AnimatedNumber value={d.total_couples_set_up} delay={300} style={s.heroValue} />
           <Text style={s.heroLabel}>

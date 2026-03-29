@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useRef, useReducer, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Animated, Dimensions } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { Image } from 'expo-image';
 import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
@@ -15,9 +15,19 @@ import { FriendWithGridStatus } from '../../types/community';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS, OVERLAYS } from '../../theme/shadows';
-import { lightHaptic } from '../../utils/haptics';
 import { FriendRequestCard } from '../../components/friends/FriendRequestCard';
 import { FriendRequest } from '../../services/friendService';
+
+// ── Responsive sizing ────────────────────────────────────────────────────────
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const isCompact = SCREEN_WIDTH < 380; // iPhone SE / 8 = 375pt
+const LOTTIE_SIZE = isCompact ? 200 : 260;
+const INVITE_BTN_WIDTH = Math.min(280, SCREEN_WIDTH - 64); // 32px padding each side
+const SECTION_H_PADDING = isCompact ? 16 : 24;
+
+// Maximum pending requests to render before showing an overflow indicator.
+// Prevents layout bloat when a popular user has dozens of incoming requests.
+const MAX_VISIBLE_REQUESTS = 5;
 
 // ── Mock leaderboard karma thresholds for rank interpolation ─────────────────
 // Sorted descending — same values as LeaderboardScreen MOCK_WEEKLY
@@ -118,7 +128,10 @@ export function MatchResetTimer() {
   const seconds = Math.floor((remaining % 60000) / 1000);
 
   let label: string;
-  if (hours > 0) {
+  if (remaining === 0) {
+    // Timer hit zero — reset is in progress, avoid showing bare "0s"
+    label = 'Resetting\u2026';
+  } else if (hours > 0) {
     label = `${hours}h ${minutes}m`;
   } else if (minutes > 0) {
     label = `${minutes}m ${seconds}s`;
@@ -159,9 +172,9 @@ export function MatchResetTimer() {
       <Modal visible={infoVisible} transparent animationType="fade" onRequestClose={() => setInfoVisible(false)}>
         <TouchableOpacity style={timerInfoStyles.overlay} activeOpacity={1} onPress={() => setInfoVisible(false)}>
           <View style={timerInfoStyles.card}>
-            <Text style={timerInfoStyles.title}>Daily Reset</Text>
+            <Text style={timerInfoStyles.title}>Fresh matches at 7 PM</Text>
             <Text style={timerInfoStyles.body}>
-              New proposals drop every day at 7 PM. Come back to vote on new matches and maybe get a match yourself!
+              Every evening, new pairings show up for your friends. Pop in, share your take, and see who Bridge has in mind for you too.
             </Text>
             <TouchableOpacity style={timerInfoStyles.btn} onPress={() => setInfoVisible(false)} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel="Dismiss daily reset info">
               <Text style={timerInfoStyles.btnText}>Got it</Text>
@@ -172,6 +185,73 @@ export function MatchResetTimer() {
     </>
   );
 }
+
+// ── Inline load error ────────────────────────────────────────────────────────
+// Replaces Alert.alert — shows a dismissible inline card with a retry button.
+
+interface InlineLoadErrorProps {
+  onRetry: () => void;
+}
+
+export function InlineLoadError({ onRetry }: InlineLoadErrorProps) {
+  return (
+    <View style={inlineErrorStyles.container}>
+      <EvaIcon name="wifi-off" variant="outline" size={20} color={COLORS.error} />
+      <Text style={inlineErrorStyles.message}>
+        Couldn't load your community. Check your connection and try again.
+      </Text>
+      <TouchableOpacity
+        onPress={onRetry}
+        style={inlineErrorStyles.retryBtn}
+        activeOpacity={0.7}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        accessibilityRole="button"
+        accessibilityLabel="Retry loading community data"
+      >
+        <EvaIcon name="refresh" variant="outline" size={16} color={COLORS.primaryButton} />
+        <Text style={inlineErrorStyles.retryText}>Retry</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const inlineErrorStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.18)',
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  message: {
+    flex: 1,
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.sm,
+    lineHeight: LINE_HEIGHTS.sm,
+    color: COLORS.text.secondary,
+  },
+  retryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: COLORS.backgroundBlueTint,
+  },
+  retryText: {
+    fontFamily: FONTS.semiBold,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.primaryButton,
+  },
+});
 
 // ── Empty state (no friends yet) ──────────────────────────────────────────────
 interface EmptyStateProps {
@@ -191,10 +271,10 @@ export function EmptyState({ onInvite }: EmptyStateProps) {
       />
 
       <Text style={styles.emptyHeroText}>
-        Add your crew
+        Bring your people
       </Text>
       <Text style={styles.emptySubtext}>
-        Your friends pick your matches.{'\n'}Invite from contacts to get started.
+        The friends you trust most pick who you meet.{'\n'}Start by inviting a few from your contacts.
       </Text>
 
       {/* Primary CTA — Invite from Contacts */}
@@ -205,7 +285,7 @@ export function EmptyState({ onInvite }: EmptyStateProps) {
         accessibilityRole="button"
         accessibilityLabel="Invite from contacts"
       >
-        <EvaIcon name="people" variant="outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+        <EvaIcon name="people" variant="outline" size={20} color={COLORS.card} style={{ marginRight: 8 }} />
         <Text style={styles.inviteContactsButtonText}>Invite from Contacts</Text>
       </TouchableOpacity>
     </View>
@@ -241,7 +321,7 @@ export function InviteBanner({ avatarFriends, onPress }: InviteBannerProps) {
           <EvaIcon name="plus" variant="outline" size={16} color={COLORS.primaryButton} />
         </View>
       </View>
-      <Text style={styles.crewBannerHeadline}>Add your people</Text>
+      <Text style={styles.crewBannerHeadline}>Grow your crew</Text>
     </TouchableOpacity>
   );
 }
@@ -257,8 +337,8 @@ export function ImpactCard({ totalAssists }: ImpactCardProps) {
       <EvaIcon name="heart" variant="outline" size={22} color={COLORS.primaryButton} />
       <Text style={styles.impactText}>
         {totalAssists > 0
-          ? `You've helped make ${totalAssists} match${totalAssists === 1 ? '' : 'es'}`
-          : 'Your votes matter! Help friends find their match.'}
+          ? `You've played a part in ${totalAssists} match${totalAssists === 1 ? '' : 'es'} so far`
+          : 'Every vote brings a friend closer to finding their person.'}
       </Text>
     </View>
   );
@@ -268,7 +348,7 @@ export function ImpactCard({ totalAssists }: ImpactCardProps) {
 export function CaughtUpFooter() {
   return (
     <Text style={styles.caughtUpFooter}>
-      All caught up — new proposals drop at 7 PM
+      You're all set for now — check back at 7 PM for new matches
     </Text>
   );
 }
@@ -281,17 +361,17 @@ const HOW_IT_WORKS_STEPS = [
   {
     icon: 'flash' as const,
     color: COLORS.primaryButton,
-    label: 'A pairing is proposed by the algorithm or a friend',
+    label: 'Someone gets suggested for your friend — by Bridge or by you',
   },
   {
     icon: 'people' as const,
     color: COLORS.emerald,
-    label: 'Your community votes to approve or reject it',
+    label: 'Friends weigh in together on whether it\'s a good fit',
   },
   {
     icon: 'checkmark-circle-2' as const,
     color: COLORS.primaryButton,
-    label: 'Only approved pairings become matches — no open feed',
+    label: 'Only friend-approved matches go through — no swiping, no guessing',
   },
 ];
 
@@ -341,11 +421,11 @@ const howStyles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 12,
     marginBottom: 4,
-    backgroundColor: '#EEF3FF',
+    backgroundColor: COLORS.backgroundFriendActive,
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#D4E0FF',
+    borderColor: COLORS.borderPeriwinkle,
   },
   howHeader: {
     flexDirection: 'row',
@@ -456,6 +536,8 @@ interface PendingRequestsSectionProps {
 /**
  * Renders incoming friend requests pinned above all other community content.
  * Returns null when there are no pending requests — no empty state shown.
+ * Caps visible cards at MAX_VISIBLE_REQUESTS to prevent scroll bloat; shows
+ * an overflow count so users know there are more.
  */
 export function PendingRequestsSection({
   requests,
@@ -465,17 +547,20 @@ export function PendingRequestsSection({
 }: PendingRequestsSectionProps) {
   if (requests.length === 0) return null;
 
+  const visibleRequests = requests.slice(0, MAX_VISIBLE_REQUESTS);
+  const overflowCount = requests.length - visibleRequests.length;
+
   return (
     <View style={requestStyles.container}>
       <View style={requestStyles.header}>
-        <View style={[requestStyles.accent, { backgroundColor: '#22C55E' }]} />
+        <View style={[requestStyles.accent, { backgroundColor: COLORS.match.icon }]} />
         <Text style={requestStyles.title}>FRIEND REQUESTS</Text>
         <View style={requestStyles.badge}>
           <Text style={requestStyles.badgeText}>{requests.length}</Text>
         </View>
       </View>
       <View style={requestStyles.cardList}>
-        {requests.map(req => (
+        {visibleRequests.map(req => (
           <FriendRequestCard
             key={req.id}
             request={req}
@@ -484,6 +569,13 @@ export function PendingRequestsSection({
             isProcessing={processingIds.has(req.id)}
           />
         ))}
+        {overflowCount > 0 && (
+          <View style={requestStyles.overflowRow}>
+            <Text style={requestStyles.overflowText}>
+              +{overflowCount} more request{overflowCount === 1 ? '' : 's'}
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -497,7 +589,7 @@ const requestStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
-    paddingHorizontal: 24,
+    paddingHorizontal: SECTION_H_PADDING,
     gap: 8,
   },
   accent: {
@@ -513,7 +605,7 @@ const requestStyles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   badge: {
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.match.icon,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -525,13 +617,25 @@ const requestStyles = StyleSheet.create({
   badgeText: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.xs,
-    color: '#FFFFFF',
+    color: COLORS.card,
   },
   cardList: {
     backgroundColor: COLORS.card,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.borderSubtle,
+  },
+  overflowRow: {
+    paddingVertical: 10,
+    paddingHorizontal: SECTION_H_PADDING,
+    alignItems: 'center',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.borderSubtle,
+  },
+  overflowText: {
+    fontFamily: FONTS.medium,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.text.secondary,
   },
 });
 
@@ -543,12 +647,12 @@ const timerPillStyles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderRadius: 10,
-    paddingHorizontal: 8,
-    height: 34,
+    paddingHorizontal: isCompact ? 6 : 8,
+    height: isCompact ? 30 : 34,
     gap: 4,
   },
   label: {
-    fontSize: FONT_SIZES.md,
+    fontSize: isCompact ? FONT_SIZES.sm : FONT_SIZES.md,
     fontFamily: FONTS.semiBold,
   },
 });
@@ -582,7 +686,7 @@ const timerInfoStyles = StyleSheet.create({
     fontSize: FONT_SIZES.base,
     color: COLORS.navInactiveIcon,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: LINE_HEIGHTS.lg,
     marginBottom: 20,
   },
   btn: {
@@ -599,17 +703,16 @@ const timerInfoStyles = StyleSheet.create({
 });
 
 export const styles = StyleSheet.create({
-  emptyContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 24 },
+  emptyContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: isCompact ? 24 : 32, paddingBottom: 24 },
   emptyLottie: {
-    width: 260,
-    height: 260,
-    marginBottom: 16,
+    width: LOTTIE_SIZE,
+    height: LOTTIE_SIZE,
+    marginBottom: isCompact ? 8 : 16,
   },
   emptyHeroText: {
     fontFamily: FONTS.bold,
-    fontWeight: '700',
-    fontSize: FONT_SIZES['4xl'],
-    lineHeight: LINE_HEIGHTS['4xl'],
+    fontSize: isCompact ? FONT_SIZES['3xl'] : FONT_SIZES['4xl'],
+    lineHeight: isCompact ? LINE_HEIGHTS['3xl'] : LINE_HEIGHTS['4xl'],
     color: COLORS.text.heading,
     textAlign: 'center',
     marginBottom: 8,
@@ -618,25 +721,12 @@ export const styles = StyleSheet.create({
   },
   emptySubtext: {
     fontFamily: FONTS.regular,
-    fontSize: FONT_SIZES.base,
-    lineHeight: LINE_HEIGHTS.base,
+    fontSize: isCompact ? FONT_SIZES.md : FONT_SIZES.base,
+    lineHeight: isCompact ? LINE_HEIGHTS.md : LINE_HEIGHTS.base,
     color: COLORS.text.light,
     textAlign: 'center',
-    marginBottom: 28,
+    marginBottom: isCompact ? 20 : 28,
   },
-  tagline: { fontFamily: FONTS.semiBold, fontSize: FONT_SIZES['3xl'], lineHeight: 26, color: COLORS.text.primary, textAlign: 'center', marginBottom: 12 },
-  illustration: { width: 300, height: 300, marginBottom: 32 },
-  subtitle: { fontFamily: FONTS.semiBold, fontSize: 17, lineHeight: 24, color: COLORS.text.primary, textAlign: 'center', marginBottom: 20, width: '100%' },
-  ctaButton: {
-    backgroundColor: COLORS.primaryAccent,
-    width: 250,
-    height: 47,
-    borderRadius: 9999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SHADOWS.accentBlue,
-  },
-  ctaText: { fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.lg, color: COLORS.card },
   crewBanner: {
     backgroundColor: COLORS.backgroundFriendActive,
     marginHorizontal: 16,
@@ -707,34 +797,34 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 280,
-    height: 50,
+    width: INVITE_BTN_WIDTH,
+    height: isCompact ? 46 : 50,
     borderRadius: 9999,
     ...SHADOWS.accentBlue,
     marginBottom: 24,
   },
   inviteContactsButtonText: {
     fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.xl,
+    fontSize: isCompact ? FONT_SIZES.lg : FONT_SIZES.xl,
     color: COLORS.card,
   },
   headerTitle: {
     fontFamily: FONTS.bold,
-    fontWeight: '700',
-    fontSize: FONT_SIZES['6xl'],
-    lineHeight: 38,
+    fontWeight: '700' as const,
+    fontSize: isCompact ? FONT_SIZES['4xl'] : FONT_SIZES['5xl'],
+    lineHeight: isCompact ? LINE_HEIGHTS['4xl'] : LINE_HEIGHTS['5xl'],
     color: COLORS.text.black,
     letterSpacing: -0.5,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: isCompact ? 6 : 8,
   },
   addFriendBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: isCompact ? 30 : 34,
+    height: isCompact ? 30 : 34,
+    borderRadius: isCompact ? 15 : 17,
     backgroundColor: COLORS.backgroundBlueTint,
     borderWidth: 1,
     borderColor: COLORS.borderPeriwinkle,
@@ -746,7 +836,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
-    paddingHorizontal: 24,
+    paddingHorizontal: SECTION_H_PADDING,
     gap: 8,
   },
   sectionAccent: {
@@ -762,9 +852,19 @@ export const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   voteListBg: {
-    backgroundColor: 'rgba(43, 101, 249, 0.02)',
+    backgroundColor: COLORS.backgroundBlueTint,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.borderPeriwinkle,
+    paddingVertical: 4,
   },
-  // ── Help count badge ──────────────────────────────────────────
+  sectionDivider: {
+    height: 1,
+    backgroundColor: COLORS.borderWarm,
+    marginHorizontal: 24,
+    marginTop: 24,
+    marginBottom: 16,
+  },
   helpCountBadge: {
     backgroundColor: COLORS.primaryButton,
     borderRadius: 10,
@@ -780,29 +880,15 @@ export const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xs,
     color: COLORS.card,
   },
-  // ── Suggest a Match row ───────────────────────────────────────────
-  suggestMatchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E8EDFB',
+  crewListContainer: {
+    paddingBottom: 32,
   },
-  suggestMatchText: {
-    flex: 1,
-    fontFamily: FONTS.medium,
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.text.secondary,
-  },
-  // ── Caught up footer ──────────────────────────────────────────────
   caughtUpFooter: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.md,
     color: COLORS.text.placeholder,
     textAlign: 'center',
     paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingHorizontal: SECTION_H_PADDING,
   },
 });

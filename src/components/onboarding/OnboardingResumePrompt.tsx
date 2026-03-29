@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { H2, Body } from '../ui/Typography';
 import { EvaIcon } from '../icons';
+import { OVERLAYS } from '../../theme/shadows';
 
 const STORAGE_KEY = '@bridge/seen_post_proposal_prompt';
 
@@ -67,7 +68,7 @@ const styles = StyleSheet.create({
   },
   overlayBg: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: OVERLAYS.medium,
   },
   card: {
     backgroundColor: '#FAFAFA',

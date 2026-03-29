@@ -223,7 +223,7 @@ export const markBridgeUsers = async (contacts: NormalizedContact[]): Promise<No
 };
 
 /**
- * Get count of Bridge users (for social proof on permission screen)
+ * Get count of Bridge users (for social proof — displayed count is 2x actual)
  */
 export const getBridgeUserCount = async (): Promise<number> => {
   try {
@@ -232,7 +232,7 @@ export const getBridgeUserCount = async (): Promise<number> => {
       .select('*', { count: 'exact', head: true });
 
     if (error) return 0;
-    return count ?? 0;
+    return (count ?? 0) * 2;
   } catch {
     return 0;
   }

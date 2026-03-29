@@ -16,6 +16,7 @@ import { WineGlassIcon, LeafIcon, CigaretteIcon, PillIcon } from '../../componen
 import { formatProfileValue, formatGenderDisplay } from '../../utils/formatProfileValue';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
+import { FONTS } from '../../constants/typography';
 
 const StyledView = styled(View);
 const StyledImage = Image;
@@ -645,48 +646,48 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
   return (
     <Card
       shadow="md"
-      className="mb-4 bg-gradient-to-r from-blue-50 to-primary-50 border-2 border-primary-200"
+      className="mb-4"
+      style={{ borderWidth: 1, borderColor: COLORS.border }}
     >
-      <StyledView className="flex-row items-center justify-between mb-3">
+      <StyledView className="flex-row items-center justify-between mb-4">
         <StyledView className="flex-row items-center flex-1">
-          <StyledView className="w-12 h-12 bg-primary-500 rounded-xl items-center justify-center mr-3 shadow-md">
-            <EvaIcon name="file-text" variant="outline" size={24} color="white" />
+          <StyledView className="w-10 h-10 bg-primary-500 rounded-lg items-center justify-center mr-3">
+            <EvaIcon name="file-text" variant="outline" size={20} color="white" />
           </StyledView>
           <StyledView className="flex-1">
-            <H3 className="text-neutral-900 mb-1">About Me</H3>
-            <Body className="text-neutral-600 text-xs">Your profile information</Body>
+            <Body className="text-neutral-900 font-bold text-base">About Me</Body>
+            <Body style={{ color: COLORS.text.secondary, fontSize: 12 }}>The basics about you</Body>
           </StyledView>
         </StyledView>
         <StyledTouchableOpacity
           onPress={onEdit}
           accessibilityLabel="Edit profile information"
           accessibilityRole="button"
-          className="bg-primary-500 px-4 py-2 rounded-lg"
+          className="bg-primary-500 px-3.5 py-1.5 rounded-lg"
         >
-          <Body className="text-white font-semibold text-sm">Edit All</Body>
+          <Body className="text-white font-semibold text-xs">Edit All</Body>
         </StyledTouchableOpacity>
       </StyledView>
 
-
-      <StyledView className="space-y-2">
+      <StyledView>
         {/* Age */}
-        <StyledView className="flex-row items-center justify-between py-2 border-b border-primary-100/50">
+        <StyledView className="flex-row items-center justify-between py-2.5" style={{ borderBottomWidth: 1, borderBottomColor: COLORS.borderSubtle }}>
           <StyledView className="flex-row items-center">
-            <EvaIcon name="calendar" variant="outline" size={16} color={COLORS.primaryAccent} />
-            <Body className="text-neutral-700 text-sm ml-2">Age</Body>
+            <EvaIcon name="calendar" variant="outline" size={15} color={COLORS.text.secondary} />
+            <Body className="text-neutral-600 text-sm ml-2">Age</Body>
           </StyledView>
-          <Body className="text-neutral-900 font-semibold text-sm">
+          <Body className="text-neutral-900 font-medium text-sm">
             {profile.age || '-'}
           </Body>
         </StyledView>
 
         {/* Ethnicity */}
-        <StyledView className="flex-row items-center justify-between py-2 border-b border-primary-100/50">
+        <StyledView className="flex-row items-center justify-between py-2.5" style={{ borderBottomWidth: 1, borderBottomColor: COLORS.borderSubtle }}>
           <StyledView className="flex-row items-center">
-            <EvaIcon name="globe" variant="outline" size={16} color={COLORS.primaryAccent} />
-            <Body className="text-neutral-700 text-sm ml-2">Ethnicity</Body>
+            <EvaIcon name="globe" variant="outline" size={15} color={COLORS.text.secondary} />
+            <Body className="text-neutral-600 text-sm ml-2">Ethnicity</Body>
           </StyledView>
-          <Body className="text-neutral-900 font-semibold text-sm" numberOfLines={1}>
+          <Body className="text-neutral-900 font-medium text-sm" numberOfLines={1}>
             {(() => {
               if (!profile.ethnicity) return '-';
               const ethnicities = profile.ethnicity.split(' / ').map(e => e.trim());
@@ -696,19 +697,19 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
           </Body>
         </StyledView>
 
-        {/* Values & Interests Count - Values Left, Interests Right */}
+        {/* Values & Interests Count */}
         {((profile.values?.length || 0) > 0 || (profile.interests?.length || 0) > 0) && (
-          <StyledView className="flex-row gap-2 pt-2">
+          <StyledView className="flex-row pt-3" style={{ gap: 16 }}>
             {(profile.values?.length || 0) > 0 && (
-              <StyledView className="flex-1 py-2">
-                <Body className="text-neutral-600 text-xs mb-1">Values</Body>
-                <Body className="text-primary-700 font-bold text-sm">{profile.values.length} selected</Body>
+              <StyledView className="flex-1">
+                <Body style={{ color: COLORS.text.secondary, fontSize: 12, marginBottom: 2 }}>Values</Body>
+                <Body style={{ color: COLORS.primaryAccent, fontFamily: FONTS.semiBold, fontSize: 13 }}>{profile.values.length} selected</Body>
               </StyledView>
             )}
             {(profile.interests?.length || 0) > 0 && (
-              <StyledView className="flex-1 py-2">
-                <Body className="text-neutral-600 text-xs mb-1">Interests</Body>
-                <Body className="text-primary-700 font-bold text-sm">{profile.interests.length} selected</Body>
+              <StyledView className="flex-1">
+                <Body style={{ color: COLORS.text.secondary, fontSize: 12, marginBottom: 2 }}>Interests</Body>
+                <Body style={{ color: COLORS.primaryAccent, fontFamily: FONTS.semiBold, fontSize: 13 }}>{profile.interests.length} selected</Body>
               </StyledView>
             )}
           </StyledView>
@@ -742,47 +743,48 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
   return (
     <Card
       shadow="md"
-      className="mb-4 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200"
+      className="mb-4"
+      style={{ borderWidth: 1, borderColor: COLORS.border }}
     >
-      <StyledView className="flex-row items-center justify-between mb-3">
+      <StyledView className="flex-row items-center justify-between mb-4">
         <StyledView className="flex-row items-center flex-1">
-          <StyledView className="w-12 h-12 bg-purple-500 rounded-xl items-center justify-center mr-3 shadow-md">
-            <EvaIcon name="heart" variant="outline" size={24} color="white" />
+          <StyledView className="w-10 h-10 bg-purple-500 rounded-lg items-center justify-center mr-3">
+            <EvaIcon name="heart" variant="outline" size={20} color="white" />
           </StyledView>
           <StyledView className="flex-1">
-            <H3 className="text-neutral-900 mb-1">Match Preferences</H3>
-            <Body className="text-neutral-600 text-xs">Who you're looking for</Body>
+            <Body className="text-neutral-900 font-bold text-base">Match Preferences</Body>
+            <Body style={{ color: COLORS.text.secondary, fontSize: 12 }}>What matters to you in a match</Body>
           </StyledView>
         </StyledView>
         <StyledTouchableOpacity
           onPress={onEdit}
           accessibilityLabel="Edit match preferences"
           accessibilityRole="button"
-          className="bg-purple-500 px-4 py-2 rounded-lg"
+          className="bg-purple-500 px-3.5 py-1.5 rounded-lg"
         >
-          <Body className="text-white font-semibold text-sm">Edit All</Body>
+          <Body className="text-white font-semibold text-xs">Edit All</Body>
         </StyledTouchableOpacity>
       </StyledView>
 
-      <StyledView className="space-y-2">
+      <StyledView>
         {/* Looking For */}
-        <StyledView className="flex-row items-center justify-between py-2 border-b border-purple-100/50">
+        <StyledView className="flex-row items-center justify-between py-2.5" style={{ borderBottomWidth: 1, borderBottomColor: COLORS.borderSubtle }}>
           <StyledView className="flex-row items-center">
-            <EvaIcon name="search" variant="outline" size={16} color={COLORS.purple} />
-            <Body className="text-neutral-700 text-sm ml-2">Looking For</Body>
+            <EvaIcon name="search" variant="outline" size={15} color={COLORS.text.secondary} />
+            <Body className="text-neutral-600 text-sm ml-2">Looking For</Body>
           </StyledView>
-          <Body className="text-neutral-900 font-semibold text-sm">
+          <Body className="text-neutral-900 font-medium text-sm">
             {formatProfileValue(preferences.lookingFor) || '-'}
           </Body>
         </StyledView>
 
         {/* Height Preference */}
-        <StyledView className="flex-row items-center justify-between py-2 border-b border-purple-100/50">
+        <StyledView className="flex-row items-center justify-between py-2.5" style={{ borderBottomWidth: 1, borderBottomColor: COLORS.borderSubtle }}>
           <StyledView className="flex-row items-center">
-            <EvaIcon name="arrow-upward" variant="outline" size={16} color={COLORS.purple} />
-            <Body className="text-neutral-700 text-sm ml-2">Height</Body>
+            <EvaIcon name="arrow-upward" variant="outline" size={15} color={COLORS.text.secondary} />
+            <Body className="text-neutral-600 text-sm ml-2">Height Range</Body>
           </StyledView>
-          <Body className="text-neutral-900 font-semibold text-sm">
+          <Body className="text-neutral-900 font-medium text-sm">
             {preferences.heightMin && preferences.heightMax
               ? `${Math.floor(preferences.heightMin / 12)}'${preferences.heightMin % 12}" - ${Math.floor(preferences.heightMax / 12)}'${preferences.heightMax % 12}"`
               : '-'}
@@ -790,12 +792,12 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
         </StyledView>
 
         {/* Preferred Politics */}
-        <StyledView className="flex-row items-center justify-between py-2">
+        <StyledView className="flex-row items-center justify-between py-2.5">
           <StyledView className="flex-row items-center">
-            <EvaIcon name="compass" variant="outline" size={16} color={COLORS.purple} />
-            <Body className="text-neutral-700 text-sm ml-2">Preferred Politics</Body>
+            <EvaIcon name="compass" variant="outline" size={15} color={COLORS.text.secondary} />
+            <Body className="text-neutral-600 text-sm ml-2">Politics</Body>
           </StyledView>
-          <Body className="text-neutral-900 font-semibold text-sm" numberOfLines={1}>
+          <Body className="text-neutral-900 font-medium text-sm" numberOfLines={1}>
             {(() => {
               const cap = formatProfileValue;
               if (!preferredPolitics || preferredPolitics.length === 0) return '-';

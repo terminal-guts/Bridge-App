@@ -50,6 +50,15 @@ export const ReligionStep: React.FC<ReligionStepProps> = ({
     setError('');
   };
 
+  const handleSkip = () => {
+    // Save whatever the user selected so the matching algorithm has
+    // partial data (9% weight) rather than nothing.
+    if (selected.length > 0) {
+      updateData({ religion: selected.join(' / ') });
+    }
+    onNext();
+  };
+
   const validateAndContinue = () => {
     if (selected.length === 0) {
       setError('Please select at least one');
@@ -68,13 +77,13 @@ export const ReligionStep: React.FC<ReligionStepProps> = ({
     <OnboardingLayout
       onBack={onBack}
       onContinue={validateAndContinue}
-      onSkip={onNext}
+      onSkip={handleSkip}
       hasTextInput={false}
     >
       <StyledView className="mt-8">
       <H1 className="mb-3">What's your religion?</H1>
       <Body className="text-neutral-600 mb-8">
-        Select all that apply.
+        Helps us match you with someone who shares what matters to you.
       </Body>
 
       <StyledView className="flex-row flex-wrap">

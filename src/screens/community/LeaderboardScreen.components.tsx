@@ -62,7 +62,7 @@ export const RankChangeArrow = ({ change }: { change: number }) => {
   if (change === 0) return null;
   const isUp = change > 0;
   return (
-    <View style={[s.rankChangeWrap, isUp ? s.rankChangeUp : s.rankChangeDown]}>
+    <View style={s.rankChangeWrap}>
       <EvaIcon
         name={isUp ? 'arrow-upward' : 'arrow-downward'}
         variant="outline"
