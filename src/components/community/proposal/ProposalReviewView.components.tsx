@@ -85,7 +85,7 @@ export function VoteButtons({
   bottomInset = 0,
 }: VoteButtonsProps) {
   return (
-    <View style={[styles.voteContainer, { paddingBottom: Math.max(16, bottomInset) }]}>
+    <View style={[styles.voteContainer, { paddingBottom: bottomInset > 0 ? Math.round(bottomInset * 0.5) : 8 }]}>
       {/* Yes button — primary action, largest touch target */}
       <Animated.View style={yesButtonAnimatedStyle}>
         <TouchableOpacity

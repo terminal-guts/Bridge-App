@@ -18,6 +18,7 @@ import { getFriendActiveProposal } from '../../services/friendProposalService';
 import { createLogger } from '../../utils/secureLogger';
 import { ScreenWrapper, EmptyState, LoadingState } from '../../components/ui';
 import { BackHeader } from '../../components/ui/BackHeader';
+import { COLORS } from '../../theme/colors';
 
 const logger = createLogger('FriendProposalScreen');
 
@@ -83,7 +84,7 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
 
   if (loading) {
     return (
-      <ScreenWrapper>
+      <ScreenWrapper backgroundColor={COLORS.card}>
         <BackHeader title={`Vote for ${displayName}`} onBack={handleBack} showBorder={false} />
         <LoadingState fullScreen message={`Loading ${displayName}'s proposal...`} />
       </ScreenWrapper>
@@ -92,7 +93,7 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
 
   if (error) {
     return (
-      <ScreenWrapper>
+      <ScreenWrapper backgroundColor={COLORS.card}>
         <BackHeader title={`Vote for ${displayName}`} onBack={handleBack} showBorder={false} />
         <View
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
@@ -115,7 +116,7 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
 
   if (!proposal) {
     return (
-      <ScreenWrapper>
+      <ScreenWrapper backgroundColor={COLORS.card}>
         <BackHeader title={`Vote for ${displayName}`} onBack={handleBack} showBorder={false} />
         <View
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
@@ -136,7 +137,7 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
   }
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper backgroundColor={COLORS.card}>
       <BackHeader title={`Vote for ${displayName}`} onBack={handleBack} showBorder={false} />
       <ProposalReviewView
         initialProposals={[proposal]}
