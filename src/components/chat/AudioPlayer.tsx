@@ -113,7 +113,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ uri, duration, isOwnMe
                         name={isPlaying ? 'pause-circle' : 'play-circle'}
                         variant="outline"
                         size={24}
-                        color={isOwnMessage ? 'white' : '#437FFF'}
+                        color={isOwnMessage ? 'white' : COLORS.primaryAccent}
                     />
                 )}
             </StyledTouchableOpacity>

@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, ScrollView, TouchableOpacity, Alert, Text } from 'react-native';
+import React, { useState, useMemo, useCallback } from 'react';
+import { View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { styled } from 'nativewind';
-import { H3, Body, Card, Button, ScreenWrapper } from '../../components/ui';
+import { H3, Body, Button, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile } from '../../types';
 import { getCurrentUser, signOut } from '../../services/authService';
@@ -12,7 +12,6 @@ import { lightHaptic } from '../../utils/haptics';
 import { formatProfileValue } from '../../utils/formatProfileValue';
 import { calculateEditProfileCompleteness } from '../../utils/profileCompleteness';
 import { createLogger } from '../../utils/secureLogger';
-import { FONTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
 import { EvaIcon } from '../../components/icons';
@@ -27,7 +26,6 @@ const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledImage = Image;
-const StyledText = styled(Text);
 
 // Helper to get a summary string for a section
 const getPhotosSummary = (profile: UserProfile): string => {
@@ -85,13 +83,14 @@ interface SectionCardProps {
   photoUrl?: string;
 }
 
-const SectionCard: React.FC<SectionCardProps> = React.memo(({ title, icon, summary, onPress, photoUrl }) => (
+const SectionCard: React.FC<SectionCardProps> = ({ title, icon, summary, onPress, photoUrl }) => (
   <StyledTouchableOpacity
     onPress={() => {
       lightHaptic();
       onPress();
     }}
-    className="bg-white border border-neutral-200 rounded-xl px-4 py-4 mb-3 flex-row items-center"
+    className="bg-white border border-neutral-200 rounded-xl px-4 mb-3 flex-row items-center"
+    style={{ minHeight: 56, paddingVertical: 12 }}
     activeOpacity={0.7}
   >
     {photoUrl ? (
@@ -100,17 +99,16 @@ const SectionCard: React.FC<SectionCardProps> = React.memo(({ title, icon, summa
       </StyledView>
     ) : (
       <StyledView className="w-10 h-10 rounded-lg bg-primary-50 items-center justify-center mr-3">
-        <EvaIcon name={icon} variant="outline" size={20} color="#437FFF" />
+        <EvaIcon name={icon} variant="outline" size={20} color={COLORS.primaryAccent} />
       </StyledView>
     )}
     <StyledView className="flex-1">
       <Body className="font-semibold text-neutral-900">{title}</Body>
       <Body className="text-xs text-neutral-500 mt-0.5" numberOfLines={1}>{summary}</Body>
     </StyledView>
-    <EvaIcon name="arrow-ios-forward" variant="outline" size={18} color="#9CA3AF" />
+    <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color={COLORS.text.disabled} />
   </StyledTouchableOpacity>
-));
-SectionCard.displayName = 'SectionCard';
+);
 
 export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -202,8 +200,13 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
       {/* Header */}
       <StyledView className="bg-white border-b border-neutral-200 px-4 py-3">
         <StyledView className="flex-row items-center justify-between">
-          <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
-            <EvaIcon name="close" variant="outline" size={24} color="#101828" />
+          <StyledTouchableOpacity
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            className="mr-3"
+            style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <EvaIcon name="close" variant="outline" size={24} color={COLORS.textDarkHeading} />
           </StyledTouchableOpacity>
           <StyledView className="flex-1">
             <H3>Edit Profile</H3>
@@ -245,9 +248,10 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               const previewProfile = profile ? { ...profile } : undefined;
               navigation.navigate('ProfilePreview', { previewProfile });
             }}
-            className="mb-5 bg-neutral-100 border border-neutral-300 rounded-lg px-4 py-3 flex-row items-center justify-center"
+            className="mb-5 bg-neutral-100 border border-neutral-300 rounded-lg px-4 flex-row items-center justify-center"
+            style={{ minHeight: 48, paddingVertical: 12 }}
           >
-            <EvaIcon name="eye" variant="outline" size={20} color="#437FFF" />
+            <EvaIcon name="eye" variant="outline" size={20} color={COLORS.primaryAccent} />
             <Body className="text-primary-500 font-semibold ml-2">Preview Profile</Body>
           </StyledTouchableOpacity>
 

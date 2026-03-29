@@ -38,14 +38,20 @@ export const FONT_SIZES = {
   '2xl': 18,
   /** 20px — section titles */
   '3xl': 20,
-  /** 24px — screen titles */
+  /** 24px — screen titles (extraBold) */
   '4xl': 24,
-  /** 28px — large headings */
+  /** 28px — primary tab screen titles (extraBold) */
   '5xl': 28,
-  /** 32px — hero text */
+  /** 32px — hero text (extraBold) */
   '6xl': 32,
   /** 40px — display text */
   '7xl': 40,
+  /** 44px — archetype emoji */
+  '8xl': 44,
+  /** 48px — share card emoji */
+  '9xl': 48,
+  /** 52px — hero stat numbers */
+  '10xl': 52,
 } as const;
 
 // ============================================================================
@@ -65,6 +71,9 @@ export const LINE_HEIGHTS = {
   '5xl': 34,
   '6xl': 38,
   '7xl': 48,
+  '8xl': 52,
+  '9xl': 56,
+  '10xl': 60,
 } as const;
 
 // ============================================================================
@@ -90,7 +99,7 @@ export const TEXT_STYLES = {
     fontFamily: FONTS.bold,
     fontSize: FONT_SIZES['5xl'],
     lineHeight: LINE_HEIGHTS['5xl'],
-    letterSpacing: -0.3,
+    letterSpacing: -0.5,
   },
   headingLg: {
     fontFamily: FONTS.bold,

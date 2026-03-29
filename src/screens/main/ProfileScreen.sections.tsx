@@ -16,7 +16,7 @@ import ReanimatedAnimated, {
   cancelAnimation,
 } from 'react-native-reanimated';
 import { styled } from 'nativewind';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
 import { H3, Body, Card } from '../../components/ui';
@@ -166,7 +166,7 @@ interface AboutTabProps {
 }
 
 export const AboutTab: React.FC<AboutTabProps> = ({ profile, navigation }) => (
-  <StyledView className="px-4 py-6">
+  <StyledView className="px-4 pt-4 pb-6">
     {/* Profile Strength Dashboard */}
     <GuideTarget id="profile-strength-card">
       <ProfileStrengthDashboard
@@ -249,7 +249,7 @@ export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onT
         <H3 style={{ fontFamily: FONTS.bold, color: COLORS.text.primary, marginBottom: 8 }}>
           No badges yet
         </H3>
-        <Body style={{ color: COLORS.text.muted, textAlign: 'center', lineHeight: 22, maxWidth: 260 }}>
+        <Body style={{ color: COLORS.text.muted, textAlign: 'center', lineHeight: LINE_HEIGHTS.xl, maxWidth: 260 }}>
           When friends award you badges, they'll appear here as mini-testimonials on your profile.
         </Body>
       </StyledView>
@@ -281,13 +281,13 @@ export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onT
 
       <StyledView style={{ flex: 1 }}>
         <Body style={{
-          fontFamily: FONTS.semiBold, fontSize: 15,
-          color: COLORS.text.primary, lineHeight: 20, marginBottom: 4,
+          fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.lg,
+          color: COLORS.text.primary, lineHeight: LINE_HEIGHTS.lg, marginBottom: 4,
         }} numberOfLines={2}>
           "{badge.message}"
         </Body>
         <Body style={{
-          fontFamily: FONTS.medium, fontSize: 13,
+          fontFamily: FONTS.medium, fontSize: FONT_SIZES.md,
           color: isFeatured ? COLORS.amberText : COLORS.text.muted,
           fontStyle: 'italic',
         }}>
@@ -348,7 +348,7 @@ export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onT
           }}>
             <EvaIcon name="star" variant="fill" size={16} color={COLORS.warning.icon} />
             <Body style={{
-              fontFamily: FONTS.bold, fontSize: 13, color: COLORS.amberText,
+              fontFamily: FONTS.bold, fontSize: FONT_SIZES.md, color: COLORS.amberText,
               textTransform: 'uppercase', letterSpacing: 0.8,
             }}>
               Featured ({featured.length}/3)
@@ -365,7 +365,7 @@ export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onT
           }}>
             <EvaIcon name="award" variant="outline" size={16} color={COLORS.text.muted} />
             <Body style={{
-              fontFamily: FONTS.bold, fontSize: 13, color: COLORS.text.muted,
+              fontFamily: FONTS.bold, fontSize: FONT_SIZES.md, color: COLORS.text.muted,
               textTransform: 'uppercase', letterSpacing: 0.8,
             }}>
               All Badges
@@ -384,7 +384,7 @@ export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onT
           >
             <EvaIcon name="eye-off" variant="outline" size={16} color={COLORS.text.muted} />
             <Body style={{
-              fontFamily: FONTS.bold, fontSize: 13, color: COLORS.text.muted,
+              fontFamily: FONTS.bold, fontSize: FONT_SIZES.md, color: COLORS.text.muted,
               textTransform: 'uppercase', letterSpacing: 0.8, flex: 1,
             }}>
               Hidden ({hiddenBadges.length})

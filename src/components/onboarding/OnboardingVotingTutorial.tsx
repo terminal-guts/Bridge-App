@@ -12,6 +12,7 @@ import { H2, Body } from '../ui/Typography';
 import { Button } from '../ui/Button';
 import { EvaIcon } from '../icons';
 import { lightHaptic } from '../../utils/haptics';
+import { OVERLAYS } from '../../theme/shadows';
 
 interface OnboardingVotingTutorialProps {
   visible: boolean;
@@ -170,7 +171,7 @@ export const OnboardingVotingTutorial: React.FC<OnboardingVotingTutorialProps> =
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.80)',
+    backgroundColor: OVERLAYS.heavy,
     justifyContent: 'center',
     paddingHorizontal: 24,
   },

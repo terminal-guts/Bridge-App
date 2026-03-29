@@ -10,6 +10,7 @@ import { updateUserProfile } from '../../../services/profileService';
 import { uploadPhoto } from '../../../services/photoService';
 import { createLogger } from '../../../utils/secureLogger';
 import { EvaIcon } from '../../../components/icons';
+import { COLORS } from '../../../theme/colors';
 
 const logger = createLogger('SectionScreenWrapper');
 
@@ -139,8 +140,14 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
       {/* Header */}
       <StyledView className="bg-white border-b border-neutral-200 px-4 py-3">
         <StyledView className="flex-row items-center justify-between">
-          <StyledTouchableOpacity onPress={handleSaveAndGoBack} className="mr-3">
-            <EvaIcon name="arrow-ios-back" variant="outline" size={24} color="#101828" />
+          <StyledTouchableOpacity
+            onPress={handleSaveAndGoBack}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            className="mr-3 items-center justify-center"
+            style={{ minWidth: 44, minHeight: 44 }}
+          >
+            <EvaIcon name="arrow-ios-back" variant="outline" size={24} color={COLORS.textDarkHeading} />
           </StyledTouchableOpacity>
           <StyledView className="flex-1">
             <H3>{title}</H3>

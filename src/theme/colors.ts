@@ -9,6 +9,8 @@ export const COLORS = {
     // #2B65F9 — button blue used in ProposalReviewView banner, vote-active borders,
     //           fire-icon color on UserRow
     primaryButton: '#2B65F9',
+    // #93B4FF — disabled primary button background
+    primaryButtonDisabled: '#93B4FF',
 
     // ── Text ─────────────────────────────────────────────────
     text: {
@@ -83,6 +85,8 @@ export const COLORS = {
     waitingAmber: '#D4AA01',
     // #FFA629 — warning icon in ProposalReviewView
     warningIcon: '#FFA629',
+    // #F97316 — warm orange for end-match icon
+    warmOrange: '#F97316',
     // #FFCC00 — bright amber in ProposalReviewView
     brightAmber: '#FFCC00',
 
@@ -179,6 +183,12 @@ export const COLORS = {
     navInactiveIcon: '#667085',
     navIndicator: '#437FFF',
 
+    // ── Skeleton / Shimmer ────────────────────────────────────
+    // #E8E2DB — warm skeleton bone color (matches warm off-white palette)
+    skeletonBone: '#E8E2DB',
+    // rgba(255,255,255,0.15) — translucent overlay for skeleton placeholders on dark surfaces
+    skeletonOverlay: 'rgba(255,255,255,0.15)',
+
     // ── Misc / Special ───────────────────────────────────────
     // #D9D9D9 — inactive pagination dot / placeholder avatar
     paginationInactive: '#D9D9D9',
@@ -206,6 +216,10 @@ export const COLORS = {
     backgroundWarmPeach: '#FFF4ED',
     // #FEF3F2 — soft red background (report icon)
     backgroundSoftRed: '#FEF3F2',
+    // #FEF2F2 — lighter soft red (recording bar background)
+    backgroundRecordingRed: '#FEF2F2',
+    // #FECACA — red-200 border (recording bar border)
+    borderRecordingRed: '#FECACA',
     // #F0F4FF — light blue card background (date proposal, impact card)
     backgroundLightBlue: '#F0F4FF',
     // #D0DBFF — medium blue border (date proposal card)
@@ -244,6 +258,14 @@ export const COLORS = {
     blueText: '#1D4ED8',
     // #B91C1C — critical red (getting started level)
     criticalRed: '#B91C1C',
+
+    // ── Podium / Leaderboard ──────────────────────────────────
+    // #FFD700 — gold ring border (1st place)
+    podiumGold: '#FFD700',
+    // #C0C0C0 — silver ring border (2nd place)
+    podiumSilver: '#C0C0C0',
+    // #CD7F32 — bronze ring border (3rd place)
+    podiumBronze: '#CD7F32',
 
     // ── Toast Backgrounds ────────────────────────────────────
     toast: {

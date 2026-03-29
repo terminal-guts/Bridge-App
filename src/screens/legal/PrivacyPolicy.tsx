@@ -1,10 +1,10 @@
-import React from 'react';
-import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity } from 'react-native';
+import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity, Linking, Text } from 'react-native';
 import { styled } from 'nativewind';
-import { H2, H3, Body } from '../../components/ui';
+import { H2, H3, Body, BodySmall } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { EvaIcon } from '../../components/icons';
+import { TEXT_STYLES, FONTS } from '../../constants/typography';
 
 interface PrivacyPolicyProps {
   navigation: NavigationProp<RootStackParamList>;
@@ -25,20 +25,20 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
         <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
           <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
         </StyledTouchableOpacity>
-        <H3>Privacy Policy</H3>
+        <H2>Privacy Policy</H2>
       </StyledView>
 
       <StyledScrollView className="flex-1 px-4 py-4">
-        <Body className="text-neutral-500 text-sm mb-4">
+        <BodySmall className="text-neutral-500 mb-4">
           Last Updated: March 16, 2026
-        </Body>
+        </BodySmall>
 
-        <Body className="text-neutral-700 mb-6 leading-6">
+        <Body className="text-neutral-700 mb-6" style={TEXT_STYLES.bodyLg}>
           Bridge is built on trust. Here's exactly what we collect, why we collect it, and how we protect it. No fine print.
         </Body>
 
-        <H2 className="mb-3">1. What We Collect</H2>
-        <Body className="text-neutral-700 mb-6 leading-6">
+        <H3 className="mb-3">1. What We Collect</H3>
+        <Body className="text-neutral-700 mb-6" style={TEXT_STYLES.bodySm}>
           When you use Bridge, we collect:
           {'\n'}• Profile information: name, age, gender, photos, job, and city
           {'\n'}• Match preferences (age range, gender, lifestyle, etc.)
@@ -50,8 +50,8 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
           {'\n\n'}We don't collect payment information — Bridge is free.
         </Body>
 
-        <H2 className="mb-3">2. How We Use It</H2>
-        <Body className="text-neutral-700 mb-6 leading-6">
+        <H3 className="mb-3">2. How We Use It</H3>
+        <Body className="text-neutral-700 mb-6" style={TEXT_STYLES.bodySm}>
           We use your information to:
           {'\n'}• Generate match proposals using our algorithm
           {'\n'}• Show your profile to other users for community voting
@@ -61,8 +61,8 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
           {'\n'}• Keep the community safe
         </Body>
 
-        <H2 className="mb-3">3. How Community Matchmaking Works</H2>
-        <Body className="text-neutral-700 mb-6 leading-6">
+        <H3 className="mb-3">3. How Community Matchmaking Works</H3>
+        <Body className="text-neutral-700 mb-6" style={TEXT_STYLES.bodySm}>
           Bridge's community-driven model means your profile is shown to other users — including people you don't know — as part of the voting process. Specifically:
           {'\n'}• Your first name, age, photos, and select profile details appear in voting proposals
           {'\n'}• Other users vote yes, no, or unsure on potential matches
@@ -71,8 +71,8 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
           {'\n\n'}By using Bridge, you consent to your profile appearing in proposals.
         </Body>
 
-        <H2 className="mb-3">4. Information Sharing</H2>
-        <Body className="text-neutral-700 mb-6 leading-6">
+        <H3 className="mb-3">4. Information Sharing</H3>
+        <Body className="text-neutral-700 mb-6" style={TEXT_STYLES.bodySm}>
           We share your information only in these cases:
           {'\n'}• With matched users (full profile, after both accept)
           {'\n'}• With service providers who help us run the app (cloud hosting, analytics)
@@ -81,13 +81,13 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
           {'\n\n'}We never sell your data. Ever.
         </Body>
 
-        <H2 className="mb-3">5. Data Security</H2>
-        <Body className="text-neutral-700 mb-6 leading-6">
+        <H3 className="mb-3">5. Data Security</H3>
+        <Body className="text-neutral-700 mb-6" style={TEXT_STYLES.bodySm}>
           Your data is stored securely using Supabase, with encryption in transit and at rest. We take security seriously, but no system is 100% foolproof. Use a strong, unique password and keep your device secure.
         </Body>
 
-        <H2 className="mb-3">6. Your Rights</H2>
-        <Body className="text-neutral-700 mb-6 leading-6">
+        <H3 className="mb-3">6. Your Rights</H3>
+        <Body className="text-neutral-700 mb-6" style={TEXT_STYLES.bodySm}>
           You can, at any time:
           {'\n'}• Update your profile information in the app
           {'\n'}• Delete your account (Settings → Delete Account) — your data is removed within 90 days
@@ -96,36 +96,42 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
           {'\n'}• Request a copy of your data by emailing us
         </Body>
 
-        <H2 className="mb-3">7. Data Retention</H2>
-        <Body className="text-neutral-700 mb-6 leading-6">
+        <H3 className="mb-3">7. Data Retention</H3>
+        <Body className="text-neutral-700 mb-6" style={TEXT_STYLES.bodySm}>
           We keep your data as long as your account is active. When you delete your account, your personal data is removed within 90 days. Some anonymized aggregate data (like vote counts) may be retained for analytics after deletion.
         </Body>
 
-        <H2 className="mb-3">8. Children's Privacy</H2>
-        <Body className="text-neutral-700 mb-6 leading-6">
+        <H3 className="mb-3">8. Children's Privacy</H3>
+        <Body className="text-neutral-700 mb-6" style={TEXT_STYLES.bodySm}>
           Bridge is for users 18 and older. We don't knowingly collect data from anyone under 18. If we discover we have, we'll delete it immediately.
         </Body>
 
-        <H2 className="mb-3">9. Analytics</H2>
-        <Body className="text-neutral-700 mb-6 leading-6">
+        <H3 className="mb-3">9. Analytics</H3>
+        <Body className="text-neutral-700 mb-6" style={TEXT_STYLES.bodySm}>
           We use mobile analytics tools to understand how people use Bridge and to catch bugs. We don't track you across other apps. You can limit analytics through iOS Settings → Privacy → Tracking.
         </Body>
 
-        <H2 className="mb-3">10. California Privacy Rights</H2>
-        <Body className="text-neutral-700 mb-6 leading-6">
+        <H3 className="mb-3">10. California Privacy Rights</H3>
+        <Body className="text-neutral-700 mb-6" style={TEXT_STYLES.bodySm}>
           If you're a California resident, you have rights under the CCPA, including the right to know what data we hold, request deletion, and opt out of data sales. Bridge does not sell personal data.
         </Body>
 
-        <H2 className="mb-3">11. Changes to This Policy</H2>
-        <Body className="text-neutral-700 mb-6 leading-6">
+        <H3 className="mb-3">11. Changes to This Policy</H3>
+        <Body className="text-neutral-700 mb-6" style={TEXT_STYLES.bodySm}>
           If we update this policy in a meaningful way, we'll let you know in the app. The "Last Updated" date at the top always reflects the current version.
         </Body>
 
-        <H2 className="mb-3">12. Contact</H2>
-        <Body className="text-neutral-700 mb-8 leading-6">
+        <H3 className="mb-3">12. Contact</H3>
+        <Body className="text-neutral-700 mb-8" style={TEXT_STYLES.bodySm}>
           Questions about your privacy or your data? We're here.
           {'\n\n'}Bridge Privacy Team
-          {'\n'}Email: bridge.date.app@gmail.com
+          {'\n'}Email:{' '}
+          <Text
+            style={{ fontFamily: FONTS.medium, color: '#437FFF' }}
+            onPress={() => Linking.openURL('mailto:bridge.date.app@gmail.com')}
+          >
+            bridge.date.app@gmail.com
+          </Text>
           {'\n'}Houston, TX
         </Body>
       </StyledScrollView>

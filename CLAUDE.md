@@ -11,7 +11,7 @@ This is the **production codebase** for Bridge — the app being deployed to the
 **Deferred features (not in the live app, backend tables still exist):**
 - **Suggest a Match** (suggest two friends as a match) and **Recommend to Friend** (recommend someone during voting) — both fully built but pulled from UI pre-launch. See `_deferred/suggest-a-match/DEFERRED.md` for what was removed and how to re-enable. Do not reference these as live features.
 
-**React Compiler:** `babel-plugin-react-compiler` is active — it auto-memoizes components and hooks. Do not add manual `useMemo`/`useCallback` solely for performance unless there's a specific reason.
+**React Compiler:** `babel-plugin-react-compiler` is **DISABLED** (it breaks Reanimated worklets — see `babel.config.js`). Use `useMemo`/`useCallback` where appropriate for performance, especially for `renderItem` functions passed to FlatList/FlashList and expensive computations in render paths.
 
 ## App Store Reviewer Bypass — Permanent, Do Not Remove
 
@@ -75,8 +75,15 @@ The entire app uses **Plus Jakarta Sans** (Google Fonts, OFL license). This is a
   - `FONTS.regular` = 400 (body text, descriptions)
   - `FONTS.medium` = 500 (labels, secondary emphasis)
   - `FONTS.semiBold` = 600 (subheadings, buttons)
-  - `FONTS.bold` = 700 (headings, names)
-  - `FONTS.extraBold` = 800 (hero text, large numbers)
+  - `FONTS.bold` = 700 (section headings, names, card titles)
+  - `FONTS.extraBold` = 800 (screen titles, tab headers, hero text, large numbers — anything that anchors a screen)
+- **Screen title hierarchy** (always include explicit `fontWeight` alongside `fontFamily` to ensure iOS renders the correct weight):
+  - **Primary tab titles** ("Community", "Match", "Profile"): `FONTS.bold` + `fontWeight: '700'` at `FONT_SIZES['5xl']` (28px).
+  - **Secondary screen titles** (Settings, Leaderboard, etc.): `FONTS.bold` + `fontWeight: '700'` at `FONT_SIZES['4xl']` (24px).
+  - **Empty state headlines** ("No matches yet", "Bring your people"): `FONTS.bold` at `FONT_SIZES['4xl']` (24px). Same size, visually consistent.
+  - **User names** (below avatar on profile): `FONTS.bold` at `FONT_SIZES['4xl']` (24px). One step below the screen title.
+  - `FONTS.extraBold` (800) is reserved for hero/display text only (welcome screen headline, large stat numbers).
+- **Header icon groups** (eye, pencil, settings on Profile; timer + add-friend on Community): Icons must be tightly grouped with `gap: 4` — not `space-x-3` or `minWidth: 44` per icon. Use `hitSlop` for touch targets instead of padding/minWidth, which spaces icons too far apart.
 - **Do not** use `Outfit`, `Satoshi`, `Inter`, or any other font family — these have been fully removed.
 - **Do not** rely on `fontWeight` alone — React Native with custom fonts requires the specific font file via `fontFamily`.
 - **Always use `TEXT_STYLES` presets** when a semantic match exists (e.g., `TEXT_STYLES.headingSm` instead of manually composing `fontFamily` + `fontSize` + `lineHeight`). Only compose raw styles when no preset fits.
@@ -133,7 +140,8 @@ The app uses **EvaIcon** (`src/components/icons/EvaIcon.tsx`) as the single icon
 
 ### Rules for new code
 
-- **Always use `EvaIcon`** — never import from `@expo/vector-icons`, `Ionicons`, `MaterialIcons`, or any other icon library.
+- **Always use `EvaIcon`** for UI icons — never import from `@expo/vector-icons`, `Ionicons`, `MaterialIcons`, or any other icon library.
+- **`IconScoutIcon`** (`src/components/icons/IconScoutIcon.tsx`) is used for illustrated/decorative icons (crowns, badges, leaderboard). Use `EvaIcon` for UI chrome; use `IconScoutIcon` for rich illustrations.
 - **Import from `@/components/icons`** — not directly from eva-icons.
 - **Standard sizes**: 16px (inline/small), 20px (default), 24px (navigation/header), 32px (hero/empty state).
 - **Use semantic color names** on EvaIcon (`color="primary"`, `color="text"`) — not raw hex strings.

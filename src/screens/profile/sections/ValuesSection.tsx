@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React from 'react';
 import { TouchableOpacity, Text, View } from 'react-native';
 import { styled } from 'nativewind';
 import { Card } from '../../../components/ui/Card';
@@ -14,6 +14,7 @@ const StyledText = styled(Text);
 
 const MIN_VALUES = 3;
 const MAX_VALUES = 5;
+const CHIP_GAP = 8;
 
 const VALUE_GROUPS = [
   { label: 'Personal', items: ['Honesty', 'Integrity', 'Trust', 'Respect', 'Authenticity', 'Kindness', 'Empathy'] },
@@ -32,52 +33,73 @@ interface ValuesSectionProps {
   values: string[];
   onToggleValue: (value: string) => void;
   onShowCustomValueModal: () => void;
+  atLimit: boolean;
 }
 
-export const ValuesSection = React.memo<ValuesSectionProps>(({
+export const ValuesSection: React.FC<ValuesSectionProps> = ({
   values,
   onToggleValue,
   onShowCustomValueModal,
+  atLimit,
 }) => {
-  // Memoize Set conversion for O(1) lookup - CRITICAL for performance
-  const valuesSet = useMemo(() => new Set(values), [values]);
+  const valuesSet = new Set(values);
+  const customValues = values.filter(v => !AVAILABLE_VALUES_SET.has(v));
 
-  // Filter custom values using Set for O(1) lookup
-  const customValues = useMemo(() =>
-    values.filter(v => !AVAILABLE_VALUES_SET.has(v)),
-    [values]
-  );
-
-  const handleToggleValue = useCallback((value: string) => {
+  const handleToggleValue = (value: string) => {
     lightHaptic();
     onToggleValue(value);
-  }, [onToggleValue]);
+  };
 
-  const handleRemoveCustomValue = useCallback((customValue: string) => {
-    lightHaptic();
-    onToggleValue(customValue);
-  }, [onToggleValue]);
+  const count = values.length;
 
   return (
     <Card className="mb-6">
-      <H3 className="mb-4">Values <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
-      <Body className="text-neutral-600 text-sm mb-4">
+      <StyledView className="flex-row items-center justify-between mb-1">
+        <H3>Values <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
+        <Body
+          className="text-xs font-medium"
+          style={{ color: atLimit ? COLORS.darkAmber : COLORS.text.light }}
+          accessibilityLabel={`${count} of ${MAX_VALUES} values selected`}
+        >
+          {count}/{MAX_VALUES}
+        </Body>
+      </StyledView>
+      <Body style={{ color: COLORS.text.secondary }} className="text-sm mb-4">
         What matters most to you? (Select {MIN_VALUES}-{MAX_VALUES})
       </Body>
+
+      {/* Empty state */}
+      {count === 0 && (
+        <Body className="text-sm italic mb-4" style={{ color: COLORS.text.light }}>
+          Tap any chip below to get started.
+        </Body>
+      )}
+
+      {/* At-limit hint */}
+      {atLimit && (
+        <Body className="text-xs mb-3" style={{ color: COLORS.darkAmber }}>
+          Maximum reached. Remove one to add a different value.
+        </Body>
+      )}
 
       {/* Grouped Values */}
       {VALUE_GROUPS.map((group) => (
         <StyledView key={group.label} className="mb-5">
-          <Body className="text-neutral-400 text-xs font-semibold tracking-wider mb-2.5">{group.label}</Body>
-          <StyledView className="flex-row flex-wrap" style={{ gap: 10 }}>
-            {group.items.map((value) => (
-              <SimpleChip
-                key={value}
-                label={value}
-                selected={valuesSet.has(value)}
-                onPress={() => handleToggleValue(value)}
-              />
-            ))}
+          <Body style={{ color: COLORS.text.light }} className="text-xs font-semibold tracking-wider mb-2.5">{group.label}</Body>
+          <StyledView className="flex-row flex-wrap" style={{ gap: CHIP_GAP }}>
+            {group.items.map((value) => {
+              const isSelected = valuesSet.has(value);
+              const isDisabled = atLimit && !isSelected;
+              return (
+                <SimpleChip
+                  key={value}
+                  label={value}
+                  selected={isSelected}
+                  disabled={isDisabled}
+                  onPress={() => handleToggleValue(value)}
+                />
+              );
+            })}
           </StyledView>
         </StyledView>
       ))}
@@ -85,18 +107,16 @@ export const ValuesSection = React.memo<ValuesSectionProps>(({
       {/* Custom values */}
       {customValues.length > 0 && (
         <StyledView className="mb-5">
-          <Body className="text-neutral-400 text-xs font-semibold tracking-wider mb-2.5">Custom</Body>
-          <StyledView className="flex-row flex-wrap" style={{ gap: 10 }}>
+          <Body style={{ color: COLORS.text.light }} className="text-xs font-semibold tracking-wider mb-2.5">Custom</Body>
+          <StyledView className="flex-row flex-wrap" style={{ gap: CHIP_GAP }}>
             {customValues.map((customValue) => (
-              <StyledTouchableOpacity
+              <SimpleChip
                 key={customValue}
-                activeOpacity={1}
-                delayPressIn={0}
-                onPress={() => handleRemoveCustomValue(customValue)}
-                className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
-              >
-                <Body className="text-sm text-white font-medium">{customValue}</Body>
-              </StyledTouchableOpacity>
+                label={customValue}
+                selected
+                onPress={() => handleToggleValue(customValue)}
+                accessibilityHint="Double tap to remove"
+              />
             ))}
           </StyledView>
         </StyledView>
@@ -108,12 +128,21 @@ export const ValuesSection = React.memo<ValuesSectionProps>(({
           lightHaptic();
           onShowCustomValueModal();
         }}
-        className="px-3 py-2 rounded-full border border-dashed border-neutral-400 bg-neutral-50 self-start"
+        disabled={atLimit}
+        accessibilityRole="button"
+        accessibilityLabel="Add custom value"
+        accessibilityState={{ disabled: atLimit }}
+        className="px-4 rounded-full border border-dashed self-start"
+        style={{
+          minHeight: 44,
+          justifyContent: 'center',
+          borderColor: atLimit ? COLORS.borderLight : COLORS.borderGray,
+          backgroundColor: atLimit ? COLORS.borderLight : COLORS.backgroundSubtle,
+          opacity: atLimit ? 0.5 : 1,
+        }}
       >
-        <Body className="text-sm text-neutral-600">+ Other</Body>
+        <Body style={{ color: atLimit ? COLORS.text.light : COLORS.text.secondary }} className="text-sm">+ Other</Body>
       </StyledTouchableOpacity>
     </Card>
   );
-});
-
-ValuesSection.displayName = 'ValuesSection';
+};

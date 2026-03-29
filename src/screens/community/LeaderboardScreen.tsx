@@ -5,7 +5,6 @@ import {
   Text,
   Alert,
   RefreshControl,
-  ViewToken,
 } from 'react-native';
 import { FlashList, ViewToken as FlashViewToken } from '@shopify/flash-list';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
@@ -27,6 +26,7 @@ import {
   LeaderboardResponse,
   invalidateLeaderboardCache,
 } from '../../services/leaderboardService';
+import { getBridgeUserCount } from '../../services/contactsService';
 
 // Extracted
 import { s } from './LeaderboardScreen.styles';
@@ -80,6 +80,73 @@ const toLeaderboardUser = (
   isAnonymous: isCurrentUser ? false : (entry.isAnonymous ?? false),
 });
 
+// ─── Podium Slot ────────────────────────────────────────────────────────────
+
+const PodiumSlot = ({
+  user,
+  rank,
+  onPress,
+}: {
+  user: LeaderboardUser;
+  rank: 1 | 2 | 3;
+  onPress: (user: LeaderboardUser) => void;
+}) => {
+  const avatarStyle = rank === 1 ? s.avatarLarge : rank === 2 ? s.avatarMedium : s.avatarSmall;
+  const avatarSize = rank === 1 ? 88 : rank === 2 ? 72 : 64;
+  const wrapperStyle = rank === 1 ? s.avatarWrapperLarge : rank === 2 ? s.avatarWrapperMedium : s.avatarWrapperSmall;
+  const ringStyle = rank === 1 ? s.avatarRingGold : rank === 2 ? s.avatarRingSilver : s.avatarRingBronze;
+  const badgeColorStyle = rank === 1 ? s.rankBadgeGold : rank === 2 ? s.rankBadgeSilver : s.rankBadgeBronze;
+  const containerStyle = rank === 1 ? s.podiumCenter : s.podiumSide;
+  const isTappable = !user.isCurrentUser && !user.isAnonymous;
+
+  const content = (
+    <View style={containerStyle}>
+      {rank === 1 && (
+        <View style={s.crownIconWrap}>
+          <IconScoutIcon name="olympic-5303267" size={36} />
+        </View>
+      )}
+      <View style={wrapperStyle}>
+        <View style={[s.avatarRing, ringStyle]}>
+          {user.avatarUrl ? (
+            <Image
+              source={{ uri: user.avatarUrl }}
+              style={avatarStyle}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              priority="high"
+              recyclingKey={user.id}
+            />
+          ) : (
+            <InitialAvatar name={user.firstName ?? ''} size={avatarSize} isAnonymous={user.isAnonymous} />
+          )}
+          {user.isFriend && <FriendBadge />}
+        </View>
+        <View style={[s.rankBadge, rank === 1 && s.rankBadgeLarge, badgeColorStyle]}>
+          <Text style={[s.rankBadgeText, rank === 1 && s.rankBadgeTextLarge]}>{rank}</Text>
+        </View>
+      </View>
+      <Text style={[s.podiumName, rank === 1 && s.podiumNameFirst]} numberOfLines={1}>{user.firstName}</Text>
+      <KarmaPill karma={user.karma} size={rank === 1 ? 'large' : 'small'} />
+    </View>
+  );
+
+  if (isTappable) {
+    return (
+      <TouchableOpacity
+        onPress={() => onPress(user)}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`View ${user.firstName}'s profile`}
+      >
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return content;
+};
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 interface LeaderboardScreenProps {
@@ -100,6 +167,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userRowVisible, setUserRowVisible] = useState(false);
+  const [bridgeUserCount, setBridgeUserCount] = useState(0);
 
   const [countdown, setCountdown] = useState(getTimeUntilReset);
   useFocusEffect(
@@ -163,6 +231,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
       if (mounted) setLoading(false);
     };
     load();
+    getBridgeUserCount().then((count) => { if (mounted) setBridgeUserCount(count); });
     return () => { mounted = false; };
   }, [applyData]);
 
@@ -188,7 +257,8 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
     return data[currentUserIndex - 1].karma - data[currentUserIndex].karma;
   }, [data, currentUserIndex]);
 
-  const top3 = useMemo(() => data.slice(0, 3), [data]);
+  const top3 = useMemo(() => data.slice(0, Math.min(3, data.length)), [data]);
+  // Show ALL users ranked 4+, not just 4-10
   const rest = useMemo(() => data.slice(3, 10), [data]);
 
   const currentUserListIndex = useMemo(() => {
@@ -224,48 +294,62 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
     setLoading(false);
   }, [loadData]);
 
+  const handleProfilePress = useCallback((user: LeaderboardUser) => {
+    if (user.isCurrentUser || user.isAnonymous) return;
+    navigation.navigate('ProfileView' as any, { profile: { userId: user.id } });
+  }, [navigation]);
+
   const renderListItem = useCallback(({ item, index }: { item: LeaderboardUser; index: number }) => {
     const rank = index + 4;
     const isMe = item.isCurrentUser;
     const globalIndex = index + 3;
     const gap = getGapAbove(globalIndex);
+    const isTappable = !isMe && !item.isAnonymous;
     return (
       <StaggerItem index={index} staggerDelay={40} maxAnimated={20}>
-        <View style={[s.listCard, isMe && s.listCardHighlighted]}>
-          <View style={[s.rankPill, isMe && s.rankPillHighlighted]}>
-            <Text style={[s.rankPillText, isMe && s.rankPillTextHighlighted]}>{rank}</Text>
-          </View>
-          <View style={s.listAvatarWrap}>
-            {item.avatarUrl ? (
-              <Image
-                source={{ uri: item.avatarUrl }}
-                style={[s.listAvatar, { backgroundColor: COLORS.backgroundGrayMedium }]}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-                priority="normal"
-                recyclingKey={item.id}
-              />
-            ) : (
-              <InitialAvatar name={item.firstName} size={48} isAnonymous={item.isAnonymous} />
-            )}
-            {item.isFriend && <FriendBadge />}
-          </View>
-          <View style={s.listNameCol}>
-            <View style={s.nameRow}>
-              <Text style={[s.listName, isMe && s.listNameHighlighted]} numberOfLines={1}>
-                {item.firstName}
-              </Text>
-              <RankChangeArrow change={item.rankChange} />
+        <TouchableOpacity
+          onPress={() => handleProfilePress(item)}
+          disabled={!isTappable}
+          activeOpacity={isTappable ? 0.7 : 1}
+          accessibilityRole={isTappable ? 'button' : 'none'}
+          accessibilityLabel={isTappable ? `View ${item.firstName}'s profile` : undefined}
+        >
+          <View style={[s.listCard, isMe && s.listCardHighlighted]}>
+            <View style={[s.rankPill, isMe && s.rankPillHighlighted]}>
+              <Text style={[s.rankPillText, isMe && s.rankPillTextHighlighted]}>{rank}</Text>
             </View>
-            {isMe && gap > 0 && (
-              <Text style={s.gapText}>{gap} {gap === 1 ? 'pt' : 'pts'} behind #{rank - 1}</Text>
-            )}
+            <View style={s.listAvatarWrap}>
+              {item.avatarUrl ? (
+                <Image
+                  source={{ uri: item.avatarUrl }}
+                  style={s.listAvatar}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  priority="normal"
+                  recyclingKey={item.id}
+                />
+              ) : (
+                <InitialAvatar name={item.firstName} size={48} isAnonymous={item.isAnonymous} />
+              )}
+              {item.isFriend && <FriendBadge />}
+            </View>
+            <View style={s.listNameCol}>
+              <View style={s.nameRow}>
+                <Text style={[s.listName, isMe && s.listNameHighlighted]} numberOfLines={1}>
+                  {item.firstName}
+                </Text>
+                <RankChangeArrow change={item.rankChange} />
+              </View>
+              {isMe && gap > 0 && (
+                <Text style={s.gapText}>{gap} {gap === 1 ? 'pt' : 'pts'} behind #{rank - 1}</Text>
+              )}
+            </View>
+            <KarmaPill karma={item.karma} />
           </View>
-          <KarmaPill karma={item.karma} />
-        </View>
+        </TouchableOpacity>
       </StaggerItem>
     );
-  }, [getGapAbove]);
+  }, [getGapAbove, handleProfilePress]);
 
   const keyExtractor = useCallback((item: LeaderboardUser) => item.id, []);
 
@@ -276,13 +360,16 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
       <TouchableOpacity onPress={handleBack} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityRole="button" accessibilityLabel="Go back">
         <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.textDarkHeading} />
       </TouchableOpacity>
-      <Text style={s.headerTitle} accessibilityRole="header">Leaderboard</Text>
+      <View style={s.headerTitleCol}>
+        <Text style={s.headerTitle} accessibilityRole="header">Leaderboard</Text>
+        <Text style={s.headerSubtitle}>Weekly</Text>
+      </View>
       {showInfo ? (
         <TouchableOpacity onPress={handleInfo} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityRole="button" accessibilityLabel="Leaderboard info">
           <EvaIcon name="info" variant="outline" size={24} color={COLORS.navInactiveIcon} />
         </TouchableOpacity>
       ) : (
-        <View style={{ width: 24 }} />
+        <View style={s.headerSpacer} />
       )}
     </View>
   );
@@ -314,7 +401,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
         </Text>
       </View>
 
-      {top3.length >= 3 && (
+      {top3.length > 0 && (
         <View style={s.podiumOuter}>
           <LinearGradient
             colors={['#FFFFFF', '#F0F4FF', '#E8EEFF']}
@@ -324,83 +411,15 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
           >
             <View style={s.podiumGlassEdge}>
               <View style={s.podiumSection}>
-                <View style={s.podiumSide}>
-                  <View style={s.avatarWrapperMedium}>
-                    <View style={[s.avatarRing, s.avatarRingSilver]}>
-                      {top3[1]?.avatarUrl ? (
-                        <Image
-                          source={{ uri: top3[1].avatarUrl }}
-                          style={[s.avatarMedium, { backgroundColor: COLORS.backgroundGrayMedium }]}
-                          contentFit="cover"
-                          cachePolicy="memory-disk"
-                          priority="high"
-                          recyclingKey={top3[1].id}
-                        />
-                      ) : (
-                        <InitialAvatar name={top3[1]?.firstName ?? ''} size={72} isAnonymous={top3[1]?.isAnonymous} />
-                      )}
-                      {top3[1]?.isFriend && <FriendBadge />}
-                    </View>
-                    <View style={[s.rankBadge, { backgroundColor: '#C0C0C0' }]}>
-                      <Text style={s.rankBadgeText}>2</Text>
-                    </View>
-                  </View>
-                  <Text style={s.podiumName} numberOfLines={1}>{top3[1]?.firstName}</Text>
-                  <KarmaPill karma={top3[1]?.karma ?? 0} size="small" />
-                </View>
+                {top3.length >= 2 && (
+                  <PodiumSlot user={top3[1]} rank={2} onPress={handleProfilePress} />
+                )}
 
-                <View style={s.podiumCenter}>
-                  <View style={s.crownIconWrap}>
-                    <IconScoutIcon name="olympic-5303267" size={36} />
-                  </View>
-                  <View style={s.avatarWrapperLarge}>
-                    <View style={[s.avatarRing, s.avatarRingGold]}>
-                      {top3[0]?.avatarUrl ? (
-                        <Image
-                          source={{ uri: top3[0].avatarUrl }}
-                          style={[s.avatarLarge, { backgroundColor: COLORS.backgroundGrayMedium }]}
-                          contentFit="cover"
-                          cachePolicy="memory-disk"
-                          priority="high"
-                          recyclingKey={top3[0].id}
-                        />
-                      ) : (
-                        <InitialAvatar name={top3[0]?.firstName ?? ''} size={88} isAnonymous={top3[0]?.isAnonymous} />
-                      )}
-                      {top3[0]?.isFriend && <FriendBadge />}
-                    </View>
-                    <View style={[s.rankBadge, s.rankBadgeLarge, { backgroundColor: '#FFD700' }]}>
-                      <Text style={[s.rankBadgeText, s.rankBadgeTextLarge]}>1</Text>
-                    </View>
-                  </View>
-                  <Text style={[s.podiumName, s.podiumNameFirst]} numberOfLines={1}>{top3[0]?.firstName}</Text>
-                  <KarmaPill karma={top3[0]?.karma ?? 0} size="large" />
-                </View>
+                <PodiumSlot user={top3[0]} rank={1} onPress={handleProfilePress} />
 
-                <View style={s.podiumSide}>
-                  <View style={s.avatarWrapperSmall}>
-                    <View style={[s.avatarRing, s.avatarRingBronze]}>
-                      {top3[2]?.avatarUrl ? (
-                        <Image
-                          source={{ uri: top3[2].avatarUrl }}
-                          style={[s.avatarSmall, { backgroundColor: COLORS.backgroundGrayMedium }]}
-                          contentFit="cover"
-                          cachePolicy="memory-disk"
-                          priority="high"
-                          recyclingKey={top3[2].id}
-                        />
-                      ) : (
-                        <InitialAvatar name={top3[2]?.firstName ?? ''} size={64} isAnonymous={top3[2]?.isAnonymous} />
-                      )}
-                      {top3[2]?.isFriend && <FriendBadge />}
-                    </View>
-                    <View style={[s.rankBadge, { backgroundColor: '#CD7F32' }]}>
-                      <Text style={s.rankBadgeText}>3</Text>
-                    </View>
-                  </View>
-                  <Text style={s.podiumName} numberOfLines={1}>{top3[2]?.firstName}</Text>
-                  <KarmaPill karma={top3[2]?.karma ?? 0} size="small" />
-                </View>
+                {top3.length >= 3 && (
+                  <PodiumSlot user={top3[2]} rank={3} onPress={handleProfilePress} />
+                )}
               </View>
 
               <View style={s.howToEarnInline}>
@@ -420,8 +439,18 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
           </LinearGradient>
         </View>
       )}
+
+      {/* Total participants count */}
+      {bridgeUserCount > 0 && (
+        <View style={s.participantsRow}>
+          <EvaIcon name="people" variant="outline" size={14} color={COLORS.navInactiveIcon} />
+          <Text style={s.participantsText}>
+            {bridgeUserCount} participants
+          </Text>
+        </View>
+      )}
     </>
-  ), [top3, currentUserRank, ptsBehindFirst, countdown]);
+  ), [top3, currentUserRank, ptsBehindFirst, countdown, bridgeUserCount, handleProfilePress]);
 
   // ─── Loading / Error / Empty states ──────────────────────────────────────
 
@@ -498,14 +527,14 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
               {currentUser!.avatarUrl ? (
                 <Image
                   source={{ uri: currentUser!.avatarUrl }}
-                  style={[s.stickyAvatar, { backgroundColor: COLORS.backgroundGrayMedium }]}
+                  style={s.stickyAvatar}
                   contentFit="cover"
                   cachePolicy="memory-disk"
                   priority="normal"
                   recyclingKey={currentUser!.id}
                 />
               ) : (
-                <View style={{ marginRight: 12 }}>
+                <View style={s.stickyAvatarFallback}>
                   <InitialAvatar name={currentUser!.firstName} size={36} />
                 </View>
               )}

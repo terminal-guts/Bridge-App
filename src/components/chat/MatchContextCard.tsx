@@ -104,7 +104,7 @@ export const MatchContextCard: React.FC<MatchContextCardProps> = ({
           color={COLORS.primaryAccent}
         />
         <BodySmall style={styles.socialLine}>
-          Your community is rooting for you two
+          Your friends brought you two together
         </BodySmall>
       </View>
 

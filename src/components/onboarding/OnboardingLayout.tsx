@@ -90,7 +90,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
     // - Button sits above keyboard in fixed position
     // - Auto-focus handled in individual step components
     return (
-      <StyledSafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
+      <StyledSafeAreaView edges={['top']} className="flex-1" style={{ backgroundColor: COLORS.screenBackground }}>
         <StyledKeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           className="flex-1"
@@ -140,12 +140,13 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
             {/* Continue Button - Fixed position above keyboard */}
             {!hideContinueButton && (
               <StyledView
-                className="px-6 bg-neutral-50"
+                className="px-6"
                 style={{
+                  backgroundColor: COLORS.screenBackground,
                   paddingTop: 16,
                   paddingBottom: isKeyboardVisible ? 16 : footerPaddingBottom + insets.bottom,
                   borderTopWidth: 1,
-                  borderTopColor: COLORS.backgroundGray,
+                  borderTopColor: COLORS.border,
                 }}
               >
                 <Button
@@ -180,7 +181,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   // - Button pinned to bottom as sticky footer
   // - No keyboard considerations
   return (
-    <StyledSafeAreaView edges={['top', 'bottom']} className="flex-1 bg-neutral-50">
+    <StyledSafeAreaView edges={['top', 'bottom']} className="flex-1" style={{ backgroundColor: COLORS.screenBackground }}>
       <StyledView className="flex-1">
         {/* Back Button */}
         {showBackButton && onBack && (
@@ -212,12 +213,13 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
         {/* Continue Button - Sticky footer at bottom */}
         {!hideContinueButton && (
           <StyledView
-            className="px-6 bg-neutral-50"
+            className="px-6"
             style={{
+              backgroundColor: COLORS.screenBackground,
               paddingTop: 16,
               paddingBottom: footerPaddingBottom,
               borderTopWidth: 1,
-              borderTopColor: COLORS.backgroundGray,
+              borderTopColor: COLORS.border,
             }}
           >
             <Button

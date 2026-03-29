@@ -135,12 +135,12 @@ const ProgressHeader: React.FC<{ count: number }> = ({ count }) => (
     >
       <StyledView className="p-4">
         <StyledView className="mb-3">
-          <Body className="text-sky-800 text-xs uppercase tracking-wider font-semibold opacity-80">Required to Match</Body>
+          <Body className="text-sky-800 text-xs uppercase tracking-wider font-semibold opacity-80">Getting Started</Body>
           <Body className="text-sky-900 font-bold text-2xl mb-1">{count}/3</Body>
         </StyledView>
         <StyledView className="mb-3">
-          <Body className="text-sky-700 text-xs opacity-90 leading-5">Only 3 display on your profile</Body>
-          <Body className="text-sky-700 text-xs opacity-90 leading-5">Answer more to receive more intentional matches</Body>
+          <Body className="text-sky-700 text-xs opacity-90 leading-5">Pick 3 questions to show on your profile</Body>
+          <Body className="text-sky-700 text-xs opacity-90 leading-5">The more you answer, the better your matches get</Body>
         </StyledView>
         <StyledView className="rounded-full h-2 overflow-hidden" style={{ backgroundColor: 'rgba(255, 255, 255, 0.6)' }}>
           <LinearGradient
@@ -356,11 +356,11 @@ const QuestionSlots: React.FC<QuestionSlotsProps> = ({
         showToast.success('Answer saved!');
         return true;
       } else {
-        Alert.alert('Error', result.error?.message || 'Failed to save answer');
+        Alert.alert('Couldn\'t Save', result.error?.message || 'Something went wrong saving your answer. Give it another try.');
         return false;
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'An unexpected error occurred');
+      Alert.alert('Couldn\'t Save', error.message || 'Something went wrong. Please try again.');
       return false;
     }
   };
@@ -368,8 +368,8 @@ const QuestionSlots: React.FC<QuestionSlotsProps> = ({
   return (
     <>
       <StyledView className="mb-4">
-        <H3 className="mb-2">Visible to Matches</H3>
-        <Body className="text-neutral-600 text-xs mb-4">Select 3 questions to display on your profile</Body>
+        <H3 className="mb-2">On Your Profile</H3>
+        <Body className="text-neutral-600 text-xs mb-4">These 3 questions are what your matches will see</Body>
       </StyledView>
 
       {renderQuestionSlot(0, slot1Question)}
@@ -390,7 +390,7 @@ const QuestionSlots: React.FC<QuestionSlotsProps> = ({
             <StyledView className="flex-row items-center">
               <StyledView className="flex-1 h-px bg-neutral-200" />
               <StyledView className="flex-row items-center mx-3">
-                <Body className="text-neutral-400 text-xs uppercase tracking-wide mr-1">Answer More</Body>
+                <Body className="text-neutral-400 text-xs uppercase tracking-wide mr-1">Explore More Questions</Body>
                 <EvaIcon
                   name={answerMoreExpanded ? 'arrow-ios-upward' : 'arrow-ios-downward'}
                   variant="outline"
@@ -405,16 +405,16 @@ const QuestionSlots: React.FC<QuestionSlotsProps> = ({
           {answerMoreExpanded && (
             <>
               <StyledView className="mb-4">
-                <H3 className="mb-2">Improve Your Matches</H3>
+                <H3 className="mb-2">Go Deeper</H3>
                 <Body className="text-neutral-600 text-xs mb-4">
-                  Answer more questions to help our algorithm find better matches. These won't display on your profile.
+                  The more you share, the better we can connect you with someone who really fits. These stay behind the scenes.
                 </Body>
               </StyledView>
 
               {unansweredQuestions.length > 0 && (
                 <>
                   <Body className="text-neutral-700 font-semibold text-sm mb-3">
-                    Unanswered ({unansweredQuestions.length})
+                    Ready to Answer ({unansweredQuestions.length})
                   </Body>
                   <FlatList
                     data={unansweredQuestions}
@@ -441,7 +441,7 @@ const QuestionSlots: React.FC<QuestionSlotsProps> = ({
               {nonDisplayedAnswers.length > 0 && (
                 <>
                   <Body className="text-neutral-700 font-semibold text-sm mb-3 mt-4">
-                    Answered but Not Displayed ({nonDisplayedAnswers.length})
+                    Your Other Answers ({nonDisplayedAnswers.length})
                   </Body>
                   <FlatList
                     data={nonDisplayedAnswers}
@@ -476,9 +476,9 @@ const QuestionSlots: React.FC<QuestionSlotsProps> = ({
           <StyledView className="flex-row items-center">
             <EvaIcon name="checkmark-circle-2" variant="outline" size={28} color={COLORS.emerald} />
             <StyledView className="ml-3 flex-1">
-              <Body className="text-green-900 font-bold text-sm">All Done!</Body>
+              <Body className="text-green-900 font-bold text-sm">You're all set!</Body>
               <Body className="text-green-700 text-xs">
-                You've answered all 21 questions. Our algorithm has everything it needs.
+                You've answered every question -- your matches will be that much better for it.
               </Body>
             </StyledView>
           </StyledView>

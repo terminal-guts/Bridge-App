@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -18,9 +18,18 @@ import { FireIcon, StarIcon } from '../icons/Icons';
 import { EvaIcon } from '../icons';
 import { KarmaInfoModal } from './karma/KarmaInfoModal';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS, glowShadow } from '../../theme/shadows';
+
+// ── Responsive sizing ────────────────────────────────────────────────────────
+// iPhone SE / 8 = 375pt, standard iPhones = 390-393pt, Plus/Max = 428-430pt
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const isCompact = SCREEN_WIDTH < 380; // SE, iPod touch, iPhone 8
+const AVATAR_SIZE = isCompact ? 56 : 68;
+const AVATAR_RADIUS = AVATAR_SIZE / 2;
+const ROW_HORIZONTAL_PADDING = isCompact ? 16 : 24;
+const INFO_MARGIN_LEFT = isCompact ? 12 : 16;
 
 interface UserRowProps {
     item: FriendWithGridStatus;
@@ -41,12 +50,12 @@ interface UserRowProps {
 
 // Streak tier — color & size intensify with streak length (4 tiers + default)
 const STREAK_TIERS = [
-    { min: 30, color: '#EF4444', ringColor: '#EF4444', size: 18, label: 'legendary' as const, sublabel: 'Legendary!' },
-    { min: 14, color: '#F97316', ringColor: '#D97706', size: 17, label: 'hot' as const, sublabel: 'Hot streak!' },
-    { min: 7,  color: '#F59E0B', ringColor: '#F59E0B', size: 16, label: 'warm' as const, sublabel: null },
+    { min: 30, color: COLORS.error, ringColor: COLORS.error, size: 18, label: 'legendary' as const, sublabel: 'Legendary!' },
+    { min: 14, color: COLORS.warmOrange, ringColor: COLORS.darkAmber, size: 17, label: 'hot' as const, sublabel: 'Hot streak!' },
+    { min: 7,  color: COLORS.warning.icon, ringColor: COLORS.warning.icon, size: 16, label: 'warm' as const, sublabel: null },
     { min: 1,  color: COLORS.primaryButton, ringColor: COLORS.primaryButton, size: 15, label: 'new' as const, sublabel: null },
 ] as const;
-const DEFAULT_STREAK_TIER = { color: COLORS.text.disabled, ringColor: '#F0F0F0', size: 14, label: 'none' as const, sublabel: null };
+const DEFAULT_STREAK_TIER = { color: COLORS.text.disabled, ringColor: COLORS.borderLight, size: 14, label: 'none' as const, sublabel: null };
 
 // Milestone thresholds for streak celebrations
 const STREAK_MILESTONES = [30, 14, 7] as const;
@@ -59,7 +68,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
     const name = item.friend.firstName || 'User';
     const rawImageUrl = item.friend.photos?.[0]?.url || undefined;
     const photoBlurhash = item.friend.photos?.[0]?.blurhash || undefined;
-    const imageUrl = useMemo(() => getOptimizedImageUrl(rawImageUrl, 68), [rawImageUrl]);
+    const imageUrl = useMemo(() => getOptimizedImageUrl(rawImageUrl, AVATAR_SIZE), [rawImageUrl]);
     const streak = item.streakDays || 0;
     const friendProfileComplete = item.friend.profileCompleted === true;
     const isFriendMatchmaker = item.friend.role === 'matchmaker';
@@ -297,11 +306,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 24,
-        paddingVertical: 16,
+        paddingHorizontal: ROW_HORIZONTAL_PADDING,
+        paddingVertical: isCompact ? 12 : 16,
         backgroundColor: COLORS.card,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#E8EDFB',
+        borderBottomColor: COLORS.borderLightBlue,
     },
     left: {
         flexDirection: 'row',
@@ -325,7 +334,6 @@ const styles = StyleSheet.create({
     },
     rankText: {
         fontFamily: FONTS.bold,
-        fontWeight: '700',
         fontSize: FONT_SIZES.sm,
     },
     // #3: Glowing vote button styles
@@ -340,15 +348,15 @@ const styles = StyleSheet.create({
         color: COLORS.card,
     },
     avatar: {
-        width: 68,
-        height: 68,
-        borderRadius: 34,
+        width: AVATAR_SIZE,
+        height: AVATAR_SIZE,
+        borderRadius: AVATAR_RADIUS,
         backgroundColor: COLORS.backgroundGrayMedium,
         borderWidth: 2,
-        borderColor: '#F0F0F0',
+        borderColor: COLORS.borderLight,
     },
     info: {
-        marginLeft: 16,
+        marginLeft: INFO_MARGIN_LEFT,
         justifyContent: 'center',
         flexShrink: 1,
     },
@@ -360,9 +368,8 @@ const styles = StyleSheet.create({
     },
     name: {
         fontFamily: FONTS.bold,
-        fontWeight: '700',
-        fontSize: FONT_SIZES['2xl'],
-        lineHeight: 23,
+        fontSize: isCompact ? FONT_SIZES.xl : FONT_SIZES['2xl'],
+        lineHeight: isCompact ? LINE_HEIGHTS.lg : LINE_HEIGHTS['2xl'],
         color: COLORS.text.dark,
     },
     streakRow: {
@@ -373,7 +380,7 @@ const styles = StyleSheet.create({
     streakText: {
         fontFamily: FONTS.regular,
         fontSize: FONT_SIZES.base,
-        lineHeight: 18,
+        lineHeight: LINE_HEIGHTS.base,
         color: COLORS.text.dimmed,
     },
     // #1: Streak text color upgrades at tiers
@@ -382,11 +389,11 @@ const styles = StyleSheet.create({
         fontFamily: FONTS.medium,
     },
     streakTextHot14: {
-        color: '#F97316',
+        color: COLORS.warmOrange,
         fontFamily: FONTS.semiBold,
     },
     streakTextHot: {
-        color: '#DC2626',
+        color: COLORS.danger,
         fontFamily: FONTS.bold,
     },
     streakSublabel: {
@@ -398,7 +405,7 @@ const styles = StyleSheet.create({
     statusLine: {
         fontFamily: FONTS.regular,
         fontSize: FONT_SIZES.sm,
-        color: '#667085',
+        color: COLORS.navInactiveIcon,
         marginTop: 2,
     },
     statusLineActive: {
@@ -426,7 +433,6 @@ const styles = StyleSheet.create({
     },
     matchBtnText: {
         fontFamily: FONTS.bold,
-        fontWeight: '700',
         fontSize: FONT_SIZES.lg,
         color: COLORS.primaryButton,
     },
@@ -457,7 +463,6 @@ const styles = StyleSheet.create({
     },
     pointsBtnText: {
         fontFamily: FONTS.bold,
-        fontWeight: '700',
         fontSize: FONT_SIZES.lg,
         color: COLORS.successAlt,
     },

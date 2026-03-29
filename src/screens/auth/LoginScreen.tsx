@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, Text } from 'react-native';
 import { styled } from 'nativewind';
-import { H1, Body, Input } from '../../components/ui';
+import { Input } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { OnboardingLayout } from '../../components/onboarding/OnboardingLayout';
 import { sendLoginOtpToEmail, isAllowedEmailDomain } from '../../services/authService';
 import { createLogger } from '../../utils/secureLogger';
 import { EvaIcon } from '../../components/icons';
+import { COLORS } from '../../theme/colors';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS, TEXT_STYLES } from '../../constants/typography';
 
 const logger = createLogger('LoginScreen');
 
@@ -16,6 +18,7 @@ interface LoginScreenProps {
 }
 
 const StyledView = styled(View);
+const StyledText = styled(Text);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
@@ -27,15 +30,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     setError('');
 
     if (!email.trim()) {
-      setError('Email is required');
+      setError('Pop in your Rice email so we can find you.');
       return;
     }
     if (!email.includes('@')) {
-      setError('Please enter a valid email address');
+      setError('Hmm, that doesn\'t look like an email. Double-check and try again.');
       return;
     }
     if (!isAllowedEmailDomain(email)) {
-      setError('Only Rice University emails (@rice.edu) are allowed.');
+      setError('Bridge is only open to Rice students right now — use your @rice.edu email.');
       return;
     }
 
@@ -45,17 +48,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       const result = await sendLoginOtpToEmail(email.trim().toLowerCase());
 
       if (result.ok) {
-        navigation.navigate('PhoneVerification', {
-          phoneNumber: email,
-          isEmail: true,
+        navigation.navigate('EmailVerification', {
+          email: email,
         });
       } else {
-        setError(result.error?.message || 'Failed to send verification code');
+        setError(result.error?.message || 'We couldn\'t send your code. Give it another try.');
       }
       setIsLoading(false);
     } catch (error: any) {
       logger.error('Login error:', error);
-      setError('An unexpected error occurred. Please try again.');
+      setError('Something went wrong on our end. Try again in a sec.');
       setIsLoading(false);
     }
   };
@@ -67,23 +69,52 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       keyboardPersistent={true}
       topPadding={20}
     >
-      {/* Back Button */}
+      {/* Back Button — icon only, 44px min touch target per iOS HIG */}
       <StyledTouchableOpacity
         onPress={() => navigation.goBack()}
-        className="mb-8 flex-row items-center"
+        style={{
+          minHeight: 44,
+          minWidth: 44,
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: COLORS.backgroundGray,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 24,
+        }}
+        accessibilityLabel="Go back"
+        accessibilityRole="button"
       >
-        <EvaIcon name="arrow-back" variant="outline" size={24} color="#3B82F6" />
-        <Body className="text-primary-500 ml-2 font-medium">Back</Body>
+        <EvaIcon name="arrow-back" variant="outline" size={22} color={COLORS.text.heading} />
       </StyledTouchableOpacity>
 
       <StyledView>
-        <H1 className="mb-3">Welcome back</H1>
-        <Body className="text-neutral-600 mb-6">
-          Sign in with your Rice email
-        </Body>
+        {/* Title — bold 700 at 28px per .impeccable.md screen title standard */}
+        <StyledText
+          style={{
+            ...TEXT_STYLES.displaySm,
+            fontWeight: '700',
+            color: COLORS.text.heading,
+            marginBottom: 6,
+          }}
+        >
+          Hey, welcome back
+        </StyledText>
+
+        {/* Subtitle — tighter spacing to title */}
+        <StyledText
+          style={{
+            ...TEXT_STYLES.bodyMd,
+            color: COLORS.text.secondary,
+            marginBottom: 20,
+          }}
+        >
+          Log in with your Rice email and we'll get you right back in.
+        </StyledText>
 
         <Input
-          label="Email Address"
+          label="Rice Email"
           placeholder="netid@rice.edu"
           value={email}
           onChangeText={(text) => {
@@ -93,18 +124,57 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           keyboardType="email-address"
           autoCapitalize="none"
           error={error}
-          containerClassName="mb-4"
           autoFocus={true}
         />
 
-        <Body className="text-neutral-500 text-sm mt-4">
-          {isLoading ? 'Sending verification code...' : "We'll send you a code to verify your email."}
-        </Body>
+        {/* Helper text — tighter to input */}
+        <StyledText
+          style={{
+            fontFamily: FONTS.regular,
+            fontSize: FONT_SIZES.sm,
+            lineHeight: LINE_HEIGHTS.sm,
+            color: COLORS.text.light,
+            marginTop: 8,
+          }}
+        >
+          {isLoading ? 'Sending your code...' : "We'll send a quick code to your inbox to make sure it's you."}
+        </StyledText>
 
-        <StyledView className="flex-row justify-center mt-6">
-          <Body className="text-neutral-600">Don't have an account? </Body>
-          <StyledTouchableOpacity onPress={() => navigation.navigate('Onboarding')}>
-            <Body className="text-primary-500">Sign Up</Body>
+        {/* Sign Up row — vertically centered, tighter gap */}
+        <StyledView
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginTop: 20,
+          }}
+        >
+          <StyledText
+            style={{
+              fontFamily: FONTS.regular,
+              fontSize: FONT_SIZES.base,
+              lineHeight: LINE_HEIGHTS.base,
+              color: COLORS.text.secondary,
+            }}
+          >
+            Don't have an account?{' '}
+          </StyledText>
+          <StyledTouchableOpacity
+            onPress={() => navigation.navigate('Onboarding')}
+            style={{ minHeight: 44, justifyContent: 'center' }}
+            accessibilityLabel="Sign Up"
+            accessibilityRole="button"
+          >
+            <StyledText
+              style={{
+                fontFamily: FONTS.semiBold,
+                fontSize: FONT_SIZES.base,
+                lineHeight: LINE_HEIGHTS.base,
+                color: COLORS.primaryButton,
+              }}
+            >
+              Sign Up
+            </StyledText>
           </StyledTouchableOpacity>
         </StyledView>
       </StyledView>

@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
+import { View, ScrollView, Switch, Alert } from 'react-native';
 import { styled } from 'nativewind';
-import { H1, H3, Body, Card, Button, ScreenWrapper } from '../../components/ui';
+import { H3, Body, Card, ScreenWrapper, AnimatedPressable } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { signOut } from '../../services/authService';
-import { supabase } from '../../lib/supabase';
-import { getUserProfile, checkMinimalProfileStatus } from '../../services/profileService';
+import { getUserProfile } from '../../services/profileService';
 import { resetGuide } from '../../services/guideService';
-import { createLogger } from '../../utils/secureLogger';
-import { FONTS } from '../../constants/typography';
+import { FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { deleteAccount } from '../../services/accountService';
 import { notificationPreferencesService } from '../../services/notificationPreferencesService';
@@ -17,16 +15,12 @@ import { showToast } from '../../utils/toast';
 import { EvaIcon } from '../../components/icons';
 import { selectionHaptic } from '../../utils/haptics';
 
-const logger = createLogger('SettingsScreen');
-
 interface SettingsScreenProps {
   navigation: NavigationProp<RootStackParamList>;
 }
 
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
-const StyledTouchableOpacity = styled(TouchableOpacity);
-const StyledSwitch = styled(Switch);
 
 const SettingRow = ({
   icon,
@@ -47,38 +41,40 @@ const SettingRow = ({
   toggleValue?: boolean;
   onToggle?: (value: boolean) => void;
 }) => (
-  <StyledTouchableOpacity
+  <AnimatedPressable
     onPress={toggle ? undefined : onPress}
     disabled={toggle && !onPress}
-    className="py-3"
+    style={{ paddingVertical: 14, minHeight: 44 }}
   >
     <StyledView className="flex-row items-center">
-      <StyledView className="w-10 h-10 bg-neutral-100 rounded-lg items-center justify-center mr-3">
-        <EvaIcon name={icon} variant="outline" size={20} color="#667085" />
+      <StyledView
+        className="w-10 h-10 rounded-lg items-center justify-center mr-3"
+        style={{ backgroundColor: COLORS.backgroundGray }}
+      >
+        <EvaIcon name={icon} variant="outline" size={20} color={COLORS.navInactiveIcon} />
       </StyledView>
       <StyledView className="flex-1">
-        <Body className="text-neutral-900 mb-1">{title}</Body>
-        {subtitle && (
-          <Body className="text-neutral-500 text-sm">{subtitle}</Body>
-        )}
+        <Body style={{ color: COLORS.text.heading, marginBottom: 2 }}>{title}</Body>
+        {subtitle ? (
+          <Body style={{ color: COLORS.text.secondary, fontSize: FONT_SIZES.md }}>{subtitle}</Body>
+        ) : null}
       </StyledView>
       {toggle ? (
-        <StyledSwitch
+        <Switch
           value={toggleValue}
           onValueChange={(val: boolean) => onToggle?.(val)}
-          trackColor={{ false: '#D0D5DD', true: COLORS.primaryAccent }}
+          trackColor={{ false: COLORS.borderDivider, true: COLORS.primaryAccent }}
           thumbColor="white"
-          ios_backgroundColor="#D0D5DD"
+          ios_backgroundColor={COLORS.borderDivider}
         />
       ) : showArrow ? (
-        <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color="#98A2B3" />
+        <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color={COLORS.text.placeholder} />
       ) : null}
     </StyledView>
-  </StyledTouchableOpacity>
+  </AnimatedPressable>
 );
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [userRole, setUserRole] = useState<string>('dater');
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -91,7 +87,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
   const [leaderboardVisible, setLeaderboardVisible] = useState(false);
 
   useEffect(() => {
-    loadCurrentUser();
     loadPreferences();
     getUserProfile().then(res => {
       if (res.ok && res.data) {
@@ -122,25 +117,20 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
     await notificationPreferencesService.updatePreferences({ [key]: value });
   };
 
-  const loadCurrentUser = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUserId(user.id);
-      }
-    } catch (error) {
-      logger.error('Failed to get current user:', error);
-    }
-  };
-
   return (
     <ScreenWrapper>
 
       {/* Header */}
-      <StyledView className="flex-row items-center justify-between px-4 py-3 border-b border-neutral-200 bg-white">
-        <StyledTouchableOpacity onPress={() => navigation.goBack()}>
-          <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
-        </StyledTouchableOpacity>
+      <StyledView
+        className="flex-row items-center justify-between px-4 py-3"
+        style={{ borderBottomWidth: 1, borderBottomColor: COLORS.border, backgroundColor: COLORS.card }}
+      >
+        <AnimatedPressable
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.textDarkHeading} />
+        </AnimatedPressable>
         <H3>Settings</H3>
         <StyledView style={{ width: 24 }} />
       </StyledView>
@@ -151,7 +141,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
           <Card className="mb-6">
             <StyledView className="flex-row items-center justify-between mb-4">
               <H3>Account</H3>
-              <Body className="text-neutral-500 text-xs">v1.0.0</Body>
+              <Body style={{ color: COLORS.text.secondary, fontSize: FONT_SIZES.xs }}>v1.0.0</Body>
             </StyledView>
             <SettingRow
               icon="award"
@@ -299,8 +289,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
           </Card>
 
           {/* Danger Zone */}
-          <Card className="mb-8 border border-error/20">
-            <H3 className="mb-4 text-error">Danger Zone</H3>
+          <Card className="mb-8" style={{ borderWidth: 1, borderColor: COLORS.error + '33' }}>
+            <H3 className="mb-4" style={{ color: COLORS.error }}>Danger Zone</H3>
             <SettingRow
               icon="log-out"
               title="Sign Out"
@@ -374,7 +364,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               }}
             />
             {isDeleting && (
-              <Body className="text-neutral-500 text-sm text-center mt-2">Deleting your account...</Body>
+              <Body style={{ color: COLORS.text.secondary, fontSize: FONT_SIZES.md, textAlign: 'center', marginTop: 8 }}>
+                Deleting your account...
+              </Body>
             )}
           </Card>
         </StyledView>

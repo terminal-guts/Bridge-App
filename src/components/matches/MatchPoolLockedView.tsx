@@ -14,7 +14,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
 import { calculateProfileStrengthBreakdown } from '../../utils/profileCompleteness';
@@ -196,7 +196,7 @@ export const MatchPoolLockedView: React.FC<MatchPoolLockedViewProps> = ({
           <View style={styles.mockBottom}>
             {/* Mock action pill */}
             <View style={styles.mockPill}>
-              <Text style={styles.mockPillText}>Your friends picked someone</Text>
+              <Text style={styles.mockPillText}>Your friends found someone for you</Text>
             </View>
 
             {/* Mock name */}
@@ -204,7 +204,7 @@ export const MatchPoolLockedView: React.FC<MatchPoolLockedViewProps> = ({
 
             {/* Mock endorser row */}
             <View style={styles.mockEndorserRow}>
-              <Text style={styles.mockEndorserLabel}>Picked by</Text>
+              <Text style={styles.mockEndorserLabel}>Matched by</Text>
               <View style={styles.mockAvatarStack}>
                 <View style={[styles.mockAvatar, { zIndex: 3, backgroundColor: COLORS.purple }]} />
                 <View style={[styles.mockAvatar, { zIndex: 2, marginLeft: -8, backgroundColor: COLORS.tier1.icon }]} />
@@ -474,18 +474,18 @@ const styles = StyleSheet.create({
   },
   ringText: {
     fontFamily: FONTS.bold,
-    fontSize: 22,
+    fontSize: FONT_SIZES['3xl'],
     color: COLORS.card,
   },
 
   // ── Text + CTA ──────────────────────────────────────────────────
   headline: {
     fontFamily: FONTS.bold,
-    fontSize: 22,
+    fontSize: FONT_SIZES['3xl'],
     color: COLORS.card,
     textAlign: 'center',
     marginTop: 16,
-    lineHeight: 28,
+    lineHeight: LINE_HEIGHTS['5xl'],
     letterSpacing: -0.3,
   },
   ctaButton: {
@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
   },
   ctaText: {
     fontFamily: FONTS.bold,
-    fontSize: 16,
+    fontSize: FONT_SIZES.xl,
     color: COLORS.primaryAccent,
   },
 });

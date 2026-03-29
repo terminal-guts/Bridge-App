@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   SafeAreaView,
@@ -15,7 +15,7 @@ import {
 import { NavigationProp } from '@react-navigation/native';
 import { EvaIcon } from '../../components/icons';
 import { RootStackParamList } from '../../types';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import {
   getSupportMessages,
@@ -92,6 +92,9 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
     return () => sub.unsubscribe();
   }, []);
 
+  // Prepend welcome message
+  const displayMessages = [WELCOME_MESSAGE, ...messages];
+
   // Scroll to bottom on new messages
   useEffect(() => {
     if (displayMessages.length > 0) {
@@ -106,12 +109,7 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
-  // Prepend welcome message
-  const displayMessages = useMemo(() => {
-    return [WELCOME_MESSAGE, ...messages];
-  }, [messages]);
-
-  const handleSend = useCallback(async () => {
+  const handleSend = async () => {
     const text = input.trim();
     if (!text || sending) return;
 
@@ -145,16 +143,11 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
     }
 
     setSending(false);
-  }, [input, sending]);
-
-  const handleRetry = useCallback(() => {
-    setSendFailed(false);
-    handleSend();
-  }, [handleSend]);
+  };
 
   const charRemaining = 1000 - input.length;
 
-  const renderMessage = useCallback(({ item, index }: { item: SupportMessage; index: number }) => {
+  const renderMessage = ({ item, index }: { item: SupportMessage; index: number }) => {
     const isUser = item.sender === 'user';
     const messageDate = new Date(item.created_at);
     const timeString = messageDate.getFullYear() > 1970
@@ -191,7 +184,7 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
         </View>
       </>
     );
-  }, [displayMessages]);
+  };
 
   if (loading) {
     return (
@@ -210,16 +203,20 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
 
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={s.backButton}
+        >
+          <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.textDarkHeading} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Feedback</Text>
-        <View style={{ width: 24 }} />
+        <View style={s.headerSpacer} />
       </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
+        style={s.flex1}
         keyboardVerticalOffset={0}
       >
         {/* Messages */}
@@ -238,7 +235,10 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
 
         {/* Failed banner */}
         {sendFailed && (
-          <TouchableOpacity style={s.failedBanner} onPress={handleRetry}>
+          <TouchableOpacity
+            style={s.failedBanner}
+            onPress={() => { setSendFailed(false); handleSend(); }}
+          >
             <Text style={s.failedBannerText}>Failed to send. Tap to retry.</Text>
           </TouchableOpacity>
         )}
@@ -266,7 +266,7 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
               {sending ? (
                 <ActivityIndicator size="small" color="white" />
               ) : (
-                <EvaIcon name="paper-plane" variant="outline" size={20} color={input.trim() ? 'white' : '#98A2B3'} />
+                <EvaIcon name="paper-plane" variant="outline" size={20} color={input.trim() ? 'white' : COLORS.text.placeholder} />
               )}
             </TouchableOpacity>
           ) : null}
@@ -285,6 +285,7 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.card },
+  flex1: { flex: 1 },
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   // Header
@@ -295,20 +296,27 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E4E7EC',
+    borderBottomColor: COLORS.borderNeutral,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES['2xl'],
-    color: '#101828',
+    color: COLORS.textDarkHeading,
   },
+  headerSpacer: { width: 44 },
 
   // Messages
   listContent: { padding: 16, paddingBottom: 8, flexGrow: 1 },
 
   dateSep: { alignItems: 'center', marginVertical: 16 },
   dateSepPill: { backgroundColor: COLORS.backgroundProgressTrack, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999 },
-  dateSepText: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.sm, color: '#667085' },
+  dateSepText: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.sm, color: COLORS.navInactiveIcon },
 
   bubbleRow: { marginBottom: 12 },
   bubbleRowRight: { alignItems: 'flex-end' },
@@ -326,9 +334,9 @@ const s = StyleSheet.create({
   bubbleUser: { backgroundColor: COLORS.primaryAccent, borderBottomRightRadius: 4 },
   bubbleAdmin: { backgroundColor: COLORS.backgroundProgressTrack, borderBottomLeftRadius: 4 },
 
-  bubbleText: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.lg, lineHeight: 22 },
+  bubbleText: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.lg, lineHeight: LINE_HEIGHTS.xl },
   bubbleTextUser: { color: COLORS.card },
-  bubbleTextAdmin: { color: '#101828' },
+  bubbleTextAdmin: { color: COLORS.textDarkHeading },
 
   timestamp: {
     fontFamily: FONTS.regular,
@@ -340,14 +348,16 @@ const s = StyleSheet.create({
 
   // Failed banner
   failedBanner: {
-    backgroundColor: '#FEF3F2',
-    paddingVertical: 8,
+    backgroundColor: COLORS.backgroundSoftRed,
+    paddingVertical: 12,
+    minHeight: 44,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   failedBannerText: {
     fontFamily: FONTS.medium,
     fontSize: FONT_SIZES.md,
-    color: '#D92D20',
+    color: COLORS.danger,
   },
 
   // Input
@@ -357,7 +367,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E4E7EC',
+    borderTopColor: COLORS.borderNeutral,
     backgroundColor: COLORS.card,
   },
   inputWrap: {
@@ -371,17 +381,17 @@ const s = StyleSheet.create({
   textInput: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.lg,
-    color: '#101828',
+    color: COLORS.textDarkHeading,
     maxHeight: 96,
   },
-  sendBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   sendBtnActive: { backgroundColor: COLORS.primaryAccent },
-  sendBtnDisabled: { backgroundColor: '#E4E7EC' },
+  sendBtnDisabled: { backgroundColor: COLORS.borderNeutral },
 
   // Char count
   charCountWrap: { paddingHorizontal: 24, paddingBottom: 4, alignItems: 'flex-end', backgroundColor: COLORS.card },
   charCount: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.xs, color: COLORS.text.placeholder },
-  charCountRed: { color: '#D92D20' },
+  charCountRed: { color: COLORS.danger },
 });
 
 export default SupportChatScreen;

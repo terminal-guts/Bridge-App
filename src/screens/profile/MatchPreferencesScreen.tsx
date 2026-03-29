@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
-import { H3, Body, ScreenWrapper } from '../../components/ui';
+import { H3, Body, BodySmall, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile } from '../../types';
-import NetInfo from '@react-native-community/netinfo';
+import NetInfo, { useNetInfo } from '@react-native-community/netinfo';
 import { getCurrentUser } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
-import { mediumHaptic } from '../../utils/haptics';
 import { calculateMatchPreferencesCompleteness } from '../../utils/profileCompleteness';
 import { createLogger } from '../../utils/secureLogger';
 import { COLORS } from '../../theme/colors';
@@ -40,6 +39,8 @@ const StyledTouchableOpacity = styled(TouchableOpacity);
 
 export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ navigation }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [preferences, setPreferences] = useState({
     ageMin: 24,
     ageMax: 32,
@@ -60,6 +61,8 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   const [preferredPolitics, setPreferredPolitics] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const netInfo = useNetInfo();
+  const isOffline = netInfo.isConnected === false;
 
   // Track original data for change detection
   const originalDataRef = useRef<string | null>(null);
@@ -69,66 +72,77 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   }, []);
 
   const loadProfile = async () => {
+    setLoading(true);
+    setLoadError(false);
     try {
       const userResult = await getCurrentUser();
-      if (!userResult.ok || !userResult.data) return;
+      if (!userResult.ok || !userResult.data) {
+        setLoadError(true);
+        return;
+      }
 
       const profileResult = await getUserProfile();
-      if (profileResult.ok && profileResult.data) {
-        setProfile(profileResult.data);
-        // Ensure all required fields have defaults when loading from profile
-        const loadedPrefs = profileResult.data.preferences;
-        setPreferences({
+      if (!profileResult.ok || !profileResult.data) {
+        setLoadError(true);
+        return;
+      }
+
+      setProfile(profileResult.data);
+      // Ensure all required fields have defaults when loading from profile
+      const loadedPrefs = profileResult.data.preferences;
+      setPreferences({
+        ageMin: loadedPrefs.ageMin,
+        ageMax: loadedPrefs.ageMax,
+        gender: loadedPrefs.gender,
+        lookingFor: 'relationship', // Bridge only supports relationships
+        heightMin: loadedPrefs.heightMin ?? 60,
+        heightMax: loadedPrefs.heightMax ?? 84,
+      });
+
+      // Load partner preferences (handle both old string format and new array format)
+      if (profileResult.data.partnerLifestylePreferences) {
+        const prefs = profileResult.data.partnerLifestylePreferences;
+        setPartnerPreferences({
+          partnerDrinking: Array.isArray(prefs.drinking) ? prefs.drinking : (prefs.drinking ? [prefs.drinking] : []),
+          partnerCannabis: Array.isArray(prefs.cannabis) ? prefs.cannabis : (prefs.cannabis ? [prefs.cannabis] : []),
+          partnerTobacco: Array.isArray(prefs.tobacco) ? prefs.tobacco : (prefs.tobacco ? [prefs.tobacco] : []),
+          partnerOtherDrugs: Array.isArray(prefs.otherDrugs) ? prefs.otherDrugs : (prefs.otherDrugs ? [prefs.otherDrugs] : []),
+        });
+      }
+
+      // Load array preferences
+      setPreferredEthnicities(profileResult.data.preferredEthnicities || []);
+      setPreferredReligions(profileResult.data.preferredReligions || []);
+      setInterestedInGenders(profileResult.data.interestedInGenders || []);
+      setPreferredPolitics(profileResult.data.preferredPolitics || []);
+
+      // Store original data for change detection
+      const originalPrefs: { drinking?: string | string[]; cannabis?: string | string[]; tobacco?: string | string[]; otherDrugs?: string | string[] } = profileResult.data.partnerLifestylePreferences ?? {};
+      originalDataRef.current = JSON.stringify({
+        preferences: {
           ageMin: loadedPrefs.ageMin,
           ageMax: loadedPrefs.ageMax,
           gender: loadedPrefs.gender,
-          lookingFor: 'relationship', // Bridge only supports relationships
+          lookingFor: 'relationship',
           heightMin: loadedPrefs.heightMin ?? 60,
           heightMax: loadedPrefs.heightMax ?? 84,
-        });
-
-        // Load partner preferences (handle both old string format and new array format)
-        if (profileResult.data.partnerLifestylePreferences) {
-          const prefs = profileResult.data.partnerLifestylePreferences;
-          setPartnerPreferences({
-            partnerDrinking: Array.isArray(prefs.drinking) ? prefs.drinking : (prefs.drinking ? [prefs.drinking] : []),
-            partnerCannabis: Array.isArray(prefs.cannabis) ? prefs.cannabis : (prefs.cannabis ? [prefs.cannabis] : []),
-            partnerTobacco: Array.isArray(prefs.tobacco) ? prefs.tobacco : (prefs.tobacco ? [prefs.tobacco] : []),
-            partnerOtherDrugs: Array.isArray(prefs.otherDrugs) ? prefs.otherDrugs : (prefs.otherDrugs ? [prefs.otherDrugs] : []),
-          });
-        }
-
-        // Load array preferences
-        setPreferredEthnicities(profileResult.data.preferredEthnicities || []);
-        setPreferredReligions(profileResult.data.preferredReligions || []);
-        setInterestedInGenders(profileResult.data.interestedInGenders || []);
-        setPreferredPolitics(profileResult.data.preferredPolitics || []);
-
-        // Store original data for change detection
-        const originalPrefs: { drinking?: string | string[]; cannabis?: string | string[]; tobacco?: string | string[]; otherDrugs?: string | string[] } = profileResult.data.partnerLifestylePreferences ?? {};
-        originalDataRef.current = JSON.stringify({
-          preferences: {
-            ageMin: loadedPrefs.ageMin,
-            ageMax: loadedPrefs.ageMax,
-            gender: loadedPrefs.gender,
-            lookingFor: 'relationship',
-            heightMin: loadedPrefs.heightMin ?? 60,
-            heightMax: loadedPrefs.heightMax ?? 84,
-          },
-          partnerPreferences: {
-            partnerDrinking: Array.isArray(originalPrefs.drinking) ? originalPrefs.drinking : (originalPrefs.drinking ? [originalPrefs.drinking] : []),
-            partnerCannabis: Array.isArray(originalPrefs.cannabis) ? originalPrefs.cannabis : (originalPrefs.cannabis ? [originalPrefs.cannabis] : []),
-            partnerTobacco: Array.isArray(originalPrefs.tobacco) ? originalPrefs.tobacco : (originalPrefs.tobacco ? [originalPrefs.tobacco] : []),
-            partnerOtherDrugs: Array.isArray(originalPrefs.otherDrugs) ? originalPrefs.otherDrugs : (originalPrefs.otherDrugs ? [originalPrefs.otherDrugs] : []),
-          },
-          preferredEthnicities: profileResult.data.preferredEthnicities || [],
-          preferredReligions: profileResult.data.preferredReligions || [],
-          interestedInGenders: profileResult.data.interestedInGenders || [],
-          preferredPolitics: profileResult.data.preferredPolitics || [],
-        });
-      }
+        },
+        partnerPreferences: {
+          partnerDrinking: Array.isArray(originalPrefs.drinking) ? originalPrefs.drinking : (originalPrefs.drinking ? [originalPrefs.drinking] : []),
+          partnerCannabis: Array.isArray(originalPrefs.cannabis) ? originalPrefs.cannabis : (originalPrefs.cannabis ? [originalPrefs.cannabis] : []),
+          partnerTobacco: Array.isArray(originalPrefs.tobacco) ? originalPrefs.tobacco : (originalPrefs.tobacco ? [originalPrefs.tobacco] : []),
+          partnerOtherDrugs: Array.isArray(originalPrefs.otherDrugs) ? originalPrefs.otherDrugs : (originalPrefs.otherDrugs ? [originalPrefs.otherDrugs] : []),
+        },
+        preferredEthnicities: profileResult.data.preferredEthnicities || [],
+        preferredReligions: profileResult.data.preferredReligions || [],
+        interestedInGenders: profileResult.data.interestedInGenders || [],
+        preferredPolitics: profileResult.data.preferredPolitics || [],
+      });
     } catch (error) {
       logger.error('Failed to load profile:', error);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -148,11 +162,11 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   }, [preferences, partnerPreferences, preferredEthnicities, preferredReligions, interestedInGenders, preferredPolitics]);
 
   const handleBack = () => {
-    if (!hasUnsavedChanges) {
+    if (!hasUnsavedChanges || isOffline) {
       navigation.goBack();
       return;
     }
-    // Auto-save on back
+    // Auto-save on back -- handleSave navigates on success
     handleSave();
   };
 
@@ -164,28 +178,26 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   }, []);
 
   const handleSave = async () => {
-    if (!profile) return;
+    if (!profile || saving) return;
 
     // Check network connectivity
     const networkState = await NetInfo.fetch();
     if (!networkState.isConnected) {
-      Alert.alert('No Internet Connection', 'Please check your internet connection and try again');
+      Alert.alert('No Internet Connection', 'Please check your connection and try again.');
       return;
     }
 
-    // Validation
-    if (preferences.ageMin < 18 || preferences.ageMin > 100) {
-      Alert.alert('Invalid Age Range', 'Minimum age must be between 18 and 100');
+    // Clamp age values to valid range (stepper constrains to 18-35, but guard anyway)
+    const clampedAgeMin = Math.max(18, Math.min(preferences.ageMin, 35));
+    const clampedAgeMax = Math.max(18, Math.min(preferences.ageMax, 35));
+    if (clampedAgeMin >= clampedAgeMax) {
+      Alert.alert('Invalid Age Range', 'Minimum age must be less than maximum age.');
       return;
     }
 
-    if (preferences.ageMax < 18 || preferences.ageMax > 100) {
-      Alert.alert('Invalid Age Range', 'Maximum age must be between 18 and 100');
-      return;
-    }
-
-    if (preferences.heightMin && preferences.heightMax && preferences.heightMin > preferences.heightMax) {
-      Alert.alert('Invalid Height Range', 'Minimum height cannot be greater than maximum height');
+    // Validate height range (both are always set, use numeric comparison not truthy)
+    if (preferences.heightMin > preferences.heightMax) {
+      Alert.alert('Invalid Height Range', 'Minimum height cannot be greater than maximum height.');
       return;
     }
 
@@ -228,6 +240,8 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         ...profile,
         preferences: {
           ...preferences,
+          ageMin: clampedAgeMin,
+          ageMax: clampedAgeMax,
           gender: derivedPreferredGender,
           lookingFor: 'relationship' as const,
         },
@@ -248,10 +262,25 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
       if (result.ok) {
         navigation.goBack();
       } else {
-        Alert.alert('Error', 'Failed to save preferences. Please try again.');
+        Alert.alert(
+          'Couldn\'t Save',
+          'Something went wrong saving your preferences.',
+          [
+            { text: 'Try Again', onPress: handleSave },
+            { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() },
+          ]
+        );
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
+      logger.error('Save preferences failed:', error);
+      Alert.alert(
+        'Couldn\'t Save',
+        'An unexpected error occurred. Check your connection and try again.',
+        [
+          { text: 'Try Again', onPress: handleSave },
+          { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() },
+        ]
+      );
     } finally {
       setSaving(false);
     }
@@ -285,21 +314,80 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
     return calculateMatchPreferencesCompleteness(profile);
   }, [profile]);
 
+  // Loading state
+  if (loading) {
+    return (
+      <ScreenWrapper>
+        <StyledView className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color={COLORS.primaryAccent} />
+          <Body className="text-neutral-500 mt-3">Loading preferences...</Body>
+        </StyledView>
+      </ScreenWrapper>
+    );
+  }
+
+  // Error state
+  if (loadError || !profile) {
+    return (
+      <ScreenWrapper>
+        <StyledView className="flex-1 items-center justify-center px-6">
+          <EvaIcon name="alert-circle-outline" variant="outline" size={48} color={COLORS.error} />
+          <H3 className="mt-4 text-center">Couldn't load preferences</H3>
+          <Body className="text-neutral-500 mt-2 text-center">
+            Check your connection and try again.
+          </Body>
+          <StyledTouchableOpacity
+            onPress={loadProfile}
+            className="mt-5 bg-primary-500 rounded-lg px-6 py-3"
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading preferences"
+          >
+            <Body className="text-white font-semibold">Try Again</Body>
+          </StyledTouchableOpacity>
+          <StyledTouchableOpacity
+            onPress={() => navigation.goBack()}
+            className="mt-3 px-6 py-3"
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <Body className="text-neutral-500 font-medium">Go Back</Body>
+          </StyledTouchableOpacity>
+        </StyledView>
+      </ScreenWrapper>
+    );
+  }
+
   return (
     <ScreenWrapper>
 
+      {/* Offline banner */}
+      {isOffline && (
+        <StyledView className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex-row items-center">
+          <EvaIcon name="wifi-off-outline" variant="outline" size={16} color={COLORS.darkAmber} />
+          <BodySmall className="text-amber-700 ml-2">
+            You're offline. Changes won't be saved until you reconnect.
+          </BodySmall>
+        </StyledView>
+      )}
+
       {/* Header */}
-      <StyledView className="bg-white border-b border-neutral-200 px-4 py-3">
+      <StyledView className="border-b px-4 py-3" style={{ backgroundColor: COLORS.card, borderBottomColor: COLORS.border }}>
         <StyledView className="flex-row items-center justify-between">
-          <StyledTouchableOpacity onPress={handleBack} className="mr-3" accessibilityRole="button" accessibilityLabel="Go back">
-            <EvaIcon name="arrow-ios-back" variant="outline" size={24} color={COLORS.textDarkHeading} />
+          <StyledTouchableOpacity onPress={handleBack} disabled={saving} className="mr-2 items-center justify-center" style={{ minWidth: 44, minHeight: 44 }} accessibilityRole="button" accessibilityLabel="Go back">
+            <EvaIcon name="arrow-ios-back" variant="outline" size={24} color={saving ? COLORS.text.disabled : COLORS.textDarkHeading} />
           </StyledTouchableOpacity>
           <StyledView className="flex-1">
             <H3>Match Preferences</H3>
           </StyledView>
-          {hasUnsavedChanges && (
+          {saving && (
+            <StyledView className="flex-row items-center">
+              <ActivityIndicator size="small" color={COLORS.primaryAccent} />
+              <Body className="text-primary-500 text-xs font-medium ml-1.5">Saving...</Body>
+            </StyledView>
+          )}
+          {!saving && hasUnsavedChanges && (
             <Body className="text-primary-500 text-xs font-medium">
-              {saving ? 'Saving...' : 'Auto-saves on back'}
+              Auto-saves on back
             </Body>
           )}
         </StyledView>
@@ -315,7 +403,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                 {matchPrefsCompletion.percentage}%
               </Body>
             </StyledView>
-            <StyledView className="bg-neutral-200 rounded-full h-1.5 overflow-hidden">
+            <StyledView className="rounded-full h-1.5 overflow-hidden" style={{ backgroundColor: COLORS.backgroundProgressTrack }}>
               <StyledView
                 className="h-full rounded-full transition-all"
                 style={{
@@ -328,8 +416,14 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         )}
       </StyledView>
 
-      <StyledScrollView className="flex-1">
-        <StyledView className="px-4 py-4">
+      <StyledScrollView
+        className="flex-1"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        pointerEvents={saving ? 'none' : 'auto'}
+      >
+        <StyledView className="px-4 py-4" style={saving ? { opacity: 0.5 } : undefined}>
           <LookingForSection />
 
           <GenderSection

@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -10,13 +10,13 @@ import Animated, {
     cancelAnimation,
     Easing,
 } from 'react-native-reanimated';
-import { SPRINGS } from '../../constants/animations';
+import { SPRINGS, DURATIONS, PRESS_SCALES } from '../../constants/animations';
 import { Image, ImageBackground } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { CheckmarkIcon, HourglassIcon, HeartsIcon, ArrowRightIcon, GiftIcon } from '../icons/Icons';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS, glowShadow, DEPTH_PRESS_FACTOR } from '../../theme/shadows';
 import { EvaIcon } from '../icons';
@@ -37,25 +37,25 @@ const TOP_BADGE_CONFIG: Record<MatchStatus, { label: string; bg: string; Icon?: 
     awaiting_you:  { label: 'They said yes!', bg: COLORS.success, Icon: CheckmarkIcon },
     awaiting_them: { label: 'You said yes',   bg: COLORS.success, Icon: CheckmarkIcon },
     new_match:     { label: 'New Match',      bg: COLORS.success, Icon: HeartsIcon },
-    no_match:      { label: 'No match',       bg: COLORS.systemGray, Icon: HourglassIcon },
+    no_match:      { label: 'Still looking',   bg: COLORS.systemGray, Icon: HourglassIcon },
 };
 
 // Bottom pill — always BLUE (action/context)
 const BOTTOM_PILLS: Record<MatchStatus, Array<{ label: string; bg: string; Icon?: React.FC<any> }>> = {
     active_match:  [
-        { label: 'Start the conversation', bg: 'rgba(43, 101, 249, 0.75)', Icon: ({ size = 14, color = '#FFF' }: { size?: number; color?: string }) => <EvaIcon name="message-square" variant="outline" size={size} color={color} /> },
+        { label: 'Start the conversation', bg: 'rgba(43, 101, 249, 0.75)', Icon: ({ size = 14, color = COLORS.card }: { size?: number; color?: string }) => <EvaIcon name="message-square" variant="outline" size={size} color={color} /> },
     ],
     awaiting_you:  [
-        { label: "It's your turn to decide", bg: 'rgba(43, 101, 249, 0.75)', Icon: ({ size = 14, color = '#FFF' }: { size?: number; color?: string }) => <EvaIcon name="bulb" variant="outline" size={size} color={color} /> },
+        { label: "It's your turn to decide", bg: 'rgba(43, 101, 249, 0.75)', Icon: ({ size = 14, color = COLORS.card }: { size?: number; color?: string }) => <EvaIcon name="bulb" variant="outline" size={size} color={color} /> },
     ],
     awaiting_them: [
-        { label: 'Waiting on their answer', bg: 'rgba(43, 101, 249, 0.75)', Icon: HourglassIcon },
+        { label: 'They\'re thinking it over', bg: 'rgba(43, 101, 249, 0.75)', Icon: HourglassIcon },
     ],
     new_match:     [
-        { label: 'Your friends picked someone', bg: 'rgba(43, 101, 249, 0.75)', Icon: GiftIcon },
+        { label: 'Your friends found someone for you', bg: 'rgba(43, 101, 249, 0.75)', Icon: GiftIcon },
     ],
     no_match:      [
-        { label: 'No match', bg: 'rgba(142, 142, 147, 0.35)', Icon: HourglassIcon },
+        { label: 'Still looking', bg: 'rgba(142, 142, 147, 0.35)', Icon: HourglassIcon },
     ],
 };
 
@@ -102,13 +102,13 @@ interface MatchCardProps {
     onShare?: () => void;
 }
 
-// Always "Picked by" — friends picked the match in every state
+// Always "Matched by" — friends drove the match in every state
 const ENDORSER_LABEL: Record<MatchStatus, string> = {
-    active_match:  'Picked by',
-    awaiting_you:  'Picked by',
-    awaiting_them: 'Picked by',
-    new_match:     'Picked by',
-    no_match:      'Picked by',
+    active_match:  'Matched by',
+    awaiting_you:  'Matched by',
+    awaiting_them: 'Matched by',
+    new_match:     'Matched by',
+    no_match:      'Matched by',
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -131,6 +131,25 @@ export const MatchCard: React.FC<MatchCardProps> = ({
 }) => {
     const topBadge = TOP_BADGE_CONFIG[status];
     const gradient = GRADIENT_CONFIG[status];
+    const { height: windowHeight } = useWindowDimensions();
+
+    // Responsive card internals -- scales proportionally from SE (667pt) to Pro Max (932pt)
+    // Vignette: ~80px SE, ~120px Pro Max (protects badge legibility)
+    const vignetteH = Math.round(Math.max(windowHeight * 0.13, 80));
+    // Inner padding: ~14px SE, ~18px Pro Max
+    const innerPadTop = Math.round(Math.max(windowHeight * 0.02, 12));
+    // Bottom section: ~14px SE, ~18px Pro Max
+    const bottomPadBottom = Math.round(Math.max(windowHeight * 0.02, 12));
+    // Action button: ~48px SE, ~56px Pro Max (min 44px touch target)
+    const actionSize = Math.round(Math.min(Math.max(windowHeight * 0.062, 44), 56));
+    const actionRadius = Math.round(actionSize / 2);
+    // Action button icon: proportional to button size
+    const actionIconSize = Math.round(actionSize * 0.42);
+    // Action button position: proportional bottom/right
+    const actionBottom = Math.round(Math.max(windowHeight * 0.02, 14));
+    const actionRight = Math.round(Math.max(windowHeight * 0.018, 12));
+    // Bottom section right padding: clears the action button
+    const bottomPadRight = actionSize + actionRight + 8;
 
     // For active matches with a message preview, replace the default pill label
     const bottomPills = (status === 'active_match' && messagePreview)
@@ -155,10 +174,11 @@ export const MatchCard: React.FC<MatchCardProps> = ({
             pulseAnim.value = 1;
             return;
         }
+        const pulseDuration = DURATIONS.emphasis * 2.5; // gentle, unhurried pulse
         pulseAnim.value = withRepeat(
             withSequence(
-                withTiming(1.08, { duration: 1600, easing: Easing.inOut(Easing.ease) }),
-                withTiming(1, { duration: 1600, easing: Easing.inOut(Easing.ease) }),
+                withTiming(1.08, { duration: pulseDuration, easing: Easing.inOut(Easing.ease) }),
+                withTiming(1, { duration: pulseDuration, easing: Easing.inOut(Easing.ease) }),
             ), -1, false
         );
         return () => cancelAnimation(pulseAnim);
@@ -175,14 +195,14 @@ export const MatchCard: React.FC<MatchCardProps> = ({
         prevStatusRef.current = status;
         slideAnim.value = 40;
         fadeAnim.value = 0;
-        slideAnim.value = withSpring(0, { damping: 18, stiffness: 120 });
-        fadeAnim.value = withTiming(1, { duration: 450 });
+        slideAnim.value = withSpring(0, SPRINGS.gentle);
+        fadeAnim.value = withTiming(1, { duration: DURATIONS.slow });
     }, [status]);
 
     // #5 — Press scale with spring (snappy press-in, responsive release for depth spring-back)
     const pressScale = useSharedValue(1);
     const onPressIn = useCallback(() => {
-        pressScale.value = withSpring(0.96, SPRINGS.snappy);
+        pressScale.value = withSpring(PRESS_SCALES.standard, SPRINGS.snappy);
     }, []);
     const onPressOut = useCallback(() => {
         pressScale.value = withSpring(1, SPRINGS.responsive);
@@ -191,20 +211,21 @@ export const MatchCard: React.FC<MatchCardProps> = ({
     // #5 — Action button press scale (deeper bounce)
     const actionPressScale = useSharedValue(1);
     const onActionPressIn = useCallback(() => {
-        actionPressScale.value = withSpring(0.88, { damping: 12, stiffness: 250 });
+        actionPressScale.value = withSpring(PRESS_SCALES.pronounced, SPRINGS.bouncy);
     }, []);
     const onActionPressOut = useCallback(() => {
-        actionPressScale.value = withSpring(1, { damping: 12, stiffness: 250 });
+        actionPressScale.value = withSpring(1, SPRINGS.responsive);
     }, []);
 
-    // Celebration bounce — starts at 0.92 and springs to 1 after entrance animation
+    // Celebration bounce — compressed start, bouncy spring after entrance settles
     const celebrateScale = useSharedValue(1);
     useEffect(() => {
         if (celebrate) {
-            celebrateScale.value = 0.92;
+            celebrateScale.value = PRESS_SCALES.pronounced;
+            const entranceDelay = DURATIONS.slow;
             const timer = setTimeout(() => {
                 celebrateScale.value = withSpring(1, SPRINGS.bouncy);
-            }, 500);
+            }, entranceDelay);
             return () => clearTimeout(timer);
         }
     }, [celebrate]);
@@ -250,7 +271,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                 <LinearGradient
                     colors={['rgba(0, 0, 0, 0.35)', 'rgba(0, 0, 0, 0.12)', 'rgba(0, 0, 0, 0)']}
                     locations={[0, 0.4, 1]}
-                    style={styles.topVignette}
+                    style={[styles.topVignette, { height: vignetteH }]}
                 />
 
                 {/* #1 — Cinematic 4-stop bottom gradient */}
@@ -260,27 +281,27 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                     style={StyleSheet.absoluteFillObject}
                 />
 
-                <View style={styles.cardInner}>
+                <View style={[styles.cardInner, { paddingTop: innerPadTop }]}>
 
                     {/* ── Top row: badge (left) + optional X dismiss button (right) ── */}
                     <View style={styles.topRow}>
                         {/* #7 — Frosted glass top badge (green tint) */}
                         <BlurView intensity={40} tint="dark" style={styles.topBadgeBlur}>
                             <View style={[styles.topBadgeInner, { backgroundColor: 'rgba(52, 199, 89, 0.55)' }]}>
-                                {topBadge.Icon && <topBadge.Icon size={16} color="#FFF" />}
+                                {topBadge.Icon && <topBadge.Icon size={16} color={COLORS.card} />}
                                 <Text style={styles.topBadgeText}>{topBadge.label}</Text>
                             </View>
                         </BlurView>
                         {isActiveMatch && (
                             <View style={styles.topActions}>
                                 {onShare && (
-                                    <TouchableOpacity onPress={onShare} style={styles.topActionBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Share match">
-                                        <EvaIcon name="share" variant="outline" size={20} color="#FFFFFF" />
+                                    <TouchableOpacity onPress={onShare} style={styles.topActionBtn} activeOpacity={0.7} hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }} accessibilityRole="button" accessibilityLabel="Share match">
+                                        <EvaIcon name="share" variant="outline" size={20} color={COLORS.card} />
                                     </TouchableOpacity>
                                 )}
                                 {onDismiss && (
-                                    <TouchableOpacity onPress={onDismiss} style={styles.topActionBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Dismiss match card">
-                                        <EvaIcon name="close" variant="outline" size={18} color="#FFFFFF" />
+                                    <TouchableOpacity onPress={onDismiss} style={styles.topActionBtn} activeOpacity={0.7} hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }} accessibilityRole="button" accessibilityLabel="End match">
+                                        <EvaIcon name="close" variant="outline" size={18} color={COLORS.card} />
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -288,21 +309,21 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                     </View>
 
                     {/* ── Bottom block ── */}
-                    <View style={styles.bottomSection}>
+                    <View style={[styles.bottomSection, { paddingBottom: bottomPadBottom, paddingRight: bottomPadRight }]}>
 
                         {/* #7 — Frosted glass bottom pills (blue tint) */}
                         {bottomPills.map((pill, i) => (
                             <BlurView key={i} intensity={35} tint="dark" style={styles.pillBlur}>
                                 <View style={[styles.pillInner, { backgroundColor: 'rgba(43, 101, 249, 0.5)' }]}>
-                                    {pill.Icon && <pill.Icon size={14} color="#FFF" />}
-                                    <Text style={styles.pillText}>{pill.label}</Text>
+                                    {pill.Icon && <pill.Icon size={14} color={COLORS.card} />}
+                                    <Text style={styles.pillText} numberOfLines={1}>{pill.label}</Text>
                                 </View>
                             </BlurView>
                         ))}
 
                         {/* #2 — Name with tighter tracking */}
                         <View style={styles.nameRow}>
-                            <Text style={styles.nameText}>{name}{age ? `, ${age}` : ''}</Text>
+                            <Text style={styles.nameText} numberOfLines={1}>{name}{age ? `, ${age}` : ''}</Text>
                             {hasUnread && <View style={styles.unreadDot} />}
                         </View>
 
@@ -344,14 +365,15 @@ export const MatchCard: React.FC<MatchCardProps> = ({
             {/* #5 + #6 — Action button with press state, neutral shadow, slow pulse */}
             <Animated.View style={[
                 styles.actionButtonWrap,
+                { right: actionRight, bottom: actionBottom },
                 actionBtnAnimStyle,
             ]}>
                 <Pressable onPress={onPress} onPressIn={onActionPressIn} onPressOut={onActionPressOut}>
-                    <View style={[styles.actionButton, styles.actionButtonBlue]}>
+                    <View style={[styles.actionButton, styles.actionButtonBlue, { width: actionSize, height: actionSize, borderRadius: actionRadius }]}>
                         {isActiveMatch ? (
-                            <EvaIcon name="paper-plane" variant="outline" size={24} color="#FFFFFF" />
+                            <EvaIcon name="paper-plane" variant="outline" size={actionIconSize} color={COLORS.card} />
                         ) : (
-                            <ArrowRightIcon size={22} color="#FFFFFF" />
+                            <ArrowRightIcon size={Math.round(actionIconSize * 0.92)} color={COLORS.card} />
                         )}
                     </View>
                 </Pressable>
@@ -433,7 +455,7 @@ const styles = StyleSheet.create({
         color: COLORS.card,
         fontFamily: FONTS.bold,
         fontSize: FONT_SIZES.base,
-        lineHeight: 18,
+        lineHeight: LINE_HEIGHTS.base,
     },
     // Grouped share + dismiss buttons for active match
     topActions: {
@@ -445,17 +467,11 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: 'rgba(0, 0, 0, 0.35)',
+        backgroundColor: COLORS.overlay.light,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.12)',
-    },
-    dismissX: {
-        color: COLORS.card,
-        fontSize: FONT_SIZES.lg,
-        fontFamily: FONTS.bold,
-        lineHeight: 17,
     },
     bottomSection: {
         gap: 6,
@@ -480,7 +496,7 @@ const styles = StyleSheet.create({
         color: COLORS.card,
         fontFamily: FONTS.semiBold,
         fontSize: FONT_SIZES.md,
-        lineHeight: 17,
+        lineHeight: LINE_HEIGHTS.md,
     },
     // #2 — Name: tighter letter spacing (-0.8), strong shadow
     nameText: {
@@ -503,7 +519,7 @@ const styles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.9)',
         fontFamily: FONTS.medium,
         fontSize: FONT_SIZES.md,
-        lineHeight: 17,
+        lineHeight: LINE_HEIGHTS.md,
     },
     avatarRow: {
         flexDirection: 'row',
@@ -528,7 +544,7 @@ const styles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.55)',
         fontFamily: FONTS.medium,
         fontSize: FONT_SIZES.sm,
-        lineHeight: 16,
+        lineHeight: LINE_HEIGHTS.sm,
     },
     actionButtonWrap: {
         position: 'absolute',

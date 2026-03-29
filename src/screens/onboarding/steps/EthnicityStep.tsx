@@ -104,7 +104,7 @@ export const EthnicityStep: React.FC<EthnicityStepProps> = ({
       <StyledView className="mt-8">
         <H1 className="mb-3">What's your ethnicity?</H1>
         <Body className="text-neutral-600 mb-6">
-          What's your ethnicity? Select all that apply.
+          Select all that apply. This stays private.
         </Body>
 
         <StyledView>

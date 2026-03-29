@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { getEligibleFriends, createFriendSuggestion } from '../../services/friendProposalService';
 import { showToast } from '../../utils/toast';
@@ -120,7 +120,7 @@ export default function SuggestMatchScreen() {
           />
         ) : (
           <View style={[styles.friendPhoto, styles.photoPlaceholder]}>
-            <EvaIcon name="person" variant="outline" size={24} color="#D0D5DD" />
+            <EvaIcon name="person" variant="outline" size={24} color={COLORS.borderDivider} />
           </View>
         )}
         <View style={styles.friendInfo}>
@@ -129,7 +129,7 @@ export default function SuggestMatchScreen() {
             <Text style={styles.friendJob}>{item.currentJob}</Text>
           )}
         </View>
-        <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color="#D0D5DD" />
+        <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color={COLORS.borderDivider} />
       </TouchableOpacity>
     );
   };
@@ -142,8 +142,8 @@ export default function SuggestMatchScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <EvaIcon name="arrow-back" variant="outline" size={24} color="#1A1A1A" />
+        <TouchableOpacity onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.heading} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
           {step === 'pick_a' ? 'Pick the first friend' :
@@ -172,14 +172,14 @@ export default function SuggestMatchScreen() {
                 />
               ) : (
                 <View style={[styles.confirmPhoto, styles.photoPlaceholder]}>
-                  <EvaIcon name="person" variant="outline" size={40} color="#D0D5DD" />
+                  <EvaIcon name="person" variant="outline" size={40} color={COLORS.borderDivider} />
                 </View>
               )}
               <Text style={styles.confirmName}>{friendA.firstName}</Text>
             </View>
 
             <View style={styles.heartContainer}>
-              <EvaIcon name="heart" variant="outline" size={28} color="#FF6B6B" />
+              <EvaIcon name="heart" variant="outline" size={28} color={COLORS.urgentRed} />
             </View>
 
             <View style={styles.confirmCard}>
@@ -193,7 +193,7 @@ export default function SuggestMatchScreen() {
                 />
               ) : (
                 <View style={[styles.confirmPhoto, styles.photoPlaceholder]}>
-                  <EvaIcon name="person" variant="outline" size={40} color="#D0D5DD" />
+                  <EvaIcon name="person" variant="outline" size={40} color={COLORS.borderDivider} />
                 </View>
               )}
               <Text style={styles.confirmName}>{friendB.firstName}</Text>
@@ -210,7 +210,7 @@ export default function SuggestMatchScreen() {
             disabled={submitting}
           >
             {submitting ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={COLORS.card} />
             ) : (
               <Text style={styles.submitButtonText}>Suggest Match</Text>
             )}
@@ -218,7 +218,7 @@ export default function SuggestMatchScreen() {
         </View>
       ) : availableFriends.length === 0 ? (
         <View style={styles.centerContainer}>
-          <EvaIcon name="people" variant="outline" size={48} color="#D0D5DD" />
+          <EvaIcon name="people" variant="outline" size={48} color={COLORS.borderDivider} />
           <Text style={styles.emptyText}>
             {step === 'pick_b'
               ? 'No other eligible friends available.'
@@ -240,7 +240,7 @@ export default function SuggestMatchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.screenBackground,
   },
   header: {
     flexDirection: 'row',
@@ -253,8 +253,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.md,
-    color: '#1A1A1A',
+    fontSize: FONT_SIZES.xl,
+    color: COLORS.text.heading,
   },
   centerContainer: {
     flex: 1,
@@ -296,8 +296,8 @@ const styles = StyleSheet.create({
   },
   friendName: {
     fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.md,
-    color: '#1A1A1A',
+    fontSize: FONT_SIZES.lg,
+    color: COLORS.text.heading,
   },
   friendJob: {
     fontFamily: FONTS.regular,
@@ -327,8 +327,8 @@ const styles = StyleSheet.create({
   },
   confirmName: {
     fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.md,
-    color: '#1A1A1A',
+    fontSize: FONT_SIZES.lg,
+    color: COLORS.text.heading,
     marginTop: 8,
   },
   heartContainer: {
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
     color: COLORS.text.label,
     textAlign: 'center',
     marginBottom: 32,
-    lineHeight: 20,
+    lineHeight: LINE_HEIGHTS.lg,
   },
   submitButton: {
     backgroundColor: COLORS.primaryAccent,
@@ -349,13 +349,15 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     width: '100%',
     alignItems: 'center',
+    minHeight: 48,
+    justifyContent: 'center',
   },
   submitButtonDisabled: {
     opacity: 0.6,
   },
   submitButtonText: {
     fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.md,
+    fontSize: FONT_SIZES.lg,
     color: COLORS.card,
   },
 });

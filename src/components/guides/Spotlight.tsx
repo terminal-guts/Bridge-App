@@ -16,6 +16,7 @@ import Animated, {
 import MaskedView from '@react-native-masked-view/masked-view';
 import { SpotlightShape, SpotlightDimensions } from '../../types/guides';
 import { createLogger } from '../../utils/secureLogger';
+import { OVERLAYS } from '../../theme/shadows';
 
 const logger = createLogger('Spotlight');
 
@@ -95,7 +96,7 @@ export const Spotlight: React.FC<SpotlightProps> = ({
       left: 0,
       right: 0,
       height,
-      backgroundColor: 'rgba(0, 0, 0, 0.55)',
+      backgroundColor: OVERLAYS.medium,
     };
   });
 
@@ -109,7 +110,7 @@ export const Spotlight: React.FC<SpotlightProps> = ({
       left: 0,
       width,
       height: spotlightHeight.value,
-      backgroundColor: 'rgba(0, 0, 0, 0.55)',
+      backgroundColor: OVERLAYS.medium,
     };
   });
 
@@ -123,7 +124,7 @@ export const Spotlight: React.FC<SpotlightProps> = ({
       left,
       right: 0,
       height: spotlightHeight.value,
-      backgroundColor: 'rgba(0, 0, 0, 0.55)',
+      backgroundColor: OVERLAYS.medium,
     };
   });
 
@@ -136,7 +137,7 @@ export const Spotlight: React.FC<SpotlightProps> = ({
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.55)',
+      backgroundColor: OVERLAYS.medium,
     };
   });
 

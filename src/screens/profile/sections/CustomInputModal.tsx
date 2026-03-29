@@ -10,17 +10,25 @@ import Animated, {
 import { H3, Body } from '../../../components/ui/Typography';
 import { lightHaptic } from '../../../utils/haptics';
 import { SPRINGS } from '../../../constants/animations';
+import { COLORS } from '../../../theme/colors';
+import { OVERLAYS } from '../../../theme/shadows';
+import { FONTS } from '../../../constants/typography';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledTextInput = styled(TextInput);
 const StyledAnimatedView = styled(Animated.View);
 
+// Only allow letters, spaces, hyphens, ampersands, and apostrophes
+const VALID_INPUT_PATTERN = /^[a-zA-Z\s\-&']+$/;
+
 interface CustomInputModalProps {
   visible: boolean;
   title: string;
   subtitle: string;
   placeholder: string;
+  maxLength?: number;
+  existingItems?: string[];
   onClose: () => void;
   onSubmit: (value: string) => void;
 }
@@ -30,6 +38,8 @@ export const CustomInputModal: React.FC<CustomInputModalProps> = ({
   title,
   subtitle,
   placeholder,
+  maxLength = 30,
+  existingItems = [],
   onClose,
   onSubmit,
 }) => {
@@ -38,7 +48,7 @@ export const CustomInputModal: React.FC<CustomInputModalProps> = ({
 
   useEffect(() => {
     animValue.value = withSpring(visible ? 1 : 0, SPRINGS.responsive);
-  }, [visible]);
+  }, [visible, animValue]);
 
   const overlayStyle = useAnimatedStyle(() => ({ opacity: animValue.value }));
   const modalScaleStyle = useAnimatedStyle(() => ({
@@ -51,9 +61,28 @@ export const CustomInputModal: React.FC<CustomInputModalProps> = ({
     onClose();
   };
 
+  const trimmed = inputValue.trim();
+  const isDuplicate = existingItems.some(
+    item => item.toLowerCase() === trimmed.toLowerCase()
+  );
+  const hasInvalidChars = trimmed.length > 0 && !VALID_INPUT_PATTERN.test(trimmed);
+  const tooShort = trimmed.length > 0 && trimmed.length < 2;
+  const canSubmit = trimmed.length >= 2 && !isDuplicate && !hasInvalidChars;
+
+  // Determine which validation message to show
+  const getValidationMessage = (): string | null => {
+    if (trimmed.length === 0) return null;
+    if (hasInvalidChars) return 'Letters, spaces, and hyphens only.';
+    if (tooShort) return 'Must be at least 2 characters.';
+    if (isDuplicate) return 'You already have this one.';
+    return null;
+  };
+
+  const validationMessage = getValidationMessage();
+
   const handleSubmit = () => {
-    if (inputValue.trim()) {
-      onSubmit(inputValue.trim());
+    if (canSubmit) {
+      onSubmit(trimmed);
       setInputValue('');
       Keyboard.dismiss();
     }
@@ -67,13 +96,15 @@ export const CustomInputModal: React.FC<CustomInputModalProps> = ({
       onRequestClose={handleClose}
     >
       <StyledAnimatedView
-        className="flex-1 bg-black/50 justify-start items-center px-6 pt-24"
-        style={overlayStyle}
+        className="flex-1 justify-start items-center px-6 pt-24"
+        style={[overlayStyle, { backgroundColor: OVERLAYS.medium }]}
       >
         <StyledTouchableOpacity
           activeOpacity={1}
           onPress={handleClose}
           className="absolute inset-0"
+          accessibilityRole="button"
+          accessibilityLabel="Close modal"
         />
 
         <StyledAnimatedView
@@ -81,9 +112,9 @@ export const CustomInputModal: React.FC<CustomInputModalProps> = ({
           style={modalScaleStyle}
         >
           {/* Header */}
-          <StyledView className="px-6 pt-6 pb-4 border-b border-neutral-100">
+          <StyledView className="px-6 pt-6 pb-4" style={{ borderBottomWidth: 1, borderBottomColor: COLORS.borderLight }}>
             <H3 className="mb-2">{title}</H3>
-            <Body className="text-neutral-600 text-sm">{subtitle}</Body>
+            <Body style={{ color: COLORS.text.secondary }} className="text-sm">{subtitle}</Body>
           </StyledView>
 
           {/* Input Field */}
@@ -92,12 +123,36 @@ export const CustomInputModal: React.FC<CustomInputModalProps> = ({
               value={inputValue}
               onChangeText={setInputValue}
               placeholder={placeholder}
-              className="bg-neutral-50 border border-neutral-200 rounded-lg px-4 py-3 text-base text-neutral-900"
-              placeholderTextColor="#9CA3AF"
+              maxLength={maxLength}
+              className="rounded-lg px-4 text-base"
+              style={{
+                minHeight: 48,
+                backgroundColor: COLORS.backgroundSubtle,
+                borderWidth: 1,
+                borderColor: validationMessage ? COLORS.error : COLORS.border,
+                color: COLORS.text.primary,
+                fontFamily: FONTS.regular,
+              }}
+              placeholderTextColor={COLORS.text.disabled}
               autoFocus
+              autoCapitalize="words"
+              autoCorrect={false}
               returnKeyType="done"
               onSubmitEditing={handleSubmit}
+              accessibilityLabel={placeholder}
             />
+            <StyledView className="flex-row justify-between mt-1.5">
+              {validationMessage ? (
+                <Body className="text-xs" style={{ color: COLORS.error }}>
+                  {validationMessage}
+                </Body>
+              ) : (
+                <View />
+              )}
+              <Body className="text-xs" style={{ color: COLORS.text.light }}>
+                {trimmed.length}/{maxLength}
+              </Body>
+            </StyledView>
           </StyledView>
 
           {/* Action Buttons */}
@@ -107,23 +162,29 @@ export const CustomInputModal: React.FC<CustomInputModalProps> = ({
                 lightHaptic();
                 handleClose();
               }}
-              className="flex-1 bg-neutral-100 rounded-lg py-3 items-center"
+              accessibilityRole="button"
+              accessibilityLabel="Cancel"
+              className="flex-1 rounded-lg items-center justify-center"
+              style={{ minHeight: 48, backgroundColor: COLORS.backgroundGray }}
             >
-              <Body className="text-neutral-700 font-semibold">Cancel</Body>
+              <Body style={{ color: COLORS.text.muted, fontFamily: FONTS.semiBold }}>Cancel</Body>
             </StyledTouchableOpacity>
 
             <StyledTouchableOpacity
               onPress={handleSubmit}
-              className={`flex-1 rounded-lg py-3 items-center ${inputValue.trim()
-                ? 'bg-primary-500'
-                : 'bg-neutral-200'
-              }`}
-              disabled={!inputValue.trim()}
+              accessibilityRole="button"
+              accessibilityLabel="Add"
+              className="flex-1 rounded-lg items-center justify-center"
+              style={{
+                minHeight: 48,
+                backgroundColor: canSubmit ? COLORS.primary : COLORS.backgroundGrayMedium,
+              }}
+              disabled={!canSubmit}
             >
-              <Body className={`font-semibold ${inputValue.trim()
-                ? 'text-white'
-                : 'text-neutral-400'
-              }`}>
+              <Body style={{
+                fontFamily: FONTS.semiBold,
+                color: canSubmit ? COLORS.card : COLORS.text.disabled,
+              }}>
                 Add
               </Body>
             </StyledTouchableOpacity>

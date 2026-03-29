@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
 import { styled } from 'nativewind';
-import { H2, H3, Body, Card, Button, ScreenWrapper } from '../../components/ui';
+import { H3, Body, BodySmall, Card, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { getUserProfile, updateProfilePauseStatus } from '../../services/profileService';
 import { supabase } from '../../lib/supabase';
 import { createLogger } from '../../utils/secureLogger';
-import { FONTS } from '../../constants/typography';
+import { FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { EvaIcon } from '../../components/icons';
+import { showToast } from '../../utils/toast';
 
 const logger = createLogger('PauseProfileScreen');
 
@@ -22,13 +23,52 @@ const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledSwitch = styled(Switch);
 
+/** Reusable bullet row for the "what happens" lists */
+const BulletRow = ({
+  type,
+  text,
+}: {
+  type: 'allowed' | 'blocked';
+  text: string;
+}) => {
+  const isAllowed = type === 'allowed';
+  return (
+    <StyledView className="flex-row items-start" style={{ marginBottom: 12 }}>
+      <StyledView
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: 11,
+          backgroundColor: isAllowed ? COLORS.match.bg : COLORS.mismatch.bg,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 12,
+          marginTop: 1,
+        }}
+      >
+        <EvaIcon
+          name={isAllowed ? 'checkmark' : 'close'}
+          variant="outline"
+          size={12}
+          color={isAllowed ? 'success' : 'error'}
+        />
+      </StyledView>
+      <Body
+        className="flex-1"
+        style={{ color: COLORS.text.muted, fontSize: FONT_SIZES.base }}
+      >
+        {text}
+      </Body>
+    </StyledView>
+  );
+};
+
 export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigation }) => {
   const [isPaused, setIsPaused] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // Load current user and profile on mount
   useEffect(() => {
     loadCurrentUser();
   }, []);
@@ -45,12 +85,12 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
       if (user) {
         setCurrentUserId(user.id);
       } else {
-        Alert.alert('Error', 'You must be logged in to pause your profile');
+        showToast.error('Please log in to manage your profile');
         navigation.goBack();
       }
     } catch (error) {
       logger.error('Failed to get current user:', error);
-      Alert.alert('Error', 'Failed to load user information');
+      showToast.error('Could not load your account');
     }
   };
 
@@ -64,7 +104,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
         setIsPaused(result.data.isPaused || false);
       } else {
         logger.error('Failed to load profile:', result.error);
-        Alert.alert('Error', 'Failed to load pause status');
+        showToast.error('Could not load pause status');
       }
     } catch (error) {
       logger.error('Failed to load pause status:', error);
@@ -75,34 +115,34 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
 
   const handleTogglePause = async () => {
     if (!currentUserId) {
-      Alert.alert('Error', 'You must be logged in to pause your profile');
+      showToast.error('Please log in to manage your profile');
       return;
     }
 
     if (isPaused) {
-      // Resuming profile - silently without modal
+      // Resuming — no confirmation needed
       setSaving(true);
       try {
         const result = await updateProfilePauseStatus(false);
-
         if (result.ok) {
           setIsPaused(false);
+          showToast.success('Welcome back! Your profile is active again.');
         } else {
-          Alert.alert('Error', result.error?.message || 'Failed to resume profile');
+          showToast.error(result.error?.message || 'Could not resume your profile');
         }
       } catch (error: any) {
-        Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+        showToast.error('Something went wrong. Please try again.');
         logger.error('Failed to resume profile:', error);
       } finally {
         setSaving(false);
       }
     } else {
-      // Pausing profile
+      // Pausing — destructive confirmation is appropriate here
       Alert.alert(
-        'Pause Profile',
-        'You\'ll be removed from the matchmaking pool while paused. You can still vote on others\' proposals, and your existing matches will remain available.',
+        'Take a break?',
+        'You won\'t receive new matches while paused. Your existing matches and conversations stay right where they are.',
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: 'Never mind', style: 'cancel' },
           {
             text: 'Pause',
             style: 'destructive',
@@ -110,15 +150,14 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
               setSaving(true);
               try {
                 const result = await updateProfilePauseStatus(true);
-
                 if (result.ok) {
                   setIsPaused(true);
-                  Alert.alert('Profile Paused', 'You can resume anytime from Settings');
+                  showToast.info('Profile paused. Resume anytime from Settings.');
                 } else {
-                  Alert.alert('Error', result.error?.message || 'Failed to pause profile');
+                  showToast.error(result.error?.message || 'Could not pause your profile');
                 }
               } catch (error: any) {
-                Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+                showToast.error('Something went wrong. Please try again.');
                 logger.error('Failed to pause profile:', error);
               } finally {
                 setSaving(false);
@@ -132,10 +171,20 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
 
   return (
     <ScreenWrapper>
-
       {/* Header */}
-      <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center">
-        <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
+      <StyledView
+        className="border-b px-4 py-3 flex-row items-center"
+        style={{
+          backgroundColor: COLORS.card,
+          borderBottomColor: COLORS.border,
+        }}
+      >
+        <StyledTouchableOpacity
+          onPress={() => navigation.goBack()}
+          className="mr-3"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{ minWidth: 44, minHeight: 44, justifyContent: 'center' }}
+        >
           <EvaIcon name="arrow-back" variant="outline" size={24} color="text" />
         </StyledTouchableOpacity>
         <H3>Pause Profile</H3>
@@ -143,134 +192,105 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
 
       <StyledScrollView className="flex-1">
         <StyledView className="px-4 py-4">
-          {/* Loading State */}
           {loading ? (
             <StyledView className="flex-1 items-center justify-center py-20">
-              <ActivityIndicator size="large" color={COLORS.primaryAccent} />
-              <Body className="text-neutral-500 mt-4">Loading pause status...</Body>
+              <EvaIcon name="pause-circle" variant="outline" size={32} color="secondary" />
+              <Body className="mt-4" style={{ color: COLORS.text.secondary }}>
+                Loading pause status...
+              </Body>
             </StyledView>
           ) : (
             <>
               {/* Status Card */}
-              <Card className={`mb-6 border ${isPaused ? 'bg-warning/10 border-warning/30' : 'bg-success/10 border-success/30'}`}>
-            <StyledView className="flex-row items-center justify-between">
-              <StyledView className="flex-1 mr-4">
-                <StyledView className="flex-row items-center mb-2">
-                  <EvaIcon
-                    name={isPaused ? "pause-circle" : "checkmark-circle-2"}
-                    variant="outline"
-                    size={24}
-                    color={isPaused ? "warning" : "success"}
+              <Card
+                className="mb-6 border"
+                style={{
+                  backgroundColor: isPaused ? COLORS.warning.bg : COLORS.match.bg,
+                  borderColor: isPaused
+                    ? COLORS.warning.icon + '4D' // 30% opacity
+                    : COLORS.match.icon + '4D',
+                }}
+              >
+                <StyledView className="flex-row items-center justify-between">
+                  <StyledView className="flex-1 mr-4">
+                    <StyledView className="flex-row items-center mb-2">
+                      <EvaIcon
+                        name={isPaused ? 'pause-circle' : 'checkmark-circle-2'}
+                        variant="outline"
+                        size={24}
+                        color={isPaused ? 'warning' : 'success'}
+                      />
+                      <H3 className="ml-2">
+                        {isPaused ? 'Profile Paused' : 'Profile Active'}
+                      </H3>
+                    </StyledView>
+                    <BodySmall style={{ color: COLORS.text.secondary }}>
+                      {isPaused
+                        ? 'You\'re taking a break from Bridge'
+                        : 'You\'re in the matching pool and visible to friends'}
+                    </BodySmall>
+                  </StyledView>
+                  <StyledSwitch
+                    value={isPaused}
+                    onValueChange={handleTogglePause}
+                    disabled={saving}
+                    trackColor={{
+                      false: COLORS.success,
+                      true: COLORS.warning.icon,
+                    }}
+                    thumbColor="white"
+                    ios_backgroundColor={COLORS.success}
                   />
-                  <H3 className="ml-2">{isPaused ? 'Profile Paused' : 'Profile Active'}</H3>
                 </StyledView>
-                <Body className="text-neutral-600 text-sm">
-                  {isPaused
-                    ? 'You\'re taking a break from Bridge'
-                    : 'Your profile is visible and active'}
-                </Body>
-              </StyledView>
-              <StyledSwitch
-                value={isPaused}
-                onValueChange={handleTogglePause}
-                disabled={saving}
-                trackColor={{ false: '#52C797', true: '#F59E0B' }}
-                thumbColor="white"
-                ios_backgroundColor="#52C797"
-              />
-            </StyledView>
-          </Card>
+              </Card>
 
-          {/* What Happens When Paused */}
-          <Card className="mb-6">
-            <H3 className="mb-4">When Your Profile is Paused</H3>
-            <StyledView className="space-y-3">
-              <StyledView className="flex-row items-start">
-                <StyledView className="w-5 h-5 bg-error/20 rounded-full items-center justify-center mr-3 mt-0.5">
-                  <EvaIcon name="close" variant="outline" size={12} color="error" />
-                </StyledView>
-                <Body className="flex-1 text-neutral-700 text-sm">
-                  You're removed from the matchmaking pool
-                </Body>
-              </StyledView>
+              {/* What Happens When Paused */}
+              <Card className="mb-6">
+                <H3 className="mb-4">While You're Paused</H3>
+                <BulletRow
+                  type="blocked"
+                  text="No new matches or proposals will come your way"
+                />
+                <BulletRow
+                  type="blocked"
+                  text="Friends won't see you as a candidate to match"
+                />
+                <BulletRow
+                  type="blocked"
+                  text="You won't appear in anyone's proposal cycle"
+                />
+              </Card>
 
-              <StyledView className="flex-row items-start">
-                <StyledView className="w-5 h-5 bg-error/20 rounded-full items-center justify-center mr-3 mt-0.5">
-                  <EvaIcon name="close" variant="outline" size={12} color="error" />
-                </StyledView>
-                <Body className="flex-1 text-neutral-700 text-sm">
-                  You won't receive new proposals or matches
-                </Body>
-              </StyledView>
+              {/* What Stays Active */}
+              <Card className="mb-6">
+                <H3 className="mb-4">What Stays the Same</H3>
+                <BulletRow
+                  type="allowed"
+                  text="You can still vote on friends' proposals"
+                />
+                <BulletRow
+                  type="allowed"
+                  text="Your existing matches and chats stay put"
+                />
+                <BulletRow
+                  type="allowed"
+                  text="All your profile info is saved"
+                />
+                <BulletRow
+                  type="allowed"
+                  text="Resume anytime with one tap"
+                />
+              </Card>
 
-              <StyledView className="flex-row items-start">
-                <StyledView className="w-5 h-5 bg-error/20 rounded-full items-center justify-center mr-3 mt-0.5">
-                  <EvaIcon name="close" variant="outline" size={12} color="error" />
-                </StyledView>
-                <Body className="flex-1 text-neutral-700 text-sm">
-                  You won't appear as a candidate for others
-                </Body>
+              {/* Help Text */}
+              <StyledView className="mt-4 mb-8">
+                <BodySmall
+                  className="text-center"
+                  style={{ color: COLORS.text.secondary }}
+                >
+                  Taking a break is totally fine. Come back whenever you're ready.
+                </BodySmall>
               </StyledView>
-            </StyledView>
-          </Card>
-
-          {/* What Stays Active */}
-          <Card className="mb-6">
-            <H3 className="mb-4">What Stays Active</H3>
-            <StyledView className="space-y-3">
-              <StyledView className="flex-row items-start">
-                <StyledView className="w-5 h-5 bg-success/20 rounded-full items-center justify-center mr-3 mt-0.5">
-                  <EvaIcon name="checkmark" variant="outline" size={12} color="success" />
-                </StyledView>
-                <Body className="flex-1 text-neutral-700 text-sm">
-                  You can still vote on others' proposals
-                </Body>
-              </StyledView>
-
-              <StyledView className="flex-row items-start">
-                <StyledView className="w-5 h-5 bg-success/20 rounded-full items-center justify-center mr-3 mt-0.5">
-                  <EvaIcon name="checkmark" variant="outline" size={12} color="success" />
-                </StyledView>
-                <Body className="flex-1 text-neutral-700 text-sm">
-                  Your existing matches remain available
-                </Body>
-              </StyledView>
-
-              <StyledView className="flex-row items-start">
-                <StyledView className="w-5 h-5 bg-success/20 rounded-full items-center justify-center mr-3 mt-0.5">
-                  <EvaIcon name="checkmark" variant="outline" size={12} color="success" />
-                </StyledView>
-                <Body className="flex-1 text-neutral-700 text-sm">
-                  You can still chat with current matches
-                </Body>
-              </StyledView>
-
-              <StyledView className="flex-row items-start">
-                <StyledView className="w-5 h-5 bg-success/20 rounded-full items-center justify-center mr-3 mt-0.5">
-                  <EvaIcon name="checkmark" variant="outline" size={12} color="success" />
-                </StyledView>
-                <Body className="flex-1 text-neutral-700 text-sm">
-                  Your profile data is preserved
-                </Body>
-              </StyledView>
-
-              <StyledView className="flex-row items-start">
-                <StyledView className="w-5 h-5 bg-success/20 rounded-full items-center justify-center mr-3 mt-0.5">
-                  <EvaIcon name="checkmark" variant="outline" size={12} color="success" />
-                </StyledView>
-                <Body className="flex-1 text-neutral-700 text-sm">
-                  You can resume anytime with one tap
-                </Body>
-              </StyledView>
-            </StyledView>
-          </Card>
-
-          {/* Help Text */}
-          <StyledView className="mt-6">
-            <Body className="text-neutral-500 text-sm text-center">
-              Taking a break is healthy! You can pause and resume as often as you need.
-            </Body>
-          </StyledView>
             </>
           )}
         </StyledView>

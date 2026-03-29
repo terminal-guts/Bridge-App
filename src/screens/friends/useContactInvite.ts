@@ -63,6 +63,7 @@ export function useContactInvite(route: RouteProp<RootStackParamList, 'ContactIn
   const [invitesSentCount, setInvitesSentCount] = useState(0);
   const [suggestedPreSelected, setSuggestedPreSelected] = useState(false);
   const [addingAll, setAddingAll] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const enterCodeInputRef = useRef<TextInput>(null);
   const sectionListRef = useRef<SectionList<NormalizedContact, ContactSection>>(null);
 
@@ -248,6 +249,9 @@ export function useContactInvite(route: RouteProp<RootStackParamList, 'ContactIn
         setSelectedIds(new Set());
         setCelebrationCount(selectedContacts.length);
         setTimeout(() => setCelebrationCount(0), 2500);
+      } else {
+        // User cancelled or SMS was not available
+        showToast.info('No invites sent', 'You can try again whenever you\'re ready');
       }
     } catch (err) {
       logger.error('Send invites failed:', err);
@@ -278,6 +282,9 @@ export function useContactInvite(route: RouteProp<RootStackParamList, 'ContactIn
         prev.map((c) => c.id === contact.id ? { ...c, isInvited: true, invitedAt: Date.now() } : c)
       );
       showToast.success('Sent!', `Invite sent to ${contact.name}`);
+    } else {
+      // User cancelled the SMS compose sheet
+      showToast.info('Invite not sent', 'No worries — you can send it later');
     }
   }, [friendCode, senderName, invitesRemaining]);
 
@@ -375,35 +382,45 @@ export function useContactInvite(route: RouteProp<RootStackParamList, 'ContactIn
     setEnterCodeError('');
   }, []);
 
+  const handleSearchChange = useCallback((text: string) => {
+    setSearchQuery(text);
+  }, []);
+
   // Build sections: "On Bridge" at top, then "Suggested", then A-Z
+  // Applies search filter when searchQuery is non-empty
   const filteredSections = useMemo((): ContactSection[] => {
-    const onBridge = contacts.filter((c) => c.isOnBridge);
-    const notOnBridge = contacts.filter((c) => !c.isOnBridge);
+    let filteredContacts = contacts;
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      filteredContacts = contacts.filter((c) =>
+        c.name.toLowerCase().includes(query) ||
+        c.phoneNumber.includes(query)
+      );
+    }
+
+    const onBridge = filteredContacts.filter((c) => c.isOnBridge);
+    const notOnBridge = filteredContacts.filter((c) => !c.isOnBridge);
 
     const sections: ContactSection[] = [];
     if (onBridge.length > 0) {
       sections.push({ title: ON_BRIDGE_SECTION, data: onBridge });
     }
 
-    const suggested = getSuggestedContacts(notOnBridge);
-    if (suggested.length > 0) {
-      sections.push({ title: SUGGESTED_SECTION, data: suggested });
+    // Only show suggested section when not searching
+    if (!searchQuery.trim()) {
+      const suggested = getSuggestedContacts(notOnBridge);
+      if (suggested.length > 0) {
+        sections.push({ title: SUGGESTED_SECTION, data: suggested });
+      }
     }
 
     const alphabetical = groupContactsAlphabetically(notOnBridge);
     sections.push(...alphabetical);
 
     return sections;
-  }, [contacts]);
-
-  const renderItem = useCallback(
-    ({ item }: { item: NormalizedContact }) => {
-      // Import ContactRow at the call site to avoid circular deps
-      // The caller provides the render function via the returned renderItemProps
-      return { item, isSelected: selectedIds.has(item.id), isAdding: addingFriendId === item.id };
-    },
-    [selectedIds, addingFriendId]
-  );
+  }, [contacts, searchQuery]);
 
   const keyExtractor = useCallback((item: NormalizedContact) => item.id, []);
 
@@ -426,6 +443,7 @@ export function useContactInvite(route: RouteProp<RootStackParamList, 'ContactIn
     addingAll,
     unadddedBridgeCount,
     filteredSections,
+    searchQuery,
 
     // Refs
     enterCodeInputRef,
@@ -443,6 +461,7 @@ export function useContactInvite(route: RouteProp<RootStackParamList, 'ContactIn
     handleAddAllBridge,
     handleOpenSettings,
     handleEnterCodeChangeText,
+    handleSearchChange,
 
     // List helpers
     keyExtractor,

@@ -6,14 +6,29 @@ import { RootStackParamList } from '../../types';
 import { H3, Body } from '../../components/ui/Typography';
 import { Card, Input, ScreenWrapper } from '../../components/ui';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SectionScreenWrapper } from './sections/SectionScreenWrapper';
 import { useEditProfile } from './sections/useEditProfile';
 
+/** Minimum touch target height per iOS HIG (44px) */
+const MIN_TOUCH_TARGET = 44;
+
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledText = styled(Text);
+
+/** Pill text styles using design system constants */
+const pillSelectedStyle = {
+  fontSize: FONT_SIZES.base,
+  fontFamily: FONTS.medium,
+  color: '#FFFFFF' as const,
+};
+const pillUnselectedStyle = {
+  fontSize: FONT_SIZES.base,
+  fontFamily: FONTS.regular,
+  color: COLORS.text.muted,
+};
 
 const RELIGION_OPTIONS = [
   'Buddhist', 'Catholic', 'Christian', 'Hindu', 'Jewish', 'Muslim',
@@ -41,10 +56,15 @@ const EDUCATION_LEVELS = [
   { value: 'other', label: 'Other' },
 ];
 
-const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
-  <StyledView className="mb-3 mt-2">
-    <Body className="text-neutral-500 text-xs font-semibold tracking-wider">{title}</Body>
-  </StyledView>
+/** Reusable field label with required asterisk or optional hint */
+const FieldLabel: React.FC<{ label: string; required?: boolean; optional?: boolean }> = ({ label, required, optional }) => (
+  <Body style={{ fontSize: FONT_SIZES.sm, fontFamily: FONTS.medium, color: COLORS.text.muted, marginBottom: 8 }}>
+    {label}{' '}
+    {required && <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText>}
+    {optional && (
+      <Body style={{ fontSize: FONT_SIZES.xs, color: COLORS.text.light }}>(optional)</Body>
+    )}
+  </Body>
 );
 
 interface EditAboutScreenProps {
@@ -52,17 +72,21 @@ interface EditAboutScreenProps {
 }
 
 export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) => {
-  const { profile, setProfile, loading, updateProfile, originalProfileJson } = useEditProfile();
+  const { profile, loading, updateProfile, originalProfileJson } = useEditProfile();
 
   if (loading || !profile) {
     return (
       <ScreenWrapper>
         <StyledView className="flex-1 justify-center items-center">
-          <Body className="text-neutral-500">{loading ? 'Loading...' : 'Failed to load profile'}</Body>
+          <Body style={{ color: COLORS.text.secondary }}>{loading ? 'Loading...' : 'Failed to load profile'}</Body>
         </StyledView>
       </ScreenWrapper>
     );
   }
+
+  const religionArray = profile.religion
+    ? profile.religion.split(' / ').map((s: string) => s.trim()).filter(Boolean)
+    : [];
 
   return (
     <SectionScreenWrapper
@@ -76,18 +100,16 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
         <H3 className="mb-4">Background & Beliefs</H3>
 
         {/* Religion */}
-        <Body className="text-xs font-medium text-neutral-700 mb-2">
-          Religion <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText>
-        </Body>
+        <FieldLabel label="Religion" required />
         <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
           {RELIGION_OPTIONS.map((option) => {
-            const religionArray = profile.religion ? profile.religion.split(' / ').map((s: string) => s.trim()).filter(Boolean) : [];
             const isSelected = religionArray.includes(option);
             return (
               <StyledTouchableOpacity
                 key={option}
                 activeOpacity={1}
                 delayPressIn={0}
+                style={{ minHeight: MIN_TOUCH_TARGET }}
                 onPress={() => {
                   lightHaptic();
                   const updated = isSelected
@@ -95,12 +117,12 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
                     : [...religionArray, option];
                   updateProfile({ religion: updated.join(' / ') });
                 }}
-                className={`px-3 py-2 rounded-full border ${isSelected
+                className={`px-3 justify-center rounded-full border ${isSelected
                   ? 'bg-primary-500 border-primary-500'
                   : 'bg-white border-neutral-300'
                 }`}
               >
-                <Body className={`text-sm ${isSelected ? 'text-white font-medium' : 'text-neutral-700'}`}>
+                <Body style={isSelected ? pillSelectedStyle : pillUnselectedStyle}>
                   {option}
                 </Body>
               </StyledTouchableOpacity>
@@ -109,42 +131,44 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
         </StyledView>
 
         {/* Political Leaning */}
-        <Body className="text-xs font-medium text-neutral-700 mb-2">
-          Political Leaning <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText>
-        </Body>
+        <FieldLabel label="Political Leaning" required />
         <StyledView className="flex-row flex-wrap gap-2.5">
-          {POLITICAL_OPTIONS.map((option) => (
-            <StyledTouchableOpacity
-              key={option.value}
-              activeOpacity={1}
-              delayPressIn={0}
-              onPress={() => {
-                lightHaptic();
-                updateProfile({ politicalLeaning: profile.politicalLeaning === option.value ? '' : option.value });
-              }}
-              className={`px-3 py-2 rounded-full border ${profile.politicalLeaning === option.value
-                ? 'bg-primary-500 border-primary-500'
-                : 'bg-white border-neutral-300'
-              }`}
-            >
-              <Body className={`text-sm ${profile.politicalLeaning === option.value ? 'text-white font-medium' : 'text-neutral-700'}`}>
-                {option.label}
-              </Body>
-            </StyledTouchableOpacity>
-          ))}
+          {POLITICAL_OPTIONS.map((option) => {
+            const isSelected = profile.politicalLeaning === option.value;
+            return (
+              <StyledTouchableOpacity
+                key={option.value}
+                activeOpacity={1}
+                delayPressIn={0}
+                style={{ minHeight: MIN_TOUCH_TARGET }}
+                onPress={() => {
+                  lightHaptic();
+                  updateProfile({ politicalLeaning: isSelected ? '' : option.value });
+                }}
+                className={`px-3 justify-center rounded-full border ${isSelected
+                  ? 'bg-primary-500 border-primary-500'
+                  : 'bg-white border-neutral-300'
+                }`}
+              >
+                <Body style={isSelected ? pillSelectedStyle : pillUnselectedStyle}>
+                  {option.label}
+                </Body>
+              </StyledTouchableOpacity>
+            );
+          })}
 
           {profile.politicalLeaning === 'other' && profile.customPoliticalLeaning && (
             <StyledTouchableOpacity
+              style={{ minHeight: MIN_TOUCH_TARGET }}
               onPress={() => {
                 updateProfile({ politicalLeaning: '', customPoliticalLeaning: '' });
                 mediumHaptic();
               }}
-              className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
+              className="px-3 justify-center rounded-full border bg-primary-500 border-primary-500"
             >
-              <Body className="text-sm text-white font-medium">{profile.customPoliticalLeaning}</Body>
+              <Body style={pillSelectedStyle}>{profile.customPoliticalLeaning}</Body>
             </StyledTouchableOpacity>
           )}
-
         </StyledView>
       </Card>
 
@@ -153,9 +177,7 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
         <H3 className="mb-4">Professional & Education</H3>
 
         <StyledView className="mb-4">
-          <Body className="text-xs font-medium text-neutral-700 mb-2">
-            Occupation <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText>
-          </Body>
+          <FieldLabel label="Occupation" required />
           <Input
             value={profile.currentJob || ''}
             onChangeText={(text) => updateProfile({ currentJob: text })}
@@ -164,9 +186,7 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
           />
         </StyledView>
         <StyledView className="mb-4">
-          <Body className="text-xs font-medium text-neutral-700 mb-2">
-            Company/Position <Body className="text-[11px] text-neutral-400">(optional)</Body>
-          </Body>
+          <FieldLabel label="Company/Position" optional />
           <Input
             value={profile.companyPosition || ''}
             onChangeText={(text) => updateProfile({ companyPosition: text })}
@@ -176,52 +196,48 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
         </StyledView>
 
         {/* Education Level */}
-        <Body className="text-xs font-medium text-neutral-700 mb-2">
-          Education Level <Body className="text-[11px] text-neutral-400">(optional)</Body>
-        </Body>
+        <FieldLabel label="Education Level" optional />
         <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
-          {EDUCATION_LEVELS.map((option) => (
-            <StyledTouchableOpacity
-              key={option.value}
-              activeOpacity={1}
-              delayPressIn={0}
-              onPress={() => {
-                lightHaptic();
-                if (profile.educationLevel === option.value) {
-                  updateProfile({ educationLevel: '' });
-                } else {
-                  updateProfile({ educationLevel: option.value });
-                }
-              }}
-              className={`px-3 py-2 rounded-full border ${profile.educationLevel === option.value
-                ? 'bg-primary-500 border-primary-500'
-                : 'bg-white border-neutral-300'
-              }`}
-            >
-              <Body className={`text-sm ${profile.educationLevel === option.value ? 'text-white font-medium' : 'text-neutral-700'}`}>
-                {option.label}
-              </Body>
-            </StyledTouchableOpacity>
-          ))}
+          {EDUCATION_LEVELS.map((option) => {
+            const isSelected = profile.educationLevel === option.value;
+            return (
+              <StyledTouchableOpacity
+                key={option.value}
+                activeOpacity={1}
+                delayPressIn={0}
+                style={{ minHeight: MIN_TOUCH_TARGET }}
+                onPress={() => {
+                  lightHaptic();
+                  updateProfile({ educationLevel: isSelected ? '' : option.value });
+                }}
+                className={`px-3 justify-center rounded-full border ${isSelected
+                  ? 'bg-primary-500 border-primary-500'
+                  : 'bg-white border-neutral-300'
+                }`}
+              >
+                <Body style={isSelected ? pillSelectedStyle : pillUnselectedStyle}>
+                  {option.label}
+                </Body>
+              </StyledTouchableOpacity>
+            );
+          })}
 
           {profile.educationLevel === 'other' && profile.customEducationLevel && (
             <StyledTouchableOpacity
+              style={{ minHeight: MIN_TOUCH_TARGET }}
               onPress={() => {
                 updateProfile({ educationLevel: '', customEducationLevel: '' });
                 mediumHaptic();
               }}
-              className="px-3 py-2 rounded-full border bg-primary-500 border-primary-500"
+              className="px-3 justify-center rounded-full border bg-primary-500 border-primary-500"
             >
-              <Body className="text-sm text-white font-medium">{profile.customEducationLevel}</Body>
+              <Body style={pillSelectedStyle}>{profile.customEducationLevel}</Body>
             </StyledTouchableOpacity>
           )}
-
         </StyledView>
 
         <StyledView className="mb-4">
-          <Body className="text-xs font-medium text-neutral-700 mb-2">
-            School / University <Body className="text-[11px] text-neutral-400">(optional)</Body>
-          </Body>
+          <FieldLabel label="School / University" optional />
           <Input
             value={profile.school || ''}
             onChangeText={(text) => updateProfile({ school: text })}
@@ -230,8 +246,6 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
           />
         </StyledView>
       </Card>
-
-      {/* Custom Modals */}
     </SectionScreenWrapper>
   );
 };

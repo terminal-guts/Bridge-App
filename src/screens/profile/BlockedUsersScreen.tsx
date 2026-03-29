@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, TouchableOpacity, Alert, TextInput, ActivityIndicator, Keyboard } from 'react-native';
-import { styled } from 'nativewind';
-import { Body, Card, ScreenWrapper } from '../../components/ui';
+import { Body, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { getBlockedUsers, blockUser, unblockUser, BlockedUser as BlockedUserType } from '../../services/blockService';
 import { getCurrentUser } from '../../services/authService';
 import { findProfileByEmail } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
+import { SHADOWS } from '../../theme/shadows';
 import { EvaIcon } from '../../components/icons';
 
 const logger = createLogger('BlockedUsersScreen');
@@ -17,11 +17,6 @@ const logger = createLogger('BlockedUsersScreen');
 interface BlockedUsersScreenProps {
   navigation: NavigationProp<RootStackParamList>;
 }
-
-const StyledView = styled(View);
-const StyledScrollView = styled(ScrollView);
-const StyledTouchableOpacity = styled(TouchableOpacity);
-const StyledTextInput = styled(TextInput);
 
 export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigation }) => {
   const [blockedUsers, setBlockedUsers] = useState<BlockedUserType[]>([]);
@@ -179,21 +174,63 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
     <ScreenWrapper>
 
       {/* Header */}
-      <StyledView className="bg-white border-b border-neutral-200 px-4 py-3 flex-row items-center">
-        <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
-          <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
-        </StyledTouchableOpacity>
-        <Body className="text-neutral-900 font-semibold text-lg">Blocked Users</Body>
-      </StyledView>
+      <View style={{
+        backgroundColor: COLORS.card,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+      }}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{ minWidth: 44, minHeight: 44, justifyContent: 'center', marginRight: 8 }}
+        >
+          <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.textDarkHeading} />
+        </TouchableOpacity>
+        <Body style={{
+          fontFamily: FONTS.semiBold,
+          fontSize: FONT_SIZES['2xl'],
+          lineHeight: LINE_HEIGHTS['2xl'],
+          color: COLORS.text.heading,
+        }}>
+          Blocked Users
+        </Body>
+      </View>
 
-      <StyledScrollView className="flex-1" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-        <StyledView className="px-4 py-4">
+      <ScrollView
+        style={{ flex: 1 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
+        <View style={{ paddingHorizontal: 16, paddingVertical: 16 }}>
 
-          {/* Block Input — primary action, right at the top */}
-          <StyledView className="mb-5">
-            <Body className="text-neutral-500 text-xs mb-2 ml-1">BLOCK SOMEONE BY EMAIL</Body>
-            <StyledView className="flex-row items-center bg-white border border-neutral-200 rounded-xl overflow-hidden">
-              <StyledTextInput
+          {/* Block Input */}
+          <View style={{ marginBottom: 20 }}>
+            <Body style={{
+              fontFamily: FONTS.medium,
+              fontSize: FONT_SIZES.xs,
+              lineHeight: LINE_HEIGHTS.xs,
+              color: COLORS.text.secondary,
+              marginBottom: 8,
+              marginLeft: 4,
+              letterSpacing: 0.5,
+            }}>
+              BLOCK SOMEONE BY EMAIL
+            </Body>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: COLORS.card,
+              borderWidth: 1,
+              borderColor: COLORS.borderNeutral,
+              borderRadius: 12,
+              overflow: 'hidden',
+              ...SHADOWS.sm,
+            }}>
+              <TextInput
                 value={emailInput}
                 onChangeText={setEmailInput}
                 placeholder="email@example.com"
@@ -203,13 +240,28 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                 autoCorrect={false}
                 returnKeyType="go"
                 onSubmitEditing={handleBlockByEmail}
-                className="flex-1 px-4 py-3.5 text-neutral-900 text-sm"
                 editable={!blocking}
+                style={{
+                  flex: 1,
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  fontFamily: FONTS.regular,
+                  fontSize: FONT_SIZES.base,
+                  lineHeight: LINE_HEIGHTS.base,
+                  color: COLORS.text.primary,
+                }}
               />
-              <StyledTouchableOpacity
+              <TouchableOpacity
                 onPress={handleBlockByEmail}
                 disabled={!emailInput.trim() || blocking}
-                className="px-4 py-3.5"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={{
+                  minWidth: 44,
+                  minHeight: 44,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  paddingHorizontal: 12,
+                }}
               >
                 {blocking ? (
                   <ActivityIndicator size="small" color={COLORS.primaryAccent} />
@@ -221,18 +273,26 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                     color={emailInput.trim() ? COLORS.primaryAccent : COLORS.borderGray}
                   />
                 )}
-              </StyledTouchableOpacity>
-            </StyledView>
-          </StyledView>
+              </TouchableOpacity>
+            </View>
+          </View>
 
           {/* Blocked Users List */}
           {loading ? (
-            <StyledView className="items-center py-12">
+            <View style={{ alignItems: 'center', paddingVertical: 48 }}>
               <ActivityIndicator size="large" color={COLORS.primaryAccent} />
-            </StyledView>
+            </View>
           ) : blockedUsers.length > 0 ? (
             <>
-              <Body className="text-neutral-400 text-xs mb-3 ml-1">
+              <Body style={{
+                fontFamily: FONTS.medium,
+                fontSize: FONT_SIZES.xs,
+                lineHeight: LINE_HEIGHTS.xs,
+                color: COLORS.text.light,
+                marginBottom: 12,
+                marginLeft: 4,
+                letterSpacing: 0.5,
+              }}>
                 {blockedUsers.length} BLOCKED
               </Body>
 
@@ -242,42 +302,133 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                   : 'Unknown User';
 
                 return (
-                  <StyledView key={user.id} className="bg-white rounded-xl mb-2 px-4 py-3.5 flex-row items-center justify-between border border-neutral-100">
-                    <StyledView className="flex-1 mr-3">
-                      <Body className="text-neutral-900 font-semibold text-sm">
+                  <View key={user.id} style={{
+                    backgroundColor: COLORS.card,
+                    borderRadius: 12,
+                    marginBottom: 8,
+                    paddingHorizontal: 16,
+                    paddingVertical: 14,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    borderWidth: 1,
+                    borderColor: COLORS.borderSubtle,
+                    ...SHADOWS.sm,
+                  }}>
+                    <View style={{ flex: 1, marginRight: 12 }}>
+                      <Body style={{
+                        fontFamily: FONTS.semiBold,
+                        fontSize: FONT_SIZES.base,
+                        lineHeight: LINE_HEIGHTS.base,
+                        color: COLORS.text.heading,
+                      }}>
                         {userName}
                       </Body>
-                      <Body className="text-neutral-400 text-xs mt-0.5">
+                      <Body style={{
+                        fontFamily: FONTS.regular,
+                        fontSize: FONT_SIZES.xs,
+                        lineHeight: LINE_HEIGHTS.xs,
+                        color: COLORS.text.light,
+                        marginTop: 2,
+                      }}>
                         {formatDate(user.blockedAt)}
                       </Body>
-                    </StyledView>
-                    <StyledTouchableOpacity
+                    </View>
+                    <TouchableOpacity
                       onPress={() => handleUnblock(user.blockedUserId, userName)}
-                      className="border border-neutral-200 px-3.5 py-1.5 rounded-lg"
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      style={{
+                        borderWidth: 1,
+                        borderColor: COLORS.border,
+                        paddingHorizontal: 14,
+                        minHeight: 44,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        borderRadius: 8,
+                      }}
                     >
-                      <Body className="text-neutral-600 font-medium text-xs">Unblock</Body>
-                    </StyledTouchableOpacity>
-                  </StyledView>
+                      <Body style={{
+                        fontFamily: FONTS.medium,
+                        fontSize: FONT_SIZES.sm,
+                        lineHeight: LINE_HEIGHTS.sm,
+                        color: COLORS.text.muted,
+                      }}>
+                        Unblock
+                      </Body>
+                    </TouchableOpacity>
+                  </View>
                 );
               })}
             </>
-          ) : null}
-
-          {/* Info footer — compact, secondary */}
-          {!loading && (
-            <StyledView className="mt-6 px-2">
-              <StyledView className="flex-row items-center mb-2">
-                <EvaIcon name="info" variant="outline" size={15} color="#9CA3AF" />
-                <Body className="text-neutral-400 text-xs ml-1.5 font-medium">What happens when you block someone</Body>
-              </StyledView>
-              <Body className="text-neutral-400 text-xs leading-5 ml-0.5">
-                Active proposals and matches are cancelled. You won't appear in each other's proposals. Your friendship is removed.
+          ) : (
+            /* Empty state */
+            <View style={{
+              alignItems: 'center',
+              paddingVertical: 48,
+              paddingHorizontal: 24,
+            }}>
+              <View style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: COLORS.backgroundGray,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: 16,
+              }}>
+                <EvaIcon name="shield-off" variant="outline" size={28} color={COLORS.text.light} />
+              </View>
+              <Body style={{
+                fontFamily: FONTS.semiBold,
+                fontSize: FONT_SIZES.xl,
+                lineHeight: LINE_HEIGHTS.xl,
+                color: COLORS.text.heading,
+                marginBottom: 8,
+                textAlign: 'center',
+              }}>
+                No blocked users
               </Body>
-            </StyledView>
+              <Body style={{
+                fontFamily: FONTS.regular,
+                fontSize: FONT_SIZES.base,
+                lineHeight: LINE_HEIGHTS.lg,
+                color: COLORS.text.secondary,
+                textAlign: 'center',
+              }}>
+                If you block someone, they will appear here. You can always unblock them later.
+              </Body>
+            </View>
           )}
 
-        </StyledView>
-      </StyledScrollView>
+          {/* Info footer */}
+          {!loading && (
+            <View style={{ marginTop: 24, paddingHorizontal: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                <EvaIcon name="info" variant="outline" size={15} color={COLORS.text.disabled} />
+                <Body style={{
+                  fontFamily: FONTS.medium,
+                  fontSize: FONT_SIZES.xs,
+                  lineHeight: LINE_HEIGHTS.xs,
+                  color: COLORS.text.light,
+                  marginLeft: 6,
+                }}>
+                  What happens when you block someone
+                </Body>
+              </View>
+              <Body style={{
+                fontFamily: FONTS.regular,
+                fontSize: FONT_SIZES.xs,
+                lineHeight: LINE_HEIGHTS.lg,
+                color: COLORS.text.light,
+                marginLeft: 2,
+              }}>
+                Active proposals and matches are cancelled. You won't appear in each other's proposals. Your friendship is removed.
+              </Body>
+            </View>
+          )}
+
+        </View>
+      </ScrollView>
     </ScreenWrapper>
   );
 };

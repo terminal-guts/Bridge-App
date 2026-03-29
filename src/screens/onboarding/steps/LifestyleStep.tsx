@@ -50,7 +50,7 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
 
   const validateAndContinue = () => {
     if (!lifestyle.drinking && !lifestyle.cannabis && !lifestyle.tobacco && !lifestyle.otherDrugs) {
-      setError('Please answer at least one question or tap Skip');
+      setError('Answer at least one, or tap Skip to move on');
       return;
     }
 
@@ -175,9 +175,9 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-        <H1 className="mb-3">What's your lifestyle?</H1>
+        <H1 className="mb-3">How do you unwind?</H1>
         <Body className="text-neutral-600 mb-8">
-          Share your lifestyle habits.
+          No judgment here -- this helps us match you with someone compatible.
         </Body>
 
         <QuestionSection

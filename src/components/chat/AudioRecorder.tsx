@@ -1,8 +1,11 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { View, TouchableOpacity, Animated, Alert, Text, StyleSheet } from 'react-native';
 import { Audio } from 'expo-av';
-import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { EvaIcon } from '../icons';
+import { COLORS } from '../../theme/colors';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { DURATIONS } from '../../constants/animations';
 import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('AudioRecorder');
@@ -54,6 +57,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
     const [isPreparing, setIsPreparing] = useState(false);
     const [elapsed, setElapsed] = useState(0);
     const [waveformBars, setWaveformBars] = useState<number[]>(new Array(WAVEFORM_BAR_COUNT).fill(3));
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const recordingRef = useRef<Audio.Recording | null>(null);
     const isRecordingRef = useRef(false);
@@ -136,19 +140,19 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
         Animated.parallel([
             Animated.timing(slideAnim, {
                 toValue: 1,
-                duration: 250,
+                duration: DURATIONS.normal,
                 useNativeDriver: true,
             }),
             Animated.loop(
                 Animated.sequence([
                     Animated.timing(pulseAnim, {
                         toValue: 1.2,
-                        duration: 800,
+                        duration: DURATIONS.emphasis + 200,
                         useNativeDriver: true,
                     }),
                     Animated.timing(pulseAnim, {
                         toValue: 1,
-                        duration: 800,
+                        duration: DURATIONS.emphasis + 200,
                         useNativeDriver: true,
                     }),
                 ])
@@ -161,7 +165,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
         pulseAnim.setValue(1);
         Animated.timing(slideAnim, {
             toValue: 0,
-            duration: 200,
+            duration: DURATIONS.micro,
             useNativeDriver: true,
         }).start();
     };
@@ -207,6 +211,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
             const { recording } = await Audio.Recording.createAsync(RECORDING_OPTIONS);
 
             logger.info('[AudioRecorder] Recording started successfully');
+            setErrorMessage(null);
             recordingRef.current = recording;
             isRecordingRef.current = true;
             waveformDataRef.current = new Array(WAVEFORM_BAR_COUNT).fill(3);
@@ -221,7 +226,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => { });
         } catch (err) {
             logger.error('[AudioRecorder] Failed to start recording', err);
-            Alert.alert('Error', 'Could not start microphone. Please try again.');
+            setErrorMessage('Could not start microphone. Please try again.');
             setIsPreparing(false);
             setIsRecording(false);
             isRecordingRef.current = false;
@@ -266,11 +271,11 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
                     hasUri: !!uri,
                     duration: status.durationMillis,
                 });
-                Alert.alert('Too Short', 'Hold for at least 1 second to send a voice note.');
+                setErrorMessage('Hold for at least 1 second to send a voice note.');
             }
         } catch (err) {
             logger.error('[AudioRecorder] Error stopping recording:', err);
-            Alert.alert('Error', 'Something went wrong while saving the audio.');
+            setErrorMessage('Something went wrong while saving the audio.');
             setIsRecording(false);
             onRecordingStateChange?.(false);
             isRecordingRef.current = false;
@@ -323,28 +328,42 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
     // ── Render: idle state (just the mic button) ──────────────────────────────
     if (!isRecording) {
         return (
-            <TouchableOpacity
-                onPress={handleMicPress}
-                disabled={disabled || isPreparing}
-                activeOpacity={0.7}
-                style={[
-                    styles.micButton,
-                    (disabled || isPreparing) && styles.micButtonDisabled,
-                ]}
-            >
-                <Ionicons
-                    name="mic-outline"
-                    size={24}
-                    color="white"
-                    style={{ opacity: isPreparing ? 0.4 : 1 }}
-                />
-            </TouchableOpacity>
+            <View>
+                <TouchableOpacity
+                    onPress={() => { setErrorMessage(null); handleMicPress(); }}
+                    disabled={disabled || isPreparing}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                    style={[
+                        styles.micButton,
+                        (disabled || isPreparing) && styles.micButtonDisabled,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={isPreparing ? 'Preparing microphone' : 'Record voice note'}
+                    accessibilityState={{ disabled: disabled || isPreparing }}
+                >
+                    <EvaIcon
+                        name="mic"
+                        variant="outline"
+                        size={24}
+                        color="white"
+                        style={{ opacity: isPreparing ? 0.4 : 1 }}
+                    />
+                </TouchableOpacity>
+                {errorMessage && (
+                    <View style={styles.errorBanner}>
+                        <Text style={styles.errorText} numberOfLines={2}>{errorMessage}</Text>
+                    </View>
+                )}
+            </View>
         );
     }
 
     // ── Render: recording state (full-width iMessage-like bar) ─────────────────
     return (
         <Animated.View
+            accessibilityRole="timer"
+            accessibilityLabel={`Recording voice note, ${formatElapsed(elapsed)} elapsed`}
             style={[
                 styles.recordingBar,
                 {
@@ -364,8 +383,10 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
                 activeOpacity={0.7}
                 style={styles.cancelButton}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel recording"
             >
-                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                <EvaIcon name="trash-2" variant="outline" size={20} color={COLORS.error} />
             </TouchableOpacity>
 
             {/* Waveform + Timer */}
@@ -404,8 +425,10 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
                 activeOpacity={0.7}
                 style={styles.sendButton}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Send voice note"
             >
-                <Ionicons name="arrow-up" size={20} color="white" />
+                <EvaIcon name="arrow-upward" variant="outline" size={20} color="white" />
             </TouchableOpacity>
         </Animated.View>
     );
@@ -418,7 +441,7 @@ const styles = StyleSheet.create({
         width: 42,
         height: 42,
         borderRadius: 21,
-        backgroundColor: '#437FFF',
+        backgroundColor: COLORS.primaryAccent,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -430,10 +453,10 @@ const styles = StyleSheet.create({
     recordingBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FEF2F2',
+        backgroundColor: COLORS.backgroundRecordingRed,
         borderRadius: 24,
         borderWidth: 1,
-        borderColor: '#FECACA',
+        borderColor: COLORS.borderRecordingRed,
         height: 48,
         paddingHorizontal: 6,
         flex: 1,
@@ -444,7 +467,7 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: '#FEE2E2',
+        backgroundColor: COLORS.mismatch.bg,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -463,15 +486,15 @@ const styles = StyleSheet.create({
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#EF4444',
+        backgroundColor: COLORS.error,
         marginRight: 8,
     },
 
     // Timer text
     timerText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#B91C1C',
+        fontSize: FONT_SIZES.sm,
+        fontFamily: FONTS.semiBold,
+        color: COLORS.criticalRed,
         marginRight: 10,
         minWidth: 36,
         fontVariant: ['tabular-nums'],
@@ -490,7 +513,7 @@ const styles = StyleSheet.create({
     waveformBar: {
         width: 3,
         borderRadius: 1.5,
-        backgroundColor: '#EF4444',
+        backgroundColor: COLORS.error,
     },
 
     // Send button
@@ -498,8 +521,28 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: '#437FFF',
+        backgroundColor: COLORS.primaryAccent,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+
+    // Inline error banner (shown below mic button)
+    errorBanner: {
+        position: 'absolute',
+        bottom: 48,
+        right: 0,
+        backgroundColor: COLORS.backgroundRecordingRed,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: COLORS.borderRecordingRed,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        minWidth: 180,
+        maxWidth: 260,
+    },
+    errorText: {
+        fontFamily: FONTS.regular,
+        fontSize: FONT_SIZES.xs,
+        color: COLORS.danger,
     },
 });

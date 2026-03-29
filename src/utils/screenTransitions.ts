@@ -7,7 +7,7 @@
  */
 
 import { StackCardInterpolationProps, TransitionPresets } from '@react-navigation/stack';
-import { Easing } from 'react-native';
+import { DURATIONS, EASINGS } from '../constants/animations';
 
 /**
  * Horizontal slide with subtle fade — the primary push/pop transition.
@@ -19,15 +19,15 @@ export const slideWithFade = {
     open: {
       animation: 'timing' as const,
       config: {
-        duration: 300,
-        easing: Easing.bezier(0.25, 0.1, 0.25, 1.0),
+        duration: DURATIONS.normal,
+        easing: EASINGS.enter,
       },
     },
     close: {
       animation: 'timing' as const,
       config: {
-        duration: 280,
-        easing: Easing.bezier(0.4, 0.0, 1.0, 1.0),
+        duration: DURATIONS.normal,
+        easing: EASINGS.exit,
       },
     },
   },
@@ -91,8 +91,8 @@ export const modalSlideUp = {
     close: {
       animation: 'timing' as const,
       config: {
-        duration: 250,
-        easing: Easing.bezier(0.4, 0.0, 1.0, 1.0),
+        duration: DURATIONS.normal,
+        easing: EASINGS.exit,
       },
     },
   },
@@ -120,15 +120,15 @@ export const fadeTransition = {
     open: {
       animation: 'timing' as const,
       config: {
-        duration: 250,
-        easing: Easing.bezier(0.25, 0.1, 0.25, 1.0),
+        duration: DURATIONS.normal,
+        easing: EASINGS.enter,
       },
     },
     close: {
       animation: 'timing' as const,
       config: {
-        duration: 200,
-        easing: Easing.bezier(0.4, 0.0, 1.0, 1.0),
+        duration: DURATIONS.micro,
+        easing: EASINGS.exit,
       },
     },
   },

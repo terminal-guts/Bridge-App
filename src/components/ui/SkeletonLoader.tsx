@@ -48,8 +48,8 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
 
   return (
     <Animated.View
-      style={[{ width: width as number, height: height as number }, animatedStyle]}
-      className={`bg-neutral-200 ${borderRadius} ${className}`}
+      style={[{ width: width as number, height: height as number, backgroundColor: COLORS.skeletonBone }, animatedStyle]}
+      className={`${borderRadius} ${className}`}
     />
   );
 };
@@ -60,7 +60,7 @@ interface DashboardSkeletonProps {
 
 export const DashboardSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
   return (
-    <View className={`flex-1 bg-neutral-100 ${className}`} style={{ paddingTop: 24 }}>
+    <View className={`flex-1 ${className}`} style={{ paddingTop: 24, backgroundColor: COLORS.screenBackground }}>
       <View className="px-4">
         {/* Prospective Matches Card Skeleton (Large Hero Card) */}
         <View className="bg-primary-500 rounded-2xl p-6 mb-6">
@@ -77,7 +77,7 @@ export const DashboardSkeleton: React.FC<DashboardSkeletonProps> = ({ className 
         {/* Survey & Pricing Row Skeleton */}
         <View className="flex-row mb-6" style={{ gap: 16 }}>
           {/* Survey Card Skeleton */}
-          <View className="flex-1 bg-white rounded-xl p-5">
+          <View className="flex-1 rounded-xl p-5" style={{ backgroundColor: COLORS.card }}>
             <SkeletonLoader height={10} width="70%" borderRadius="rounded" className="mb-3" />
             <View className="items-center my-4">
               <SkeletonLoader height={48} width={140} borderRadius="rounded-xl" />
@@ -85,7 +85,7 @@ export const DashboardSkeleton: React.FC<DashboardSkeletonProps> = ({ className 
           </View>
 
           {/* Pricing Card Skeleton */}
-          <View className="flex-1 bg-white rounded-xl p-5">
+          <View className="flex-1 rounded-xl p-5" style={{ backgroundColor: COLORS.card }}>
             <SkeletonLoader height={10} width="60%" borderRadius="rounded" className="mx-auto mb-3" />
             <View className="items-center">
               <SkeletonLoader height={20} width={80} borderRadius="rounded" className="mb-2" />
@@ -109,7 +109,7 @@ export const DashboardSkeleton: React.FC<DashboardSkeletonProps> = ({ className 
           {/* Friend Cards */}
           <View className="px-4">
             {[1, 2].map((i) => (
-              <View key={i} className="bg-white rounded-xl p-3 mb-2">
+              <View key={i} className="rounded-xl p-3 mb-2" style={{ backgroundColor: COLORS.card }}>
                 <View className="flex-row items-center">
                   <SkeletonLoader height={48} width={48} borderRadius="rounded-full" className="mr-3" />
                   <View className="flex-1">
@@ -139,7 +139,7 @@ export const DashboardSkeleton: React.FC<DashboardSkeletonProps> = ({ className 
  */
 export const SurveySkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
   return (
-    <View className={`flex-1 bg-neutral-50 px-4 pt-4 ${className}`}>
+    <View className={`flex-1 px-4 pt-4 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
       {/* Header Skeleton */}
       <View className="mb-6">
         <View className="flex-row items-center mb-2">
@@ -160,7 +160,7 @@ export const SurveySkeleton: React.FC<DashboardSkeletonProps> = ({ className = '
       </View>
 
       {/* Recipient Card Skeleton */}
-      <View className="bg-white rounded-2xl mb-8 overflow-hidden">
+      <View className="rounded-2xl mb-8 overflow-hidden" style={{ backgroundColor: COLORS.card }}>
         <SkeletonLoader height={48} width="100%" borderRadius="rounded-none" className="mb-4" />
         <View className="px-4 pb-4">
           <View className="flex-row">
@@ -187,7 +187,7 @@ export const SurveySkeleton: React.FC<DashboardSkeletonProps> = ({ className = '
 
       {/* Candidate Cards Skeleton */}
       {[1, 2, 3].map((i) => (
-        <View key={i} className="bg-white rounded-2xl p-4 mb-4">
+        <View key={i} className="rounded-2xl p-4 mb-4" style={{ backgroundColor: COLORS.card }}>
           <View className="flex-row mb-4">
             <SkeletonLoader height={100} width={100} borderRadius="rounded-xl" />
             <View className="flex-1 ml-4 justify-center">
@@ -216,7 +216,7 @@ export const SurveySkeleton: React.FC<DashboardSkeletonProps> = ({ className = '
  */
 export const CommunitySkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
   return (
-    <View className={`flex-1 bg-white ${className}`}>
+    <View className={`flex-1 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
       {/* Header */}
       <View className="px-6 pt-4 mb-5">
         <View className="flex-row items-center justify-between">
@@ -252,28 +252,43 @@ export const CommunitySkeleton: React.FC<DashboardSkeletonProps> = ({ className 
 
 /**
  * MatchesSkeleton — matches the Matches screen layout:
- * header + large match card placeholder
+ * header + full-height image card with overlaid bottom content (mirrors MatchCard)
  */
 export const MatchesSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
   return (
-    <View className={`flex-1 bg-white ${className}`}>
-      {/* Header */}
-      <View className="px-6 pt-4 mb-6">
-        <SkeletonLoader height={32} width={130} borderRadius="rounded" />
+    <View className={`flex-1 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
+      {/* Header — matches headerRow in MatchesScreen */}
+      <View className="px-6 pt-2 pb-1">
+        <SkeletonLoader height={32} width={100} borderRadius="rounded" />
       </View>
 
-      {/* Match card placeholder */}
-      <View className="px-6">
-        <View className="rounded-2xl overflow-hidden" style={{ backgroundColor: COLORS.backgroundProgressTrack }}>
-          {/* Photo area */}
-          <SkeletonLoader height={280} width="100%" borderRadius="rounded-none" />
-          {/* Info area */}
-          <View className="p-4">
-            <SkeletonLoader height={22} width={140} borderRadius="rounded" className="mb-3" />
-            <SkeletonLoader height={14} width={200} borderRadius="rounded" className="mb-2" />
-            <SkeletonLoader height={14} width={160} borderRadius="rounded" className="mb-4" />
-            <SkeletonLoader height={44} width="100%" borderRadius="rounded-xl" />
+      {/* Full-height card skeleton — mirrors the MatchCard layout */}
+      <View className="flex-1 px-4 pb-4 pt-2">
+        <View className="flex-1 rounded-3xl overflow-hidden" style={{ backgroundColor: COLORS.backgroundProgressTrack }}>
+          {/* Full card is one big image area — skeleton fills it */}
+          <View className="flex-1" />
+
+          {/* Overlaid bottom content — mirrors MatchCard bottom section */}
+          <View className="absolute bottom-0 left-0 right-0 p-4" style={{ paddingRight: 80 }}>
+            {/* Status pill */}
+            <SkeletonLoader height={28} width={160} borderRadius="rounded-lg" className="mb-2" />
+            {/* Name */}
+            <SkeletonLoader height={28} width={140} borderRadius="rounded" className="mb-2" />
+            {/* Endorser row */}
+            <View className="flex-row items-center mb-1" style={{ gap: 6 }}>
+              <SkeletonLoader height={14} width={60} borderRadius="rounded" />
+              <View className="flex-row" style={{ marginLeft: 4 }}>
+                {[0, 1, 2].map(i => (
+                  <View key={i} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.skeletonOverlay, marginLeft: i === 0 ? 0 : -8 }} />
+                ))}
+              </View>
+            </View>
+            {/* Date */}
+            <SkeletonLoader height={12} width={120} borderRadius="rounded" />
           </View>
+
+          {/* Action button placeholder — bottom right */}
+          <View className="absolute" style={{ right: 16, bottom: 18, width: 52, height: 52, borderRadius: 26, backgroundColor: COLORS.backgroundGrayMedium }} />
         </View>
       </View>
     </View>
@@ -286,7 +301,7 @@ export const MatchesSkeleton: React.FC<DashboardSkeletonProps> = ({ className = 
  */
 export const LeaderboardSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
   return (
-    <View className={`flex-1 bg-white ${className}`}>
+    <View className={`flex-1 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
       {/* Header */}
       <View className="px-6 pt-4 mb-4 flex-row items-center justify-between">
         <SkeletonLoader height={24} width={24} borderRadius="rounded-full" />
@@ -330,9 +345,9 @@ export const LeaderboardSkeleton: React.FC<DashboardSkeletonProps> = ({ classNam
 
 export const ProfileSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
   return (
-    <View className={`flex-1 bg-neutral-50 ${className}`}>
+    <View className={`flex-1 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
       {/* Header Skeleton */}
-      <View className="bg-white border-b border-neutral-200">
+      <View style={{ backgroundColor: COLORS.card, borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
         <View className="px-4 py-3 flex-row justify-between items-center">
           <SkeletonLoader height={24} width={120} borderRadius="rounded" />
           <View className="flex-row space-x-3">
@@ -344,7 +359,7 @@ export const ProfileSkeleton: React.FC<DashboardSkeletonProps> = ({ className = 
       </View>
 
       {/* Profile Photo and Name Skeleton */}
-      <View className="bg-white px-4 pb-4">
+      <View className="px-4 pb-4" style={{ backgroundColor: COLORS.card }}>
         <View className="items-center">
           <SkeletonLoader height={96} width={96} borderRadius="rounded-full" className="mb-3" />
           <SkeletonLoader height={20} width={100} borderRadius="rounded" className="mb-3" />
@@ -365,7 +380,7 @@ export const ProfileSkeleton: React.FC<DashboardSkeletonProps> = ({ className = 
       </View>
 
       {/* Tab Bar Skeleton */}
-      <View className="bg-white border-t border-neutral-100 flex-row">
+      <View className="flex-row" style={{ backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle }}>
         <View className="flex-1 py-3 items-center">
           <SkeletonLoader height={16} width={60} borderRadius="rounded" />
         </View>
@@ -380,7 +395,7 @@ export const ProfileSkeleton: React.FC<DashboardSkeletonProps> = ({ className = 
       {/* Content Cards Skeleton */}
       <View className="px-4 py-6">
         {/* Profile Completeness Card Skeleton */}
-        <View className="bg-white rounded-lg p-4 mb-4 shadow-sm">
+        <View className="rounded-lg p-4 mb-4 shadow-sm" style={{ backgroundColor: COLORS.card }}>
           <View className="flex-row items-center mb-3">
             <SkeletonLoader height={24} width={24} borderRadius="rounded-full" />
             <SkeletonLoader height={18} width={150} borderRadius="rounded" className="ml-3" />
@@ -391,7 +406,7 @@ export const ProfileSkeleton: React.FC<DashboardSkeletonProps> = ({ className = 
 
         {/* Section Cards Skeleton */}
         {[1, 2, 3].map((i) => (
-          <View key={i} className="bg-white rounded-lg p-4 mb-4 shadow-sm">
+          <View key={i} className="rounded-lg p-4 mb-4 shadow-sm" style={{ backgroundColor: COLORS.card }}>
             <SkeletonLoader height={20} width={120} borderRadius="rounded" className="mb-4" />
             <View className="space-y-3">
               <View className="flex-row items-center">

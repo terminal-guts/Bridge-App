@@ -58,7 +58,7 @@ export const InterestsStep: React.FC<InterestsStepProps> = ({
       setMyInterests(myInterests.filter(i => i !== interest));
     } else {
       if (totalMyInterests >= 5) {
-        setError('You can select up to 5 interests');
+        setError('Five is the max -- swap one out if you want to change');
         return;
       }
       setMyInterests([...myInterests, interest]);
@@ -66,14 +66,23 @@ export const InterestsStep: React.FC<InterestsStepProps> = ({
     setError('');
   };
 
+  const handleSkip = () => {
+    // Save whatever the user selected (even if < 3) so the matching
+    // algorithm has partial data rather than nothing (22% weight).
+    if (myInterests.length > 0) {
+      updateData({ interests: myInterests });
+    }
+    onNext();
+  };
+
   const validateAndContinue = () => {
     if (totalMyInterests < 3) {
-      setError('Please select at least 3 interests');
+      setError('Pick at least 3 so we can find great matches for you');
       return;
     }
 
     if (totalMyInterests > 5) {
-      setError('You can select up to 5 interests');
+      setError('Five is the max -- swap one out if you want to change');
       return;
     }
 
@@ -89,13 +98,13 @@ export const InterestsStep: React.FC<InterestsStepProps> = ({
     <OnboardingLayout
       onBack={onBack}
       onContinue={validateAndContinue}
-      onSkip={onNext}
+      onSkip={handleSkip}
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-      <H1 className="mb-3">What are your interests?</H1>
+      <H1 className="mb-3">What are you into?</H1>
       <Body className="text-neutral-500 text-sm mb-2">
-        Select at least 3 - add custom interests later.
+        Pick at least 3 -- we use these to find people with shared passions.
       </Body>
       <Body className="text-primary-500 font-semibold mb-6">
         {totalMyInterests} of 5 selected

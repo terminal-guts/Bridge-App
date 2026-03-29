@@ -61,11 +61,11 @@ export const GenderStep: React.FC<GenderStepProps> = ({
     const newErrors: { myGender?: string; interestedIn?: string } = {};
 
     if (myGender.length === 0) {
-      newErrors.myGender = 'Please select at least one gender';
+      newErrors.myGender = 'Pick at least one that fits you';
     }
 
     if (interestedIn.length === 0) {
-      newErrors.interestedIn = 'Please select at least one gender';
+      newErrors.interestedIn = 'Let us know who you want to meet';
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -136,9 +136,9 @@ export const GenderStep: React.FC<GenderStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-        <H1 className="mb-3">What's your gender?</H1>
+        <H1 className="mb-3">Tell us about yourself</H1>
         <Body className="text-neutral-600 mb-8">
-          Help us understand who you are and who you'd like to meet.
+          This helps your friends match you with the right people.
         </Body>
 
         {/* My Gender */}

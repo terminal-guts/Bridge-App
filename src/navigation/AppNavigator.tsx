@@ -22,13 +22,14 @@ import { preloadCommunityCache } from '../services/communityCache';
 import { showToast } from '../utils/toast';
 import { selectionHaptic } from '../utils/haptics';
 import { CommunitySkeleton } from '../components/ui/SkeletonLoader';
+import { COLORS } from '../theme/colors';
 
 // ── All screens are lazy-loaded to minimize startup parsing ──
 
 // ── Lazy-loaded screens (only evaluated when navigated to) ──────────────────
 // Solid-color fallback prevents white flash / layout shift during lazy screen loads.
-// Uses the app's default background (#F9FAFB) to blend seamlessly with the card style.
-const LAZY_FALLBACK_STYLE = { flex: 1, backgroundColor: '#F9FAFB' } as const;
+// Uses the app's default background to blend seamlessly with the card style.
+const LAZY_FALLBACK_STYLE = { flex: 1, backgroundColor: COLORS.screenBackground } as const;
 const LazyFallback = () => <View style={LAZY_FALLBACK_STYLE} />;
 
 function withSuspense<P extends object>(LazyComponent: React.LazyExoticComponent<React.ComponentType<P>>) {
@@ -49,7 +50,7 @@ function withSuspense<P extends object>(LazyComponent: React.LazyExoticComponent
 const _welcomePreload = import('../screens/auth/WelcomeScreen');
 const WelcomeScreen = withSuspense(React.lazy(() => _welcomePreload.then(m => ({ default: m.WelcomeScreen }))));
 const LoginScreen = withSuspense(React.lazy(() => import('../screens/auth/LoginScreen').then(m => ({ default: m.LoginScreen }))));
-const PhoneVerificationScreen = withSuspense(React.lazy(() => import('../screens/auth/PhoneVerificationScreen').then(m => ({ default: m.PhoneVerificationScreen }))));
+const EmailVerificationScreen = withSuspense(React.lazy(() => import('../screens/auth/EmailVerificationScreen').then(m => ({ default: m.EmailVerificationScreen }))));
 
 // Main tab screens — all lazy (parsed on first navigation, not at startup)
 const CommunityScreen = withSuspense(React.lazy(() => import('../screens/main/CommunityScreen').then(m => ({ default: m.CommunityScreen }))));
@@ -159,14 +160,14 @@ const ProfileRingIcon: React.FC<{
           cy={ringSize / 2}
           r={ringRadius}
           fill="none"
-          stroke="#437FFF"
+          stroke={COLORS.navActiveIcon}
           strokeWidth={2.5}
           strokeLinecap="round"
           strokeDasharray={ringCircumference}
           strokeDashoffset={ringCircumference * (1 - profileStrength / 100)}
         />
       </Svg>
-      <ProfileTabIcon size={iconSize} color={focused ? '#437FFF' : '#667085'} />
+      <ProfileTabIcon size={iconSize} color={focused ? COLORS.navActiveIcon : COLORS.navInactiveIcon} />
     </View>
   );
 };
@@ -232,11 +233,11 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
     <View style={{
       flexDirection: 'row',
       height: contentHeight + insets.bottom,
-      backgroundColor: '#FFFFFF',
+      backgroundColor: COLORS.card,
       borderTopWidth: 1,
-      borderTopColor: '#E4E7EC',
+      borderTopColor: COLORS.borderNeutral,
       paddingBottom: insets.bottom,
-      shadowColor: '#000',
+      shadowColor: '#4A3428',
       shadowOffset: { width: 0, height: -2 },
       shadowOpacity: 0.05,
       shadowRadius: 3,
@@ -249,7 +250,7 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
         left: 0,
         width: 40,
         height: 3,
-        backgroundColor: '#437FFF',
+        backgroundColor: COLORS.navIndicator,
         borderBottomLeftRadius: 2,
         borderBottomRightRadius: 2,
         zIndex: 1,
@@ -293,7 +294,7 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
               {showRing ? (
                 <ProfileRingIcon profileStrength={profileStrength} iconSize={iconSize} focused={focused} />
               ) : (
-                <Icon size={iconSize} color={focused ? '#437FFF' : '#667085'} />
+                <Icon size={iconSize} color={focused ? COLORS.navActiveIcon : COLORS.navInactiveIcon} />
               )}
             </TouchableOpacity>
           </GuideTarget>
@@ -790,7 +791,7 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
           initialRouteName={isAuthenticated ? (isSuspended ? 'Suspended' : (userRole === 'matchmaker' ? 'MatchmakerTabs' : 'MainTabs')) : 'Welcome'}
           screenOptions={{
             headerShown: false,
-            cardStyle: { backgroundColor: '#F9FAFB' },
+            cardStyle: { backgroundColor: COLORS.screenBackground },
             gestureEnabled: true,
             ...slideWithFade,
           }}
@@ -798,7 +799,7 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
           {/* Auth Stack — fade transitions for state changes */}
           <Stack.Screen name="Welcome" component={WelcomeScreen} options={fadeTransition} />
           <Stack.Screen name="Login" component={LoginScreen} options={fadeTransition} />
-          <Stack.Screen name="PhoneVerification" component={PhoneVerificationScreen} options={fadeTransition} />
+          <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} options={fadeTransition} />
 
           {/* Onboarding — fade in from auth flow */}
           <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ ...fadeTransition, gestureEnabled: false }} />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Dimensions } from 'react-native';
 import { FlashList, ListRenderItemInfo } from '@shopify/flash-list';
 
 import { UserRow } from '../../components/community/UserRow';
@@ -11,7 +11,7 @@ import { EvaIcon } from '../../components/icons';
 import { MainTabParamList } from '../../types';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { communityService } from '../../services/communityServiceIndex';
-import { getUserFriendCode, getIncomingRequests, acceptFriendRequest, declineFriendRequest, FriendRequest } from '../../services/friendService';
+import { getIncomingRequests, acceptFriendRequest, declineFriendRequest, FriendRequest } from '../../services/friendService';
 import { FriendWithGridStatus } from '../../types/community';
 import { getUserProfile, getCachedMinimalProfileStatus } from '../../services/profileService';
 import { getAuthenticatedUserId } from '../../utils/auth';
@@ -30,9 +30,6 @@ import { showToast } from '../../utils/toast';
 import { BadgeAwardModal } from '../../components/badges/BadgeAwardModal';
 import { getBadgeForFriend } from '../../services/badgeService';
 import { FriendBadge } from '../../types/badges';
-// DEFERRED: import { sendCrush, removeCrush } from '../../services/crushService';
-
-// Extracted
 import {
   MatchResetTimer,
   partitionFriends,
@@ -45,11 +42,12 @@ import {
   buildVoteHandlers,
   buildCrewHandlers,
   PendingRequestsSection,
+  InlineLoadError,
   styles,
 } from './CommunityScreen.components';
 
-// UserRow height: paddingVertical 16*2 + avatar 68 + hairline border ~= 101px
-const USER_ROW_ESTIMATED_HEIGHT = 101;
+// Compact (SE): 12*2 + 56 + 1 ~= 81px | Standard: 16*2 + 68 + 1 ~= 101px
+const USER_ROW_ESTIMATED_HEIGHT = Dimensions.get('window').width < 380 ? 81 : 101;
 
 interface CommunityScreenProps {
   navigation: NavigationProp<MainTabParamList, 'Community'>;
@@ -60,11 +58,10 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const [usersToMatch, setUsersToMatch] = useState<FriendWithGridStatus[]>([]);
   const [alreadyHelped, setAlreadyHelped] = useState<FriendWithGridStatus[]>([]);
   const [loading, setLoading] = useState(true);
-  // null = still checking, true = can see friends area, false = must vote first
   const [hasCompletedVoting, setHasCompletedVoting] = useState<boolean | null>(null);
-  const [friendCode, setFriendCode] = useState<string>('');
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [unreadMap, setUnreadMap] = useState<Record<string, boolean>>({});
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
   const [processingRequestIds, setProcessingRequestIds] = useState<Set<string>>(new Set());
@@ -103,15 +100,10 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   const loadFriendsData = useCallback(async () => {
     try {
-      const [data, codeRes, requestsRes] = await Promise.all([
+      const [data, requestsRes] = await Promise.all([
         communityService.getFriendsAreaData(),
-        getUserFriendCode(),
         getIncomingRequests(),
       ]);
-
-      if (codeRes.ok && codeRes.data) {
-        setFriendCode(codeRes.data.code);
-      }
 
       if (requestsRes.ok && requestsRes.data) {
         setPendingRequests(requestsRes.data);
@@ -120,17 +112,15 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       const { toMatch, helped } = partitionFriends(data.friends);
       setUsersToMatch(toMatch);
       setAlreadyHelped(helped);
+      setLoadError(false);
 
       // Load unread counts for sitting tight friends (they have chat)
       loadUnreadCounts(helped);
     } catch (error) {
       console.error("Failed to load community data:", error);
-      Alert.alert('Error', 'Failed to load community data. Pull down to refresh.');
+      setLoadError(true);
     }
   }, [loadUnreadCounts]);
-
-  // DEFERRED: Crush feature — re-enable with crushService import when ready
-  // const handleCrushPress = useCallback(async (friendId: string, friendName: string) => { ... }, [alreadyHelped, loadFriendsData]);
 
   const onRefresh = useCallback(async () => {
     const userId = await getAuthenticatedUserId();
@@ -148,8 +138,10 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           if (result.ok && result.data) setProfile(result.data);
         }),
       ]);
+      showToast.success('Up to date');
     } catch (error) {
       console.error('Pull-to-refresh failed:', error);
+      showToast.error('Refresh failed. Check your connection.');
     } finally {
       setRefreshing(false);
     }
@@ -238,7 +230,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     }
   }, [loadFriendsData]);
 
-  // Ref must be declared before the useEffect that references it
   const initializedRef = useRef(false);
 
   useEffect(() => {
@@ -326,7 +317,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     await new Promise(resolve => setTimeout(resolve, 800));
     await loadFriendsData();
     setHasCompletedVoting(true);
-    // #7: Haptic reward on unlocking friends area
     successHaptic();
     // Cache so next cold open skips the voting gate
     const cycleId = String(getLast7PMCentral());
@@ -384,16 +374,13 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     [usersToMatch, navigation],
   );
   const crewHandlers = useMemo(
-    () => buildCrewHandlers(alreadyHelped, navigation, handleBadgePress), // DEFERRED: handleCrushPress removed
+    () => buildCrewHandlers(alreadyHelped, navigation, handleBadgePress),
     [alreadyHelped, navigation, handleBadgePress],
   );
 
-  // Stable key extractors for FlatLists (avoids re-creating on each render)
   const voteKeyExtractor = useCallback((item: FriendWithGridStatus) => item.friendId, []);
   const crewKeyExtractor = useCallback((item: FriendWithGridStatus) => item.friendId, []);
 
-  // Stable renderItem callbacks — avoids re-creating inline closures on each render,
-  // which would defeat React.memo on UserRow and StaggerItem
   const renderVoteItem = useCallback(({ item: user, index }: ListRenderItemInfo<FriendWithGridStatus>) => (
     <StaggerItem index={index}>
       <UserRow
@@ -416,7 +403,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
         onViewProfile={crewHandlers.viewProfile[user.friendId]}
         onChat={crewHandlers.chatHandlers[user.friendId]}
         onBadgePress={crewHandlers.badgeHandlers[user.friendId]}
-        // DEFERRED: onCrushPress={crewHandlers.crushHandlers[user.friendId]}
       />
     </StaggerItem>
   ), [crewHandlers, unreadMap]);
@@ -429,8 +415,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     );
   }
 
-  // Gate: must vote on 3 proposals before entering the community area.
-  // Matchmakers are exempt — they help friends match but aren't in the dating pool.
   if (!hasCompletedVoting) {
     return (
       <ScreenWrapper>
@@ -482,19 +466,22 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
       {usersToMatch.length === 0 && alreadyHelped.length === 0 ? (
         <ScrollView
-          contentContainerStyle={pendingRequests.length === 0 ? { flex: 1 } : undefined}
+          contentContainerStyle={pendingRequests.length === 0 && !loadError ? { flex: 1 } : undefined}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primaryButton} />
           }
         >
-          <HowItWorksCard />
+          {loadError && (
+            <InlineLoadError onRetry={loadFriendsData} />
+          )}
           <PendingRequestsSection
             requests={pendingRequests}
             processingIds={processingRequestIds}
             onAccept={handleAcceptRequest}
             onDecline={handleDeclineRequest}
           />
+          <HowItWorksCard />
           <EmptyState onInvite={navigateToContactInvite} />
         </ScrollView>
       ) : (
@@ -505,15 +492,17 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primaryButton} />
           }
         >
-          <HowItWorksCard />
+          {loadError && (
+            <InlineLoadError onRetry={loadFriendsData} />
+          )}
           <PendingRequestsSection
             requests={pendingRequests}
             processingIds={processingRequestIds}
             onAccept={handleAcceptRequest}
             onDecline={handleDeclineRequest}
           />
+          <HowItWorksCard />
 
-          {/* #5: Invite nudge when <5 friends; #10: Impact card when >=5 friends */}
           {bannerSection.kind === 'invite' ? (
             <InviteBanner avatarFriends={bannerSection.avatarFriends} onPress={navigateToContactInvite} />
           ) : (
@@ -523,13 +512,12 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           {usersToMatch.length > 0 && (
             <View style={styles.sectionHeader}>
               <View style={[styles.sectionAccent, { backgroundColor: COLORS.primaryButton }]} />
-              <Text style={styles.sectionTitle}>Help your friends</Text>
+              <Text style={styles.sectionTitle}>Waiting on you</Text>
               <View style={styles.helpCountBadge}>
                 <Text style={styles.helpCountText}>{usersToMatch.length}</Text>
               </View>
             </View>
           )}
-          {/* Main list — #3: vote ring + #9: vote-only action */}
           {usersToMatch.length > 0 && (
             <View style={styles.voteListBg}>
               <FlashList
@@ -543,18 +531,20 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             </View>
           )}
 
-          {/* Already Helped section */}
+          {alreadyHelped.length > 0 && usersToMatch.length > 0 && (
+            <View style={styles.sectionDivider} />
+          )}
           {alreadyHelped.length > 0 && (
-            <View style={[styles.sectionHeader, usersToMatch.length > 0 && { marginTop: 20 }]}>
+            <View style={styles.sectionHeader}>
               <View style={[styles.sectionAccent, { backgroundColor: COLORS.successAlt }]} />
-              <Text style={styles.sectionTitle}>Your crew</Text>
+              <Text style={styles.sectionTitle}>Sitting tight</Text>
               <View style={[styles.helpCountBadge, { backgroundColor: COLORS.successAlt }]}>
                 <Text style={styles.helpCountText}>{alreadyHelped.length}</Text>
               </View>
             </View>
           )}
 
-          <View className="pb-8">
+          <View style={styles.crewListContainer}>
             <FlashList
               data={alreadyHelped}
               keyExtractor={crewKeyExtractor}
@@ -563,21 +553,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
               scrollEnabled={false}
               drawDistance={USER_ROW_ESTIMATED_HEIGHT * 8}
             />
-
-            {/* Suggest a Match entry point — quiet row below the crew list */}
-            {alreadyHelped.length >= 2 && (
-              <TouchableOpacity
-                style={styles.suggestMatchRow}
-                activeOpacity={0.7}
-                onPress={() => (navigation as any).navigate('SuggestMatch')}
-                accessibilityRole="button"
-                accessibilityLabel="Suggest a match between friends"
-              >
-                <EvaIcon name="people" variant="outline" size={18} color={COLORS.text.secondary} />
-                <Text style={styles.suggestMatchText}>Suggest a match between friends</Text>
-                <EvaIcon name="arrow-ios-forward" variant="outline" size={18} color={COLORS.text.secondary} />
-              </TouchableOpacity>
-            )}
+            {/* DEFERRED: Suggest a Match — pulled pre-launch, see _deferred/suggest-a-match/DEFERRED.md */}
           </View>
 
           {/* Slim caught-up footer — only when no pending votes */}

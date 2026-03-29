@@ -1,6 +1,7 @@
 import React from 'react';
 import { ViewStyle } from 'react-native';
 import Svg, { Path, Circle, Ellipse, G } from 'react-native-svg';
+import { COLORS } from '../../theme/colors';
 
 interface IconProps {
     size?: number;
@@ -175,7 +176,7 @@ export const GiftIcon: React.FC<IconProps> = ({ size = 16, color = '#FFFFFF' }) 
  * Wine glass — simple outline style
  * Used for substance-related preference icons
  */
-export const WineGlassIcon: React.FC<IconProps> = ({ size = 24, color = '#667085', style }) => (
+export const WineGlassIcon: React.FC<IconProps> = ({ size = 24, color = COLORS.navInactiveIcon, style }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
         <Path
             d="M8 2h8v6c0 2.21-1.79 4-4 4s-4-1.79-4-4V2z"
@@ -209,7 +210,7 @@ export const WineGlassIcon: React.FC<IconProps> = ({ size = 24, color = '#667085
  * Leaf — simple stylized leaf outline
  * Used for substance-related preference icons
  */
-export const LeafIcon: React.FC<IconProps> = ({ size = 24, color = '#667085', style }) => (
+export const LeafIcon: React.FC<IconProps> = ({ size = 24, color = COLORS.navInactiveIcon, style }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
         <Path
             d="M11 20A7 7 0 0 1 4 13C4 9.13 7.13 6 11 6a7 7 0 0 1 7 7c0 3.87-3.13 7-7 7z"
@@ -237,7 +238,7 @@ export const LeafIcon: React.FC<IconProps> = ({ size = 24, color = '#667085', st
  * Cigarette with smoke wisp — simple outline style
  * Used for substance-related preference icons
  */
-export const CigaretteIcon: React.FC<IconProps> = ({ size = 24, color = '#667085', style }) => (
+export const CigaretteIcon: React.FC<IconProps> = ({ size = 24, color = COLORS.navInactiveIcon, style }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
         {/* Cigarette body */}
         <Path
@@ -274,7 +275,7 @@ export const CigaretteIcon: React.FC<IconProps> = ({ size = 24, color = '#667085
  * Pill capsule — simple outline style
  * Used for substance-related preference icons
  */
-export const PillIcon: React.FC<IconProps> = ({ size = 24, color = '#667085', style }) => (
+export const PillIcon: React.FC<IconProps> = ({ size = 24, color = COLORS.navInactiveIcon, style }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
         <Path
             d="M10.5 3.5a5.5 5.5 0 0 0-7.78 7.78l10 10a5.5 5.5 0 0 0 7.78-7.78l-10-10z"

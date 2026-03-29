@@ -4,13 +4,11 @@
  */
 
 import { StyleSheet } from 'react-native';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
 
 export const s = StyleSheet.create({
-  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
   // Header
   header: {
     flexDirection: 'row',
@@ -155,21 +153,21 @@ export const s = StyleSheet.create({
   avatarRingGold: {
     borderWidth: 4,
     padding: 4,
-    borderColor: '#FFD700',
+    borderColor: COLORS.podiumGold,
     ...SHADOWS.accentGold,
   },
   avatarRingSilver: {
-    borderColor: '#C0C0C0',
+    borderColor: COLORS.podiumSilver,
     ...SHADOWS.accentSilver,
   },
   avatarRingBronze: {
-    borderColor: '#CD7F32',
+    borderColor: COLORS.podiumBronze,
     ...SHADOWS.accentBronze,
   },
 
-  avatarLarge: { width: 88, height: 88, borderRadius: 44 },
-  avatarMedium: { width: 72, height: 72, borderRadius: 36 },
-  avatarSmall: { width: 64, height: 64, borderRadius: 32 },
+  avatarLarge: { width: 88, height: 88, borderRadius: 44, backgroundColor: COLORS.backgroundGrayMedium },
+  avatarMedium: { width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.backgroundGrayMedium },
+  avatarSmall: { width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.backgroundGrayMedium },
 
   // Rank badges
   rankBadge: {
@@ -293,6 +291,7 @@ export const s = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: COLORS.backgroundGrayMedium,
   },
   listNameCol: { flex: 1 },
   listName: {
@@ -348,6 +347,7 @@ export const s = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     marginRight: 12,
+    backgroundColor: COLORS.backgroundGrayMedium,
   },
   stickyNameCol: { flex: 1 },
   stickyName: {
@@ -407,12 +407,57 @@ export const s = StyleSheet.create({
     alignItems: 'center',
     gap: 1,
   },
-  rankChangeUp: {},
-  rankChangeDown: {},
   rankChangeText: {
     fontFamily: FONTS.semiBold,
-    fontSize: 10,
-    lineHeight: 12,
+    fontSize: FONT_SIZES.xs,
+    lineHeight: LINE_HEIGHTS.xs,
+  },
+
+  // Spacer to balance header row when info icon is hidden
+  headerSpacer: {
+    width: 24,
+  },
+
+  // Sticky bar avatar fallback wrapper
+  stickyAvatarFallback: {
+    marginRight: 12,
+  },
+
+  // Podium rank badge colors
+  rankBadgeGold: {
+    backgroundColor: COLORS.podiumGold,
+  },
+  rankBadgeSilver: {
+    backgroundColor: COLORS.podiumSilver,
+  },
+  rankBadgeBronze: {
+    backgroundColor: COLORS.podiumBronze,
+  },
+
+  // Header title column with "Weekly" subtitle
+  headerTitleCol: {
+    alignItems: 'center' as const,
+  },
+  headerSubtitle: {
+    fontFamily: FONTS.medium,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.navInactiveIcon,
+    marginTop: -2,
+  },
+
+  // Total participants row
+  participantsRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 6,
+    paddingVertical: 8,
+    marginBottom: 4,
+  },
+  participantsText: {
+    fontFamily: FONTS.medium,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.navInactiveIcon,
   },
 
 });

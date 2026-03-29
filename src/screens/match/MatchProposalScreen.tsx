@@ -16,7 +16,7 @@
  * - Swipe gestures for Accept/Pass
  * - Pass feedback for better recommendations
  *
- * Design Philosophy: Calm, premium, romantic - consistent with Bridge visual identity
+ * Design Philosophy: Calm, warm, inviting - consistent with Bridge visual identity
  * Follows Bridge Design & Technical Specifications
  */
 
@@ -33,19 +33,16 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   PanResponder,
-  Modal,
   Alert,
   ActionSheetIOS,
   Platform,
-  Easing,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
 import { Body } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
-import { RootStackParamList, UserProfile, DeepQuestionAnswer, Match } from '../../types';
+import { RootStackParamList, UserProfile, DeepQuestionAnswer } from '../../types';
 import { lightHaptic, mediumHaptic, successHaptic, warningHaptic, selectionHaptic } from '../../utils/haptics';
 import { showToast } from '../../utils/toast';
 import { valueIconName, interestIconName } from '../../utils/emojiMaps';
@@ -55,11 +52,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { communityService } from '../../services/communityServiceIndex';
 import { getUserProfile } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
+import { DURATIONS, SPRINGS } from '../../constants/animations';
 import { COLORS as THEME_COLORS } from '../../theme/colors';
-import { EvaIcon, IconScoutIcon } from '../../components/icons';
+import { EvaIcon } from '../../components/icons';
 import { WineGlassIcon, LeafIcon, CigaretteIcon, PillIcon } from '../../components/icons/Icons';
-import { SHADOWS } from '../../theme/shadows';
+import { SHADOWS, OVERLAYS } from '../../theme/shadows';
 import { ProfileBadgesSection } from '../../components/badges/ProfileBadgesSection';
 
 // Extracted components
@@ -89,9 +87,7 @@ const logger = createLogger('MatchProposalScreen');
 // ============================================================================
 
 const StyledView = styled(View);
-const StyledScrollView = styled(ScrollView);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-const StyledImage = styled(Image);
 
 // ============================================================================
 // Constants - Design Tokens
@@ -101,6 +97,27 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PHOTO_HEIGHT = Math.min(SCREEN_HEIGHT * 0.48, SCREEN_WIDTH * 1.12);
 const TAP_ZONE_WIDTH = SCREEN_WIDTH * 0.35;
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
+// Scale factor for responsive sizing (1.0 on iPhone SE 375pt, ~1.15 on Pro Max 430pt)
+const SCALE = SCREEN_WIDTH / 375;
+// Responsive font sizes for hero text
+const NAME_FONT_SIZE = Math.round(30 * SCALE);
+const NAME_LINE_HEIGHT = Math.round(36 * SCALE);
+// Gradient heights scale with photo area
+const TOP_GRADIENT_HEIGHT = Math.round(PHOTO_HEIGHT * 0.24);
+const BOTTOM_GRADIENT_HEIGHT = Math.round(PHOTO_HEIGHT * 0.35);
+
+// Photo section dark backgrounds (dark surfaces, not in warm COLORS palette)
+const PHOTO_BG = '#111111';
+const PHOTO_EMPTY_BG = '#1A1A1A';
+const PHOTO_EMPTY_CIRCLE_BG = '#262626';
+const PHOTO_EMPTY_ICON_COLOR = '#525252';
+
+// Header button overlay (semi-transparent over photos)
+const HEADER_BUTTON_BG = OVERLAYS.heavy;
+
+// Photo indicator inactive state
+const INDICATOR_INACTIVE = 'rgba(255, 255, 255, 0.4)';
+const TEXT_ON_PHOTO_MUTED = 'rgba(255, 255, 255, 0.7)';
 
 // ============================================================================
 // Types
@@ -110,54 +127,6 @@ interface MatchProposalScreenProps {
   navigation: NavigationProp<RootStackParamList>;
   route: RouteProp<RootStackParamList, 'MatchProposal'>;
 }
-
-// ============================================================================
-// Mock Data
-// ============================================================================
-
-const MOCK_PROFILE: UserProfile = {
-  id: 'mock-1',
-  userId: 'mock-user-1',
-  firstName: 'Sarah',
-  lastName: 'M',
-  age: 27,
-  gender: ['Woman'],
-  pronouns: 'she/her',
-  pronounsList: ['she', 'her'],
-  currentJob: 'Product Designer',
-  companyPosition: 'Senior Designer',
-  educationLevel: 'bachelors',
-  school: 'NYU',
-  height: "5'7\"",
-  ethnicity: 'East Asian',
-  religion: 'Spiritual',
-  politicalLeaning: 'liberal',
-  location: 'Brooklyn, NY',
-  hometown: 'Boston, MA',
-  photos: [
-    { id: '1', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400', isMain: true, order: 0 },
-    { id: '2', url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400', isMain: false, order: 1 },
-    { id: '3', url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400', isMain: false, order: 2 },
-  ],
-  interests: ['Travel', 'Photography', 'Hiking', 'Music', 'Art', 'Cooking'],
-  values: ['Honesty', 'Growth', 'Adventure', 'Family', 'Creativity'],
-  lifestyle: { drinking: 'socially', smoking: 'never', exercise: 'often' },
-  nonNegotiables: [],
-  preferences: { ageMin: 25, ageMax: 35, gender: 'male', lookingFor: 'relationship' },
-  hasChildren: 'no',
-  familyPlans: 'want_someday',
-  drinkingFrequency: 'socially',
-  cannabisFrequency: 'never',
-  tobaccoFrequency: 'never',
-  deepQuestions: [
-    { questionId: 1, tier: 1, question: "What's your idea of a perfect weekend?", answer: "Exploring a new neighborhood, finding a cozy coffee shop, and ending with dinner at a restaurant I've been wanting to try." },
-    { questionId: 2, tier: 2, question: "What are you most passionate about?", answer: "Creating beautiful, functional designs that make people's lives easier. I love the problem-solving aspect of my work." },
-    { questionId: 3, tier: 3, question: "What's a life lesson that took you a while to learn?", answer: "That it's okay to change your mind about what you want. Growth means evolving, and your past decisions don't have to define your future." },
-  ],
-  displayedQuestions: [1, 2, 3],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
 
 // ============================================================================
 // Main Component
@@ -170,14 +139,10 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   const effectiveProfile = useMemo(() => {
     if (passedProfile) return passedProfile;
     if (match) return match.currentUserId === match.user1Id ? match.user2Profile : match.user1Profile;
-    // No real profile available — navigate back rather than showing mock data to production users
     return null;
   }, [passedProfile, match]);
 
-  // Guard: if no real profile, go back immediately
-  useEffect(() => {
-    if (!effectiveProfile) navigation.goBack();
-  }, [effectiveProfile, navigation]);
+  // Guard: if no real profile, the fallback UI below handles it (no auto-navigate — causes jarring flash)
 
   const [loading] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
@@ -221,7 +186,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
 
   const handlePassInitiate = useCallback(() => { lightHaptic(); setShowPassConfirm(true); }, []);
 
-  // Accept immediately without confirmation - reduced friction!
+  // Accept immediately without confirmation - reduced friction
   const handleAcceptInitiate = useCallback(async () => {
     if (acceptingRef.current) return;
     acceptingRef.current = true;
@@ -229,7 +194,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
     // Guard: don't allow accept on expired proposals
     const expiresAt = route.params?.match?.expiresAt;
     if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) {
-      showToast.error('Proposal expired', 'This proposal is no longer available');
+      showToast.error('Time\'s up', 'This match is no longer available');
       navigation.goBack();
       return;
     }
@@ -249,7 +214,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
           setIsAccepting(false);
           swipeX.setValue(0);
           swipeOpacity.setValue(1);
-          showToast.error('Could not accept', 'This proposal may have expired');
+          showToast.error('Something went wrong', 'This match may no longer be available. Head back and try again.');
         }
         return;
       }
@@ -267,7 +232,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
       const pastThreshold = Math.abs(gs.dx) > SWIPE_THRESHOLD;
       if (pastThreshold && !hasPassedThresholdRef.current) {
         hasPassedThresholdRef.current = true;
-        lightHaptic();
+        mediumHaptic();
       } else if (!pastThreshold && hasPassedThresholdRef.current) {
         hasPassedThresholdRef.current = false;
       }
@@ -276,16 +241,16 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
       hasPassedThresholdRef.current = false;
       if (gs.dx > SWIPE_THRESHOLD) {
         Animated.parallel([
-          Animated.timing(swipeX, { toValue: SCREEN_WIDTH, duration: 200, useNativeDriver: true }),
-          Animated.timing(swipeOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+          Animated.timing(swipeX, { toValue: SCREEN_WIDTH, duration: DURATIONS.normal, useNativeDriver: true }),
+          Animated.timing(swipeOpacity, { toValue: 0, duration: DURATIONS.normal, useNativeDriver: true }),
         ]).start(() => handleAcceptInitiate());
       } else if (gs.dx < -SWIPE_THRESHOLD) {
         Animated.parallel([
-          Animated.timing(swipeX, { toValue: -SCREEN_WIDTH, duration: 200, useNativeDriver: true }),
-          Animated.timing(swipeOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+          Animated.timing(swipeX, { toValue: -SCREEN_WIDTH, duration: DURATIONS.normal, useNativeDriver: true }),
+          Animated.timing(swipeOpacity, { toValue: 0, duration: DURATIONS.normal, useNativeDriver: true }),
         ]).start(() => handlePassInitiate());
       } else {
-        Animated.spring(swipeX, { toValue: 0, useNativeDriver: true }).start();
+        Animated.spring(swipeX, { toValue: 0, damping: SPRINGS.snappy.damping, stiffness: SPRINGS.snappy.stiffness, mass: SPRINGS.snappy.mass, useNativeDriver: true }).start();
       }
     },
   }), [swipeX, swipeOpacity, handleAcceptInitiate, handlePassInitiate]);
@@ -349,9 +314,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
     }
   }, [navigation]);
 
-  const handleViewDeepQuestions = useCallback(() => { /* Deep Questions screen removed */ }, []);
-
-  // Memoized derivations — computed once per profile load, not on every scroll/state change
+  // Memoized derivations -- computed once per profile load, not on every scroll/state change
   const displayedQuestions = useMemo(() => {
     if (!profile) return [];
     return (profile.displayedQuestions || [])
@@ -390,8 +353,8 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
       <StyledView className="flex-1 items-center justify-center px-6" style={{ backgroundColor: COLORS.neutral50 }}>
         <StatusBar barStyle="dark-content" />
         <EvaIcon name="person" variant="outline" size={64} color={COLORS.neutral300} />
-        <Body className="mt-4 text-center" style={{ color: COLORS.neutral600 }}>Profile not found</Body>
-        <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mt-4 px-6 py-3 rounded-full" style={{ backgroundColor: COLORS.primary500 }}>
+        <Body className="mt-4 text-center" style={{ color: COLORS.neutral600 }}>We couldn't load this profile right now</Body>
+        <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mt-4 px-6 py-3 rounded-full" style={{ backgroundColor: COLORS.primary500, minHeight: 44 }}>
           <Body className="font-semibold" style={{ color: COLORS.white }}>Go Back</Body>
         </StyledTouchableOpacity>
       </StyledView>
@@ -399,39 +362,39 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
   }
 
   const photos = profile.photos || [];
-  // Hash-based decorative score (70–99) seeded by proposal ID — see CLAUDE.md
+  // Hash-based decorative score (70-99) seeded by proposal ID -- see CLAUDE.md
   const communityScore = computeApprovalPercent(match?.id || '') / 100;
   const expiresAt = match?.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   const hasLifestyleInfo = profile.drinkingFrequency || profile.cannabisFrequency || profile.tobaccoFrequency || profile.otherDrugsFrequency;
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'white' }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.white }}>
       <StatusBar barStyle="light-content" />
 
       {/* Swipe Indicators */}
       <Animated.View style={{ position: 'absolute', top: '33%', left: 32, zIndex: 40, opacity: swipeX.interpolate({ inputRange: [-100, 0], outputRange: [1, 0], extrapolate: 'clamp' }), transform: [{ scale: swipeX.interpolate({ inputRange: [-100, 0], outputRange: [1.2, 0.8], extrapolate: 'clamp' }) }] }}>
-        <StyledView className="rounded-full p-4" style={{ backgroundColor: COLORS.error }}><EvaIcon name="close" variant="outline" size={32} color="white" /></StyledView>
+        <StyledView className="rounded-full p-4" style={{ backgroundColor: COLORS.error }}><EvaIcon name="close" variant="fill" size={32} color={COLORS.white} /></StyledView>
       </Animated.View>
       <Animated.View style={{ position: 'absolute', top: '33%', right: 32, zIndex: 40, opacity: swipeX.interpolate({ inputRange: [0, 100], outputRange: [0, 1], extrapolate: 'clamp' }), transform: [{ scale: swipeX.interpolate({ inputRange: [0, 100], outputRange: [0.8, 1.2], extrapolate: 'clamp' }) }] }}>
-        <StyledView className="rounded-full p-4" style={{ backgroundColor: COLORS.success }}><EvaIcon name="heart" variant="outline" size={32} color="white" /></StyledView>
+        <StyledView className="rounded-full p-4" style={{ backgroundColor: COLORS.pink }}><EvaIcon name="heart" variant="fill" size={32} color={COLORS.white} /></StyledView>
       </Animated.View>
 
       {/* Fixed Header */}
       <StyledView className="absolute z-50 flex-row items-center justify-between px-4" style={{ top: insets.top + 8, left: 0, right: 0 }}>
-        <StyledTouchableOpacity onPress={() => { lightHaptic(); navigation.goBack(); }} className="rounded-full p-2.5" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Close proposal">
-          <EvaIcon name="close" variant="outline" size={22} color="white" />
+        <StyledTouchableOpacity onPress={() => { lightHaptic(); navigation.goBack(); }} style={{ backgroundColor: HEADER_BUTTON_BG, borderRadius: 999, minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Close proposal">
+          <EvaIcon name="close" variant="outline" size={22} color={COLORS.white} />
         </StyledTouchableOpacity>
         <StyledView className="flex-row items-center">
           <ExpirationTimer expiresAt={expiresAt} />
-          <StyledTouchableOpacity onPress={handleOptionsMenu} className="rounded-full p-2.5 ml-2" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="More options">
-            <EvaIcon name="more-vertical" variant="outline" size={18} color="white" />
+          <StyledTouchableOpacity onPress={handleOptionsMenu} style={{ backgroundColor: HEADER_BUTTON_BG, borderRadius: 999, minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', marginLeft: 8 }} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="More options">
+            <EvaIcon name="more-vertical" variant="outline" size={18} color={COLORS.white} />
           </StyledTouchableOpacity>
         </StyledView>
       </StyledView>
 
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} scrollEventThrottle={16} contentContainerStyle={{ paddingBottom: 120 }}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} scrollEventThrottle={16} contentContainerStyle={{ paddingBottom: Math.round(80 * SCALE) + insets.bottom + 32 }}>
         {/* Photo Section */}
-        <View style={{ height: PHOTO_HEIGHT, backgroundColor: '#111' }}>
+        <View style={{ height: PHOTO_HEIGHT, backgroundColor: PHOTO_BG }}>
           {photos.length > 0 ? (
             <>
               <FlatList ref={flatListRef} data={photos} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onScroll={handlePhotoScroll} scrollEventThrottle={16} keyExtractor={(item, index) => item.id || `photo-${index}`} renderItem={({ item, index }) => <BlurredPhoto uri={getOptimizedPhotoUrl(item.url, 'profile') ?? item.url} style={{ width: SCREEN_WIDTH, height: PHOTO_HEIGHT }} index={index} />} initialNumToRender={1} maxToRenderPerBatch={2} windowSize={3} getItemLayout={(_, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })} />
@@ -444,34 +407,34 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
               {photos.length > 1 && (
                 <StyledView className="absolute left-5 right-5 flex-row" style={{ top: insets.top + 56 }}>
                   {photos.map((photo, index) => (
-                    <StyledTouchableOpacity key={photo.id || `indicator-${index}`} onPress={() => goToPhoto(index)} className="flex-1 mx-1" activeOpacity={0.8}>
-                      <StyledView className="h-1 rounded-full" style={{ backgroundColor: index === currentPhotoIndex ? COLORS.white : 'rgba(255, 255, 255, 0.4)' }} />
+                    <StyledTouchableOpacity key={photo.id || `indicator-${index}`} onPress={() => goToPhoto(index)} className="flex-1 mx-1" activeOpacity={0.8} hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}>
+                      <StyledView className="h-1 rounded-full" style={{ backgroundColor: index === currentPhotoIndex ? COLORS.white : INDICATOR_INACTIVE }} />
                     </StyledTouchableOpacity>
                   ))}
                 </StyledView>
               )}
-              <LinearGradient colors={['rgba(0,0,0,0.5)', 'transparent']} className="absolute top-0 left-0 right-0 h-32" pointerEvents="none" />
-              <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} className="absolute bottom-0 left-0 right-0 h-44" pointerEvents="none" />
-              <StyledView className="absolute bottom-10 left-5 right-5">
+              <LinearGradient colors={['rgba(0,0,0,0.5)', 'transparent']} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: TOP_GRADIENT_HEIGHT }} pointerEvents="none" />
+              <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: BOTTOM_GRADIENT_HEIGHT }} pointerEvents="none" />
+              <StyledView style={{ position: 'absolute', bottom: Math.round(36 * SCALE), left: Math.round(20 * SCALE), right: Math.round(20 * SCALE) }}>
                 <StyledView className="flex-row items-center flex-wrap mb-2">
-                  <Body className="text-white font-bold" style={{ fontSize: 34, lineHeight: 40, letterSpacing: -0.5, textShadowColor: 'rgba(0, 0, 0, 0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 }}>{getFirstInitial(profile.firstName)}, {profile.age}</Body>
+                  <Body className="text-white font-bold" style={{ fontSize: Math.round(FONT_SIZES['6xl'] * SCALE), lineHeight: Math.round(LINE_HEIGHTS['6xl'] * SCALE), letterSpacing: -0.5, textShadowColor: OVERLAYS.medium, textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 }}>{getFirstInitial(profile.firstName)}, {profile.age}</Body>
                 </StyledView>
                 <StyledView className="flex-row items-center">
-                  <EvaIcon name="shield" variant="outline" size={13} color="rgba(255,255,255,0.7)" />
-                  <Body className="ml-1.5" style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>Full profile revealed after matching</Body>
+                  <EvaIcon name="shield" variant="outline" size={13} color={TEXT_ON_PHOTO_MUTED} />
+                  <Body className="ml-1.5" style={{ fontSize: FONT_SIZES.md, lineHeight: LINE_HEIGHTS.md, color: TEXT_ON_PHOTO_MUTED }}>Full profile revealed after matching</Body>
                 </StyledView>
               </StyledView>
             </>
           ) : (
-            <StyledView className="flex-1 items-center justify-center" style={{ backgroundColor: '#1a1a1a' }}>
-              <StyledView className="w-32 h-32 rounded-full items-center justify-center mb-4" style={{ backgroundColor: '#262626' }}><EvaIcon name="camera" variant="outline" size={48} color="#525252" /></StyledView>
+            <StyledView className="flex-1 items-center justify-center" style={{ backgroundColor: PHOTO_EMPTY_BG }}>
+              <StyledView className="w-32 h-32 rounded-full items-center justify-center mb-4" style={{ backgroundColor: PHOTO_EMPTY_CIRCLE_BG }}><EvaIcon name="camera" variant="outline" size={48} color={PHOTO_EMPTY_ICON_COLOR} /></StyledView>
               <Body className="font-medium" style={{ color: COLORS.neutral500 }}>No photos available</Body>
             </StyledView>
           )}
         </View>
 
         {/* Content Section */}
-        <StyledView className="bg-white px-5 pt-8 -mt-5" style={{ borderTopLeftRadius: 28, borderTopRightRadius: 28 }}>
+        <StyledView className="bg-white -mt-5" style={{ borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: Math.round(20 * SCALE), paddingTop: Math.round(28 * SCALE) }}>
           <CommunityScore score={communityScore} endorsement={endorsement} />
           <WhyThisMatch mutualInterests={mutualInterests} mutualValues={mutualValues} compatibilityHighlights={compatibilityHighlights} />
           {basicInfoPills.length > 0 && <StyledView className="flex-row flex-wrap mb-6">{basicInfoPills.map((pill) => <InfoPill key={`${pill.icon}-${pill.text}`} icon={pill.icon} text={pill.text} />)}</StyledView>}
@@ -504,8 +467,8 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
                 const config = TIER_CONFIG[qa.tier as 1 | 2 | 3];
                 return (
                   <StyledView key={qa.questionId} className="rounded-2xl p-5 mb-3" style={{ backgroundColor: config.bg, borderWidth: 1, borderColor: config.border }}>
-                    <Body className="font-semibold mb-3" style={{ fontSize: 15, lineHeight: 22, color: COLORS.neutral800 }}>{qa.question}</Body>
-                    <Body style={{ fontSize: 15, lineHeight: 24, color: COLORS.neutral600 }}>{qa.answer}</Body>
+                    <Body className="font-semibold mb-3" style={{ fontSize: FONT_SIZES.lg, lineHeight: LINE_HEIGHTS.xl, color: COLORS.neutral800 }} numberOfLines={3}>{qa.question}</Body>
+                    <Body style={{ fontSize: FONT_SIZES.lg, lineHeight: LINE_HEIGHTS['2xl'], color: COLORS.neutral600 }} numberOfLines={6}>{qa.answer}</Body>
                   </StyledView>
                 );
               })}
@@ -517,15 +480,15 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
       </ScrollView>
 
       {/* Fixed Action Buttons */}
-      <StyledView className="absolute bottom-0 left-0 right-0 bg-white" style={{ paddingBottom: insets.bottom + 8, paddingTop: 12, paddingHorizontal: 16, borderTopWidth: 1, borderTopColor: COLORS.neutral200 }}>
-        <StyledView className="flex-row" style={{ gap: 12 }}>
-          <StyledTouchableOpacity onPress={handlePassInitiate} disabled={isPassing || isAccepting} className="flex-1 flex-row items-center justify-center py-3.5" activeOpacity={0.8} style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 14, opacity: isPassing || isAccepting ? 0.6 : 1 }} accessibilityRole="button" accessibilityLabel={isPassing ? 'Passing on proposal' : 'Pass on proposal'} accessibilityState={{ disabled: isPassing || isAccepting }}>
+      <StyledView className="absolute bottom-0 left-0 right-0 bg-white" style={{ paddingBottom: insets.bottom + 8, paddingTop: 12, paddingHorizontal: Math.round(16 * SCALE), borderTopWidth: 1, borderTopColor: COLORS.neutral200 }}>
+        <StyledView className="flex-row" style={{ gap: Math.round(12 * SCALE) }}>
+          <StyledTouchableOpacity onPress={handlePassInitiate} disabled={isPassing || isAccepting} className="flex-1 flex-row items-center justify-center" activeOpacity={0.8} style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 14, opacity: isPassing || isAccepting ? 0.6 : 1, minHeight: 48 }} accessibilityRole="button" accessibilityLabel={isPassing ? 'Passing on proposal' : 'Pass on proposal'} accessibilityState={{ disabled: isPassing || isAccepting }}>
             <EvaIcon name="close" variant="outline" size={18} color={COLORS.neutral600} />
-            <Body style={{ color: COLORS.neutral600, fontWeight: '600', fontFamily: FONTS.semiBold, fontSize: 16, marginLeft: 8 }}>{isPassing ? 'Passing...' : 'Pass'}</Body>
+            <Body style={{ color: COLORS.neutral600, fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.xl, lineHeight: LINE_HEIGHTS.xl, marginLeft: 8 }}>{isPassing ? 'Passing...' : 'Pass'}</Body>
           </StyledTouchableOpacity>
-          <StyledTouchableOpacity onPress={handleAcceptInitiate} disabled={isPassing || isAccepting} className="flex-1 flex-row items-center justify-center py-3.5" activeOpacity={0.8} style={{ backgroundColor: COLORS.primary500, borderRadius: 14, opacity: isPassing || isAccepting ? 0.6 : 1, ...SHADOWS.sm }} accessibilityRole="button" accessibilityLabel={isAccepting ? 'Accepting proposal' : 'Accept proposal'} accessibilityState={{ disabled: isPassing || isAccepting }}>
-            <EvaIcon name="heart" variant="outline" size={18} color="white" />
-            <Body style={{ color: COLORS.white, fontWeight: '600', fontFamily: FONTS.semiBold, fontSize: 16, marginLeft: 8 }}>{isAccepting ? 'Accepting...' : 'Accept'}</Body>
+          <StyledTouchableOpacity onPress={handleAcceptInitiate} disabled={isPassing || isAccepting} className="flex-1 flex-row items-center justify-center" activeOpacity={0.8} style={{ backgroundColor: COLORS.primary500, borderRadius: 14, opacity: isPassing || isAccepting ? 0.6 : 1, minHeight: 48, ...SHADOWS.sm }} accessibilityRole="button" accessibilityLabel={isAccepting ? 'Accepting proposal' : 'Accept proposal'} accessibilityState={{ disabled: isPassing || isAccepting }}>
+            <EvaIcon name="heart" variant="outline" size={18} color={COLORS.white} />
+            <Body style={{ color: COLORS.white, fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.xl, lineHeight: LINE_HEIGHTS.xl, marginLeft: 8 }}>{isAccepting ? 'Accepting...' : 'Accept'}</Body>
           </StyledTouchableOpacity>
         </StyledView>
       </StyledView>

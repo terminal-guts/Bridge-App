@@ -150,7 +150,7 @@ export const StatsScreen: React.FC<Props> = ({ navigation }) => {
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityRole="button" accessibilityLabel="Go back">
-          <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
+          <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.textDarkHeading} />
         </TouchableOpacity>
         <Text style={s.headerTitle} accessibilityRole="header">Stats</Text>
         <TouchableOpacity onPress={handleShare} disabled={loading || !!error} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityRole="button" accessibilityLabel="Share stats">
@@ -186,10 +186,10 @@ export const StatsScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       ) : error ? (
         <View style={s.centered}>
-          <EvaIcon name="alert-circle" variant="outline" size={48} color="#F04438" />
+          <EvaIcon name="alert-circle" variant="outline" size={48} color={COLORS.error} />
           <Text style={s.errorText}>{error}</Text>
           <TouchableOpacity style={s.retryButton} onPress={loadStats} activeOpacity={0.7}>
-            <EvaIcon name="refresh" variant="outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <EvaIcon name="refresh" variant="outline" size={18} color={COLORS.card} style={{ marginRight: 8 }} />
             <Text style={s.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>

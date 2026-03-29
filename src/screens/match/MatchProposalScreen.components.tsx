@@ -3,23 +3,28 @@
  * Extracted from MatchProposalScreen.tsx for maintainability.
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
-  ScrollView,
   TouchableOpacity,
   Animated,
   Modal,
-  Alert,
+  Dimensions,
+  Easing,
 } from 'react-native';
 import { styled } from 'nativewind';
 import { Body } from '../../components/ui';
 import { EvaIcon, IconScoutIcon } from '../../components/icons';
-import { lightHaptic } from '../../utils/haptics';
-import { FONTS } from '../../constants/typography';
+import { lightHaptic, successHaptic } from '../../utils/haptics';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
+import { DURATIONS, SPRINGS } from '../../constants/animations';
 import { SHADOWS, OVERLAYS } from '../../theme/shadows';
 import { COLORS as THEME_COLORS } from '../../theme/colors';
 import { Image } from 'expo-image';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+// Scale factor: 1.0 on iPhone SE (375pt), ~1.15 on Pro Max (430pt)
+const SCALE = SCREEN_WIDTH / 375;
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -46,35 +51,38 @@ export const COLORS = {
   successBorder: THEME_COLORS.backgroundValuesTag,
   warning: THEME_COLORS.warning.icon,
   warningBg: THEME_COLORS.backgroundSoftYellow,
-  warningBorder: '#FDE68A',
+  warningBorder: THEME_COLORS.borderGoldLight,
   warningIcon: THEME_COLORS.darkAmber,
   error: THEME_COLORS.error,
   errorBg: THEME_COLORS.backgroundSoftRed,
   errorText: '#B42318',
+  freqLime: '#84CC16',
+  freqOrange: '#F97316',
   pink: THEME_COLORS.pink,
   pinkBg: '#FDF2F8',
   purple: THEME_COLORS.violet,
   purpleBg: '#F5F3FF',
+  purpleText: '#6D28D9',
+  pinkText: '#BE185D',
+  roseBg: '#FFF1F2',
+  roseText: '#BE123C',
+  skeletonDark: '#1A1A1A',
+  whiteTranslucent: '#FFFFFFCC',
 } as const;
 
-// Animation constants
-const ANIMATION = {
-  DURATION_FAST: 180,
-  DURATION_STANDARD: 200,
-  DURATION_SLOW: 400,
-  EASING: require('react-native').Easing.out(require('react-native').Easing.cubic),
-} as const;
+// Animation easing (durations and springs now come from DURATIONS/SPRINGS imports)
+const ANIMATION_EASING = Easing.out(Easing.cubic);
 
 // ── Pill Styles Config ──────────────────────────────────────────────────────
 
 export const PILL_STYLES: Record<string, { bg: string; iconColor: string; textColor: string }> = {
   'pin': { bg: THEME_COLORS.tier1.lightBg, iconColor: THEME_COLORS.tier1.icon, textColor: THEME_COLORS.blueText },
   'maximize': { bg: COLORS.successBg, iconColor: COLORS.success, textColor: THEME_COLORS.matchReasonGreen },
-  'person': { bg: COLORS.purpleBg, iconColor: COLORS.purple, textColor: '#6D28D9' },
-  'message-circle': { bg: COLORS.pinkBg, iconColor: COLORS.pink, textColor: '#BE185D' },
+  'person': { bg: COLORS.purpleBg, iconColor: COLORS.purple, textColor: COLORS.purpleText },
+  'message-circle': { bg: COLORS.pinkBg, iconColor: COLORS.pink, textColor: COLORS.pinkText },
   'globe': { bg: COLORS.warningBg, iconColor: COLORS.warning, textColor: COLORS.warningIcon },
-  'star': { bg: COLORS.purpleBg, iconColor: THEME_COLORS.purple, textColor: '#6D28D9' },
-  'flag': { bg: '#FFF1F2', iconColor: THEME_COLORS.rose, textColor: '#BE123C' },
+  'star': { bg: COLORS.purpleBg, iconColor: THEME_COLORS.purple, textColor: COLORS.purpleText },
+  'flag': { bg: COLORS.roseBg, iconColor: THEME_COLORS.rose, textColor: COLORS.roseText },
   default: { bg: COLORS.neutral50, iconColor: COLORS.neutral400, textColor: COLORS.neutral600 },
 };
 
@@ -88,7 +96,10 @@ export const formatFrequency = (value?: string): string | null => {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
-export const getFirstInitial = (name: string): string => name?.charAt(0)?.toUpperCase() || '?';
+export const getFirstInitial = (name?: string | null): string => {
+  if (!name || name.length === 0) return '?';
+  return name.charAt(0).toUpperCase();
+};
 
 export const calculateTimeRemaining = (expiresAt: string) => {
   const diff = new Date(expiresAt).getTime() - Date.now();
@@ -108,9 +119,9 @@ export interface FriendEndorsement {
 
 export const getEndorsementData = (communityScore: number): FriendEndorsement => {
   const count = Math.round(communityScore * 10) || 3;
-  if (communityScore >= 0.8) return { count, topReason: 'Strong compatibility match', confidenceLevel: 'high' };
-  if (communityScore >= 0.6) return { count, topReason: 'Good personality match', confidenceLevel: 'medium' };
-  return { count, topReason: 'Worth exploring', confidenceLevel: 'low' };
+  if (communityScore >= 0.8) return { count, topReason: 'Your friends really think you two would hit it off', confidenceLevel: 'high' };
+  if (communityScore >= 0.6) return { count, topReason: 'Your friends see real potential here', confidenceLevel: 'medium' };
+  return { count, topReason: 'Your friends thought this was worth a look', confidenceLevel: 'low' };
 };
 
 export const getFrequencyLevel = (value: string): number => {
@@ -130,25 +141,25 @@ export interface PassFeedbackOption {
 }
 
 export const PASS_FEEDBACK_OPTIONS: PassFeedbackOption[] = [
-  { id: 'not_my_type', label: 'Not my type', icon: 'close-circle' },
-  { id: 'age', label: 'Age preference', icon: 'calendar' },
+  { id: 'not_my_type', label: "Didn't feel a connection", icon: 'close-circle' },
+  { id: 'age', label: 'Looking for a different age range', icon: 'calendar' },
   { id: 'location', label: 'Too far away', icon: 'pin' },
-  { id: 'lifestyle', label: 'Lifestyle mismatch', icon: 'activity' },
-  { id: 'values', label: 'Different values', icon: 'star' },
-  { id: 'other', label: 'Other reason', icon: 'more-horizontal' },
+  { id: 'lifestyle', label: "Our lifestyles don't align", icon: 'activity' },
+  { id: 'values', label: 'We value different things', icon: 'star' },
+  { id: 'other', label: 'Something else', icon: 'more-horizontal' },
 ];
 
 // ── Sub-Components ──────────────────────────────────────────────────────────
 
 export const LoadingSkeleton: React.FC = () => {
   const pulseAnim = useRef(new Animated.Value(0.4)).current;
-  const PHOTO_HEIGHT = require('react-native').Dimensions.get('window').height * 0.48;
+  const PHOTO_HEIGHT = Math.min(SCREEN_HEIGHT * 0.48, SCREEN_WIDTH * 1.12);
 
   useEffect(() => {
     const animation = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 0.4, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: DURATIONS.emphasis, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0.4, duration: DURATIONS.emphasis, useNativeDriver: true }),
       ])
     );
     animation.start();
@@ -157,7 +168,7 @@ export const LoadingSkeleton: React.FC = () => {
 
   return (
     <StyledView className="flex-1 bg-black">
-      <Animated.View style={{ opacity: pulseAnim, height: PHOTO_HEIGHT, backgroundColor: '#1a1a1a' }} />
+      <Animated.View style={{ opacity: pulseAnim, height: PHOTO_HEIGHT, backgroundColor: COLORS.skeletonDark }} />
       <StyledView className="px-5 py-8 bg-white -mt-6 rounded-t-3xl">
         <Animated.View style={{ opacity: pulseAnim }}>
           <StyledView className="h-8 rounded-xl mb-4 w-28" style={{ backgroundColor: COLORS.neutral100 }} />
@@ -179,7 +190,7 @@ export const ExpirationTimer: React.FC<{ expiresAt: string }> = ({ expiresAt }) 
 
   if (timeLeft.expired) {
     return (
-      <StyledView className="flex-row items-center px-3.5 py-2 rounded-full" style={{ backgroundColor: 'rgba(239, 68, 68, 0.9)' }}>
+      <StyledView className="flex-row items-center px-3.5 py-2 rounded-full" style={{ backgroundColor: `${THEME_COLORS.error}E6` }}>
         <EvaIcon name="clock" variant="outline" size={13} color="white" />
         <Body className="text-white text-xs font-semibold ml-1.5 tracking-wide">Expired</Body>
       </StyledView>
@@ -188,7 +199,7 @@ export const ExpirationTimer: React.FC<{ expiresAt: string }> = ({ expiresAt }) 
 
   const isUrgent = timeLeft.hours < 6;
   return (
-    <StyledView className="flex-row items-center px-3.5 py-2 rounded-full" style={{ backgroundColor: isUrgent ? 'rgba(245, 158, 11, 0.9)' : 'rgba(0, 0, 0, 0.4)' }}>
+    <StyledView className="flex-row items-center px-3.5 py-2 rounded-full" style={{ backgroundColor: isUrgent ? `${THEME_COLORS.warning.icon}E6` : OVERLAYS.light }}>
       <EvaIcon name="clock" variant="outline" size={13} color="white" />
       <Body className="text-white text-xs font-semibold ml-1.5 tracking-wide">{timeLeft.hours}h {timeLeft.minutes}m</Body>
     </StyledView>
@@ -205,8 +216,8 @@ export const CommunityScore: React.FC<{ score: number; endorsement: FriendEndors
   useEffect(() => {
     animatedValue.setValue(0);
     const animation = Animated.parallel([
-      Animated.timing(animatedValue, { toValue: displayScore, duration: 1200, easing: ANIMATION.EASING, useNativeDriver: false }),
-      Animated.spring(scaleAnim, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true }),
+      Animated.timing(animatedValue, { toValue: displayScore, duration: DURATIONS.emphasis * 2, easing: ANIMATION_EASING, useNativeDriver: false }),
+      Animated.spring(scaleAnim, { toValue: 1, damping: SPRINGS.gentle.damping, stiffness: SPRINGS.gentle.stiffness, mass: SPRINGS.gentle.mass, useNativeDriver: true }),
     ]);
     animation.start();
 
@@ -231,9 +242,9 @@ export const CommunityScore: React.FC<{ score: number; endorsement: FriendEndors
         : { bg: COLORS.neutral400, light: COLORS.neutral50 };
 
   const conf = {
-    high: { bg: COLORS.successBg, text: THEME_COLORS.matchReasonGreen, label: 'Very Confident' },
-    medium: { bg: THEME_COLORS.tier1.lightBg, text: THEME_COLORS.primary, label: 'Confident' },
-    low: { bg: COLORS.warningBg, text: COLORS.warningIcon, label: 'Exploring' },
+    high: { bg: COLORS.successBg, text: THEME_COLORS.matchReasonGreen, label: 'Strong Match' },
+    medium: { bg: THEME_COLORS.tier1.lightBg, text: THEME_COLORS.primary, label: 'Good Vibes' },
+    low: { bg: COLORS.warningBg, text: COLORS.warningIcon, label: 'Worth a Look' },
   }[endorsement.confidenceLevel];
 
   return (
@@ -242,7 +253,7 @@ export const CommunityScore: React.FC<{ score: number; endorsement: FriendEndors
         transform: [{ scale: scaleAnim }],
         backgroundColor: COLORS.white,
         borderRadius: 12,
-        padding: 16,
+        padding: Math.round(16 * SCALE),
         marginBottom: 16,
         borderWidth: 1,
         borderColor: COLORS.neutral200,
@@ -250,11 +261,11 @@ export const CommunityScore: React.FC<{ score: number; endorsement: FriendEndors
       }}
     >
       <StyledView className="flex-row items-center justify-between mb-4">
-        <StyledView className="flex-row items-center">
+        <StyledView className="flex-row items-center" style={{ flex: 1, marginRight: 8 }}>
           <StyledView className="w-9 h-9 rounded-full items-center justify-center" style={{ backgroundColor: colors.light }}>
             <EvaIcon name="people" variant="outline" size={16} color={colors.bg} />
           </StyledView>
-          <Body className="font-bold text-base ml-3 tracking-tight" style={{ color: COLORS.neutral800 }}>Community Score</Body>
+          <Body className="font-bold ml-3 tracking-tight" style={{ color: COLORS.neutral800, fontSize: Math.round(FONT_SIZES.base * SCALE) }}>What Your Friends Think</Body>
         </StyledView>
         <StyledView className="px-3 py-1.5 rounded-full" style={{ backgroundColor: conf.bg }}>
           <Body className="text-xs font-semibold" style={{ color: conf.text }}>{conf.label}</Body>
@@ -262,8 +273,8 @@ export const CommunityScore: React.FC<{ score: number; endorsement: FriendEndors
       </StyledView>
 
       <StyledView className="flex-row items-end">
-        <Body style={{ fontSize: 44, lineHeight: 48, fontWeight: '700', fontFamily: FONTS.bold, color: colors.bg }}>{displayedScore}</Body>
-        <Body className="text-xl font-medium mb-2 ml-1" style={{ color: COLORS.neutral300 }}>%</Body>
+        <Body style={{ fontSize: Math.round((FONT_SIZES['7xl'] + 4) * SCALE), lineHeight: Math.round(LINE_HEIGHTS['7xl'] * SCALE), fontFamily: FONTS.bold, color: colors.bg }}>{displayedScore}</Body>
+        <Body className="font-medium mb-2 ml-1" style={{ fontSize: Math.round(FONT_SIZES.xl * SCALE), color: COLORS.neutral300 }}>%</Body>
       </StyledView>
 
       <StyledView className="h-1.5 rounded-full mt-3 overflow-hidden" style={{ backgroundColor: COLORS.neutral100 }}>
@@ -279,9 +290,9 @@ export const CommunityScore: React.FC<{ score: number; endorsement: FriendEndors
               </StyledView>
             ))}
           </StyledView>
-          <Body className="font-semibold ml-3 text-sm" style={{ color: COLORS.neutral700 }}>{endorsement.count} friend{endorsement.count !== 1 ? 's' : ''} voted</Body>
+          <Body className="font-semibold ml-3 text-sm" style={{ color: COLORS.neutral700, flexShrink: 1 }}>{endorsement.count} friend{endorsement.count !== 1 ? 's' : ''} weighed in</Body>
         </StyledView>
-        {endorsement.topReason && <Body className="text-sm" style={{ color: COLORS.neutral400, lineHeight: 18 }}>"{endorsement.topReason}"</Body>}
+        {endorsement.topReason && <Body className="text-sm" style={{ color: COLORS.neutral400, lineHeight: LINE_HEIGHTS.base }}>"{endorsement.topReason}"</Body>}
       </StyledView>
     </Animated.View>
   );
@@ -296,7 +307,7 @@ export const WhyThisMatch: React.FC<{ mutualInterests: string[]; mutualValues: s
         <StyledView className="w-9 h-9 rounded-full items-center justify-center" style={{ backgroundColor: COLORS.primary500 }}>
           <EvaIcon name="heart" variant="outline" size={16} color="white" />
         </StyledView>
-        <Body className="font-bold text-base ml-3 tracking-tight" style={{ color: COLORS.neutral800 }}>Why This Match</Body>
+        <Body className="font-bold text-base ml-3 tracking-tight" style={{ color: COLORS.neutral800 }}>Why You Two</Body>
       </StyledView>
 
       {mutualInterests.length > 0 && (
@@ -338,7 +349,7 @@ export const WhyThisMatch: React.FC<{ mutualInterests: string[]; mutualValues: s
       {compatibilityHighlights.length > 0 && compatibilityHighlights.map((highlight, i) => (
         <StyledView key={highlight} className="flex-row items-center" style={{ marginBottom: i === compatibilityHighlights.length - 1 ? 0 : 8 }}>
           <EvaIcon name="checkmark" variant="outline" size={15} color={COLORS.primary500} />
-          <Body className="text-sm ml-2.5" style={{ color: COLORS.neutral600, lineHeight: 18 }}>{highlight}</Body>
+          <Body className="text-sm ml-2.5" style={{ color: COLORS.neutral600, lineHeight: LINE_HEIGHTS.base }}>{highlight}</Body>
         </StyledView>
       ))}
     </StyledView>
@@ -347,9 +358,19 @@ export const WhyThisMatch: React.FC<{ mutualInterests: string[]; mutualValues: s
 
 export const BlurredPhoto: React.FC<{ uri: string; style?: object; index: number }> = ({ uri, style, index }) => {
   const BLUR_LEVELS = [5, 10, 12, 15];
+  const [hasError, setHasError] = useState(false);
+
+  if (!uri || hasError) {
+    return (
+      <StyledView style={[style, { backgroundColor: '#1a1a1a', alignItems: 'center', justifyContent: 'center' }]} accessibilityRole="image" accessibilityLabel="Photo unavailable">
+        <EvaIcon name="person" variant="outline" size={48} color="#525252" />
+      </StyledView>
+    );
+  }
+
   return (
-    <StyledView style={style}>
-      <StyledImage source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" blurRadius={BLUR_LEVELS[Math.min(index, BLUR_LEVELS.length - 1)]} transition={0} cachePolicy="memory-disk" priority="high" />
+    <StyledView style={style} accessibilityRole="image" accessibilityLabel={`Photo ${index + 1}`}>
+      <StyledImage source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" blurRadius={BLUR_LEVELS[Math.min(index, BLUR_LEVELS.length - 1)]} transition={200} cachePolicy="memory-disk" priority="high" onError={() => setHasError(true)} />
       <StyledView className="absolute inset-0" style={{ backgroundColor: `rgba(255,255,255,${0.03 + index * 0.02})` }} />
     </StyledView>
   );
@@ -360,7 +381,7 @@ export const InfoPill: React.FC<{ icon: string; text: string }> = React.memo(({ 
   return (
     <StyledView className="flex-row items-center rounded-full px-3.5 py-2 mr-2 mb-2.5" style={{ backgroundColor: style.bg, borderWidth: 1, borderColor: `${style.iconColor}20` }}>
       <EvaIcon name={icon} variant="outline" size={14} color={style.iconColor} />
-      <Body className="text-sm font-medium ml-1.5" style={{ color: style.textColor }}>{text}</Body>
+      <Body className="text-sm font-medium ml-1.5" style={{ color: style.textColor, flexShrink: 1 }} numberOfLines={1}>{text}</Body>
     </StyledView>
   );
 });
@@ -372,15 +393,15 @@ export const Section: React.FC<{ title: string; icon: string; children: React.Re
   useEffect(() => {
     const timer = setTimeout(() => {
       Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 1, duration: ANIMATION.DURATION_SLOW, easing: ANIMATION.EASING, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: 0, duration: ANIMATION.DURATION_SLOW, easing: ANIMATION.EASING, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: DURATIONS.slow, easing: ANIMATION_EASING, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: DURATIONS.slow, easing: ANIMATION_EASING, useNativeDriver: true }),
       ]).start();
     }, delay);
     return () => clearTimeout(timer);
   }, [delay, fadeAnim, slideAnim]);
 
   return (
-    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], marginBottom: 28 }}>
+    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], marginBottom: Math.round(28 * SCALE) }}>
       <StyledView className="flex-row items-center mb-4">
         <StyledView className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: THEME_COLORS.tier1.lightBg }}>
           <EvaIcon name={icon} variant="outline" size={15} color={COLORS.primary500} />
@@ -412,7 +433,7 @@ export const Tag: React.FC<{ label: string; variant?: 'default' | 'primary' | 's
 
 export const LifestyleRow: React.FC<{ icon?: string; customIcon?: React.ReactNode; label: string; value: string }> = ({ icon, customIcon, label, value }) => {
   const level = getFrequencyLevel(value);
-  const freqColors = [COLORS.success, '#84CC16', COLORS.warning, '#F97316', COLORS.error];
+  const freqColors = [COLORS.success, COLORS.freqLime, COLORS.warning, COLORS.freqOrange, COLORS.error];
 
   return (
     <StyledView className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: COLORS.neutral100 }}>
@@ -428,7 +449,7 @@ export const LifestyleRow: React.FC<{ icon?: string; customIcon?: React.ReactNod
             <StyledView key={i} className="w-1.5 h-1.5 rounded-full mx-0.5" style={{ backgroundColor: i <= level ? freqColors[level] : COLORS.neutral200 }} />
           ))}
         </StyledView>
-        <Body className="font-semibold text-sm" style={{ minWidth: 80, textAlign: 'right', color: COLORS.neutral800 }}>{value}</Body>
+        <Body className="font-semibold text-sm" style={{ minWidth: Math.round(80 * SCALE), textAlign: 'right', color: COLORS.neutral800 }}>{value}</Body>
       </StyledView>
     </StyledView>
   );
@@ -443,8 +464,8 @@ export const ModalContainer: React.FC<{ visible: boolean; children: React.ReactN
   useEffect(() => {
     if (visible) {
       Animated.parallel([
-        Animated.timing(opacityAnim, { toValue: 1, duration: ANIMATION.DURATION_FAST, easing: ANIMATION.EASING, useNativeDriver: true }),
-        Animated.spring(scaleAnim, { toValue: 1, friction: 10, tension: 60, useNativeDriver: true }),
+        Animated.timing(opacityAnim, { toValue: 1, duration: DURATIONS.micro, easing: ANIMATION_EASING, useNativeDriver: true }),
+        Animated.spring(scaleAnim, { toValue: 1, damping: SPRINGS.gentle.damping, stiffness: SPRINGS.gentle.stiffness, mass: SPRINGS.gentle.mass, useNativeDriver: true }),
       ]).start();
     } else {
       scaleAnim.setValue(variant === 'center' ? 0.95 : 0.97);
@@ -456,7 +477,7 @@ export const ModalContainer: React.FC<{ visible: boolean; children: React.ReactN
     return (
       <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
         <StyledView className="flex-1 items-center justify-center px-5" style={{ backgroundColor: OVERLAYS.medium }}>
-          <Animated.View style={{ opacity: opacityAnim, transform: [{ scale: scaleAnim }], backgroundColor: COLORS.white, borderRadius: 12, padding: 24, width: '100%', maxWidth: 320, ...SHADOWS.xxl }}>
+          <Animated.View style={{ opacity: opacityAnim, transform: [{ scale: scaleAnim }], backgroundColor: COLORS.white, borderRadius: 12, padding: Math.round(24 * SCALE), width: '100%', maxWidth: Math.min(320, SCREEN_WIDTH - 40), ...SHADOWS.xxl }}>
             {children}
           </Animated.View>
         </StyledView>
@@ -467,7 +488,7 @@ export const ModalContainer: React.FC<{ visible: boolean; children: React.ReactN
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <StyledView className="flex-1 justify-end" style={{ backgroundColor: OVERLAYS.medium }}>
-        <Animated.View style={{ opacity: opacityAnim, transform: [{ scale: scaleAnim }], backgroundColor: COLORS.white, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, maxHeight: '85%', ...SHADOWS.xl }}>
+        <Animated.View style={{ opacity: opacityAnim, transform: [{ scale: scaleAnim }], backgroundColor: COLORS.white, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingHorizontal: Math.round(16 * SCALE), paddingTop: 16, paddingBottom: 32, maxHeight: '85%', ...SHADOWS.xl }}>
           <StyledView className="w-10 h-1 rounded-full self-center mb-5" style={{ backgroundColor: COLORS.neutral300 }} />
           {children}
         </Animated.View>
@@ -481,33 +502,34 @@ export const PassFeedbackModal: React.FC<{ visible: boolean; onClose: () => void
 
   return (
     <ModalContainer visible={visible} onClose={onClose}>
-      <Body className="text-center mb-2" style={{ fontSize: 20, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral900 }}>Help us improve</Body>
-      <Body className="text-center mb-6" style={{ fontSize: 16, color: COLORS.neutral500, lineHeight: 24 }}>Why wasn't this a good match? (Optional)</Body>
+      <Body className="text-center mb-2" style={{ fontSize: FONT_SIZES['3xl'], fontFamily: FONTS.semiBold, color: COLORS.neutral900 }}>Quick question before you go</Body>
+      <Body className="text-center mb-6" style={{ fontSize: FONT_SIZES.xl, color: COLORS.neutral500, lineHeight: LINE_HEIGHTS['2xl'] }}>What didn't feel right? This helps us find better matches for you.</Body>
 
       <StyledView className="mb-6">
         {PASS_FEEDBACK_OPTIONS.map((option) => (
           <StyledTouchableOpacity
             key={option.id}
             onPress={() => { lightHaptic(); setSelectedFeedback(option.id === selectedFeedback ? null : option.id); }}
-            className="flex-row items-center mb-2 py-3 px-4"
-            style={{ backgroundColor: selectedFeedback === option.id ? COLORS.primary50 : COLORS.white, borderWidth: 1, borderColor: selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral300, borderRadius: 14 }}
+            className="flex-row items-center mb-2"
+            hitSlop={{ top: 2, bottom: 2, left: 0, right: 0 }}
+            style={{ backgroundColor: selectedFeedback === option.id ? COLORS.primary50 : COLORS.white, borderWidth: 1, borderColor: selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral300, borderRadius: 14, paddingVertical: Math.round(12 * SCALE), paddingHorizontal: Math.round(16 * SCALE), minHeight: 52 }}
             activeOpacity={0.7}
           >
             <StyledView className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: selectedFeedback === option.id ? COLORS.primaryBorder : COLORS.neutral50 }}>
               <EvaIcon name={option.icon} variant="outline" size={16} color={selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral500} />
             </StyledView>
-            <Body className="ml-3 flex-1" style={{ fontSize: 16, fontWeight: '500', fontFamily: FONTS.medium, color: selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral700 }}>{option.label}</Body>
+            <Body className="ml-3 flex-1" style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.medium, color: selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral700 }}>{option.label}</Body>
             {selectedFeedback === option.id && <EvaIcon name="checkmark-circle-2" variant="outline" size={20} color={COLORS.primary500} />}
           </StyledTouchableOpacity>
         ))}
       </StyledView>
 
-      <StyledView className="flex-row" style={{ gap: 12 }}>
-        <StyledTouchableOpacity onPress={onClose} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 14 }} activeOpacity={0.7}>
-          <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral600 }}>Skip</Body>
+      <StyledView className="flex-row" style={{ gap: Math.round(12 * SCALE) }}>
+        <StyledTouchableOpacity onPress={onClose} className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE) }} activeOpacity={0.7}>
+          <Body style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.semiBold, color: COLORS.neutral600 }}>No Thanks</Body>
         </StyledTouchableOpacity>
-        <StyledTouchableOpacity onPress={() => selectedFeedback ? onSubmit(selectedFeedback) : onClose()} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.primary500, borderRadius: 14, ...SHADOWS.sm }} activeOpacity={0.8}>
-          <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.white }}>Done</Body>
+        <StyledTouchableOpacity onPress={() => selectedFeedback ? onSubmit(selectedFeedback) : onClose()} className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.primary500, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE), ...SHADOWS.sm }} activeOpacity={0.8}>
+          <Body style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.semiBold, color: COLORS.white }}>Submit</Body>
         </StyledTouchableOpacity>
       </StyledView>
     </ModalContainer>
@@ -520,15 +542,15 @@ export const PassConfirmModal: React.FC<{ visible: boolean; onConfirm: () => voi
       <StyledView className="w-14 h-14 rounded-full items-center justify-center mb-4" style={{ backgroundColor: COLORS.warningBg }}>
         <EvaIcon name="question-mark-circle" variant="outline" size={28} color={COLORS.warningIcon} />
       </StyledView>
-      <Body className="text-center mb-2" style={{ fontSize: 20, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral900 }}>Pass on this match?</Body>
-      <Body className="text-center" style={{ fontSize: 16, color: COLORS.neutral500, lineHeight: 24 }}>Are you sure? You won't be able to match with this person again.</Body>
+      <Body className="text-center mb-2" style={{ fontSize: FONT_SIZES['3xl'], fontFamily: FONTS.semiBold, color: COLORS.neutral900 }}>Are you sure?</Body>
+      <Body className="text-center" style={{ fontSize: FONT_SIZES.xl, color: COLORS.neutral500, lineHeight: LINE_HEIGHTS['2xl'] }}>If you pass, you won't be able to connect with this person later.</Body>
     </StyledView>
-    <StyledView className="flex-row" style={{ gap: 12 }}>
-      <StyledTouchableOpacity onPress={onCancel} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 14 }} activeOpacity={0.7}>
-        <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral600 }}>Keep Looking</Body>
+    <StyledView className="flex-row" style={{ gap: Math.round(12 * SCALE) }}>
+      <StyledTouchableOpacity onPress={onCancel} className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE) }} activeOpacity={0.7}>
+        <Body style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.semiBold, color: COLORS.neutral600 }}>Go Back</Body>
       </StyledTouchableOpacity>
-      <StyledTouchableOpacity onPress={onConfirm} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.errorBg, borderRadius: 14 }} activeOpacity={0.7}>
-        <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.errorText }}>Pass</Body>
+      <StyledTouchableOpacity onPress={onConfirm} className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.errorBg, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE) }} activeOpacity={0.7}>
+        <Body style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.semiBold, color: COLORS.errorText }}>Yes, Pass</Body>
       </StyledTouchableOpacity>
     </StyledView>
   </ModalContainer>
@@ -537,35 +559,53 @@ export const PassConfirmModal: React.FC<{ visible: boolean; onConfirm: () => voi
 export const CelebrationOverlay: React.FC<{ visible: boolean; recipientName: string; onComplete: () => void }> = ({ visible, recipientName, onComplete }) => {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
+  const textOpacity = useRef(new Animated.Value(0)).current;
   const heartScales = useRef(Array.from({ length: 12 }, () => new Animated.Value(0))).current;
 
   useEffect(() => {
-    if (visible) {
-      Animated.sequence([
-        Animated.spring(scaleAnim, { toValue: 1.2, friction: 3, tension: 40, useNativeDriver: true }),
-        Animated.spring(scaleAnim, { toValue: 1, friction: 5, useNativeDriver: true }),
-      ]).start();
+    if (!visible) return;
 
-      Animated.timing(rotateAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
+    // Triple haptic burst for celebration delight
+    successHaptic();
+    const hapticTimer2 = setTimeout(() => successHaptic(), 200);
+    const hapticTimer3 = setTimeout(() => successHaptic(), 400);
 
-      const heartTimers: NodeJS.Timeout[] = [];
-      heartScales.forEach((scale, index) => {
-        const heartTimer = setTimeout(() => {
-          Animated.sequence([
-            Animated.spring(scale, { toValue: 1, friction: 4, tension: 50, useNativeDriver: true }),
-            Animated.timing(scale, { toValue: 0, duration: 400, delay: 800, useNativeDriver: true }),
-          ]).start();
-        }, index * 80);
-        heartTimers.push(heartTimer);
-      });
+    // Main icon: bouncy entrance with overshoot, then settle
+    Animated.sequence([
+      Animated.spring(scaleAnim, { toValue: 1.2, damping: SPRINGS.bouncy.damping, stiffness: SPRINGS.bouncy.stiffness, mass: SPRINGS.bouncy.mass, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, damping: SPRINGS.responsive.damping, stiffness: SPRINGS.responsive.stiffness, mass: SPRINGS.responsive.mass, useNativeDriver: true }),
+    ]).start();
 
-      const timer = setTimeout(onComplete, 2000);
-      return () => {
-        clearTimeout(timer);
-        heartTimers.forEach(t => clearTimeout(t));
-      };
-    }
-  }, [visible, scaleAnim, rotateAnim, heartScales, onComplete]);
+    // Spin-in for the heart icon
+    Animated.timing(rotateAnim, { toValue: 1, duration: DURATIONS.emphasis, useNativeDriver: true }).start();
+
+    // Fade in text slightly after icon lands
+    const textTimer = setTimeout(() => {
+      Animated.timing(textOpacity, { toValue: 1, duration: DURATIONS.normal, useNativeDriver: true }).start();
+    }, DURATIONS.slow);
+
+    // Scattered heart particles with staggered burst
+    const heartTimers: NodeJS.Timeout[] = [];
+    heartScales.forEach((scale, index) => {
+      const heartTimer = setTimeout(() => {
+        Animated.sequence([
+          Animated.spring(scale, { toValue: 1, damping: SPRINGS.bouncy.damping, stiffness: SPRINGS.bouncy.stiffness, mass: SPRINGS.bouncy.mass, useNativeDriver: true }),
+          Animated.timing(scale, { toValue: 0, duration: DURATIONS.slow, delay: DURATIONS.emphasis * 2, useNativeDriver: true }),
+        ]).start();
+      }, index * 80);
+      heartTimers.push(heartTimer);
+    });
+
+    // 3 seconds lets users emotionally register the moment
+    const completeTimer = setTimeout(onComplete, 3000);
+    return () => {
+      clearTimeout(hapticTimer2);
+      clearTimeout(hapticTimer3);
+      clearTimeout(textTimer);
+      clearTimeout(completeTimer);
+      heartTimers.forEach(t => clearTimeout(t));
+    };
+  }, [visible, scaleAnim, rotateAnim, textOpacity, heartScales, onComplete]);
 
   if (!visible) return null;
 
@@ -574,20 +614,21 @@ export const CelebrationOverlay: React.FC<{ visible: boolean; recipientName: str
       <StyledView className="flex-1 items-center justify-center" style={{ backgroundColor: OVERLAYS.heavy }}>
         {heartScales.map((scale, index) => {
           const angle = (index * 30) * (Math.PI / 180);
+          const radius = Math.round((90 + (index % 3) * 20) * SCALE);
           return (
-            <Animated.View key={`heart-${index}`} style={{ position: 'absolute', transform: [{ translateX: Math.cos(angle) * 100 }, { translateY: Math.sin(angle) * 100 }, { scale }] }}>
-              <EvaIcon name="heart" variant="outline" size={24} color={COLORS.pink} />
+            <Animated.View key={`heart-${index}`} style={{ position: 'absolute', transform: [{ translateX: Math.cos(angle) * radius }, { translateY: Math.sin(angle) * radius }, { scale }] }}>
+              <EvaIcon name="heart" variant="fill" size={Math.round((index % 3 === 0 ? 28 : 20) * SCALE)} color={COLORS.pink} />
             </Animated.View>
           );
         })}
         <Animated.View style={{ transform: [{ scale: scaleAnim }, { rotate: rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['-180deg', '0deg'] }) }] }}>
-          <StyledView className="w-28 h-28 rounded-full items-center justify-center mb-6" style={{ backgroundColor: COLORS.successBg }}>
-            <EvaIcon name="checkmark-circle-2" variant="outline" size={64} color={COLORS.success} />
+          <StyledView className="rounded-full items-center justify-center mb-6" style={{ backgroundColor: COLORS.pinkBg, width: Math.round(112 * SCALE), height: Math.round(112 * SCALE) }}>
+            <EvaIcon name="heart" variant="fill" size={Math.round(64 * SCALE)} color={COLORS.pink} />
           </StyledView>
         </Animated.View>
-        <Animated.View style={{ opacity: scaleAnim }}>
-          <Body className="text-white text-2xl font-bold text-center mb-3 tracking-tight">It's a Match!</Body>
-          <Body className="text-center text-base px-10" style={{ color: 'rgba(255,255,255,0.8)', lineHeight: 24 }}>Your community saw something special with {recipientName}.{'\n'}Now it's your turn to discover it.</Body>
+        <Animated.View style={{ opacity: textOpacity }}>
+          <Body className="text-white font-bold text-center mb-3 tracking-tight" style={{ fontSize: Math.round(FONT_SIZES['4xl'] * SCALE) }}>It's a Match!</Body>
+          <Body className="text-center text-base" style={{ color: COLORS.whiteTranslucent, lineHeight: LINE_HEIGHTS['2xl'], paddingHorizontal: Math.round(40 * SCALE) }}>Your community saw something special with {recipientName}.{'\n'}Now it's your turn to discover it.</Body>
         </Animated.View>
       </StyledView>
     </Modal>

@@ -18,7 +18,7 @@ const StepButton = ({ label, onPress, disabled, accessibilityLabel }: { label: s
     onPress={() => { lightHaptic(); onPress(); }}
     disabled={disabled}
     activeOpacity={0.7}
-    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
     style={[
       s.stepBtn,
       disabled ? s.stepBtnOff : s.stepBtnOn,
@@ -101,9 +101,9 @@ const s = StyleSheet.create({
 
   // ── Step buttons ──
   stepBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },

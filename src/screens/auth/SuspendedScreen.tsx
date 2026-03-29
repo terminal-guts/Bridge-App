@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { supabase } from '../../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
@@ -27,28 +27,28 @@ export default function SuspendedScreen({ reason }: SuspendedScreenProps) {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <EvaIcon name="alert-circle" variant="outline" size={64} color="#FF383C" />
+          <EvaIcon name="alert-circle" variant="outline" size={64} color={COLORS.rejectRed} />
         </View>
 
-        <Text style={styles.title}>Account Suspended</Text>
+        <Text style={styles.title}>Your account is on hold</Text>
 
         <Text style={styles.description}>
-          Your account has been temporarily suspended due to reports from other users.
+          We noticed some activity on your account that goes against our community guidelines, so we've temporarily paused it while we look into things.
         </Text>
 
         {reason && (
           <View style={styles.reasonBox}>
-            <Text style={styles.reasonLabel}>Reason</Text>
+            <Text style={styles.reasonLabel}>What happened</Text>
             <Text style={styles.reasonText}>{reason}</Text>
           </View>
         )}
 
         <Text style={styles.helpText}>
-          If you believe this is a mistake, please contact our support team.
+          Think this is a mix-up? Reach out to our support team and we'll get it sorted out.
         </Text>
 
         <TouchableOpacity style={styles.supportButton} onPress={handleContactSupport}>
-          <EvaIcon name="message-circle" variant="outline" size={20} color="#FFFFFF" />
+          <EvaIcon name="message-circle" variant="outline" size={20} color={COLORS.card} />
           <Text style={styles.supportButtonText}>Contact Support</Text>
         </TouchableOpacity>
 
@@ -63,7 +63,7 @@ export default function SuspendedScreen({ reason }: SuspendedScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.screenBackground,
   },
   content: {
     flex: 1,
@@ -77,20 +77,20 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: FONTS.bold,
     fontSize: FONT_SIZES['3xl'],
-    color: '#1A1A1A',
+    color: COLORS.text.heading,
     marginBottom: 12,
     textAlign: 'center',
   },
   description: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.md,
-    color: COLORS.text.label,
+    color: COLORS.text.secondary,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: LINE_HEIGHTS.xl,
     marginBottom: 16,
   },
   reasonBox: {
-    backgroundColor: '#FFF1F1',
+    backgroundColor: COLORS.mismatch.bg,
     borderRadius: 12,
     padding: 16,
     width: '100%',
@@ -105,12 +105,12 @@ const styles = StyleSheet.create({
   reasonText: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.sm,
-    color: '#1A1A1A',
+    color: COLORS.text.heading,
   },
   helpText: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.sm,
-    color: COLORS.text.label,
+    color: COLORS.text.secondary,
     textAlign: 'center',
     marginBottom: 24,
   },

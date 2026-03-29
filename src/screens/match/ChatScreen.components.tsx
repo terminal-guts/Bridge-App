@@ -15,7 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { EvaIcon } from '../../components/icons';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { OVERLAYS, SHADOWS } from '../../theme/shadows';
 
@@ -23,10 +23,10 @@ import { OVERLAYS, SHADOWS } from '../../theme/shadows';
 
 export const END_MATCH_REASONS = [
   'Conversation fizzled',
-  'No connection',
-  'Not on same page',
+  'Didn\'t feel a spark',
+  'Looking for something different',
   'Felt uncomfortable',
-  'Bad timing',
+  'Timing wasn\'t right',
   'Other',
 ];
 
@@ -81,14 +81,14 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
   <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
     <TouchableOpacity style={cs.menuOverlay} activeOpacity={1} onPress={onClose}>
       <View style={cs.menuCard}>
-        <TouchableOpacity style={cs.menuItem} onPress={onProposeDate} accessibilityRole="button" accessibilityLabel="Propose a date">
+        <TouchableOpacity style={cs.menuItem} onPress={onProposeDate} accessibilityRole="button" accessibilityLabel="Ask them out">
           <EvaIcon name="calendar" variant="outline" size={18} color={COLORS.textDarkHeading} />
-          <Text style={cs.menuItemText}>Propose a Date</Text>
+          <Text style={cs.menuItemText}>Ask them out</Text>
         </TouchableOpacity>
         <View style={cs.menuDivider} />
-        <TouchableOpacity style={cs.menuItem} onPress={onEndMatch} accessibilityRole="button" accessibilityLabel="End match">
+        <TouchableOpacity style={cs.menuItem} onPress={onEndMatch} accessibilityRole="button" accessibilityLabel="Move on from match">
           <EvaIcon name="close-circle" variant="outline" size={18} color={COLORS.textDarkHeading} />
-          <Text style={cs.menuItemText}>End Match</Text>
+          <Text style={cs.menuItemText}>Move on</Text>
         </TouchableOpacity>
         <View style={cs.menuDivider} />
         <TouchableOpacity style={cs.menuItem} onPress={onReport} accessibilityRole="button" accessibilityLabel={`Report ${recipientName}`}>
@@ -123,11 +123,11 @@ export const ProposeDateModal: React.FC<ProposeDateModalProps> = ({
         <View style={[ts.iconWrap, { backgroundColor: COLORS.backgroundFriendActive }]}>
           <EvaIcon name="calendar" variant="outline" size={26} color={COLORS.primaryAccent} />
         </View>
-        <Text style={ts.title}>Propose a Date</Text>
-        <Text style={ts.subtitle}>Suggest something fun with {recipientName}</Text>
+        <Text style={ts.title}>Ask {recipientName} out</Text>
+        <Text style={ts.subtitle}>Suggest a time and place to meet up</Text>
         <TextInput
           style={[ts.textArea, { minHeight: 80 }]}
-          placeholder={`e.g. Coffee at Blue Bottle on Saturday at 2pm?`}
+          placeholder={`e.g. Coffee at Brochstein on Saturday at 2pm?`}
           placeholderTextColor={COLORS.text.placeholder}
           value={dateProposalText}
           onChangeText={onChangeText}
@@ -140,7 +140,7 @@ export const ProposeDateModal: React.FC<ProposeDateModalProps> = ({
           onPress={onConfirm}
           disabled={!dateProposalText.trim()}
         >
-          <Text style={ts.submitBtnText}>Send Proposal</Text>
+          <Text style={ts.submitBtnText}>Send it</Text>
         </TouchableOpacity>
       </View>
       <TouchableOpacity activeOpacity={1} style={{ flex: 1 }} onPress={onClose} />
@@ -172,10 +172,10 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
           <EvaIcon name="close" variant="outline" size={22} color={COLORS.navInactiveIcon} />
         </TouchableOpacity>
         <View style={[ts.iconWrap, { backgroundColor: COLORS.backgroundWarmPeach }]}>
-          <EvaIcon name="close-square" variant="outline" size={26} color="#F97316" />
+          <EvaIcon name="close-square" variant="outline" size={26} color={COLORS.warmOrange} />
         </View>
-        <Text style={ts.title}>End this match?</Text>
-        <Text style={ts.subtitle}>You'll re-enter the matchmaking pool.{'\n'}Your reason will be shared with them.</Text>
+        <Text style={ts.title}>Ready to move on?</Text>
+        <Text style={ts.subtitle}>No worries — you'll be back in the mix for a new match.{'\n'}Let us know what happened so we can do better.</Text>
         <View style={ts.pillRow}>
           {END_MATCH_REASONS.map(reason => (
             <TouchableOpacity
@@ -203,7 +203,7 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
           onPress={onConfirm}
           disabled={!endMatchReason || submitting}
         >
-          <Text style={ts.submitBtnText}>{submitting ? 'Ending...' : 'End Match'}</Text>
+          <Text style={ts.submitBtnText}>{submitting ? 'On it...' : 'Move on'}</Text>
         </TouchableOpacity>
       </View>
       <TouchableOpacity activeOpacity={1} style={{ flex: 1 }} onPress={onClose} />
@@ -238,7 +238,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
           <EvaIcon name="flag" variant="outline" size={26} color={COLORS.danger} />
         </View>
         <Text style={ts.title}>Report {recipientName}</Text>
-        <Text style={ts.subtitle}>Our team reviews all reports within 24 hours</Text>
+        <Text style={ts.subtitle}>We take this seriously — our team looks into every report within 24 hours</Text>
         <View style={ts.pillRow}>
           {REPORT_REASONS.map(reason => (
             <TouchableOpacity
@@ -254,7 +254,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
         </View>
         <TextInput
           style={ts.textArea}
-          placeholder="Additional details (optional)"
+          placeholder="Anything else we should know? (optional)"
           placeholderTextColor={COLORS.text.placeholder}
           value={reportDetails}
           onChangeText={onChangeDetails}
@@ -301,7 +301,7 @@ export const dateProposalStyles = StyleSheet.create({
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.lg,
     color: COLORS.textDarkHeading,
-    lineHeight: 22,
+    lineHeight: LINE_HEIGHTS.xl,
   },
 });
 
@@ -336,7 +336,7 @@ const cs = StyleSheet.create({
   },
   menuDivider: {
     height: 1,
-    backgroundColor: COLORS.backgroundProgressTrack,
+    backgroundColor: COLORS.borderLight,
     marginHorizontal: 16,
   },
 });
@@ -392,7 +392,7 @@ export const ts = StyleSheet.create({
     color: COLORS.navInactiveIcon,
     textAlign: 'center',
     marginBottom: 20,
-    lineHeight: 20,
+    lineHeight: LINE_HEIGHTS.lg,
   },
   pillRow: {
     flexDirection: 'row',
