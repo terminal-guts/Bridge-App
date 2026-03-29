@@ -23,13 +23,16 @@ Deno.serve(async (req: Request) => {
     const supabase = createAdminClient();
 
     // ── 1. Fetch eligible users (not paused, profile completed, wants to be matched) ──
+    // Only daters (role = 'dater' or role IS NULL for legacy accounts) enter the dating pool.
+    // Matchmakers are excluded — they facilitate proposals but are never proposed themselves.
     const { data: profiles, error: profilesErr } = await supabase
       .from('user_profiles')
       .select('*')
       .eq('is_paused', false)
       .eq('is_suspended', false)
       .eq('profile_completed', true)
-      .or('matchmaking_only.is.null,matchmaking_only.eq.false');
+      .or('matchmaking_only.is.null,matchmaking_only.eq.false')
+      .or('role.eq.dater,role.is.null');
 
     if (profilesErr) throw profilesErr;
 
@@ -126,6 +129,41 @@ Deno.serve(async (req: Request) => {
       friendsMap[row.user_id].add(row.friend_id);
       friendsMap[row.friend_id].add(row.user_id);
     }
+
+    // Declare createdProposals to accumulate all proposals created this cycle.
+    const createdProposals: Array<{ id: string; user_a_id: string; user_b_id: string; status: string }> = [];
+
+    // ── Step 0: Friend suggestion housekeeping ──
+    // 0a expires stale suggestions; 0b builds a boost set used during scoring.
+
+    // 0a. Expire stale suggestions (queued or stashed but past their TTL)
+    const { error: expireErr } = await supabase
+      .from('friend_suggestions')
+      .update({ status: 'expired', updated_at: new Date().toISOString() })
+      .in('status', ['queued', 'stashed'])
+      .lt('expires_at', new Date().toISOString());
+
+    if (expireErr) {
+      console.warn('Warning: could not expire stale friend suggestions:', expireErr.message);
+    }
+
+    // 0b. Fetch all still-queued suggestions to build a boost set for the algorithm
+    const { data: queuedSuggestions, error: suggestionsErr } = await supabase
+      .from('friend_suggestions')
+      .select('user_a_id, user_b_id')
+      .eq('status', 'queued')
+      .gt('expires_at', new Date().toISOString());
+
+    if (suggestionsErr) {
+      console.warn('Warning: could not fetch queued friend suggestions:', suggestionsErr.message);
+    }
+
+    // Build a set of suggested pair keys so the scoring step can apply a compatibility boost
+    const suggestedPairs = new Set<string>(
+      (queuedSuggestions || []).map((s: { user_a_id: string; user_b_id: string }) =>
+        [s.user_a_id, s.user_b_id].sort().join('|')
+      )
+    );
 
     // 4. Fetch deep question answers for scoring
     const { data: deepAnswers } = await supabase
@@ -229,7 +267,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    if (candidates.length === 0) {
+    if (candidates.length === 0 && createdProposals.length === 0) {
       return Response.json({
         status: 'no_candidates',
         eligible_users: eligibleProfiles.length,
@@ -260,6 +298,12 @@ Deno.serve(async (req: Request) => {
       const aStarve = starvationBoost[profileA.user_id as string] || 0;
       const bStarve = starvationBoost[profileB.user_id as string] || 0;
       result.total_score += (aStarve + bStarve) / 2;
+
+      // Apply friend suggestion boost: if a matchmaker queued this pair, multiply score by 1.25
+      const pairKey = [profileA.user_id, profileB.user_id].sort().join('|');
+      if (suggestedPairs.has(pairKey)) {
+        result.total_score *= 1.25;
+      }
 
       if (result.total_score >= MIN_COMPATIBILITY_SCORE) {
         // Enforce user_a_id < user_b_id
@@ -292,7 +336,7 @@ Deno.serve(async (req: Request) => {
       if (topPairs.length >= maxProposals) break;
     }
 
-    if (topPairs.length === 0) {
+    if (topPairs.length === 0 && createdProposals.length === 0) {
       return Response.json({
         status: 'no_viable_matches',
         eligible_users: eligibleProfiles.length,
@@ -304,17 +348,15 @@ Deno.serve(async (req: Request) => {
     // 7. Create proposals in DB
     const now = new Date().toISOString();
     const votingExpires = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
-    const createdProposals: Array<{ id: string; user_a_id: string; user_b_id: string; status: string }> = [];
 
     for (const pair of topPairs) {
-      const displayScore = Math.floor(Math.random() * 30) + 70; // Random 70-99
       const { data: created, error: insertErr } = await supabase
         .from('proposals')
         .insert({
           user_a_id: pair.user_a_id,
           user_b_id: pair.user_b_id,
           status: 'pending',
-          compatibility_score: displayScore,
+          compatibility_score: pair.compatibility_score,
           category_scores: pair.category_scores,
           pool_yes_votes: 0,
           pool_no_votes: 0,

@@ -13,6 +13,7 @@ import { createAdminClient } from '../_shared/supabase-client.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { requireServiceRole } from '../_shared/admin-auth.ts';
 import { sendPush, getNextCopyVariant } from '../_shared/send-push.ts';
+import { sendSms } from '../_shared/send-sms.ts';
 
 const COPY_VARIANTS = [
   {
@@ -129,18 +130,25 @@ Deno.serve(async (req: Request) => {
       const variant = await getNextCopyVariant(supabase, voterId, 'vote_reminder', COPY_VARIANTS.length);
       const copy = COPY_VARIANTS[variant];
 
-      const result = await sendPush(supabase, {
-        userId: voterId,
-        notificationType: 'vote_reminder',
-        category: 'engagement',
-        title: copy.title(friendName),
-        body: copy.body(friendName),
-        data: { screen: 'Community' },
-        copyVariant: variant,
-        metadata: { friend_id: topCandidate.friendId, proposal_id: topCandidate.proposalId },
-      });
+      const [pushResult, smsResult] = await Promise.all([
+        sendPush(supabase, {
+          userId: voterId,
+          notificationType: 'vote_reminder',
+          category: 'engagement',
+          title: copy.title(friendName),
+          body: copy.body(friendName),
+          data: { screen: 'Community' },
+          copyVariant: variant,
+          metadata: { friend_id: topCandidate.friendId, proposal_id: topCandidate.proposalId },
+        }),
+        sendSms(supabase, {
+          userId: voterId,
+          body: `${friendName} has a proposal waiting. Vote before tonight`,
+          path: '/community',
+        }),
+      ]);
 
-      if (result.sent) sentCount++;
+      if (pushResult.sent || smsResult.sent) sentCount++;
     }
 
     return Response.json({

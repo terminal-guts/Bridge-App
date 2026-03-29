@@ -11,8 +11,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   SectionList,
-  Image,
+  StyleSheet,
 } from 'react-native';
+import ReanimatedAnimated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { Image } from 'expo-image';
 import * as Clipboard from 'expo-clipboard';
 import { styled } from 'nativewind';
 import { EvaIcon } from '../../components/icons';
@@ -44,6 +46,8 @@ export const ContactAvatar = React.memo(({ contact, bgColor, textColor }: { cont
       <Image
         source={{ uri: contact.imageUri }}
         style={contactStyles.avatar}
+        contentFit="cover"
+        cachePolicy="memory-disk"
       />
     );
   }
@@ -243,7 +247,7 @@ export const FriendCodeCard = React.memo(({ friendCode, onShareCode, onEnterCode
       <StyledText style={contactStyles.friendCodeText}>
         {friendCode}
       </StyledText>
-      <StyledText style={{ fontSize: FONT_SIZES.xs, color: copied ? COLORS.success : COLORS.text.disabled, marginTop: 2 }}>
+      <StyledText style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.regular, color: copied ? COLORS.success : COLORS.text.disabled, marginTop: 2 }}>
         {copied ? 'Copied!' : 'Tap to copy'}
       </StyledText>
     </TouchableOpacity>
@@ -288,7 +292,7 @@ export const EnterCodeInput = React.memo(({ inputRef, value, onChangeText, onSub
       <StyledView className="flex-1 flex-row items-center bg-neutral-100 rounded-lg px-3 py-2 mr-2">
         <TextInput
           ref={inputRef}
-          style={{ flex: 1, fontSize: FONT_SIZES.base, color: '#0B1226' }}
+          style={{ flex: 1, fontSize: FONT_SIZES.base, fontFamily: FONTS.regular, color: '#0B1226' }}
           placeholder="Enter friend code"
           placeholderTextColor={COLORS.text.disabled}
           value={value}
@@ -326,7 +330,11 @@ export const CelebrationOverlay = React.memo(({ count }: CelebrationOverlayProps
       pointerEvents="none"
       style={contactStyles.celebrationOverlay}
     >
-      <View style={contactStyles.celebrationCard}>
+      <ReanimatedAnimated.View
+        entering={FadeIn.duration(300)}
+        exiting={FadeOut.duration(400)}
+        style={contactStyles.celebrationCard}
+      >
         <EvaIcon name="award" variant="outline" size={48} color={COLORS.primaryAccent} />
         <View style={{ marginBottom: 8 }} />
         <Text style={contactStyles.celebrationTitle}>
@@ -335,7 +343,7 @@ export const CelebrationOverlay = React.memo(({ count }: CelebrationOverlayProps
         <Text style={contactStyles.celebrationSubtitle}>
           Your friends are going to love Bridge
         </Text>
-      </View>
+      </ReanimatedAnimated.View>
     </View>
   );
 });
@@ -434,7 +442,7 @@ export const GrantedHeaderStrip = React.memo(({ friendCode, enterCodeValue, ente
           accessibilityRole="button"
           accessibilityLabel="Copy friend code"
         >
-          <EvaIcon name="copy" variant="outline" size={16} color="#437FFF" />
+          <EvaIcon name="copy" variant="outline" size={16} color={COLORS.primaryAccent} />
         </StyledTouchableOpacity>
         <StyledTouchableOpacity
           className="p-1.5 rounded-full bg-primary-50 ml-1"
@@ -443,7 +451,7 @@ export const GrantedHeaderStrip = React.memo(({ friendCode, enterCodeValue, ente
           accessibilityRole="button"
           accessibilityLabel="Share friend code"
         >
-          <EvaIcon name="share" variant="outline" size={16} color="#437FFF" />
+          <EvaIcon name="share" variant="outline" size={16} color={COLORS.primaryAccent} />
         </StyledTouchableOpacity>
       </StyledView>
     ) : null}
@@ -522,18 +530,21 @@ export interface FloatingSendButtonProps {
 export const FloatingSendButton = React.memo(({ selectedCount, invitesRemaining, sending, onSend }: FloatingSendButtonProps) => {
   if (selectedCount <= 0) return null;
   const sendCount = Math.min(selectedCount, invitesRemaining);
+  const exhausted = invitesRemaining <= 0;
+  const isDisabled = sending || exhausted;
   return (
     <StyledView
       className="absolute left-4 right-4 bottom-8"
       style={SHADOWS.accentBlue}
     >
       <StyledTouchableOpacity
-        className={`rounded-xl py-4 items-center ${sending ? 'bg-primary-300' : 'bg-primary-500'}`}
+        className={`rounded-xl py-4 items-center ${isDisabled ? 'bg-primary-300' : 'bg-primary-500'}`}
+        style={exhausted ? { backgroundColor: '#A3BFFF', opacity: 0.7 } : undefined}
         onPress={onSend}
-        disabled={sending}
+        disabled={isDisabled}
         accessibilityRole="button"
-        accessibilityLabel={sending ? 'Sending invites' : `Send ${sendCount} invites`}
-        accessibilityState={{ disabled: sending }}
+        accessibilityLabel={sending ? 'Sending invites' : exhausted ? 'No invites remaining' : `Send ${sendCount} invites`}
+        accessibilityState={{ disabled: isDisabled }}
       >
         <StyledText className="text-white font-bold text-base">
           {sending
@@ -640,6 +651,7 @@ export interface GrantedContactListProps {
   onAddAllBridge: () => void;
   onSendInvites: () => void;
   keyExtractor: (item: NormalizedContact) => string;
+  hideFloatingButton?: boolean;
 }
 
 export const GrantedContactList = React.memo(({
@@ -665,6 +677,7 @@ export const GrantedContactList = React.memo(({
   onAddAllBridge,
   onSendInvites,
   keyExtractor,
+  hideFloatingButton,
 }: GrantedContactListProps) => {
   const renderItem = React.useCallback(
     ({ item }: { item: NormalizedContact }) => (
@@ -719,6 +732,9 @@ export const GrantedContactList = React.memo(({
             keyExtractor={keyExtractor}
             renderItem={renderItem}
             renderSectionHeader={renderSectionHeader}
+            ItemSeparatorComponent={() => (
+              <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E8EDFB', marginLeft: 68 }} />
+            )}
             stickySectionHeadersEnabled
             initialNumToRender={20}
             maxToRenderPerBatch={30}
@@ -731,12 +747,14 @@ export const GrantedContactList = React.memo(({
         <EmptyContactsView />
       )}
 
-      <FloatingSendButton
-        selectedCount={selectedIds.size}
-        invitesRemaining={invitesRemaining}
-        sending={sending}
-        onSend={onSendInvites}
-      />
+      {!hideFloatingButton && (
+        <FloatingSendButton
+          selectedCount={selectedIds.size}
+          invitesRemaining={invitesRemaining}
+          sending={sending}
+          onSend={onSendInvites}
+        />
+      )}
     </>
   );
 });

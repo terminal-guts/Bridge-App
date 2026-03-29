@@ -16,8 +16,10 @@ import { signOut } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { supabase } from '../../lib/supabase';
 import { getFriendCount } from '../../services/friendService';
+import { getUserFriendCode } from '../../services/friendService.codes';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
-import { getReceivedBadges, toggleFeatured } from '../../services/badgeService';
+import { getReceivedBadges, toggleFeatured, toggleHidden } from '../../services/badgeService';
+import { fetchLeaderboard } from '../../services/leaderboardService';
 import { useGuide } from '../../hooks/useGuide';
 import { profileGuide } from '../../config/guides';
 import { lightHaptic, mediumHaptic, successHaptic, heavyHaptic } from '../../utils/haptics';
@@ -39,7 +41,10 @@ export function useProfileScreen(navigation: any) {
   const [badgesLoading, setBadgesLoading] = useState(false);
   const [showKarmaInfoModal, setShowKarmaInfoModal] = useState(false);
   const [showPhotoCarousel, setShowPhotoCarousel] = useState(false);
+  const [friendCode, setFriendCode] = useState<string | null>(null);
   const [photoCarouselIndex] = useState(0);
+  const [communityRank, setCommunityRank] = useState<number | null>(null);
+  const [rankChange, setRankChange] = useState<number>(0);
   const [showEditAnswerModal, setShowEditAnswerModal] = useState(false);
   const [selectedQuestionForEdit, setSelectedQuestionForEdit] = useState<DeepQuestionAnswer | null>(null);
   const [editingAnswer, setEditingAnswer] = useState('');
@@ -145,6 +150,29 @@ export function useProfileScreen(navigation: any) {
     }
   }, []);
 
+  const loadFriendCode = useCallback(async () => {
+    try {
+      const result = await getUserFriendCode();
+      if (result.ok && result.data?.code && isMountedRef.current) {
+        setFriendCode(result.data.code);
+      }
+    } catch (error) {
+      logger.error('Failed to load friend code:', error);
+    }
+  }, []);
+
+  const loadRank = useCallback(async () => {
+    try {
+      const result = await fetchLeaderboard(50);
+      if (result.ok && result.data.currentUser && isMountedRef.current) {
+        setCommunityRank(result.data.currentUser.rank);
+        setRankChange(result.data.currentUser.rankChange);
+      }
+    } catch (error) {
+      logger.error('Failed to load rank:', error);
+    }
+  }, []);
+
   const loadBadges = useCallback(async () => {
     setBadgesLoading(true);
     const result = await getReceivedBadges();
@@ -166,6 +194,8 @@ export function useProfileScreen(navigation: any) {
         loadProfile(),
         loadFriendCount(),
         loadBadges(),
+        loadFriendCode(),
+        loadRank(),
       ]).then(() => {
         lastFetchRef.current = Date.now();
       }).catch(error => {
@@ -175,7 +205,7 @@ export function useProfileScreen(navigation: any) {
           'Please pull down to refresh or try again later.'
         );
       });
-    }, [loadProfile, loadFriendCount, loadBadges])
+    }, [loadProfile, loadFriendCount, loadBadges, loadFriendCode, loadRank])
   );
 
   // Deep-link: switch to a specific tab
@@ -189,9 +219,9 @@ export function useProfileScreen(navigation: any) {
     }, [route.params?.initialTab])
   );
 
-  // Start profile guide once per session
+  // Start profile guide once per session — skip for matchmakers (guide references dater-only UI)
   useEffect(() => {
-    if (!loading && profile && !hasTriggeredGuide) {
+    if (!loading && profile && !hasTriggeredGuide && profile.role !== 'matchmaker') {
       setHasTriggeredGuide(true);
       const timer = setTimeout(() => {
         startGuideIfNeeded(profileGuide);
@@ -484,6 +514,16 @@ export function useProfileScreen(navigation: any) {
     }
   };
 
+  const handleToggleHiddenBadge = async (badge: FriendBadgeWithGiver) => {
+    lightHaptic();
+    const result = await toggleHidden(badge.id, !badge.isHidden);
+    if (result.ok) {
+      loadBadges();
+    } else {
+      showToast.error(result.error?.message || 'Failed to update');
+    }
+  };
+
   return {
     // State
     profile,
@@ -506,6 +546,7 @@ export function useProfileScreen(navigation: any) {
     setSelectedQuestionForEdit,
     editingAnswer,
     isOffline,
+    friendCode,
     starringQuestions,
     selectedSlotIndex,
     setSelectedSlotIndex,
@@ -529,6 +570,8 @@ export function useProfileScreen(navigation: any) {
     celebrationActive,
     confettiRef,
     isMountedRef,
+    communityRank,
+    rankChange,
 
     // Handlers
     loadProfile,
@@ -543,5 +586,6 @@ export function useProfileScreen(navigation: any) {
     handleChangeToAnsweredQuestion,
     handleSaveNewAnswer,
     handleToggleFeaturedBadge,
+    handleToggleHiddenBadge,
   };
 }

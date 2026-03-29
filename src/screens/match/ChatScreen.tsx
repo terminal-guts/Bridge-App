@@ -13,13 +13,14 @@ import {
   TextInput,
   FlatList,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Alert,
   RefreshControl,
   StyleSheet,
   Text,
 } from 'react-native';
+import { Image } from 'expo-image';
+import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 import { styled } from 'nativewind';
 import { H3, Body, BodySmall } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
@@ -65,7 +66,6 @@ const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledTextInput = styled(TextInput);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-const StyledImage = styled(Image);
 
 const FLAT_LIST_CONTENT_STYLE = { padding: 16, paddingBottom: 8, flexGrow: 1 } as const;
 
@@ -409,7 +409,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
             const photoUrl = (recipientProfile?.photos?.find((p: any) => p.isMain) || recipientProfile?.photos?.[0])?.url || recipientPhoto;
             return photoUrl ? (
               <StyledTouchableOpacity onPress={() => navigation.navigate('ProfileView', { userId: recipientId || '', profile: recipientProfile || (recipientId ? { userId: recipientId, firstName: recipientName } as any : undefined), showActions: false })} className="ml-3 mr-3" accessibilityRole="button" accessibilityLabel={`View ${recipientName}'s profile`}>
-                <StyledImage source={{ uri: photoUrl }} className="w-10 h-10 rounded-full" />
+                <Image
+                source={{ uri: getOptimizedPhotoUrl(photoUrl, 'avatar') ?? photoUrl }}
+                style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.backgroundGrayMedium }}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                priority="high"
+              />
               </StyledTouchableOpacity>
             ) : null;
           })()}
@@ -432,6 +438,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
           showsVerticalScrollIndicator={false} ListHeaderComponent={renderHeader}
           ListEmptyComponent={renderEmptyState}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.primaryAccent} />}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          removeClippedSubviews
         />
         <StyledView className="border-t border-neutral-200 px-4 py-3 bg-white">
           <StyledView className="flex-row items-end">

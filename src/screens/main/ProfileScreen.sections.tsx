@@ -217,11 +217,16 @@ interface BadgesTabProps {
   badges: FriendBadgeWithGiver[];
   badgesLoading: boolean;
   onToggleFeatured: (badge: FriendBadgeWithGiver) => void;
+  onToggleHidden: (badge: FriendBadgeWithGiver) => void;
 }
 
-export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onToggleFeatured }) => {
-  const featured = badges.filter(b => b.isFeatured);
-  const unfeatured = badges.filter(b => !b.isFeatured);
+export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onToggleFeatured, onToggleHidden }) => {
+  const [showHidden, setShowHidden] = React.useState(false);
+  const isUpdatingRef = React.useRef(false);
+  const visibleBadges = badges.filter(b => !b.isHidden);
+  const hiddenBadges = badges.filter(b => b.isHidden);
+  const featured = visibleBadges.filter(b => b.isFeatured);
+  const unfeatured = visibleBadges.filter(b => !b.isFeatured);
 
   if (badgesLoading) {
     return (
@@ -251,26 +256,27 @@ export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onT
     );
   }
 
-  const renderBadgeCard = (badge: FriendBadgeWithGiver, isFeatured: boolean) => (
+  const renderBadgeCard = (badge: FriendBadgeWithGiver, isFeatured: boolean, isHidden = false) => (
     <StyledView
       key={badge.id}
       style={{
-        backgroundColor: isFeatured ? COLORS.backgroundSoftYellow : COLORS.card,
+        backgroundColor: isHidden ? COLORS.backgroundGray : isFeatured ? COLORS.backgroundSoftYellow : COLORS.card,
         borderRadius: 16,
         borderWidth: isFeatured ? 1.5 : 1,
         borderColor: isFeatured ? COLORS.borderGoldLight : COLORS.borderSubtle,
         padding: 16, marginBottom: 12,
-        flexDirection: 'row', alignItems: 'center', gap: 16,
+        flexDirection: 'row', alignItems: 'center', gap: 12,
+        opacity: isHidden ? 0.6 : 1,
         ...(isFeatured ? SHADOWS.accentGold : SHADOWS.sm),
       }}
     >
       <StyledView style={{
-        width: 56, height: 56, borderRadius: 28,
+        width: 52, height: 52, borderRadius: 26,
         backgroundColor: isFeatured ? COLORS.warning.bg : COLORS.backgroundGray,
         alignItems: 'center', justifyContent: 'center',
         borderWidth: isFeatured ? 1 : 0, borderColor: COLORS.borderGoldLight,
       }}>
-        <BadgeIcon name={badge.iconName} size={32} />
+        <BadgeIcon name={badge.iconName} size={30} />
       </StyledView>
 
       <StyledView style={{ flex: 1 }}>
@@ -289,20 +295,45 @@ export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onT
         </Body>
       </StyledView>
 
+      {/* Star toggle */}
       <StyledTouchableOpacity
-        onPress={() => onToggleFeatured(badge)}
-        activeOpacity={0.6}
-        style={{
-          width: 40, height: 40, borderRadius: 20,
-          backgroundColor: isFeatured ? COLORS.warning.bg : COLORS.backgroundGray,
-          alignItems: 'center', justifyContent: 'center',
+        onPress={() => {
+          if (isUpdatingRef.current) return;
+          isUpdatingRef.current = true;
+          lightHaptic();
+          onToggleFeatured(badge);
+          setTimeout(() => { isUpdatingRef.current = false; }, 800);
         }}
+        activeOpacity={0.6}
+        style={{ padding: 6 }}
+        accessibilityLabel={isFeatured ? 'Unfeature badge' : 'Feature badge'}
       >
         <EvaIcon
           name="star"
           variant={isFeatured ? 'fill' : 'outline'}
           size={22}
           color={isFeatured ? COLORS.warning.icon : COLORS.borderGray}
+        />
+      </StyledTouchableOpacity>
+
+      {/* Eye toggle */}
+      <StyledTouchableOpacity
+        onPress={() => {
+          if (isUpdatingRef.current) return;
+          isUpdatingRef.current = true;
+          lightHaptic();
+          onToggleHidden(badge);
+          setTimeout(() => { isUpdatingRef.current = false; }, 800);
+        }}
+        activeOpacity={0.6}
+        style={{ padding: 6 }}
+        accessibilityLabel={isHidden ? 'Unhide badge' : 'Hide badge'}
+      >
+        <EvaIcon
+          name={isHidden ? 'eye-off' : 'eye'}
+          variant="outline"
+          size={22}
+          color={COLORS.text.muted}
         />
       </StyledTouchableOpacity>
     </StyledView>
@@ -341,6 +372,29 @@ export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onT
             </Body>
           </StyledView>
           {unfeatured.map(b => renderBadgeCard(b, false))}
+        </StyledView>
+      )}
+
+      {hiddenBadges.length > 0 && (
+        <StyledView style={{ marginBottom: 20 }}>
+          <StyledTouchableOpacity
+            onPress={() => { lightHaptic(); setShowHidden(h => !h); }}
+            activeOpacity={0.7}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}
+          >
+            <EvaIcon name="eye-off" variant="outline" size={16} color={COLORS.text.muted} />
+            <Body style={{
+              fontFamily: FONTS.bold, fontSize: 13, color: COLORS.text.muted,
+              textTransform: 'uppercase', letterSpacing: 0.8, flex: 1,
+            }}>
+              Hidden ({hiddenBadges.length})
+            </Body>
+            <EvaIcon
+              name={showHidden ? 'chevron-up' : 'chevron-down'}
+              variant="outline" size={18} color={COLORS.text.muted}
+            />
+          </StyledTouchableOpacity>
+          {showHidden && hiddenBadges.map(b => renderBadgeCard(b, false, true))}
         </StyledView>
       )}
     </StyledView>

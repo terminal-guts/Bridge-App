@@ -12,6 +12,7 @@ import { createAdminClient } from '../_shared/supabase-client.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { requireServiceRole } from '../_shared/admin-auth.ts';
 import { sendPush, getNextCopyVariant } from '../_shared/send-push.ts';
+import { sendSms } from '../_shared/send-sms.ts';
 
 const COPY_NOT_FIRST = [
   {
@@ -105,9 +106,13 @@ Deno.serve(async (req: Request) => {
       return Response.json({ status: 'success', sent: 0 }, { headers: corsHeaders });
     }
 
-    // Build karma lookup
+    // Build karma and rank lookup
     const karmaMap = new Map<string, number>();
-    leaderboard.forEach((row: { user_id: string; karma_points: number }) => karmaMap.set(row.user_id, row.karma_points));
+    const rankMap = new Map<string, number>();
+    leaderboard.forEach((row: { user_id: string; karma_points: number }, idx: number) => {
+      karmaMap.set(row.user_id, row.karma_points);
+      rankMap.set(row.user_id, idx + 1);
+    });
 
     let sentCount = 0;
 
@@ -121,32 +126,47 @@ Deno.serve(async (req: Request) => {
         const variant = await getNextCopyVariant(supabase, user.user_id, 'morning_leaderboard', COPY_IS_FIRST.length);
         const copy = COPY_IS_FIRST[variant];
 
-        const result = await sendPush(supabase, {
-          userId: user.user_id,
-          notificationType: 'morning_leaderboard',
-          category: 'ritual',
-          title: copy.title,
-          body: copy.body(topKarma, secondName, gap),
-          data: { screen: 'Leaderboard' },
-          copyVariant: variant,
-        });
-        if (result.sent) sentCount++;
+        const [pushResult, smsResult] = await Promise.all([
+          sendPush(supabase, {
+            userId: user.user_id,
+            notificationType: 'morning_leaderboard',
+            category: 'ritual',
+            title: copy.title,
+            body: copy.body(topKarma, secondName, gap),
+            data: { screen: 'Leaderboard' },
+            copyVariant: variant,
+          }),
+          sendSms(supabase, {
+            userId: user.user_id,
+            body: `You're ranked #1 on the Bridge leaderboard this week`,
+            path: '/leaderboard',
+          }),
+        ]);
+        if (pushResult.sent || smsResult.sent) sentCount++;
       } else {
         // User is NOT #1 — show them the gap
         const gap = topKarma - userKarma;
+        const userRank = rankMap.get(user.user_id) ?? 0;
         const variant = await getNextCopyVariant(supabase, user.user_id, 'morning_leaderboard', COPY_NOT_FIRST.length);
         const copy = COPY_NOT_FIRST[variant];
 
-        const result = await sendPush(supabase, {
-          userId: user.user_id,
-          notificationType: 'morning_leaderboard',
-          category: 'ritual',
-          title: copy.title(leaderName),
-          body: copy.body(leaderName, topKarma, gap),
-          data: { screen: 'Leaderboard' },
-          copyVariant: variant,
-        });
-        if (result.sent) sentCount++;
+        const [pushResult, smsResult] = await Promise.all([
+          sendPush(supabase, {
+            userId: user.user_id,
+            notificationType: 'morning_leaderboard',
+            category: 'ritual',
+            title: copy.title(leaderName),
+            body: copy.body(leaderName, topKarma, gap),
+            data: { screen: 'Leaderboard' },
+            copyVariant: variant,
+          }),
+          sendSms(supabase, {
+            userId: user.user_id,
+            body: `You're ranked #${userRank} on the Bridge leaderboard this week`,
+            path: '/leaderboard',
+          }),
+        ]);
+        if (pushResult.sent || smsResult.sent) sentCount++;
       }
     }
 

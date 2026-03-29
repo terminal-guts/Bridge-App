@@ -182,7 +182,7 @@ export function useProposalVoting(
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         setCurrentIndex(prev => prev + 1);
       }
-    }, 1000);
+    }, 250);
   }, [onVoteComplete, onBack, onVotesComplete]);
 
   const handleVote = useCallback(async (vote: 'yes' | 'no' | 'unsure') => {
@@ -332,8 +332,9 @@ export function useForFriendModal(
     const current = proposals[currentIndex];
     if (current) {
       const recommendedPersonId = selectedPersonSide === 'userA' ? current.userA.id : current.userB.id;
-      void recommendedPersonId; // used for DB write (handled by server); record session action for progress counter
       communityService.recordSessionRecommendation(current.id);
+      // Fire-and-forget: persist to DB; swallows errors so UX is unblocked
+      communityService.submitRecommendation(recommendedPersonId, selectedFriendId, current.id).catch(() => {});
     }
     setShowForFriendModal(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
@@ -408,8 +409,12 @@ export function useMatchData(proposals: Proposal[], currentIndex: number) {
 export function useDeepQuestions(proposals: Proposal[], currentIndex: number): DeepQuestionData[] {
   const [deepQuestions, setDeepQuestions] = useState<DeepQuestionData[]>([]);
 
+  // Stable ID for the current proposal — avoids re-fetching when the proposals
+  // array reference changes but the actual proposal hasn't.
+  const proposalId = proposals[currentIndex]?.id ?? null;
+
   useEffect(() => {
-    if (proposals.length === 0 || currentIndex >= proposals.length) return;
+    if (!proposalId || currentIndex >= proposals.length) return;
     const proposal = proposals[currentIndex];
     const userAId = proposal.userA?.userId;
     const userBId = proposal.userB?.userId;
@@ -449,13 +454,14 @@ export function useDeepQuestions(proposals: Proposal[], currentIndex: number): D
         }
       }
 
+      // Only update state when new data is ready — never clear eagerly so the
+      // previous proposal's questions stay visible during the in-flight fetch.
       setDeepQuestions(questions);
     }
 
-    setDeepQuestions([]);
     fetchQuestions().catch(() => {});
     return () => { cancelled = true; };
-  }, [proposals, currentIndex]);
+  }, [proposalId]);
 
   return deepQuestions;
 }

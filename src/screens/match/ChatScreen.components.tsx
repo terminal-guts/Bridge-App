@@ -310,6 +310,7 @@ export const dateProposalStyles = StyleSheet.create({
 const cs = StyleSheet.create({
   menuOverlay: {
     flex: 1,
+    backgroundColor: OVERLAYS.light,
   },
   menuCard: {
     position: 'absolute',

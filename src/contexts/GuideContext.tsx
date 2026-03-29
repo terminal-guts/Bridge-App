@@ -37,6 +37,12 @@ interface GuideContextState {
   nextStep: () => void;
   previousStep: () => void;
   skipGuide: () => void;
+  /** Synchronous stop — immediately clears playing state, then persists skip async.
+   *  Use this when you need the guide to stop before a navigation fires (e.g.
+   *  navigating from MainTabs → MatchmakerTabs). The async skipGuide() updates
+   *  state AFTER an AsyncStorage await, which is too late to prevent mid-animation
+   *  Reanimated components from crashing during the navigation unmount. */
+  stopGuide: () => void;
   completeGuide: () => Promise<void>;
 
   // Target registration
@@ -176,6 +182,25 @@ export const GuideProvider: React.FC<GuideProviderProps> = ({ children }) => {
   }, [activeGuide, currentStep]);
 
   /**
+   * Synchronously stop the guide and fire-and-forget the AsyncStorage write.
+   * Used when a navigation is about to fire and we need the guide state cleared
+   * BEFORE React processes the next render (e.g. MainTabs → MatchmakerTabs role
+   * correction). The async skipGuide() sets state only after an await, which
+   * arrives too late to prevent Reanimated animated components from crashing
+   * as they unmount during the navigation transition.
+   */
+  const stopGuide = useCallback(() => {
+    if (!activeGuide) return;
+    // Update state synchronously — GuideOverlay returns null on next render
+    setIsPlaying(false);
+    setActiveGuide(null);
+    setCurrentStep(0);
+    // Persist the skip without blocking — fire and forget
+    markGuideSkipped(activeGuide.id).catch(() => {});
+    logger.info(`[GuideContext] Stopped guide synchronously: ${activeGuide.id}`);
+  }, [activeGuide]);
+
+  /**
    * Skip the guide
    */
   const skipGuide = useCallback(async () => {
@@ -236,6 +261,7 @@ export const GuideProvider: React.FC<GuideProviderProps> = ({ children }) => {
     nextStep,
     previousStep,
     skipGuide,
+    stopGuide,
     completeGuide,
     registerTarget,
     unregisterTarget,

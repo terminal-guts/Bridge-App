@@ -14,6 +14,9 @@
  */
 export const getOptimizedImageUrl = (url: string | undefined, size: number): string | undefined => {
   if (!url || typeof url !== 'string') return url;
+  if (!url.includes('supabase.co')) return url;
+  // Don't double-transform
+  if (url.includes('width=')) return url;
 
   // Use double the requested size for high-density displays (retina)
   const targetSize = Math.round(size * 2);
@@ -25,10 +28,11 @@ export const getOptimizedImageUrl = (url: string | undefined, size: number): str
            `?${transformParams}`;
   }
 
-  // Signed URLs: append transform params (Supabase Storage supports this)
+  // Signed URLs: route through render/image endpoint for actual transformation.
   if (url.includes('supabase.co') && url.includes('/object/sign/')) {
-    const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}${transformParams}`;
+    const renderUrl = url.replace('/storage/v1/object/sign/', '/storage/v1/render/image/sign/');
+    const separator = renderUrl.includes('?') ? '&' : '?';
+    return `${renderUrl}${separator}${transformParams}`;
   }
 
   return url;
@@ -69,10 +73,13 @@ export function getOptimizedPhotoUrl(url: string | undefined, preset: PhotoPrese
            `?${params}`;
   }
 
-  // Signed URLs: append transform params
+  // Signed URLs: route through the render/image endpoint so transformations are applied.
+  // The JWT token is valid for both /object/sign/ and /render/image/sign/ — Supabase
+  // validates the token claims (bucket+path+expiry), not which endpoint issued it.
   if (url.includes('/object/sign/')) {
-    const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}${params}`;
+    const renderUrl = url.replace('/storage/v1/object/sign/', '/storage/v1/render/image/sign/');
+    const separator = renderUrl.includes('?') ? '&' : '?';
+    return `${renderUrl}${separator}${params}`;
   }
 
   return url;

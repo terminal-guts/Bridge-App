@@ -3,8 +3,8 @@
  * Extracted from ProposalReviewView.tsx.
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, Dimensions } from 'react-native';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
+import { View, Text, ScrollView, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS, FONT_SIZES } from '../../../constants/typography';
@@ -34,6 +34,7 @@ export const ProposalPhotoCard = React.memo(function ProposalPhotoCard({
   proposalId: string;
 }) {
   const [currentPage, setCurrentPage] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
   const validPhotos = useMemo(() => (photos || []).filter((p: any) => p.url).map((p: any) => ({
     ...p,
     url: getOptimizedPhotoUrl(p.url, 'card') || p.url,
@@ -42,10 +43,29 @@ export const ProposalPhotoCard = React.memo(function ProposalPhotoCard({
   const showCarousel = validPhotos.length > 1;
   const mainPhoto = validPhotos.find((p: any) => p.isMain) || validPhotos[0];
 
-  const handleScroll = useCallback((e: any) => {
-    const page = Math.round(e.nativeEvent.contentOffset.x / width);
-    setCurrentPage(page);
-  }, [width]);
+  // Wrap-around carousel: [last, ...originals, first]
+  const loopPhotos = useMemo(() => {
+    if (!showCarousel) return validPhotos;
+    return [validPhotos[validPhotos.length - 1], ...validPhotos, validPhotos[0]];
+  }, [validPhotos, showCarousel]);
+
+  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!showCarousel) return;
+    const rawPage = Math.round(e.nativeEvent.contentOffset.x / width);
+    const total = validPhotos.length;
+
+    if (rawPage === 0) {
+      // Swiped left past first → jump to real last
+      scrollRef.current?.scrollTo({ x: total * width, animated: false });
+      setCurrentPage(total - 1);
+    } else if (rawPage === total + 1) {
+      // Swiped right past last → jump to real first
+      scrollRef.current?.scrollTo({ x: width, animated: false });
+      setCurrentPage(0);
+    } else {
+      setCurrentPage(rawPage - 1);
+    }
+  }, [width, showCarousel, validPhotos.length]);
 
   const borderRadiusStyle = side === 'left'
     ? { borderTopLeftRadius: PHOTO_RADIUS, borderBottomLeftRadius: PHOTO_RADIUS, borderTopRightRadius: 0, borderBottomRightRadius: 0 }
@@ -55,24 +75,26 @@ export const ProposalPhotoCard = React.memo(function ProposalPhotoCard({
     <View style={{ width, height, ...borderRadiusStyle, overflow: 'hidden' }}>
       {showCarousel ? (
         <ScrollView
+          ref={scrollRef}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={handleScroll}
           bounces={false}
+          contentOffset={{ x: width, y: 0 }}
           style={{ width, height }}
         >
-          {validPhotos.map((photo: any, i: number) => (
+          {loopPhotos.map((photo: any, i: number) => (
             <Image
-              key={`${proposalId}-${side}-${i}`}
+              key={`${proposalId}-${side}-loop-${i}`}
               source={{ uri: photo.url }}
               placeholder={photo.blurhash ? { blurhash: photo.blurhash } : undefined}
               style={{ width, height, backgroundColor: '#E5E7EB' }}
               contentFit="cover"
               transition={300}
               cachePolicy="memory-disk"
-              priority={i === 0 ? 'high' : 'normal'}
-              recyclingKey={`${proposalId}-${side}-${i}`}
+              priority={i <= 1 ? 'high' : 'normal'}
+              recyclingKey={`${proposalId}-${side}-loop-${i}`}
             />
           ))}
         </ScrollView>

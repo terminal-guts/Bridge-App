@@ -188,6 +188,9 @@ export const createUserProfile = async (
       non_negotiables: [],
       matchmaking_only: data.matchmakingOnly ?? false,
       role: data.role || 'dater',
+      // Matchmakers have no profile-strength gate — mark complete immediately.
+      // Daters are marked complete later by updateUserProfile once strength hits 100%.
+      ...(data.role === 'matchmaker' ? { profile_completed: true } : {}),
     };
 
     // Remove undefined values so they don't overwrite existing data

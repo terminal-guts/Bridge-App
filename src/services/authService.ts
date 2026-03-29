@@ -35,7 +35,7 @@ export const isAllowedEmailDomain = (email: string): boolean => {
  * Only checks the email format — actual password validation is server-side.
  */
 export const isReviewerBypassEmail = (email: string): boolean => {
-  return email.toLowerCase() === REVIEWER_EMAIL;
+  return email.trim().toLowerCase() === REVIEWER_EMAIL;
 };
 
 /**

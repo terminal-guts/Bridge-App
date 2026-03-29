@@ -4,9 +4,7 @@ import * as Linking from 'expo-linking';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { UsersTabIcon, HandshakeTabIcon, ProfileTabIcon } from '../components/icons/Icons';
-import { AppState, View, Text, TouchableOpacity, useWindowDimensions, LayoutChangeEvent, StyleSheet as RNStyleSheet } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, useAnimatedProps, withSpring, withTiming } from 'react-native-reanimated';
-import { SPRINGS } from '../constants/animations';
+import { AppState, View, Text, TouchableOpacity, useWindowDimensions, LayoutChangeEvent, StyleSheet as RNStyleSheet, Animated as RNAnimated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGuideContext } from '../contexts/GuideContext';
 import { GuideTarget } from '../components/guides/GuideTarget';
@@ -14,7 +12,7 @@ import { supabase } from '../lib/supabase';
 import { FEATURES } from '../config/features';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { Sentry } from '../lib/sentry';
-import { fetchAndSetUserProfile, invalidateProfileCache, checkMinimalProfileStatus, getCachedMinimalProfileStatus, clearMinimalProfileStatusCache, getUserProfile } from '../services/profileService';
+import { fetchAndSetUserProfile, invalidateProfileCache, checkMinimalProfileStatus, getCachedMinimalProfileStatus, clearMinimalProfileStatusCache, getUserProfile, getInMemoryMinimalStatus } from '../services/profileService';
 import { calculateOverallProfileStrength } from '../utils/profileCompleteness';
 import Svg, { Circle } from 'react-native-svg';
 import { isIntentionalSignOut, resetIntentionalSignOut } from '../services/authService';
@@ -44,7 +42,12 @@ function withSuspense<P extends object>(LazyComponent: React.LazyExoticComponent
 }
 
 // Auth screens — lazy (only parsed when unauthenticated)
-const WelcomeScreen = withSuspense(React.lazy(() => import('../screens/auth/WelcomeScreen').then(m => ({ default: m.WelcomeScreen }))));
+// WelcomeScreen import is fired at module-evaluation time (not inside the factory fn).
+// This means it starts loading during the splash/auth-check phase — so by the time
+// isAuthenticated resolves to false, the module is already parsed and ready.
+// New users go: splash → Welcome screen (no CommunitySkeleton flash in between).
+const _welcomePreload = import('../screens/auth/WelcomeScreen');
+const WelcomeScreen = withSuspense(React.lazy(() => _welcomePreload.then(m => ({ default: m.WelcomeScreen }))));
 const LoginScreen = withSuspense(React.lazy(() => import('../screens/auth/LoginScreen').then(m => ({ default: m.LoginScreen }))));
 const PhoneVerificationScreen = withSuspense(React.lazy(() => import('../screens/auth/PhoneVerificationScreen').then(m => ({ default: m.PhoneVerificationScreen }))));
 
@@ -85,17 +88,10 @@ const SupportChatScreen = withSuspense(React.lazy(() => import('../screens/suppo
 // Community sub-screens
 const LeaderboardScreen = withSuspense(React.lazy(() => import('../screens/community/LeaderboardScreen').then(m => ({ default: m.LeaderboardScreen }))));
 const StatsScreen = withSuspense(React.lazy(() => import('../screens/community/StatsScreen').then(m => ({ default: m.StatsScreen }))));
+const SuggestMatchScreen = withSuspense(React.lazy(() => import('../screens/community/SuggestMatchScreen')));
 
 // Auth sub-screens
 const SuspendedScreen = withSuspense(React.lazy(() => import('../screens/auth/SuspendedScreen')));
-
-// Badge management
-const BadgeManagementScreen = withSuspense(React.lazy(() => import('../screens/profile/BadgeManagementScreen').then(m => ({ default: m.BadgeManagementScreen }))));
-
-// Matchmaker screens
-const MatchmakerHomeScreen = withSuspense(React.lazy(() => import('../screens/matchmaker/MatchmakerHomeScreen').then(m => ({ default: m.MatchmakerHomeScreen }))));
-const MatchmakerGhostProfileScreen = withSuspense(React.lazy(() => import('../screens/matchmaker/MatchmakerGhostProfileScreen').then(m => ({ default: m.MatchmakerGhostProfileScreen }))));
-const MatchmakerClaimScreen = withSuspense(React.lazy(() => import('../screens/matchmaker/MatchmakerClaimScreen').then(m => ({ default: m.MatchmakerClaimScreen }))));
 
 // Friends sub-screens
 const ContactInviteScreen = withSuspense(React.lazy(() => import('../screens/friends/ContactInviteScreen').then(m => ({ default: m.ContactInviteScreen }))));
@@ -118,9 +114,62 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 const MatchmakerTab = createBottomTabNavigator<MatchmakerTabParamList>();
 
 // ── Custom Tab Bar ───────────────────────────────────────────────────────────
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const TAB_ICONS = [UsersTabIcon, HandshakeTabIcon, ProfileTabIcon];
 const TAB_TARGET_IDS = ['tab-community', 'tab-matches', 'tab-profile'];
+
+// Static (non-animated) SVG ring for profile completion.
+//
+// WHY NOT useAnimatedProps here:
+// Reanimated 4.x runs useAnimatedProps worklets on the UI thread. When the
+// enclosing tab navigator unmounts during stack navigation (e.g. stale 'dater'
+// cache corrected to 'matchmaker'), those worklets can fire AFTER the native
+// SVG view is already destroyed → "Cannot read property 'props' of undefined".
+// cancelAnimation() in useEffect cleanup does not prevent this because the
+// worklet frame is already scheduled on the UI thread before cleanup runs.
+//
+// The static approach sets strokeDashoffset directly from profileStrength state,
+// which updates on React re-renders. The ring shows accurate completion; it just
+// snaps to the new value instead of animating smoothly — an acceptable trade-off.
+const ProfileRingIcon: React.FC<{
+  profileStrength: number;
+  iconSize: number;
+  focused: boolean;
+}> = ({ profileStrength, iconSize, focused }) => {
+  const ringSize = iconSize + 8;
+  const ringRadius = ringSize / 2 - 2;
+  const ringCircumference = 2 * Math.PI * ringRadius;
+
+  return (
+    <View style={{ width: ringSize, height: ringSize, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg
+        width={ringSize}
+        height={ringSize}
+        style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}
+      >
+        <Circle
+          cx={ringSize / 2}
+          cy={ringSize / 2}
+          r={ringRadius}
+          fill="none"
+          stroke="rgba(103,112,133,0.15)"
+          strokeWidth={2.5}
+        />
+        <Circle
+          cx={ringSize / 2}
+          cy={ringSize / 2}
+          r={ringRadius}
+          fill="none"
+          stroke="#437FFF"
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeDasharray={ringCircumference}
+          strokeDashoffset={ringCircumference * (1 - profileStrength / 100)}
+        />
+      </Svg>
+      <ProfileTabIcon size={iconSize} color={focused ? '#437FFF' : '#667085'} />
+    </View>
+  );
+};
 
 const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetIdsProp }: any) => {
   const resolvedIcons = iconsProp ?? TAB_ICONS;
@@ -139,42 +188,45 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
   // One-way gate: once profileCompleted is true, never show the ring again
   const [profileStrength, setProfileStrength] = useState(100);
   const [profileCompleted, setProfileCompleted] = useState(true); // default true = hidden until loaded
-  const ringProgress = useSharedValue(profileStrength < 100 ? profileStrength / 100 : 1);
+  const lastProfileFetchRef = useRef(0);
   useEffect(() => {
+    const now = Date.now();
+    if (now - lastProfileFetchRef.current < 30000) return;
+    lastProfileFetchRef.current = now;
     getUserProfile().then(result => {
       if (result.ok && result.data) {
+        if (result.data.role === 'matchmaker') {
+          setProfileStrength(100);
+          setProfileCompleted(true);
+          return;
+        }
         const strength = calculateOverallProfileStrength(result.data);
-        setProfileStrength(strength);
-        setProfileCompleted(result.data.profileCompleted ?? false);
-        ringProgress.value = withTiming(strength / 100, { duration: 800 });
+        const completed = result.data.profileCompleted ?? false;
+        setProfileStrength(prev => prev !== strength ? strength : prev);
+        setProfileCompleted(prev => prev !== completed ? completed : prev);
       }
     });
   }, [state.index]);
 
   // ── Animated indicator ────────────────────────────────────────────────────
-  // Each tab is 1/3 of screen width; indicator centers within the active tab.
+  // Uses RN Animated (not Reanimated) so cleanup is synchronous and cannot
+  // fire after the native view is destroyed during role-correction navigation.
   const tabWidth = screenWidth / state.routes.length;
-  const indicatorX = useSharedValue(state.index * tabWidth + (tabWidth - 40) / 2);
+  const indicatorX = useRef(new RNAnimated.Value(state.index * tabWidth + (tabWidth - 40) / 2)).current;
 
   useEffect(() => {
-    indicatorX.value = withSpring(
-      state.index * tabWidth + (tabWidth - 40) / 2,
-      SPRINGS.responsive,
-    );
+    RNAnimated.spring(indicatorX, {
+      toValue: state.index * tabWidth + (tabWidth - 40) / 2,
+      useNativeDriver: true,
+      tension: 200,
+      friction: 20,
+    }).start();
   }, [state.index, tabWidth]);
 
-  const indicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: indicatorX.value }],
-  }));
-
-  // ── Animated ring props (for profile tab completion ring) ─────────────────
-  const ringSize = iconSize + 8;
-  const ringRadius = ringSize / 2 - 2;
-  const ringCircumference = 2 * Math.PI * ringRadius;
-
-  const ringAnimatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: ringCircumference * (1 - ringProgress.value),
-  }));
+  // Stop animation synchronously on unmount — guaranteed before native view destruction.
+  useEffect(() => {
+    return () => { indicatorX.stopAnimation(); };
+  }, []);
 
   return (
     <View style={{
@@ -191,7 +243,7 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
       elevation: 5,
     }}>
       {/* Sliding indicator — sits flush at the very top of the bar */}
-      <Animated.View style={[indicatorStyle, {
+      <RNAnimated.View style={{
         position: 'absolute',
         top: 0,
         left: 0,
@@ -201,11 +253,15 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
         borderBottomLeftRadius: 2,
         borderBottomRightRadius: 2,
         zIndex: 1,
-      }]} />
+        transform: [{ translateX: indicatorX }],
+      }} />
 
       {state.routes.map((route: any, index: number) => {
         const focused = state.index === index;
         const Icon = resolvedIcons[index];
+        // Ring only shows on the Profile tab (index 2 in 3-tab MainTabs)
+        // when the dater's profile is incomplete. Never shown in MatchmakerTabs
+        // (only 2 tabs, so index never reaches 2).
         const showRing = index === 2 && profileStrength < 100 && !profileCompleted;
 
         const onPress = () => {
@@ -235,34 +291,7 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
               activeOpacity={0.7}
             >
               {showRing ? (
-                <View style={{ width: ringSize, height: ringSize, alignItems: 'center', justifyContent: 'center' }}>
-                  <Svg
-                    width={ringSize}
-                    height={ringSize}
-                    style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}
-                  >
-                    <Circle
-                      cx={ringSize / 2}
-                      cy={ringSize / 2}
-                      r={ringRadius}
-                      fill="none"
-                      stroke="rgba(103,112,133,0.15)"
-                      strokeWidth={2.5}
-                    />
-                    <AnimatedCircle
-                      cx={ringSize / 2}
-                      cy={ringSize / 2}
-                      r={ringRadius}
-                      fill="none"
-                      stroke="#437FFF"
-                      strokeWidth={2.5}
-                      strokeLinecap="round"
-                      strokeDasharray={ringCircumference}
-                      animatedProps={ringAnimatedProps}
-                    />
-                  </Svg>
-                  <Icon size={iconSize} color={focused ? '#437FFF' : '#667085'} />
-                </View>
+                <ProfileRingIcon profileStrength={profileStrength} iconSize={iconSize} focused={focused} />
               ) : (
                 <Icon size={iconSize} color={focused ? '#437FFF' : '#667085'} />
               )}
@@ -290,11 +319,11 @@ const MainTabs = () => {
   );
 };
 
-// Matchmaker icons — handshake (hub), users (community), profile
-const MATCHMAKER_TAB_ICONS = [HandshakeTabIcon, UsersTabIcon, ProfileTabIcon];
-const MATCHMAKER_TAB_TARGET_IDS = ['tab-matchmaker', 'tab-community', 'tab-profile'];
+// Matchmaker icons — community, profile only
+const MATCHMAKER_TAB_ICONS = [UsersTabIcon, ProfileTabIcon];
+const MATCHMAKER_TAB_TARGET_IDS = ['tab-community', 'tab-profile'];
 
-// Matchmaker Tab Navigator — same visual bar, no Matches tab
+// Matchmaker Tab Navigator — Community + Profile only, no Matches or Hub tab
 const MatchmakerTabs = () => {
   return (
     <MatchmakerTab.Navigator
@@ -307,7 +336,6 @@ const MatchmakerTabs = () => {
       )}
       screenOptions={{ headerShown: false }}
     >
-      <MatchmakerTab.Screen name="MatchmakerHub" component={MatchmakerHomeScreen} />
       <MatchmakerTab.Screen name="Community" component={CommunityScreen} />
       <MatchmakerTab.Screen name="Profile" component={ProfileScreen} />
     </MatchmakerTab.Navigator>
@@ -315,15 +343,57 @@ const MatchmakerTabs = () => {
 };
 
 // Root Stack Navigator
-export const AppNavigator = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [isSuspended, setIsSuspended] = useState(false);
-  const [suspensionReason, setSuspensionReason] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<'dater' | 'matchmaker'>('dater');
+export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
+  // ── EARLIEST POSSIBLE CACHE WARM ────────────────────────────────────────────
+  // useRef initializer fires synchronously during render, BEFORE any useEffect.
+  // We start both AsyncStorage reads immediately — in parallel — so that by the
+  // time initializeAuth() awaits the result, both are already complete (or almost).
+  // This also means CommunityScreen hits warm in-memory mirrors on first mount
+  // instead of triggering a second round of AsyncStorage reads.
+  const startupDataRef = useRef(
+    Promise.all([
+      getCachedMinimalProfileStatus(),
+      preloadCommunityCache(),
+    ] as const)
+  );
+
+  // Lazy initializers read the module-level in-memory mirror synchronously.
+  // On a warm start (app backgrounded → foregrounded), inMemoryMinimalStatus is
+  // already populated from the previous session → isAuthenticated starts as true
+  // and NO skeleton is ever rendered. On a cold start the mirror is null and we
+  // fall through to the async path in initializeAuth() as before.
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(() => {
+    const warm = getInMemoryMinimalStatus();
+    if (warm?.userId) {
+      setCachedUserId(warm.userId); // enable instant service calls before useEffect fires
+    }
+    return warm?.userId ? true : null;
+  });
+  const [isSuspended, setIsSuspended] = useState(() => getInMemoryMinimalStatus()?.isSuspended ?? false);
+  const [suspensionReason, setSuspensionReason] = useState<string | null>(() => getInMemoryMinimalStatus()?.reason ?? null);
+  const [userRole, setUserRole] = useState<'dater' | 'matchmaker'>(() => getInMemoryMinimalStatus()?.role ?? 'dater');
+  const { stopGuide, isPlaying } = useGuideContext();
   const navigationRef = React.useRef<any>(null);
   const authStateRef = React.useRef<boolean | null>(null);
+  const onReadyCalledRef = React.useRef(false);
   const pendingInviteCode = useRef<string | null>(null);
-  const pendingClaimToken = useRef<string | null>(null);
+  // pendingClaimToken removed — ghost profile claim flow deferred
+
+  // Signal App.tsx that the navigator has a definitive auth state and the first
+  // screen is ready to show. App.tsx holds the splash screen until this fires,
+  // so new users go: native splash → Welcome screen (no skeleton flash between).
+  // For new users (isAuthenticated === false): we wait for _welcomePreload so the
+  // lazy component is already parsed before the splash hides — zero loading flash.
+  // For returning users (isAuthenticated === true): signal immediately.
+  useEffect(() => {
+    if (isAuthenticated === null || onReadyCalledRef.current) return;
+    onReadyCalledRef.current = true;
+    if (isAuthenticated === false) {
+      _welcomePreload.then(() => onReady?.()).catch(() => onReady?.());
+    } else {
+      onReady?.();
+    }
+  }, [isAuthenticated, onReady]);
 
   // Handle deep links: bridge://invite/BRIDGE-XXXX-XXXX
   const handleDeepLink = useCallback((url: string) => {
@@ -339,19 +409,8 @@ export const AppNavigator = () => {
           pendingInviteCode.current = code;
         }
       }
-    } else if (parsed.path?.startsWith('claim/')) {
-        const token = parsed.path.replace('claim/', '');
-        // Validate token format: 8 alphanumeric chars (base-36 uppercase), e.g. "A1B2C3D4"
-        if (!/^[A-Z0-9]{8}$/.test(token)) {
-          console.warn('[DeepLink] claim token failed format validation:', token);
-          return;
-        }
-        if (authStateRef.current && navigationRef.current) {
-            navigationRef.current.navigate('MatchmakerClaim', { token });
-        } else {
-            pendingClaimToken.current = token;
-        }
     }
+    // Ghost profile claim deep links deferred
   }, []);
 
   // Route to the correct screen when a push notification is tapped
@@ -361,6 +420,10 @@ export const AppNavigator = () => {
 
     const screen = data?.screen as string | undefined;
     const type = data?.type as string | undefined;
+
+    // Role-aware tab navigator: matchmakers use MatchmakerTabs (no Matches tab)
+    const isMatchmaker = getInMemoryMinimalStatus()?.role === 'matchmaker';
+    const tabs = isMatchmaker ? 'MatchmakerTabs' : 'MainTabs';
 
     // Explicit screen routing (set in notification data payload)
     if (screen === 'Leaderboard') {
@@ -375,42 +438,39 @@ export const AppNavigator = () => {
       nav.navigate('Chat', { matchId: data.matchId });
       return;
     }
-    if (screen === 'Chat') {
-      nav.navigate('MainTabs', { screen: 'Matches' });
-      return;
-    }
-    if (screen === 'Matches') {
-      nav.navigate('MainTabs', { screen: 'Matches' });
+    if (screen === 'Chat' || screen === 'Matches') {
+      // Matchmakers have no Matches tab — route to Community instead
+      nav.navigate(tabs, { screen: isMatchmaker ? 'Community' : 'Matches' });
       return;
     }
     if (screen === 'Community') {
-      nav.navigate('MainTabs', { screen: 'Community' });
+      nav.navigate(tabs, { screen: 'Community' });
       return;
     }
     if (screen === 'Profile') {
-      nav.navigate('MainTabs', { screen: 'Profile' });
+      nav.navigate(tabs, { screen: 'Profile' });
       return;
     }
 
     // Fallback: route by notification type
     if (type === 'match' || type === 'pending_decision' || type === 'proposal_deciding' || type === 'match_expiring') {
-      nav.navigate('MainTabs', { screen: 'Matches' });
+      nav.navigate(tabs, { screen: isMatchmaker ? 'Community' : 'Matches' });
       return;
     }
     if (type === 'message' || type === 'ghosting') {
-      nav.navigate('MainTabs', { screen: 'Matches' });
+      nav.navigate(tabs, { screen: isMatchmaker ? 'Community' : 'Matches' });
       return;
     }
     if (type === 'ice_breaker') {
       if (data?.matchId) {
         nav.navigate('Chat', { matchId: data.matchId });
       } else {
-        nav.navigate('MainTabs', { screen: 'Matches' });
+        nav.navigate(tabs, { screen: isMatchmaker ? 'Community' : 'Matches' });
       }
       return;
     }
     if (type === 'new_proposals' || type === 'vote_reminder' || type === 'streak_at_risk' || type === 'shared_celebration' || type === 'dormant') {
-      nav.navigate('MainTabs', { screen: 'Community' });
+      nav.navigate(tabs, { screen: 'Community' });
       return;
     }
     if (type === 'weekly_summary' || type === 'leaderboard' || type === 'morning_leaderboard') {
@@ -418,7 +478,7 @@ export const AppNavigator = () => {
       return;
     }
     if (type === 'profile_incomplete') {
-      nav.navigate('MainTabs', { screen: 'Profile' });
+      nav.navigate(tabs, { screen: 'Profile' });
       return;
     }
 
@@ -467,12 +527,6 @@ export const AppNavigator = () => {
         setTimeout(() => {
           navigationRef.current?.navigate('ContactInvite', { autoAddCode: code });
         }, 800);
-      } else if (pendingClaimToken.current) {
-        const token = pendingClaimToken.current;
-        pendingClaimToken.current = null;
-        setTimeout(() => {
-          navigationRef.current?.navigate('MatchmakerClaim', { token });
-        }, 800);
       }
     }
   }, [isAuthenticated]);
@@ -486,67 +540,132 @@ export const AppNavigator = () => {
     const isMountedRef = { current: true };
 
     // Check for existing Supabase session on app start.
-    // Strategy: confirm auth + use cached status → render MainTabs instantly,
-    // then verify status and fetch full profile in background.
+    // Strategy: read the small cached status entry first (fast AsyncStorage read).
+    // If it contains a userId, render the main UI IMMEDIATELY (optimistic auth) and
+    // validate the Supabase session in the background — no skeleton flash for returning users.
+    // If no userId is cached, fall back to the full getSession() path (new/signed-out users).
     const initializeAuth = async () => {
       try {
         if (FEATURES.DEVELOPMENT_FORCE_FRESH_SESSION) {
           await supabase.auth.signOut();
+          // Also clear minimal status so optimistic path doesn't fire with stale userId
+          clearMinimalProfileStatusCache();
         }
 
-        // Read session + cached status in parallel (both AsyncStorage reads)
-        const [sessionResult, cachedStatus] = await Promise.all([
-          supabase.auth.getSession(),
-          getCachedMinimalProfileStatus(),
-        ]);
-        const { data: { session }, error } = sessionResult;
+        // ── FAST PATH: optimistic auth from cached userId ─────────────────────────
+        // Await the startupDataRef promise (started during render, before useEffect).
+        // Both reads ran in parallel: getCachedMinimalProfileStatus() + preloadCommunityCache().
+        // By the time we await here, they are likely already complete.
+        // Community in-memory mirrors are now warm — CommunityScreen renders from cache.
+        const [cachedStatus] = await startupDataRef.current;
+        if (!isMountedRef.current) return;
 
+        if (cachedStatus?.userId) {
+          const userId = cachedStatus.userId;
+          logger.info('[AppNavigator] Optimistic auth — userId from cache:', userId);
+          setCachedUserId(userId);
+          setIsSuspended(cachedStatus.isSuspended);
+          setSuspensionReason(cachedStatus.reason);
+          setUserRole(cachedStatus.role);
+          // Render main app immediately — no waiting for JWT validation
+          setIsAuthenticated(true);
+
+          // Network prefetches (community cache already warmed above)
+          if (cachedStatus.role === 'dater') {
+            import('../services/communityServiceIndex').then(({ communityService }) => {
+              communityService.getCommunityTaskProgress().catch(() => {});
+              communityService.getProposalsToVote().catch(() => {});
+              communityService.getFriendsAreaData().catch(() => {});
+            });
+          }
+
+          // Background: validate JWT. If expired/invalid, kick to login.
+          supabase.auth.getSession().then(({ data: { session }, error }) => {
+            if (!isMountedRef.current) return;
+            if (error || !session?.user) {
+              logger.info('[AppNavigator] Background session check failed — signing out');
+              clearCachedUserId();
+              clearMinimalProfileStatusCache();
+              setIsAuthenticated(false);
+              showToast.error('Session expired. Please sign in again.');
+              return;
+            }
+            // Session valid — verify status and load full profile in background
+            checkMinimalProfileStatus().then(freshStatus => {
+              if (!isMountedRef.current) return;
+              if (freshStatus.isSuspended !== cachedStatus.isSuspended) setIsSuspended(freshStatus.isSuspended);
+              if (freshStatus.reason !== cachedStatus.reason) setSuspensionReason(freshStatus.reason);
+              if (freshStatus.role !== cachedStatus.role) {
+                setUserRole(freshStatus.role);
+                if (freshStatus.role === 'matchmaker' && navigationRef.current) {
+                  if (isPlaying) stopGuide();
+                  navigationRef.current.reset({ index: 0, routes: [{ name: 'MatchmakerTabs' as never }] });
+                }
+              }
+            });
+            fetchAndSetUserProfile(session.user.id).then(profileResult => {
+              if (!isMountedRef.current) return;
+              if (!profileResult.ok) {
+                if (profileResult.error?.code === 'PROFILE_NOT_FOUND') {
+                  logger.info('[AppNavigator] No profile found — resuming onboarding');
+                  navigationRef.current?.reset({ index: 0, routes: [{ name: 'Onboarding' as any }] });
+                } else {
+                  logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
+                }
+              }
+            });
+          });
+          return;
+        }
+
+        // ── SLOW PATH: no cached userId (new user or explicit sign-out) ──────────
+        // Must validate session synchronously before deciding what to show.
+        const { data: { session }, error } = await supabase.auth.getSession();
         if (!isMountedRef.current) return;
 
         if (error || !session?.user) {
-          if (error) {
-            logger.info('Auth session check failed:', error.message);
-          }
+          if (error) logger.info('Auth session check failed:', error.message);
           clearCachedUserId();
           setIsAuthenticated(false);
         } else {
           const user = session.user;
           setCachedUserId(user.id);
-          logger.info('[AppNavigator] Authenticated user:', user.id);
+          logger.info('[AppNavigator] Authenticated user (slow path):', user.id);
 
-          // Use cached status to unblock navigation instantly.
-          // Falls back to defaults (not suspended, dater) if no cache exists yet.
-          const initialStatus = cachedStatus || { isSuspended: false, reason: null, role: 'dater' as const };
-
-          setIsSuspended(initialStatus.isSuspended);
-          setSuspensionReason(initialStatus.reason);
-          setUserRole(initialStatus.role);
-
-          // Render MainTabs or MatchmakerHome NOW — no network wait
+          // Defaults — checkMinimalProfileStatus() will fill in real values in background
+          // Community cache already warmed by startupDataRef (ran in parallel before this path)
+          setIsSuspended(false);
+          setSuspensionReason(null);
+          setUserRole('dater');
           setIsAuthenticated(true);
-
-          // Batch-preload community cache keys in one AsyncStorage round-trip,
-          // then pre-warm network data — both fire before CommunityScreen mounts
-          preloadCommunityCache().catch(() => {});
-          if (initialStatus.role === 'dater') {
-            import('../services/communityServiceIndex').then(({ communityService }) => {
-              communityService.getCommunityTaskProgress().catch(() => {});
-              communityService.getProposalsToVote().catch(() => {});
-            });
-          }
-
-          // Verify status in background — update UI if it changed (e.g. user got suspended)
-          checkMinimalProfileStatus().then(freshStatus => {
-            if (!isMountedRef.current) return;
-            if (freshStatus.isSuspended !== initialStatus.isSuspended) setIsSuspended(freshStatus.isSuspended);
-            if (freshStatus.reason !== initialStatus.reason) setSuspensionReason(freshStatus.reason);
-            if (freshStatus.role !== initialStatus.role) setUserRole(freshStatus.role);
+          import('../services/communityServiceIndex').then(({ communityService }) => {
+            communityService.getCommunityTaskProgress().catch(() => {});
+            communityService.getProposalsToVote().catch(() => {});
+            communityService.getFriendsAreaData().catch(() => {});
           });
 
-          // Full profile fetch runs in background — populates cache for screens
+          checkMinimalProfileStatus().then(freshStatus => {
+            if (!isMountedRef.current) return;
+            setIsSuspended(freshStatus.isSuspended);
+            setSuspensionReason(freshStatus.reason);
+            if (freshStatus.role !== 'dater') {
+              setUserRole(freshStatus.role);
+              if (freshStatus.role === 'matchmaker' && navigationRef.current) {
+                if (isPlaying) stopGuide();
+                navigationRef.current.reset({ index: 0, routes: [{ name: 'MatchmakerTabs' as never }] });
+              }
+            }
+          });
+
           fetchAndSetUserProfile(user.id).then(profileResult => {
-            if (!profileResult.ok && profileResult.error?.code !== 'PROFILE_NOT_FOUND') {
-              logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
+            if (!isMountedRef.current) return;
+            if (!profileResult.ok) {
+              if (profileResult.error?.code === 'PROFILE_NOT_FOUND') {
+                logger.info('[AppNavigator] No profile found — resuming onboarding');
+                navigationRef.current?.reset({ index: 0, routes: [{ name: 'Onboarding' as any }] });
+              } else {
+                logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
+              }
             }
           });
         }
@@ -583,6 +702,14 @@ export const AppNavigator = () => {
               setIsSuspended(status.isSuspended);
               setSuspensionReason(status.reason);
               setUserRole(status.role);
+              if (status.role === 'matchmaker' && navigationRef.current) {
+                const rootState = navigationRef.current.getState();
+                const currentRootRoute = rootState?.routes?.[rootState.index ?? 0]?.name;
+                if (currentRootRoute !== 'MatchmakerTabs') {
+                  if (isPlaying) stopGuide();
+                  navigationRef.current.reset({ index: 0, routes: [{ name: 'MatchmakerTabs' as never }] });
+                }
+              }
             } catch {}
           }
         });
@@ -635,9 +762,24 @@ export const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer
+      ref={navigationRef}
+      onStateChange={(state) => {
+        if (__DEV__ && state) {
+          const routeNames = JSON.stringify(state.routes.map((r: any) => r.name));
+          console.log('[NAV_DEBUG] Root state routes:', routeNames);
+        }
+      }}
+    >
       <ErrorBoundary
         onError={(error, errorInfo) => {
+          // DEBUG: log navigation state at crash time
+          try {
+            const navState = navigationRef.current?.getState();
+            const routes = navState?.routes?.map((r: any) => r.name);
+            console.error('[CRASH_DEBUG] Nav routes at crash:', JSON.stringify(routes));
+            console.error('[CRASH_DEBUG] Full state:', JSON.stringify(navState, null, 2));
+          } catch {}
           logger.error('[App Error Boundary]', error, errorInfo);
           Sentry.captureException(error, {
             contexts: { react: { componentStack: errorInfo.componentStack } },
@@ -666,9 +808,6 @@ export const AppNavigator = () => {
 
           {/* Matchmaker Experience */}
           <Stack.Screen name="MatchmakerTabs" component={MatchmakerTabs} options={fadeTransition} />
-          <Stack.Screen name="MatchmakerHome" component={MatchmakerHomeScreen} options={fadeTransition} />
-          <Stack.Screen name="MatchmakerGhostProfile" component={MatchmakerGhostProfileScreen} options={fadeTransition} />
-          <Stack.Screen name="MatchmakerClaim" component={MatchmakerClaimScreen} options={fadeTransition} />
 
           {/* Community Screens */}
           <Stack.Screen name="FriendProposal" component={FriendProposalScreen} />
@@ -703,8 +842,7 @@ export const AppNavigator = () => {
           <Stack.Screen name="SupportChat" component={SupportChatScreen} />
           <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
           <Stack.Screen name="Stats" component={StatsScreen} />
-          <Stack.Screen name="BadgeManagement" component={BadgeManagementScreen} />
-
+          <Stack.Screen name="SuggestMatch" component={SuggestMatchScreen} />
           {/* Friends */}
           <Stack.Screen name="ContactInvite" component={ContactInviteScreen} />
 

@@ -486,7 +486,6 @@ const styles = StyleSheet.create({
     nameText: {
         color: COLORS.card,
         fontFamily: FONTS.extraBold,
-        fontWeight: '700',
         fontSize: FONT_SIZES['6xl'],
         lineHeight: 36,
         letterSpacing: -0.8,

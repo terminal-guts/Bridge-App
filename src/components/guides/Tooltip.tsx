@@ -13,13 +13,13 @@ import Animated, {
   withTiming,
   withSpring,
 } from 'react-native-reanimated';
-import { styled } from 'nativewind';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { H3, Body } from '../ui/Typography';
 import { Button } from '../ui/Button';
 import { TooltipPosition, TooltipDimensions } from '../../types/guides';
 import { lightHaptic } from '../../utils/haptics';
 import { COLORS } from '../../theme/colors';
+import { SHADOWS } from '../../theme/shadows';
 
 interface TooltipProps {
   /** Optional title */
@@ -52,9 +52,6 @@ interface TooltipProps {
   /** Fine-tune tooltip position after auto-calculation */
   tooltipOffset?: { x?: number; y?: number };
 }
-
-const StyledView = styled(View);
-const StyledTouchableOpacity = styled(TouchableOpacity);
 
 // Use dynamic screen dimensions instead of static module-level capture
 const getScreenDimensions = () => Dimensions.get('window');
@@ -227,7 +224,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
       ]}
     >
       {/* Tooltip card */}
-      <StyledView className="bg-neutral-900 rounded-2xl p-4 shadow-2xl">
+      <View style={{ backgroundColor: '#171717', borderRadius: 16, padding: 16, ...SHADOWS.xxl }}>
         {/* Title */}
         {title && <H3 className="text-white font-bold mb-2">{title}</H3>}
 
@@ -256,30 +253,30 @@ export const Tooltip: React.FC<TooltipProps> = ({
         )}
 
         {/* Buttons */}
-        <StyledView className="flex-row gap-2">
+        <View style={{ flexDirection: 'row', gap: 8 }}>
           {secondaryButtonText && (
-            <StyledView className="flex-1">
-              <StyledTouchableOpacity
+            <View style={{ flex: 1 }}>
+              <TouchableOpacity
                 onPress={handleSecondary}
-                className="py-3 px-4 bg-white/20 rounded-xl items-center"
+                style={{ paddingVertical: 12, paddingHorizontal: 16, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12, alignItems: 'center' }}
                 activeOpacity={0.7}
               >
                 <Body className="text-white font-semibold">{secondaryButtonText}</Body>
-              </StyledTouchableOpacity>
-            </StyledView>
+              </TouchableOpacity>
+            </View>
           )}
 
-          <StyledView className="flex-1">
-            <StyledTouchableOpacity
+          <View style={{ flex: 1 }}>
+            <TouchableOpacity
               onPress={handlePrimary}
-              className="py-3 px-4 bg-primary-500 rounded-xl items-center"
+              style={{ paddingVertical: 12, paddingHorizontal: 16, backgroundColor: COLORS.primaryButton, borderRadius: 12, alignItems: 'center' }}
               activeOpacity={0.8}
             >
               <Body className="text-white font-semibold">{primaryButtonText}</Body>
-            </StyledTouchableOpacity>
-          </StyledView>
-        </StyledView>
-      </StyledView>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
 
       {/* Arrow (CSS border triangle) — points toward target center */}
       {tooltipPosition.position === 'bottom' && targetDimensions && (

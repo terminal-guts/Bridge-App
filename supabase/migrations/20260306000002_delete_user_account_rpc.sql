@@ -28,6 +28,7 @@ BEGIN
   DELETE FROM match_exits WHERE exiting_user_id = target_user_id;
   DELETE FROM messages WHERE sender_id = target_user_id OR receiver_id = target_user_id;
   DELETE FROM friend_messages WHERE sender_id = target_user_id OR receiver_id = target_user_id;
+  DELETE FROM friend_suggestions WHERE suggested_by = target_user_id OR user_a_id = target_user_id OR user_b_id = target_user_id;
   DELETE FROM friends WHERE user_id = target_user_id OR friend_id = target_user_id;
   DELETE FROM friend_codes WHERE user_id = target_user_id;
   DELETE FROM blocked_users WHERE user_id = target_user_id OR blocked_user_id = target_user_id;

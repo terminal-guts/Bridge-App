@@ -13,13 +13,14 @@ import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { communityService } from '../../services/communityServiceIndex';
 import { getUserFriendCode, getIncomingRequests, acceptFriendRequest, declineFriendRequest, FriendRequest } from '../../services/friendService';
 import { FriendWithGridStatus } from '../../types/community';
-import { getUserProfile } from '../../services/profileService';
+import { getUserProfile, getCachedMinimalProfileStatus } from '../../services/profileService';
 import { getAuthenticatedUserId } from '../../utils/auth';
 import { UserProfile } from '../../types';
 import { ProfileCompletionBanner } from '../../components/profile/ProfileCompletionBanner';
 import { useGuide } from '../../hooks/useGuide';
 import { beginnerTourGuide } from '../../config/guides';
 import { CommunitySkeleton } from '../../components/ui/SkeletonLoader';
+import { fetchLeaderboard } from '../../services/leaderboardService';
 import { COLORS } from '../../theme/colors';
 import { ScreenWrapper } from '../../components/ui';
 import { getLast7PMCentral } from '../../utils/centralTime';
@@ -29,7 +30,7 @@ import { showToast } from '../../utils/toast';
 import { BadgeAwardModal } from '../../components/badges/BadgeAwardModal';
 import { getBadgeForFriend } from '../../services/badgeService';
 import { FriendBadge } from '../../types/badges';
-import { sendCrush, removeCrush } from '../../services/crushService';
+// DEFERRED: import { sendCrush, removeCrush } from '../../services/crushService';
 
 // Extracted
 import {
@@ -82,48 +83,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     setBadgeModalVisible(true);
   }, []);
 
-  const handleCrushPress = useCallback(async (friendId: string, friendName: string) => {
-    // Find the friend in current state to check crush status
-    const friend = alreadyHelped.find(f => f.friendId === friendId);
-    if (!friend) return;
-
-    if (friend.hasCrushed) {
-      // Un-crush: optimistic update + remove
-      setAlreadyHelped(prev =>
-        prev.map(f => f.friendId === friendId ? { ...f, hasCrushed: false } : f)
-      );
-      const result = await removeCrush(friendId);
-      if (!result.ok) {
-        // Revert on failure
-        setAlreadyHelped(prev =>
-          prev.map(f => f.friendId === friendId ? { ...f, hasCrushed: true } : f)
-        );
-      }
-    } else {
-      // Crush: optimistic update + send
-      setAlreadyHelped(prev =>
-        prev.map(f => f.friendId === friendId ? { ...f, hasCrushed: true } : f)
-      );
-      successHaptic();
-      const result = await sendCrush(friendId);
-      if (!result.ok) {
-        // Revert on failure
-        setAlreadyHelped(prev =>
-          prev.map(f => f.friendId === friendId ? { ...f, hasCrushed: false } : f)
-        );
-        showToast.error('Could not send crush. Try again.');
-      } else if (result.isMutual) {
-        // Mutual crush! Both friends crushed on each other
-        showToast.success(
-          'It\'s mutual!',
-          `You and ${friendName} both crushed — a match proposal has been created!`
-        );
-        // Refresh friends data to show the new proposal in the grid
-        loadFriendsData();
-      }
-    }
-  }, [alreadyHelped, loadFriendsData]);
-
   const loadUnreadCounts = useCallback(async (friends: FriendWithGridStatus[]) => {
     if (!profile?.userId || friends.length === 0) return;
     try {
@@ -169,6 +128,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       Alert.alert('Error', 'Failed to load community data. Pull down to refresh.');
     }
   }, [loadUnreadCounts]);
+
+  // DEFERRED: Crush feature — re-enable with crushService import when ready
+  // const handleCrushPress = useCallback(async (friendId: string, friendName: string) => { ... }, [alreadyHelped, loadFriendsData]);
 
   const onRefresh = useCallback(async () => {
     const userId = await getAuthenticatedUserId();
@@ -218,11 +180,11 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       // Background revalidate — update state silently if data changed
       Promise.all([
         loadFriendsData(),
-        getUserProfile().then(result => {
-          if (result.ok && result.data) setProfile(result.data);
-        }),
-        // Re-check voting gate in background to self-correct if vote was removed
+        // Re-check profile + voting gate together so we can guard on role
         (async () => {
+          const profileResult = await getUserProfile();
+          if (profileResult.ok && profileResult.data) setProfile(profileResult.data);
+          // Re-check voting gate in background to self-correct if vote was removed
           const task = await communityService.getCommunityTaskProgress();
           let votingDone = task.hasVotedOnProposals;
           if (!votingDone) {
@@ -245,26 +207,20 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     // ── Slow path: no cache, full network init ────────────────────────────
     setLoading(true);
     try {
-      const profilePromise = getUserProfile().then(result => {
-        if (result.ok && result.data) setProfile(result.data);
-      });
-
-      // Fire voting gate queries in parallel — they don't depend on timer state.
-      // communityService.ready (timer init) runs in background, not on critical path.
-      const [task, available] = await Promise.all([
+      // Load profile in parallel with voting gate queries so we can check role
+      const [profileResult, task, available] = await Promise.all([
+        getUserProfile(),
         communityService.getCommunityTaskProgress(),
         communityService.getProposalsToVote(),
       ]);
+
+      if (profileResult.ok && profileResult.data) setProfile(profileResult.data);
+
       let votingDone = task.hasVotedOnProposals;
+      if (!votingDone && available.length === 0) votingDone = true;
 
-      if (!votingDone) {
-        if (available.length === 0) {
-          votingDone = true;
-        }
-      }
-
-      // Only cache "done" if user actually voted on 3+ proposals this cycle.
-      // If votingDone is true merely because no proposals exist yet, don't cache —
+      // Only cache "done" for users who actually voted on 3+ proposals this cycle.
+      // If votingDone is true merely because no proposals exist, don't cache —
       // new proposals may appear later in the same cycle.
       if (task.hasVotedOnProposals) {
         communityService.cacheVotingComplete(true, cycleId).catch(() => {});
@@ -274,8 +230,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       if (votingDone) {
         await loadFriendsData();
       }
-
-      await profilePromise;
     } catch (error) {
       console.error("Failed to check task progress:", error);
       setHasCompletedVoting(false);
@@ -299,15 +253,21 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   // Preload Matches tab after Community finishes loading — users commonly switch to it next.
   // React Navigation 7 preload() begins loading the screen component subtree early.
+  // Only for daters — matchmakers have no Matches tab (preloading it crashes the navigator).
+  // Also warm the leaderboard cache so navigating there is instant.
   useEffect(() => {
     if (!loading && hasCompletedVoting) {
       const timer = setTimeout(() => {
-        try {
-          // preload is available on React Navigation 7 tab navigators
-          (navigation as any).preload?.('Matches');
-        } catch {
-          // Silently ignore if preload is unavailable
+        // Only preload Matches for daters — MatchmakerTabs has no Matches screen
+        if (profile?.role !== 'matchmaker') {
+          try {
+            (navigation as any).preload?.('Matches');
+          } catch {
+            // Silently ignore if preload is unavailable
+          }
         }
+        // Background-warm the leaderboard cache — no spinner when user taps Leaderboard
+        fetchLeaderboard(50).catch(() => {});
       }, 2000);
       return () => clearTimeout(timer);
     }
@@ -315,8 +275,23 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   // Single focus handler: refresh profile + friends + guide on every tab/screen focus
   useFocusEffect(useCallback(() => {
-    // Check if beginner tour should play (first visit or re-enabled from Settings)
-    startGuideIfNeeded(beginnerTourGuide);
+    // Matchmakers must never see the dater beginner tour — it references 'tab-matches'
+    // which doesn't exist in MatchmakerTabs. Two guards run in sequence:
+    // 1. Synchronous: if we're already in MatchmakerTabs, bail immediately.
+    // 2. Async: check the cached role — prevents the guide from starting even when
+    //    a matchmaker's stale 'dater' cache causes them to open in MainTabs. The
+    //    async check is fast (AsyncStorage in-memory mirror, < 1ms on warm start).
+    // Triple guard: synchronous route check + synchronous profile check + async cache check.
+    // All three must agree this is NOT a matchmaker before starting the dater tour.
+    const routeNames: string[] = (navigation as any).getState?.()?.routeNames ?? [];
+    const isInMatchmakerTabs = !routeNames.includes('Matches');
+    if (!isInMatchmakerTabs && profile?.role !== 'matchmaker') {
+      getCachedMinimalProfileStatus().then(status => {
+        if (status?.role !== 'matchmaker') {
+          startGuideIfNeeded(beginnerTourGuide);
+        }
+      });
+    }
 
     if (!initializedRef.current) {
       initializedRef.current = true;
@@ -409,8 +384,8 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     [usersToMatch, navigation],
   );
   const crewHandlers = useMemo(
-    () => buildCrewHandlers(alreadyHelped, navigation, handleBadgePress, handleCrushPress),
-    [alreadyHelped, navigation, handleBadgePress, handleCrushPress],
+    () => buildCrewHandlers(alreadyHelped, navigation, handleBadgePress), // DEFERRED: handleCrushPress removed
+    [alreadyHelped, navigation, handleBadgePress],
   );
 
   // Stable key extractors for FlatLists (avoids re-creating on each render)
@@ -441,7 +416,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
         onViewProfile={crewHandlers.viewProfile[user.friendId]}
         onChat={crewHandlers.chatHandlers[user.friendId]}
         onBadgePress={crewHandlers.badgeHandlers[user.friendId]}
-        onCrushPress={crewHandlers.crushHandlers[user.friendId]}
+        // DEFERRED: onCrushPress={crewHandlers.crushHandlers[user.friendId]}
       />
     </StaggerItem>
   ), [crewHandlers, unreadMap]);
@@ -454,7 +429,8 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     );
   }
 
-  // Gate: must vote on 3 proposals before entering the community area
+  // Gate: must vote on 3 proposals before entering the community area.
+  // Matchmakers are exempt — they help friends match but aren't in the dating pool.
   if (!hasCompletedVoting) {
     return (
       <ScreenWrapper>
@@ -471,10 +447,12 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   return (
     <ScreenWrapper>
       <OfflineBanner />
-      <ProfileCompletionBanner
-        profile={profile}
-        onPress={() => (navigation as any).navigate('Profile')}
-      />
+      {profile?.role !== 'matchmaker' && (
+        <ProfileCompletionBanner
+          profile={profile}
+          onPress={() => (navigation as any).navigate('Profile')}
+        />
+      )}
 
       {/* Header section */}
       <View className="px-6 pt-4">
@@ -558,6 +536,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                 data={usersToMatch}
                 keyExtractor={voteKeyExtractor}
                 renderItem={renderVoteItem}
+                estimatedItemSize={USER_ROW_ESTIMATED_HEIGHT}
                 scrollEnabled={false}
                 drawDistance={USER_ROW_ESTIMATED_HEIGHT * 8}
               />
@@ -569,6 +548,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
             <View style={[styles.sectionHeader, usersToMatch.length > 0 && { marginTop: 20 }]}>
               <View style={[styles.sectionAccent, { backgroundColor: COLORS.successAlt }]} />
               <Text style={styles.sectionTitle}>Your crew</Text>
+              <View style={[styles.helpCountBadge, { backgroundColor: COLORS.successAlt }]}>
+                <Text style={styles.helpCountText}>{alreadyHelped.length}</Text>
+              </View>
             </View>
           )}
 
@@ -577,9 +559,25 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
               data={alreadyHelped}
               keyExtractor={crewKeyExtractor}
               renderItem={renderCrewItem}
+              estimatedItemSize={USER_ROW_ESTIMATED_HEIGHT}
               scrollEnabled={false}
               drawDistance={USER_ROW_ESTIMATED_HEIGHT * 8}
             />
+
+            {/* Suggest a Match entry point — quiet row below the crew list */}
+            {alreadyHelped.length >= 2 && (
+              <TouchableOpacity
+                style={styles.suggestMatchRow}
+                activeOpacity={0.7}
+                onPress={() => (navigation as any).navigate('SuggestMatch')}
+                accessibilityRole="button"
+                accessibilityLabel="Suggest a match between friends"
+              >
+                <EvaIcon name="people" variant="outline" size={18} color={COLORS.text.secondary} />
+                <Text style={styles.suggestMatchText}>Suggest a match between friends</Text>
+                <EvaIcon name="arrow-ios-forward" variant="outline" size={18} color={COLORS.text.secondary} />
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Slim caught-up footer — only when no pending votes */}

@@ -91,6 +91,8 @@ const dbToMessage = (dbMsg: DbMessage): Message => ({
   readAt: dbMsg.read_at ?? undefined,
 });
 
+// generateMessageId, getCurrentUserId, and uploadAudioFile are imported from messageService.shared.ts
+
 // ============================================================================
 // Message Operations
 // ============================================================================

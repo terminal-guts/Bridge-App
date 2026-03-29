@@ -12,6 +12,7 @@ import { createAdminClient } from '../_shared/supabase-client.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { requireServiceRole } from '../_shared/admin-auth.ts';
 import { sendPush, getNextCopyVariant } from '../_shared/send-push.ts';
+import { sendSms } from '../_shared/send-sms.ts';
 
 const EXPIRY_THRESHOLD_HOURS = 36;
 
@@ -65,17 +66,24 @@ Deno.serve(async (req: Request) => {
         const variant = await getNextCopyVariant(supabase, proposal.user_a_id, 'match_expiring', COPY_VARIANTS.length);
         const copy = COPY_VARIANTS[variant];
 
-        const result = await sendPush(supabase, {
-          userId: proposal.user_a_id,
-          notificationType: 'match_expiring',
-          category: 'transactional',
-          title: copy.title(partnerName),
-          body: copy.body(partnerName),
-          data: { screen: 'Matches', proposalId: proposal.id },
-          copyVariant: variant,
-          metadata: { dedup_key: `match_expiring_${proposal.id}_a` },
-        });
-        if (result.sent) sentCount++;
+        const [pushResult, smsResult] = await Promise.all([
+          sendPush(supabase, {
+            userId: proposal.user_a_id,
+            notificationType: 'match_expiring',
+            category: 'transactional',
+            title: copy.title(partnerName),
+            body: copy.body(partnerName),
+            data: { screen: 'Matches', proposalId: proposal.id },
+            copyVariant: variant,
+            metadata: { dedup_key: `match_expiring_${proposal.id}_a` },
+          }),
+          sendSms(supabase, {
+            userId: proposal.user_a_id,
+            body: `Your match expires in 24 hours — make a decision`,
+            path: `/match/${proposal.id}`,
+          }),
+        ]);
+        if (pushResult.sent || smsResult.sent) sentCount++;
       }
 
       // Notify user_b if they haven't decided
@@ -90,17 +98,24 @@ Deno.serve(async (req: Request) => {
         const variant = await getNextCopyVariant(supabase, proposal.user_b_id, 'match_expiring', COPY_VARIANTS.length);
         const copy = COPY_VARIANTS[variant];
 
-        const result = await sendPush(supabase, {
-          userId: proposal.user_b_id,
-          notificationType: 'match_expiring',
-          category: 'transactional',
-          title: copy.title(partnerName),
-          body: copy.body(partnerName),
-          data: { screen: 'Matches', proposalId: proposal.id },
-          copyVariant: variant,
-          metadata: { dedup_key: `match_expiring_${proposal.id}_b` },
-        });
-        if (result.sent) sentCount++;
+        const [pushResult, smsResult] = await Promise.all([
+          sendPush(supabase, {
+            userId: proposal.user_b_id,
+            notificationType: 'match_expiring',
+            category: 'transactional',
+            title: copy.title(partnerName),
+            body: copy.body(partnerName),
+            data: { screen: 'Matches', proposalId: proposal.id },
+            copyVariant: variant,
+            metadata: { dedup_key: `match_expiring_${proposal.id}_b` },
+          }),
+          sendSms(supabase, {
+            userId: proposal.user_b_id,
+            body: `Your match expires in 24 hours — make a decision`,
+            path: `/match/${proposal.id}`,
+          }),
+        ]);
+        if (pushResult.sent || smsResult.sent) sentCount++;
       }
     }
 

@@ -17,7 +17,7 @@ import { Body } from '../../components/ui';
 import { EvaIcon, IconScoutIcon } from '../../components/icons';
 import { lightHaptic } from '../../utils/haptics';
 import { FONTS } from '../../constants/typography';
-import { SHADOWS } from '../../theme/shadows';
+import { SHADOWS, OVERLAYS } from '../../theme/shadows';
 import { COLORS as THEME_COLORS } from '../../theme/colors';
 import { Image } from 'expo-image';
 
@@ -173,7 +173,7 @@ export const ExpirationTimer: React.FC<{ expiresAt: string }> = ({ expiresAt }) 
   const [timeLeft, setTimeLeft] = useState(() => calculateTimeRemaining(expiresAt));
 
   useEffect(() => {
-    const interval = setInterval(() => setTimeLeft(calculateTimeRemaining(expiresAt)), 60000);
+    const interval = setInterval(() => setTimeLeft(calculateTimeRemaining(expiresAt)), 1000);
     return () => clearInterval(interval);
   }, [expiresAt]);
 
@@ -455,7 +455,7 @@ export const ModalContainer: React.FC<{ visible: boolean; children: React.ReactN
   if (variant === 'center') {
     return (
       <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-        <StyledView className="flex-1 items-center justify-center px-5" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
+        <StyledView className="flex-1 items-center justify-center px-5" style={{ backgroundColor: OVERLAYS.medium }}>
           <Animated.View style={{ opacity: opacityAnim, transform: [{ scale: scaleAnim }], backgroundColor: COLORS.white, borderRadius: 12, padding: 24, width: '100%', maxWidth: 320, ...SHADOWS.xxl }}>
             {children}
           </Animated.View>
@@ -466,7 +466,7 @@ export const ModalContainer: React.FC<{ visible: boolean; children: React.ReactN
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <StyledView className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
+      <StyledView className="flex-1 justify-end" style={{ backgroundColor: OVERLAYS.medium }}>
         <Animated.View style={{ opacity: opacityAnim, transform: [{ scale: scaleAnim }], backgroundColor: COLORS.white, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, maxHeight: '85%', ...SHADOWS.xl }}>
           <StyledView className="w-10 h-1 rounded-full self-center mb-5" style={{ backgroundColor: COLORS.neutral300 }} />
           {children}
@@ -490,7 +490,7 @@ export const PassFeedbackModal: React.FC<{ visible: boolean; onClose: () => void
             key={option.id}
             onPress={() => { lightHaptic(); setSelectedFeedback(option.id === selectedFeedback ? null : option.id); }}
             className="flex-row items-center mb-2 py-3 px-4"
-            style={{ backgroundColor: selectedFeedback === option.id ? COLORS.primary50 : COLORS.white, borderWidth: 1, borderColor: selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral300, borderRadius: 8 }}
+            style={{ backgroundColor: selectedFeedback === option.id ? COLORS.primary50 : COLORS.white, borderWidth: 1, borderColor: selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral300, borderRadius: 14 }}
             activeOpacity={0.7}
           >
             <StyledView className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: selectedFeedback === option.id ? COLORS.primaryBorder : COLORS.neutral50 }}>
@@ -503,10 +503,10 @@ export const PassFeedbackModal: React.FC<{ visible: boolean; onClose: () => void
       </StyledView>
 
       <StyledView className="flex-row" style={{ gap: 12 }}>
-        <StyledTouchableOpacity onPress={onClose} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 8 }} activeOpacity={0.7}>
+        <StyledTouchableOpacity onPress={onClose} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 14 }} activeOpacity={0.7}>
           <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral600 }}>Skip</Body>
         </StyledTouchableOpacity>
-        <StyledTouchableOpacity onPress={() => selectedFeedback ? onSubmit(selectedFeedback) : onClose()} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.primary500, borderRadius: 8, ...SHADOWS.sm }} activeOpacity={0.8}>
+        <StyledTouchableOpacity onPress={() => selectedFeedback ? onSubmit(selectedFeedback) : onClose()} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.primary500, borderRadius: 14, ...SHADOWS.sm }} activeOpacity={0.8}>
           <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.white }}>Done</Body>
         </StyledTouchableOpacity>
       </StyledView>
@@ -524,10 +524,10 @@ export const PassConfirmModal: React.FC<{ visible: boolean; onConfirm: () => voi
       <Body className="text-center" style={{ fontSize: 16, color: COLORS.neutral500, lineHeight: 24 }}>Are you sure? You won't be able to match with this person again.</Body>
     </StyledView>
     <StyledView className="flex-row" style={{ gap: 12 }}>
-      <StyledTouchableOpacity onPress={onCancel} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 8 }} activeOpacity={0.7}>
+      <StyledTouchableOpacity onPress={onCancel} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 14 }} activeOpacity={0.7}>
         <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.neutral600 }}>Keep Looking</Body>
       </StyledTouchableOpacity>
-      <StyledTouchableOpacity onPress={onConfirm} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.errorBg, borderRadius: 8 }} activeOpacity={0.7}>
+      <StyledTouchableOpacity onPress={onConfirm} className="flex-1 items-center justify-center py-3.5" style={{ backgroundColor: COLORS.errorBg, borderRadius: 14 }} activeOpacity={0.7}>
         <Body style={{ fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, color: COLORS.errorText }}>Pass</Body>
       </StyledTouchableOpacity>
     </StyledView>
@@ -571,7 +571,7 @@ export const CelebrationOverlay: React.FC<{ visible: boolean; recipientName: str
 
   return (
     <Modal visible={visible} transparent animationType="fade">
-      <StyledView className="flex-1 items-center justify-center" style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}>
+      <StyledView className="flex-1 items-center justify-center" style={{ backgroundColor: OVERLAYS.heavy }}>
         {heartScales.map((scale, index) => {
           const angle = (index * 30) * (Math.PI / 180);
           return (

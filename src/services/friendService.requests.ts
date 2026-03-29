@@ -85,11 +85,14 @@ export const sendFriendRequest = async (
 
     invalidateFriendCountCache();
 
+    const friendProfile = profileData ? mapProfileRow(profileData) : undefined;
+    if (friendProfile) await resolveProfilePhotos([friendProfile]);
+
     return {
       ok: true,
       data: {
         friendUserId: result.friend_user_id,
-        friendProfile: profileData ? mapProfileRow(profileData) : undefined,
+        friendProfile,
         wasAutoAccepted: result.was_auto_accepted,
         requestId: result.request_id,
       },

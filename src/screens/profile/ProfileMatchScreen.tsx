@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
-    ImageBackground, ActivityIndicator, StyleSheet,
+    ActivityIndicator, StyleSheet,
     Modal, Pressable, Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Heart, X, Sparkles, Users, Star, Eye } from '../../components/icons/LucideReplacements';
 import { communityService } from '../../services/communityServiceIndex';
 import { getUserProfile, getFullUserProfileById } from '../../services/profileService';
-import { getOptimizedImageUrl } from '../../utils/imageUtils';
+import { getOptimizedImageUrl, getOptimizedPhotoUrl } from '../../utils/imageUtils';
 import { KarmaInfoModal } from '../../components/community/karma/KarmaInfoModal';
 import { valueIconName, interestIconName } from '../../utils/emojiMaps';
 import { IconScoutIcon, EvaIcon } from '../../components/icons';
@@ -22,8 +22,9 @@ import { removeFriend } from '../../services/friendService';
 import { blockUser } from '../../services/blockService';
 import { COLORS } from '../../theme/colors';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
-import { SHADOWS } from '../../theme/shadows';
+import { SHADOWS, OVERLAYS } from '../../theme/shadows';
 import Svg, { Circle } from 'react-native-svg';
+import { ProfileBadgesSection } from '../../components/badges/ProfileBadgesSection';
 
 // ── Inline SVG icons ────────────────────────────────────────────────
 
@@ -86,11 +87,22 @@ export default function ProfileMatchScreen() {
         } else if (!isProposal && params.profile?.userId) {
             setLoading(true);
             getFullUserProfileById(params.profile.userId).then(full => {
-                if (isMountedRef.current && full) setProfileData(full);
+                if (!isMountedRef.current || !full) return;
+                // Preserve photos from the navigation params if the full profile has none.
+                // This can happen when user_profiles.photos JSONB is empty but photos live
+                // in the user_photos table (which fetchFriendsAsAnchors queries separately).
+                const mergedPhotos = (full.photos && full.photos.length > 0)
+                    ? full.photos
+                    : (params.profile?.photos ?? []);
+                setProfileData({ ...full, photos: mergedPhotos });
             }).catch(() => { /* keep whatever was passed */ }).finally(() => { if (isMountedRef.current) setLoading(false); });
         } else if (isProposal && params.partnerProfile?.userId) {
             getFullUserProfileById(params.partnerProfile.userId).then(full => {
-                if (isMountedRef.current && full) setProfileData(full);
+                if (!isMountedRef.current || !full) return;
+                const mergedPhotos = (full.photos && full.photos.length > 0)
+                    ? full.photos
+                    : (params.partnerProfile?.photos ?? []);
+                setProfileData({ ...full, photos: mergedPhotos });
             }).catch(() => { /* profile already visible from params */ });
         }
     }, [isPreview, isProposal, params.profile?.userId, params.partnerProfile?.userId]);
@@ -283,6 +295,71 @@ export default function ProfileMatchScreen() {
         );
     }
 
+    // ── Matchmaker profile card (simplified, no dating data) ──────
+    if (partnerProfile.role === 'matchmaker') {
+        const matchmakerPhoto = allPhotos[0]?.url;
+        const matchmakerKarma = partnerProfile.karma?.karma_points ?? 0;
+        return (
+            <View style={styles.container}>
+                <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+                    {/* Back button */}
+                    <View style={{ position: 'absolute', top: insets.top + 8, left: 16, zIndex: 10 }}>
+                        <TouchableOpacity
+                            onPress={() => navigation.goBack()}
+                            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                            <ArrowLeft size={22} color="#FFF" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={{ alignItems: 'center', paddingTop: insets.top + 60, paddingHorizontal: 24 }}>
+                        {/* Photo */}
+                        {matchmakerPhoto ? (
+                            <Image
+                                source={{ uri: getOptimizedPhotoUrl(matchmakerPhoto, 'card') }}
+                                style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: '#E5E7EB' }}
+                                contentFit="cover"
+                            />
+                        ) : (
+                            <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' }}>
+                                <EvaIcon name="person" variant="outline" size={48} color="#9CA3AF" />
+                            </View>
+                        )}
+
+                        {/* Name */}
+                        <Text style={{ fontFamily: FONTS.bold, fontSize: FONT_SIZES['3xl'], color: '#1F2937', marginTop: 16, textAlign: 'center' }}>
+                            {partnerProfile.firstName}
+                        </Text>
+
+                        {/* Matchmaker badge */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, marginTop: 12, gap: 6 }}>
+                            <EvaIcon name="lock" variant="fill" size={16} color={COLORS.primary} />
+                            <Text style={{ fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.sm, color: COLORS.primary }}>
+                                Matchmaker
+                            </Text>
+                        </View>
+
+                        <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.md, color: '#6B7280', marginTop: 8, textAlign: 'center' }}>
+                            Not in the dating pool
+                        </Text>
+
+                        {/* Karma + voting stats */}
+                        <View style={{ flexDirection: 'row', marginTop: 24, gap: 32 }}>
+                            <View style={{ alignItems: 'center' }}>
+                                <Text style={{ fontFamily: FONTS.bold, fontSize: FONT_SIZES.xl, color: '#1F2937' }}>
+                                    {matchmakerKarma}
+                                </Text>
+                                <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.sm, color: '#9CA3AF', marginTop: 2 }}>
+                                    Karma
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+            </View>
+        );
+    }
+
     const heroPhoto = allPhotos[0]?.url ?? '';
     const karmaPts = partnerProfile.karma?.karma_points ?? 0;
     const heightStr = formatHeight(partnerProfile.height);
@@ -311,77 +388,79 @@ export default function ProfileMatchScreen() {
             >
                 {/* ── Hero Photo ───────────────────────────────────── */}
                 <View style={styles.heroContainer}>
-                    <ImageBackground
-                        source={heroPhoto ? { uri: heroPhoto } : require('../../../assets/favicon.png')}
-                        style={styles.heroImage}
-                        resizeMode="cover"
-                    >
-                        <LinearGradient
-                            colors={['rgba(0,0,0,0.35)', 'transparent', 'rgba(0,0,0,0.65)']}
-                            locations={[0, 0.35, 1]}
-                            style={StyleSheet.absoluteFillObject}
-                        />
+                    <Image
+                        source={heroPhoto ? { uri: getOptimizedPhotoUrl(heroPhoto, 'profile') } : null}
+                        style={{ width: '100%', height: 480 }}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                        priority="high"
+                        transition={300}
+                    />
+                    <LinearGradient
+                        colors={['rgba(0,0,0,0.35)', 'transparent', 'rgba(0,0,0,0.65)']}
+                        locations={[0, 0.35, 1]}
+                        style={StyleSheet.absoluteFillObject}
+                    />
 
-                        {/* Header row — back button + menu */}
-                        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-                            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-                                <ArrowLeft size={24} color="#FFFFFF" strokeWidth={2} />
+                    {/* Header row — back button + menu */}
+                    <View style={[styles.header, { position: 'absolute', top: insets.top + 8, left: 0, right: 0 }]}>
+                        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                            <ArrowLeft size={24} color="#FFFFFF" strokeWidth={2} />
+                        </TouchableOpacity>
+                        {isProfileView ? (
+                            <TouchableOpacity style={styles.backButton} onPress={() => setShowActionSheet(true)}>
+                                <MoreVerticalIcon size={24} color="#FFFFFF" />
                             </TouchableOpacity>
-                            {isProfileView ? (
-                                <TouchableOpacity style={styles.backButton} onPress={() => setShowActionSheet(true)}>
-                                    <MoreVerticalIcon size={24} color="#FFFFFF" />
-                                </TouchableOpacity>
-                            ) : (
-                                <View />
+                        ) : (
+                            <View />
+                        )}
+                    </View>
+
+                    {/* Bottom overlay — name, subtitle, matched-by */}
+                    <View style={styles.heroBottom}>
+                        <View style={styles.heroInfoLeft}>
+                            <Text style={styles.heroName}>
+                                {partnerProfile.firstName}, {partnerProfile.age}
+                            </Text>
+
+                            {(heightStr || heroSubtitleStr.length > 0) && (
+                                <Text style={styles.heroSubtitle} numberOfLines={2}>
+                                    {[heightStr, heroSubtitleStr].filter(Boolean).join(' · ')}
+                                </Text>
+                            )}
+
+                            {isProposal && (
+                                <View style={styles.matchedByRow}>
+                                    <Sparkles size={12} color="#FFFFFF" fill="#FFFFFF" />
+                                    <Text style={styles.matchedByText}>Matched by</Text>
+                                    <View style={styles.avatarStack}>
+                                        {endorserAvatars.length > 0
+                                            ? endorserAvatars.map((uri, i) => (
+                                                <View key={`endorser-${i}`} style={[styles.stackAvatarWrap, { marginLeft: i === 0 ? 0 : -8 }]}>
+                                                    <Image
+                                                        source={{ uri: getOptimizedImageUrl(uri, 24) }}
+                                                        style={styles.stackAvatar}
+                                                        contentFit="cover"
+                                                        transition={0}
+                                                        cachePolicy="memory-disk"
+                                                    />
+                                                </View>
+                                            ))
+                                            : [0, 1, 2].map((_, i) => (
+                                                <View key={i} style={[styles.stackAvatarWrap, { marginLeft: i === 0 ? 0 : -8, backgroundColor: COLORS.paginationInactive }]} />
+                                            ))
+                                        }
+                                    </View>
+                                </View>
                             )}
                         </View>
 
-                        {/* Bottom overlay — name, subtitle, matched-by */}
-                        <View style={styles.heroBottom}>
-                            <View style={styles.heroInfoLeft}>
-                                <Text style={styles.heroName}>
-                                    {partnerProfile.firstName}, {partnerProfile.age}
-                                </Text>
-
-                                {(heightStr || heroSubtitleStr.length > 0) && (
-                                    <Text style={styles.heroSubtitle} numberOfLines={2}>
-                                        {[heightStr, heroSubtitleStr].filter(Boolean).join(' · ')}
-                                    </Text>
-                                )}
-
-                                {isProposal && (
-                                    <View style={styles.matchedByRow}>
-                                        <Sparkles size={12} color="#FFFFFF" fill="#FFFFFF" />
-                                        <Text style={styles.matchedByText}>Matched by</Text>
-                                        <View style={styles.avatarStack}>
-                                            {endorserAvatars.length > 0
-                                                ? endorserAvatars.map((uri, i) => (
-                                                    <View key={`endorser-${i}`} style={[styles.stackAvatarWrap, { marginLeft: i === 0 ? 0 : -8 }]}>
-                                                        <Image
-                                                            source={{ uri: getOptimizedImageUrl(uri, 24) }}
-                                                            style={styles.stackAvatar}
-                                                            contentFit="cover"
-                                                            transition={0}
-                                                            cachePolicy="memory-disk"
-                                                        />
-                                                    </View>
-                                                ))
-                                                : [0, 1, 2].map((_, i) => (
-                                                    <View key={i} style={[styles.stackAvatarWrap, { marginLeft: i === 0 ? 0 : -8, backgroundColor: COLORS.paginationInactive }]} />
-                                                ))
-                                            }
-                                        </View>
-                                    </View>
-                                )}
-                            </View>
-
-                            {/* Karma — subtle pill */}
-                            <TouchableOpacity style={styles.karmaPill} onPress={() => setShowKarmaModal(true)} activeOpacity={0.8}>
-                                <Star size={12} color="#FFFFFF" strokeWidth={2.5} />
-                                <Text style={styles.karmaText}>{karmaPts}</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </ImageBackground>
+                        {/* Karma — subtle pill */}
+                        <TouchableOpacity style={styles.karmaPill} onPress={() => setShowKarmaModal(true)} activeOpacity={0.8}>
+                            <Star size={12} color="#FFFFFF" strokeWidth={2.5} />
+                            <Text style={styles.karmaText}>{karmaPts}</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {/* ── Content Below Hero ────────────────────────────── */}
@@ -413,17 +492,23 @@ export default function ProfileMatchScreen() {
 
                     {/* "What You Have in Common" section removed — shared items are now highlighted inline */}
 
+                    {/* Friend Badges */}
+                    {partnerProfile.userId && (
+                        <ProfileBadgesSection userId={partnerProfile.userId} revealAuthor={false} />
+                    )}
+
                     {/* ── Photo + Prompt Interleave ────────────────── */}
                     {interleavedContent.map((item, idx) => {
                         if (item.type === 'photo') {
                             return (
                                 <View key={`il-${idx}`} style={styles.inlinePhotoWrap}>
                                     <Image
-                                        source={{ uri: item.data.url }}
+                                        source={{ uri: getOptimizedPhotoUrl(item.data.url, 'match') ?? item.data.url }}
                                         style={styles.inlinePhoto}
                                         contentFit="cover"
                                         cachePolicy="memory-disk"
-                                        transition={0}
+                                        priority="normal"
+                                        transition={300}
                                     />
                                 </View>
                             );
@@ -581,10 +666,7 @@ const styles = StyleSheet.create({
     heroContainer: {
         width: '100%',
         height: 480,
-    },
-    heroImage: {
-        width: '100%',
-        height: '100%',
+        overflow: 'hidden',
     },
     header: {
         flexDirection: 'row',
@@ -918,22 +1000,22 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     btnX: {
-        width: 62,
-        height: 62,
-        borderRadius: 31,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         backgroundColor: COLORS.passButton,
         alignItems: 'center',
         justifyContent: 'center',
-        ...SHADOWS.lg,
+        ...SHADOWS.md,
     },
     btnHeart: {
-        width: 62,
-        height: 62,
-        borderRadius: 31,
+        width: 72,
+        height: 72,
+        borderRadius: 36,
         backgroundColor: COLORS.primary,
         alignItems: 'center',
         justifyContent: 'center',
-        ...SHADOWS.lg,
+        ...SHADOWS.xl,
     },
     waitingBadge: {
         alignSelf: 'center',
@@ -956,7 +1038,7 @@ const styles = StyleSheet.create({
 
     sheetOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.45)',
+        backgroundColor: OVERLAYS.medium,
         justifyContent: 'flex-end',
     },
     sheetContainer: {

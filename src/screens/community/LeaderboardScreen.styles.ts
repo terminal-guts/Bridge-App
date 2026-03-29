@@ -55,7 +55,8 @@ export const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    marginBottom: 4,
   },
   countdownText: {
     fontFamily: FONTS.semiBold,
@@ -114,6 +115,7 @@ export const s = StyleSheet.create({
   // Layer 3 — Podium (hero card)
   podiumOuter: {
     marginHorizontal: 16,
+    marginBottom: 12,
     borderRadius: 24,
     ...SHADOWS.xl,
   },
@@ -135,7 +137,7 @@ export const s = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
   },
-  podiumSide: { alignItems: 'center', flex: 1 },
+  podiumSide: { alignItems: 'center', flex: 1, marginBottom: 4 },
   podiumCenter: { alignItems: 'center', flex: 1, marginBottom: 8 },
   crownIconWrap: { alignItems: 'center', marginBottom: 8 },
 
@@ -235,7 +237,9 @@ export const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 8,
-    gap: 8,
+  },
+  listSeparator: {
+    height: 8,
   },
   listCard: {
     flexDirection: 'row',
@@ -253,8 +257,7 @@ export const s = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: COLORS.primaryAccent,
     borderColor: 'rgba(67, 127, 255, 0.15)',
-    shadowColor: COLORS.primaryAccent,
-    shadowOpacity: 0.12,
+    ...SHADOWS.accentBlue,
   },
   rankPill: {
     width: 36,

@@ -10,28 +10,14 @@
  * <EvaIcon name="checkmark" variant="outline" color="#FF7A5C" size={20} />
  */
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
-import { styled } from 'nativewind';
 
-const StyledView = styled(View);
-
-// Lazy-loaded registries — null until first EvaIcon renders
-let cachedFill: Record<string, string> | null = null;
-let cachedOutline: Record<string, string> | null = null;
-let registryPromise: Promise<void> | null = null;
-
-function loadRegistry(): Promise<void> {
-  if (cachedFill && cachedOutline) return Promise.resolve();
-  if (!registryPromise) {
-    registryPromise = import('./iconRegistry').then(m => {
-      cachedFill = m.FILL_ICONS as any;
-      cachedOutline = m.OUTLINE_ICONS as any;
-    });
-  }
-  return registryPromise;
-}
+// Synchronous import — icons are available immediately on first render.
+// The lazy-load approach caused blank placeholders when the async import
+// hadn't resolved before components rendered.
+import { FILL_ICONS, OUTLINE_ICONS } from './iconRegistry';
 
 // Bridge color scheme mapping
 const BRIDGE_COLORS = {
@@ -73,22 +59,10 @@ export function EvaIcon({
   size = 24,
   style,
 }: EvaIconProps) {
-  const [ready, setReady] = useState(cachedFill !== null);
-
-  useEffect(() => {
-    if (!cachedFill) {
-      loadRegistry().then(() => setReady(true));
-    }
-  }, []);
-
-  if (!ready) {
-    return <StyledView style={[{ width: size, height: size }, style]} />;
-  }
-
   const resolvedColor = (BRIDGE_COLORS[color as BridgeColor] || color) as string;
   const fileName = variant === 'outline' ? `${name}-outline` : name;
-  const registry = variant === 'fill' ? cachedFill : cachedOutline;
-  const svgContent = registry ? (registry as any)[fileName] : null;
+  const registry = variant === 'fill' ? FILL_ICONS : OUTLINE_ICONS;
+  const svgContent = (registry as any)[fileName] ?? null;
 
   if (!svgContent) {
     return null;
@@ -100,9 +74,9 @@ export function EvaIcon({
     .replace(/^<svg /, `<svg fill="${resolvedColor}" `);
 
   return (
-    <StyledView style={[{ width: size, height: size }, style]}>
+    <View style={[{ width: size, height: size }, style]}>
       <SvgXml xml={colorizedSvg} width={size} height={size} />
-    </StyledView>
+    </View>
   );
 }
 

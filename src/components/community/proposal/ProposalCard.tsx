@@ -28,6 +28,7 @@ import { FONTS } from '../../../constants/typography';
 import { COLORS } from '../../../theme/colors';
 import { SHADOWS } from '../../../theme/shadows';
 import { EvaIcon } from '../../icons';
+import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
 
 const StyledView = styled(View) as typeof View;
 const StyledText = styled(Text) as typeof Text;
@@ -58,20 +59,19 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
 
   // Trigger animation when voted
   useEffect(() => {
-    if (hasVoted) {
-      scaleAnim.value = withSequence(
-        withSpring(1.02, SPRINGS.bouncy),
-        withSpring(1, SPRINGS.responsive),
-      );
-      glowAnim.value = withSequence(
-        withTiming(1, { duration: 200 }),
-        withTiming(0, { duration: 300 }),
-      );
-      if (onVoteAnimationComplete) {
-        setTimeout(onVoteAnimationComplete, 500);
-      }
-    }
-  }, [hasVoted]);
+    if (!hasVoted) return;
+    scaleAnim.value = withSequence(
+      withSpring(1.02, SPRINGS.bouncy),
+      withSpring(1, SPRINGS.responsive),
+    );
+    glowAnim.value = withSequence(
+      withTiming(1, { duration: 200 }),
+      withTiming(0, { duration: 300 }),
+    );
+    if (!onVoteAnimationComplete) return;
+    const timer = setTimeout(onVoteAnimationComplete, 500);
+    return () => clearTimeout(timer);
+  }, [hasVoted, onVoteAnimationComplete]);
 
   const handleVote = async (vote: boolean) => {
     if (hasVoted) return; // Already voted
@@ -97,10 +97,13 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
       <StyledView className="flex-1 items-center">
         {/* Photo */}
         <StyledImage
-          source={user.photos?.[0]?.url ? { uri: user.photos[0].url } : null}
+          source={user.photos?.[0]?.url ? { uri: getOptimizedPhotoUrl(user.photos[0].url, 'avatar') } : null}
           className="rounded-full mb-2"
-          style={{ width: 60, height: 60 }}
+          style={{ width: 60, height: 60, backgroundColor: '#E5E7EB' }}
           contentFit="cover"
+          cachePolicy="memory-disk"
+          priority="high"
+          recyclingKey={user.id ?? user.firstName}
         />
 
         {/* Name & Age */}
@@ -144,12 +147,15 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
             <StyledView key={endorsement.id} className="flex-row items-center" style={{ marginTop: index > 0 ? 8 : 0 }}>
               {isFriend && (
                 <StyledImage
-                  source={{
-                    uri: endorsement.endorserProfile.photos?.[0]?.url,
-                  }}
+                  source={endorsement.endorserProfile.photos?.[0]?.url
+                    ? { uri: getOptimizedPhotoUrl(endorsement.endorserProfile.photos[0].url, 'avatar') }
+                    : null}
                   className="rounded-full"
-                  style={{ width: 24, height: 24, marginRight: 8 }}
+                  style={{ width: 24, height: 24, marginRight: 8, backgroundColor: '#E5E7EB' }}
                   contentFit="cover"
+                  cachePolicy="memory-disk"
+                  priority="normal"
+                  recyclingKey={endorsement.id}
                 />
               )}
               <StyledText className="text-xs text-neutral-700">

@@ -644,7 +644,7 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
 
   return (
     <Card
-      shadow="xl"
+      shadow="md"
       className="mb-4 bg-gradient-to-r from-blue-50 to-primary-50 border-2 border-primary-200"
     >
       <StyledView className="flex-row items-center justify-between mb-3">
@@ -741,7 +741,7 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
 }) => {
   return (
     <Card
-      shadow="xl"
+      shadow="md"
       className="mb-4 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200"
     >
       <StyledView className="flex-row items-center justify-between mb-3">

@@ -30,7 +30,7 @@ import { FriendBadge } from '../../types/badges';
 import { BadgeIcon } from '../icons/BadgeIcon';
 import { BadgeCard } from './BadgeCard';
 import { BADGE_ICON_CATEGORIES, BADGE_ICON_LABELS } from '../../constants/badgeIcons';
-import { awardBadge, updateBadge } from '../../services/badgeService';
+import { awardBadge, updateBadge, deleteBadge } from '../../services/badgeService';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SPRINGS } from '../../constants/animations';
@@ -101,6 +101,28 @@ export const BadgeAwardModal: React.FC<BadgeAwardModalProps> = ({
   const handleBack = () => {
     lightHaptic();
     setStep(s => s - 1);
+  };
+
+  const handleRemove = async () => {
+    if (!existingBadge) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const result = await deleteBadge(existingBadge.id);
+      if (result.ok) {
+        successHaptic();
+        onSuccess();
+        onClose();
+      } else {
+        errorHaptic();
+        setError(result.error?.message || 'Failed to remove badge.');
+      }
+    } catch {
+      errorHaptic();
+      setError('Failed to remove badge.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -237,6 +259,15 @@ export const BadgeAwardModal: React.FC<BadgeAwardModalProps> = ({
           </Text>
         )}
       </TouchableOpacity>
+      {existingBadge && (
+        <TouchableOpacity
+          onPress={handleRemove}
+          disabled={submitting}
+          style={styles.removeButton}
+        >
+          <Text style={styles.removeButtonText}>Remove Badge</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -461,6 +492,17 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.bold,
     fontSize: FONT_SIZES.base,
     color: '#fff',
+  },
+  removeButton: {
+    marginTop: 10,
+    paddingVertical: 12,
+    width: '100%',
+    alignItems: 'center',
+  },
+  removeButtonText: {
+    fontFamily: FONTS.medium,
+    fontSize: FONT_SIZES.base,
+    color: '#EF4444',
   },
   nextButton: {
     backgroundColor: '#437FFF',

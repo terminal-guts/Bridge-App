@@ -245,7 +245,7 @@ export const styles = StyleSheet.create({
   },
   emptyContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 24 },
   illustration: { width: 260, height: 260, marginBottom: 2 },
-  tagline: { fontFamily: FONTS.bold, fontSize: FONT_SIZES['4xl'], lineHeight: LINE_HEIGHTS['4xl'], color: COLORS.text.heading, textAlign: 'center', marginBottom: 8, letterSpacing: -0.3 },
+  tagline: { fontFamily: FONTS.bold, fontWeight: '700' as const, fontSize: FONT_SIZES['4xl'], lineHeight: LINE_HEIGHTS['4xl'], color: COLORS.text.heading, textAlign: 'center', marginBottom: 8, letterSpacing: -0.3 },
   subtitle: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.base, lineHeight: LINE_HEIGHTS.base, color: COLORS.text.light, textAlign: 'center', marginBottom: 28 },
   ctaButton: {
     backgroundColor: COLORS.primaryButton,
@@ -510,6 +510,7 @@ export function EmptyStateView({
   animateEntrance,
   popupEvent,
   handlePopupContinue,
+  headerPad,
 }: {
   profile: UserProfile | null;
   navigation: any;
@@ -519,6 +520,7 @@ export function EmptyStateView({
   animateEntrance: boolean;
   popupEvent: MatchEndedEvent | null;
   handlePopupContinue: () => void;
+  headerPad?: number;
 }) {
   const emptyContent = (
     <>
@@ -526,7 +528,7 @@ export function EmptyStateView({
         profile={profile}
         onPress={() => navigation.navigate('Profile')}
       />
-      <View style={styles.header}>
+      <View style={[styles.headerRow, headerPad != null && { paddingTop: headerPad }]}>
         <Text style={styles.headerTitle} accessibilityRole="header">Match</Text>
       </View>
       <ScrollView

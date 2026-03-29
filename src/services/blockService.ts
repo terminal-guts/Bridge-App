@@ -133,6 +133,19 @@ export const blockUser = async (
         `and(user_id.eq.${blockedUserId},friend_id.eq.${currentUserId})`,
       );
 
+    // Clean up friend_badges and expire friend_suggestions in parallel
+    await Promise.all([
+      supabase
+        .from('friend_badges')
+        .delete()
+        .or(`and(giver_id.eq.${currentUserId},receiver_id.eq.${blockedUserId}),and(giver_id.eq.${blockedUserId},receiver_id.eq.${currentUserId})`),
+      supabase
+        .from('friend_suggestions')
+        .update({ status: 'expired', updated_at: new Date().toISOString() })
+        .or(`user_a_id.eq.${blockedUserId},user_b_id.eq.${blockedUserId}`)
+        .in('status', ['queued', 'stashed']),
+    ]);
+
     logger.info(`[Supabase] User ${currentUserId} blocked ${blockedUserId} (proposals cancelled, matches ended, friendship removed)`);
     return { ok: true };
   } catch (error: unknown) {
@@ -179,7 +192,7 @@ export const getBlockedUsers = async (): Promise<ApiResponse<BlockedUser[]>> => 
 
     const { data: blocks, error: blocksError } = await supabase
       .from('blocked_users')
-      .select('id, user_id, blocked_user_id, reason, blocked_at, created_at')
+      .select('id, user_id, blocked_user_id, blocked_at, created_at')
       .eq('user_id', currentUserId)
       .order('created_at', { ascending: false });
 
@@ -204,7 +217,7 @@ export const getBlockedUsers = async (): Promise<ApiResponse<BlockedUser[]>> => 
         id: block.id,
         userId: block.user_id,
         blockedUserId: block.blocked_user_id,
-        reason: block.reason,
+        reason: undefined,
         blockedAt: block.blocked_at ?? block.created_at,
         blockedUserProfile: p
           ? ({

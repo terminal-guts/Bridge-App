@@ -91,6 +91,7 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
   return (
     <OnboardingLayout
       onContinue={() => validateAndContinue()}
+      onBack={onBack}
       showBackButton={true}
       hasTextInput={true}
       keyboardPersistent={false}

@@ -56,7 +56,6 @@ From the engagement research (Hook Model, variable reinforcement, network effect
 | Shared celebrations (UI) | Group celebration when friends helped a match happen (notification is wired, UI is not) | Not done |
 | Streak milestone celebrations | Toast + haptic when crossing 7/14/30 day streaks | Not done |
 | Streak death toast | Toast when a streak drops to 0 | Not done |
-| `streakTrackingService.ts` | AsyncStorage persistence for cross-session streak detection (was built but reverted, needs re-creation) | Not done |
 | Streak callback wiring | Wire `onStreakMilestone`/`previousStreakDays` props from `FriendsAreaView`/`CommunityScreen` into `UserRow` | Not done |
 | Settings notification subtitles | Update `SettingsScreen.tsx` notification toggle subtitles to reflect tier system | Not done |
 | Friend edge 2x callout | "Your vote counts 2x" when voting on a friend's proposal | Not done (held) |
@@ -143,7 +142,7 @@ Creative engagement concepts organized by implementation effort. These are ideas
 | Online Now Tags | On hold |
 | Import Real Badge Icons | Replace 42 placeholder character trait SVGs with real icon assets. Source from icon pack, place in `assets/icons/badges/`, run `scripts/generate-badge-registry.js`. |
 | Badge Award Notification | Push notification when someone awards you a badge (variable reward timing). Low priority — may not need. |
-| Recommend-to-Friend Visibility | "Recommend to Friend" during voting is stored as algorithmic boost but invisible to recipient. Add notification/badge: "A friend recommended someone for you!" to close the UX gap. |
+| Recommend-to-Friend | Feature fully deferred pre-launch. See `_deferred/suggest-a-match/DEFERRED.md` to re-enable both Recommend to Friend (voting) and Suggest a Match (two friends). Backend tables live. | Deferred |
 | Dark Mode | Deferred — requires ~150+ dark color variants, NativeWind dark config, conditional component styling, dark shadow palette, Figma designs. Not safe without dedicated design pass. See `scripts/agent_plan.md`. |
 
 ---
@@ -160,7 +159,7 @@ Priority order. Use established design system (4px grid, COLORS constants, FONTS
 6. **ProfileEditScreen** — hub layout, section navigation, auto-save feedback
 7. **OnboardingScreen** — transitions, progress indicator, field styling
 8. **SettingsScreen** — section cards, navigation items, destructive actions
-9. **LeaderboardScreen** — rank display, prize callout, user rows (mock data Phase 1)
+9. **LeaderboardScreen** — rank display, prize callout *(skeleton loader done, FlashList migration done, live data)*
 10. **StatsScreen** — stat cards, data visualization, empty states
 
 ### ProposalReviewView Refinement Plan

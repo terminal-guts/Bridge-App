@@ -8,6 +8,7 @@ import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
 import { lightHaptic } from '../../utils/haptics';
+import { SHADOWS } from '../../theme/shadows';
 
 
 interface WelcomeScreenProps {
@@ -28,10 +29,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   return (
     <StyledView className="flex-1">
       <StyledLinearGradient
-        colors={['#2D2420', '#5B8FFF', '#FFF9F5']}
+        colors={['#2D2420', '#3D4A6B', '#5B8FFF', '#FFF9F5']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        locations={[0, 0.45, 1]}
+        locations={[0, 0.25, 0.55, 1]}
         className="flex-1"
       >
         <StyledSafeAreaView className="flex-1">
@@ -49,11 +50,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
               />
               {/* Tagline — fades up after logo */}
               <Animated.View entering={FadeInUp.duration(500).delay(800)}>
-                <StyledText className="text-white/90 text-base font-normal leading-relaxed mb-2" style={{ fontFamily: FONTS.regular }}>
-                  The community finds the fit.
-                </StyledText>
                 <StyledText className="text-white/90 text-base font-normal leading-relaxed" style={{ fontFamily: FONTS.regular }}>
-                  We bridge the gap.
+                  The community finds the fit.{'\n'}We bridge the gap.
                 </StyledText>
               </Animated.View>
             </StyledView>
@@ -67,7 +65,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
               <AnimatedPressable
                 onPress={handleGetStarted}
                 scale="standard"
-                className="bg-white rounded-full py-4 px-8 mb-4 shadow-lg items-center"
+                className="bg-white rounded-full py-4 px-8 mb-4 items-center"
+                style={SHADOWS.lg}
               >
                 <StyledText className="text-neutral-900 text-center text-lg font-semibold" style={{ fontFamily: FONTS.semiBold }}>
                   Get started

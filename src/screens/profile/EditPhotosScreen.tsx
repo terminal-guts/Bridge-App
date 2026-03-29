@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
-import { View, TouchableOpacity, Image, Alert, Platform, Linking } from 'react-native';
+import { View, TouchableOpacity, Alert, Platform, Linking } from 'react-native';
+import { Image } from 'expo-image';
 import { styled } from 'nativewind';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
@@ -14,12 +15,12 @@ import { useEditProfile } from './sections/useEditProfile';
 import { createLogger } from '../../utils/secureLogger';
 import { Text } from 'react-native';
 import { EvaIcon } from '../../components/icons';
+import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 
 const logger = createLogger('EditPhotosScreen');
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-const StyledImage = styled(Image);
 const StyledText = styled(Text);
 
 interface EditPhotosScreenProps {
@@ -183,6 +184,11 @@ export const EditPhotosScreen: React.FC<EditPhotosScreenProps> = ({ navigation }
       profile={profile}
       originalProfileJson={originalProfileJson}
       onGoBack={() => navigation.goBack()}
+      validateBeforeSave={() =>
+        profile.photos.length === 0
+          ? 'Add at least one photo before saving your profile.'
+          : null
+      }
     >
       <Card className="mb-6">
         <StyledView className="flex-row items-center justify-between mb-2">
@@ -203,7 +209,13 @@ export const EditPhotosScreen: React.FC<EditPhotosScreenProps> = ({ navigation }
           {profile.photos.map((photo, index) => (
             <StyledView key={photo.id} className="w-1/3 px-2 mb-4">
               <StyledView className="relative aspect-[3/4] rounded-lg overflow-hidden">
-                <StyledImage source={{ uri: photo.url }} className="w-full h-full" resizeMode="cover" />
+                <Image
+                  source={{ uri: getOptimizedPhotoUrl(photo.url, 'avatar') }}
+                  style={{ width: '100%', height: '100%', backgroundColor: COLORS.backgroundGrayMedium }}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  recyclingKey={photo.id}
+                />
 
                 {photo.isMain && (
                   <StyledView className="absolute top-2 left-2 bg-primary-500 px-2 py-1 rounded">

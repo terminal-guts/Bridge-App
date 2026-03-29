@@ -1,3 +1,4 @@
+-- PENDING MANUAL APPLY: Run the updated INSERT policy via Supabase Dashboard SQL Editor
 -- Friend Badges: social validation system
 -- Each friend can give one badge to another friend (one per giver-receiver pair)
 
@@ -73,14 +74,14 @@ CREATE POLICY "Users can view own badges"
     )
   );
 
--- INSERT: giver must be auth.uid(), and friendship must exist
+-- INSERT: giver must be auth.uid(), and friendship must exist and be accepted
 CREATE POLICY "Users can award badges to friends"
   ON friend_badges FOR INSERT
   WITH CHECK (
     giver_id = auth.uid()
     AND EXISTS (
       SELECT 1 FROM friends
-      WHERE (user_id = auth.uid() AND friend_id = receiver_id)
+      WHERE (user_id = auth.uid() AND friend_id = receiver_id AND status = 'accepted')
     )
   );
 

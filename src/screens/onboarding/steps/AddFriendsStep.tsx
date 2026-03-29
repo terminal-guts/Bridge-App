@@ -8,10 +8,12 @@ import {
   Linking,
   Share,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { H1, Body, Button } from '../../../components/ui';
+import { EvaIcon } from '../../../components/icons';
 import { OnboardingData } from '../../../types';
 import * as Clipboard from 'expo-clipboard';
 import {
@@ -72,6 +74,7 @@ const StyledSafeAreaView = styled(SafeAreaView);
 export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
   updateData,
   onNext,
+  onBack,
 }) => {
   const [permissionStatus, setPermissionStatus] = useState<string | null>(null);
   const [contacts, setContacts] = useState<NormalizedContact[]>([]);
@@ -211,10 +214,11 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
         setContacts((prev) =>
           prev.map((c) => sentIds.has(c.id) ? { ...c, isInvited: true, invitedAt: Date.now() } : c)
         );
-        setSelectedIds(new Set());
         setCelebrationCount(selectedContacts.length);
         setTimeout(() => setCelebrationCount(0), 2500);
       }
+      // Always clear selections so the button returns to "Continue"
+      setSelectedIds(new Set());
     } catch (err) {
       logger.error('Send invites failed:', err);
     } finally {
@@ -343,12 +347,12 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
   };
 
   return (
-    <StyledSafeAreaView edges={['top', 'bottom']} className="flex-1 bg-white">
+    <StyledSafeAreaView edges={['top', 'bottom']} className="flex-1" style={{ backgroundColor: COLORS.screenBackground }}>
       {/* Onboarding header */}
-      <StyledView className="px-6 pt-6 pb-3 bg-white border-b border-neutral-200">
+      <StyledView className="px-6 pt-2 pb-3 bg-white border-b border-neutral-200">
         <H1 className="mb-1">Add friends</H1>
         <Body className="text-neutral-500 text-sm mb-3">
-          Friends vote on your matches and help you find the right person.
+          Bridge is more fun with friends. Invite your crew to join.
         </Body>
         <StyledView className="flex-row items-center justify-between mb-1">
           <StyledText className="text-xs text-neutral-500" style={{ fontFamily: FONTS.medium }}>
@@ -414,20 +418,27 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
             onAddAllBridge={handleAddAllBridge}
             onSendInvites={handleSendInvites}
             keyExtractor={keyExtractor}
+            hideFloatingButton
           />
         )}
       </StyledView>
 
       <CelebrationOverlay count={celebrationCount} />
 
-      {/* Onboarding bottom bar */}
+      {/* Onboarding bottom bar — Send invites replaces Continue when contacts selected */}
       <StyledView
         className="px-6 bg-neutral-50"
         style={{ paddingTop: 12, paddingBottom: 12, borderTopWidth: 1, borderTopColor: COLORS.backgroundGray }}
       >
-        <Button onPress={handleContinue} variant="primary" size="lg" fullWidth>
-          Continue
-        </Button>
+        {selectedIds.size > 0 ? (
+          <Button onPress={handleSendInvites} variant="primary" size="lg" fullWidth disabled={sending}>
+            {sending ? 'Sending...' : `Send ${Math.min(selectedIds.size, invitesRemaining)} Invite${Math.min(selectedIds.size, invitesRemaining) === 1 ? '' : 's'}`}
+          </Button>
+        ) : (
+          <Button onPress={handleContinue} variant="primary" size="lg" fullWidth>
+            Continue
+          </Button>
+        )}
       </StyledView>
     </StyledSafeAreaView>
   );

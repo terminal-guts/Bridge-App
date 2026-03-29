@@ -18,18 +18,9 @@ import { GuideProvider } from './src/contexts/GuideContext';
 import { GuideOverlay } from './src/components/guides/GuideOverlay';
 import { ErrorBoundary } from './src/components/ui/ErrorBoundary';
 import { createLogger } from './src/utils/secureLogger';
-import {
-  useFonts,
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
-} from '@expo-google-fonts/plus-jakarta-sans';
 
-// Keep the native splash screen visible until fonts are loaded.
-// This avoids showing a blank screen or spinner during font loading —
-// users see the designed splash image the entire time.
+// Keep the native splash screen visible until the navigator signals it is ready.
+// Called at module level per Expo docs — must not be inside a component or hook.
 SplashScreen.preventAutoHideAsync();
 
 const logger = createLogger('App');
@@ -37,22 +28,31 @@ const logger = createLogger('App');
 const fontsPatchApplied = { current: false };
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
-    PlusJakartaSans_400Regular,
-    PlusJakartaSans_500Medium,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold,
-  });
+  // useFonts removed: the expo-font config plugin in app.json embeds all five Plus Jakarta Sans
+  // variants as native resources at build time. Fonts are registered before JS starts — no async
+  // wait needed. Font.isLoaded('PlusJakartaSans_400Regular') returns true synchronously.
+  // Removing useFonts eliminates one async round-trip from the startup critical path.
 
-  // Apply global font patch once fonts are loaded, then hide the splash screen
+  // Apply font patch immediately on first mount — fonts are embedded natively so they're
+  // already registered before JS starts. No need to wait for any font loading.
   React.useEffect(() => {
-    if (fontsLoaded && !fontsPatchApplied.current) {
+    if (!fontsPatchApplied.current) {
       require('./src/utils/setDefaultFonts');
       fontsPatchApplied.current = true;
-      SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, []);
+
+  // appReady is set by AppNavigator once it has a definitive auth state AND the
+  // first screen's module is loaded. Hiding splash here (not on font load) means:
+  //   - New users: splash → Welcome screen directly, no CommunitySkeleton flash
+  //   - Returning users (warm start): AppNavigator signals ready immediately
+  //   - Returning users (cold start): signals after fast AsyncStorage auth cache read
+  const [appReady, setAppReady] = React.useState(false);
+  React.useEffect(() => {
+    if (appReady) {
+      SplashScreen.hide(); // synchronous; preferred over hideAsync per Expo docs
+    }
+  }, [appReady]);
 
   // Defer Sentry init until after the first frame renders — avoids blocking
   // the JS thread during startup with Sentry's SDK initialization (~610KB module).
@@ -82,16 +82,13 @@ export default function App() {
     };
   }, []);
 
-  // Keep splash screen visible until fonts are ready
-  if (!fontsLoaded) return null;
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ErrorBoundary>
         <SafeAreaProvider>
           <GuideProvider>
             <View style={{ flex: 1 }}>
-              <AppNavigator />
+              <AppNavigator onReady={() => setAppReady(true)} />
               <GuideOverlay />
             </View>
             <Toast config={toastConfig} />

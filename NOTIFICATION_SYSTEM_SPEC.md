@@ -178,7 +178,7 @@ These fire for at-risk users only.
 - **Does NOT count toward Tier 2 cap** (loss prevention, separate budget)
 
 #### 11. You've Been Away (Dormant Escalation)
-- **Trigger**: Server-side cron — check `app_sessions.ended_at` or `user_profiles.updated_at` for inactivity
+- **Trigger**: Server-side cron — checks `user_profiles.updated_at` for inactivity (`app_sessions` table does not exist; function falls back to profile update time as activity signal)
 - **Timing**: Varies by dormancy tier
 
 | Days Inactive | Frequency | Copy |
@@ -252,41 +252,6 @@ These fire for at-risk users only.
 ## Copy Rotation
 
 Each notification type has 2-3 copy variants. The system tracks which variant was last sent per user per type in the `notification_log` table and rotates sequentially.
-
----
-
-## Database Changes
-
-### New table: `notification_log`
-
-```sql
-CREATE TABLE notification_log (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  notification_type TEXT NOT NULL,
-  category TEXT NOT NULL,
-  copy_variant INT DEFAULT 0,
-  sent_at TIMESTAMPTZ DEFAULT now(),
-  opened BOOLEAN DEFAULT FALSE,
-  opened_at TIMESTAMPTZ,
-  created_date DATE GENERATED ALWAYS AS (sent_at::date) STORED
-);
-
-CREATE INDEX idx_notif_log_user_date ON notification_log(user_id, created_date, category);
-CREATE INDEX idx_notif_log_user_type ON notification_log(user_id, notification_type, sent_at DESC);
-```
-
-### Sync preferences to `user_settings`
-
-```sql
-ALTER TABLE user_settings
-  ADD COLUMN IF NOT EXISTS pref_matches_enabled BOOLEAN DEFAULT TRUE,
-  ADD COLUMN IF NOT EXISTS pref_messages_enabled BOOLEAN DEFAULT TRUE,
-  ADD COLUMN IF NOT EXISTS pref_nudges_enabled BOOLEAN DEFAULT TRUE,
-  ADD COLUMN IF NOT EXISTS pref_show_name_if_winner BOOLEAN DEFAULT TRUE;
-```
-
-**Show Name If Winner**: When enabled (default), the user's first name appears in the weekly summary and morning leaderboard notifications sent to ALL users (e.g., "Carter won $100!"). When disabled, notifications say "a Bridge matchmaker won $100!" instead. This gives users control over their visibility in competitive contexts.
 
 ---
 
@@ -364,75 +329,6 @@ All times UTC. Bridge's 7 PM Central = 00:00 UTC (CDT) or 01:00 UTC (CST).
 
 ---
 
-## Client-Side Changes
-
-### Remove
-- `setupEngagementCadence()` — no more client-side 6:55 PM / 8 AM local schedules
-- `checkAndScheduleInactivityNudge()` — server handles dormant users
-- `checkAndScheduleProfileReminder()` — no more push for this; in-app banner only
-- `checkAndScheduleStreakRiskNudge()` — server handles at 6 PM
-- `notifyNewProposal()` — orphaned, never called
-- `notifyInactivity()` — server handles
-- `notifyProfileIncomplete()` — in-app only
-- `notifyStreakAtRisk()` — server handles
-- `notifyStreakDeath()` — removed entirely
-- `notifyAccuracyBonus()` — removed entirely
-- `NOTIF_IDS.ANTICIPATION_655PM` — removed (replaced by server-side ice-breaker)
-- `NOTIF_IDS.MORNING_RECAP_8AM` — server handles
-- `NOTIF_IDS.DAILY_MATCH_NUDGE_7PM` — legacy, already dead
-
-### Keep
-- `registerForPushNotifications()` — still needed for token registration
-- `subscribeToRealtimeNotifications()` — keep as **fallback** for when app is foregrounded (server push is primary for backgrounded state)
-- `notifyMatchNotice()` — keep for realtime fallback
-- `notifyNewMessage()` — keep for realtime fallback
-- `notifyProposalDeciding()` — keep for realtime fallback
-- `notifyFriendNudge()` — keep for realtime fallback (server sends the real push)
-- `notifySharedCelebration()` — keep for realtime fallback
-- `addNotificationListener()` — keep
-- `addNotificationResponseListener()` — keep
-- `scheduleLocalNotification()` — keep (used by fallbacks)
-- `clearAll()` — keep
-- `getBadgeCount()` / `setBadgeCount()` — keep
-
-### Add
-- **Deep link handler**: When user taps a notification, navigate to the correct screen based on `data.screen` and `data.params`
-- **Preference sync**: When user toggles a preference in Settings, write to both AsyncStorage AND `user_settings` table
-
-### Simplify `scheduleAppOpenChecks()`
-Remove all the checks. The only thing it does now is call `registerForPushNotifications()` to ensure the token is fresh.
-
----
-
-## Implementation Order
-
-### Phase 1: Database + Shared Infrastructure
-1. Create `notification_log` table (migration)
-2. Add preference columns to `user_settings` (migration)
-3. Build `_shared/send-push.ts` utility
-4. Add preference sync to `notificationPreferencesService.ts`
-
-### Phase 2: Server-Side Scheduled Notifications
-5. `notify-streak-at-risk` (6 PM)
-6. `notify-ice-breaker` (every 4h — silent matches 18–48h)
-7. `notify-vote-reminder` (8 PM)
-8. `notify-morning-leaderboard` (8:30 AM)
-9. `notify-match-expiring` (every 4h)
-10. `notify-dormant-users` (daily)
-
-### Phase 3: Server-Side Transactional
-11. `notify-transactional` edge function (match, message, deciding)
-12. Database triggers or webhooks to call it
-
-### Phase 4: Client Cleanup
-13. Remove dead code from `notificationService.ts`
-14. Add deep link handler
-15. Simplify `scheduleAppOpenChecks()`
-16. Update `send-nudge` to use shared `sendPush`
-17. Update `send-weekly-summary` to use shared `sendPush`
-
----
-
 ## Streak at Risk — Logic Detail
 
 The `proposal-lifecycle` edge function runs at 7 PM Central (00:00 UTC). It calls:
@@ -494,13 +390,3 @@ FOR each proposal WHERE status = 'deciding':
 - **D7 retention with push enabled vs disabled**: push should show 2x+ retention lift
 - **Notifications/churn correlation**: monitor if users who receive 4+ notifications/day churn faster
 
----
-
-## Sources
-
-- Braze Push Notification Best Practices & Hinge Case Study
-- Business of Apps Push Notification Statistics 2025
-- Duolingo's Sleeping/Recovering Bandit Algorithm (KDD 2020)
-- CleverTap Emoji & Personalization Research
-- Airship 2025 Push Notification Benchmarks
-- OneSignal Frequency Capping Documentation

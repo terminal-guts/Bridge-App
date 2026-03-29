@@ -35,8 +35,23 @@ function patchRender(Component: Record<string, unknown>) {
   if (typeof originalRender === 'function') {
     Component.render = function (props: Record<string, unknown>, ref: unknown) {
       const flat = (StyleSheet.flatten(props.style) || {}) as { fontFamily?: string; fontWeight?: string | number };
-      // Skip if fontFamily already explicitly set to PlusJakartaSans
+      // If fontFamily is already PlusJakartaSans, ensure fontWeight matches
+      // so React Native renders the correct variant (fontFamily alone is not enough on iOS)
       if (flat.fontFamily && flat.fontFamily.startsWith('PlusJakartaSans')) {
+        const FONT_TO_WEIGHT: Record<string, string> = {
+          'PlusJakartaSans_400Regular': 'normal',
+          'PlusJakartaSans_500Medium': '500',
+          'PlusJakartaSans_600SemiBold': '600',
+          'PlusJakartaSans_700Bold': '700',
+          'PlusJakartaSans_800ExtraBold': '800',
+        };
+        const derivedWeight = FONT_TO_WEIGHT[flat.fontFamily];
+        if (derivedWeight && !flat.fontWeight) {
+          return originalRender.call(this, {
+            ...props,
+            style: [props.style, { fontWeight: derivedWeight }],
+          }, ref);
+        }
         return originalRender.call(this, props, ref);
       }
       const fontFamily = getFontForWeight(flat.fontWeight as string | undefined);

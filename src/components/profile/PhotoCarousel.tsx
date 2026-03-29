@@ -24,6 +24,7 @@ import { styled } from 'nativewind';
 import { Body } from '../ui';
 import { lightHaptic } from '../../utils/haptics';
 import { EvaIcon } from '../icons';
+import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 
 interface Photo {
   url: string;
@@ -81,12 +82,14 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({
       className="justify-center items-center bg-black"
     >
       <StyledImage
-        source={{ uri: item.url }}
+        source={{ uri: getOptimizedPhotoUrl(item.url, 'profile') }}
         placeholder={item.blurhash ? { blurhash: item.blurhash } : undefined}
         style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
         contentFit="contain"
         transition={300}
         cachePolicy="memory-disk"
+        priority={index === 0 ? 'high' : 'normal'}
+        recyclingKey={item.id || String(index)}
       />
     </StyledView>
   );
@@ -216,13 +219,14 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
           }}
         >
           <StyledImage
-            source={{ uri: photo.url }}
+            source={{ uri: getOptimizedPhotoUrl(photo.url, 'avatar') }}
             placeholder={photo.blurhash ? { blurhash: photo.blurhash } : undefined}
             className="rounded-lg bg-neutral-200"
             style={{ width: photoSize, height: photoSize }}
             contentFit="cover"
             transition={300}
             cachePolicy="memory-disk"
+            recyclingKey={photo.id || String(index)}
           />
 
           {/* Photo number badge */}

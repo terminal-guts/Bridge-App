@@ -140,8 +140,8 @@ export const GuideOverlay: React.FC = () => {
     >
       <StatusBar barStyle="light-content" />
 
-      {/* Full-screen container - tap to skip (disabled for interactive steps) */}
-      <TouchableWithoutFeedback onPress={step.interactive ? undefined : nextStep}>
+      {/* Full-screen container - tap to skip (no-op for interactive steps so onPress is never undefined) */}
+      <TouchableWithoutFeedback onPress={step.interactive ? () => {} : nextStep}>
         <View style={{ flex: 1 }} pointerEvents="box-none">
           {/* Spotlight overlay (if highlighting an element) */}
           {spotlightDimensions && step.highlightType === 'spotlight' && (

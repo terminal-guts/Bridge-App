@@ -2,32 +2,37 @@ import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react'
 import {
   View,
   TouchableOpacity,
-  FlatList,
   Text,
   Alert,
-  ActivityIndicator,
   RefreshControl,
   ViewToken,
 } from 'react-native';
+import { FlashList, ViewToken as FlashViewToken } from '@shopify/flash-list';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { EvaIcon } from '../../components/icons';
 import { IconScoutIcon } from '../../components/icons/IconScoutIcon';
 import { StaggerItem } from '../../hooks/useStaggeredList';
 import { RootStackParamList } from '../../types';
 import { Image } from 'expo-image';
+import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../../theme/colors';
 import { ScreenWrapper } from '../../components/ui';
+import { LeaderboardSkeleton } from '../../components/ui/SkeletonLoader';
 import { getCentralOffsetHours } from '../../utils/centralTime';
 import {
   fetchLeaderboard,
   LeaderboardEntry,
   LeaderboardCurrentUser,
+  LeaderboardResponse,
+  invalidateLeaderboardCache,
 } from '../../services/leaderboardService';
 
 // Extracted
 import { s } from './LeaderboardScreen.styles';
 import { KarmaPill, FriendBadge, InitialAvatar, RankChangeArrow } from './LeaderboardScreen.components';
+
+const ListSeparator = () => <View style={s.listSeparator} />;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -69,7 +74,7 @@ const toLeaderboardUser = (
   firstName: isCurrentUser ? 'You' : entry.firstName,
   karma: entry.weeklyKarma,
   rankChange: entry.rankChange ?? 0,
-  avatarUrl: entry.photoUrl,
+  avatarUrl: getOptimizedPhotoUrl(entry.photoUrl ?? undefined, 'avatar') ?? entry.photoUrl,
   isCurrentUser,
   isFriend: entry.isFriend,
   isAnonymous: isCurrentUser ? false : (entry.isAnonymous ?? false),
@@ -82,6 +87,13 @@ interface LeaderboardScreenProps {
 }
 
 export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation }) => {
+  // Stable avatar URL map: userId → optimized URL.
+  // Signed URLs rotate every ~10 min (new token each API call), which would bust expo-image's
+  // disk cache on every background refresh. By keeping the first URL we see per user and
+  // reusing it across refreshes, the same token is passed to expo-image so its disk cache
+  // always hits. URLs are valid for 24h (edge function TTL) and this ref lives for the session.
+  const stableAvatarUrls = useRef<Map<string, string>>(new Map());
+
   const [data, setData] = useState<LeaderboardUser[]>([]);
   const [currentUserData, setCurrentUserData] = useState<LeaderboardCurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,38 +110,65 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
     }, [])
   );
 
+  const applyData = useCallback((response: LeaderboardResponse) => {
+    const currentUserId = response.currentUser?.userId;
+    const rawUsers = response.leaderboard.map(entry =>
+      toLeaderboardUser(entry, entry.userId === currentUserId)
+    );
+    if (currentUserId && !rawUsers.some(u => u.isCurrentUser) && response.currentUser) {
+      rawUsers.push(toLeaderboardUser(response.currentUser, true));
+    }
+
+    // Stabilize avatar URLs: keep the first URL we've seen per user so expo-image's disk
+    // cache is never invalidated by rotating signed tokens across background refreshes.
+    const urlsToFetch: string[] = [];
+    const users = rawUsers.map(u => {
+      if (!u.avatarUrl) return u;
+      const existing = stableAvatarUrls.current.get(u.id);
+      if (existing) return { ...u, avatarUrl: existing };
+      stableAvatarUrls.current.set(u.id, u.avatarUrl);
+      urlsToFetch.push(u.avatarUrl);
+      return u;
+    });
+
+    setData(users);
+    setCurrentUserData(response.currentUser);
+    // Prefetch only newly-seen URLs (already-stable ones are already in expo-image's cache)
+    if (urlsToFetch.length > 0) Image.prefetch(urlsToFetch).catch(() => {});
+  }, []);
+
   const loadData = useCallback(async () => {
-    const result = await fetchLeaderboard();
+    const result = await fetchLeaderboard(50);
     if (result.ok) {
-      const currentUserId = result.data.currentUser?.userId;
-      const users = result.data.leaderboard.map(entry =>
-        toLeaderboardUser(entry, entry.userId === currentUserId)
-      );
-      if (currentUserId && !users.some(u => u.isCurrentUser) && result.data.currentUser) {
-        users.push(toLeaderboardUser(result.data.currentUser, true));
-      }
-      setData(users);
-      setCurrentUserData(result.data.currentUser);
+      applyData(result.data);
     } else {
       setError(result.error);
     }
     return result.ok;
-  }, []);
+  }, [applyData]);
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
-      setLoading(true);
       setError(null);
-      await loadData();
+      // fetchLeaderboard returns cached data instantly if available (no spinner for repeat visits)
+      const result = await fetchLeaderboard(50, (fresh) => {
+        if (mounted) applyData(fresh);
+      });
+      if (result.ok) {
+        if (mounted) applyData(result.data);
+      } else {
+        if (mounted) setError(result.error);
+      }
       if (mounted) setLoading(false);
     };
     load();
     return () => { mounted = false; };
-  }, [loadData]);
+  }, [applyData]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
+    invalidateLeaderboardCache();
     await loadData();
     setRefreshing(false);
   }, [loadData]);
@@ -160,7 +199,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
   const currentUserListIndexRef = useRef(currentUserListIndex);
   currentUserListIndexRef.current = currentUserListIndex;
 
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: FlashViewToken<LeaderboardUser>[] }) => {
     const idx = currentUserListIndexRef.current;
     if (idx < 0) return;
     const isVisible = viewableItems.some(v => v.index === idx);
@@ -198,7 +237,14 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
           </View>
           <View style={s.listAvatarWrap}>
             {item.avatarUrl ? (
-              <Image source={{ uri: item.avatarUrl }} style={s.listAvatar} />
+              <Image
+                source={{ uri: item.avatarUrl }}
+                style={[s.listAvatar, { backgroundColor: COLORS.backgroundGrayMedium }]}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                priority="normal"
+                recyclingKey={item.id}
+              />
             ) : (
               <InitialAvatar name={item.firstName} size={48} isAnonymous={item.isAnonymous} />
             )}
@@ -212,7 +258,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
               <RankChangeArrow change={item.rankChange} />
             </View>
             {isMe && gap > 0 && (
-              <Text style={s.gapText}>{gap} pts behind #{rank - 1}</Text>
+              <Text style={s.gapText}>{gap} {gap === 1 ? 'pt' : 'pts'} behind #{rank - 1}</Text>
             )}
           </View>
           <KarmaPill karma={item.karma} />
@@ -223,7 +269,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
 
   const keyExtractor = useCallback((item: LeaderboardUser) => item.id, []);
 
-  // ─── Loading / Error / Empty states ──────────────────────────────────────
+  // ─── Header / List header ──────────────────────────────────────────────
 
   const renderHeader = (showInfo = false) => (
     <View style={s.header}>
@@ -241,13 +287,148 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
     </View>
   );
 
+  const listHeader = useMemo(() => (
+    <>
+      {renderHeader(true)}
+
+      <View style={s.bannerShadow}>
+        <LinearGradient
+          colors={['#EBF1FF', '#DFE9FF']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.banner}
+        >
+          <Text style={s.bannerText} numberOfLines={1}>
+            <Text style={s.bannerBold}>1st place wins $100!</Text>
+            {currentUserRank > 1
+              ? ` ${ptsBehindFirst} ${ptsBehindFirst === 1 ? 'pt' : 'pts'} to go`
+              : ' You\'re in the lead!'}
+          </Text>
+        </LinearGradient>
+      </View>
+
+      <View style={s.countdownRow}>
+        <EvaIcon name="clock" variant="outline" size={14} color={COLORS.navInactiveIcon} />
+        <Text style={s.countdownText}>
+          Resets in {countdown.days}d {countdown.hours}h {countdown.minutes}m
+        </Text>
+      </View>
+
+      {top3.length >= 3 && (
+        <View style={s.podiumOuter}>
+          <LinearGradient
+            colors={['#FFFFFF', '#F0F4FF', '#E8EEFF']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={s.podiumGradient}
+          >
+            <View style={s.podiumGlassEdge}>
+              <View style={s.podiumSection}>
+                <View style={s.podiumSide}>
+                  <View style={s.avatarWrapperMedium}>
+                    <View style={[s.avatarRing, s.avatarRingSilver]}>
+                      {top3[1]?.avatarUrl ? (
+                        <Image
+                          source={{ uri: top3[1].avatarUrl }}
+                          style={[s.avatarMedium, { backgroundColor: COLORS.backgroundGrayMedium }]}
+                          contentFit="cover"
+                          cachePolicy="memory-disk"
+                          priority="high"
+                          recyclingKey={top3[1].id}
+                        />
+                      ) : (
+                        <InitialAvatar name={top3[1]?.firstName ?? ''} size={72} isAnonymous={top3[1]?.isAnonymous} />
+                      )}
+                      {top3[1]?.isFriend && <FriendBadge />}
+                    </View>
+                    <View style={[s.rankBadge, { backgroundColor: '#C0C0C0' }]}>
+                      <Text style={s.rankBadgeText}>2</Text>
+                    </View>
+                  </View>
+                  <Text style={s.podiumName} numberOfLines={1}>{top3[1]?.firstName}</Text>
+                  <KarmaPill karma={top3[1]?.karma ?? 0} size="small" />
+                </View>
+
+                <View style={s.podiumCenter}>
+                  <View style={s.crownIconWrap}>
+                    <IconScoutIcon name="olympic-5303267" size={36} />
+                  </View>
+                  <View style={s.avatarWrapperLarge}>
+                    <View style={[s.avatarRing, s.avatarRingGold]}>
+                      {top3[0]?.avatarUrl ? (
+                        <Image
+                          source={{ uri: top3[0].avatarUrl }}
+                          style={[s.avatarLarge, { backgroundColor: COLORS.backgroundGrayMedium }]}
+                          contentFit="cover"
+                          cachePolicy="memory-disk"
+                          priority="high"
+                          recyclingKey={top3[0].id}
+                        />
+                      ) : (
+                        <InitialAvatar name={top3[0]?.firstName ?? ''} size={88} isAnonymous={top3[0]?.isAnonymous} />
+                      )}
+                      {top3[0]?.isFriend && <FriendBadge />}
+                    </View>
+                    <View style={[s.rankBadge, s.rankBadgeLarge, { backgroundColor: '#FFD700' }]}>
+                      <Text style={[s.rankBadgeText, s.rankBadgeTextLarge]}>1</Text>
+                    </View>
+                  </View>
+                  <Text style={[s.podiumName, s.podiumNameFirst]} numberOfLines={1}>{top3[0]?.firstName}</Text>
+                  <KarmaPill karma={top3[0]?.karma ?? 0} size="large" />
+                </View>
+
+                <View style={s.podiumSide}>
+                  <View style={s.avatarWrapperSmall}>
+                    <View style={[s.avatarRing, s.avatarRingBronze]}>
+                      {top3[2]?.avatarUrl ? (
+                        <Image
+                          source={{ uri: top3[2].avatarUrl }}
+                          style={[s.avatarSmall, { backgroundColor: COLORS.backgroundGrayMedium }]}
+                          contentFit="cover"
+                          cachePolicy="memory-disk"
+                          priority="high"
+                          recyclingKey={top3[2].id}
+                        />
+                      ) : (
+                        <InitialAvatar name={top3[2]?.firstName ?? ''} size={64} isAnonymous={top3[2]?.isAnonymous} />
+                      )}
+                      {top3[2]?.isFriend && <FriendBadge />}
+                    </View>
+                    <View style={[s.rankBadge, { backgroundColor: '#CD7F32' }]}>
+                      <Text style={s.rankBadgeText}>3</Text>
+                    </View>
+                  </View>
+                  <Text style={s.podiumName} numberOfLines={1}>{top3[2]?.firstName}</Text>
+                  <KarmaPill karma={top3[2]?.karma ?? 0} size="small" />
+                </View>
+              </View>
+
+              <View style={s.howToEarnInline}>
+                <Text style={s.howToEarnItem}>
+                  <Text style={s.howToEarnBold}>Vote</Text> +1
+                </Text>
+                <View style={s.howToEarnDot} />
+                <Text style={s.howToEarnItem}>
+                  <Text style={s.howToEarnBold}>Accurate</Text> +3
+                </Text>
+                <View style={s.howToEarnDot} />
+                <Text style={s.howToEarnItem}>
+                  <Text style={s.howToEarnBold}>Assist</Text> +10
+                </Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+      )}
+    </>
+  ), [top3, currentUserRank, ptsBehindFirst, countdown]);
+
+  // ─── Loading / Error / Empty states ──────────────────────────────────────
+
   if (loading) {
     return (
       <ScreenWrapper>
-        {renderHeader()}
-        <View style={s.loadingWrap}>
-          <ActivityIndicator size="large" color={COLORS.primaryAccent} />
-        </View>
+        <LeaderboardSkeleton />
       </ScreenWrapper>
     );
   }
@@ -285,133 +466,15 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
 
   return (
     <ScreenWrapper>
-
-        {/* Header */}
-        {renderHeader(true)}
-
-        {/* Prize Banner — floating card */}
-        <View style={s.bannerShadow}>
-          <LinearGradient
-            colors={['#EBF1FF', '#DFE9FF']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={s.banner}
-          >
-            <Text style={s.bannerText} numberOfLines={1}>
-              <Text style={s.bannerBold}>1st place wins $100!</Text>
-              {currentUserRank > 1
-                ? ` ${ptsBehindFirst} pts to go`
-                : ' You\'re in the lead!'}
-            </Text>
-          </LinearGradient>
-        </View>
-
-        {/* Countdown */}
-        <View style={s.countdownRow}>
-          <EvaIcon name="clock" variant="outline" size={14} color={COLORS.navInactiveIcon} />
-          <Text style={s.countdownText}>
-            Resets in {countdown.days}d {countdown.hours}h {countdown.minutes}m
-          </Text>
-        </View>
-
-        {/* Top 3 Podium — hero card */}
-        {top3.length >= 3 && (
-          <View style={s.podiumOuter}>
-            <LinearGradient
-              colors={['#FFFFFF', '#F0F4FF', '#E8EEFF']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={s.podiumGradient}
-            >
-              {/* Glass edge border */}
-              <View style={s.podiumGlassEdge}>
-                <View style={s.podiumSection}>
-                  {/* 2nd place */}
-                  <View style={s.podiumSide}>
-                    <View style={s.avatarWrapperMedium}>
-                      <View style={[s.avatarRing, s.avatarRingSilver]}>
-                        {top3[1]?.avatarUrl ? (
-                          <Image source={{ uri: top3[1].avatarUrl }} style={s.avatarMedium} />
-                        ) : (
-                          <InitialAvatar name={top3[1]?.firstName ?? ''} size={72} isAnonymous={top3[1]?.isAnonymous} />
-                        )}
-                        {top3[1]?.isFriend && <FriendBadge />}
-                      </View>
-                      <View style={[s.rankBadge, { backgroundColor: '#C0C0C0' }]}>
-                        <Text style={s.rankBadgeText}>2</Text>
-                      </View>
-                    </View>
-                    <Text style={s.podiumName} numberOfLines={1}>{top3[1]?.firstName}</Text>
-                    <KarmaPill karma={top3[1]?.karma ?? 0} size="small" />
-                  </View>
-
-                  {/* 1st place */}
-                  <View style={s.podiumCenter}>
-                    <View style={s.crownIconWrap}>
-                      <IconScoutIcon name="olympic-5303267" size={36} />
-                    </View>
-                    <View style={s.avatarWrapperLarge}>
-                      <View style={[s.avatarRing, s.avatarRingGold]}>
-                        {top3[0]?.avatarUrl ? (
-                          <Image source={{ uri: top3[0].avatarUrl }} style={s.avatarLarge} />
-                        ) : (
-                          <InitialAvatar name={top3[0]?.firstName ?? ''} size={88} isAnonymous={top3[0]?.isAnonymous} />
-                        )}
-                        {top3[0]?.isFriend && <FriendBadge />}
-                      </View>
-                      <View style={[s.rankBadge, s.rankBadgeLarge, { backgroundColor: '#FFD700' }]}>
-                        <Text style={[s.rankBadgeText, s.rankBadgeTextLarge]}>1</Text>
-                      </View>
-                    </View>
-                    <Text style={[s.podiumName, s.podiumNameFirst]} numberOfLines={1}>{top3[0]?.firstName}</Text>
-                    <KarmaPill karma={top3[0]?.karma ?? 0} size="large" />
-                  </View>
-
-                  {/* 3rd place */}
-                  <View style={s.podiumSide}>
-                    <View style={s.avatarWrapperSmall}>
-                      <View style={[s.avatarRing, s.avatarRingBronze]}>
-                        {top3[2]?.avatarUrl ? (
-                          <Image source={{ uri: top3[2].avatarUrl }} style={s.avatarSmall} />
-                        ) : (
-                          <InitialAvatar name={top3[2]?.firstName ?? ''} size={64} isAnonymous={top3[2]?.isAnonymous} />
-                        )}
-                        {top3[2]?.isFriend && <FriendBadge />}
-                      </View>
-                      <View style={[s.rankBadge, { backgroundColor: '#CD7F32' }]}>
-                        <Text style={s.rankBadgeText}>3</Text>
-                      </View>
-                    </View>
-                    <Text style={s.podiumName} numberOfLines={1}>{top3[2]?.firstName}</Text>
-                    <KarmaPill karma={top3[2]?.karma ?? 0} size="small" />
-                  </View>
-                </View>
-
-                {/* How to Earn — inside podium card */}
-                <View style={s.howToEarnInline}>
-                  <Text style={s.howToEarnItem}>
-                    <Text style={s.howToEarnBold}>Vote</Text> +1
-                  </Text>
-                  <View style={s.howToEarnDot} />
-                  <Text style={s.howToEarnItem}>
-                    <Text style={s.howToEarnBold}>Accurate</Text> +3
-                  </Text>
-                  <View style={s.howToEarnDot} />
-                  <Text style={s.howToEarnItem}>
-                    <Text style={s.howToEarnBold}>Assist</Text> +10
-                  </Text>
-                </View>
-              </View>
-            </LinearGradient>
-          </View>
-        )}
-
-        {/* List */}
-        <FlatList
+        {/* List — header/podium scroll with the list via ListHeaderComponent */}
+        <FlashList
           data={rest}
           keyExtractor={keyExtractor}
           renderItem={renderListItem}
+          ListHeaderComponent={listHeader}
+          estimatedItemSize={72}
           contentContainerStyle={s.listContent}
+          ItemSeparatorComponent={ListSeparator}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -433,7 +496,14 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
                 <Text style={s.stickyRankText}>#{currentUserRank}</Text>
               </View>
               {currentUser!.avatarUrl ? (
-                <Image source={{ uri: currentUser!.avatarUrl }} style={s.stickyAvatar} />
+                <Image
+                  source={{ uri: currentUser!.avatarUrl }}
+                  style={[s.stickyAvatar, { backgroundColor: COLORS.backgroundGrayMedium }]}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  priority="normal"
+                  recyclingKey={currentUser!.id}
+                />
               ) : (
                 <View style={{ marginRight: 12 }}>
                   <InitialAvatar name={currentUser!.firstName} size={36} />
@@ -445,7 +515,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
                   <RankChangeArrow change={currentUser!.rankChange} />
                 </View>
                 {currentUserGap > 0 && (
-                  <Text style={s.stickyGapText}>{currentUserGap} pts behind #{currentUserRank - 1}</Text>
+                  <Text style={s.stickyGapText}>{currentUserGap} {currentUserGap === 1 ? 'pt' : 'pts'} behind #{currentUserRank - 1}</Text>
                 )}
               </View>
               <KarmaPill karma={currentUser!.karma} size="small" />

@@ -13,7 +13,9 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
+import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
 import ReanimatedAnimated, {
     useSharedValue,
     useAnimatedStyle,
@@ -24,6 +26,7 @@ import ReanimatedAnimated, {
 } from 'react-native-reanimated';
 import { styled } from 'nativewind';
 import { SHADOWS } from '../../../theme/shadows';
+import { COLORS } from '../../../theme/colors';
 import { MatchProposal } from '../../../types/community';
 import { lightHaptic } from '../../../utils/haptics';
 import {
@@ -36,7 +39,6 @@ import { EvaIcon } from '../../icons';
 
 const StyledView = styled(View) as typeof View;
 const StyledText = styled(Text) as typeof Text;
-const StyledImage = styled(Image) as typeof Image;
 const StyledTouchable = styled(TouchableOpacity) as typeof TouchableOpacity;
 
 interface PendingProposalCardProps {
@@ -145,15 +147,18 @@ export function PendingProposalCard({ proposal, onViewProfile }: PendingProposal
       {/* Top Row: Photo + Info + Badge */}
       <StyledView className="flex-row items-start mb-2">
         {/* Partner Photo - Left */}
-        <StyledImage
-          source={{
-            uri: proposal.partnerProfile.photos?.[0]?.url,
-          }}
-          className="w-16 h-16 rounded-full mr-3"
+        <Image
+          source={proposal.partnerProfile.photos?.[0]?.url
+            ? { uri: getOptimizedPhotoUrl(proposal.partnerProfile.photos[0].url, 'avatar') }
+            : null}
           style={{
-            borderWidth: 2,
-            borderColor: '#FFB8B8',
+            width: 64, height: 64, borderRadius: 32,
+            marginRight: 12, borderWidth: 2, borderColor: '#FFB8B8',
+            backgroundColor: COLORS.backgroundGrayMedium,
           }}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          priority="high"
         />
 
         {/* Info - Center */}
