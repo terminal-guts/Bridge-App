@@ -72,3 +72,23 @@ export const Display: React.FC<TypographyProps> = ({ children, className = '', s
     {children}
   </Text>
 );
+
+/**
+ * ScreenTitle — locked style for main tab screen headers (Community, Match, Your Profile).
+ * DO NOT override fontFamily, fontWeight, fontSize, or lineHeight. This is the single source
+ * of truth for tab headers to prevent drift between screens.
+ */
+export const SCREEN_TITLE_STYLE: TextStyle = {
+  fontFamily: FONTS.bold,
+  fontWeight: '700',
+  fontSize: 28, // FONT_SIZES['5xl'] — hardcoded to avoid circular import
+  lineHeight: 34, // LINE_HEIGHTS['5xl']
+  color: '#1E293B', // COLORS.text.heading — hardcoded to avoid circular import
+  letterSpacing: -0.5,
+} as const;
+
+export const ScreenTitle: React.FC<TypographyProps> = ({ children, style, ...props }) => (
+  <Text style={[SCREEN_TITLE_STYLE, style]} accessibilityRole="header" {...props}>
+    {children}
+  </Text>
+);

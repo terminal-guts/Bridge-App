@@ -553,7 +553,7 @@ export const calculateEditProfileCompleteness = (
 
 /**
  * Calculate Match Preferences completion percentage
- * Only considers the 8 mandatory match preference fields
+ * Only considers the 7 mandatory match preference fields
  */
 export const calculateMatchPreferencesCompleteness = (
   profile: UserProfile | null
@@ -562,9 +562,8 @@ export const calculateMatchPreferencesCompleteness = (
     return {
       percentage: 0,
       completedCount: 0,
-      totalCount: 8,
+      totalCount: 7,
       missingFields: [
-        "I'm Looking For",
         'Gender',
         'Age Range',
         'Height',
@@ -579,56 +578,49 @@ export const calculateMatchPreferencesCompleteness = (
   let completedCount = 0;
   const missingFields: string[] = [];
 
-  // 1. I'm Looking For (relationship type)
-  if (profile.preferences?.lookingFor && profile.preferences.lookingFor.trim()) {
-    completedCount++;
-  } else {
-    missingFields.push("I'm Looking For");
-  }
-
-  // 2. Gender (interestedInGenders)
+  // 1. Gender (interestedInGenders)
   if (profile.interestedInGenders && profile.interestedInGenders.length > 0) {
     completedCount++;
   } else {
     missingFields.push('Gender');
   }
 
-  // 3. Age Range
+  // 2. Age Range
   if (profile.preferences?.ageMin && profile.preferences?.ageMax) {
     completedCount++;
   } else {
     missingFields.push('Age Range');
   }
 
-  // 4. Height Preference
+  // 3. Height Preference
   if (profile.preferences?.heightMin && profile.preferences?.heightMax) {
     completedCount++;
   } else {
     missingFields.push('Height');
   }
 
-  // 5. Preferred Ethnicities
+  // 4. Preferred Ethnicities
   if (profile.preferredEthnicities && profile.preferredEthnicities.length > 0) {
     completedCount++;
   } else {
     missingFields.push('Ethnicity');
   }
 
-  // 6. Preferred Religions
+  // 5. Preferred Religions
   if (profile.preferredReligions && profile.preferredReligions.length > 0) {
     completedCount++;
   } else {
     missingFields.push('Religion');
   }
 
-  // 7. Preferred Politics
+  // 6. Preferred Politics
   if (profile.preferredPolitics && profile.preferredPolitics.length > 0) {
     completedCount++;
   } else {
     missingFields.push('Politics');
   }
 
-  // 8. Partner Lifestyle Preferences (all 4 required - arrays must have at least one selection each)
+  // 7. Partner Lifestyle Preferences (all 4 required - arrays must have at least one selection each)
   const drinkingValid = Array.isArray(profile.partnerLifestylePreferences?.drinking)
     ? profile.partnerLifestylePreferences.drinking.length > 0
     : (profile.partnerLifestylePreferences?.drinking && profile.partnerLifestylePreferences.drinking.trim() !== '');
@@ -653,12 +645,12 @@ export const calculateMatchPreferencesCompleteness = (
     missingFields.push('Lifestyle');
   }
 
-  const percentage = Math.round((completedCount / 8) * 100);
+  const percentage = Math.round((completedCount / 7) * 100);
 
   return {
     percentage,
     completedCount,
-    totalCount: 8,
+    totalCount: 7,
     missingFields,
   };
 };
@@ -680,7 +672,7 @@ export interface ProfileStrengthBreakdown {
       maxScore: number; // Maximum possible score (25)
       percentage: number; // Percentage for this section (0-100)
       completedCount: number; // Number of completed fields
-      totalCount: number; // Total required fields (8)
+      totalCount: number; // Total required fields (7)
     };
     photos: {
       score: number; // Current score
@@ -714,7 +706,7 @@ export const calculateProfileStrengthBreakdown = (
       overall: 0,
       sections: {
         aboutMe: { score: 0, maxScore: 60, percentage: 0 },
-        matchPreferences: { score: 0, maxScore: 25, percentage: 0, completedCount: 0, totalCount: 8 },
+        matchPreferences: { score: 0, maxScore: 25, percentage: 0, completedCount: 0, totalCount: 7 },
         photos: { score: 0, maxScore: 5, percentage: 0, count: 0 },
         deepQuestions: { score: 0, maxScore: 10, percentage: 0, displayedCount: 0, answeredCount: 0 },
       },
@@ -789,7 +781,7 @@ export const calculateProfileStrengthBreakdown = (
   // TOTAL CALCULATION
   // About Me: 60 pts (18 fields equally weighted)
   const aboutMePoints = Math.round((aboutScore / 18) * 60);
-  // Match Preferences: 25 pts (8 fields equally weighted)
+  // Match Preferences: 25 pts (7 fields equally weighted)
   const preferencesPoints = Math.round((matchPrefsCompletion.percentage / 100) * 25);
   // Photos: 5 pts (1 photo = full 5)
   const photosPoints = photoCount >= 1 ? 5 : 0;

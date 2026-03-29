@@ -29,12 +29,17 @@ export async function fetchActiveMatch(
   const userId = await getCurrentUserId();
 
   // Single query for both directions using .or()
-  const { data: matches } = await supabase
+  const { data: matches, error: matchError } = await supabase
     .from('matches')
     .select('id, user_id_1, user_id_2, status, proposal_id, created_at')
     .or(`user_id_1.eq.${userId},user_id_2.eq.${userId}`)
     .in('status', ['active', 'accepted'])
     .limit(1);
+
+  if (matchError) {
+    logger.error('Failed to fetch active match', matchError.message);
+    return null;
+  }
 
   const match = matches?.[0] || null;
   if (!match) {
@@ -137,7 +142,7 @@ export async function endMatch(
   const [{ data: match }, { count: messageCount }] = await Promise.all([
     supabase
       .from('matches')
-      .select('id, created_at')
+      .select('id, user_id_1, user_id_2, status, created_at')
       .eq('id', matchId)
       .maybeSingle(),
     supabase
@@ -148,6 +153,16 @@ export async function endMatch(
 
   if (!match) throw new Error('Match not found');
 
+  // Authorization: verify this user is part of the match
+  if (match.user_id_1 !== userId && match.user_id_2 !== userId) {
+    throw new Error('You are not part of this match');
+  }
+
+  // Status guard: only end active/accepted matches (prevents double-end race)
+  if (match.status !== 'active' && match.status !== 'accepted') {
+    throw new Error('Match has already ended');
+  }
+
   const matchedAt = new Date(match.created_at);
   const daysSinceMatch = Math.floor((Date.now() - matchedAt.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -155,20 +170,33 @@ export async function endMatch(
     throw new Error(`Cannot end match for ${ACTIVE_MATCH_MINIMUM_DAYS - daysSinceMatch} more day(s)`);
   }
 
-  // Create exit record and update match status in parallel
-  await Promise.all([
-    supabase.from('match_exits').insert({
-      match_id: matchId,
-      exiting_user_id: userId,
-      exit_reason: reason,
-      days_since_match: daysSinceMatch,
-      messages_exchanged: messageCount || 0,
-    }),
-    supabase
-      .from('matches')
-      .update({ status: 'ended', updated_at: new Date().toISOString() })
-      .eq('id', matchId),
-  ]);
+  // Optimistic lock: only update if still active/accepted.
+  // This prevents duplicate match_exits if both users tap "end" simultaneously.
+  const { data: lockRows, error: lockErr } = await supabase
+    .from('matches')
+    .update({ status: 'ended', updated_at: new Date().toISOString() })
+    .eq('id', matchId)
+    .in('status', ['active', 'accepted'])
+    .select('id');
+
+  if (lockErr || !lockRows || lockRows.length === 0) {
+    // Another request already ended it
+    throw new Error('Match has already ended');
+  }
+
+  // Insert exit record only after winning the status lock
+  const { error: exitError } = await supabase.from('match_exits').insert({
+    match_id: matchId,
+    exiting_user_id: userId,
+    exit_reason: reason,
+    days_since_match: daysSinceMatch,
+    messages_exchanged: messageCount || 0,
+  });
+
+  if (exitError) {
+    logger.error('Failed to create match exit record', exitError.message);
+    // Match is already ended — exit record failure is non-fatal, lifecycle cron will clean up
+  }
 
   // Set ended event so MatchesScreen shows the "A Fresh Start" popup
   if (partnerInfo) {
@@ -238,7 +266,7 @@ export async function detectEndedMatchEvent(
       let photoUrl: string | undefined;
       if (partnerRow?.profile_photo_path) {
         const { data: signedData } = await supabase.storage
-          .from('photos')
+          .from('profile-photos')
           .createSignedUrl(partnerRow.profile_photo_path, 3600);
         photoUrl = signedData?.signedUrl;
       }
@@ -306,7 +334,7 @@ export async function detectPartnerDeclinedProposal(
     let photoUrl: string | undefined;
     if (partnerRow?.profile_photo_path) {
       const { data: signedData } = await supabase.storage
-        .from('photos')
+        .from('profile-photos')
         .createSignedUrl(partnerRow.profile_photo_path, 3600);
       photoUrl = signedData?.signedUrl;
     }

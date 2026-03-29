@@ -9,7 +9,7 @@ import React from 'react';
 import { View, FlatList, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { styled } from 'nativewind';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
 import { H3, Body, Card } from '../../components/ui';
@@ -236,7 +236,7 @@ const QuestionSlots: React.FC<QuestionSlotsProps> = ({
               multiline
               autoFocus
               style={{
-                fontFamily: FONTS.regular, fontSize: 14,
+                fontFamily: FONTS.regular, fontSize: FONT_SIZES.base,
                 color: COLORS.textGray700, backgroundColor: COLORS.backgroundSubtle,
                 borderRadius: 8, padding: 12, minHeight: 80,
                 textAlignVertical: 'top', borderWidth: 1, borderColor: COLORS.borderGray,

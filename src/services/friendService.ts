@@ -27,7 +27,7 @@ import {
 // Re-export from sub-modules so existing imports keep working
 export { getUserFriendCode, getFriendCodeByUserId, getFriendCodesByUserIds, sendFriendRequestByCode } from './friendService.codes';
 export type { FriendCode } from './friendService.codes';
-export { sendFriendRequest, getIncomingRequests, getOutgoingRequests, acceptFriendRequest, declineFriendRequest, cancelFriendRequest } from './friendService.requests';
+export { sendFriendRequest, getIncomingRequests, acceptFriendRequest, declineFriendRequest } from './friendService.requests';
 export type { FriendRequest } from './friendService.requests';
 export { invalidateFriendCountCache, type AddFriendResult } from './friendService.shared';
 
@@ -294,97 +294,6 @@ export const getFriendCount = async (): Promise<ApiResponse<number>> => {
     };
   } catch (error: unknown) {
     return createErrorResponse('COUNT_ERROR', error instanceof Error ? error.message : 'Failed to count friends');
-  }
-};
-
-/**
- * Check if the authenticated user is friends with another user
- * SECURITY FIX: Gets userId from authenticated session, not from client
- */
-export const areFriends = async (
-  friendId: string
-): Promise<ApiResponse<boolean>> => {
-  try {
-    // SECURITY: Get user ID from authenticated session
-    const userId = await requireAuth();
-
-    const { data, error } = await supabase
-      .from('friends')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('friend_id', friendId)
-      .eq('status', 'accepted')
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      return createErrorResponse('CHECK_ERROR', error.message);
-    }
-
-    return {
-      ok: true,
-      data: !!data,
-    };
-  } catch (error: unknown) {
-    return createErrorResponse('CHECK_ERROR', error instanceof Error ? error.message : 'Failed to check friendship');
-  }
-};
-
-// ============================================================================
-// PHASE 2: Friend Statistics Functions
-// ============================================================================
-
-export interface FriendStats {
-  friendId: string;
-  friendCode: string;
-  firstName: string;
-  matchesIntroduced: number;
-  successfulMatches: number;
-  matchSuccessRate: number;
-  matchmakerBadge: string;
-  badgeColor: string;
-}
-
-/**
- * Get friend statistics including matchmaker badges
- * Note: Referral tracking to be implemented in Phase 4
- */
-export const getFriendStats = async (): Promise<ApiResponse<FriendStats[]>> => {
-  try {
-    // SECURITY: Get user ID from authenticated session
-    const userId = await requireAuth();
-
-    const { data, error } = await supabase.rpc('get_friend_stats', {
-      p_user_id: userId,
-    });
-
-    if (error) {
-      return createErrorResponse('FETCH_STATS_ERROR', error.message);
-    }
-
-    if (!data) {
-      return {
-        ok: true,
-        data: [],
-      };
-    }
-
-    const friendStats: FriendStats[] = data.map((friend: Record<string, unknown>) => ({
-      friendId: friend.friend_id as string,
-      friendCode: friend.friend_code as string,
-      firstName: friend.first_name as string,
-      matchesIntroduced: friend.matches_introduced as number,
-      successfulMatches: friend.successful_matches as number,
-      matchSuccessRate: friend.match_success_rate as number,
-      matchmakerBadge: friend.matchmaker_badge as string,
-      badgeColor: friend.badge_color as string,
-    }));
-
-    return {
-      ok: true,
-      data: friendStats,
-    };
-  } catch (error: unknown) {
-    return createErrorResponse('FETCH_STATS_ERROR', error instanceof Error ? error.message : 'Failed to fetch friend stats');
   }
 };
 

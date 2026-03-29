@@ -174,8 +174,8 @@ describe('calculateMatchPreferencesCompleteness', () => {
   it('returns 0% for null profile', () => {
     const result = calculateMatchPreferencesCompleteness(null);
     expect(result.percentage).toBe(0);
-    expect(result.totalCount).toBe(8);
-    expect(result.missingFields).toHaveLength(8);
+    expect(result.totalCount).toBe(7);
+    expect(result.missingFields).toHaveLength(7);
   });
 
   it('returns 100% for complete preferences', () => {
@@ -184,11 +184,12 @@ describe('calculateMatchPreferencesCompleteness', () => {
     expect(result.missingFields).toHaveLength(0);
   });
 
-  it('identifies missing "Looking For"', () => {
+  it('does not include lookingFor in completeness check', () => {
     const profile = makeCompleteProfile();
     delete (profile as any).preferences.lookingFor;
     const result = calculateMatchPreferencesCompleteness(profile);
-    expect(result.missingFields).toContain("I'm Looking For");
+    expect(result.missingFields).not.toContain("I'm Looking For");
+    expect(result.percentage).toBe(100);
   });
 
   it('requires all 4 lifestyle preference habits', () => {

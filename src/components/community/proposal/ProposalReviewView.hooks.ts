@@ -16,6 +16,7 @@ import {
   withSpring,
   withSequence,
   runOnJS,
+  useReducedMotion,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
@@ -47,6 +48,8 @@ export function useProposalVoting(
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(!initialProposals);
   const [voting, setVoting] = useState(false);
+  const votingRef = useRef(false);
+  const reducedMotion = useReducedMotion();
 
   // Vote flash overlay
   const [voteFlashColor, setVoteFlashColor] = useState<string | null>(null);
@@ -60,7 +63,6 @@ export function useProposalVoting(
   const yesButtonScale = useSharedValue(1);
   const noButtonScale = useSharedValue(1);
   const recommendButtonScale = useSharedValue(1);
-  const unsureButtonScale = useSharedValue(1);
 
   // ── Animated styles ────────────────────────────────────────────────────────
   const entranceAnimatedStyle = useAnimatedStyle(() => ({
@@ -86,11 +88,6 @@ export function useProposalVoting(
     transform: [{ scale: recommendButtonScale.value }],
   }));
 
-  const unsureButtonAnimatedStyle = useAnimatedStyle(() => ({
-    flex: 1,
-    transform: [{ scale: unsureButtonScale.value }],
-  }));
-
   const rateLimiterRef = useRef(new RateLimiter());
   const isMountedRef = useRef(true);
   const voteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -105,11 +102,12 @@ export function useProposalVoting(
 
   // Trigger entrance animation when advancing to a new proposal
   useEffect(() => {
+    if (reducedMotion) return; // Respect iOS Reduce Motion setting
     entranceOpacity.value = 0;
     entranceTranslateX.value = 30;
     entranceOpacity.value = withTiming(1, { duration: 250 });
     entranceTranslateX.value = withTiming(0, { duration: 250 });
-  }, [currentIndex]);
+  }, [currentIndex, reducedMotion]);
 
   useEffect(() => {
     if (initialProposals) return; // skip fetch if proposals provided externally
@@ -133,6 +131,7 @@ export function useProposalVoting(
 
   // Vote button press animation
   const animateButtonPress = useCallback((scale: { value: number }, type: 'yes' | 'no' | 'unsure' | 'recommend') => {
+    if (reducedMotion) return; // Respect iOS Reduce Motion setting
     if (type === 'yes') {
       scale.value = withSequence(
         withSpring(0.95, { damping: 20, stiffness: 400, mass: 0.8 }),
@@ -169,6 +168,7 @@ export function useProposalVoting(
     if (voteTimeoutRef.current) clearTimeout(voteTimeoutRef.current);
     voteTimeoutRef.current = setTimeout(() => {
       if (!isMountedRef.current) return;
+      votingRef.current = false;
       setVoting(false);
       if (currentIndexRef.current >= proposalCountRef.current - 1) {
         if (onVoteComplete) {
@@ -185,8 +185,8 @@ export function useProposalVoting(
     }, 250);
   }, [onVoteComplete, onBack, onVotesComplete]);
 
-  const handleVote = useCallback(async (vote: 'yes' | 'no' | 'unsure') => {
-    if (voting || currentIndex >= proposals.length) return;
+  const handleVote = useCallback(async (vote: 'yes' | 'no') => {
+    if (votingRef.current || currentIndex >= proposals.length) return;
     const current = proposals[currentIndex];
     if (!current) return;
 
@@ -195,32 +195,30 @@ export function useProposalVoting(
       return;
     }
 
+    votingRef.current = true;
     setVoting(true);
 
     // Button micro-interaction
     if (vote === 'yes') animateButtonPress(yesButtonScale, 'yes');
-    else if (vote === 'no') animateButtonPress(noButtonScale, 'no');
-    else animateButtonPress(unsureButtonScale, 'unsure');
+    else animateButtonPress(noButtonScale, 'no');
 
     // Haptics
     if (vote === 'yes') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    } else if (vote === 'no') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     } else {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     }
 
     // Vote flash
     if (vote === 'yes') triggerVoteFlash(COLORS.emerald);
-    else if (vote === 'no') triggerVoteFlash(COLORS.error);
-    else triggerVoteFlash(COLORS.warning.icon);
+    else triggerVoteFlash(COLORS.error);
 
     // Submit vote
     try {
       await communityService.submitProposalVote(current.id, vote);
     } catch (err: any) {
       logger.error('[ProposalReviewView] Vote submission failed:', err);
+      votingRef.current = false;
       if (isMountedRef.current) {
         setVoting(false);
         if (err?.status === 429) {
@@ -246,7 +244,7 @@ export function useProposalVoting(
     }));
 
     advanceProposal();
-  }, [voting, currentIndex, proposals, advanceProposal, triggerVoteFlash]);
+  }, [currentIndex, proposals, advanceProposal, triggerVoteFlash, reducedMotion]);
 
   return {
     proposals,
@@ -263,7 +261,6 @@ export function useProposalVoting(
     yesButtonAnimatedStyle,
     noButtonAnimatedStyle,
     recommendButtonAnimatedStyle,
-    unsureButtonAnimatedStyle,
     // Scales for external use
     recommendButtonScale,
     // Handlers
@@ -420,6 +417,8 @@ export function useDeepQuestions(proposals: Proposal[], currentIndex: number): D
     const userBId = proposal.userB?.userId;
     if (!userAId || !userBId) return;
 
+    // Clear stale questions from previous proposal immediately
+    setDeepQuestions([]);
     let cancelled = false;
 
     async function fetchQuestions() {
@@ -454,8 +453,6 @@ export function useDeepQuestions(proposals: Proposal[], currentIndex: number): D
         }
       }
 
-      // Only update state when new data is ready — never clear eagerly so the
-      // previous proposal's questions stay visible during the in-flight fetch.
       setDeepQuestions(questions);
     }
 

@@ -23,21 +23,6 @@ export interface RateLimitResult {
 }
 
 /**
- * Rate limit error
- */
-export class RateLimitError extends Error {
-  constructor(
-    message: string,
-    public retryAfterSeconds: number,
-    public attemptsMade: number,
-    public maxAttempts: number
-  ) {
-    super(message);
-    this.name = 'RateLimitError';
-  }
-}
-
-/**
  * Check if an action is rate limited for a specific identifier
  *
  * @param identifier - Unique identifier (usually user ID)
@@ -170,73 +155,6 @@ export const recordRateLimitAttempt = async (
 };
 
 /**
- * Check rate limit and throw error if exceeded
- * Convenience function that throws RateLimitError when limit is exceeded
- *
- * @param identifier - Unique identifier (usually user ID)
- * @param actionType - Type of action being rate limited
- * @throws RateLimitError if rate limit exceeded
- */
-export const enforceRateLimit = async (
-  identifier: string,
-  actionType: string
-): Promise<void> => {
-  const result = await checkRateLimit(identifier, actionType);
-
-  if (!result.ok) {
-    throw new Error(result.error?.message || 'Failed to check rate limit');
-  }
-
-  if (!result.data) {
-    return; // No data — fail safe by allowing
-  }
-
-  if (!result.data.allowed) {
-    const minutes = Math.ceil(result.data.retryAfterSeconds / 60);
-    const message = `Too many attempts. Please try again in ${minutes} minute${minutes !== 1 ? 's' : ''}.`;
-
-    throw new RateLimitError(
-      message,
-      result.data.retryAfterSeconds,
-      result.data.attemptsMade,
-      result.data.maxAttempts
-    );
-  }
-};
-
-/**
- * Higher-order function to wrap an async function with rate limiting
- *
- * @param actionType - Type of action being rate limited
- * @param fn - The async function to wrap
- * @returns Wrapped function with rate limiting
- *
- * @example
- * const sendOTPWithRateLimit = withRateLimit('otp_send', async (userId, phone) => {
- *   // Your OTP sending logic
- *   return await sendOTP(phone);
- * });
- */
-export const withRateLimit = <T extends (...args: unknown[]) => Promise<unknown>>(
-  actionType: string,
-  fn: T
-): T => {
-  return (async (...args: unknown[]) => {
-    // Get identifier from first argument (assumed to be userId)
-    const identifier = args[0]?.toString() || 'unknown';
-
-    // Check rate limit
-    await enforceRateLimit(identifier, actionType);
-
-    // Record the attempt
-    await recordRateLimitAttempt(identifier, actionType);
-
-    // Execute the original function
-    return await fn(...args);
-  }) as T;
-};
-
-/**
  * Format retry time for user display
  *
  * @param seconds - Number of seconds until retry
@@ -269,5 +187,3 @@ export const RateLimitAction = {
   MESSAGE_SEND: 'message_send',
   PROFILE_UPDATE: 'profile_update',
 } as const;
-
-export type RateLimitActionType = typeof RateLimitAction[keyof typeof RateLimitAction];

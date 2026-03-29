@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, TextInput, StyleSheet, Keyboard, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { styled } from 'nativewind';
-import { Button, H2, Body, ScreenWrapper } from '../../components/ui';
+import { Button, H2, Body, ScreenWrapper, BackHeader } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { verifyEmail, sendOtpToEmail, signInWithPassword, isReviewerBypassEmail, validateReviewerAccess } from '../../services/authService';
@@ -233,18 +233,7 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
           bounces={false}
         >
           <StyledView className="flex-1 px-6 pt-16">
-            {/* Back Button -- 44px min touch target per iOS HIG */}
-            <StyledTouchableOpacity
-              onPress={() => navigation.goBack()}
-              className="mb-8 flex-row items-center"
-              style={styles.backButton}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-            >
-              <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.primaryAccent} />
-              <Body className="text-primary-500 ml-2 font-medium">Back</Body>
-            </StyledTouchableOpacity>
+            <BackHeader title="Verify Email" showBorder={false} />
 
             {/* Icon */}
             <StyledView className="items-center mb-6">
@@ -346,9 +335,6 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
 };
 
 const styles = StyleSheet.create({
-  backButton: {
-    minHeight: 44,
-  },
   resendButton: {
     minHeight: 44,
     justifyContent: 'center',

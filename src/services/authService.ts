@@ -20,6 +20,16 @@ const ALLOWED_EMAIL_DOMAIN = 'rice.edu';
 /** Email used by the App Store reviewer bypass account */
 const REVIEWER_EMAIL = 'reviewer@bridgedate.app';
 
+/** Basic email format check — rejects obviously invalid input before it hits the network. */
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Normalize and validate an email for use in auth calls. Returns null if invalid. */
+const normalizeEmail = (email: string): string | null => {
+  const trimmed = email.trim().toLowerCase();
+  if (!trimmed || !EMAIL_REGEX.test(trimmed)) return null;
+  return trimmed;
+};
+
 /**
  * Check if an email belongs to an allowed domain (@rice.edu).
  * Also allows the App Store reviewer email when bypass is enabled.
@@ -74,10 +84,25 @@ interface User {
  */
 export const signInWithPassword = async (email: string, password: string): Promise<ApiResponse<User>> => {
   try {
-    logger.info('[AUTH] Signing in with password for:', email);
+    const normalized = normalizeEmail(email);
+    if (!normalized) {
+      return {
+        ok: false,
+        error: { code: 'INVALID_EMAIL', message: 'Please enter a valid email address.' },
+      };
+    }
+
+    if (!password) {
+      return {
+        ok: false,
+        error: { code: 'AUTH_ERROR', message: 'Please enter a password.' },
+      };
+    }
+
+    logger.info('[AUTH] Signing in with password for:', normalized);
 
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: normalized,
       password,
     });
 
@@ -125,11 +150,22 @@ export const signInWithPassword = async (email: string, password: string): Promi
 };
 
 /**
- * Send OTP code to email via Supabase Auth
+ * Send OTP code to email via Supabase Auth (signup flow).
+ *
+ * @param email - The email to send the OTP to
+ * @param skipAccountCheck - When true, skips the ACCOUNT_EXISTS guard (used for resending during login)
  */
-export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> => {
+export const sendOtpToEmail = async (email: string, skipAccountCheck = false): Promise<ApiResponse<void>> => {
   try {
-    if (!isAllowedEmailDomain(email)) {
+    const normalized = normalizeEmail(email);
+    if (!normalized) {
+      return {
+        ok: false,
+        error: { code: 'INVALID_EMAIL', message: 'Please enter a valid email address.' },
+      };
+    }
+
+    if (!isAllowedEmailDomain(normalized)) {
       return {
         ok: false,
         error: {
@@ -140,14 +176,21 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
     }
 
     // Reviewer bypass — skip actual OTP send; the verification screen handles login via password
-    if (isReviewerBypassEmail(email)) {
+    if (isReviewerBypassEmail(normalized)) {
       logger.info('[EMAIL] Reviewer bypass — skipping OTP send');
       return { ok: true };
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
-    const rateLimitCheck = await checkRateLimit(normalizedEmail, RateLimitAction.OTP_SEND);
-    if (rateLimitCheck.ok && rateLimitCheck.data && !rateLimitCheck.data.allowed) {
+    // Rate limit — fail closed: if the check itself errors, block the request
+    const rateLimitCheck = await checkRateLimit(normalized, RateLimitAction.OTP_SEND);
+    if (!rateLimitCheck.ok) {
+      logger.warn('[EMAIL] Rate limit check failed — blocking request as a precaution');
+      return {
+        ok: false,
+        error: { code: 'RATE_LIMITED', message: 'Please wait a moment before trying again.' },
+      };
+    }
+    if (rateLimitCheck.data && !rateLimitCheck.data.allowed) {
       return {
         ok: false,
         error: {
@@ -156,29 +199,30 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
         },
       };
     }
-    await recordRateLimitAttempt(normalizedEmail, RateLimitAction.OTP_SEND);
+    // Check if this email already has an account — redirect to sign in instead.
+    // Skipped when resending a code during an active login/verification flow.
+    if (!skipAccountCheck) {
+      const { data: existing } = await supabase
+        .from('user_profiles')
+        .select('user_id')
+        .eq('email', normalized)
+        .maybeSingle();
 
-    // Check if this email already has an account — redirect to sign in instead
-    const { data: existing } = await supabase
-      .from('user_profiles')
-      .select('user_id')
-      .eq('email', normalizedEmail)
-      .maybeSingle();
-
-    if (existing) {
-      logger.info('[EMAIL] Account already exists for:', normalizedEmail);
-      return {
-        ok: false,
-        error: {
-          code: 'ACCOUNT_EXISTS',
-          message: 'You already have an account! Tap "Sign In" on the welcome screen to log in.',
-        },
-      };
+      if (existing) {
+        logger.info('[EMAIL] Account already exists for:', normalized);
+        return {
+          ok: false,
+          error: {
+            code: 'ACCOUNT_EXISTS',
+            message: 'You already have an account! Tap "Sign In" on the welcome screen to log in.',
+          },
+        };
+      }
     }
 
-    logger.info('[EMAIL] Sending OTP via Supabase to:', email);
+    logger.info('[EMAIL] Sending OTP via Supabase to:', normalized);
 
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+    const { error } = await supabase.auth.signInWithOtp({ email: normalized, options: { shouldCreateUser: true } });
 
     if (error) {
       logger.error('[EMAIL] Supabase OTP error:', error.message);
@@ -191,7 +235,10 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
       };
     }
 
-    logger.info('[EMAIL] OTP sent successfully to:', email);
+    // Record rate limit attempt only after successful send — failed sends don't count
+    await recordRateLimitAttempt(normalized, RateLimitAction.OTP_SEND);
+
+    logger.info('[EMAIL] OTP sent successfully to:', normalized);
     return { ok: true };
   } catch (error: unknown) {
     logger.error('[EMAIL] Error sending OTP:', error instanceof Error ? error.message : String(error));
@@ -211,21 +258,36 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
  */
 export const sendLoginOtpToEmail = async (email: string): Promise<ApiResponse<void>> => {
   try {
-    if (!isAllowedEmailDomain(email)) {
+    const normalized = normalizeEmail(email);
+    if (!normalized) {
+      return {
+        ok: false,
+        error: { code: 'INVALID_EMAIL', message: 'Please enter a valid email address.' },
+      };
+    }
+
+    if (!isAllowedEmailDomain(normalized)) {
       return {
         ok: false,
         error: { code: 'INVALID_DOMAIN', message: 'Only Rice University emails (@rice.edu) are allowed.' },
       };
     }
 
-    if (isReviewerBypassEmail(email)) {
+    if (isReviewerBypassEmail(normalized)) {
       logger.info('[EMAIL] Reviewer bypass — skipping OTP send');
       return { ok: true };
     }
 
-    const normalizedLoginEmail = email.toLowerCase().trim();
-    const loginRateLimitCheck = await checkRateLimit(normalizedLoginEmail, RateLimitAction.OTP_SEND);
-    if (loginRateLimitCheck.ok && loginRateLimitCheck.data && !loginRateLimitCheck.data.allowed) {
+    // Rate limit — fail closed
+    const rateLimitCheck = await checkRateLimit(normalized, RateLimitAction.OTP_SEND);
+    if (!rateLimitCheck.ok) {
+      logger.warn('[EMAIL] Rate limit check failed — blocking login OTP request');
+      return {
+        ok: false,
+        error: { code: 'RATE_LIMITED', message: 'Please wait a moment before trying again.' },
+      };
+    }
+    if (rateLimitCheck.data && !rateLimitCheck.data.allowed) {
       return {
         ok: false,
         error: {
@@ -234,12 +296,10 @@ export const sendLoginOtpToEmail = async (email: string): Promise<ApiResponse<vo
         },
       };
     }
-    await recordRateLimitAttempt(normalizedLoginEmail, RateLimitAction.OTP_SEND);
-
-    logger.info('[EMAIL] Sending login OTP to:', email);
+    logger.info('[EMAIL] Sending login OTP to:', normalized);
 
     const { error } = await supabase.auth.signInWithOtp({
-      email,
+      email: normalized,
       options: { shouldCreateUser: false },
     });
 
@@ -250,6 +310,9 @@ export const sendLoginOtpToEmail = async (email: string): Promise<ApiResponse<vo
         error: { code: 'EMAIL_OTP_ERROR', message: error.message },
       };
     }
+
+    // Record rate limit attempt only after successful send — failed sends don't count
+    await recordRateLimitAttempt(normalized, RateLimitAction.OTP_SEND);
 
     return { ok: true };
   } catch (error: unknown) {
@@ -268,10 +331,14 @@ export const signOut = async (): Promise<ApiResponse<void>> => {
     logger.info('[AUTH] Signing out user');
     _intentionalSignOut = true;
 
-    // Clean up message subscriptions and cached profile data.
-    // Awaited so subscriptions are released before the session is torn down,
-    // preventing Realtime subscription leaks on sign-out.
-    await import('./messageService').then(m => m.cleanupSubscriptions());
+    // Clean up message subscriptions — best-effort, don't block sign-out on failure
+    try {
+      await import('./messageService').then(m => m.cleanupSubscriptions());
+    } catch (cleanupErr) {
+      logger.warn('[AUTH] Message cleanup failed during sign-out (non-fatal):', cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr));
+    }
+
+    // Clear cached profile data and stored auth state
     invalidateProfileCache();
     clearCachedUserId();
     await AsyncStorage.removeItem('bridge_auth_user');
@@ -281,6 +348,9 @@ export const signOut = async (): Promise<ApiResponse<void>> => {
 
     return { ok: true };
   } catch (error: unknown) {
+    // Reset the flag so unexpected sign-outs still show the toast
+    _intentionalSignOut = false;
+    logger.error('[AUTH] Sign-out error:', error instanceof Error ? error.message : String(error));
     return {
       ok: false,
       error: {
@@ -327,11 +397,27 @@ export const getCurrentUser = async (): Promise<ApiResponse<User | null>> => {
  */
 export const verifyEmail = async (email: string, code: string): Promise<ApiResponse<User>> => {
   try {
-    logger.info('[EMAIL] Verifying OTP for:', email);
+    const normalized = normalizeEmail(email);
+    if (!normalized) {
+      return {
+        ok: false,
+        error: { code: 'INVALID_EMAIL', message: 'Please enter a valid email address.' },
+      };
+    }
+
+    const trimmedCode = code.trim();
+    if (!trimmedCode) {
+      return {
+        ok: false,
+        error: { code: 'VERIFICATION_ERROR', message: 'Please enter a verification code.' },
+      };
+    }
+
+    logger.info('[EMAIL] Verifying OTP for:', normalized);
 
     const { data, error } = await supabase.auth.verifyOtp({
-      email,
-      token: code,
+      email: normalized,
+      token: trimmedCode,
       type: 'email',
     });
 
@@ -385,7 +471,15 @@ export const verifyEmail = async (email: string, code: string): Promise<ApiRespo
  */
 export const sendRiceEmailVerification = async (email: string): Promise<ApiResponse<void>> => {
   try {
-    if (!isAllowedEmailDomain(email)) {
+    const normalized = normalizeEmail(email);
+    if (!normalized) {
+      return {
+        ok: false,
+        error: { code: 'INVALID_EMAIL', message: 'Please enter a valid email address.' },
+      };
+    }
+
+    if (!isAllowedEmailDomain(normalized)) {
       return {
         ok: false,
         error: { code: 'INVALID_DOMAIN', message: 'Only @rice.edu emails are allowed.' },
@@ -396,7 +490,7 @@ export const sendRiceEmailVerification = async (email: string): Promise<ApiRespo
     const { data: existing } = await supabase
       .from('user_profiles')
       .select('user_id')
-      .eq('email', email.toLowerCase().trim())
+      .eq('email', normalized)
       .maybeSingle();
 
     if (existing) {
@@ -409,10 +503,10 @@ export const sendRiceEmailVerification = async (email: string): Promise<ApiRespo
       };
     }
 
-    logger.info('[EMAIL_VERIFY] Sending verification code to:', email);
+    logger.info('[EMAIL_VERIFY] Sending verification code to:', normalized);
 
     const { data, error } = await supabase.functions.invoke('send-email-verification', {
-      body: { email: email.toLowerCase(), action: 'send' },
+      body: { email: normalized, action: 'send' },
     });
 
     if (error) {
@@ -448,10 +542,26 @@ export const sendRiceEmailVerification = async (email: string): Promise<ApiRespo
  */
 export const verifyRiceEmailCode = async (email: string, code: string): Promise<ApiResponse<boolean>> => {
   try {
-    logger.info('[EMAIL_VERIFY] Verifying code for:', email);
+    const normalized = normalizeEmail(email);
+    if (!normalized) {
+      return {
+        ok: false,
+        error: { code: 'INVALID_EMAIL', message: 'Please enter a valid email address.' },
+      };
+    }
+
+    const trimmedCode = code.trim();
+    if (!trimmedCode) {
+      return {
+        ok: false,
+        error: { code: 'WRONG_CODE', message: 'Please enter a verification code.' },
+      };
+    }
+
+    logger.info('[EMAIL_VERIFY] Verifying code for:', normalized);
 
     const { data, error } = await supabase.functions.invoke('send-email-verification', {
-      body: { email: email.toLowerCase(), code, action: 'verify' },
+      body: { email: normalized, code: trimmedCode, action: 'verify' },
     });
 
     if (error) {
@@ -494,17 +604,25 @@ export const verifyRiceEmailCode = async (email: string, code: string): Promise<
  */
 export const sendEmailSignUpCode = async (email: string): Promise<ApiResponse<void>> => {
   try {
-    if (!isAllowedEmailDomain(email)) {
+    const normalized = normalizeEmail(email);
+    if (!normalized) {
+      return {
+        ok: false,
+        error: { code: 'INVALID_EMAIL', message: 'Please enter a valid email address.' },
+      };
+    }
+
+    if (!isAllowedEmailDomain(normalized)) {
       return {
         ok: false,
         error: { code: 'INVALID_DOMAIN', message: 'Only @rice.edu emails are allowed.' },
       };
     }
 
-    logger.info('[EMAIL_SIGNUP] Sending verification code to:', email);
+    logger.info('[EMAIL_SIGNUP] Sending verification code to:', normalized);
 
     const { data, error } = await supabase.functions.invoke('email-signup', {
-      body: { email: email.toLowerCase(), action: 'send' },
+      body: { email: normalized, action: 'send' },
     });
 
     if (error) {
@@ -542,10 +660,26 @@ export const verifyEmailSignUpCode = async (
   code: string
 ): Promise<ApiResponse<User>> => {
   try {
-    logger.info('[EMAIL_SIGNUP] Verifying code for:', email);
+    const normalized = normalizeEmail(email);
+    if (!normalized) {
+      return {
+        ok: false,
+        error: { code: 'INVALID_EMAIL', message: 'Please enter a valid email address.' },
+      };
+    }
+
+    const trimmedCode = code.trim();
+    if (!trimmedCode) {
+      return {
+        ok: false,
+        error: { code: 'VERIFY_ERROR', message: 'Please enter a verification code.' },
+      };
+    }
+
+    logger.info('[EMAIL_SIGNUP] Verifying code for:', normalized);
 
     const { data, error } = await supabase.functions.invoke('email-signup', {
-      body: { email: email.toLowerCase(), action: 'verify', code },
+      body: { email: normalized, action: 'verify', code: trimmedCode },
     });
 
     if (error) {
@@ -584,7 +718,14 @@ export const verifyEmailSignUpCode = async (
       };
     }
 
-    logger.info('[EMAIL_SIGNUP] Email signup successful! User ID:', data.user?.id);
+    if (!data.user?.id) {
+      return {
+        ok: false,
+        error: { code: 'SESSION_ERROR', message: 'Session created but no user data returned' },
+      };
+    }
+
+    logger.info('[EMAIL_SIGNUP] Email signup successful! User ID:', data.user.id);
 
     return {
       ok: true,

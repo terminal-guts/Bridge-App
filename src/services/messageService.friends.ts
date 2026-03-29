@@ -8,10 +8,8 @@
 
 import { ApiResponse, Message } from '../types';
 import { supabase, isRealSupabase } from '../lib/supabase';
-import { getAuthenticatedUserId } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
 import { FEATURES } from '../config/features';
-import { RealtimeChannel } from '@supabase/supabase-js';
 
 const logger = createLogger('MessageService');
 
@@ -76,13 +74,17 @@ export const getFriendMessages = async (userId: string, friendId: string): Promi
 
     logger.info('[MESSAGE SERVICE] Fetching friend messages between:', userId, friendId);
 
-    // Query messages where both users are involved (as sender or receiver)
+    // Query messages between the two users (both directions).
+    // A single .or() with AND groups ensures correct filtering.
     const { data, error } = await supabase
       .from('friend_messages')
       .select('id, friendship_id, sender_id, receiver_id, type, content, duration, sent_at, read_at')
-      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-      .or(`sender_id.eq.${friendId},receiver_id.eq.${friendId}`)
-      .order('sent_at', { ascending: true });
+      .or(
+        `and(sender_id.eq.${userId},receiver_id.eq.${friendId}),` +
+        `and(sender_id.eq.${friendId},receiver_id.eq.${userId})`,
+      )
+      .order('sent_at', { ascending: true })
+      .order('id', { ascending: true });
 
     if (error) {
       logger.error('[MESSAGE SERVICE] Friend fetch error:', error);
@@ -206,10 +208,13 @@ export const markFriendMessagesAsRead = async (
       return { ok: true };
     }
 
-    // Mark all unread messages FROM the friend TO the current user as read
+    // Mark all unread messages FROM the friend TO the current user as read.
+    // Stamp a single timestamp so every row in this batch gets the same read_at,
+    // preventing race conditions with incoming messages during the update.
+    const readAt = new Date().toISOString();
     const { error } = await supabase
       .from('friend_messages')
-      .update({ read_at: new Date().toISOString() })
+      .update({ read_at: readAt })
       .eq('receiver_id', userId)
       .eq('sender_id', friendId)
       .is('read_at', null);
@@ -228,6 +233,8 @@ export const markFriendMessagesAsRead = async (
  * Subscribe to real-time friend messages.
  * Filters by sender_id = friendId so we receive messages FROM the friend.
  * RLS ensures we only see rows where we are the receiver.
+ *
+ * Includes duplicate prevention (seen-ID set) and gap recovery on reconnect.
  */
 export const subscribeToFriendMessages = (
   friendId: string,
@@ -253,6 +260,59 @@ export const subscribeToFriendMessages = (
     activeChannels.delete(channelKey);
   }
 
+  // --- Dedup + gap recovery state ---
+  const seenIds = new Set<string>();
+  const SEEN_IDS_CAP = 500;
+  let lastSeenAt: string | null = null;
+  let wasDisconnected = false;
+
+  const trimSeenIds = () => {
+    if (seenIds.size > SEEN_IDS_CAP) {
+      const overflow = seenIds.size - SEEN_IDS_CAP;
+      const iter = seenIds.values();
+      for (let i = 0; i < overflow; i++) {
+        seenIds.delete(iter.next().value as string);
+      }
+    }
+  };
+
+  const deliverIfNew = (msg: Message) => {
+    if (seenIds.has(msg.id)) return;
+    seenIds.add(msg.id);
+    trimSeenIds();
+    if (!lastSeenAt || msg.sentAt > lastSeenAt) {
+      lastSeenAt = msg.sentAt;
+    }
+    callback(msg);
+  };
+
+  /** Re-fetch friend messages newer than lastSeenAt to fill any gap */
+  const recoverGap = async () => {
+    if (!lastSeenAt) return;
+    logger.info('[MESSAGE SERVICE] Friend gap recovery since:', lastSeenAt);
+    try {
+      const { data, error } = await supabase
+        .from('friend_messages')
+        .select('id, friendship_id, sender_id, receiver_id, type, content, duration, sent_at, read_at')
+        .eq('sender_id', friendId)
+        .gt('sent_at', lastSeenAt)
+        .order('sent_at', { ascending: true })
+        .order('id', { ascending: true });
+
+      if (error) {
+        logger.error('[MESSAGE SERVICE] Friend gap recovery error:', error);
+        return;
+      }
+      const recovered = (data || []).map(dbToFriendMessage);
+      logger.info('[MESSAGE SERVICE] Friend gap recovery found', recovered.length, 'messages');
+      for (const msg of recovered) {
+        deliverIfNew(msg);
+      }
+    } catch (err) {
+      logger.error('[MESSAGE SERVICE] Friend gap recovery exception:', err);
+    }
+  };
+
   const channel = supabase
     .channel(`friend_chat:${friendId}`)
     .on(
@@ -264,13 +324,23 @@ export const subscribeToFriendMessages = (
         filter: `sender_id=eq.${friendId}`,
       },
       (payload) => {
-        logger.info('[MESSAGE SERVICE] New friend message received:', payload);
+        logger.info('[MESSAGE SERVICE] New friend message received via realtime');
         const newMessage = dbToFriendMessage(payload.new as DbFriendMessage);
-        callback(newMessage);
+        deliverIfNew(newMessage);
       },
     )
     .subscribe((status) => {
       logger.info('[MESSAGE SERVICE] Friend subscription status:', status);
+      if (status === 'SUBSCRIBED') {
+        if (wasDisconnected) {
+          logger.info('[MESSAGE SERVICE] Friend channel reconnected — running gap recovery');
+          recoverGap();
+        }
+        wasDisconnected = false;
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        wasDisconnected = true;
+        logger.warn('[MESSAGE SERVICE] Friend channel disconnected, status:', status);
+      }
     });
 
   activeChannels.set(channelKey, channel);

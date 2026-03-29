@@ -15,6 +15,16 @@ const logger = createLogger('ContactsService');
 
 const INVITED_CONTACTS_KEY = 'bridge_invited_contacts';
 
+/** Minimum digits for a valid phone number (filters out short/extension numbers) */
+const MIN_PHONE_DIGITS = 7;
+
+/** SMS cooldown: minimum ms between composeSmsInvite calls to prevent rapid-fire sends */
+const SMS_COOLDOWN_MS = 3_000;
+let _lastSmsSentAt = 0;
+
+/** Max stored invite entries — prune oldest when exceeded to prevent unbounded growth */
+const MAX_INVITE_ENTRIES = 5_000;
+
 export interface NormalizedContact {
   id: string;
   name: string;
@@ -56,8 +66,24 @@ export const getContactsPermission = async (): Promise<Contacts.PermissionStatus
 };
 
 /**
+ * Normalize a phone number to digits-only, with basic country code handling.
+ * Strips non-digit chars. If 11 digits starting with '1', strips the leading '1'
+ * (US country code) so matching is consistent regardless of +1 prefix.
+ * Returns empty string for numbers shorter than MIN_PHONE_DIGITS.
+ */
+const normalizePhone = (raw: string): string => {
+  let digits = raw.replace(/\D/g, '');
+  // Strip US country code prefix for consistent dedup
+  if (digits.length === 11 && digits.startsWith('1')) {
+    digits = digits.slice(1);
+  }
+  return digits.length >= MIN_PHONE_DIGITS ? digits : '';
+};
+
+/**
  * Get invited phone numbers with timestamps.
  * Backwards-compatible: migrates old string[] format to Record<string, number>.
+ * Prunes oldest entries if map exceeds MAX_INVITE_ENTRIES.
  */
 const getInvitedPhoneMap = async (): Promise<Record<string, number>> => {
   try {
@@ -67,10 +93,15 @@ const getInvitedPhoneMap = async (): Promise<Record<string, number>> => {
     // Migrate old format (string[]) → Record<string, number>
     if (Array.isArray(parsed)) {
       const migrated: Record<string, number> = {};
-      for (const phone of parsed) migrated[phone] = 0; // unknown timestamp
+      for (const phone of parsed) {
+        const normalized = normalizePhone(phone);
+        if (normalized) migrated[normalized] = 0; // unknown timestamp
+      }
       await AsyncStorage.setItem(INVITED_CONTACTS_KEY, JSON.stringify(migrated));
       return migrated;
     }
+    // Type-check: ensure we got an object
+    if (typeof parsed !== 'object' || parsed === null) return {};
     return parsed;
   } catch {
     return {};
@@ -78,14 +109,32 @@ const getInvitedPhoneMap = async (): Promise<Record<string, number>> => {
 };
 
 /**
+ * Persist the invite map, pruning oldest entries if it exceeds the size cap.
+ */
+const saveInvitedPhoneMap = async (map: Record<string, number>): Promise<void> => {
+  let toSave = map;
+  const keys = Object.keys(toSave);
+  if (keys.length > MAX_INVITE_ENTRIES) {
+    // Keep the most recent entries
+    const sorted = keys.sort((a, b) => (toSave[a] || 0) - (toSave[b] || 0));
+    const toRemove = sorted.slice(0, keys.length - MAX_INVITE_ENTRIES);
+    toSave = { ...toSave };
+    for (const k of toRemove) delete toSave[k];
+  }
+  await AsyncStorage.setItem(INVITED_CONTACTS_KEY, JSON.stringify(toSave));
+};
+
+/**
  * Mark a phone number as invited in persistent storage
  */
 export const markAsInvited = async (phoneNumber: string): Promise<void> => {
   try {
-    const normalized = phoneNumber.replace(/\D/g, '');
+    const normalized = normalizePhone(phoneNumber);
+    if (!normalized) return;
     const existing = await getInvitedPhoneMap();
+    if (existing[normalized]) return; // already tracked — skip write
     existing[normalized] = Date.now();
-    await AsyncStorage.setItem(INVITED_CONTACTS_KEY, JSON.stringify(existing));
+    await saveInvitedPhoneMap(existing);
   } catch {
     // Non-critical
   }
@@ -98,10 +147,16 @@ export const markMultipleAsInvited = async (phoneNumbers: string[]): Promise<voi
   try {
     const now = Date.now();
     const existing = await getInvitedPhoneMap();
+    let changed = false;
     for (const phone of phoneNumbers) {
-      existing[phone.replace(/\D/g, '')] = now;
+      const normalized = normalizePhone(phone);
+      if (!normalized) continue;
+      if (!existing[normalized]) {
+        existing[normalized] = now;
+        changed = true;
+      }
     }
-    await AsyncStorage.setItem(INVITED_CONTACTS_KEY, JSON.stringify(existing));
+    if (changed) await saveInvitedPhoneMap(existing);
   } catch {
     // Non-critical
   }
@@ -110,12 +165,31 @@ export const markMultipleAsInvited = async (phoneNumbers: string[]): Promise<voi
 /**
  * Fetch contacts from device, deduplicate by phone number, sort A-Z.
  * Also marks previously-invited contacts.
+ *
+ * Handles permission revocation gracefully — if contacts access was revoked
+ * mid-session, returns an empty array instead of throwing.
  */
 export const fetchAndNormalizeContacts = async (): Promise<NormalizedContact[]> => {
-  const { data } = await Contacts.getContactsAsync({
-    fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name, Contacts.Fields.Image, Contacts.Fields.Emails],
-    sort: Contacts.SortTypes.FirstName,
-  });
+  // Re-check permission before accessing contacts — handles mid-session revocation
+  const { status } = await Contacts.getPermissionsAsync();
+  if (status !== 'granted') {
+    logger.warn('Contacts permission not granted (possibly revoked mid-session)');
+    return [];
+  }
+
+  let data: Contacts.Contact[];
+  try {
+    const result = await Contacts.getContactsAsync({
+      fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name, Contacts.Fields.Image, Contacts.Fields.Emails],
+      sort: Contacts.SortTypes.FirstName,
+    });
+    data = result.data;
+  } catch (err) {
+    // On some devices, getContactsAsync throws instead of returning empty
+    // when permission is revoked after the initial check
+    logger.warn('Failed to read contacts (permission may have been revoked):', err);
+    return [];
+  }
 
   if (!data || data.length === 0) return [];
 
@@ -130,8 +204,7 @@ export const fetchAndNormalizeContacts = async (): Promise<NormalizedContact[]> 
     const phone = contact.phoneNumbers?.[0]?.number;
     if (!phone) continue;
 
-    // Normalize phone: strip non-digit chars for dedup key
-    const normalized = phone.replace(/\D/g, '');
+    const normalized = normalizePhone(phone);
     if (!normalized || seen.has(normalized)) continue;
     seen.add(normalized);
 
@@ -187,7 +260,8 @@ export const markBridgeUsers = async (contacts: NormalizedContact[]): Promise<No
 
     // Fetch current user's friend IDs to filter out already-friended Bridge users
     // Cached in-memory for 60s to avoid re-querying on re-renders
-    if (!friendIdsCache || now - friendIdsCache.fetchedAt > 60_000) {
+    const friendCacheNow = Date.now();
+    if (!friendIdsCache || friendCacheNow - friendIdsCache.fetchedAt > 60_000) {
       const freshIds = new Set<string>();
       try {
         const { data: { user } } = await supabase.auth.getUser();
@@ -203,7 +277,7 @@ export const markBridgeUsers = async (contacts: NormalizedContact[]): Promise<No
       } catch {
         // Non-critical — just won't filter existing friends
       }
-      friendIdsCache = { ids: freshIds, fetchedAt: now };
+      friendIdsCache = { ids: freshIds, fetchedAt: friendCacheNow };
     }
     const friendIds = friendIdsCache.ids;
 
@@ -297,6 +371,18 @@ export const composeSmsInvite = async (
   friendCode: string,
   senderName?: string,
 ): Promise<boolean> => {
+  // Rate-limit: prevent rapid-fire SMS composition
+  const now = Date.now();
+  if (now - _lastSmsSentAt < SMS_COOLDOWN_MS) {
+    logger.warn('SMS cooldown active — ignoring rapid send attempt');
+    return false;
+  }
+
+  if (!phoneNumbers || phoneNumbers.length === 0) {
+    logger.warn('No phone numbers provided for SMS invite');
+    return false;
+  }
+
   const isAvailable = await SMS.isAvailableAsync();
   if (!isAvailable) {
     logger.warn('SMS is not available on this device');
@@ -305,6 +391,7 @@ export const composeSmsInvite = async (
 
   const message = await buildInviteMessage(friendCode, senderName);
 
+  _lastSmsSentAt = Date.now();
   const { result } = await SMS.sendSMSAsync(phoneNumbers, message);
   return result === 'sent';
 };
@@ -344,6 +431,9 @@ export const buildInviteMessage = async (
   friendCode: string,
   senderName?: string,
 ): Promise<string> => {
+  if (!friendCode || !friendCode.trim()) {
+    logger.warn('buildInviteMessage called with empty friend code');
+  }
   const namePrefix = senderName ? `Hey it's ${senderName}! ` : '';
   const variant = INVITE_VARIANTS[variantIndex % INVITE_VARIANTS.length];
   variantIndex++;

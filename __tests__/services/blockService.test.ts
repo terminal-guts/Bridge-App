@@ -4,7 +4,7 @@
 
 // Mock auth
 jest.mock('../../src/utils/auth', () => ({
-  getAuthenticatedUserId: jest.fn().mockResolvedValue('current-user-id'),
+  getAuthenticatedUserId: jest.fn().mockResolvedValue('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'),
 }));
 
 // Mock logger
@@ -45,12 +45,12 @@ jest.mock('../../src/lib/supabase', () => ({
   },
 }));
 
-import { blockUser, unblockUser, isUserPairBlocked } from '../../src/services/blockService';
+import { blockUser, unblockUser, isUserPairBlocked, getBlockedUserIds } from '../../src/services/blockService';
 import { getAuthenticatedUserId } from '../../src/utils/auth';
 
 beforeEach(() => {
   jest.clearAllMocks();
-  (getAuthenticatedUserId as jest.Mock).mockResolvedValue('current-user-id');
+  (getAuthenticatedUserId as jest.Mock).mockResolvedValue('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
 });
 
 // ============================================================================
@@ -65,7 +65,7 @@ describe('blockUser', () => {
   });
 
   it('returns error when trying to block self', async () => {
-    const result = await blockUser('current-user-id');
+    const result = await blockUser('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe('CANNOT_BLOCK_SELF');
   });
@@ -76,15 +76,21 @@ describe('blockUser', () => {
       const chain = mockChain({ data: { id: 'existing-block' }, error: null });
       return chain;
     });
-    const result = await blockUser('other-user');
+    const result = await blockUser('11111111-2222-3333-4444-555555555555');
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe('ALREADY_BLOCKED');
   });
 
   it('returns error when not authenticated', async () => {
     (getAuthenticatedUserId as jest.Mock).mockResolvedValue(null);
-    const result = await blockUser('other-user');
+    const result = await blockUser('11111111-1111-1111-1111-111111111111');
     expect(result.ok).toBe(false);
+  });
+
+  it('returns error for invalid UUID', async () => {
+    const result = await blockUser('not-a-uuid');
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe('BLOCK_ERROR');
   });
 });
 
@@ -101,8 +107,14 @@ describe('unblockUser', () => {
 
   it('returns error when not authenticated', async () => {
     (getAuthenticatedUserId as jest.Mock).mockResolvedValue(null);
-    const result = await unblockUser('other-user');
+    const result = await unblockUser('11111111-1111-1111-1111-111111111111');
     expect(result.ok).toBe(false);
+  });
+
+  it('returns error for invalid UUID', async () => {
+    const result = await unblockUser('not-a-uuid');
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe('UNBLOCK_ERROR');
   });
 });
 
@@ -121,5 +133,22 @@ describe('isUserPairBlocked', () => {
     const result = await isUserPairBlocked('user-a', '');
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe('INVALID_INPUT');
+  });
+
+  it('returns error for invalid UUID in userAId', async () => {
+    const result = await isUserPairBlocked('not-a-uuid', '11111111-1111-1111-1111-111111111111');
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe('CHECK_PAIR_BLOCKED_ERROR');
+  });
+});
+
+// ============================================================================
+// getBlockedUserIds
+// ============================================================================
+
+describe('getBlockedUserIds', () => {
+  it('returns empty array for invalid UUID', async () => {
+    const result = await getBlockedUserIds('not-a-uuid');
+    expect(result).toEqual([]);
   });
 });

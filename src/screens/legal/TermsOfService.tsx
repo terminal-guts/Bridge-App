@@ -1,11 +1,10 @@
 import React from 'react';
-import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity } from 'react-native';
+import { View, SafeAreaView, StatusBar, ScrollView } from 'react-native';
 import { styled } from 'nativewind';
-import { H2, H3, Body, Caption } from '../../components/ui';
+import { H2, H3, Body, Caption, BackHeader } from '../../components/ui';
 import { TEXT_STYLES } from '../../constants/typography';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { EvaIcon } from '../../components/icons';
 
 interface TermsOfServiceProps {
   navigation: NavigationProp<RootStackParamList>;
@@ -14,20 +13,13 @@ interface TermsOfServiceProps {
 const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
-const StyledTouchableOpacity = styled(TouchableOpacity);
 
 export const TermsOfService: React.FC<TermsOfServiceProps> = ({ navigation }) => {
   return (
     <StyledSafeAreaView className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
-      <StyledView className="flex-row items-center px-4 py-3 border-b border-neutral-200">
-        <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
-          <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
-        </StyledTouchableOpacity>
-        <H2>Terms of Service</H2>
-      </StyledView>
+      <BackHeader title="Terms of Service" />
 
       <StyledScrollView className="flex-1 px-4 py-4">
         <Caption className="text-neutral-500 mb-4">

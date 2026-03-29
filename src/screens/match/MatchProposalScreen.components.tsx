@@ -7,10 +7,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   TouchableOpacity,
+  TextInput,
   Animated,
   Modal,
   Dimensions,
   Easing,
+  KeyboardAvoidingView,
+  Platform,
+  Text,
 } from 'react-native';
 import { styled } from 'nativewind';
 import { Body } from '../../components/ui';
@@ -487,21 +491,44 @@ export const ModalContainer: React.FC<{ visible: boolean; children: React.ReactN
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <StyledView className="flex-1 justify-end" style={{ backgroundColor: OVERLAYS.medium }}>
         <Animated.View style={{ opacity: opacityAnim, transform: [{ scale: scaleAnim }], backgroundColor: COLORS.white, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingHorizontal: Math.round(16 * SCALE), paddingTop: 16, paddingBottom: 32, maxHeight: '85%', ...SHADOWS.xl }}>
           <StyledView className="w-10 h-1 rounded-full self-center mb-5" style={{ backgroundColor: COLORS.neutral300 }} />
           {children}
         </Animated.View>
       </StyledView>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
 
 export const PassFeedbackModal: React.FC<{ visible: boolean; onClose: () => void; onSubmit: (feedbackId: string) => void }> = ({ visible, onClose, onSubmit }) => {
   const [selectedFeedback, setSelectedFeedback] = useState<string | null>(null);
+  const [otherText, setOtherText] = useState('');
+
+  const isOther = selectedFeedback === 'other';
+  const canSubmit = selectedFeedback && (!isOther || otherText.trim().length > 0);
+
+  const handleClose = () => {
+    onClose();
+    setSelectedFeedback(null);
+    setOtherText('');
+  };
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    if (isOther && otherText.trim()) {
+      onSubmit(`other: ${otherText.trim()}`);
+    } else if (selectedFeedback) {
+      onSubmit(selectedFeedback);
+    }
+    setSelectedFeedback(null);
+    setOtherText('');
+  };
 
   return (
-    <ModalContainer visible={visible} onClose={onClose}>
+    <ModalContainer visible={visible} onClose={handleClose}>
       <Body className="text-center mb-2" style={{ fontSize: FONT_SIZES['3xl'], fontFamily: FONTS.semiBold, color: COLORS.neutral900 }}>Quick question before you go</Body>
       <Body className="text-center mb-6" style={{ fontSize: FONT_SIZES.xl, color: COLORS.neutral500, lineHeight: LINE_HEIGHTS['2xl'] }}>What didn't feel right? This helps us find better matches for you.</Body>
 
@@ -509,7 +536,7 @@ export const PassFeedbackModal: React.FC<{ visible: boolean; onClose: () => void
         {PASS_FEEDBACK_OPTIONS.map((option) => (
           <StyledTouchableOpacity
             key={option.id}
-            onPress={() => { lightHaptic(); setSelectedFeedback(option.id === selectedFeedback ? null : option.id); }}
+            onPress={() => { lightHaptic(); setSelectedFeedback(option.id === selectedFeedback ? null : option.id); if (option.id !== 'other') setOtherText(''); }}
             className="flex-row items-center mb-2"
             hitSlop={{ top: 2, bottom: 2, left: 0, right: 0 }}
             style={{ backgroundColor: selectedFeedback === option.id ? COLORS.primary50 : COLORS.white, borderWidth: 1, borderColor: selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral300, borderRadius: 14, paddingVertical: Math.round(12 * SCALE), paddingHorizontal: Math.round(16 * SCALE), minHeight: 52 }}
@@ -522,13 +549,43 @@ export const PassFeedbackModal: React.FC<{ visible: boolean; onClose: () => void
             {selectedFeedback === option.id && <EvaIcon name="checkmark-circle-2" variant="outline" size={20} color={COLORS.primary500} />}
           </StyledTouchableOpacity>
         ))}
+        {isOther && (
+          <StyledView className="mt-2">
+            <TextInput
+              style={{
+                borderWidth: 1.5,
+                borderColor: COLORS.primary500,
+                borderRadius: 12,
+                padding: 14,
+                fontFamily: FONTS.regular,
+                fontSize: FONT_SIZES.lg,
+                lineHeight: LINE_HEIGHTS.lg,
+                color: THEME_COLORS.text.primary,
+                minHeight: 80,
+                maxHeight: 120,
+                backgroundColor: THEME_COLORS.screenBackground,
+                textAlignVertical: 'top',
+              }}
+              placeholder="Tell us a bit more..."
+              placeholderTextColor={THEME_COLORS.text.light}
+              value={otherText}
+              onChangeText={(t) => setOtherText(t.slice(0, 300))}
+              multiline
+              maxLength={300}
+              autoFocus
+            />
+            <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.sm, color: THEME_COLORS.text.light, textAlign: 'right', marginTop: 4 }}>
+              {otherText.length}/300
+            </Text>
+          </StyledView>
+        )}
       </StyledView>
 
       <StyledView className="flex-row" style={{ gap: Math.round(12 * SCALE) }}>
-        <StyledTouchableOpacity onPress={onClose} className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE) }} activeOpacity={0.7}>
+        <StyledTouchableOpacity onPress={handleClose} className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE) }} activeOpacity={0.7}>
           <Body style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.semiBold, color: COLORS.neutral600 }}>No Thanks</Body>
         </StyledTouchableOpacity>
-        <StyledTouchableOpacity onPress={() => selectedFeedback ? onSubmit(selectedFeedback) : onClose()} className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.primary500, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE), ...SHADOWS.sm }} activeOpacity={0.8}>
+        <StyledTouchableOpacity onPress={handleSubmit} disabled={!canSubmit} className="flex-1 items-center justify-center" style={{ backgroundColor: canSubmit ? COLORS.primary500 : COLORS.neutral300, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE), ...SHADOWS.sm }} activeOpacity={0.8}>
           <Body style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.semiBold, color: COLORS.white }}>Submit</Body>
         </StyledTouchableOpacity>
       </StyledView>

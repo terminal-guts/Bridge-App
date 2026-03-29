@@ -8,12 +8,11 @@ import {
   View,
   SafeAreaView,
   StatusBar,
-  TouchableOpacity,
   Text,
-  ActivityIndicator,
 } from 'react-native';
 import { NavigationProp } from '@react-navigation/native';
 import { EvaIcon } from '../../components/icons';
+import { AnimatedPressable, BackHeader, LoadingState, ErrorState } from '../../components/ui';
 import { RootStackParamList } from '../../types';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
@@ -147,52 +146,45 @@ export const StatsScreen: React.FC<Props> = ({ navigation }) => {
     <SafeAreaView style={s.container}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityRole="button" accessibilityLabel="Go back">
-          <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.textDarkHeading} />
-        </TouchableOpacity>
-        <Text style={s.headerTitle} accessibilityRole="header">Stats</Text>
-        <TouchableOpacity onPress={handleShare} disabled={loading || !!error} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityRole="button" accessibilityLabel="Share stats">
-          <EvaIcon name="share" variant="outline" size={22} color={loading || error ? COLORS.borderDivider : COLORS.primaryAccent} />
-        </TouchableOpacity>
-      </View>
+      <BackHeader
+        title="Stats"
+        titleAlign="center"
+        right={
+          <AnimatedPressable onPress={handleShare} disabled={loading || !!error} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityRole="button" accessibilityLabel="Share stats" scale="pronounced">
+            <EvaIcon name="share" variant="outline" size={22} color={loading || error ? COLORS.borderDivider : COLORS.primaryAccent} />
+          </AnimatedPressable>
+        }
+      />
 
       {/* Tab Switcher */}
       <View style={s.tabBar}>
-        <TouchableOpacity
+        <AnimatedPressable
           style={[s.tabButton, activeTab === 'campus' && s.tabButtonActive]}
           onPress={() => handleTabSwitch('campus')}
-          activeOpacity={0.7}
+          scale="subtle"
         >
           <EvaIcon name="book" variant="outline" size={16} color={activeTab === 'campus' ? COLORS.primaryAccent : COLORS.navInactiveIcon} style={s.tabIcon} />
           <Text style={[s.tabText, activeTab === 'campus' && s.tabTextActive]}>Campus</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+        </AnimatedPressable>
+        <AnimatedPressable
           style={[s.tabButton, activeTab === 'you' && s.tabButtonActive]}
           onPress={() => handleTabSwitch('you')}
-          activeOpacity={0.7}
+          scale="subtle"
         >
           <EvaIcon name="person" variant="outline" size={16} color={activeTab === 'you' ? COLORS.primaryAccent : COLORS.navInactiveIcon} style={s.tabIcon} />
           <Text style={[s.tabText, activeTab === 'you' && s.tabTextActive]}>You</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
 
       {/* Loading / Error / Content */}
       {loading ? (
-        <View style={s.centered}>
-          <ActivityIndicator size="large" color={COLORS.primaryAccent} />
-          <Text style={s.loadingText}>Loading your stats...</Text>
-        </View>
+        <LoadingState fullScreen message="Loading your stats..." />
       ) : error ? (
-        <View style={s.centered}>
-          <EvaIcon name="alert-circle" variant="outline" size={48} color={COLORS.error} />
-          <Text style={s.errorText}>{error}</Text>
-          <TouchableOpacity style={s.retryButton} onPress={loadStats} activeOpacity={0.7}>
-            <EvaIcon name="refresh" variant="outline" size={18} color={COLORS.card} style={{ marginRight: 8 }} />
-            <Text style={s.retryText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
+        <ErrorState
+          title="Couldn't load stats"
+          message={error}
+          onRetry={loadStats}
+        />
       ) : (
         <>
           {/* Content — both tabs rendered, inactive hidden to preserve animation state */}

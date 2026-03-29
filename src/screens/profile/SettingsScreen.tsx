@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Switch, Alert } from 'react-native';
 import { styled } from 'nativewind';
-import { H3, Body, Card, ScreenWrapper, AnimatedPressable } from '../../components/ui';
+import { H3, Body, Card, ScreenWrapper, AnimatedPressable, BackHeader } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { signOut } from '../../services/authService';
@@ -120,20 +120,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
   return (
     <ScreenWrapper>
 
-      {/* Header */}
-      <StyledView
-        className="flex-row items-center justify-between px-4 py-3"
-        style={{ borderBottomWidth: 1, borderBottomColor: COLORS.border, backgroundColor: COLORS.card }}
-      >
-        <AnimatedPressable
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.textDarkHeading} />
-        </AnimatedPressable>
-        <H3>Settings</H3>
-        <StyledView style={{ width: 24 }} />
-      </StyledView>
+      <BackHeader title="Settings" titleAlign="center" />
 
       <StyledScrollView className="flex-1">
         <StyledView className="px-4 py-4">

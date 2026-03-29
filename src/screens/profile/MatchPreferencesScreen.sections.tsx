@@ -133,7 +133,7 @@ const PillToggle: React.FC<{
           style={{ minHeight: 44 }}
           className={`px-4 rounded-full border items-center justify-center ${
             isSelected
-              ? 'border-primary-500'
+              ? 'bg-primary-500 border-primary-500'
               : 'bg-white border-neutral-300'
           }`}
           accessibilityRole="checkbox"

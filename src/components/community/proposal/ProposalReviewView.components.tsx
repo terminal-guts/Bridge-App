@@ -17,15 +17,15 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { COLORS } from '../../../theme/colors';
+import { FONTS, FONT_SIZES } from '../../../constants/typography';
 import { OVERLAYS } from '../../../theme/shadows';
 import { EvaIcon } from '../../icons';
 import { proposalStyles, styles, BLUE, BOX_BG, BOX_BORDER } from './ProposalReviewView.styles';
 
-// Section accent spectrum — positions 5 & 6 of the cool→warm→violet sweep
-const ACCENT_LIFESTYLE = '#F97316'; // orange — no COLORS entry
-const ACCENT_BELIEFS   = COLORS.violet;
+// Section accent — merged Lifestyle & Beliefs
+const ACCENT_LIFESTYLE_BELIEFS = '#F97316'; // orange
 import { MatchResult } from '../../../utils/proposalMatching';
-import { SectionCard, MatchIcon, ValueBox, ComparisonValueRow } from './SmartPillCloud';
+import { SectionCard, ComparisonValueRow } from './SmartPillCloud';
 import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
 
 // ─── ProgressDots ────────────────────────────────────────────────────────────
@@ -67,12 +67,12 @@ export function ProgressDots({ proposals, currentIndex, activeDotStyle }: Progre
 
 interface VoteButtonsProps {
   voting: boolean;
-  handleVote: (vote: 'yes' | 'no' | 'unsure') => void;
+  handleVote: (vote: 'yes' | 'no') => void;
   handleForFriendPress: () => void;
   yesButtonAnimatedStyle: any;
   noButtonAnimatedStyle: any;
   recommendButtonAnimatedStyle: any;
-  unsureButtonAnimatedStyle: any;
+  bottomInset?: number;
 }
 
 export function VoteButtons({
@@ -82,10 +82,10 @@ export function VoteButtons({
   yesButtonAnimatedStyle,
   noButtonAnimatedStyle,
   recommendButtonAnimatedStyle,
-  unsureButtonAnimatedStyle,
+  bottomInset = 0,
 }: VoteButtonsProps) {
   return (
-    <View style={styles.voteContainer}>
+    <View style={[styles.voteContainer, { paddingBottom: Math.max(16, bottomInset) }]}>
       {/* Yes button — primary action, largest touch target */}
       <Animated.View style={yesButtonAnimatedStyle}>
         <TouchableOpacity
@@ -112,7 +112,7 @@ export function VoteButtons({
         </TouchableOpacity>
       </Animated.View>
 
-      {/* No / Recommend / Not Sure — secondary row, horizontal layout */}
+      {/* No / Recommend — secondary row, horizontal layout */}
       <View style={styles.secondaryButtonsRow}>
         {/* No */}
         <Animated.View style={noButtonAnimatedStyle}>
@@ -120,12 +120,12 @@ export function VoteButtons({
             onPress={() => handleVote('no')}
             disabled={voting}
             activeOpacity={0.8}
-            style={styles.secondaryButton}
+            style={[styles.secondaryButton, voting && { opacity: 0.5 }]}
             accessibilityRole="button"
             accessibilityLabel="Vote no"
             accessibilityState={{ disabled: voting }}
           >
-            <EvaIcon name="close" variant="outline" size={16} color={COLORS.navInactiveIcon} />
+            <EvaIcon name="close" variant="outline" size={16} color={COLORS.text.muted} />
             <Text style={styles.secondaryButtonText}>No</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -136,29 +136,13 @@ export function VoteButtons({
             onPress={handleForFriendPress}
             disabled={voting}
             activeOpacity={0.8}
-            style={styles.secondaryButton}
+            style={[styles.secondaryButton, voting && { opacity: 0.5 }]}
             accessibilityRole="button"
             accessibilityLabel="Recommend to a friend"
             accessibilityState={{ disabled: voting }}
           >
-            <EvaIcon name="person-add" variant="outline" size={16} color={COLORS.navInactiveIcon} />
+            <EvaIcon name="person-add" variant="outline" size={16} color={COLORS.text.muted} />
             <Text style={styles.secondaryButtonText}>Recommend</Text>
-          </TouchableOpacity>
-        </Animated.View>
-
-        {/* Not Sure */}
-        <Animated.View style={unsureButtonAnimatedStyle}>
-          <TouchableOpacity
-            onPress={() => handleVote('unsure')}
-            disabled={voting}
-            activeOpacity={0.8}
-            style={styles.secondaryButton}
-            accessibilityRole="button"
-            accessibilityLabel="Vote not sure"
-            accessibilityState={{ disabled: voting }}
-          >
-            <EvaIcon name="info" variant="outline" size={16} color={COLORS.navInactiveIcon} />
-            <Text style={styles.secondaryButtonText}>Not Sure</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -240,7 +224,7 @@ export function ForFriendModal({
                   <Image
                     source={photoAUrl ? { uri: photoAUrl } : null}
                     placeholder={photoABlurhash ? { blurhash: photoABlurhash } : undefined}
-                    style={{ width: '100%', height: '100%', backgroundColor: '#E5E7EB' }}
+                    style={{ width: '100%', height: '100%', backgroundColor: COLORS.backgroundGrayMedium }}
                     contentFit="cover"
                     transition={300}
                     cachePolicy="memory-disk"
@@ -266,7 +250,7 @@ export function ForFriendModal({
                   <Image
                     source={photoBUrl ? { uri: photoBUrl } : null}
                     placeholder={photoBBlurhash ? { blurhash: photoBBlurhash } : undefined}
-                    style={{ width: '100%', height: '100%', backgroundColor: '#E5E7EB' }}
+                    style={{ width: '100%', height: '100%', backgroundColor: COLORS.backgroundGrayMedium }}
                     contentFit="cover"
                     transition={300}
                     cachePolicy="memory-disk"
@@ -303,6 +287,13 @@ export function ForFriendModal({
                 <View style={styles.modalLoadingContainer}>
                   <ActivityIndicator size="large" color={BLUE} />
                 </View>
+              ) : filteredFriends.length === 0 ? (
+                <View style={styles.modalLoadingContainer}>
+                  <EvaIcon name="people" variant="outline" size={32} color={COLORS.text.disabled} />
+                  <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.base, color: COLORS.text.secondary, textAlign: 'center', marginTop: 12, paddingHorizontal: 24 }}>
+                    No friends to recommend to yet. Add friends first!
+                  </Text>
+                </View>
               ) : (
                 <ScrollView
                   style={styles.modalFriendsList}
@@ -329,7 +320,7 @@ export function ForFriendModal({
                         <Image
                           source={friendPhoto ? { uri: friendPhoto } : null}
                           placeholder={friendBlurhash ? { blurhash: friendBlurhash } : undefined}
-                          style={[styles.modalFriendAvatar, { backgroundColor: '#E5E7EB' }]}
+                          style={[styles.modalFriendAvatar, { backgroundColor: COLORS.backgroundGrayMedium }]}
                           contentFit="cover"
                           transition={300}
                           cachePolicy="memory-disk"
@@ -381,34 +372,44 @@ export function ForFriendModal({
   );
 }
 
-// ─── LifestyleSection ────────────────────────────────────────────────────────
+// ─── LifestyleBeliefsSection (merged) ────────────────────────────────────────
 
-interface LifestyleSectionProps {
+interface LifestyleBeliefsSectionProps {
   lifestyleResults: MatchResult[];
   drinkResult: MatchResult;
   weedResult: MatchResult;
   tobaccoResult: MatchResult;
   otherSubstancesResult: MatchResult;
+  beliefsResults: MatchResult[];
+  politicsResult: MatchResult;
+  religionResult: MatchResult;
 }
 
-export function LifestyleSection({
+export function LifestyleBeliefsSection({
   lifestyleResults,
   drinkResult,
   weedResult,
   tobaccoResult,
   otherSubstancesResult,
-}: LifestyleSectionProps) {
+  beliefsResults,
+  politicsResult,
+  religionResult,
+}: LifestyleBeliefsSectionProps) {
+  const allResults = [...lifestyleResults, ...beliefsResults];
   const countMatch = (results: MatchResult[]) =>
     results.filter(r => r.status === 'both_happy').length;
   const countKnown = (results: MatchResult[]) =>
     results.filter(r => r.status !== 'unknown').length;
 
+  const knownResults = allResults.filter(r => r.status !== 'unknown');
+  if (knownResults.length === 0) return null;
+
   return (
     <SectionCard
-      title="Lifestyle"
-      matched={countMatch(lifestyleResults.filter(r => r.status !== 'unknown'))}
-      total={countKnown(lifestyleResults)}
-      accentColor={ACCENT_LIFESTYLE}
+      title="Lifestyle & Beliefs"
+      matched={countMatch(knownResults)}
+      total={countKnown(allResults)}
+      accentColor={ACCENT_LIFESTYLE_BELIEFS}
     >
       {drinkResult.status !== 'unknown' && (
         <ComparisonValueRow result={drinkResult} label="Drink" />
@@ -417,57 +418,16 @@ export function LifestyleSection({
         <ComparisonValueRow result={weedResult} label="Weed" />
       )}
       {tobaccoResult.status !== 'unknown' && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-          <ValueBox label="Tobacco" value={tobaccoResult.leftValue} />
-          <MatchIcon status={tobaccoResult.status} />
-          <ValueBox label="Tobacco" value={tobaccoResult.rightValue} />
-        </View>
+        <ComparisonValueRow result={tobaccoResult} label="Tobacco" />
       )}
       {otherSubstancesResult.status !== 'unknown' && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-          <ValueBox label="Other Substances" value={otherSubstancesResult.leftValue} />
-          <MatchIcon status={otherSubstancesResult.status} />
-          <ValueBox label="Other Substances" value={otherSubstancesResult.rightValue} />
-        </View>
+        <ComparisonValueRow result={otherSubstancesResult} label="Other Substances" />
       )}
-    </SectionCard>
-  );
-}
-
-// ─── BeliefsSection ──────────────────────────────────────────────────────────
-
-interface BeliefsSectionProps {
-  beliefsResults: MatchResult[];
-  politicsResult: MatchResult;
-  religionResult: MatchResult;
-}
-
-export function BeliefsSection({
-  beliefsResults,
-  politicsResult,
-  religionResult,
-}: BeliefsSectionProps) {
-  const countMatch = (results: MatchResult[]) =>
-    results.filter(r => r.status === 'both_happy').length;
-  const countKnown = (results: MatchResult[]) =>
-    results.filter(r => r.status !== 'unknown').length;
-
-  return (
-    <SectionCard
-      title="Beliefs"
-      matched={countMatch(beliefsResults.filter(r => r.status !== 'unknown'))}
-      total={countKnown(beliefsResults)}
-      accentColor={ACCENT_BELIEFS}
-    >
       {politicsResult.status !== 'unknown' && (
         <ComparisonValueRow result={politicsResult} label="Politics" />
       )}
       {religionResult.status !== 'unknown' && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <ValueBox label="Religion" value={religionResult.leftValue} />
-          <MatchIcon status={religionResult.status} />
-          <ValueBox label="Religion" value={religionResult.rightValue} />
-        </View>
+        <ComparisonValueRow result={religionResult} label="Religion" />
       )}
     </SectionCard>
   );

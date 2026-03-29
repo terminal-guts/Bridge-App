@@ -219,24 +219,19 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
       <StyledView className="flex-row items-center justify-between mb-3">
         <StyledView className="flex-row items-center">
           <StyledView
-            className="w-9 h-9 rounded-lg items-center justify-center mr-2.5"
+            className="w-10 h-10 rounded-lg items-center justify-center mr-3"
             style={{
-              backgroundColor: isComplete ? COLORS.backgroundValuesTag : COLORS.backgroundBlueBadge,
-              shadowColor: isComplete ? COLORS.emerald : COLORS.primaryAccent,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.3,
-              shadowRadius: 6,
-              elevation: 4,
+              backgroundColor: isComplete ? COLORS.emerald : COLORS.primaryAccent,
             }}
           >
             <EvaIcon
               name={isComplete ? 'checkmark-circle-2' : 'bar-chart'}
               variant="outline"
-              size={18}
-              color={isComplete ? COLORS.emerald : COLORS.primaryAccent}
+              size={20}
+              color="white"
             />
           </StyledView>
-          <H3 className="text-base">Profile Strength</H3>
+          <H3 className="font-semibold text-base">Profile Strength</H3>
         </StyledView>
         <StyledView className="flex-row items-center">
           <Text

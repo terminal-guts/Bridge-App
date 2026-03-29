@@ -91,24 +91,6 @@ export function formatRelativeTime(timestamp: string): string {
  * - "Friends for 2 weeks"
  * - "Friends for 5 days"
  */
-export function formatFriendshipDuration(addedAt: string): string {
-  const now = new Date().getTime();
-  const added = new Date(addedAt).getTime();
-  const diff = now - added;
-
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const weeks = Math.floor(days / 7);
-  const months = Math.floor(days / 30);
-
-  if (months > 0) {
-    return `Friends for ${months} ${months === 1 ? 'month' : 'months'}`;
-  }
-  if (weeks > 0) {
-    return `Friends for ${weeks} ${weeks === 1 ? 'week' : 'weeks'}`;
-  }
-  return `Friends for ${days} ${days === 1 ? 'day' : 'days'}`;
-}
-
 // ============================================================================
 // MATCH MILESTONES
 // ============================================================================

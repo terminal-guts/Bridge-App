@@ -18,6 +18,7 @@ import { Card } from './Card';
 import { lightHaptic } from '../../utils/haptics';
 import { EvaIcon } from '../icons';
 import { SPRINGS } from '../../constants/animations';
+import { COLORS } from '../../theme/colors';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -92,7 +93,7 @@ export const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
           </StyledView>
 
           <Animated.View style={chevronStyle}>
-            <EvaIcon name="arrow-ios-downward" variant="outline" size={20} color="#667085" />
+            <EvaIcon name="arrow-ios-downward" variant="outline" size={20} color={COLORS.navInactiveIcon} />
           </Animated.View>
         </StyledView>
       </StyledTouchableOpacity>

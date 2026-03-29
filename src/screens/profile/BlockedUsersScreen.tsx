@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, TouchableOpacity, Alert, TextInput, ActivityIndicator, Keyboard } from 'react-native';
-import { Body, ScreenWrapper } from '../../components/ui';
+import { Body, ScreenWrapper, BackHeader } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { getBlockedUsers, blockUser, unblockUser, BlockedUser as BlockedUserType } from '../../services/blockService';
@@ -173,32 +173,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
   return (
     <ScreenWrapper>
 
-      {/* Header */}
-      <View style={{
-        backgroundColor: COLORS.card,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-      }}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={{ minWidth: 44, minHeight: 44, justifyContent: 'center', marginRight: 8 }}
-        >
-          <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.textDarkHeading} />
-        </TouchableOpacity>
-        <Body style={{
-          fontFamily: FONTS.semiBold,
-          fontSize: FONT_SIZES['2xl'],
-          lineHeight: LINE_HEIGHTS['2xl'],
-          color: COLORS.text.heading,
-        }}>
-          Blocked Users
-        </Body>
-      </View>
+      <BackHeader title="Blocked Users" />
 
       <ScrollView
         style={{ flex: 1 }}

@@ -1,9 +1,8 @@
-import { View, SafeAreaView, StatusBar, ScrollView, TouchableOpacity, Linking, Text } from 'react-native';
+import { View, SafeAreaView, StatusBar, ScrollView, Linking, Text } from 'react-native';
 import { styled } from 'nativewind';
-import { H2, H3, Body, BodySmall } from '../../components/ui';
+import { H2, H3, Body, BodySmall, BackHeader } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { EvaIcon } from '../../components/icons';
 import { TEXT_STYLES, FONTS } from '../../constants/typography';
 
 interface PrivacyPolicyProps {
@@ -13,20 +12,13 @@ interface PrivacyPolicyProps {
 const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
-const StyledTouchableOpacity = styled(TouchableOpacity);
 
 export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
   return (
     <StyledSafeAreaView className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
-      <StyledView className="flex-row items-center px-4 py-3 border-b border-neutral-200">
-        <StyledTouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
-          <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
-        </StyledTouchableOpacity>
-        <H2>Privacy Policy</H2>
-      </StyledView>
+      <BackHeader title="Privacy Policy" />
 
       <StyledScrollView className="flex-1 px-4 py-4">
         <BodySmall className="text-neutral-500 mb-4">
@@ -65,7 +57,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
         <Body className="text-neutral-700 mb-6" style={TEXT_STYLES.bodySm}>
           Bridge's community-driven model means your profile is shown to other users — including people you don't know — as part of the voting process. Specifically:
           {'\n'}• Your first name, age, photos, and select profile details appear in voting proposals
-          {'\n'}• Other users vote yes, no, or unsure on potential matches
+          {'\n'}• Other users vote yes or no on potential matches
           {'\n'}• Votes are anonymous — neither you nor your potential match ever sees who voted
           {'\n'}• Your full profile is only revealed to someone after you both accept a match
           {'\n\n'}By using Bridge, you consent to your profile appearing in proposals.

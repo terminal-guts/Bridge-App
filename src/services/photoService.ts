@@ -384,36 +384,6 @@ export const deletePhoto = async (photoId: string): Promise<ApiResponse<void>> =
 };
 
 /**
- * Delete multiple photos from storage
- * SECURITY FIX: Gets userId from authenticated session, not from client
- */
-export const deleteMultiplePhotos = async (
-  photoIds: string[]
-): Promise<ApiResponse<void>> => {
-  try {
-    // SECURITY: Auth check performed in deletePhoto() for each photo
-    const errors: string[] = [];
-
-    for (const photoId of photoIds) {
-      const result = await deletePhoto(photoId);
-      if (!result.ok) {
-        errors.push(`${photoId}: ${result.error?.message}`);
-      }
-    }
-
-    if (errors.length > 0) {
-      return createErrorResponse('PARTIAL_DELETE_FAILED', errors.join('; '));
-    }
-
-    return {
-      ok: true,
-    };
-  } catch (error: unknown) {
-    return createErrorResponse('DELETE_ERROR', error instanceof Error ? error.message : 'Failed to delete photos');
-  }
-};
-
-/**
  * Get signed URL for a photo (private bucket access)
  * SECURITY: Photos are now private, so we generate time-limited signed URLs
  *
@@ -485,9 +455,13 @@ export const getMultiplePhotoSignedUrls = async (
     }
 
     const urlMap: Record<string, string> = {};
-    for (const item of signedUrls) {
+    for (let i = 0; i < signedUrls.length; i++) {
+      const item = signedUrls[i];
       if (item.signedUrl) {
-        urlMap[item.path!] = item.signedUrl;
+        // Use the original input path as key (guaranteed to match callers' lookup),
+        // falling back to item.path if the index is out of range.
+        const key = i < storagePaths.length ? storagePaths[i] : item.path!;
+        urlMap[key] = item.signedUrl;
       }
     }
 
@@ -503,37 +477,3 @@ export const getMultiplePhotoSignedUrls = async (
   }
 };
 
-/**
- * Reorder photos by updating their order property
- * Returns updated photos array
- */
-export const reorderPhotos = (photos: Photo[], newOrder: number[]): Photo[] => {
-  return photos.map((photo, index) => ({
-    ...photo,
-    order: newOrder[index],
-  }));
-};
-
-/**
- * Set a photo as the main profile photo
- */
-export const setMainPhoto = (photos: Photo[], photoId: string): Photo[] => {
-  return photos.map(photo => ({
-    ...photo,
-    isMain: photo.id === photoId,
-  }));
-};
-
-/**
- * Validate photo count before upload
- */
-export const canUploadMorePhotos = (currentPhotoCount: number): boolean => {
-  return currentPhotoCount < MAX_PHOTOS_PER_USER;
-};
-
-/**
- * Get remaining photo slots
- */
-export const getRemainingPhotoSlots = (currentPhotoCount: number): number => {
-  return Math.max(0, MAX_PHOTOS_PER_USER - currentPhotoCount);
-};

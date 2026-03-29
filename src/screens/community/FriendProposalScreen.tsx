@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ActivityIndicator, View, Text } from 'react-native';
+import { View } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 
 import { RootStackParamList } from '../../types';
@@ -16,9 +16,8 @@ import { ProposalReviewView, DeepQuestionData } from '../../components/community
 import { communityService } from '../../services/communityServiceIndex';
 import { getFriendActiveProposal } from '../../services/friendProposalService';
 import { createLogger } from '../../utils/secureLogger';
-import { TEXT_STYLES } from '../../constants/typography';
-import { COLORS } from '../../theme/colors';
-import { ScreenWrapper, EmptyState } from '../../components/ui';
+import { ScreenWrapper, EmptyState, LoadingState } from '../../components/ui';
+import { BackHeader } from '../../components/ui/BackHeader';
 
 const logger = createLogger('FriendProposalScreen');
 
@@ -78,35 +77,15 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
   }, [navigation]);
 
   const handleVoteComplete = useCallback(() => {
-    communityService.markFriendAsHelped(friendId).catch(() => {});
-    if ('invalidateFriendsCache' in communityService) {
-      (communityService as any).invalidateFriendsCache();
-    }
+    communityService.invalidateFriendsCache();
     navigation.goBack();
-  }, [friendId, navigation]);
+  }, [navigation]);
 
   if (loading) {
     return (
       <ScreenWrapper>
-        <View
-          style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
-          accessibilityRole="none"
-          accessibilityLabel={`Loading ${displayName}'s proposal`}
-        >
-          <ActivityIndicator
-            size="large"
-            color={COLORS.primaryAccent}
-            accessibilityLabel="Loading"
-          />
-          <Text
-            style={{ marginTop: 12, color: COLORS.text.label, ...TEXT_STYLES.bodySm }}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            accessibilityRole="text"
-          >
-            Loading {displayName}'s proposal...
-          </Text>
-        </View>
+        <BackHeader title={`Vote for ${displayName}`} onBack={handleBack} showBorder={false} />
+        <LoadingState fullScreen message={`Loading ${displayName}'s proposal...`} />
       </ScreenWrapper>
     );
   }
@@ -114,6 +93,7 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
   if (error) {
     return (
       <ScreenWrapper>
+        <BackHeader title={`Vote for ${displayName}`} onBack={handleBack} showBorder={false} />
         <View
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
           accessibilityRole="alert"
@@ -136,6 +116,7 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
   if (!proposal) {
     return (
       <ScreenWrapper>
+        <BackHeader title={`Vote for ${displayName}`} onBack={handleBack} showBorder={false} />
         <View
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
           accessibilityLabel={`No active proposal for ${displayName}`}
@@ -156,12 +137,12 @@ export function FriendProposalScreen({ navigation, route }: FriendProposalScreen
 
   return (
     <ScreenWrapper>
+      <BackHeader title={`Vote for ${displayName}`} onBack={handleBack} showBorder={false} />
       <ProposalReviewView
         initialProposals={[proposal]}
-        showBackButton={true}
-        onBack={handleBack}
         onVoteComplete={handleVoteComplete}
         deepQuestions={deepQuestions}
+        isGateVoting={false}
       />
     </ScreenWrapper>
   );

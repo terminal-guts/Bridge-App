@@ -13,8 +13,6 @@ import {
 import { getBlockedUserIds } from './blockService';
 import { setCachedFriendsData } from './communityCache';
 import { mapProfileRow, resolveProfilePhotos, getCurrentUserId } from './communityBackendService.helpers';
-// DEFERRED: Crush — import dormant until feature is re-enabled
-// import { getMyCrushIds, getCrushedOnMeIds } from './crushService';
 
 /**
  * Fetch all friends as anchors with grid status.
@@ -89,13 +87,13 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
       .from('matches')
       .select('user_id_1, user_id_2')
       .in('user_id_1', friendIds)
-      .in('status', ['active', 'pending', 'accepted']),
+      .in('status', ['active', 'accepted']),
     // Matches where friend is user_id_2
     supabase
       .from('matches')
       .select('user_id_1, user_id_2')
       .in('user_id_2', friendIds)
-      .in('status', ['active', 'pending', 'accepted']),
+      .in('status', ['active', 'accepted']),
     // Friend photos (JSONB may be empty/stale)
     supabase
       .from('user_photos')

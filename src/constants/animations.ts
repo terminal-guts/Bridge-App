@@ -8,7 +8,10 @@
  * - Emphasis: 400-600ms (celebrations, onboarding reveals)
  *
  * All springs use Reanimated's damping/stiffness model.
- * All timing uses Reanimated's Easing curves.
+ * All timing uses RN's built-in Easing curves (bezier API is identical to
+ * Reanimated's). Using RN's Easing avoids pulling react-native-reanimated
+ * into files that only need easing constants (e.g. screenTransitions.ts on
+ * the startup critical path).
  */
 
 import { Easing } from 'react-native-reanimated';
@@ -77,23 +80,6 @@ export const PRESS_SCALES = {
   standard: 0.96,
   /** Pronounced: small interactive elements, icon buttons */
   pronounced: 0.92,
-} as const;
-
-// ── Screen transition presets ────────────────────────────────────────────────
-
-export const SCREEN_TRANSITIONS = {
-  /** Slide from right (iOS default, enhanced) */
-  slideFromRight: {
-    duration: 320,
-  },
-  /** Fade transition for tab switches */
-  fade: {
-    duration: 200,
-  },
-  /** Slide up for modals */
-  slideUp: {
-    duration: 350,
-  },
 } as const;
 
 // ── Stagger delays ───────────────────────────────────────────────────────────

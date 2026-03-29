@@ -80,9 +80,6 @@ export const DEEP_QUESTIONS: DeepQuestion[] = [
   },
 ];
 
-export const TOTAL_QUESTIONS = 15;
-export const MAX_DISPLAYED_QUESTIONS = 3;
-
 /**
  * Get a question by ID
  */

@@ -18,6 +18,7 @@ import { getEligibleFriends, createFriendSuggestion } from '../../services/frien
 import { showToast } from '../../utils/toast';
 import type { UserProfile } from '../../types';
 import { EvaIcon } from '../../components/icons';
+import { BackHeader } from '../../components/ui/BackHeader';
 import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -140,18 +141,15 @@ export default function SuggestMatchScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.heading} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {step === 'pick_a' ? 'Pick the first friend' :
-           step === 'pick_b' ? 'Pick the second friend' :
-           'Confirm match suggestion'}
-        </Text>
-        <View style={{ width: 24 }} />
-      </View>
+      <BackHeader
+        title={
+          step === 'pick_a' ? 'Pick the first friend' :
+          step === 'pick_b' ? 'Pick the second friend' :
+          'Confirm match suggestion'
+        }
+        onBack={handleBack}
+        backDisabled={submitting}
+      />
 
       {loading ? (
         <View style={styles.centerContainer}>
@@ -241,20 +239,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.screenBackground,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.backgroundProgressTrack,
-  },
-  headerTitle: {
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.xl,
-    color: COLORS.text.heading,
   },
   centerContainer: {
     flex: 1,

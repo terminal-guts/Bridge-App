@@ -23,6 +23,16 @@ const createErrorResponse = <T = never>(code: string, message: string): ApiRespo
   error: { code, message },
 });
 
+/**
+ * Extracts the raw Supabase storage path from a signed or public URL.
+ * If the input is already a plain path (not a URL), returns it unchanged.
+ */
+function extractStoragePath(url: string): string {
+  if (!url || !url.startsWith('http')) return url;
+  const match = url.match(/\/profile-photos\/(.+?)(?:\?|$)/);
+  return match ? match[1] : url;
+}
+
 async function getCurrentUserId(): Promise<string> {
   const { getAuthenticatedUserId } = await import('../utils/auth');
   const userId = await getAuthenticatedUserId();
@@ -410,21 +420,34 @@ export const getProfileById = async (id: string): Promise<Profile | null> => {
       up.photos = up.photos.filter(p => p.url && !p.url.startsWith('file://'));
     }
 
-    // Resolve storage paths to signed URLs
+    // Resolve storage paths to signed URLs.
+    // extractStoragePath handles both raw paths and legacy full URLs.
     if (up.photos && up.photos.length > 0) {
       const storagePaths = up.photos
-        .map(p => p.url)
-        .filter(url => url && !url.startsWith('http'));
+        .map(p => extractStoragePath(p.url))
+        .filter(path => !!path);
 
       if (storagePaths.length > 0) {
         const urlMapRes = await getMultiplePhotoSignedUrls(storagePaths, 86400);
         if (urlMapRes.ok && urlMapRes.data) {
+          const urlMap = urlMapRes.data!;
           up.photos = up.photos.map(p => ({
             ...p,
-            url: urlMapRes.data![p.url] || p.url,
+            url: urlMap[extractStoragePath(p.url)] || p.url,
           }));
         }
       }
+    }
+
+    // Fallback: ensure all photos have valid HTTP URLs (public URL if signing failed)
+    if (up.photos) {
+      up.photos = up.photos.map(p => {
+        if (p.url && !p.url.startsWith('http')) {
+          const { data } = supabase.storage.from('profile-photos').getPublicUrl(p.url);
+          return { ...p, url: data.publicUrl };
+        }
+        return p;
+      });
     }
 
     return mapToLegacyProfile(up);
@@ -459,13 +482,25 @@ export const getFullUserProfileById = async (userId: string): Promise<UserProfil
 
     if (up.photos && up.photos.length > 0) {
       up.photos = up.photos.filter(p => p.url && !p.url.startsWith('file://'));
-      const storagePaths = up.photos.map(p => p.url).filter(url => url && !url.startsWith('http'));
+      const storagePaths = up.photos.map(p => extractStoragePath(p.url)).filter(path => !!path);
       if (storagePaths.length > 0) {
         const urlMapRes = await getMultiplePhotoSignedUrls(storagePaths, 86400);
         if (urlMapRes.ok && urlMapRes.data) {
-          up.photos = up.photos.map(p => ({ ...p, url: urlMapRes.data![p.url] || p.url }));
+          const urlMap = urlMapRes.data!;
+          up.photos = up.photos.map(p => ({ ...p, url: urlMap[extractStoragePath(p.url)] || p.url }));
         }
       }
+    }
+
+    // Fallback: ensure all photos have valid HTTP URLs (public URL if signing failed)
+    if (up.photos) {
+      up.photos = up.photos.map(p => {
+        if (p.url && !p.url.startsWith('http')) {
+          const { data } = supabase.storage.from('profile-photos').getPublicUrl(p.url);
+          return { ...p, url: data.publicUrl };
+        }
+        return p;
+      });
     }
 
     return up;

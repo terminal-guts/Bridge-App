@@ -13,6 +13,14 @@ import { createLogger } from '../utils/secureLogger';
 
 const logger = createLogger('BlockService');
 
+/** UUID v4 format check — prevents PostgREST filter injection via .or() interpolation. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function assertUuid(value: string, label: string): void {
+  if (!UUID_RE.test(value)) {
+    throw new Error(`Invalid UUID for ${label}`);
+  }
+}
+
 /**
  * Determine the current user ID from Supabase auth.
  */
@@ -33,7 +41,6 @@ export interface BlockedUser {
   id: string;
   userId: string;
   blockedUserId: string;
-  reason?: string;
   blockedAt: string;
   blockedUserProfile?: Partial<UserProfile>;
 }
@@ -67,12 +74,13 @@ function tryParseJSON(json: unknown): unknown {
  */
 export const blockUser = async (
   blockedUserId: string,
-  reason?: string,
 ): Promise<ApiResponse<void>> => {
   try {
     if (!blockedUserId) {
       return createErrorResponse('INVALID_INPUT', 'Blocked user ID is required');
     }
+
+    assertUuid(blockedUserId, 'blockedUserId');
 
     const currentUserId = await getCurrentUserId();
 
@@ -124,7 +132,7 @@ export const blockUser = async (
         `and(user_id_1.eq.${u1},user_id_2.eq.${u2})`,
       );
 
-    // Remove friendship in both directions
+    // Remove friendship in both directions (catches both pending requests and accepted)
     await supabase
       .from('friends')
       .delete()
@@ -142,7 +150,8 @@ export const blockUser = async (
       supabase
         .from('friend_suggestions')
         .update({ status: 'expired', updated_at: new Date().toISOString() })
-        .or(`user_a_id.eq.${blockedUserId},user_b_id.eq.${blockedUserId}`)
+        .eq('user_a_id', u1)
+        .eq('user_b_id', u2)
         .in('status', ['queued', 'stashed']),
     ]);
 
@@ -165,7 +174,21 @@ export const unblockUser = async (
       return createErrorResponse('INVALID_INPUT', 'Blocked user ID is required');
     }
 
+    assertUuid(blockedUserId, 'blockedUserId');
+
     const currentUserId = await getCurrentUserId();
+
+    // Verify block exists before deleting (prevents silent no-ops on race conditions)
+    const { data: existing } = await supabase
+      .from('blocked_users')
+      .select('id')
+      .eq('user_id', currentUserId)
+      .eq('blocked_user_id', blockedUserId)
+      .maybeSingle();
+
+    if (!existing) {
+      return createErrorResponse('NOT_BLOCKED', 'User is not blocked');
+    }
 
     const { error } = await supabase
       .from('blocked_users')
@@ -217,7 +240,6 @@ export const getBlockedUsers = async (): Promise<ApiResponse<BlockedUser[]>> => 
         id: block.id,
         userId: block.user_id,
         blockedUserId: block.blocked_user_id,
-        reason: undefined,
         blockedAt: block.created_at,
         blockedUserProfile: p
           ? ({
@@ -240,49 +262,25 @@ export const getBlockedUsers = async (): Promise<ApiResponse<BlockedUser[]>> => 
 };
 
 /**
- * Check if either user has blocked the other (bidirectional check).
- */
-export const isUserPairBlocked = async (
-  userAId: string,
-  userBId: string,
-): Promise<ApiResponse<boolean>> => {
-  try {
-    if (!userAId || !userBId) {
-      return createErrorResponse('INVALID_INPUT', 'Both user IDs are required');
-    }
-
-    const { data, error } = await supabase
-      .from('blocked_users')
-      .select('id')
-      .or(
-        `and(user_id.eq.${userAId},blocked_user_id.eq.${userBId}),` +
-        `and(user_id.eq.${userBId},blocked_user_id.eq.${userAId})`,
-      );
-
-    if (error) throw error;
-    return { ok: true, data: !!data && data.length > 0 };
-  } catch (error: unknown) {
-    logger.error('isUserPairBlocked error:', error);
-    return createErrorResponse('CHECK_PAIR_BLOCKED_ERROR', error instanceof Error ? error.message : 'Failed to check pair block status');
-  }
-};
-
-/**
  * Get the set of user IDs blocked by a given user.
  */
 export const getBlockedUserIds = async (
   userId: string,
 ): Promise<string[]> => {
   try {
-    const { data: outgoing, error: error1 } = await supabase
-      .from('blocked_users')
-      .select('blocked_user_id')
-      .eq('user_id', userId);
+    assertUuid(userId, 'userId');
 
-    const { data: incoming, error: error2 } = await supabase
-      .from('blocked_users')
-      .select('user_id')
-      .eq('blocked_user_id', userId);
+    // Fetch both directions in parallel for bidirectional exclusion
+    const [{ data: outgoing, error: error1 }, { data: incoming, error: error2 }] = await Promise.all([
+      supabase
+        .from('blocked_users')
+        .select('blocked_user_id')
+        .eq('user_id', userId),
+      supabase
+        .from('blocked_users')
+        .select('user_id')
+        .eq('blocked_user_id', userId),
+    ]);
 
     if (error1 || error2) throw error1 || error2;
 
@@ -294,24 +292,3 @@ export const getBlockedUserIds = async (
     return [];
   }
 };
-
-/**
- * Get the count of users blocked by the current user.
- */
-export const getBlockedUsersCount = async (): Promise<ApiResponse<number>> => {
-  try {
-    const currentUserId = await getCurrentUserId();
-
-    const { count, error } = await supabase
-      .from('blocked_users')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', currentUserId);
-
-    if (error) throw error;
-    return { ok: true, data: count ?? 0 };
-  } catch (error: unknown) {
-    logger.error('getBlockedUsersCount error:', error);
-    return createErrorResponse('COUNT_BLOCKED_ERROR', error instanceof Error ? error.message : 'Failed to count blocked users');
-  }
-};
-

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { View, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
-import { H3, Body, BodySmall, ScreenWrapper } from '../../components/ui';
+import { H3, Body, BodySmall, ScreenWrapper, BackHeader, LoadingState, ErrorState } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile } from '../../types';
 import NetInfo, { useNetInfo } from '@react-native-community/netinfo';
@@ -17,7 +17,6 @@ import {
   Thumb,
   Rail,
   RailSelected,
-  LookingForSection,
   GenderSection,
   AgeRangeSection,
   HeightSection,
@@ -203,27 +202,8 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
     // Validate all mandatory fields
     const missing: string[] = [];
-    if (interestedInGenders.length === 0) missing.push('Gender');
-    if (preferredEthnicities.length === 0) missing.push('Ethnicity');
-    if (preferredReligions.length === 0) missing.push('Religion');
-    if (preferredPolitics.length === 0) missing.push('Politics');
-    if (partnerPreferences.partnerDrinking.length === 0 ||
-        partnerPreferences.partnerCannabis.length === 0 ||
-        partnerPreferences.partnerTobacco.length === 0 ||
-        partnerPreferences.partnerOtherDrugs.length === 0) missing.push('Lifestyle');
-
-    if (missing.length > 0) {
-      Alert.alert(
-        'Missing Required Fields',
-        `Please complete: ${missing.join(', ')}`,
-        [
-          { text: 'Fix', style: 'cancel' },
-          { text: 'Discard Changes', style: 'destructive', onPress: () => navigation.goBack() },
-        ]
-      );
-      return;
-    }
-
+    // No validation gate — users can save partial preferences freely.
+    // The profile completion gate on the Match screen handles enforcement.
     setSaving(true);
     try {
       // Auto-derive preferred_gender from interestedInGenders for backward compatibility
@@ -288,7 +268,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
   // Calculate match preferences completion for current editing state
   const matchPrefsCompletion = useMemo(() => {
-    if (!profile) return { percentage: 0, completedCount: 0, totalCount: 8, missingFields: [] };
+    if (!profile) return { percentage: 0, completedCount: 0, totalCount: 7, missingFields: [] };
 
     const currentProfile = {
       ...profile,
@@ -318,10 +298,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   if (loading) {
     return (
       <ScreenWrapper>
-        <StyledView className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color={COLORS.primaryAccent} />
-          <Body className="text-neutral-500 mt-3">Loading preferences...</Body>
-        </StyledView>
+        <LoadingState fullScreen message="Loading preferences..." />
       </ScreenWrapper>
     );
   }
@@ -330,29 +307,11 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   if (loadError || !profile) {
     return (
       <ScreenWrapper>
-        <StyledView className="flex-1 items-center justify-center px-6">
-          <EvaIcon name="alert-circle-outline" variant="outline" size={48} color={COLORS.error} />
-          <H3 className="mt-4 text-center">Couldn't load preferences</H3>
-          <Body className="text-neutral-500 mt-2 text-center">
-            Check your connection and try again.
-          </Body>
-          <StyledTouchableOpacity
-            onPress={loadProfile}
-            className="mt-5 bg-primary-500 rounded-lg px-6 py-3"
-            accessibilityRole="button"
-            accessibilityLabel="Retry loading preferences"
-          >
-            <Body className="text-white font-semibold">Try Again</Body>
-          </StyledTouchableOpacity>
-          <StyledTouchableOpacity
-            onPress={() => navigation.goBack()}
-            className="mt-3 px-6 py-3"
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-          >
-            <Body className="text-neutral-500 font-medium">Go Back</Body>
-          </StyledTouchableOpacity>
-        </StyledView>
+        <ErrorState
+          title="Couldn't load preferences"
+          message="Check your connection and try again."
+          onRetry={loadProfile}
+        />
       </ScreenWrapper>
     );
   }
@@ -424,8 +383,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         pointerEvents={saving ? 'none' : 'auto'}
       >
         <StyledView className="px-4 py-4" style={saving ? { opacity: 0.5 } : undefined}>
-          <LookingForSection />
-
           <GenderSection
             interestedInGenders={interestedInGenders}
             setInterestedInGenders={setInterestedInGenders}

@@ -357,8 +357,8 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
 
   const renderHeader = (showInfo = false) => (
     <View style={s.header}>
-      <TouchableOpacity onPress={handleBack} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityRole="button" accessibilityLabel="Go back">
-        <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.textDarkHeading} />
+      <TouchableOpacity onPress={handleBack} style={s.headerBackButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel="Go back">
+        <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.heading} />
       </TouchableOpacity>
       <View style={s.headerTitleCol}>
         <Text style={s.headerTitle} accessibilityRole="header">Leaderboard</Text>

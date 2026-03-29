@@ -5,7 +5,7 @@ import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { H3, BodySmall, Label, Caption } from '../../components/ui/Typography';
 import { Card, Input } from '../../components/ui';
-import { lightHaptic, mediumHaptic } from '../../utils/haptics';
+import { selectionHaptic, mediumHaptic } from '../../utils/haptics';
 import { COLORS } from '../../theme/colors';
 import { SectionScreenWrapper } from './sections/SectionScreenWrapper';
 import { useEditProfile } from './sections/useEditProfile';
@@ -180,7 +180,7 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
                 activeOpacity={1}
                 delayPressIn={0}
                 onPress={() => {
-                  lightHaptic();
+                  selectionHaptic();
                   let updated: string[];
                   if (isSelected) {
                     updated = ethnicityArray.filter(e => e !== option);
@@ -245,7 +245,7 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
                 activeOpacity={1}
                 delayPressIn={0}
                 onPress={() => {
-                  lightHaptic();
+                  selectionHaptic();
                   const currentPronouns = profile.pronounsList || [];
                   let updatedPronouns: string[];
                   if (isSelected) {
@@ -289,7 +289,7 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
                 activeOpacity={1}
                 delayPressIn={0}
                 onPress={() => {
-                  lightHaptic();
+                  selectionHaptic();
                   const currentGenders = profile.gender || [];
                   let updatedGenders: string[];
                   if (isSelected) {

@@ -168,26 +168,6 @@ export const updateUserSettings = async (
 };
 
 /**
- * Update notification settings
- */
-export const updateNotificationSettings = async (
-  userId: string,
-  notifications: Partial<UserSettings['notifications']>
-): Promise<ApiResponse<UserSettings>> => {
-  return updateUserSettings(userId, { notifications: notifications as UserSettings['notifications'] });
-};
-
-/**
- * Update privacy settings
- */
-export const updatePrivacySettings = async (
-  userId: string,
-  privacy: Partial<UserSettings['privacy']>
-): Promise<ApiResponse<UserSettings>> => {
-  return updateUserSettings(userId, { privacy: privacy as UserSettings['privacy'] });
-};
-
-/**
  * Reset settings to defaults
  */
 export const resetUserSettings = async (): Promise<ApiResponse<UserSettings>> => {

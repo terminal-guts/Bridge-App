@@ -36,8 +36,8 @@ const SLIDES = [
   },
   {
     icon: 'checkmark-circle-2' as const,
-    title: "Your four options.",
-    body: "Yes · No · Recommend (to a friend) · Not Sure.\n\nVotes are anonymous unless you're friends.",
+    title: "Your three options.",
+    body: "Yes · No · Recommend (to a friend).\n\nVotes are anonymous unless you're friends.",
     cta: 'Next',
   },
   {

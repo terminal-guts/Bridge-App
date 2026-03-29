@@ -7,7 +7,15 @@
  */
 
 import { StackCardInterpolationProps, TransitionPresets } from '@react-navigation/stack';
-import { DURATIONS, EASINGS } from '../constants/animations';
+import { Easing } from 'react-native';
+import { DURATIONS } from '../constants/animations';
+
+// React Navigation uses RN's Easing (not Reanimated's) for transition configs.
+// These match the EASINGS tokens but use the RN-compatible API.
+const RN_EASINGS = {
+  enter: Easing.bezier(0.25, 0.1, 0.25, 1.0),
+  exit: Easing.bezier(0.4, 0.0, 1.0, 1.0),
+};
 
 /**
  * Horizontal slide with subtle fade — the primary push/pop transition.
@@ -20,14 +28,14 @@ export const slideWithFade = {
       animation: 'timing' as const,
       config: {
         duration: DURATIONS.normal,
-        easing: EASINGS.enter,
+        easing: RN_EASINGS.enter,
       },
     },
     close: {
       animation: 'timing' as const,
       config: {
         duration: DURATIONS.normal,
-        easing: EASINGS.exit,
+        easing: RN_EASINGS.exit,
       },
     },
   },
@@ -92,7 +100,7 @@ export const modalSlideUp = {
       animation: 'timing' as const,
       config: {
         duration: DURATIONS.normal,
-        easing: EASINGS.exit,
+        easing: RN_EASINGS.exit,
       },
     },
   },
@@ -121,14 +129,14 @@ export const fadeTransition = {
       animation: 'timing' as const,
       config: {
         duration: DURATIONS.normal,
-        easing: EASINGS.enter,
+        easing: RN_EASINGS.enter,
       },
     },
     close: {
       animation: 'timing' as const,
       config: {
         duration: DURATIONS.micro,
-        easing: EASINGS.exit,
+        easing: RN_EASINGS.exit,
       },
     },
   },

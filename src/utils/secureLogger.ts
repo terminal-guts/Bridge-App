@@ -17,7 +17,7 @@ declare const __DEV__: boolean;
 /**
  * Log levels for filtering
  */
-export enum LogLevel {
+enum LogLevel {
   DEBUG = 0,
   INFO = 1,
   WARN = 2,
@@ -102,7 +102,7 @@ let currentConfig = { ...defaultConfig };
 /**
  * Configure the logger
  */
-export const configureLogger = (config: Partial<LoggerConfig>): void => {
+const configureLogger = (config: Partial<LoggerConfig>): void => {
   currentConfig = { ...currentConfig, ...config };
 };
 
@@ -313,7 +313,7 @@ export const logError = (error: Error, context?: string): void => {
 /**
  * Log structured data (useful for analytics/monitoring)
  */
-export const logStructured = (
+const logStructured = (
   level: LogLevel,
   event: string,
   data?: Record<string, unknown>
@@ -340,17 +340,3 @@ export const createLogger = (namespace: string) => {
   };
 };
 
-/**
- * Default export with all logging functions
- */
-export default {
-  debug,
-  info,
-  warn,
-  error,
-  logError,
-  logStructured,
-  createLogger,
-  configureLogger,
-  LogLevel,
-};

@@ -4,7 +4,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Keyboard } from 'react-native';
+import { AppState, Keyboard } from 'react-native';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import {
     useSharedValue,
     useAnimatedStyle,
@@ -63,6 +64,17 @@ export function useMatchesScreen() {
         opacity: cardEntrance.value,
         transform: [{ translateY: (1 - cardEntrance.value) * 24 }],
     }));
+
+    // Trigger entrance animation AFTER loading resolves so the Animated.View is mounted.
+    // Reanimated worklets don't reliably pick up shared value changes that happen
+    // while the view is unmounted (behind the loading early-return).
+    useEffect(() => {
+        if (!loading && !hasAnimatedEntrance.current) {
+            hasAnimatedEntrance.current = true;
+            cardEntrance.value = 0;
+            cardEntrance.value = withTiming(1, { duration: DURATIONS.slow, easing: EASINGS.enter });
+        }
+    }, [loading]);
     const navigation = useNavigation<any>();
     const [endMatchCustomReason, setEndMatchCustomReason] = useState('');
 
@@ -122,11 +134,6 @@ export function useMatchesScreen() {
         } finally {
             if (isMountedRef.current) {
                 setLoading(false);
-                if (!hasAnimatedEntrance.current) {
-                    hasAnimatedEntrance.current = true;
-                    cardEntrance.value = 0;
-                    cardEntrance.value = withTiming(1, { duration: DURATIONS.slow, easing: EASINGS.enter });
-                }
 
                 if (!data) return;
                 const state = deriveScreenState(data.activeMatch, data.pendingProposals || []);
@@ -165,6 +172,32 @@ export function useMatchesScreen() {
             loadMatches();
         });
     }, []);
+
+    // Re-fetch match data when the app returns from background after 2+ minutes.
+    // useFocusEffect only fires on navigation events, not AppState changes, so
+    // without this the user would see stale data if they stayed on the Matches
+    // tab while the app was backgrounded for hours.
+    const lastActiveMatchesRef = useRef(Date.now());
+    useEffect(() => {
+        const sub = AppState.addEventListener('change', (nextState) => {
+            if (nextState === 'active') {
+                const elapsed = Date.now() - lastActiveMatchesRef.current;
+                if (elapsed > 120_000 && isMountedRef.current) {
+                    loadMatches();
+                }
+            } else if (nextState === 'background') {
+                lastActiveMatchesRef.current = Date.now();
+            }
+        });
+        return () => sub.remove();
+    }, []);
+
+    // Auto-refresh match data when connectivity is restored after being offline
+    useNetworkStatus(useCallback(() => {
+        setTimeout(() => {
+            if (isMountedRef.current) loadMatches();
+        }, 1500);
+    }, []));
 
     const handleRefresh = useCallback(async () => {
         setRefreshing(true);

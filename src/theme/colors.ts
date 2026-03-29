@@ -226,6 +226,12 @@ export const COLORS = {
     borderMediumBlue: '#D0DBFF',
     // #8E8E93 — system gray (no match state)
     systemGray: '#8E8E93',
+    // #FF9500 — system orange (stats icons, category accents)
+    systemOrange: '#FF9500',
+    // #AF52DE — system purple (stats icons, active voters)
+    systemPurple: '#AF52DE',
+    // #E8EEFF — light periwinkle background (rank card gradient stop)
+    backgroundPeriwinkle: '#E8EEFF',
     // #EBF2FF — light blue icon badge background
     backgroundBlueBadge: '#EBF2FF',
     // #FDE68A — warm gold border for featured badges

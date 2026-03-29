@@ -91,10 +91,22 @@ export const MatchPoolLockedView: React.FC<MatchPoolLockedViewProps> = ({
     }
 
     if (pct >= 60) {
-      return "Keep going — you're building\na great profile";
+      return "You're getting close!";
     }
 
-    return 'Complete your profile\nto get matched';
+    return 'Finish your profile\nto enter the pool';
+  }, [breakdown]);
+
+  // Subtitle — always explains the 100% gate
+  const subtitle = useMemo(() => {
+    const pct = breakdown.overall;
+    if (pct >= 90) {
+      return 'Hit 100% and your friends can start matching you.';
+    }
+    if (pct >= 60) {
+      return 'Reach 100% to enter the matchmaking pool.';
+    }
+    return 'Complete your profile to 100% so your friends\ncan start finding matches for you.';
   }, [breakdown]);
 
   // Smart CTA: first incomplete section
@@ -270,6 +282,9 @@ export const MatchPoolLockedView: React.FC<MatchPoolLockedViewProps> = ({
 
           {/* Headline */}
           <Text style={styles.headline}>{headline}</Text>
+
+          {/* Subtitle — explains the 100% gate */}
+          <Text style={styles.subtitle}>{subtitle}</Text>
 
           {/* CTA button */}
           <TouchableOpacity
@@ -487,6 +502,14 @@ const styles = StyleSheet.create({
     marginTop: 16,
     lineHeight: LINE_HEIGHTS['5xl'],
     letterSpacing: -0.3,
+  },
+  subtitle: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.base,
+    color: 'rgba(255, 255, 255, 0.75)',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: LINE_HEIGHTS.lg,
   },
   ctaButton: {
     backgroundColor: COLORS.card,

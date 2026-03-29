@@ -11,6 +11,7 @@ export { Avatar } from './Avatar';
 export { SkeletonLoader, DashboardSkeleton, ProfileSkeleton, SurveySkeleton } from './SkeletonLoader';
 export { InfoModal, InfoSection, InfoBullet } from './InfoModal';
 export { OptionButton } from './OptionButton';
+export { BackHeader } from './BackHeader';
 export { ScreenWrapper } from './ScreenWrapper';
 export {
   H1,
@@ -21,4 +22,6 @@ export {
   Label,
   Caption,
   Display,
+  ScreenTitle,
+  SCREEN_TITLE_STYLE,
 } from './Typography';

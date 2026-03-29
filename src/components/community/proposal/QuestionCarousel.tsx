@@ -25,14 +25,18 @@ import Animated, {
   withSpring,
   SharedValue,
 } from 'react-native-reanimated';
-import { SPRINGS } from '../../../constants/animations';
+import { SPRINGS, DURATIONS } from '../../../constants/animations';
 import * as Haptics from 'expo-haptics';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../../constants/typography';
 import { COLORS } from '../../../theme/colors';
+import { EvaIcon } from '../../icons';
 import type { DeepQuestionData } from './proposalHelpers';
 
 // Color for person B — distinct from person A's primary blue
 const ACCENT_B = COLORS.purple; // #7C3AED
+
+// Decorative open-quote color — cyan accent at reduced opacity
+const QUOTE_COLOR = '#06B6D4';
 
 // "Mo Orji" → "M.O."
 function toInitials(fullName: string): string {
@@ -58,28 +62,52 @@ function PersonAnswerCard({
   scaleValue: SharedValue<number>;
   accentColor: string;
 }) {
+  // Animated background + border color for reveal transition
+  const bgOpacity = useSharedValue(revealed ? 0 : 1);
+  const borderFlash = useSharedValue(revealed ? 0 : 0);
+
   const scaleStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scaleValue.value }],
   }));
 
+  const cardStyle = useAnimatedStyle(() => ({
+    // Tinted bg fades to white on reveal
+    backgroundColor: `rgba(${accentColor === COLORS.primary ? '37, 99, 235' : '124, 58, 237'}, ${bgOpacity.value * 0.04})`,
+    borderColor: `rgba(${accentColor === COLORS.primary ? '37, 99, 235' : '124, 58, 237'}, ${0.15 + borderFlash.value * 0.4})`,
+  }));
+
+  // Trigger reveal animation
+  const handleReveal = useCallback(() => {
+    if (revealed) return;
+    onReveal();
+    // Fade tint to white
+    bgOpacity.value = withTiming(0, { duration: DURATIONS.normal });
+    // Flash border then settle
+    borderFlash.value = withSequence(
+      withTiming(1, { duration: 100 }),
+      withTiming(0.3, { duration: 400 }),
+    );
+  }, [revealed, onReveal]);
+
   return (
     <TouchableOpacity
-      onPress={onReveal}
+      onPress={handleReveal}
       activeOpacity={revealed ? 1 : 0.75}
       disabled={revealed}
+      accessibilityRole="button"
+      accessibilityLabel={revealed ? `${initial}'s answer: ${answer}` : `${initial}'s answer, hidden`}
+      accessibilityHint={revealed ? undefined : 'Double tap to reveal their answer'}
     >
-      <Animated.View style={[scaleStyle, {
+      <Animated.View style={[scaleStyle, cardStyle, {
         flexDirection: 'row',
         borderRadius: 10,
         overflow: 'hidden',
-        backgroundColor: '#FFFFFF',
         borderWidth: 1,
-        borderColor: revealed ? accentColor + '55' : '#E2E8F0',
       }]}>
 
         {/* Left accent bar */}
         <View style={{
-          width: 3,
+          width: 4,
           backgroundColor: accentColor,
           opacity: revealed ? 1 : 0.45,
         }} />
@@ -89,6 +117,7 @@ function PersonAnswerCard({
           {/* Initials — always visible */}
           <Text style={{
             fontFamily: FONTS.semiBold,
+            fontWeight: '600',
             fontSize: FONT_SIZES.xs,
             color: accentColor,
             marginBottom: 4,
@@ -107,14 +136,17 @@ function PersonAnswerCard({
               {answer}
             </Text>
           ) : (
-            <Text style={{
-              fontFamily: FONTS.regular,
-              fontSize: FONT_SIZES.sm,
-              color: COLORS.text.disabled,
-              fontStyle: 'italic',
-            }}>
-              Tap to reveal →
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <EvaIcon name="lock" variant="outline" size={14} color={accentColor} style={{ opacity: 0.6 }} />
+              <Text style={{
+                fontFamily: FONTS.regular,
+                fontSize: FONT_SIZES.sm,
+                color: COLORS.text.secondary,
+                fontStyle: 'italic',
+              }}>
+                Tap to reveal
+              </Text>
+            </View>
           )}
         </View>
       </Animated.View>
@@ -163,16 +195,30 @@ function QuestionPage({
 
   return (
     <View>
-      {/* Question text */}
-      <Text style={{
-        fontFamily: FONTS.semiBold,
-        fontSize: FONT_SIZES.base,
-        color: COLORS.text.heading,
-        lineHeight: LINE_HEIGHTS.lg,
-        marginBottom: 10,
-      }}>
-        {question.questionText}
-      </Text>
+      {/* Question prompt — italic with decorative quote mark */}
+      <View style={{ marginBottom: 12 }}>
+        <Text style={{
+          fontFamily: FONTS.bold,
+          fontWeight: '700',
+          fontSize: FONT_SIZES['3xl'],
+          color: QUOTE_COLOR,
+          opacity: 0.25,
+          lineHeight: FONT_SIZES['3xl'],
+          marginBottom: -4,
+        }}>
+          {'\u201C'}
+        </Text>
+        <Text style={{
+          fontFamily: FONTS.medium,
+          fontWeight: '500',
+          fontSize: FONT_SIZES.lg,
+          fontStyle: 'italic',
+          color: COLORS.text.heading,
+          lineHeight: LINE_HEIGHTS.xl,
+        }}>
+          {question.questionText}
+        </Text>
+      </View>
 
       {/* Stacked answer cards */}
       <View style={{ gap: 8 }}>
@@ -213,6 +259,9 @@ export function QuestionCarousel({
 }) {
   const [currentPage, setCurrentPage] = useState(0);
   const total = questions.length;
+  // Clamp currentPage if questions array shrinks (e.g., proposal change)
+  const safePage = Math.min(currentPage, Math.max(0, total - 1));
+  if (safePage !== currentPage) setCurrentPage(safePage);
 
   const userAInitial = toInitials(userAName);
   const userBInitial = toInitials(userBName);
@@ -236,8 +285,8 @@ export function QuestionCarousel({
     <View {...panResponder.panHandlers}>
       {/* Current question only — height adapts to content */}
       <QuestionPage
-        key={`qp-${questions[currentPage].questionId}`}
-        question={questions[currentPage]}
+        key={`qp-${questions[safePage].questionId}`}
+        question={questions[safePage]}
         userAInitial={userAInitial}
         userBInitial={userBInitial}
       />
@@ -247,33 +296,41 @@ export function QuestionCarousel({
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          marginTop: 12,
-          gap: 6,
+          marginTop: 14,
+          gap: 8,
         }}>
-          {questions.map((_, i) => (
-            <TouchableOpacity
-              key={`qdot-${i}`}
-              onPress={() => setCurrentPage(i)}
-              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-            >
-              <View
-                style={{
-                  width: i === currentPage ? 18 : 6,
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: i === currentPage ? COLORS.primary : COLORS.borderGray,
-                }}
-              />
-            </TouchableOpacity>
-          ))}
-          <Text style={{
-            fontFamily: FONTS.medium,
-            fontSize: FONT_SIZES.xs,
-            color: COLORS.text.disabled,
-            marginLeft: 6,
-          }}>
-            {currentPage + 1}/{total}
-          </Text>
+          {questions.map((_, i) => {
+            const isActive = i === safePage;
+            return (
+              <TouchableOpacity
+                key={`qdot-${i}`}
+                onPress={() => setCurrentPage(i)}
+                hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Question ${i + 1} of ${total}`}
+              >
+                <View style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 11,
+                  backgroundColor: isActive ? COLORS.primary : 'transparent',
+                  borderWidth: isActive ? 0 : 1,
+                  borderColor: COLORS.borderGray,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Text style={{
+                    fontFamily: FONTS.semiBold,
+                    fontWeight: '600',
+                    fontSize: FONT_SIZES.xs,
+                    color: isActive ? COLORS.card : COLORS.text.secondary,
+                  }}>
+                    {i + 1}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       )}
     </View>

@@ -63,11 +63,6 @@ function poolYesRate(poolYes: number, poolNo: number): number {
   return total === 0 ? 0.0 : poolYes / total;
 }
 
-function friendYesRate(friendYes: number, friendNo: number): number {
-  const total = friendYes + friendNo;
-  return total === 0 ? 0.0 : friendYes / total;
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -392,12 +387,14 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Apply lifecycle update if any
+    // Apply lifecycle update if any — use status guard so concurrent votes
+    // don't clobber each other (only transition from 'pending')
     if (Object.keys(lifecycleUpdate).length > 0) {
       await supabase
         .from('proposals')
         .update(lifecycleUpdate)
-        .eq('id', proposal_id);
+        .eq('id', proposal_id)
+        .eq('status', 'pending');
     }
 
     // 9. Mark pool_vote_assignment as voted
