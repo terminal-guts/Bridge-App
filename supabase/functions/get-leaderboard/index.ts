@@ -182,6 +182,7 @@ Deno.serve(async (req: Request) => {
       const isVisible = isSelf || isFriend || visibleUserIds.has(e.userId);
       return {
         ...e,
+        userId: isVisible ? e.userId : `anon-${e.rank}`,
         firstName: isVisible ? e.firstName : 'Bridger',
         photoUrl: isVisible ? (signedUrlsMap[e.userId] || null) : null,
         isFriend,

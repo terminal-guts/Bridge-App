@@ -81,7 +81,7 @@ export const ShareableMatchCard = React.forwardRef<ViewShot, ShareableMatchCardP
     }, [onCapture]);
 
     const avatarsToShow = useMemo(() => matchedByAvatars.slice(0, MAX_AVATARS), [matchedByAvatars]);
-    const endorserLine = useMemo(() => formatEndorserNames(matchedByNames, matchedByCount), [matchedByNames, matchedByCount]);
+    const endorserLine = useMemo(() => `${matchedByCount} friend${matchedByCount !== 1 ? 's' : ''}`, [matchedByCount]);
 
     return (
       <View style={styles.offscreen} pointerEvents="none">

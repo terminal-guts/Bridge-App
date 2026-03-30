@@ -267,7 +267,7 @@ export async function detectEndedMatchEvent(
       if (partnerRow?.profile_photo_path) {
         const { data: signedData } = await supabase.storage
           .from('profile-photos')
-          .createSignedUrl(partnerRow.profile_photo_path, 3600);
+          .createSignedUrl(partnerRow.profile_photo_path, 86400);
         photoUrl = signedData?.signedUrl;
       }
 
@@ -335,7 +335,7 @@ export async function detectPartnerDeclinedProposal(
     if (partnerRow?.profile_photo_path) {
       const { data: signedData } = await supabase.storage
         .from('profile-photos')
-        .createSignedUrl(partnerRow.profile_photo_path, 3600);
+        .createSignedUrl(partnerRow.profile_photo_path, 86400);
       photoUrl = signedData?.signedUrl;
     }
 

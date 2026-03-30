@@ -32,7 +32,7 @@ export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
     const load = async () => {
       try {
         const result = await communityService.getProposalsToVote();
-        console.log('[ONBOARDING_VOTE_DEBUG] getProposalsToVote returned:', result.length, 'proposals');
+        logger.info('[OnboardingProposal] getProposalsToVote returned:', result.length, 'proposals');
         if (result.length === 0) {
           // No proposals available — skip this step silently
           logger.info('No proposals available during onboarding, skipping step');
@@ -46,7 +46,7 @@ export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
         // gate so the user has something to engage with on first open.
         setProposals(result.slice(0, 1));
       } catch (error: any) {
-        console.error('[ONBOARDING_VOTE_DEBUG] Error loading proposals:', error.message, error);
+        logger.error('[OnboardingProposal] Error loading proposals:', error.message);
         logger.error('Failed to load proposals during onboarding:', error.message);
         // On error, skip gracefully so onboarding isn't blocked
         if (!didSkip.current) {
