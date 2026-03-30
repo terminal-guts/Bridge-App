@@ -174,6 +174,47 @@ Target: `src/components/community/proposal/ProposalReviewView.tsx`. Uses Reanima
 
 ---
 
+## Post-TestFlight Security & Performance (from 15-agent stress test)
+
+### Security — P1 (fix before public launch)
+- [ ] SEC-2: Add Twilio signature verification to `receive-support-reply` (prevents spoofed admin messages)
+- [ ] SEC-4: Tighten `proposal_votes` RLS to `auth.uid() = voter_user_id` (currently any user can see all votes)
+- [ ] SEC-5: Re-enable RLS on `daily_surveys` table (missed during tier re-enablement)
+- [ ] SEC-6: Move hardcoded PII to env vars — phone in `receive-support-reply`/`send-support-message`, email in `notify-report`
+- [ ] SEC-8: Add rate limiting to `validate-reviewer-access` (currently unlimited brute-force attempts)
+- [ ] SEC-9: Add server-side rate limiting to `send-email-verification` (client-side limit trivially bypassed)
+- [ ] SEC-10: Replace raw Postgres error messages with generic errors in 5+ edge functions
+- [ ] SEC-13: Consider fail-closed for `moderate-text` (currently returns `is_safe: true` on any error)
+- [ ] SEC-14: Add blocked-user check in `getFullUserProfileById` / `ProfileMatchScreen`
+
+### Performance — P1 (fix before public launch)
+- [ ] PERF-3: Add URL caching (stablePhotoUrlsRef) to ProfileMatchScreen (re-signs every render)
+- [ ] PERF-4: Extract inline renderItem callbacks to useCallback (5 locations: MatchProposalScreen, ProfileScreen.questions, PhotoCarousel, LeaderboardScreen, UserRow)
+- [ ] PERF-5: Add visibility gates to infinite pulse animations (UserRow, MatchCard, SkeletonLoader)
+- [ ] PERF-6: Add `useReducedMotion()` checks to 5+ animation components
+- [ ] PERF-7: Pause Lottie animations when tab loses focus (Community empty state)
+
+### UX/Bugs — P1
+- [ ] BUG-1: Add OfflineBanner to ScreenWrapper or 13+ screens that lack it
+- [ ] BUG-2: Add double-tap debounce guard to AnimatedPressable/Button
+
+### Performance — P2 (post-launch polish)
+- [ ] Remove unused Tailwind color palettes (~100KB CSS bloat)
+- [ ] Profile queries: consolidate 4 round-trips into joined select
+- [ ] Implement image presets (avatar 256px, card 600px) to reduce memory for small containers
+- [ ] Pre-load confetti JSON at module init (prevents jank on first vote)
+- [ ] Add cleanup to WelcomeScreen mesh orb animations on unmount
+- [ ] Add `recyclingKey` to all list-rendered images
+
+### Security — P2 (post-launch)
+- [ ] `friend_grid_completions` RLS disabled — check if table still used, re-enable if so
+- [ ] `proposals` table exposes `compatibility_score` to all authenticated users via RLS
+- [ ] Replace `.select('*')` with explicit column lists on sensitive tables
+- [ ] Add input length validation on `exit_reason`, `rejection_reason` in edge functions
+- [ ] Add `maxLength` to onboarding TextInputs (name, school, job)
+
+---
+
 ## Tests to Write
 
 - `__tests__/services/streakTrackingService.test.ts`
