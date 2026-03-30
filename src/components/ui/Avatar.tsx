@@ -49,7 +49,7 @@ export const Avatar: React.FC<AvatarProps> = ({
         accessibilityRole="image"
         accessibilityLabel={accessibilityLabel}
       >
-        <EvaIcon name="person" variant="outline" size={size} color={COLORS.text.disabled} />
+        <EvaIcon name="person" variant="outline" size={size} color={COLORS.text.tertiary} />
       </StyledView>
     );
   }
@@ -58,7 +58,7 @@ export const Avatar: React.FC<AvatarProps> = ({
     <StyledImage
       source={{ uri: optimizedUri }}
       className={`${roundedClass} ${className}`}
-      style={{ width: size, height: size, backgroundColor: COLORS.backgroundGrayMedium }}
+      style={{ width: size, height: size, backgroundColor: '#E5E7EB' }}
       placeholder={blurhash ? { blurhash } : undefined}
       blurRadius={blurRadius}
       contentFit="cover"

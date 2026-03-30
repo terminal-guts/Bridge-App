@@ -21,7 +21,7 @@ import { lightHaptic } from '../../../utils/haptics';
 
 const BLUE = COLORS.primary;
 const GREEN = COLORS.success;
-const RED = COLORS.rejectRed;
+const RED = COLORS.error;
 
 export function LiveVoteBar({
   yesVotes,
@@ -77,7 +77,7 @@ export function LiveVoteBar({
       <View style={{ marginTop: 10, marginBottom: 4, alignItems: 'center' }}>
         <View style={{
           height: 14, borderRadius: 7, width: '100%', marginBottom: 8,
-          backgroundColor: COLORS.borderSubtle,
+          backgroundColor: COLORS.borderLight,
           ...SHADOWS.sm,
           overflow: 'hidden',
         }}>
@@ -88,12 +88,6 @@ export function LiveVoteBar({
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
           />
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: BLUE }} />
-          <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, color: BLUE }}>
-            {hasVoted ? 'Be the first to weigh in!' : 'Vote to see how others voted'}
-          </Text>
-        </View>
       </View>
     );
   }
@@ -102,7 +96,7 @@ export function LiveVoteBar({
     <View style={{ marginTop: 4, marginBottom: 0 }} accessibilityLabel={`Vote results: ${yesVotes} yes, ${noVotes} no out of ${total} votes`}>
       <View style={{
         height: 14, borderRadius: 7, overflow: 'hidden',
-        backgroundColor: COLORS.borderSubtle,
+        backgroundColor: COLORS.borderLight,
         ...SHADOWS.sm,
       }}>
         <LinearGradient
@@ -119,7 +113,7 @@ export function LiveVoteBar({
           )}
           {noVotes > 0 && (
             <Animated.View style={noStyle}>
-              <LinearGradient colors={[COLORS.urgentRed, RED, '#E11D48']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={{ flex: 1 }} />
+              <LinearGradient colors={[COLORS.error, RED, '#E11D48']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={{ flex: 1 }} />
             </Animated.View>
           )}
         </View>
@@ -132,19 +126,10 @@ export function LiveVoteBar({
         />
       </View>
 
-      <View style={{ alignItems: 'center', marginTop: 6, gap: 1 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12 }}>
-          <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, color: '#15803D' }}>{yesVotes} Yes</Text>
-          <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, color: COLORS.borderGray }}>&middot;</Text>
-          <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, color: '#DC2626' }}>{noVotes} No</Text>
-        </View>
-        <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.xs, color: COLORS.text.secondary }}>
-          {total} voted{' \u00b7 '}
-          {yesVotes > noVotes * 2 ? 'strong yes' :
-           noVotes > yesVotes * 2 ? 'strong no' :
-           yesVotes === noVotes ? 'evenly split' :
-           yesVotes > noVotes ? 'leaning yes' : 'leaning no'}
-        </Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 6, gap: 12 }}>
+        <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, color: '#15803D' }}>{yesVotes} Yes</Text>
+        <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, color: COLORS.border }}>&middot;</Text>
+        <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.sm, color: '#DC2626' }}>{noVotes} No</Text>
       </View>
     </View>
   );

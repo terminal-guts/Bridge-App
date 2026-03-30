@@ -110,14 +110,27 @@ Deno.serve(async (req: Request) => {
         .in('user_id', participantIdList)
     ]);
 
-    // Extract main photo storage path from the JSONB photos array
+    // Extract main photo storage path from the JSONB photos array.
+    // photos[].url can be either a bare storage path ("photos/abc/1.jpg")
+    // or a full Supabase URL — normalize to bare paths so createSignedUrls works.
+    const extractStoragePath = (urlOrPath: string): string => {
+      for (const marker of [
+        '/storage/v1/object/public/profile-photos/',
+        '/storage/v1/object/sign/profile-photos/',
+        '/storage/v1/object/authenticated/profile-photos/',
+      ]) {
+        const idx = urlOrPath.indexOf(marker);
+        if (idx >= 0) return urlOrPath.substring(idx + marker.length).split('?')[0];
+      }
+      return urlOrPath;
+    };
+
     const photosMap: Record<string, string> = {};
     for (const p of (profilesResult.data || [])) {
       const photos = p.photos as Array<{ url?: string; isMain?: boolean; is_main?: boolean }> | null;
       if (!photos || photos.length === 0) continue;
-      // Prefer isMain/is_main photo, fall back to first photo
       const main = photos.find((ph) => ph.isMain || ph.is_main) || photos[0];
-      if (main?.url) photosMap[p.user_id] = main.url;
+      if (main?.url) photosMap[p.user_id] = extractStoragePath(main.url);
     }
 
     const friendIds = new Set([
@@ -143,14 +156,22 @@ Deno.serve(async (req: Request) => {
         .createSignedUrls(storagePaths, 86400); // 24h
 
       if (!signedErr && signedData) {
+        // Map signed URLs by both the raw path and any path format the client returns
         const pathRef: Record<string, string> = {};
-        signedData.forEach(d => {
-          if (d.signedUrl) pathRef[d.path] = d.signedUrl;
+        signedData.forEach((d, i) => {
+          if (d.signedUrl) {
+            // Index-based mapping is most reliable — createSignedUrls returns results in input order
+            if (i < storagePaths.length) pathRef[storagePaths[i]] = d.signedUrl;
+            // Also map by d.path in case it matches
+            if (d.path) pathRef[d.path] = d.signedUrl;
+          }
         });
 
         for (const [uid, path] of Object.entries(photosMap)) {
           signedUrlsMap[uid] = pathRef[path] || '';
         }
+      } else if (signedErr) {
+        console.error('createSignedUrls failed:', signedErr.message);
       }
     }
 

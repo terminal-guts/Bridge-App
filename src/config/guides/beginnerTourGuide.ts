@@ -32,7 +32,7 @@ export const beginnerTourGuide: GuideDefinition = {
       title: 'Vote before anyone sees it',
       message:
         'Each pairing is voted on by the community before it reaches either person. Vote yes, no, or recommend them to a friend.',
-      image: require('../../../assets/guide-voting-example.jpg'),
+      image: require('../../../assets/guide-voting-example.png'),
       primaryButtonText: 'Got it',
     },
     {

@@ -100,7 +100,7 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
             <StyledView className="space-y-3">
               <StyledView className="flex-row items-start" style={{ minHeight: 44 }}>
                 <StyledView className="w-10 h-10 bg-success/10 rounded-lg items-center justify-center mr-3">
-                  <EvaIcon name="question-mark-circle" variant="outline" size={20} color={COLORS.emerald} />
+                  <EvaIcon name="question-mark-circle" variant="outline" size={20} color={COLORS.success} />
                 </StyledView>
                 <StyledView className="flex-1">
                   <Body className="text-neutral-900 font-medium mb-1">General Questions</Body>
@@ -137,7 +137,7 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
                 }}
               >
                 <StyledView className="w-10 h-10 bg-warning/10 rounded-lg items-center justify-center mr-3">
-                  <EvaIcon name="flag" variant="outline" size={20} color={COLORS.warning.icon} />
+                  <EvaIcon name="flag" variant="outline" size={20} color={COLORS.amber} />
                 </StyledView>
                 <StyledView className="flex-1">
                   <Body className="text-neutral-900 font-medium mb-1">Safety & Reporting</Body>
@@ -145,7 +145,7 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ navigation
                     Something feel off? Report it — your safety comes first.
                   </Body>
                 </StyledView>
-                <EvaIcon name="arrow-ios-forward" variant="outline" size={16} color={COLORS.text.placeholder} style={{ marginTop: 4 }} />
+                <EvaIcon name="arrow-ios-forward" variant="outline" size={16} color={COLORS.text.tertiary} style={{ marginTop: 4 }} />
               </StyledTouchableOpacity>
 
               <StyledView className="flex-row items-start" style={{ minHeight: 44 }}>

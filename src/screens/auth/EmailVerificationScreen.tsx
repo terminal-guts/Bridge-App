@@ -232,7 +232,7 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
           keyboardShouldPersistTaps="handled"
           bounces={false}
         >
-          <StyledView className="flex-1 px-6 pt-16">
+          <StyledView className="flex-1 px-6 pt-2">
             <BackHeader title="Verify Email" showBorder={false} />
 
             {/* Icon */}
@@ -346,13 +346,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
     backgroundColor: COLORS.card,
     borderWidth: 2,
-    borderColor: COLORS.borderDivider,
+    borderColor: COLORS.border,
     borderRadius: 8,
     textAlign: 'center',
     fontSize: FONT_SIZES['3xl'],
     lineHeight: LINE_HEIGHTS['3xl'],
     fontFamily: FONTS.semiBold,
-    color: COLORS.textDarkHeading,
+    color: COLORS.text.primary,
     ...SHADOWS.sm,
   },
   otpInputFocused: {

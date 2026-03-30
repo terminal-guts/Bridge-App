@@ -160,14 +160,14 @@ const ProfileRingIcon: React.FC<{
           cy={ringSize / 2}
           r={ringRadius}
           fill="none"
-          stroke={COLORS.navActiveIcon}
+          stroke={COLORS.primaryAccent}
           strokeWidth={2.5}
           strokeLinecap="round"
           strokeDasharray={ringCircumference}
           strokeDashoffset={ringCircumference * (1 - profileStrength / 100)}
         />
       </Svg>
-      <ProfileTabIcon size={iconSize} color={focused ? COLORS.navActiveIcon : COLORS.navInactiveIcon} />
+      <ProfileTabIcon size={iconSize} color={focused ? COLORS.primaryAccent : COLORS.navInactiveIcon} />
     </View>
   );
 };
@@ -235,7 +235,7 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
       height: contentHeight + insets.bottom,
       backgroundColor: COLORS.card,
       borderTopWidth: 1,
-      borderTopColor: COLORS.borderNeutral,
+      borderTopColor: COLORS.border,
       paddingBottom: insets.bottom,
       shadowColor: '#4A3428',
       shadowOffset: { width: 0, height: -2 },
@@ -250,7 +250,7 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
         left: 0,
         width: 40,
         height: 3,
-        backgroundColor: COLORS.navIndicator,
+        backgroundColor: COLORS.primaryAccent,
         borderBottomLeftRadius: 2,
         borderBottomRightRadius: 2,
         zIndex: 1,
@@ -294,7 +294,7 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
               {showRing ? (
                 <ProfileRingIcon profileStrength={profileStrength} iconSize={iconSize} focused={focused} />
               ) : (
-                <Icon size={iconSize} color={focused ? COLORS.navActiveIcon : COLORS.navInactiveIcon} />
+                <Icon size={iconSize} color={focused ? COLORS.primaryAccent : COLORS.navInactiveIcon} />
               )}
             </TouchableOpacity>
           </GuideTarget>

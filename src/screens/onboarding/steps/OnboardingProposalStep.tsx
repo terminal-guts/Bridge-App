@@ -71,16 +71,18 @@ export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
   }
 
   return (
-    <StyledView className="flex-1 bg-white">
+    <StyledSafeAreaView className="flex-1 bg-white" edges={['top']}>
+      <View style={{ height: 8 }} />
       <ProposalReviewView
         initialProposals={proposals}
         showBackButton={false}
+        isGateVoting={false}
         onVoteComplete={onNext}
       />
       <OnboardingVotingTutorial
         visible={showTutorial}
         onDismiss={() => setShowTutorial(false)}
       />
-    </StyledView>
+    </StyledSafeAreaView>
   );
 };

@@ -34,7 +34,7 @@ const WELCOME_MESSAGE: SupportMessage = {
   id: 'welcome',
   user_id: '',
   content:
-    "Every week we raffle off $50! Submit an improvement suggestion or bug to win a ticket. Your feedback will make a real difference. Thank you. We appreciate it.\n\n— Saul, Oneal, Aarav, and Utkarsh",
+    "Every week we raffle off $25! Submit an improvement suggestion or bug to win a ticket. Your feedback will make a real difference. Thank you. We appreciate it.\n\n— Saul, Aarav, and Utkarsh",
   sender: 'admin',
   is_auto_reply: false,
   created_at: new Date(0).toISOString(),
@@ -254,7 +254,7 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
               value={input}
               onChangeText={setInput}
               placeholder="Type a message..."
-              placeholderTextColor={COLORS.text.placeholder}
+              placeholderTextColor={COLORS.text.tertiary}
               multiline
               maxLength={1000}
               editable={!sending}
@@ -269,7 +269,7 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
               {sending ? (
                 <ActivityIndicator size="small" color="white" />
               ) : (
-                <EvaIcon name="paper-plane" variant="outline" size={20} color={input.trim() ? 'white' : COLORS.text.placeholder} />
+                <EvaIcon name="paper-plane" variant="outline" size={20} color={input.trim() ? 'white' : COLORS.text.tertiary} />
               )}
             </TouchableOpacity>
           ) : null}
@@ -299,7 +299,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderNeutral,
+    borderBottomColor: COLORS.border,
   },
   backButton: {
     width: 44,
@@ -310,7 +310,7 @@ const s = StyleSheet.create({
   headerTitle: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES['2xl'],
-    color: COLORS.textDarkHeading,
+    color: COLORS.text.primary,
   },
   headerSpacer: { width: 44 },
 
@@ -318,7 +318,7 @@ const s = StyleSheet.create({
   listContent: { padding: 16, paddingBottom: 8, flexGrow: 1 },
 
   dateSep: { alignItems: 'center', marginVertical: 16 },
-  dateSepPill: { backgroundColor: COLORS.backgroundProgressTrack, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999 },
+  dateSepPill: { backgroundColor: COLORS.card, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999 },
   dateSepText: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.sm, color: COLORS.navInactiveIcon },
 
   bubbleRow: { marginBottom: 12 },
@@ -328,30 +328,30 @@ const s = StyleSheet.create({
   autoReplyLabel: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.xs,
-    color: COLORS.text.placeholder,
+    color: COLORS.text.tertiary,
     marginBottom: 2,
     marginLeft: 4,
   },
 
   bubble: { maxWidth: '80%', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 18 },
   bubbleUser: { backgroundColor: COLORS.primaryAccent, borderBottomRightRadius: 4 },
-  bubbleAdmin: { backgroundColor: COLORS.backgroundProgressTrack, borderBottomLeftRadius: 4 },
+  bubbleAdmin: { backgroundColor: COLORS.card, borderBottomLeftRadius: 4 },
 
   bubbleText: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.lg, lineHeight: LINE_HEIGHTS.xl },
   bubbleTextUser: { color: COLORS.card },
-  bubbleTextAdmin: { color: COLORS.textDarkHeading },
+  bubbleTextAdmin: { color: COLORS.text.primary },
 
   timestamp: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.xs,
-    color: COLORS.text.placeholder,
+    color: COLORS.text.tertiary,
     marginTop: 2,
     marginHorizontal: 4,
   },
 
   // Failed banner
   failedBanner: {
-    backgroundColor: COLORS.backgroundSoftRed,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
     paddingVertical: 12,
     minHeight: 44,
     alignItems: 'center',
@@ -360,7 +360,7 @@ const s = StyleSheet.create({
   failedBannerText: {
     fontFamily: FONTS.medium,
     fontSize: FONT_SIZES.md,
-    color: COLORS.danger,
+    color: COLORS.error,
   },
 
   // Input
@@ -370,12 +370,12 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: COLORS.borderNeutral,
+    borderTopColor: COLORS.border,
     backgroundColor: COLORS.card,
   },
   inputWrap: {
     flex: 1,
-    backgroundColor: COLORS.backgroundSubtle,
+    backgroundColor: COLORS.card,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -384,17 +384,17 @@ const s = StyleSheet.create({
   textInput: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.lg,
-    color: COLORS.textDarkHeading,
+    color: COLORS.text.primary,
     maxHeight: 96,
   },
   sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   sendBtnActive: { backgroundColor: COLORS.primaryAccent },
-  sendBtnDisabled: { backgroundColor: COLORS.borderNeutral },
+  sendBtnDisabled: { backgroundColor: COLORS.border },
 
   // Char count
   charCountWrap: { paddingHorizontal: 24, paddingBottom: 4, alignItems: 'flex-end', backgroundColor: COLORS.card },
-  charCount: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.xs, color: COLORS.text.placeholder },
-  charCountRed: { color: COLORS.danger },
+  charCount: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.xs, color: COLORS.text.tertiary },
+  charCountRed: { color: COLORS.error },
 });
 
 export default SupportChatScreen;

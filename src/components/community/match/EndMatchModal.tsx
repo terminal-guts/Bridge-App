@@ -128,14 +128,14 @@ export function EndMatchModal({ visible, onClose, onSubmit }: EndMatchModalProps
                 <EvaIcon name="close-circle" variant="outline" size={32} color="#EF4444" style={{ marginBottom: 12 }} />
                 <StyledText
                   className="text-2xl font-bold text-center mb-2"
-                  style={{ color: COLORS.text.subtle }}
+                  style={{ color: COLORS.text.secondary }}
                 >
                   End This Match?
                 </StyledText>
                 <StyledView className="h-1 w-16 bg-neutral-200 rounded-full mb-4" />
                 <StyledText
                   className="text-base text-center"
-                  style={{ color: COLORS.text.subtle, lineHeight: 22 }}
+                  style={{ color: COLORS.text.secondary, lineHeight: 22 }}
                 >
                   We're sorry it didn't work out.{'\n'}
                   Help us learn — why are you ending?
@@ -151,10 +151,10 @@ export function EndMatchModal({ visible, onClose, onSubmit }: EndMatchModalProps
                       className="flex-row items-center py-3 px-4 rounded-2xl"
                       style={{
                         backgroundColor:
-                          selectedReason === reason.id ? '#FFF0F0' : COLORS.backgroundSubtle,
+                          selectedReason === reason.id ? '#FFF0F0' : COLORS.card,
                         borderWidth: 2,
                         borderColor:
-                          selectedReason === reason.id ? '#FFB8B8' : COLORS.backgroundGrayMedium,
+                          selectedReason === reason.id ? '#FFB8B8' : '#E5E7EB',
                       }}
                       activeOpacity={0.7}
                     >
@@ -164,7 +164,7 @@ export function EndMatchModal({ visible, onClose, onSubmit }: EndMatchModalProps
                         style={{
                           borderWidth: 2,
                           borderColor:
-                            selectedReason === reason.id ? '#FF6B6B' : COLORS.borderGray,
+                            selectedReason === reason.id ? '#FF6B6B' : COLORS.border,
                           backgroundColor:
                             selectedReason === reason.id ? '#FF6B6B' : COLORS.card,
                         }}
@@ -200,12 +200,12 @@ export function EndMatchModal({ visible, onClose, onSubmit }: EndMatchModalProps
                           style={{
                             backgroundColor: COLORS.card,
                             borderWidth: 2,
-                            borderColor: COLORS.backgroundGrayMedium,
+                            borderColor: '#E5E7EB',
                             color: '#1F2937',
                             textAlignVertical: 'top',
                             minHeight: 80,
                           }}
-                          placeholderTextColor={COLORS.text.disabled}
+                          placeholderTextColor={COLORS.text.tertiary}
                           maxLength={200}
                         />
                       </StyledView>
@@ -230,13 +230,13 @@ export function EndMatchModal({ visible, onClose, onSubmit }: EndMatchModalProps
                   onPress={handleCancel}
                   className="flex-1 py-4 rounded-2xl items-center justify-center mr-2"
                   style={{
-                    backgroundColor: COLORS.backgroundGray,
+                    backgroundColor: COLORS.card,
                     borderWidth: 2,
-                    borderColor: COLORS.backgroundGrayMedium,
+                    borderColor: '#E5E7EB',
                   }}
                   activeOpacity={0.7}
                 >
-                  <StyledText className="text-base font-semibold" style={{ color: COLORS.text.label }}>
+                  <StyledText className="text-base font-semibold" style={{ color: COLORS.text.secondary }}>
                     Cancel
                   </StyledText>
                 </StyledTouchable>

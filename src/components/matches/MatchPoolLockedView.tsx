@@ -218,9 +218,9 @@ export const MatchPoolLockedView: React.FC<MatchPoolLockedViewProps> = ({
             <View style={styles.mockEndorserRow}>
               <Text style={styles.mockEndorserLabel}>Matched by</Text>
               <View style={styles.mockAvatarStack}>
-                <View style={[styles.mockAvatar, { zIndex: 3, backgroundColor: COLORS.purple }]} />
-                <View style={[styles.mockAvatar, { zIndex: 2, marginLeft: -8, backgroundColor: COLORS.tier1.icon }]} />
-                <View style={[styles.mockAvatar, { zIndex: 1, marginLeft: -8, backgroundColor: COLORS.emerald }]} />
+                <View style={[styles.mockAvatar, { zIndex: 3, backgroundColor: COLORS.primary }]} />
+                <View style={[styles.mockAvatar, { zIndex: 2, marginLeft: -8, backgroundColor: COLORS.primary }]} />
+                <View style={[styles.mockAvatar, { zIndex: 1, marginLeft: -8, backgroundColor: COLORS.success }]} />
               </View>
             </View>
           </View>
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: FONT_SIZES['6xl'],
     lineHeight: 38,
-    color: COLORS.text.black,
+    color: COLORS.text.primary,
     letterSpacing: -0.5,
   },
   cardContainer: {
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.primaryButton,
+    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 3,

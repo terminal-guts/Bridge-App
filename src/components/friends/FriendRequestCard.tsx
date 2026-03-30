@@ -73,7 +73,7 @@ export const FriendRequestCard: React.FC<FriendRequestCardProps> = ({
             activeOpacity={0.7}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <EvaIcon name="close" variant="outline" size={18} color={COLORS.text.muted} />
+            <EvaIcon name="close" variant="outline" size={18} color={COLORS.text.secondary} />
           </StyledTouchable>
 
           {/* Accept */}
@@ -98,13 +98,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: COLORS.card,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.borderSubtle,
+    borderBottomColor: COLORS.borderLight,
   },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: COLORS.backgroundGray,
+    backgroundColor: COLORS.card,
   },
   info: {
     flex: 1,
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.regular,
-    color: COLORS.text.muted,
+    color: COLORS.text.secondary,
     marginTop: 2,
   },
   actions: {
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: COLORS.backgroundGray,
+    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
   },

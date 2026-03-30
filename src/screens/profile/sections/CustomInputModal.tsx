@@ -127,13 +127,13 @@ export const CustomInputModal: React.FC<CustomInputModalProps> = ({
               className="rounded-lg px-4 text-base"
               style={{
                 minHeight: 48,
-                backgroundColor: COLORS.backgroundSubtle,
+                backgroundColor: COLORS.card,
                 borderWidth: 1,
                 borderColor: validationMessage ? COLORS.error : COLORS.border,
                 color: COLORS.text.primary,
                 fontFamily: FONTS.regular,
               }}
-              placeholderTextColor={COLORS.text.disabled}
+              placeholderTextColor={COLORS.text.tertiary}
               autoFocus
               autoCapitalize="words"
               autoCorrect={false}
@@ -149,7 +149,7 @@ export const CustomInputModal: React.FC<CustomInputModalProps> = ({
               ) : (
                 <View />
               )}
-              <Body className="text-xs" style={{ color: COLORS.text.light }}>
+              <Body className="text-xs" style={{ color: COLORS.text.tertiary }}>
                 {trimmed.length}/{maxLength}
               </Body>
             </StyledView>
@@ -165,9 +165,9 @@ export const CustomInputModal: React.FC<CustomInputModalProps> = ({
               accessibilityRole="button"
               accessibilityLabel="Cancel"
               className="flex-1 rounded-lg items-center justify-center"
-              style={{ minHeight: 48, backgroundColor: COLORS.backgroundGray }}
+              style={{ minHeight: 48, backgroundColor: COLORS.card }}
             >
-              <Body style={{ color: COLORS.text.muted, fontFamily: FONTS.semiBold }}>Cancel</Body>
+              <Body style={{ color: COLORS.text.secondary, fontFamily: FONTS.semiBold }}>Cancel</Body>
             </StyledTouchableOpacity>
 
             <StyledTouchableOpacity
@@ -177,13 +177,13 @@ export const CustomInputModal: React.FC<CustomInputModalProps> = ({
               className="flex-1 rounded-lg items-center justify-center"
               style={{
                 minHeight: 48,
-                backgroundColor: canSubmit ? COLORS.primary : COLORS.backgroundGrayMedium,
+                backgroundColor: canSubmit ? COLORS.primary : '#E5E7EB',
               }}
               disabled={!canSubmit}
             >
               <Body style={{
                 fontFamily: FONTS.semiBold,
-                color: canSubmit ? COLORS.card : COLORS.text.disabled,
+                color: canSubmit ? COLORS.card : COLORS.text.tertiary,
               }}>
                 Add
               </Body>

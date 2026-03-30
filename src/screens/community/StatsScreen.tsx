@@ -17,6 +17,7 @@ import { RootStackParamList } from '../../types';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { lightHaptic, mediumHaptic, successHaptic } from '../../utils/haptics';
+import { showToast } from '../../utils/toast';
 import { COLORS } from '../../theme/colors';
 import {
   fetchStats,
@@ -93,8 +94,17 @@ export const StatsScreen: React.FC<Props> = ({ navigation }) => {
     const result = await fetchStats();
     if (!isMountedRef.current) return;
     if (result.ok) {
-      setUserStats(result.data.userStats);
-      setCampusStats(result.data.campusStats);
+      // Guard against partial/null responses from edge function
+      const u = result.data.userStats;
+      const c = result.data.campusStats;
+      setUserStats({
+        all_time: { ...EMPTY_PERIOD, first_assist_date: null, ...u?.all_time },
+        week: { ...EMPTY_WEEK, ...u?.week },
+      });
+      setCampusStats({
+        all_time: { ...EMPTY_CAMPUS_PERIOD, ...c?.all_time },
+        week: { ...EMPTY_CAMPUS_PERIOD, ...c?.week },
+      });
     } else {
       setError(result.error);
     }
@@ -139,7 +149,14 @@ export const StatsScreen: React.FC<Props> = ({ navigation }) => {
         mimeType: 'image/png',
         UTI: 'public.png',
       });
-    } catch {}
+    } catch (err: unknown) {
+      // User cancelling the share sheet throws — don't toast for that
+      const msg = err instanceof Error ? err.message : '';
+      const isCancellation = msg.includes('cancel') || msg.includes('dismiss');
+      if (!isCancellation) {
+        showToast.error('Could not share', 'Something went wrong — try again');
+      }
+    }
   }, []);
 
   return (
@@ -151,7 +168,7 @@ export const StatsScreen: React.FC<Props> = ({ navigation }) => {
         titleAlign="center"
         right={
           <AnimatedPressable onPress={handleShare} disabled={loading || !!error} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityRole="button" accessibilityLabel="Share stats" scale="pronounced">
-            <EvaIcon name="share" variant="outline" size={22} color={loading || error ? COLORS.borderDivider : COLORS.primaryAccent} />
+            <EvaIcon name="share" variant="outline" size={22} color={loading || error ? COLORS.border : COLORS.primaryAccent} />
           </AnimatedPressable>
         }
       />

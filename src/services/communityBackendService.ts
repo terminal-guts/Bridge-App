@@ -338,11 +338,12 @@ class CommunityBackendService {
     const voteCount = voteResult.count;
     const recCount = recResult.count;
 
-    const dbActions = (voteCount || 0) + (recCount || 0);
-    // DB is source of truth. Session count is used as a floor for actions (votes
-    // + recommendations) taken this session that may not have propagated to DB yet.
-    const pendingSessionActions = this.sessionVotedProposals.size + this.sessionRecommendedProposals.size;
-    const votesCompleted = Math.max(dbActions, pendingSessionActions);
+    // Only actual votes count toward the gate — recommendations do not.
+    const dbVotes = voteCount || 0;
+    // DB is source of truth. Session count is used as a floor for votes
+    // taken this session that may not have propagated to DB yet.
+    const pendingSessionVotes = this.sessionVotedProposals.size;
+    const votesCompleted = Math.max(dbVotes, pendingSessionVotes);
     const hasVoted = votesCompleted >= 3;
 
     return {
@@ -422,7 +423,6 @@ class CommunityBackendService {
       // If we have stale cache, return it rather than crashing the screen
       if (this.friendsAreaResultCache) {
         logger.error('getFriendsAreaData failed, returning stale cache', error instanceof Error ? error.message : String(error));
-        this.lastFriendsAreaLoadAt = Date.now();
         return this.friendsAreaResultCache.data;
       }
       throw error;

@@ -31,7 +31,7 @@ import { BadgeIcon } from '../icons/BadgeIcon';
 import { BadgeCard } from './BadgeCard';
 import { BADGE_ICON_CATEGORIES, BADGE_ICON_LABELS } from '../../constants/badgeIcons';
 import { awardBadge, updateBadge, deleteBadge } from '../../services/badgeService';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SPRINGS } from '../../constants/animations';
 import { successHaptic, errorHaptic, lightHaptic } from '../../utils/haptics';
@@ -173,6 +173,11 @@ export const BadgeAwardModal: React.FC<BadgeAwardModalProps> = ({
 
   const renderIconPicker = () => (
     <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollContent}>
+      <View style={styles.explainerContainer}>
+        <Text style={styles.explainerText}>
+          Pick an icon that represents your friend. You can give 1 badge per friend — they can feature up to 3 on their profile.
+        </Text>
+      </View>
       {BADGE_ICON_CATEGORIES.map(category => (
         <View key={category.title} style={styles.categorySection}>
           <Text style={styles.categoryTitle}>{category.title}</Text>
@@ -212,7 +217,7 @@ export const BadgeAwardModal: React.FC<BadgeAwardModalProps> = ({
       <TextInput
         style={styles.textInput}
         placeholder={`What makes ${friendName} special?`}
-        placeholderTextColor={COLORS.text.muted}
+        placeholderTextColor={COLORS.text.secondary}
         value={message}
         onChangeText={t => {
           if (t.length <= 50) setMessage(t);
@@ -294,7 +299,7 @@ export const BadgeAwardModal: React.FC<BadgeAwardModalProps> = ({
               {existingBadge ? 'Edit Badge' : `Badge for ${friendName}`}
             </Text>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <EvaIcon name="close" variant="outline" size={24} color={COLORS.text.muted} />
+              <EvaIcon name="close" variant="outline" size={24} color={COLORS.text.secondary} />
             </TouchableOpacity>
           </View>
 
@@ -377,7 +382,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.borderSubtle,
+    backgroundColor: COLORS.borderLight,
   },
   dotActive: {
     backgroundColor: '#437FFF',
@@ -390,39 +395,53 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
   },
+  explainerContainer: {
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    marginBottom: 8,
+  },
+  explainerText: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.text.secondary,
+    lineHeight: LINE_HEIGHTS.md,
+    textAlign: 'center' as const,
+  },
   categorySection: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   categoryTitle: {
     fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.base,
-    color: COLORS.text.primary,
-    marginBottom: 10,
+    fontWeight: '600' as const,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.text.secondary,
+    marginBottom: 8,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.3,
   },
   iconGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   iconCell: {
-    width: '22%',
-    aspectRatio: 1,
+    width: '23%',
+    paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
-    backgroundColor: COLORS.backgroundGray,
-    padding: 4,
+    backgroundColor: COLORS.card,
   },
   iconCellSelected: {
     borderWidth: 2,
-    borderColor: '#437FFF',
-    backgroundColor: '#EFF6FF',
+    borderColor: COLORS.primaryAccent,
+    backgroundColor: COLORS.primaryLight,
   },
   iconLabel: {
     fontFamily: FONTS.regular,
-    fontSize: 9,
-    color: COLORS.text.muted,
-    marginTop: 2,
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.text.secondary,
+    marginTop: 4,
     textAlign: 'center',
   },
   messageContainer: {
@@ -442,7 +461,7 @@ const styles = StyleSheet.create({
   textInput: {
     width: '100%',
     borderWidth: 1,
-    borderColor: COLORS.borderSubtle,
+    borderColor: COLORS.borderLight,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -453,7 +472,7 @@ const styles = StyleSheet.create({
   charCount: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.sm,
-    color: COLORS.text.muted,
+    color: COLORS.text.secondary,
     alignSelf: 'flex-end',
     marginTop: 6,
   },
@@ -512,7 +531,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   nextButtonDisabled: {
-    backgroundColor: COLORS.backgroundGray,
+    backgroundColor: COLORS.card,
   },
   nextButtonText: {
     fontFamily: FONTS.bold,
@@ -520,6 +539,6 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   nextButtonTextDisabled: {
-    color: COLORS.text.muted,
+    color: COLORS.text.secondary,
   },
 });

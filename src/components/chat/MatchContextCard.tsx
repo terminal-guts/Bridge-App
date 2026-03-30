@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   socialLine: {
     fontFamily: FONTS.medium,
     fontSize: FONT_SIZES.md,
-    color: COLORS.text.muted,
+    color: COLORS.text.secondary,
     flex: 1,
   },
   traitsSection: {

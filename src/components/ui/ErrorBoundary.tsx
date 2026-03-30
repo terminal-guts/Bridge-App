@@ -77,14 +77,14 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
       // Default fallback UI
       return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.backgroundOffWhite }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.screenBackground }}>
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{ padding: 24, justifyContent: 'center', minHeight: '100%' }}
           >
             <View style={{ alignItems: 'center' }}>
               {/* Error Icon */}
-              <View style={{ width: 80, height: 80, backgroundColor: COLORS.mismatch.bg, borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+              <View style={{ width: 80, height: 80, backgroundColor: 'rgba(239, 68, 68, 0.08)', borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
                 <EvaIcon name="alert-circle" variant="outline" size={48} color={COLORS.error} />
               </View>
 
@@ -100,7 +100,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
               {/* Error Details (Development Only) */}
               {__DEV__ && this.state.error && (
-                <View style={{ width: '100%', backgroundColor: COLORS.backgroundSoftRed, borderWidth: 1, borderColor: COLORS.borderPink, borderRadius: 12, padding: 16, marginBottom: 24 }}>
+                <View style={{ width: '100%', backgroundColor: 'rgba(239, 68, 68, 0.08)', borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, padding: 16, marginBottom: 24 }}>
                   <Body className="text-error-800 font-semibold mb-2">
                     Error Details (Dev Mode):
                   </Body>
@@ -204,7 +204,7 @@ export class CardErrorBoundary extends Component<ErrorBoundaryProps, ErrorBounda
           activeOpacity={0.7}
           className="items-center justify-center py-8 px-4"
         >
-          <View style={{ width: 48, height: 48, backgroundColor: COLORS.mismatch.bg, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+          <View style={{ width: 48, height: 48, backgroundColor: 'rgba(239, 68, 68, 0.08)', borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
             <EvaIcon name="alert-triangle" variant="outline" size={24} color={COLORS.error} />
           </View>
 

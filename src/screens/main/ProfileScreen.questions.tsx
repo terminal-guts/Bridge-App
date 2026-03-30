@@ -237,9 +237,9 @@ const QuestionSlots: React.FC<QuestionSlotsProps> = ({
               autoFocus
               style={{
                 fontFamily: FONTS.regular, fontSize: FONT_SIZES.base,
-                color: COLORS.textGray700, backgroundColor: COLORS.backgroundSubtle,
+                color: COLORS.text.secondary, backgroundColor: COLORS.card,
                 borderRadius: 8, padding: 12, minHeight: 80,
-                textAlignVertical: 'top', borderWidth: 1, borderColor: COLORS.borderGray,
+                textAlignVertical: 'top', borderWidth: 1, borderColor: COLORS.border,
               }}
             />
             <StyledView className="flex-row justify-end mt-3" style={{ gap: 8 }}>
@@ -301,7 +301,7 @@ const QuestionSlots: React.FC<QuestionSlotsProps> = ({
         ) : (
           <Card className="bg-neutral-50 border-2 border-dashed border-neutral-300">
             <StyledView className="items-center py-6">
-              <StyledView className="w-10 h-10 rounded-full bg-primary-100 items-center justify-center mb-2">
+              <StyledView className="w-10 h-10 rounded-full items-center justify-center mb-2" style={{ backgroundColor: 'rgba(67, 127, 255, 0.12)' }}>
                 <EvaIcon name="plus" variant="outline" size={20} color={COLORS.primaryAccent} />
               </StyledView>
               <Body className="text-neutral-500 font-medium text-sm">Tap to add a question</Body>
@@ -395,7 +395,7 @@ const QuestionSlots: React.FC<QuestionSlotsProps> = ({
                   name={answerMoreExpanded ? 'arrow-ios-upward' : 'arrow-ios-downward'}
                   variant="outline"
                   size={14}
-                  color={COLORS.text.disabled}
+                  color={COLORS.text.tertiary}
                 />
               </StyledView>
               <StyledView className="flex-1 h-px bg-neutral-200" />
@@ -474,7 +474,7 @@ const QuestionSlots: React.FC<QuestionSlotsProps> = ({
       {unansweredQuestions.length === 0 && (
         <Card className="bg-green-50 border border-green-200 mt-4">
           <StyledView className="flex-row items-center">
-            <EvaIcon name="checkmark-circle-2" variant="outline" size={28} color={COLORS.emerald} />
+            <EvaIcon name="checkmark-circle-2" variant="outline" size={28} color={COLORS.success} />
             <StyledView className="ml-3 flex-1">
               <Body className="text-green-900 font-bold text-sm">You're all set!</Body>
               <Body className="text-green-700 text-xs">

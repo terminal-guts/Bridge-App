@@ -1,8 +1,9 @@
 import React from 'react';
-import { TouchableOpacity, Text } from 'react-native';
+import { TouchableOpacity, Text, View } from 'react-native';
 import { styled } from 'nativewind';
 import { FONTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
+import { IconScoutIcon } from '../icons';
 
 interface SimpleChipProps {
   label: string;
@@ -10,13 +11,14 @@ interface SimpleChipProps {
   onPress: () => void;
   disabled?: boolean;
   accessibilityHint?: string;
+  iconName?: string;
 }
 
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledText = styled(Text);
 
 // Ultra-simplified chip with minimal overhead - NO haptics, NO variant logic
-export const SimpleChip: React.FC<SimpleChipProps> = ({ label, selected, onPress, disabled = false, accessibilityHint }) => {
+export const SimpleChip: React.FC<SimpleChipProps> = ({ label, selected, onPress, disabled = false, accessibilityHint, iconName }) => {
   return (
     <StyledTouchableOpacity
       onPress={onPress}
@@ -30,7 +32,7 @@ export const SimpleChip: React.FC<SimpleChipProps> = ({ label, selected, onPress
       }`}
       style={[
         { minHeight: 44, justifyContent: 'center' },
-        !selected && { borderColor: COLORS.borderGray },
+        !selected && { borderColor: COLORS.border },
         disabled && { opacity: 0.35 },
       ]}
       accessibilityRole="button"
@@ -38,15 +40,24 @@ export const SimpleChip: React.FC<SimpleChipProps> = ({ label, selected, onPress
       accessibilityState={{ selected, disabled }}
       accessibilityHint={accessibilityHint}
     >
-      <StyledText
-        className="text-sm"
-        style={{
-          fontFamily: selected ? FONTS.medium : FONTS.regular,
-          color: selected ? '#FFFFFF' : COLORS.text.muted,
-        }}
-      >
-        {label}
-      </StyledText>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        {iconName && (
+          <IconScoutIcon
+            name={iconName}
+            size={14}
+            style={{ marginRight: 6 }}
+          />
+        )}
+        <StyledText
+          className="text-sm"
+          style={{
+            fontFamily: selected ? FONTS.medium : FONTS.regular,
+            color: selected ? '#FFFFFF' : COLORS.text.secondary,
+          }}
+        >
+          {label}
+        </StyledText>
+      </View>
     </StyledTouchableOpacity>
   );
 };

@@ -63,7 +63,7 @@ export function computeApprovalPercent(id: string): number {
 
 export function timerColor(hoursLeft: number): string {
   if (hoursLeft >= 24) return COLORS.success;
-  if (hoursLeft >= 12) return COLORS.waitingAmber;
+  if (hoursLeft >= 12) return COLORS.amber;
   if (hoursLeft >= 4) return '#FF8D28';
   return '#FF3B30';
 }
@@ -169,16 +169,16 @@ export const popupStyles = StyleSheet.create({
   headline: {
     fontFamily: FONTS.bold,
     fontSize: FONT_SIZES['3xl'],
-    color: COLORS.textDarkHeading,
+    color: COLORS.text.primary,
     textAlign: 'center',
     marginTop: 12,
     marginBottom: 12,
   },
   reasonBox: {
-    backgroundColor: COLORS.backgroundSubtle,
+    backgroundColor: COLORS.card,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: COLORS.borderNeutral,
+    borderColor: COLORS.border,
     paddingHorizontal: 16,
     paddingVertical: 12,
     width: '100%',
@@ -187,28 +187,28 @@ export const popupStyles = StyleSheet.create({
   reasonLabel: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.sm,
-    color: COLORS.text.placeholder,
+    color: COLORS.text.tertiary,
     marginBottom: 4,
     letterSpacing: 0.4,
   },
   reasonText: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.base,
-    color: COLORS.textGray800,
+    color: COLORS.text.secondary,
     fontStyle: 'italic',
     lineHeight: LINE_HEIGHTS.lg,
   },
   body: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.base,
-    color: COLORS.navInactiveIcon,
+    color: COLORS.text.secondary,
     textAlign: 'center',
     lineHeight: LINE_HEIGHTS.lg,
     paddingHorizontal: 8,
     marginBottom: 20,
   },
   continueBtn: {
-    backgroundColor: COLORS.primaryButton,
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -233,7 +233,7 @@ export const styles = StyleSheet.create({
   // fontWeight must stay explicit — setDefaultFonts.ts only injects a derived
   // weight when none is present, so this is never stripped. Keeping it ensures
   // iOS renders the correct 700-weight variant even if fontFamily alone is set.
-  headerTitle: { fontFamily: FONTS.bold, fontWeight: '700' as const, fontSize: FONT_SIZES['5xl'], lineHeight: LINE_HEIGHTS['5xl'], color: COLORS.text.heading, letterSpacing: -0.5 },
+  headerTitle: { fontFamily: FONTS.bold, fontWeight: '700' as const, fontSize: FONT_SIZES['5xl'], lineHeight: LINE_HEIGHTS['5xl'], color: COLORS.text.primary, letterSpacing: -0.5 },
   timerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -248,10 +248,10 @@ export const styles = StyleSheet.create({
     fontSize: FONT_SIZES.md,
   },
   emptyContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 24 },
-  tagline: { fontFamily: FONTS.bold, fontSize: FONT_SIZES['4xl'], lineHeight: LINE_HEIGHTS['4xl'], color: COLORS.text.heading, textAlign: 'center', marginBottom: 8, letterSpacing: -0.3 },
-  subtitle: { fontFamily: FONTS.regular, fontSize: FONT_SIZES.base, lineHeight: LINE_HEIGHTS.base, color: COLORS.text.light, textAlign: 'center', marginBottom: 28 },
+  tagline: { fontFamily: FONTS.bold, fontWeight: '700' as const, fontSize: FONT_SIZES['4xl'], lineHeight: LINE_HEIGHTS['4xl'], color: COLORS.text.primary, textAlign: 'center' as const, marginBottom: 8, letterSpacing: -0.3 },
+  subtitle: { fontFamily: FONTS.regular, fontWeight: '400' as const, fontSize: FONT_SIZES.base, lineHeight: LINE_HEIGHTS.base, color: COLORS.text.secondary, textAlign: 'center' as const, marginBottom: 28 },
   ctaButton: {
-    backgroundColor: COLORS.primaryButton,
+    backgroundColor: COLORS.primary,
     width: 260,
     height: 50,
     borderRadius: 9999,
@@ -259,7 +259,7 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     ...SHADOWS.accentBlue,
   },
-  ctaText: { fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.xl, color: COLORS.card },
+  ctaText: { fontFamily: FONTS.semiBold, fontWeight: '600' as const, fontSize: FONT_SIZES.xl, color: COLORS.card },
   timerInfoOverlay: {
     flex: 1,
     backgroundColor: OVERLAYS.medium,
@@ -278,20 +278,20 @@ export const styles = StyleSheet.create({
   timerInfoTitle: {
     fontFamily: FONTS.bold,
     fontSize: FONT_SIZES['2xl'],
-    color: COLORS.textDarkHeading,
+    color: COLORS.text.primary,
     marginBottom: 8,
     textAlign: 'center',
   },
   timerInfoBody: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.base,
-    color: COLORS.navInactiveIcon,
+    color: COLORS.text.secondary,
     textAlign: 'center',
     lineHeight: LINE_HEIGHTS.lg,
     marginBottom: 20,
   },
   timerInfoBtn: {
-    backgroundColor: COLORS.primaryButton,
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 32,
@@ -327,7 +327,7 @@ export const tsStyles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: COLORS.backgroundProgressTrack,
+    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
@@ -344,14 +344,14 @@ export const tsStyles = StyleSheet.create({
   title: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES['3xl'],
-    color: COLORS.textDarkHeading,
+    color: COLORS.text.primary,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.base,
-    color: COLORS.navInactiveIcon,
+    color: COLORS.text.secondary,
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: LINE_HEIGHTS.lg,
@@ -367,17 +367,17 @@ export const tsStyles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1.5,
-    borderColor: COLORS.borderNeutral,
+    borderColor: COLORS.border,
     backgroundColor: COLORS.card,
   },
   pillActive: {
     borderColor: COLORS.primaryAccent,
-    backgroundColor: COLORS.backgroundFriendActive,
+    backgroundColor: COLORS.card,
   },
   pillText: {
     fontFamily: FONTS.medium,
     fontSize: FONT_SIZES.md,
-    color: COLORS.navInactiveIcon,
+    color: COLORS.text.secondary,
   },
   pillTextActive: {
     fontFamily: FONTS.semiBold,
@@ -385,17 +385,17 @@ export const tsStyles = StyleSheet.create({
   },
   textArea: {
     borderWidth: 1.5,
-    borderColor: COLORS.borderNeutral,
+    borderColor: COLORS.border,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 16,
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.lg,
-    color: COLORS.textDarkHeading,
+    color: COLORS.text.primary,
     minHeight: 64,
     textAlignVertical: 'top',
     marginBottom: 20,
-    backgroundColor: COLORS.backgroundOffWhite,
+    backgroundColor: COLORS.screenBackground,
   },
   submitBtn: {
     paddingVertical: 16,
@@ -425,7 +425,7 @@ export const stateStyles = StyleSheet.create({
   countdownText: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.sm,
-    color: COLORS.text.light,
+    color: COLORS.text.tertiary,
   },
 });
 
@@ -522,7 +522,7 @@ export function EmptyStateView({
       <ScrollView
         contentContainerStyle={styles.emptyContainer}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.primaryButton} />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.primary} />
         }
       >
         <IllustrationAnimation />
@@ -539,7 +539,7 @@ export function EmptyStateView({
         </TouchableOpacity>
         {emptyCountdown && (
           <View style={stateStyles.countdownRow}>
-            <ClockIcon size={13} color={COLORS.text.light} />
+            <ClockIcon size={13} color={COLORS.text.tertiary} />
             <Text style={stateStyles.countdownText}>Next matches drop in {emptyCountdown}</Text>
           </View>
         )}
@@ -626,10 +626,10 @@ export function EndMatchModal({
             style={tsStyles.closeBtn}
             onPress={onDismiss}
           >
-            <EvaIcon name="close" variant="outline" size={20} color={COLORS.navInactiveIcon} />
+            <EvaIcon name="close" variant="outline" size={20} color={COLORS.text.secondary} />
           </TouchableOpacity>
 
-          <View style={[tsStyles.iconWrap, { backgroundColor: COLORS.backgroundWarmPeach }]}>
+          <View style={[tsStyles.iconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.08)' }]}>
             <EvaIcon name="close-circle" variant="outline" size={40} color={COLORS.error} />
           </View>
           <Text style={tsStyles.title}>End this match?</Text>
@@ -654,7 +654,7 @@ export function EndMatchModal({
           <TextInput
             style={tsStyles.textArea}
             placeholder={endMatchReason === 'Other' ? 'Tell us a bit more...' : 'Any other thoughts? (optional)'}
-            placeholderTextColor={COLORS.text.placeholder}
+            placeholderTextColor={COLORS.text.tertiary}
             value={endMatchCustomReason}
             onChangeText={onCustomReasonChange}
             multiline

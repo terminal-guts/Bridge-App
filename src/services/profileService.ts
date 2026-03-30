@@ -183,6 +183,8 @@ function mapBackendToUserProfile(data: Record<string, any>): UserProfile {
       karma_points: data.karma_score.karma_points ?? 0,
       badge_tier: data.karma_score.badge_tier ?? 'new',
       total_assists: data.karma_score.total_assists ?? 0,
+      total_votes: data.karma_score.total_votes ?? 0,
+      voting_accuracy_rate: data.karma_score.voting_accuracy_rate ?? 0,
     } : undefined,
   } as unknown as UserProfile;
 }

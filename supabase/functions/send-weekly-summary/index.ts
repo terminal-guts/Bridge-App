@@ -115,7 +115,7 @@ function buildNotificationBody(stats: WeeklyStats): { title: string; body: strin
   if (totalMatches === 0 && totalVotes === 0) {
     return {
       title: 'New Week on Bridge',
-      body: 'Leaderboard just reset! Vote for your friends to climb the ranks and win $100.',
+      body: 'Leaderboard just reset! Vote for your friends to climb the ranks and win $50.',
     };
   }
 
@@ -123,14 +123,14 @@ function buildNotificationBody(stats: WeeklyStats): { title: string; body: strin
   if (winnerKarma > 0) {
     return {
       title: 'Weekly Recap',
-      body: `${totalMatches} ${matchWord}, ${totalVotes} ${voteWord}. ${winnerName} won $100 with ${winnerKarma} karma! New week starts now.`,
+      body: `${totalMatches} ${matchWord}, ${totalVotes} ${voteWord}. ${winnerName} won $50 with ${winnerKarma} karma! New week starts now.`,
     };
   }
 
   // Activity happened but no clear karma winner (e.g. karma just reset)
   return {
     title: 'Weekly Recap',
-    body: `${totalMatches} ${matchWord} and ${totalVotes} ${voteWord} this week. New leaderboard is live — who's winning $100?`,
+    body: `${totalMatches} ${matchWord} and ${totalVotes} ${voteWord} this week. New leaderboard is live — who's winning $50?`,
   };
 }
 

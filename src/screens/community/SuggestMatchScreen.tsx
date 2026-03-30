@@ -121,7 +121,7 @@ export default function SuggestMatchScreen() {
           />
         ) : (
           <View style={[styles.friendPhoto, styles.photoPlaceholder]}>
-            <EvaIcon name="person" variant="outline" size={24} color={COLORS.borderDivider} />
+            <EvaIcon name="person" variant="outline" size={24} color={COLORS.border} />
           </View>
         )}
         <View style={styles.friendInfo}>
@@ -130,7 +130,7 @@ export default function SuggestMatchScreen() {
             <Text style={styles.friendJob}>{item.currentJob}</Text>
           )}
         </View>
-        <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color={COLORS.borderDivider} />
+        <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color={COLORS.border} />
       </TouchableOpacity>
     );
   };
@@ -170,14 +170,14 @@ export default function SuggestMatchScreen() {
                 />
               ) : (
                 <View style={[styles.confirmPhoto, styles.photoPlaceholder]}>
-                  <EvaIcon name="person" variant="outline" size={40} color={COLORS.borderDivider} />
+                  <EvaIcon name="person" variant="outline" size={40} color={COLORS.border} />
                 </View>
               )}
               <Text style={styles.confirmName}>{friendA.firstName}</Text>
             </View>
 
             <View style={styles.heartContainer}>
-              <EvaIcon name="heart" variant="outline" size={28} color={COLORS.urgentRed} />
+              <EvaIcon name="heart" variant="outline" size={28} color={COLORS.error} />
             </View>
 
             <View style={styles.confirmCard}>
@@ -191,7 +191,7 @@ export default function SuggestMatchScreen() {
                 />
               ) : (
                 <View style={[styles.confirmPhoto, styles.photoPlaceholder]}>
-                  <EvaIcon name="person" variant="outline" size={40} color={COLORS.borderDivider} />
+                  <EvaIcon name="person" variant="outline" size={40} color={COLORS.border} />
                 </View>
               )}
               <Text style={styles.confirmName}>{friendB.firstName}</Text>
@@ -216,7 +216,7 @@ export default function SuggestMatchScreen() {
         </View>
       ) : availableFriends.length === 0 ? (
         <View style={styles.centerContainer}>
-          <EvaIcon name="people" variant="outline" size={48} color={COLORS.borderDivider} />
+          <EvaIcon name="people" variant="outline" size={48} color={COLORS.border} />
           <Text style={styles.emptyText}>
             {step === 'pick_b'
               ? 'No other eligible friends available.'
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.md,
-    color: COLORS.text.label,
+    color: COLORS.text.secondary,
     textAlign: 'center',
   },
   listContent: {
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.backgroundSubtle,
+    borderBottomColor: COLORS.card,
   },
   friendPhoto: {
     width: 48,
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   photoPlaceholder: {
-    backgroundColor: COLORS.backgroundProgressTrack,
+    backgroundColor: COLORS.card,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -281,12 +281,12 @@ const styles = StyleSheet.create({
   friendName: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.lg,
-    color: COLORS.text.heading,
+    color: COLORS.text.primary,
   },
   friendJob: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.sm,
-    color: COLORS.text.label,
+    color: COLORS.text.secondary,
     marginTop: 2,
   },
   confirmContainer: {
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   confirmName: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.lg,
-    color: COLORS.text.heading,
+    color: COLORS.text.primary,
     marginTop: 8,
   },
   heartContainer: {
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
   confirmSubtext: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.sm,
-    color: COLORS.text.label,
+    color: COLORS.text.secondary,
     textAlign: 'center',
     marginBottom: 32,
     lineHeight: LINE_HEIGHTS.lg,

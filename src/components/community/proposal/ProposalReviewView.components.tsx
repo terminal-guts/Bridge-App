@@ -23,7 +23,7 @@ import { EvaIcon } from '../../icons';
 import { proposalStyles, styles, BLUE, BOX_BG, BOX_BORDER } from './ProposalReviewView.styles';
 
 // Section accent — merged Lifestyle & Beliefs
-const ACCENT_LIFESTYLE_BELIEFS = '#F97316'; // orange
+const ACCENT_LIFESTYLE_BELIEFS = COLORS.primary; // unified blue
 import { MatchResult } from '../../../utils/proposalMatching';
 import { SectionCard, ComparisonValueRow } from './SmartPillCloud';
 import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
@@ -36,7 +36,7 @@ interface ProgressDotsProps {
   activeDotStyle: any;
 }
 
-export function ProgressDots({ proposals, currentIndex, activeDotStyle }: ProgressDotsProps) {
+export const ProgressDots = React.memo(function ProgressDots({ proposals, currentIndex, activeDotStyle }: ProgressDotsProps) {
   return (
     <View style={styles.progressDotsRow}>
       {proposals.map((_, i) => {
@@ -46,7 +46,7 @@ export function ProgressDots({ proposals, currentIndex, activeDotStyle }: Progre
           height: 10,
           width: 40,
           borderRadius: 5,
-          backgroundColor: isActive ? BLUE : isPast ? COLORS.primaryAccent : COLORS.tier1.bg,
+          backgroundColor: isActive ? BLUE : isPast ? COLORS.primaryAccent : COLORS.card,
         };
         return isActive ? (
           <Animated.View key={`dot-${i}`} style={[dotStyle, activeDotStyle]} />
@@ -61,7 +61,7 @@ export function ProgressDots({ proposals, currentIndex, activeDotStyle }: Progre
       )}
     </View>
   );
-}
+});
 
 // ─── VoteButtons ─────────────────────────────────────────────────────────────
 
@@ -72,16 +72,18 @@ interface VoteButtonsProps {
   yesButtonAnimatedStyle: any;
   noButtonAnimatedStyle: any;
   recommendButtonAnimatedStyle: any;
+  recommendSent?: boolean;
   bottomInset?: number;
 }
 
-export function VoteButtons({
+export const VoteButtons = React.memo(function VoteButtons({
   voting,
   handleVote,
   handleForFriendPress,
   yesButtonAnimatedStyle,
   noButtonAnimatedStyle,
   recommendButtonAnimatedStyle,
+  recommendSent = false,
   bottomInset = 0,
 }: VoteButtonsProps) {
   return (
@@ -95,7 +97,7 @@ export function VoteButtons({
           style={[
             styles.yesButton,
             {
-              backgroundColor: voting ? COLORS.tier1.border : BLUE,
+              backgroundColor: voting ? COLORS.border : BLUE,
               shadowColor: BLUE,
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: voting ? 0 : 0.3,
@@ -114,7 +116,7 @@ export function VoteButtons({
 
       {/* No / Recommend — secondary row, horizontal layout */}
       <View style={styles.secondaryButtonsRow}>
-        {/* No */}
+        {/* No — already flex:1 in animated style, expands to full width when recommend is gone */}
         <Animated.View style={noButtonAnimatedStyle}>
           <TouchableOpacity
             onPress={() => handleVote('no')}
@@ -125,30 +127,37 @@ export function VoteButtons({
             accessibilityLabel="Vote no"
             accessibilityState={{ disabled: voting }}
           >
-            <EvaIcon name="close" variant="outline" size={16} color={COLORS.text.muted} />
+            <EvaIcon name="close" variant="outline" size={16} color={COLORS.text.secondary} />
             <Text style={styles.secondaryButtonText}>No</Text>
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Recommend */}
-        <Animated.View style={recommendButtonAnimatedStyle}>
-          <TouchableOpacity
-            onPress={handleForFriendPress}
-            disabled={voting}
-            activeOpacity={0.8}
-            style={[styles.secondaryButton, voting && { opacity: 0.5 }]}
-            accessibilityRole="button"
-            accessibilityLabel="Recommend to a friend"
-            accessibilityState={{ disabled: voting }}
-          >
-            <EvaIcon name="person-add" variant="outline" size={16} color={COLORS.text.muted} />
-            <Text style={styles.secondaryButtonText}>Recommend</Text>
-          </TouchableOpacity>
-        </Animated.View>
+        {/* Recommend — hidden after sent, replaced by confirmation text */}
+        {!recommendSent ? (
+          <Animated.View style={recommendButtonAnimatedStyle}>
+            <TouchableOpacity
+              onPress={handleForFriendPress}
+              disabled={voting}
+              activeOpacity={0.8}
+              style={[styles.secondaryButton, voting && { opacity: 0.5 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Recommend to a friend"
+              accessibilityState={{ disabled: voting }}
+            >
+              <EvaIcon name="person-add" variant="outline" size={16} color={COLORS.text.secondary} />
+              <Text style={styles.secondaryButtonText}>Recommend</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        ) : (
+          <View style={styles.recommendSentBadge}>
+            <EvaIcon name="checkmark-circle-2" variant="fill" size={14} color={COLORS.success} />
+            <Text style={styles.recommendSentText}>Sent</Text>
+          </View>
+        )}
       </View>
     </View>
   );
-}
+});
 
 // ─── ForFriendModal ──────────────────────────────────────────────────────────
 
@@ -224,7 +233,7 @@ export function ForFriendModal({
                   <Image
                     source={photoAUrl ? { uri: photoAUrl } : null}
                     placeholder={photoABlurhash ? { blurhash: photoABlurhash } : undefined}
-                    style={{ width: '100%', height: '100%', backgroundColor: COLORS.backgroundGrayMedium }}
+                    style={{ width: '100%', height: '100%', backgroundColor: '#E5E7EB' }}
                     contentFit="cover"
                     transition={300}
                     cachePolicy="memory-disk"
@@ -250,7 +259,7 @@ export function ForFriendModal({
                   <Image
                     source={photoBUrl ? { uri: photoBUrl } : null}
                     placeholder={photoBBlurhash ? { blurhash: photoBBlurhash } : undefined}
-                    style={{ width: '100%', height: '100%', backgroundColor: COLORS.backgroundGrayMedium }}
+                    style={{ width: '100%', height: '100%', backgroundColor: '#E5E7EB' }}
                     contentFit="cover"
                     transition={300}
                     cachePolicy="memory-disk"
@@ -289,7 +298,7 @@ export function ForFriendModal({
                 </View>
               ) : filteredFriends.length === 0 ? (
                 <View style={styles.modalLoadingContainer}>
-                  <EvaIcon name="people" variant="outline" size={32} color={COLORS.text.disabled} />
+                  <EvaIcon name="people" variant="outline" size={32} color={COLORS.text.tertiary} />
                   <Text style={{ fontFamily: FONTS.medium, fontSize: FONT_SIZES.base, color: COLORS.text.secondary, textAlign: 'center', marginTop: 12, paddingHorizontal: 24 }}>
                     No friends to recommend to yet. Add friends first!
                   </Text>
@@ -320,7 +329,7 @@ export function ForFriendModal({
                         <Image
                           source={friendPhoto ? { uri: friendPhoto } : null}
                           placeholder={friendBlurhash ? { blurhash: friendBlurhash } : undefined}
-                          style={[styles.modalFriendAvatar, { backgroundColor: COLORS.backgroundGrayMedium }]}
+                          style={[styles.modalFriendAvatar, { backgroundColor: '#E5E7EB' }]}
                           contentFit="cover"
                           transition={300}
                           cachePolicy="memory-disk"
@@ -358,7 +367,7 @@ export function ForFriendModal({
                   onPress={onConfirm}
                   disabled={!selectedFriendId}
                   activeOpacity={0.85}
-                  style={[styles.modalFooterBtn, { backgroundColor: selectedFriendId ? BLUE : COLORS.tier1.bg }]}
+                  style={[styles.modalFooterBtn, { backgroundColor: selectedFriendId ? BLUE : COLORS.card }]}
                 >
                   <Text style={styles.modalFooterBtnText}>Confirm</Text>
                 </TouchableOpacity>
@@ -385,7 +394,7 @@ interface LifestyleBeliefsSectionProps {
   religionResult: MatchResult;
 }
 
-export function LifestyleBeliefsSection({
+export const LifestyleBeliefsSection = React.memo(function LifestyleBeliefsSection({
   lifestyleResults,
   drinkResult,
   weedResult,
@@ -431,4 +440,4 @@ export function LifestyleBeliefsSection({
       )}
     </SectionCard>
   );
-}
+});

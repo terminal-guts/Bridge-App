@@ -222,7 +222,7 @@ export const EditPhotosScreen: React.FC<EditPhotosScreenProps> = ({ navigation }
           <Body
             style={{
               ...TEXT_STYLES.labelSm,
-              color: profile.photos.length === 0 ? COLORS.error : COLORS.emerald,
+              color: profile.photos.length === 0 ? COLORS.error : COLORS.success,
             }}
           >
             {profile.photos.length}/{MAX_PHOTOS}
@@ -239,13 +239,13 @@ export const EditPhotosScreen: React.FC<EditPhotosScreenProps> = ({ navigation }
         {errorBanner && (
           <View
             className="flex-row items-center rounded-lg px-3 py-3 mb-4"
-            style={{ backgroundColor: COLORS.warning.bg }}
+            style={{ backgroundColor: 'rgba(245, 158, 11, 0.08)' }}
             accessibilityRole="alert"
             accessibilityLiveRegion="polite"
           >
-            <EvaIcon name="alert-triangle" variant="fill" size={20} color={COLORS.warning.icon} />
+            <EvaIcon name="alert-triangle" variant="fill" size={20} color={COLORS.amber} />
             <Body
-              style={{ color: COLORS.warning.text, fontSize: FONT_SIZES.sm, flex: 1, marginLeft: 8 }}
+              style={{ color: COLORS.amber, fontSize: FONT_SIZES.sm, flex: 1, marginLeft: 8 }}
             >
               {errorBanner}
             </Body>
@@ -275,7 +275,7 @@ export const EditPhotosScreen: React.FC<EditPhotosScreenProps> = ({ navigation }
                 accessibilityRole="button"
                 accessibilityLabel="Dismiss error"
               >
-                <EvaIcon name="close" variant="outline" size={16} color={COLORS.warning.icon} />
+                <EvaIcon name="close" variant="outline" size={16} color={COLORS.amber} />
               </AnimatedPressable>
             )}
           </View>
@@ -289,7 +289,7 @@ export const EditPhotosScreen: React.FC<EditPhotosScreenProps> = ({ navigation }
                 {loadingImages[photo.id] && (
                   <View
                     className="absolute inset-0 items-center justify-center"
-                    style={{ backgroundColor: COLORS.backgroundGrayMedium, zIndex: 1 }}
+                    style={{ backgroundColor: '#E5E7EB', zIndex: 1 }}
                   >
                     <ActivityIndicator size="small" color={COLORS.primaryAccent} />
                   </View>
@@ -297,7 +297,7 @@ export const EditPhotosScreen: React.FC<EditPhotosScreenProps> = ({ navigation }
 
                 <Image
                   source={{ uri: getOptimizedPhotoUrl(photo.url, 'avatar') }}
-                  style={{ width: '100%', height: '100%', backgroundColor: COLORS.backgroundGrayMedium }}
+                  style={{ width: '100%', height: '100%', backgroundColor: '#E5E7EB' }}
                   contentFit="cover"
                   cachePolicy="memory-disk"
                   recyclingKey={photo.id}
@@ -374,7 +374,7 @@ export const EditPhotosScreen: React.FC<EditPhotosScreenProps> = ({ navigation }
                       name="star"
                       variant={photo.isMain ? 'fill' : 'outline'}
                       size={20}
-                      color={photo.isMain ? COLORS.borderGold : 'white'}
+                      color={photo.isMain ? COLORS.border : 'white'}
                     />
                   </AnimatedPressable>
 
@@ -411,7 +411,7 @@ export const EditPhotosScreen: React.FC<EditPhotosScreenProps> = ({ navigation }
                   borderWidth: 2,
                   borderStyle: 'dashed',
                   borderColor: COLORS.primaryAccent,
-                  backgroundColor: COLORS.backgroundLightBlue,
+                  backgroundColor: COLORS.card,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}

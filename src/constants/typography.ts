@@ -82,40 +82,17 @@ export const LINE_HEIGHTS = {
 
 /** Pre-built text styles for common UI patterns */
 export const TEXT_STYLES = {
-  // Headings
-  displayLg: {
-    fontFamily: FONTS.extraBold,
-    fontSize: FONT_SIZES['7xl'],
-    lineHeight: LINE_HEIGHTS['7xl'],
-    letterSpacing: -0.5,
-  },
-  displayMd: {
-    fontFamily: FONTS.extraBold,
-    fontSize: FONT_SIZES['6xl'],
-    lineHeight: LINE_HEIGHTS['6xl'],
-    letterSpacing: -0.5,
-  },
-  displaySm: {
+  // Screen — titles and section headers
+  screenTitle: {
     fontFamily: FONTS.bold,
     fontSize: FONT_SIZES['5xl'],
     lineHeight: LINE_HEIGHTS['5xl'],
     letterSpacing: -0.5,
   },
-  headingLg: {
-    fontFamily: FONTS.bold,
-    fontSize: FONT_SIZES['4xl'],
-    lineHeight: LINE_HEIGHTS['4xl'],
-    letterSpacing: -0.3,
-  },
-  headingMd: {
-    fontFamily: FONTS.bold,
-    fontSize: FONT_SIZES['3xl'],
-    lineHeight: LINE_HEIGHTS['3xl'],
-  },
-  headingSm: {
+  sectionTitle: {
     fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES['2xl'],
-    lineHeight: LINE_HEIGHTS['2xl'],
+    fontSize: FONT_SIZES.lg,
+    lineHeight: LINE_HEIGHTS.lg,
   },
 
   // Body
@@ -141,27 +118,10 @@ export const TEXT_STYLES = {
     fontSize: FONT_SIZES.xl,
     lineHeight: LINE_HEIGHTS.xl,
   },
-  labelMd: {
-    fontFamily: FONTS.medium,
-    fontSize: FONT_SIZES.lg,
-    lineHeight: LINE_HEIGHTS.lg,
-  },
   labelSm: {
     fontFamily: FONTS.medium,
     fontSize: FONT_SIZES.base,
     lineHeight: LINE_HEIGHTS.base,
-  },
-
-  // Captions
-  caption: {
-    fontFamily: FONTS.regular,
-    fontSize: FONT_SIZES.sm,
-    lineHeight: LINE_HEIGHTS.sm,
-  },
-  captionBold: {
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.sm,
-    lineHeight: LINE_HEIGHTS.sm,
   },
 
   // Buttons
@@ -169,15 +129,5 @@ export const TEXT_STYLES = {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.xl,
     lineHeight: LINE_HEIGHTS.xl,
-  },
-  buttonMd: {
-    fontFamily: FONTS.semiBold,
-    fontSize: FONT_SIZES.lg,
-    lineHeight: LINE_HEIGHTS.lg,
-  },
-  buttonSm: {
-    fontFamily: FONTS.medium,
-    fontSize: FONT_SIZES.base,
-    lineHeight: LINE_HEIGHTS.base,
   },
 } as const;

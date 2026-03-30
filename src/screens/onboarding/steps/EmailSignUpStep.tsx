@@ -50,17 +50,23 @@ export const EmailSignUpStep: React.FC<EmailSignUpStepProps> = ({
 
     setIsSending(true);
 
-    const result = await sendOtpToEmail(trimmed);
-    setIsSending(false);
+    try {
+      const result = await sendOtpToEmail(trimmed);
 
-    if (!result.ok) {
-      setError(result.error?.message || 'Failed to send verification code');
-      return;
+      if (!result.ok) {
+        setError(result.error?.message || 'Failed to send verification code');
+        return;
+      }
+
+      logger.info('[EMAIL] OTP sent for signup to:', trimmed);
+      updateData({ email: trimmed });
+      onNext();
+    } catch (err: any) {
+      logger.error('[EMAIL] OTP send error:', err);
+      setError('Something went wrong. Check your connection and try again.');
+    } finally {
+      setIsSending(false);
     }
-
-    logger.info('[EMAIL] OTP sent for signup to:', trimmed);
-    updateData({ email: trimmed });
-    onNext();
   };
 
   return (

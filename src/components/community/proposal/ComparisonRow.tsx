@@ -32,7 +32,7 @@ export function ComparisonRow({ label, result, isLast = false }: ComparisonRowPr
         fontSize: FONT_SIZES.xs,
         fontWeight: '600',
         fontFamily: FONTS.semiBold,
-        color: COLORS.text.light,
+        color: COLORS.text.tertiary,
         marginBottom: 6,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
@@ -57,7 +57,7 @@ export function ComparisonRow({ label, result, isLast = false }: ComparisonRowPr
         }}>
           <StyledText style={{
             fontSize: FONT_SIZES.base,
-            color: COLORS.text.heading,
+            color: COLORS.text.primary,
             fontWeight: '500',
             fontFamily: FONTS.medium,
             textAlign: 'center',
@@ -80,7 +80,7 @@ export function ComparisonRow({ label, result, isLast = false }: ComparisonRowPr
         }}>
           <StyledText style={{
             fontSize: FONT_SIZES.base,
-            color: COLORS.text.heading,
+            color: COLORS.text.primary,
             fontWeight: '500',
             fontFamily: FONTS.medium,
             textAlign: 'center',

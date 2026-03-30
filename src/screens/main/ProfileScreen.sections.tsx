@@ -55,7 +55,7 @@ export const QuestionsSkeleton: React.FC = () => {
   return (
     <StyledView className="px-4 py-6 bg-neutral-50">
       <ReanimatedAnimated.View style={pulseStyle}>
-        <Card className="mb-6" style={{ backgroundColor: COLORS.backgroundGrayMedium }}>
+        <Card className="mb-6" style={{ backgroundColor: COLORS.card }}>
           <StyledView className="flex-row items-center p-4">
             <StyledView className="w-20 h-20 rounded-full bg-neutral-300 mr-5" />
             <StyledView className="flex-1">
@@ -68,7 +68,7 @@ export const QuestionsSkeleton: React.FC = () => {
       </ReanimatedAnimated.View>
 
       <ReanimatedAnimated.View style={pulseStyle}>
-        <Card className="mb-6" style={{ backgroundColor: COLORS.backgroundGrayMedium }}>
+        <Card className="mb-6" style={{ backgroundColor: COLORS.card }}>
           <StyledView className="p-4">
             <StyledView className="h-4 bg-neutral-300 rounded mb-4 w-32 mx-auto" />
             <StyledView className="flex-row items-center justify-between">
@@ -85,7 +85,7 @@ export const QuestionsSkeleton: React.FC = () => {
       </ReanimatedAnimated.View>
 
       <ReanimatedAnimated.View style={pulseStyle}>
-        <Card className="mb-6" style={{ backgroundColor: COLORS.backgroundGrayMedium }}>
+        <Card className="mb-6" style={{ backgroundColor: COLORS.card }}>
           <StyledView className="p-4 flex-row items-center">
             <StyledView className="w-14 h-14 rounded-xl bg-neutral-300 mr-4" />
             <StyledView className="flex-1">
@@ -102,7 +102,7 @@ export const QuestionsSkeleton: React.FC = () => {
           <StyledView className="h-3 bg-neutral-300 rounded w-56" />
         </StyledView>
         {[1, 2, 3].map((i) => (
-          <Card key={i} className="mb-4" style={{ backgroundColor: COLORS.backgroundGrayMedium }}>
+          <Card key={i} className="mb-4" style={{ backgroundColor: COLORS.card }}>
             <StyledView className="p-4">
               <StyledView className="flex-row justify-between mb-3">
                 <StyledView className="h-4 bg-neutral-300 rounded w-24" />
@@ -134,7 +134,7 @@ export const UnansweredQuestionCard = React.memo<{
         <StyledView className="flex-1 pr-3">
           <Body className="text-neutral-900 font-medium text-sm">{question.question}</Body>
         </StyledView>
-        <StyledView className="w-8 h-8 rounded-full bg-primary-100 items-center justify-center">
+        <StyledView className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: 'rgba(67, 127, 255, 0.12)' }}>
           <EvaIcon name="plus" variant="outline" size={20} color={COLORS.primaryAccent} />
         </StyledView>
       </StyledView>
@@ -242,7 +242,7 @@ export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onT
       <StyledView className="px-6 py-12 items-center">
         <StyledView style={{
           width: 80, height: 80, borderRadius: 40,
-          backgroundColor: COLORS.backgroundBlueTint,
+          backgroundColor: 'rgba(67, 127, 255, 0.08)',
           alignItems: 'center', justifyContent: 'center', marginBottom: 16,
         }}>
           <EvaIcon name="award" variant="outline" size={40} color={COLORS.primaryAccent} />
@@ -250,7 +250,7 @@ export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onT
         <H3 style={{ fontFamily: FONTS.bold, color: COLORS.text.primary, marginBottom: 8 }}>
           No badges yet
         </H3>
-        <Body style={{ color: COLORS.text.muted, textAlign: 'center', lineHeight: LINE_HEIGHTS.xl, maxWidth: 260 }}>
+        <Body style={{ color: COLORS.text.secondary, textAlign: 'center', lineHeight: LINE_HEIGHTS.xl, maxWidth: 260 }}>
           When friends award you badges, they'll appear here as mini-testimonials on your profile.
         </Body>
       </StyledView>
@@ -261,36 +261,33 @@ export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onT
     <StyledView
       key={badge.id}
       style={{
-        backgroundColor: isHidden ? COLORS.backgroundGray : isFeatured ? COLORS.backgroundSoftYellow : COLORS.card,
-        borderRadius: 16,
-        borderWidth: isFeatured ? 1.5 : 1,
-        borderColor: isFeatured ? COLORS.borderGoldLight : COLORS.borderSubtle,
-        padding: 16, marginBottom: 12,
+        backgroundColor: isFeatured ? COLORS.primaryLight : COLORS.card,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: isFeatured ? 'rgba(37, 99, 235, 0.12)' : COLORS.borderLight,
+        paddingHorizontal: 14, paddingVertical: 12, marginBottom: 10,
         flexDirection: 'row', alignItems: 'center', gap: 12,
-        opacity: isHidden ? 0.6 : 1,
-        ...(isFeatured ? SHADOWS.accentGold : SHADOWS.sm),
       }}
     >
       <StyledView style={{
-        width: 52, height: 52, borderRadius: 26,
-        backgroundColor: isFeatured ? COLORS.warning.bg : COLORS.backgroundGray,
+        width: 44, height: 44, borderRadius: 22,
+        backgroundColor: isFeatured ? COLORS.card : COLORS.screenBackground,
         alignItems: 'center', justifyContent: 'center',
-        borderWidth: isFeatured ? 1 : 0, borderColor: COLORS.borderGoldLight,
       }}>
-        <BadgeIcon name={badge.iconName} size={30} />
+        <BadgeIcon name={badge.iconName} size={26} />
       </StyledView>
 
       <StyledView style={{ flex: 1 }}>
         <Body style={{
-          fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.lg,
-          color: COLORS.text.primary, lineHeight: LINE_HEIGHTS.lg, marginBottom: 4,
+          fontFamily: FONTS.semiBold, fontWeight: '600',
+          fontSize: FONT_SIZES.base, color: COLORS.text.primary,
+          lineHeight: LINE_HEIGHTS.base, marginBottom: 2,
         }} numberOfLines={2}>
-          "{badge.message}"
+          {badge.message}
         </Body>
         <Body style={{
-          fontFamily: FONTS.medium, fontSize: FONT_SIZES.md,
-          color: isFeatured ? COLORS.amberText : COLORS.text.muted,
-          fontStyle: 'italic',
+          fontFamily: FONTS.medium, fontWeight: '500',
+          fontSize: FONT_SIZES.sm, color: COLORS.text.secondary,
         }}>
           — {badge.giverFirstName}
         </Body>
@@ -306,51 +303,33 @@ export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onT
           setTimeout(() => { isUpdatingRef.current = false; }, 800);
         }}
         activeOpacity={0.6}
-        style={{ padding: 6 }}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        style={{ padding: 4 }}
         accessibilityLabel={isFeatured ? 'Unfeature badge' : 'Feature badge'}
       >
         <EvaIcon
           name="star"
           variant={isFeatured ? 'fill' : 'outline'}
           size={22}
-          color={isFeatured ? COLORS.warning.icon : COLORS.borderGray}
+          color={isFeatured ? COLORS.amber : COLORS.border}
         />
       </StyledTouchableOpacity>
 
-      {/* Eye toggle */}
-      <StyledTouchableOpacity
-        onPress={() => {
-          if (isUpdatingRef.current) return;
-          isUpdatingRef.current = true;
-          lightHaptic();
-          onToggleHidden(badge);
-          setTimeout(() => { isUpdatingRef.current = false; }, 800);
-        }}
-        activeOpacity={0.6}
-        style={{ padding: 6 }}
-        accessibilityLabel={isHidden ? 'Unhide badge' : 'Hide badge'}
-      >
-        <EvaIcon
-          name={isHidden ? 'eye-off' : 'eye'}
-          variant="outline"
-          size={22}
-          color={COLORS.text.muted}
-        />
-      </StyledTouchableOpacity>
     </StyledView>
   );
 
   return (
-    <StyledView className="px-4 py-5">
+    <StyledView className="px-4 pt-4 pb-5">
       {featured.length > 0 && (
-        <StyledView style={{ marginBottom: 24 }}>
+        <StyledView style={{ marginBottom: 20 }}>
           <StyledView style={{
-            flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12,
+            flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10,
           }}>
-            <EvaIcon name="star" variant="fill" size={16} color={COLORS.warning.icon} />
+            <EvaIcon name="star" variant="fill" size={14} color={COLORS.amber} />
             <Body style={{
-              fontFamily: FONTS.bold, fontSize: FONT_SIZES.md, color: COLORS.amberText,
-              textTransform: 'uppercase', letterSpacing: 0.8,
+              fontFamily: FONTS.semiBold, fontWeight: '600',
+              fontSize: FONT_SIZES.sm, color: COLORS.amber,
+              textTransform: 'uppercase', letterSpacing: 0.5,
             }}>
               Featured ({featured.length}/3)
             </Body>
@@ -360,13 +339,14 @@ export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onT
       )}
 
       {unfeatured.length > 0 && (
-        <StyledView style={{ marginBottom: 20 }}>
+        <StyledView style={{ marginBottom: 16 }}>
           <StyledView style={{
-            flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12,
+            flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10,
           }}>
-            <EvaIcon name="award" variant="outline" size={16} color={COLORS.text.muted} />
+            <EvaIcon name="award" variant="outline" size={14} color={COLORS.text.tertiary} />
             <Body style={{
-              fontFamily: FONTS.bold, fontSize: FONT_SIZES.md, color: COLORS.text.muted,
+              fontFamily: FONTS.semiBold, fontWeight: '600',
+              fontSize: FONT_SIZES.sm, color: COLORS.text.tertiary,
               textTransform: 'uppercase', letterSpacing: 0.8,
             }}>
               All Badges
@@ -376,27 +356,10 @@ export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onT
         </StyledView>
       )}
 
-      {hiddenBadges.length > 0 && (
-        <StyledView style={{ marginBottom: 20 }}>
-          <StyledTouchableOpacity
-            onPress={() => { lightHaptic(); setShowHidden(h => !h); }}
-            activeOpacity={0.7}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}
-          >
-            <EvaIcon name="eye-off" variant="outline" size={16} color={COLORS.text.muted} />
-            <Body style={{
-              fontFamily: FONTS.bold, fontSize: FONT_SIZES.md, color: COLORS.text.muted,
-              textTransform: 'uppercase', letterSpacing: 0.8, flex: 1,
-            }}>
-              Hidden ({hiddenBadges.length})
-            </Body>
-            <EvaIcon
-              name={showHidden ? 'chevron-up' : 'chevron-down'}
-              variant="outline" size={18} color={COLORS.text.muted}
-            />
-          </StyledTouchableOpacity>
-          {showHidden && hiddenBadges.map(b => renderBadgeCard(b, false, true))}
-        </StyledView>
+      {false && hiddenBadges.length > 0 && (
+        // Hidden badges section removed — star toggle is the only control.
+        // Starred = shown on profile, unstarred = in your list only.
+        <StyledView style={{ marginBottom: 20 }}></StyledView>
       )}
     </StyledView>
   );

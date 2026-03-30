@@ -37,7 +37,7 @@ const TOP_BADGE_CONFIG: Record<MatchStatus, { label: string; bg: string; Icon?: 
     awaiting_you:  { label: 'They said yes!', bg: COLORS.success, Icon: CheckmarkIcon },
     awaiting_them: { label: 'You said yes',   bg: COLORS.success, Icon: CheckmarkIcon },
     new_match:     { label: 'New Match',      bg: COLORS.success, Icon: HeartsIcon },
-    no_match:      { label: 'Still looking',   bg: COLORS.systemGray, Icon: HourglassIcon },
+    no_match:      { label: 'Still looking',   bg: COLORS.text.tertiary, Icon: HourglassIcon },
 };
 
 // Bottom pill — always BLUE (action/context)
@@ -114,7 +114,7 @@ const ENDORSER_LABEL: Record<MatchStatus, string> = {
 // ──────────────────────────────────────────────────────────────────────────────
 // Component
 // ──────────────────────────────────────────────────────────────────────────────
-export const MatchCard: React.FC<MatchCardProps> = ({
+export const MatchCard: React.FC<MatchCardProps> = React.memo(({
     status,
     name,
     age,
@@ -260,7 +260,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
             <ImageBackground
                 source={{ uri: optimizedImageUrl }}
                 placeholder={imageBlurhash ? { blurhash: imageBlurhash } : undefined}
-                style={[StyleSheet.absoluteFillObject, { backgroundColor: COLORS.backgroundGrayMedium }]}
+                style={[StyleSheet.absoluteFillObject, { backgroundColor: '#E5E7EB' }]}
                 contentFit="cover"
                 transition={300}
                 cachePolicy="memory-disk"
@@ -338,7 +338,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                                             <View key={i} style={[styles.avatarShadowWrap, { marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }]}>
                                                 <Image
                                                     source={{ uri: optimizedAvatarUrl }}
-                                                    style={[styles.avatarCircle, { backgroundColor: COLORS.backgroundGrayMedium }]}
+                                                    style={[styles.avatarCircle, { backgroundColor: '#E5E7EB' }]}
                                                     contentFit="cover"
                                                     transition={0}
                                                     cachePolicy="memory-disk"
@@ -382,7 +382,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
         </Pressable>
         </Animated.View>
     );
-};
+});
 
 const styles = StyleSheet.create({
     card: {
@@ -403,11 +403,11 @@ const styles = StyleSheet.create({
     },
     // Awaiting you — blue glow to draw attention
     cardAwaitingYou: {
-        ...glowShadow(COLORS.primaryButton, 'medium'),
+        ...glowShadow(COLORS.primary, 'medium'),
     },
     // New match — subtle blue glow
     cardNewMatch: {
-        ...glowShadow(COLORS.primaryButton, 'subtle'),
+        ...glowShadow(COLORS.primary, 'subtle'),
     },
     // Top accent line — 3px state color bar
     accentLine: {
@@ -505,9 +505,9 @@ const styles = StyleSheet.create({
         fontSize: FONT_SIZES['6xl'],
         lineHeight: 36,
         letterSpacing: -0.8,
-        textShadowColor: 'rgba(0, 0, 0, 0.45)',
-        textShadowOffset: { width: 0, height: 2 },
-        textShadowRadius: 8,
+        textShadowColor: 'rgba(0, 0, 0, 0.55)',
+        textShadowOffset: { width: 0, height: 3 },
+        textShadowRadius: 12,
     },
     matchedByRow: {
         flexDirection: 'row',
@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
     },
     // Unified blue action button with glow — all states
     actionButtonBlue: {
-        backgroundColor: COLORS.primaryButton,
+        backgroundColor: COLORS.primary,
         ...SHADOWS.accentBlue,
     },
     nameRow: {

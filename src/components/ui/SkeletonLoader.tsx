@@ -264,7 +264,7 @@ export const MatchesSkeleton: React.FC<DashboardSkeletonProps> = ({ className = 
 
       {/* Full-height card skeleton — mirrors the MatchCard layout */}
       <View className="flex-1 px-4 pb-4 pt-2">
-        <View className="flex-1 rounded-3xl overflow-hidden" style={{ backgroundColor: COLORS.backgroundProgressTrack }}>
+        <View className="flex-1 rounded-3xl overflow-hidden" style={{ backgroundColor: COLORS.card }}>
           {/* Full card is one big image area — skeleton fills it */}
           <View className="flex-1" />
 
@@ -288,7 +288,7 @@ export const MatchesSkeleton: React.FC<DashboardSkeletonProps> = ({ className = 
           </View>
 
           {/* Action button placeholder — bottom right */}
-          <View className="absolute" style={{ right: 16, bottom: 18, width: 52, height: 52, borderRadius: 26, backgroundColor: COLORS.backgroundGrayMedium }} />
+          <View className="absolute" style={{ right: 16, bottom: 18, width: 52, height: 52, borderRadius: 26, backgroundColor: '#E5E7EB' }} />
         </View>
       </View>
     </View>
@@ -380,7 +380,7 @@ export const ProfileSkeleton: React.FC<DashboardSkeletonProps> = ({ className = 
       </View>
 
       {/* Tab Bar Skeleton */}
-      <View className="flex-row" style={{ backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle }}>
+      <View className="flex-row" style={{ backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: COLORS.borderLight }}>
         <View className="flex-1 py-3 items-center">
           <SkeletonLoader height={16} width={60} borderRadius="rounded" />
         </View>

@@ -13,6 +13,37 @@ This is the **production codebase** for Bridge — the app being deployed to the
 
 **React Compiler:** `babel-plugin-react-compiler` is **DISABLED** (it breaks Reanimated worklets — see `babel.config.js`). Use `useMemo`/`useCallback` where appropriate for performance, especially for `renderItem` functions passed to FlatList/FlashList and expensive computations in render paths.
 
+## Voting Gate — Critical Path
+
+The voting gate is the **#1 priority** feature. When the user opens the Community tab, they MUST vote on all available proposals (up to 3) before seeing the friends area. If the gate breaks, the app dies.
+
+### How it works
+
+1. **Edge function** (`supabase/functions/get-proposals-for-voting/index.ts`): Returns up to 3 (`GATE_SIZE`) pending proposals for the user to vote on. Prioritizes stranger proposals, but includes friend proposals as fallback so the gate is never empty when votable proposals exist.
+2. **Frontend** (`src/screens/main/CommunityScreen.tsx`): Always checks voting status from the network on init — never trusts the AsyncStorage cache for gate decisions. Shows `ProposalReviewView` when `hasCompletedVoting === false`.
+3. **Completion check** (`communityBackendService.getCommunityTaskProgress()`): Counts votes + recommendations since the last 7PM Central reset. User needs ≥3 actions AND 0 remaining proposals to pass the gate.
+
+### Rules — DO NOT BREAK
+
+- **Gate always shows** if there are any pending proposals the user hasn't voted on, even if only 1 exists.
+- **Resets daily** at 7PM Central (each cycle requires 3 new votes).
+- **Friend proposals fill the gate** when there aren't enough stranger proposals. Friend votes in the gate count toward the 3-vote requirement AND update the community screen state (friend moves from "Waiting on you" → "Your crew").
+- **Never cache "voting done"** when the reason is "no proposals exist" — only cache when user genuinely voted 3+ times AND no proposals remain.
+- **Never trust the voting cache on the fast path** — always verify from the network. Only the friends area cache is safe for instant rendering.
+- **Proposals are distributed evenly** across voters (sorted by fewest assignments first) so all proposals get similar vote counts.
+
+### Key files
+
+| Purpose | File |
+|---------|------|
+| Gate UI | `src/components/community/proposal/ProposalReviewView.tsx` |
+| Gate hooks | `src/components/community/proposal/ProposalReviewView.hooks.ts` |
+| Gate visibility | `src/screens/main/CommunityScreen.tsx` (`initialize()`) |
+| Proposal fetching | `src/services/communityBackendService.proposals.ts` |
+| Vote count check | `src/services/communityBackendService.ts` (`getCommunityTaskProgress()`) |
+| Edge function | `supabase/functions/get-proposals-for-voting/index.ts` |
+| Cache | `src/services/communityCache.ts` |
+
 ## App Store Reviewer Bypass — Permanent, Do Not Remove
 
 The reviewer bypass (`EXPO_PUBLIC_REVIEWER_PASSWORD` and the `isReviewerBypassEmail` logic in `src/services/authService.ts`) is a **permanent feature** that must stay in the app. It exists so Apple reviewers can log in without a Rice email address on every future update submission.
@@ -59,9 +90,9 @@ The entire app uses **Plus Jakarta Sans** (Google Fonts, OFL license). This is a
    - `FONTS` — font family constants (`regular`, `medium`, `semiBold`, `bold`, `extraBold`)
    - `FONT_SIZES` — 12-step size scale (11px–40px)
    - `LINE_HEIGHTS` — matching line-height scale
-   - `TEXT_STYLES` — 18 semantic presets (display, heading, body, label, caption, button)
+   - `TEXT_STYLES` — 8 semantic presets (screenTitle, sectionTitle, bodyLg, bodyMd, bodySm, labelLg, labelSm, buttonLg)
 
-2. **`src/components/ui/Typography.tsx`** — shared text components (`H1`, `H2`, `H3`, `Body`, `BodySmall`, `Label`, `Caption`, `Display`). Each resolves the correct `fontFamily` from NativeWind `font-bold`/`font-semibold`/`font-medium` classes via `resolveFontFamily()`.
+2. **`src/components/ui/Typography.tsx`** — shared text components (`H1`, `H2`, `H3`, `Body`, `BodySmall`, `Label`, `Caption`). Each resolves the correct `fontFamily` from NativeWind `font-bold`/`font-semibold`/`font-medium` classes via `resolveFontFamily()`.
 
 3. **`src/utils/setDefaultFonts.ts`** — global fallback that patches `Text.render` (or `defaultProps`) to map `fontWeight` → correct PlusJakartaSans variant. Imported in `App.tsx` after fonts load.
 
@@ -76,7 +107,7 @@ The entire app uses **Plus Jakarta Sans** (Google Fonts, OFL license). This is a
   - `FONTS.medium` = 500 (labels, secondary emphasis)
   - `FONTS.semiBold` = 600 (subheadings, buttons)
   - `FONTS.bold` = 700 (section headings, names, card titles)
-  - `FONTS.extraBold` = 800 (screen titles, tab headers, hero text, large numbers — anything that anchors a screen)
+  - `FONTS.extraBold` = 800 (screen titles, tab headers, hero text, large numbers, **user names** — anything that anchors a screen or identifies a person)
 - **Screen title hierarchy** (always include explicit `fontWeight` alongside `fontFamily` to ensure iOS renders the correct weight):
   - **Primary tab titles** ("Community", "Match", "Profile"): Use the `<ScreenTitle>` component — never compose the style manually. This is the single source of truth (bold 700, 28px, -0.5 letterSpacing).
   - **Secondary screen titles** (Settings, Leaderboard, etc.): Use `<BackHeader>` which handles its own title at 24px.
@@ -96,7 +127,7 @@ Every screen with a back button MUST use the `<BackHeader>` component from `src/
 - **No text**: Never show "Back" text next to the arrow. The icon alone is sufficient.
 - **No background circle**: The arrow is plain — no gray circle, no pill, no container behind it.
 - **Touch target**: 44x44px minimum via the BackHeader component (built in)
-- **Color**: `COLORS.text.heading` (#1E293B) — never blue, never gray
+- **Color**: `COLORS.text.primary` (#1E293B) — never blue, never gray
 - **Position**: Left-aligned in the header row
 
 ### Usage:
@@ -121,7 +152,7 @@ Every screen with a back button MUST use the `<BackHeader>` component from `src/
 - **ChatScreen** — has a complex header with avatar + name + menu that doesn't fit the simple pattern
 - **Do not** use `Outfit`, `Satoshi`, `Inter`, or any other font family — these have been fully removed.
 - **Do not** rely on `fontWeight` alone — React Native with custom fonts requires the specific font file via `fontFamily`.
-- **Always use `TEXT_STYLES` presets** when a semantic match exists (e.g., `TEXT_STYLES.headingSm` instead of manually composing `fontFamily` + `fontSize` + `lineHeight`). Only compose raw styles when no preset fits.
+- **Always use `TEXT_STYLES` presets** when a semantic match exists (e.g., `TEXT_STYLES.sectionTitle` instead of manually composing `fontFamily` + `fontSize` + `lineHeight`). Available presets: `screenTitle`, `sectionTitle`, `bodyLg`, `bodyMd`, `bodySm`, `labelLg`, `labelSm`, `buttonLg`. Only compose raw styles when no preset fits.
 - **Never use raw numbers** for `fontSize` or `lineHeight` — always reference `FONT_SIZES` and `LINE_HEIGHTS` constants. If the scale doesn't have the size you need, add a new entry to the scale rather than hardcoding a magic number.
 - **Tailwind config** (`tailwind.config.js`) maps `font-sans` etc. to PlusJakartaSans variants.
 
@@ -157,17 +188,45 @@ The app uses a centralized shadow system at **`src/theme/shadows.ts`**. This is 
 - Shadow colors use warm brown palette on iOS (`#4A3428`, `#3D2817`, `#2E1810`) for natural depth
 - Android uses numeric `elevation` (no color support) — this is a platform limitation
 
-## Color System
+## Color System — "Less Is More"
 
-The app uses a centralized color system at **`src/theme/colors.ts`**. This is the single source of truth for all colors.
+The app uses ~25 color tokens at **`src/theme/colors.ts`**. 80% neutral, 15% blue accent, 5% status.
+
+**Palette:**
+- **Text:** 3 levels only — `text.primary` (#1E293B headings), `text.secondary` (#64748B body/labels), `text.tertiary` (#94A3B8 placeholders/disabled)
+- **Backgrounds:** 2 only — `screenBackground` (#FDFAF7 warm off-white), `card` (#FFFFFF surfaces). For tinted backgrounds, compute inline with status color + opacity.
+- **Borders:** 2 only — `border` (#E2E8F0 standard), `borderLight` (#F0F0F0 subtle dividers). When in doubt, use whitespace instead of a border.
+- **Blue accent:** `primary` (#2563EB) for all buttons, CTAs, progress bars, links, selected states. `primaryAccent` (#437FFF) for nav active tab only (LOCKED).
+- **Blue tints:** `primaryLight` (#EFF6FF) for card/section backgrounds that need warmth, `primaryTint` (rgba(67,127,255,0.06)) for barely-there washes. Use these for educational cards, impact cards, and celebration footers — never for standard content cards.
+- **Status:** `success` (#34C759), `error` (#EF4444), `amber` (#F59E0B) — only when communicating state. Invisible 90% of the time.
+
+### Color Decision Tree
+- **Text?** → `text.primary` (headings), `text.secondary` (body/labels), `text.tertiary` (placeholders)
+- **Background?** → `screenBackground` (screens), `card` (surfaces). Nothing else.
+- **Border?** → `border` (standard), `borderLight` (subtle). Or use whitespace instead.
+- **Interactive element?** → `primary` (#2563EB). This is the only accent color.
+- **Communicating state?** → `success` / `error` / `amber`. Only when needed.
+- **Everything else?** → It should probably be gray.
+
+### Section Header Visual Hierarchy
+
+Community screen section headers use visual cues to communicate urgency:
+- **Action sections** ("Waiting on you", "FRIEND REQUESTS"): Blue accent bar + blue count badge — signals "this needs your attention"
+- **Informational sections** ("Your crew"): Soft blue accent bar + soft blue count badge (`primaryDisabled` #93B4FF) — signals "you're done here, this is just context"
+
+Never use the same accent color for both action and informational section headers on the same screen.
 
 ### Rules for new code
 
-- **Always use `COLORS` constants** — never hardcode hex values inline (e.g., use `COLORS.text.secondary` not `'#64748B'`).
+- **Always use `COLORS` constants** — never hardcode hex values inline (e.g., use `COLORS.text.secondary` not `'#64748B'`, use `COLORS.text.primary` not `'#1E293B'`).
+- **Blue is the accent color.** Use `primary` (#2563EB) for buttons, CTAs, progress bars, links, selected states, and any element that benefits from visual emphasis.
+- **Status colors are invisible until needed.** No permanent green/red/amber decoration.
+- **Content is the color** — user photos provide visual richness. UI chrome is neutral.
 - **Screen backgrounds must be `COLORS.screenBackground`** (`#FDFAF7`, warm off-white) — never use pure `#FFFFFF` or `bg-white` for screen-level backgrounds. Cards and surfaces can be white (`COLORS.card`).
-- **Use semantic color tokens** over raw palette values. `COLORS.text.heading` is better than `COLORS.text.black` because it communicates intent, not appearance.
 - **If a color doesn't exist in the system**, add it to `src/theme/colors.ts` with a comment explaining its purpose — don't hardcode it in the component.
-- **Border colors** follow the warm palette: `COLORS.borderWarm` (`#E7DED4`) for warm contexts, `COLORS.border` (`#E2E8F0`) for neutral. Never use `COLORS.borderSubtle` (`#F1F5F9`) as a divider — it's nearly invisible.
+- **Border colors:** Use `COLORS.border` (`#E2E8F0`) for standard borders, `COLORS.borderLight` (`#F0F0F0`) for subtle dividers. Prefer whitespace over additional borders.
+- If you need a tinted background (like a success banner), use the status color at 8% opacity inline rather than a dedicated token.
+- **Removed tokens (v3 consolidation):** `primaryButton`, `text.body`, `text.warm`, `backgroundWarm`, `backgroundNeutral`, `backgroundBlue`, `backgroundGrayMedium`, `borderWarm`, `borderBlue`, `borderGray`, `emerald`, `danger`, `warmOrange`, `purple`, `pink`, all tier colors, and all misc semantic tokens — see `colors.ts` for the full ~25-token system.
 
 ## Icon System
 
@@ -194,6 +253,23 @@ All interactive elements must meet iOS Human Interface Guidelines minimum touch 
 - **`hitSlop`** is preferred for icon buttons: `hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}`.
 - Test touch targets on the **smallest supported device** (iPhone SE, 375pt width).
 
+## Blue Border Policy
+
+Blue borders (`COLORS.primaryAccent`) are reserved for **interactive elements only**:
+- Buttons (Vote, Add Friend)
+- Tappable pills (karma, points)
+- Dashed invite circles
+
+**Never** apply blue borders to passive cards, containers, or list wrappers. Cards always use `COLORS.border` (neutral gray). Blue on a non-tappable surface creates a false affordance.
+
+## Divider Policy
+
+- **Between list items**: `StyleSheet.hairlineWidth` with `COLORS.border` — standard for all row-based lists (UserRow, FriendRequestCard, etc.)
+- **Between major sections**: Use vertical whitespace (padding/margin). Only add a 1px `COLORS.border` line when whitespace alone doesn't create enough separation.
+- **Around list containers**: `StyleSheet.hairlineWidth` with `COLORS.border` for top/bottom edges — standardize on `border`, never `borderLight` for containers.
+- **Inside cards (settings rows, profile details)**: `COLORS.borderLight` for subtle internal dividers.
+- **Default**: Prefer whitespace over borders. If removing a border doesn't hurt readability, remove it.
+
 ## "Other" Free-Text Input Pattern
 
 When a selection list (report reasons, end-match reasons, pass feedback, etc.) includes an "Other" or "Something else" option, tapping it must reveal a text input — never submit a bare "Other" string.
@@ -212,7 +288,7 @@ When a selection list (report reasons, end-match reasons, pass feedback, etc.) i
 ### Styling (match existing sheet styles)
 
 - Input: `borderWidth: 1.5`, `borderRadius: 12`, `borderColor: COLORS.border`, `backgroundColor: COLORS.screenBackground`, `minHeight: 100`, `maxHeight: 140`, `multiline`, `textAlignVertical: 'top'`
-- Char count: `FONTS.regular`, `FONT_SIZES.sm`, `COLORS.text.light`, right-aligned
+- Char count: `FONTS.regular`, `FONT_SIZES.sm`, `COLORS.text.tertiary`, right-aligned
 - Buttons: side-by-side in a `flexDirection: 'row'` container with `gap: 12`. "Back" has outline style, "Submit" has solid destructive style (red for reports, primary for neutral flows).
 
 ### Reference implementation
@@ -270,7 +346,7 @@ Before building custom UI, check `src/components/ui/` for existing components. *
 |---------------|----------|-----|
 | `<View>` with manual shadow | `<Card shadow="md">` | Centralized shadow system, depth animation support |
 | `<TouchableOpacity>` | `<AnimatedPressable>` | Scale animation, haptic feedback, depth press built in |
-| `<Text>` with manual fontFamily | `<Body>`, `<H1>`, `<H2>`, `<H3>`, `<Label>`, `<Caption>`, `<Display>` | Auto font resolution, consistent hierarchy |
+| `<Text>` with manual fontFamily | `<Body>`, `<H1>`, `<H2>`, `<H3>`, `<Label>`, `<Caption>` | Auto font resolution, consistent hierarchy |
 | `<TextInput>` with manual styling | `<Input>` | Consistent border states (focus, error, success), label, placeholder |
 | `<SafeAreaView>` wrapper | `<ScreenWrapper>` | Handles safe area, warm background, offline banner slot |
 | Manual loading spinner | `<SkeletonLoader>` or `<LoadingState>` | Layout-matching skeletons, consistent loading patterns |
@@ -304,7 +380,7 @@ The codebase uses both NativeWind (Tailwind) classes and inline `style` props. F
 ### Use inline `style` for:
 - **Design system tokens** — `style={{ ...SHADOWS.md }}`, `style={{ fontFamily: FONTS.bold }}`
 - **Dynamic values** — `style={{ width: screenWidth * 0.5 }}`, `style={{ paddingTop: insets.top }}`
-- **Colors from COLORS** — `style={{ color: COLORS.text.heading }}` (when the NativeWind class doesn't match the exact token)
+- **Colors from COLORS** — `style={{ color: COLORS.text.primary }}` (when the NativeWind class doesn't match the exact token)
 - **Complex/conditional styles** — when a style depends on props or state
 
 ### General rule

@@ -31,7 +31,7 @@ export function MatchStatusIcon({ status, size = 20 }: MatchStatusIconProps) {
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: COLORS.emerald,
+          backgroundColor: COLORS.success,
           alignItems: 'center',
           justifyContent: 'center',
         }}>
@@ -110,7 +110,7 @@ export function MatchStatusIcon({ status, size = 20 }: MatchStatusIconProps) {
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: COLORS.text.light,
+          backgroundColor: COLORS.text.tertiary,
           alignItems: 'center',
           justifyContent: 'center',
         }}>

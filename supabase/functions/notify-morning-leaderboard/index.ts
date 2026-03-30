@@ -100,7 +100,7 @@ Deno.serve(async (req: Request) => {
       .from('user_settings')
       .select('user_id, push_token')
       .not('push_token', 'is', null)
-      .eq('push_enabled', true);
+      .eq('push_notifications', true);
 
     if (!usersWithTokens) {
       return Response.json({ status: 'success', sent: 0 }, { headers: corsHeaders });

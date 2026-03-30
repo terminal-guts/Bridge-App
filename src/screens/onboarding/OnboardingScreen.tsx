@@ -97,6 +97,11 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   // Background photo upload: starts after PhotoUploadStep, results used by completeOnboarding
   const photoUploadPromiseRef = useRef<Promise<any> | null>(null);
   const photoUploadResultRef = useRef<Array<{ id: string; url: string }> | null>(null);
+  // Guard: prevent orphaned upload promises from writing state after unmount
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   // Clear the "seen post-proposal prompt" flag so AgeStep's motivational
   // bottom sheet always fires for any fresh onboarding run.
@@ -212,19 +217,20 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
     borderRadius: 2,
   }));
 
-  // Bounds check — reset to step 0 if currentStep is out of range.
+  // Clamp step inline so we never render null during a steps-array change
+  const clampedStep = currentStep < 0 || currentStep >= totalSteps
+    ? 0
+    : currentStep;
+
+  // Sync state back when clamping was needed (e.g. role switch shrinks steps array)
   React.useEffect(() => {
-    if (currentStep < 0 || currentStep >= totalSteps) {
-      logger.error(`[OnboardingScreen] Invalid currentStep: ${currentStep} (totalSteps: ${totalSteps})`);
-      setCurrentStep(0);
+    if (clampedStep !== currentStep) {
+      logger.error(`[OnboardingScreen] Clamped currentStep: ${currentStep} → ${clampedStep} (totalSteps: ${totalSteps})`);
+      setCurrentStep(clampedStep);
     }
-  }, [currentStep, totalSteps]);
+  }, [clampedStep, currentStep, totalSteps]);
 
-  if (currentStep < 0 || currentStep >= totalSteps) {
-    return null;
-  }
-
-  const CurrentStepComponent = steps[currentStep].component;
+  const CurrentStepComponent = steps[clampedStep].component;
 
   const updateData = (data: Partial<OnboardingData>) => {
     setOnboardingData(prev => ({ ...prev, ...data }));
@@ -267,6 +273,10 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
           logger.info('[OnboardingScreen] Starting background photo upload:', uris.length, 'photos');
           photoUploadPromiseRef.current = uploadMultiplePhotos(uris)
             .then(res => {
+              if (!isMountedRef.current) {
+                logger.info('[OnboardingScreen] Photo upload resolved after unmount — ignoring');
+                return res;
+              }
               if (res.ok && res.data) {
                 photoUploadResultRef.current = res.data;
                 logger.info('[OnboardingScreen] Background photo upload complete:', res.data.length);
@@ -496,14 +506,14 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         edges={['top']}
         className="absolute top-0 left-0 right-0 z-50 bg-neutral-50"
       >
-        <StyledView style={{ height: 4, backgroundColor: COLORS.backgroundProgressTrack }}>
+        <StyledView style={{ height: 4, backgroundColor: COLORS.card }}>
           <Animated.View style={progressBarStyle} />
         </StyledView>
       </StyledSafeAreaView>
 
       {/* Step Content — keyed by step index for entrance/exit animations */}
       <Animated.View
-        key={currentStep}
+        key={clampedStep}
         entering={FadeIn.duration(DURATIONS.normal)}
         style={{ flex: 1 }}
       >
@@ -512,8 +522,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
           updateData={updateData}
           onNext={goNext}
           onBack={goBack}
-          isFirstStep={currentStep === 0}
-          isLastStep={currentStep === totalSteps - 1}
+          isFirstStep={clampedStep === 0}
+          isLastStep={clampedStep === totalSteps - 1}
         />
       </Animated.View>
     </StyledView>

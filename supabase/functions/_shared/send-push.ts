@@ -85,11 +85,11 @@ export async function sendPush(
     // 1. Look up push token + preferences
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('push_token, push_enabled, pref_matches_enabled, pref_messages_enabled, pref_nudges_enabled')
+      .select('push_token, push_notifications, pref_matches_enabled, pref_messages_enabled, pref_nudges_enabled')
       .eq('user_id', userId)
       .maybeSingle();
 
-    if (!settings?.push_token || settings.push_enabled === false) {
+    if (!settings?.push_token || settings.push_notifications === false) {
       return { sent: false, reason: 'no_token_or_disabled' };
     }
 

@@ -36,40 +36,34 @@ const StyledImage = styled(Image);
 
 // Color tokens — referencing theme COLORS where possible
 export const COLORS = {
-  neutral900: THEME_COLORS.textDarkHeading,
+  neutral900: THEME_COLORS.text.primary,
   neutral800: '#1D2939',
-  neutral700: THEME_COLORS.textGray800,
+  neutral700: THEME_COLORS.text.secondary,
   neutral600: '#475467',
   neutral500: THEME_COLORS.navInactiveIcon,
-  neutral400: THEME_COLORS.text.placeholder,
-  neutral300: THEME_COLORS.borderDivider,
-  neutral200: THEME_COLORS.borderNeutral,
-  neutral100: THEME_COLORS.backgroundProgressTrack,
-  neutral50: THEME_COLORS.backgroundSubtle,
+  neutral400: THEME_COLORS.text.tertiary,
+  neutral300: THEME_COLORS.border,
+  neutral200: THEME_COLORS.border,
+  neutral100: THEME_COLORS.card,
+  neutral50: THEME_COLORS.card,
   white: THEME_COLORS.card,
   primary500: THEME_COLORS.primaryAccent,
   primary50: '#F2F6FF',
-  primaryBorder: THEME_COLORS.backgroundInterestTag,
-  success: THEME_COLORS.emerald,
+  primaryBorder: '#BFDBFE',
+  success: THEME_COLORS.success,
   successBg: '#ECFDF5',
-  successBorder: THEME_COLORS.backgroundValuesTag,
-  warning: THEME_COLORS.warning.icon,
-  warningBg: THEME_COLORS.backgroundSoftYellow,
-  warningBorder: THEME_COLORS.borderGoldLight,
-  warningIcon: THEME_COLORS.darkAmber,
+  successBorder: 'rgba(52, 199, 89, 0.08)',
+  warning: THEME_COLORS.amber,
+  warningBg: 'rgba(245, 158, 11, 0.08)',
+  warningBorder: THEME_COLORS.border,
+  warningIcon: THEME_COLORS.amber,
   error: THEME_COLORS.error,
-  errorBg: THEME_COLORS.backgroundSoftRed,
+  errorBg: 'rgba(239, 68, 68, 0.08)',
   errorText: '#B42318',
   freqLime: '#84CC16',
   freqOrange: '#F97316',
-  pink: THEME_COLORS.pink,
-  pinkBg: '#FDF2F8',
-  purple: THEME_COLORS.violet,
-  purpleBg: '#F5F3FF',
-  purpleText: '#6D28D9',
-  pinkText: '#BE185D',
-  roseBg: '#FFF1F2',
-  roseText: '#BE123C',
+  accentBg: '#EFF6FF',
+  accentText: THEME_COLORS.primary,
   skeletonDark: '#1A1A1A',
   whiteTranslucent: '#FFFFFFCC',
 } as const;
@@ -80,13 +74,13 @@ const ANIMATION_EASING = Easing.out(Easing.cubic);
 // ── Pill Styles Config ──────────────────────────────────────────────────────
 
 export const PILL_STYLES: Record<string, { bg: string; iconColor: string; textColor: string }> = {
-  'pin': { bg: THEME_COLORS.tier1.lightBg, iconColor: THEME_COLORS.tier1.icon, textColor: THEME_COLORS.blueText },
-  'maximize': { bg: COLORS.successBg, iconColor: COLORS.success, textColor: THEME_COLORS.matchReasonGreen },
-  'person': { bg: COLORS.purpleBg, iconColor: COLORS.purple, textColor: COLORS.purpleText },
-  'message-circle': { bg: COLORS.pinkBg, iconColor: COLORS.pink, textColor: COLORS.pinkText },
+  'pin': { bg: COLORS.accentBg, iconColor: THEME_COLORS.primary, textColor: COLORS.accentText },
+  'maximize': { bg: COLORS.successBg, iconColor: COLORS.success, textColor: THEME_COLORS.success },
+  'person': { bg: COLORS.accentBg, iconColor: THEME_COLORS.primary, textColor: COLORS.accentText },
+  'message-circle': { bg: COLORS.accentBg, iconColor: THEME_COLORS.primary, textColor: COLORS.accentText },
   'globe': { bg: COLORS.warningBg, iconColor: COLORS.warning, textColor: COLORS.warningIcon },
-  'star': { bg: COLORS.purpleBg, iconColor: THEME_COLORS.purple, textColor: COLORS.purpleText },
-  'flag': { bg: COLORS.roseBg, iconColor: THEME_COLORS.rose, textColor: COLORS.roseText },
+  'star': { bg: COLORS.accentBg, iconColor: THEME_COLORS.primary, textColor: COLORS.accentText },
+  'flag': { bg: COLORS.errorBg, iconColor: THEME_COLORS.error, textColor: COLORS.errorText },
   default: { bg: COLORS.neutral50, iconColor: COLORS.neutral400, textColor: COLORS.neutral600 },
 };
 
@@ -203,7 +197,7 @@ export const ExpirationTimer: React.FC<{ expiresAt: string }> = ({ expiresAt }) 
 
   const isUrgent = timeLeft.hours < 6;
   return (
-    <StyledView className="flex-row items-center px-3.5 py-2 rounded-full" style={{ backgroundColor: isUrgent ? `${THEME_COLORS.warning.icon}E6` : OVERLAYS.light }}>
+    <StyledView className="flex-row items-center px-3.5 py-2 rounded-full" style={{ backgroundColor: isUrgent ? `${THEME_COLORS.amber}E6` : OVERLAYS.light }}>
       <EvaIcon name="clock" variant="outline" size={13} color="white" />
       <Body className="text-white text-xs font-semibold ml-1.5 tracking-wide">{timeLeft.hours}h {timeLeft.minutes}m</Body>
     </StyledView>
@@ -240,14 +234,14 @@ export const CommunityScore: React.FC<{ score: number; endorsement: FriendEndors
   const colors = displayScore >= 80
     ? { bg: COLORS.success, light: COLORS.successBg }
     : displayScore >= 60
-      ? { bg: COLORS.primary500, light: THEME_COLORS.tier1.lightBg }
+      ? { bg: COLORS.primary500, light: '#EFF6FF' }
       : displayScore >= 40
         ? { bg: COLORS.warning, light: COLORS.warningBg }
         : { bg: COLORS.neutral400, light: COLORS.neutral50 };
 
   const conf = {
-    high: { bg: COLORS.successBg, text: THEME_COLORS.matchReasonGreen, label: 'Strong Match' },
-    medium: { bg: THEME_COLORS.tier1.lightBg, text: THEME_COLORS.primary, label: 'Good Vibes' },
+    high: { bg: COLORS.successBg, text: THEME_COLORS.success, label: 'Strong Match' },
+    medium: { bg: '#EFF6FF', text: THEME_COLORS.primary, label: 'Good Vibes' },
     low: { bg: COLORS.warningBg, text: COLORS.warningIcon, label: 'Worth a Look' },
   }[endorsement.confidenceLevel];
 
@@ -256,45 +250,45 @@ export const CommunityScore: React.FC<{ score: number; endorsement: FriendEndors
       style={{
         transform: [{ scale: scaleAnim }],
         backgroundColor: COLORS.white,
-        borderRadius: 12,
-        padding: Math.round(16 * SCALE),
+        borderRadius: 16,
+        padding: Math.round(20 * SCALE),
         marginBottom: 16,
-        borderWidth: 1,
-        borderColor: COLORS.neutral200,
-        ...SHADOWS.sm,
+        borderWidth: 1.5,
+        borderColor: colors.light,
+        ...SHADOWS.md,
       }}
     >
-      <StyledView className="flex-row items-center justify-between mb-4">
+      <StyledView className="flex-row items-center justify-between mb-2">
         <StyledView className="flex-row items-center" style={{ flex: 1, marginRight: 8 }}>
-          <StyledView className="w-9 h-9 rounded-full items-center justify-center" style={{ backgroundColor: colors.light }}>
-            <EvaIcon name="people" variant="outline" size={16} color={colors.bg} />
+          <StyledView className="w-10 h-10 rounded-xl items-center justify-center" style={{ backgroundColor: colors.light }}>
+            <EvaIcon name="people" variant="fill" size={18} color={colors.bg} />
           </StyledView>
-          <Body className="font-bold ml-3 tracking-tight" style={{ color: COLORS.neutral800, fontSize: Math.round(FONT_SIZES.base * SCALE) }}>What Your Friends Think</Body>
+          <Body className="font-bold ml-3 tracking-tight" style={{ color: COLORS.neutral800, fontSize: Math.round(FONT_SIZES.base * SCALE) }}>Your Friends' Verdict</Body>
         </StyledView>
         <StyledView className="px-3 py-1.5 rounded-full" style={{ backgroundColor: conf.bg }}>
           <Body className="text-xs font-semibold" style={{ color: conf.text }}>{conf.label}</Body>
         </StyledView>
       </StyledView>
 
-      <StyledView className="flex-row items-end">
-        <Body style={{ fontSize: Math.round((FONT_SIZES['7xl'] + 4) * SCALE), lineHeight: Math.round(LINE_HEIGHTS['7xl'] * SCALE), fontFamily: FONTS.bold, color: colors.bg }}>{displayedScore}</Body>
-        <Body className="font-medium mb-2 ml-1" style={{ fontSize: Math.round(FONT_SIZES.xl * SCALE), color: COLORS.neutral300 }}>%</Body>
+      <StyledView className="flex-row items-end mt-1">
+        <Body style={{ fontSize: Math.round((FONT_SIZES['7xl'] + 8) * SCALE), lineHeight: Math.round((LINE_HEIGHTS['7xl'] + 4) * SCALE), fontFamily: FONTS.extraBold, fontWeight: '800', color: colors.bg }}>{displayedScore}</Body>
+        <Body className="font-bold mb-2.5 ml-0.5" style={{ fontSize: Math.round(FONT_SIZES['2xl'] * SCALE), color: colors.bg, opacity: 0.5 }}>%</Body>
       </StyledView>
 
-      <StyledView className="h-1.5 rounded-full mt-3 overflow-hidden" style={{ backgroundColor: COLORS.neutral100 }}>
+      <StyledView className="h-2 rounded-full mt-2 overflow-hidden" style={{ backgroundColor: COLORS.neutral100 }}>
         <Animated.View className="h-full rounded-full" style={{ backgroundColor: colors.bg, width: animatedValue.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }) }} />
       </StyledView>
 
-      <StyledView className="mt-5 pt-5" style={{ borderTopWidth: 1, borderTopColor: COLORS.neutral100 }}>
+      <StyledView className="mt-5 pt-4" style={{ borderTopWidth: 1, borderTopColor: COLORS.neutral100 }}>
         <StyledView className="flex-row items-center mb-2">
           <StyledView className="flex-row">
             {[...Array(Math.min(endorsement.count, 5))].map((_, i) => (
-              <StyledView key={i} className="w-7 h-7 rounded-full items-center justify-center" style={{ backgroundColor: THEME_COLORS.tier1.lightBg, borderWidth: 2, borderColor: COLORS.white, marginLeft: i > 0 ? -8 : 0 }}>
-                <EvaIcon name="person" variant="outline" size={11} color={COLORS.primary500} />
+              <StyledView key={i} className="w-7 h-7 rounded-full items-center justify-center" style={{ backgroundColor: colors.light, borderWidth: 2, borderColor: COLORS.white, marginLeft: i > 0 ? -8 : 0 }}>
+                <EvaIcon name="person" variant="fill" size={11} color={colors.bg} />
               </StyledView>
             ))}
           </StyledView>
-          <Body className="font-semibold ml-3 text-sm" style={{ color: COLORS.neutral700, flexShrink: 1 }}>{endorsement.count} friend{endorsement.count !== 1 ? 's' : ''} weighed in</Body>
+          <Body className="font-semibold ml-3 text-sm" style={{ color: COLORS.neutral700, flexShrink: 1 }}>{endorsement.count} friend{endorsement.count !== 1 ? 's' : ''} voted</Body>
         </StyledView>
         {endorsement.topReason && <Body className="text-sm" style={{ color: COLORS.neutral400, lineHeight: LINE_HEIGHTS.base }}>"{endorsement.topReason}"</Body>}
       </StyledView>
@@ -318,14 +312,14 @@ export const WhyThisMatch: React.FC<{ mutualInterests: string[]; mutualValues: s
         <StyledView className="mb-4">
           <StyledView className="flex-row items-center mb-3">
             <EvaIcon name="heart" variant="outline" size={13} color={COLORS.primary500} />
-            <Body className="text-sm font-semibold ml-2" style={{ color: THEME_COLORS.blueText }}>You both love</Body>
+            <Body className="text-sm font-semibold ml-2" style={{ color: THEME_COLORS.primary }}>You both love</Body>
           </StyledView>
           <StyledView className="flex-row flex-wrap">
             {mutualInterests.map((interest) => (
-              <StyledView key={interest} className="rounded-full px-3.5 py-2 mr-2 mb-2 flex-row items-center" style={{ backgroundColor: THEME_COLORS.tier1.lightBg, borderWidth: 1, borderColor: COLORS.primaryBorder }}>
+              <StyledView key={interest} className="rounded-full px-3.5 py-2 mr-2 mb-2 flex-row items-center" style={{ backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: COLORS.primaryBorder }}>
                 <EvaIcon name="checkmark-circle-2" variant="outline" size={12} color={COLORS.primary500} />
                 <IconScoutIcon name={require('../../utils/emojiMaps').interestIconName(interest) ?? ''} size={14} style={{ marginRight: 3 }} />
-                <Body className="text-sm font-medium ml-1.5" style={{ color: THEME_COLORS.blueText }}>{interest}</Body>
+                <Body className="text-sm font-medium ml-1.5" style={{ color: THEME_COLORS.primary }}>{interest}</Body>
               </StyledView>
             ))}
           </StyledView>
@@ -336,14 +330,14 @@ export const WhyThisMatch: React.FC<{ mutualInterests: string[]; mutualValues: s
         <StyledView className="mb-4">
           <StyledView className="flex-row items-center mb-3">
             <EvaIcon name="award" variant="outline" size={13} color={COLORS.success} />
-            <Body className="text-sm font-semibold ml-2" style={{ color: THEME_COLORS.matchReasonGreen }}>Shared values</Body>
+            <Body className="text-sm font-semibold ml-2" style={{ color: THEME_COLORS.success }}>Shared values</Body>
           </StyledView>
           <StyledView className="flex-row flex-wrap">
             {mutualValues.map((value) => (
               <StyledView key={value} className="rounded-full px-3.5 py-2 mr-2 mb-2 flex-row items-center" style={{ backgroundColor: COLORS.successBg, borderWidth: 1, borderColor: COLORS.successBorder }}>
                 <EvaIcon name="checkmark-circle-2" variant="outline" size={12} color={COLORS.success} />
                 <IconScoutIcon name={require('../../utils/emojiMaps').valueIconName(value) ?? ''} size={14} style={{ marginRight: 3 }} />
-                <Body className="text-sm font-medium ml-1.5" style={{ color: THEME_COLORS.matchReasonGreen }}>{value}</Body>
+                <Body className="text-sm font-medium ml-1.5" style={{ color: THEME_COLORS.success }}>{value}</Body>
               </StyledView>
             ))}
           </StyledView>
@@ -407,7 +401,7 @@ export const Section: React.FC<{ title: string; icon: string; children: React.Re
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], marginBottom: Math.round(28 * SCALE) }}>
       <StyledView className="flex-row items-center mb-4">
-        <StyledView className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: THEME_COLORS.tier1.lightBg }}>
+        <StyledView className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: '#EFF6FF' }}>
           <EvaIcon name={icon} variant="outline" size={15} color={COLORS.primary500} />
         </StyledView>
         <Body className="text-xs uppercase tracking-widest ml-3 font-medium" style={{ color: COLORS.neutral400 }}>{title}</Body>
@@ -418,19 +412,18 @@ export const Section: React.FC<{ title: string; icon: string; children: React.Re
 });
 
 export const Tag: React.FC<{ label: string; variant?: 'default' | 'primary' | 'success'; isMutual?: boolean; iconName?: string }> = ({ label, variant = 'default', isMutual = false, iconName }) => {
-  const styles = {
+  const tagStyles = {
     default: { bg: COLORS.neutral50, border: COLORS.neutral200, text: COLORS.neutral600 },
-    primary: { bg: THEME_COLORS.tier1.lightBg, border: COLORS.primaryBorder, text: THEME_COLORS.blueText },
-    success: { bg: COLORS.successBg, border: COLORS.successBorder, text: THEME_COLORS.matchReasonGreen },
+    primary: { bg: '#EFF6FF', border: COLORS.primaryBorder, text: THEME_COLORS.primary },
+    success: { bg: COLORS.successBg, border: COLORS.successBorder, text: THEME_COLORS.success },
   };
-  const s = styles[variant];
+  const s = tagStyles[variant];
   const accentColor = variant === 'primary' ? COLORS.primary500 : COLORS.success;
 
   return (
-    <StyledView className="rounded-full px-4 py-2.5 mr-2 mb-2.5 flex-row items-center" style={{ backgroundColor: s.bg, borderWidth: isMutual ? 2 : 1, borderColor: isMutual ? accentColor : s.border }}>
-      {isMutual && <EvaIcon name="checkmark-circle-2" variant="outline" size={13} color={accentColor} style={{ marginRight: 5 }} />}
-      {iconName && <IconScoutIcon name={iconName} size={14} style={{ marginRight: 3 }} />}
-      <Body className="text-sm font-medium" style={{ color: s.text }}>{label}</Body>
+    <StyledView className="rounded-full px-4 py-2.5 mr-2 mb-2.5 flex-row items-center" style={{ backgroundColor: isMutual ? accentColor : s.bg, borderWidth: isMutual ? 0 : 1, borderColor: s.border }}>
+      {iconName && <IconScoutIcon name={iconName} size={14} style={{ marginRight: 4 }} />}
+      <Body className="text-sm font-semibold" style={{ color: isMutual ? COLORS.white : s.text }}>{label}</Body>
     </StyledView>
   );
 };
@@ -560,21 +553,21 @@ export const PassFeedbackModal: React.FC<{ visible: boolean; onClose: () => void
                 fontFamily: FONTS.regular,
                 fontSize: FONT_SIZES.lg,
                 lineHeight: LINE_HEIGHTS.lg,
-                color: THEME_COLORS.text.primary,
+                color: THEME_COLORS.text.secondary,
                 minHeight: 80,
                 maxHeight: 120,
                 backgroundColor: THEME_COLORS.screenBackground,
                 textAlignVertical: 'top',
               }}
               placeholder="Tell us a bit more..."
-              placeholderTextColor={THEME_COLORS.text.light}
+              placeholderTextColor={THEME_COLORS.text.tertiary}
               value={otherText}
               onChangeText={(t) => setOtherText(t.slice(0, 300))}
               multiline
               maxLength={300}
               autoFocus
             />
-            <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.sm, color: THEME_COLORS.text.light, textAlign: 'right', marginTop: 4 }}>
+            <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.sm, color: THEME_COLORS.text.tertiary, textAlign: 'right', marginTop: 4 }}>
               {otherText.length}/300
             </Text>
           </StyledView>
@@ -674,13 +667,13 @@ export const CelebrationOverlay: React.FC<{ visible: boolean; recipientName: str
           const radius = Math.round((90 + (index % 3) * 20) * SCALE);
           return (
             <Animated.View key={`heart-${index}`} style={{ position: 'absolute', transform: [{ translateX: Math.cos(angle) * radius }, { translateY: Math.sin(angle) * radius }, { scale }] }}>
-              <EvaIcon name="heart" variant="fill" size={Math.round((index % 3 === 0 ? 28 : 20) * SCALE)} color={COLORS.pink} />
+              <EvaIcon name="heart" variant="fill" size={Math.round((index % 3 === 0 ? 28 : 20) * SCALE)} color={COLORS.error} />
             </Animated.View>
           );
         })}
         <Animated.View style={{ transform: [{ scale: scaleAnim }, { rotate: rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['-180deg', '0deg'] }) }] }}>
-          <StyledView className="rounded-full items-center justify-center mb-6" style={{ backgroundColor: COLORS.pinkBg, width: Math.round(112 * SCALE), height: Math.round(112 * SCALE) }}>
-            <EvaIcon name="heart" variant="fill" size={Math.round(64 * SCALE)} color={COLORS.pink} />
+          <StyledView className="rounded-full items-center justify-center mb-6" style={{ backgroundColor: COLORS.errorBg, width: Math.round(112 * SCALE), height: Math.round(112 * SCALE) }}>
+            <EvaIcon name="heart" variant="fill" size={Math.round(64 * SCALE)} color={COLORS.error} />
           </StyledView>
         </Animated.View>
         <Animated.View style={{ opacity: textOpacity }}>

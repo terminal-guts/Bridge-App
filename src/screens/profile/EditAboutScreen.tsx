@@ -27,7 +27,7 @@ const pillSelectedStyle = {
 const pillUnselectedStyle = {
   fontSize: FONT_SIZES.base,
   fontFamily: FONTS.regular,
-  color: COLORS.text.muted,
+  color: COLORS.text.secondary,
 };
 
 const RELIGION_OPTIONS = [
@@ -58,11 +58,11 @@ const EDUCATION_LEVELS = [
 
 /** Reusable field label with required asterisk or optional hint */
 const FieldLabel: React.FC<{ label: string; required?: boolean; optional?: boolean }> = ({ label, required, optional }) => (
-  <Body style={{ fontSize: FONT_SIZES.sm, fontFamily: FONTS.medium, color: COLORS.text.muted, marginBottom: 8 }}>
+  <Body style={{ fontSize: FONT_SIZES.sm, fontFamily: FONTS.medium, color: COLORS.text.secondary, marginBottom: 8 }}>
     {label}{' '}
     {required && <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText>}
     {optional && (
-      <Body style={{ fontSize: FONT_SIZES.xs, color: COLORS.text.light }}>(optional)</Body>
+      <Body style={{ fontSize: FONT_SIZES.xs, color: COLORS.text.tertiary }}>(optional)</Body>
     )}
   </Body>
 );

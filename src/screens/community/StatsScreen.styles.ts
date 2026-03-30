@@ -31,47 +31,10 @@ const CARD_GAP = sw(12);
 const H_PAD = sw(20);
 export const STAT_CARD_WIDTH = (SCREEN_WIDTH - H_PAD * 2 - CARD_GAP) / 2;
 
-// Exported so ProgressRing in components file can use the scaled ring size
-export const ACCURACY_RING_SIZE = sw(88);
-
 export const s = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.screenBackground,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: sw(40),
-  },
-  loadingText: {
-    marginTop: sh(12),
-    fontSize: FONT_SIZES.lg,
-    fontFamily: FONTS.medium,
-    color: COLORS.navInactiveIcon,
-  },
-  errorText: {
-    marginTop: sh(12),
-    fontSize: FONT_SIZES.lg,
-    fontFamily: FONTS.medium,
-    color: COLORS.textGray800,
-    textAlign: 'center',
-    marginBottom: sh(16),
-  },
-  retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primaryAccent,
-    paddingHorizontal: sw(20),
-    paddingVertical: sh(12),
-    borderRadius: sw(10),
-    minHeight: 44,
-  },
-  retryText: {
-    fontSize: FONT_SIZES.lg,
-    fontFamily: FONTS.semiBold,
-    color: COLORS.card,
   },
   offscreen: {
     position: 'absolute',
@@ -82,25 +45,12 @@ export const s = StyleSheet.create({
     display: 'none',
   },
 
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: H_PAD,
-    paddingVertical: sh(16),
-  },
-  headerTitle: {
-    fontSize: FONT_SIZES['2xl'],
-    fontFamily: FONTS.bold,
-    color: COLORS.textDarkHeading,
-  },
-
   // Tabs
   tabBar: {
     flexDirection: 'row',
     marginHorizontal: H_PAD,
-    backgroundColor: COLORS.backgroundGray,
+    marginTop: sh(8),
+    backgroundColor: COLORS.card,
     borderRadius: sw(12),
     padding: sw(4),
     marginBottom: sh(16),
@@ -124,6 +74,7 @@ export const s = StyleSheet.create({
   tabText: {
     fontSize: FONT_SIZES.lg,
     fontFamily: FONTS.semiBold,
+    fontWeight: '600' as const,
     color: COLORS.navInactiveIcon,
   },
   tabTextActive: {
@@ -158,12 +109,14 @@ export const s = StyleSheet.create({
   heroValue: {
     fontSize: sf(40),
     fontFamily: FONTS.extraBold,
+    fontWeight: '800' as const,
     color: COLORS.card,
     lineHeight: sf(48),
   },
   heroLabel: {
     fontSize: FONT_SIZES.xl,
     fontFamily: FONTS.semiBold,
+    fontWeight: '600' as const,
     color: 'rgba(255,255,255,0.9)',
     marginTop: sh(4),
     textAlign: 'center',
@@ -171,6 +124,7 @@ export const s = StyleSheet.create({
   heroSublabel: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
+    fontWeight: '400' as const,
     color: 'rgba(255,255,255,0.6)',
     marginTop: sh(2),
   },
@@ -180,7 +134,7 @@ export const s = StyleSheet.create({
     borderRadius: sw(20),
     padding: sw(16),
     alignItems: 'center',
-    marginBottom: sh(20),
+    marginBottom: sh(24),
     ...SHADOWS.md,
   },
   archetypeEmoji: {
@@ -190,6 +144,7 @@ export const s = StyleSheet.create({
   archetypeLabel: {
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.semiBold,
+    fontWeight: '600' as const,
     color: 'rgba(255,255,255,0.6)',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
@@ -198,112 +153,26 @@ export const s = StyleSheet.create({
   archetypeName: {
     fontSize: sf(24),
     fontFamily: FONTS.bold,
+    fontWeight: '700' as const,
     color: COLORS.card,
     marginBottom: sh(6),
   },
   archetypeDesc: {
     fontSize: FONT_SIZES.base,
     fontFamily: FONTS.regular,
+    fontWeight: '400' as const,
     color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
     lineHeight: LINE_HEIGHTS.lg,
     paddingHorizontal: sw(8),
   },
 
-  // Impact card
-  impactCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.card,
-    borderRadius: sw(16),
-    padding: sw(18),
-    marginBottom: sh(20),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.md,
-  },
-  impactLeft: {
-    flex: 1,
-  },
-  impactLabel: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.semiBold,
-    color: COLORS.navInactiveIcon,
-    marginBottom: sh(4),
-  },
-  impactValue: {
-    fontSize: sf(36),
-    fontFamily: FONTS.bold,
-    color: COLORS.textDarkHeading,
-    lineHeight: sf(44),
-  },
-  impactSubtext: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.regular,
-    color: COLORS.text.light,
-    marginTop: sh(4),
-  },
-  impactRight: {
-    marginLeft: sw(16),
-  },
-
-  // Accuracy card
-  accuracyCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.card,
-    borderRadius: sw(16),
-    padding: sw(18),
-    marginBottom: sh(24),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.md,
-  },
-  accuracyRingWrap: {
-    position: 'relative',
-    width: ACCURACY_RING_SIZE,
-    height: ACCURACY_RING_SIZE,
-    marginRight: sw(16),
-  },
-  accuracyRingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  accuracyValue: {
-    fontSize: sf(22),
-    fontFamily: FONTS.bold,
-    color: COLORS.success,
-  },
-  accuracyText: {
-    flex: 1,
-  },
-  accuracyTitle: {
-    fontSize: FONT_SIZES['2xl'],
-    fontFamily: FONTS.bold,
-    color: COLORS.textDarkHeading,
-    marginBottom: sh(4),
-  },
-  accuracyDesc: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.regular,
-    color: COLORS.navInactiveIcon,
-    lineHeight: LINE_HEIGHTS.base,
-    marginBottom: sh(8),
-  },
-  accuracyHint: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.regular,
-    color: COLORS.text.light,
-    lineHeight: LINE_HEIGHTS.sm,
-    marginTop: sh(8),
-  },
-
   // Section title
   sectionTitle: {
     fontSize: FONT_SIZES.xl,
     fontFamily: FONTS.bold,
-    color: COLORS.textDarkHeading,
+    fontWeight: '700' as const,
+    color: COLORS.text.primary,
     marginBottom: sh(12),
   },
 
@@ -339,12 +208,14 @@ export const s = StyleSheet.create({
   statValue: {
     fontSize: sf(22),
     fontFamily: FONTS.bold,
-    color: COLORS.textDarkHeading,
+    fontWeight: '700' as const,
+    color: COLORS.text.primary,
     marginBottom: sh(2),
   },
   statLabel: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.semiBold,
+    fontWeight: '600' as const,
     color: COLORS.navInactiveIcon,
   },
 
@@ -378,16 +249,21 @@ export const s = StyleSheet.create({
   highlightLabel: {
     fontSize: FONT_SIZES.base,
     fontFamily: FONTS.semiBold,
-    color: COLORS.text.muted,
+    fontWeight: '600' as const,
+    color: COLORS.text.secondary,
   },
   highlightValue: {
     fontSize: FONT_SIZES.base,
     fontFamily: FONTS.bold,
-    color: COLORS.textDarkHeading,
+    fontWeight: '700' as const,
+    color: COLORS.text.primary,
+    flexShrink: 1,
+    maxWidth: '50%',
+    textAlign: 'right',
   },
   highlightDivider: {
     height: 1,
-    backgroundColor: COLORS.borderWarm,
+    backgroundColor: COLORS.border,
   },
 
   // Rank card
@@ -419,11 +295,13 @@ export const s = StyleSheet.create({
   rankTitle: {
     fontSize: FONT_SIZES.xl,
     fontFamily: FONTS.bold,
-    color: COLORS.textDarkHeading,
+    fontWeight: '700' as const,
+    color: COLORS.text.primary,
   },
   rankDesc: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
+    fontWeight: '400' as const,
     color: COLORS.navInactiveIcon,
     marginTop: sh(2),
   },
@@ -436,11 +314,12 @@ export const s = StyleSheet.create({
   rankValue: {
     fontSize: FONT_SIZES['3xl'],
     fontFamily: FONTS.bold,
+    fontWeight: '700' as const,
     color: COLORS.card,
   },
 });
 
-// ─── Additional Styles (trend, period, fun facts, empty) ─────────────────────
+// ─── Additional Styles (trend, period, empty) ───────────────────────────────
 
 export const st = StyleSheet.create({
   // Trend arrows
@@ -455,6 +334,7 @@ export const st = StyleSheet.create({
   trendText: {
     fontSize: FONT_SIZES.xs,
     fontFamily: FONTS.semiBold,
+    fontWeight: '600' as const,
   },
 
   // Period toggle
@@ -466,54 +346,27 @@ export const st = StyleSheet.create({
     marginBottom: sh(20),
     borderWidth: 1,
     borderColor: COLORS.border,
+    width: '100%',
   },
   periodBtn: {
     flex: 1,
     paddingVertical: sh(8),
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: sw(8),
     minHeight: 44, // iOS HIG touch target
   },
   periodBtnActive: {
-    backgroundColor: COLORS.backgroundLightBlue,
+    backgroundColor: 'rgba(67, 127, 255, 0.08)',
   },
   periodText: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.semiBold,
-    color: COLORS.text.light,
+    fontWeight: '600' as const,
+    color: COLORS.text.tertiary,
   },
   periodTextActive: {
     color: COLORS.primaryAccent,
-  },
-
-  // Fun facts
-  funFactCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: sw(16),
-    padding: sw(14),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.sm,
-  },
-  funFactRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: sh(10),
-    gap: sw(12),
-  },
-  funFactIcon: {
-    width: sw(32),
-    height: sw(32),
-    borderRadius: sw(8),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  funFactText: {
-    flex: 1,
-    fontSize: FONT_SIZES.base,
-    fontFamily: FONTS.regular,
-    color: COLORS.text.muted,
-    lineHeight: LINE_HEIGHTS.lg,
   },
 
   // Empty state
@@ -526,7 +379,7 @@ export const st = StyleSheet.create({
     width: sw(72),
     height: sw(72),
     borderRadius: sw(36),
-    backgroundColor: COLORS.backgroundFriendActive,
+    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: sh(20),
@@ -534,12 +387,14 @@ export const st = StyleSheet.create({
   emptyTitle: {
     fontSize: FONT_SIZES['3xl'],
     fontFamily: FONTS.bold,
-    color: COLORS.textDarkHeading,
+    fontWeight: '700' as const,
+    color: COLORS.text.primary,
     marginBottom: sh(8),
   },
   emptyDesc: {
     fontSize: FONT_SIZES.lg,
     fontFamily: FONTS.regular,
+    fontWeight: '400' as const,
     color: COLORS.navInactiveIcon,
     textAlign: 'center',
     lineHeight: LINE_HEIGHTS.xl,
@@ -559,6 +414,7 @@ export const st = StyleSheet.create({
   emptyCtaText: {
     fontSize: FONT_SIZES.xl,
     fontFamily: FONTS.semiBold,
+    fontWeight: '600' as const,
     color: COLORS.card,
   },
 });
@@ -591,6 +447,7 @@ export const shareStyles = StyleSheet.create({
   topBadgeText: {
     fontSize: FONT_SIZES.xs,
     fontFamily: FONTS.bold,
+    fontWeight: '700' as const,
     color: 'rgba(255,255,255,0.7)',
     letterSpacing: 2,
   },
@@ -601,12 +458,14 @@ export const shareStyles = StyleSheet.create({
   archetypeName: {
     fontSize: sf(28),
     fontFamily: FONTS.bold,
+    fontWeight: '700' as const,
     color: COLORS.card,
     marginBottom: sh(8),
   },
   archetypeDesc: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
+    fontWeight: '400' as const,
     color: 'rgba(255,255,255,0.7)',
     textAlign: 'center',
     lineHeight: LINE_HEIGHTS.base,
@@ -622,31 +481,35 @@ export const shareStyles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     width: '100%',
-    justifyContent: 'space-around',
+    justifyContent: 'space-evenly',
     marginBottom: sh(20),
   },
   statBlock: {
     alignItems: 'center',
+    minWidth: sw(80),
   },
   statNum: {
-    fontSize: sf(22),
+    fontSize: sf(28),
     fontFamily: FONTS.bold,
+    fontWeight: '700' as const,
     color: COLORS.card,
     marginBottom: sh(2),
   },
   statLabel: {
-    fontSize: FONT_SIZES.xs,
+    fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.semiBold,
-    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '600' as const,
+    color: 'rgba(255,255,255,0.65)',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   campusText: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.semiBold,
-    color: 'rgba(255,255,255,0.35)',
+    fontWeight: '600' as const,
+    color: 'rgba(255,255,255,0.45)',
     letterSpacing: 1,
-    marginTop: sh(8),
+    marginTop: sh(12),
   },
   watermark: {
     position: 'absolute',
@@ -655,7 +518,8 @@ export const shareStyles = StyleSheet.create({
   watermarkText: {
     fontSize: FONT_SIZES.xl,
     fontFamily: FONTS.bold,
-    color: 'rgba(255,255,255,0.15)',
+    fontWeight: '700' as const,
+    color: 'rgba(255,255,255,0.25)',
     letterSpacing: 4,
     textTransform: 'lowercase',
   },

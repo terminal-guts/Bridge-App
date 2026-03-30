@@ -366,20 +366,20 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
   return (
     <StyledSafeAreaView edges={['top', 'bottom']} className="flex-1" style={{ backgroundColor: COLORS.screenBackground }}>
       {/* Onboarding header */}
-      <StyledView className="px-6 pt-2 pb-3 bg-white border-b border-neutral-200">
+      <StyledView className="px-6 pt-2 pb-3" style={{ backgroundColor: COLORS.screenBackground }}>
         <H1 className="mb-1">Add friends</H1>
-        <Body className="text-neutral-500 text-sm mb-3">
-          Bridge is more fun with friends. Invite your crew to join.
+        <Body className="text-neutral-500 text-sm mb-2">
+          Bridge is more fun with friends. Invite your crew.
         </Body>
         <StyledView className="flex-row items-center justify-between mb-1">
           <StyledText className="text-xs text-neutral-500" style={{ fontFamily: FONTS.medium }}>
-            {bridgeUserCount > 0 ? `${bridgeUserCount}+ students on Bridge` : 'Send invites to build your crew'}
+            {bridgeUserCount > 0 ? `${bridgeUserCount}+ students on Bridge` : 'Invite your crew'}
           </StyledText>
           <StyledText className="text-xs font-semibold" style={{ fontFamily: FONTS.semiBold, color: COLORS.primaryAccent }}>
             {invitesRemaining} invite{invitesRemaining === 1 ? '' : 's'} left
           </StyledText>
         </StyledView>
-        <StyledView className="bg-neutral-200 rounded-full overflow-hidden" style={{ height: 6 }}>
+        <StyledView className="rounded-full overflow-hidden" style={{ height: 5, backgroundColor: COLORS.borderLight }}>
           <StyledView
             className="h-full rounded-full"
             style={{
@@ -448,7 +448,7 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
       {/* Onboarding bottom bar — Send invites replaces Continue when contacts selected */}
       <StyledView
         className="px-6 bg-neutral-50"
-        style={{ paddingTop: 12, paddingBottom: 12, borderTopWidth: 1, borderTopColor: COLORS.backgroundGray }}
+        style={{ paddingTop: 12, paddingBottom: 12, borderTopWidth: 1, borderTopColor: COLORS.card }}
       >
         {selectedIds.size > 0 ? (
           <Button onPress={handleSendInvites} variant="primary" size="lg" fullWidth disabled={sending}>

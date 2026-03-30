@@ -88,7 +88,7 @@ export const Thumb = () => (
 export const Rail = () => (
   <StyledView
     className="flex-1 rounded-full"
-    style={{ height: 6, backgroundColor: COLORS.backgroundProgressTrack }}
+    style={{ height: 6, backgroundColor: COLORS.card }}
   />
 );
 
@@ -409,7 +409,7 @@ const LifestyleSubSection: React.FC<{
   isLast?: boolean;
 }> = ({ label, selectedValues, substanceKey, onUpdate, isLast }) => (
   <StyledView className={isLast ? '' : 'mb-4'}>
-    <Body style={{ color: COLORS.text.muted, fontFamily: FONTS.medium }} className="text-sm mb-2">{label}</Body>
+    <Body style={{ color: COLORS.text.secondary, fontFamily: FONTS.medium }} className="text-sm mb-2">{label}</Body>
     <StyledView className="flex-row flex-wrap gap-2">
       {LIFESTYLE_FREQUENCY_OPTIONS.map(option => {
         const isSelected = selectedValues.includes(option.value);

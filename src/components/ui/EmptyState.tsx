@@ -62,7 +62,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
         {/* Text Content */}
         <StyledView className="items-center max-w-sm">
-          <H3 className="text-center mb-2" style={{ color: COLORS.text.heading }}>
+          <H3 className="text-center mb-2" style={{ color: COLORS.text.primary }}>
             {title}
           </H3>
           {description && (
@@ -88,7 +88,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           {icon}
         </StyledView>
       )}
-      <H3 className="text-center mb-1" style={{ color: COLORS.text.heading }}>
+      <H3 className="text-center mb-1" style={{ color: COLORS.text.primary }}>
         {title}
       </H3>
       {description && (

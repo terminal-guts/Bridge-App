@@ -182,36 +182,22 @@ export function useProposalVoting(
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         setCurrentIndex(prev => prev + 1);
       }
-    }, 250);
+    }, 1200); // Allow time for vote bar fill animation + user to see result
   }, [onVoteComplete, onBack, onVotesComplete]);
 
   const handleVote = useCallback(async (vote: 'yes' | 'no') => {
     if (votingRef.current || currentIndex >= proposals.length) return;
+    votingRef.current = true;
     const current = proposals[currentIndex];
-    if (!current) return;
+    if (!current) { votingRef.current = false; return; }
 
     if (!rateLimiterRef.current.isAllowed('vote', 20, 60000)) {
       showToast.info('Slow down!', 'Please wait a moment before voting again');
+      votingRef.current = false;
       return;
     }
 
-    votingRef.current = true;
     setVoting(true);
-
-    // Button micro-interaction
-    if (vote === 'yes') animateButtonPress(yesButtonScale, 'yes');
-    else animateButtonPress(noButtonScale, 'no');
-
-    // Haptics
-    if (vote === 'yes') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    } else {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    }
-
-    // Vote flash
-    if (vote === 'yes') triggerVoteFlash(COLORS.emerald);
-    else triggerVoteFlash(COLORS.error);
 
     // Submit vote
     try {
@@ -231,6 +217,21 @@ export function useProposalVoting(
     }
 
     if (!isMountedRef.current) return;
+
+    // Button micro-interaction (after confirmed)
+    if (vote === 'yes') animateButtonPress(yesButtonScale, 'yes');
+    else animateButtonPress(noButtonScale, 'no');
+
+    // Haptics (after confirmed)
+    if (vote === 'yes') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    } else {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    }
+
+    // Vote flash (after confirmed)
+    if (vote === 'yes') triggerVoteFlash(COLORS.success);
+    else triggerVoteFlash(COLORS.error);
 
     // Update local vote counts after confirmed
     setProposals(prev => prev.map((p, i) => {
@@ -324,6 +325,9 @@ export function useForFriendModal(
     setSelectedFriendId(null);
   }, []);
 
+  // Track which proposals have had a recommendation sent (by index)
+  const [recommendSentIndices, setRecommendSentIndices] = useState<Set<number>>(new Set());
+
   const handleForFriendConfirm = useCallback(async () => {
     if (!selectedFriendId) return;
     const current = proposals[currentIndex];
@@ -335,8 +339,10 @@ export function useForFriendModal(
     }
     setShowForFriendModal(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
-    advanceProposal();
-  }, [selectedFriendId, proposals, currentIndex, selectedPersonSide, advanceProposal]);
+    // Recommend does NOT count as a vote — don't advance the proposal.
+    // Instead, hide the recommend button so the user must vote Yes or No.
+    setRecommendSentIndices(prev => new Set([...prev, currentIndex]));
+  }, [selectedFriendId, proposals, currentIndex, selectedPersonSide]);
 
   return {
     showForFriendModal,
@@ -346,6 +352,7 @@ export function useForFriendModal(
     setSelectedFriendId,
     friendsList,
     loadingFriends,
+    recommendSentIndices,
     handleForFriendPress,
     handlePersonSelect,
     handleForFriendCancel,

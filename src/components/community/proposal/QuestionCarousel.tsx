@@ -15,7 +15,7 @@
  * - Tappable dots for navigation
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, PanResponder } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -32,11 +32,12 @@ import { COLORS } from '../../../theme/colors';
 import { EvaIcon } from '../../icons';
 import type { DeepQuestionData } from './proposalHelpers';
 
-// Color for person B — distinct from person A's primary blue
-const ACCENT_B = COLORS.purple; // #7C3AED
+// Color for person B — warm neutral, distinct from person A's blue
+const ACCENT_B = COLORS.primaryAccent; // softer blue for person B text/accent
+const ACCENT_B_BG = COLORS.primaryLight; // light blue for person B card backgrounds
 
-// Decorative open-quote color — cyan accent at reduced opacity
-const QUOTE_COLOR = '#06B6D4';
+// Decorative open-quote color — primary blue accent
+const QUOTE_COLOR = COLORS.primaryAccent;
 
 // "Mo Orji" → "M.O."
 function toInitials(fullName: string): string {
@@ -70,10 +71,15 @@ function PersonAnswerCard({
     transform: [{ scale: scaleValue.value }],
   }));
 
+  const isPersonA = accentColor === COLORS.primary;
   const cardStyle = useAnimatedStyle(() => ({
-    // Tinted bg fades to white on reveal
-    backgroundColor: `rgba(${accentColor === COLORS.primary ? '37, 99, 235' : '124, 58, 237'}, ${bgOpacity.value * 0.04})`,
-    borderColor: `rgba(${accentColor === COLORS.primary ? '37, 99, 235' : '124, 58, 237'}, ${0.15 + borderFlash.value * 0.4})`,
+    // Tinted bg fades to white on reveal — person A deeper blue, person B softer blue
+    backgroundColor: isPersonA
+      ? `rgba(37, 99, 235, ${bgOpacity.value * 0.04})`
+      : `rgba(67, 127, 255, ${bgOpacity.value * 0.06})`,
+    borderColor: isPersonA
+      ? `rgba(37, 99, 235, ${0.15 + borderFlash.value * 0.4})`
+      : `rgba(67, 127, 255, ${0.12 + borderFlash.value * 0.3})`,
   }));
 
   // Trigger reveal animation
@@ -130,7 +136,7 @@ function PersonAnswerCard({
             <Text style={{
               fontFamily: FONTS.regular,
               fontSize: FONT_SIZES.base,
-              color: COLORS.text.primary,
+              color: COLORS.text.secondary,
               lineHeight: LINE_HEIGHTS.base,
             }}>
               {answer}
@@ -201,7 +207,7 @@ function QuestionPage({
         fontWeight: '500',
         fontSize: FONT_SIZES.lg,
         fontStyle: 'italic',
-        color: COLORS.text.heading,
+        color: COLORS.text.primary,
         lineHeight: LINE_HEIGHTS.xl,
         marginBottom: 12,
       }}>
@@ -250,7 +256,9 @@ export function QuestionCarousel({
   const total = questions.length;
   // Clamp currentPage if questions array shrinks (e.g., proposal change)
   const safePage = Math.min(currentPage, Math.max(0, total - 1));
-  if (safePage !== currentPage) setCurrentPage(safePage);
+  useEffect(() => {
+    if (safePage !== currentPage) setCurrentPage(safePage);
+  }, [safePage, currentPage]);
 
   const userAInitial = toInitials(userAName);
   const userBInitial = toInitials(userBName);
@@ -304,7 +312,7 @@ export function QuestionCarousel({
                   borderRadius: 11,
                   backgroundColor: isActive ? COLORS.primary : 'transparent',
                   borderWidth: isActive ? 0 : 1,
-                  borderColor: COLORS.borderGray,
+                  borderColor: COLORS.border,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>

@@ -90,7 +90,7 @@ export const ProposalPhotoCard = React.memo(function ProposalPhotoCard({
               key={`${proposalId}-${side}-loop-${i}`}
               source={{ uri: photo.url }}
               placeholder={photo.blurhash ? { blurhash: photo.blurhash } : undefined}
-              style={{ width, height, backgroundColor: COLORS.backgroundGrayMedium }}
+              style={{ width, height, backgroundColor: '#E5E7EB' }}
               contentFit="cover"
               transition={300}
               cachePolicy="memory-disk"
@@ -103,7 +103,7 @@ export const ProposalPhotoCard = React.memo(function ProposalPhotoCard({
         <Image
           source={mainPhoto?.url ? { uri: mainPhoto.url } : null}
           placeholder={mainPhoto?.blurhash ? { blurhash: mainPhoto.blurhash } : undefined}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, ...borderRadiusStyle, backgroundColor: COLORS.backgroundGrayMedium }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, ...borderRadiusStyle, backgroundColor: '#E5E7EB' }}
           contentFit="cover"
           transition={300}
           cachePolicy="memory-disk"

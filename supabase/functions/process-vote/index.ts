@@ -195,32 +195,74 @@ Deno.serve(async (req: Request) => {
     const voterTier = voterKarma?.badge_tier || 'new';
     const weightMultiplier = KARMA_WEIGHTS[voterTier] || 1.0;
 
-    // 5. Upsert the vote (one vote per voter per proposal — unique constraint)
+    // 5. Record the vote
     const effectiveVoteWeight = isFriendVote
       ? weightMultiplier * FRIEND_VOTE_WEIGHT
       : weightMultiplier;
 
-    // created_at is intentionally omitted so that on conflict (re-vote) the
-    // original vote timestamp is preserved. The DB default sets it for new rows.
-    const { error: voteErr } = await supabase
-      .from('proposal_votes')
-      .upsert({
-        proposal_id,
-        voter_user_id: voterId,
-        vote_type,
-        is_friend_vote: isFriendVote,
-        vote_weight: effectiveVoteWeight,
-        friend_of: friendOf,
-        recommend_to_id: recommend_to_id || null,
-      }, { onConflict: 'proposal_id,voter_user_id' });
+    const votePayload = {
+      proposal_id,
+      voter_user_id: voterId,
+      vote_type,
+      is_friend_vote: isFriendVote,
+      vote_weight: effectiveVoteWeight,
+      friend_of: friendOf,
+      recommend_to_id: recommend_to_id || null,
+    };
 
-    if (voteErr) {
-      console.error('Vote upsert error:', voteErr);
-      return Response.json({ error: 'Failed to record vote' }, { status: 500, headers: corsHeaders });
+    // Race-safe insert-then-update pattern:
+    // Try INSERT first. If it succeeds, this is definitively a new vote and
+    // we can safely award karma. If it fails with a unique-constraint
+    // violation (code 23505), the vote already exists — fall back to UPDATE
+    // and skip karma. This eliminates the TOCTOU gap where two concurrent
+    // first-votes could both see existingVote=null and both award karma.
+    let confirmedNewVote = false;
+
+    if (isNewVote) {
+      const { error: insertErr } = await supabase
+        .from('proposal_votes')
+        .insert(votePayload);
+
+      if (!insertErr) {
+        // INSERT succeeded — this request created the row
+        confirmedNewVote = true;
+      } else if (insertErr.code === '23505') {
+        // Unique constraint violation — another concurrent request inserted
+        // first. Fall back to UPDATE (re-vote behavior).
+        const { error: updateErr } = await supabase
+          .from('proposal_votes')
+          .update({
+            vote_type,
+            is_friend_vote: isFriendVote,
+            vote_weight: effectiveVoteWeight,
+            friend_of: friendOf,
+            recommend_to_id: recommend_to_id || null,
+          })
+          .eq('proposal_id', proposal_id)
+          .eq('voter_user_id', voterId);
+
+        if (updateErr) {
+          console.error('Vote update error (after conflict):', updateErr);
+          return Response.json({ error: 'Failed to record vote' }, { status: 500, headers: corsHeaders });
+        }
+      } else {
+        console.error('Vote insert error:', insertErr);
+        return Response.json({ error: 'Failed to record vote' }, { status: 500, headers: corsHeaders });
+      }
+    } else {
+      // Known re-vote — upsert is fine, no karma at stake
+      const { error: voteErr } = await supabase
+        .from('proposal_votes')
+        .upsert(votePayload, { onConflict: 'proposal_id,voter_user_id' });
+
+      if (voteErr) {
+        console.error('Vote upsert error:', voteErr);
+        return Response.json({ error: 'Failed to record vote' }, { status: 500, headers: corsHeaders });
+      }
     }
 
-    // 6. Update voter karma (only for new votes)
-    if (isNewVote) {
+    // 6. Update voter karma — only when INSERT succeeded (race-safe)
+    if (confirmedNewVote) {
       await supabase.rpc('increment_karma_for_vote', { p_user_id: voterId });
     }
 

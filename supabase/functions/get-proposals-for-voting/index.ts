@@ -47,14 +47,12 @@ Deno.serve(async (req: Request) => {
       { data: blockedIncoming },
       { data: friendRows },
       { data: existingVotes },
-      { data: existingRecs },
       { data: pendingProposals },
     ] = await Promise.all([
       supabase.from('blocked_users').select('blocked_user_id').eq('user_id', userId),
       supabase.from('blocked_users').select('user_id').eq('blocked_user_id', userId),
       supabase.from('friends').select('user_id, friend_id').eq('status', 'accepted').or(`user_id.eq.${userId},friend_id.eq.${userId}`),
       supabase.from('proposal_votes').select('proposal_id').eq('voter_user_id', userId),
-      supabase.from('friend_recommendations').select('source_proposal_id').eq('recommender_id', userId),
       // Only fetch the columns needed for filtering — no SELECT *
       supabase.from('proposals').select('id, user_a_id, user_b_id').eq('status', 'pending'),
     ]);
@@ -71,15 +69,18 @@ Deno.serve(async (req: Request) => {
       if (row.friend_id === userId) friendIds.add(row.user_id);
     }
 
-    const alreadyActedIds = new Set([
-      ...(existingVotes || []).map((v: { proposal_id: string }) => v.proposal_id),
-      ...(existingRecs || []).filter((r: { source_proposal_id: string | null }) => r.source_proposal_id).map((r: { source_proposal_id: string | null }) => r.source_proposal_id),
-    ]);
+    // Only votes exclude proposals from the gate — recommendations do NOT.
+    // Users must still vote Yes or No after recommending.
+    const alreadyActedIds = new Set(
+      (existingVotes || []).map((v: { proposal_id: string }) => v.proposal_id),
+    );
 
     // ── Filter eligible proposals for the gate ──────────────────────────────
-    // Gate = non-friend proposals only. Friend proposals are voted on via
-    // the Match button in the friends area, not in the gate.
-    const eligible: ProposalRow[] = [];
+    // Gate is #1 priority — must show up to GATE_SIZE proposals.
+    // Prefer stranger proposals, but include friend proposals as fallback
+    // so the gate is never empty when votable proposals exist.
+    const strangerEligible: ProposalRow[] = [];
+    const friendEligible: ProposalRow[] = [];
 
     for (const p of (pendingProposals || [])) {
       // Skip proposals the user is part of
@@ -88,11 +89,17 @@ Deno.serve(async (req: Request) => {
       if (alreadyActedIds.has(p.id)) continue;
       // Skip proposals involving blocked users
       if (blockedIds.has(p.user_a_id) || blockedIds.has(p.user_b_id)) continue;
-      // Skip friend proposals — those are handled in friends area
-      if (friendIds.has(p.user_a_id) || friendIds.has(p.user_b_id)) continue;
 
-      eligible.push(p);
+      // Separate stranger vs friend proposals (friends are fallback)
+      if (friendIds.has(p.user_a_id) || friendIds.has(p.user_b_id)) {
+        friendEligible.push(p);
+      } else {
+        strangerEligible.push(p);
+      }
     }
+
+    // Combine: strangers first, then friend proposals to fill remaining slots
+    const eligible: ProposalRow[] = [...strangerEligible, ...friendEligible];
 
     // ── Fetch assignment counts ONLY for eligible proposals (not all proposals) ──
     // This replaces the previous full-table scan of pool_vote_assignments.
@@ -152,11 +159,12 @@ Deno.serve(async (req: Request) => {
         );
     }
 
-    // Tag selected proposals as pool votes
+    // Tag proposals with correct vote context (friend vs pool)
+    const friendEligibleIds = new Set(friendEligible.map(p => p.id));
     const gateProposals = selected.map(p => ({
       ...p,
-      vote_context: 'pool',
-      is_friend_vote: false,
+      vote_context: friendEligibleIds.has(p.id) ? 'friend' : 'pool',
+      is_friend_vote: friendEligibleIds.has(p.id),
     }));
 
     // ── Enrich with profiles ────────────────────────────────────────────────

@@ -219,7 +219,7 @@ const QuestionSelectionModal: React.FC<QuestionSelectionModalProps> = ({
           accessibilityLabel="Close"
           accessibilityRole="button"
         >
-          <EvaIcon name="close" variant="outline" size={28} color={COLORS.textDarkHeading} />
+          <EvaIcon name="close" variant="outline" size={28} color={COLORS.text.primary} />
         </StyledTouchableOpacity>
       </StyledView>
 
@@ -327,7 +327,7 @@ const ChangeQuestionModal: React.FC<ChangeQuestionModalProps> = ({
           accessibilityLabel="Close"
           accessibilityRole="button"
         >
-          <EvaIcon name="close" variant="outline" size={28} color={COLORS.textDarkHeading} />
+          <EvaIcon name="close" variant="outline" size={28} color={COLORS.text.primary} />
         </StyledTouchableOpacity>
       </StyledView>
 

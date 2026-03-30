@@ -6,6 +6,8 @@
  * IDs are non-contiguous (some were removed), so tiers use explicit sets.
  */
 
+import { COLORS } from '../theme/colors';
+
 export type QuestionTier = 1 | 2 | 3;
 
 /**
@@ -36,29 +38,29 @@ export const TIER_CONFIG = {
   1: {
     emoji: 'smiling-face',
     name: 'Lighthearted',
-    bg: '#DBEAFE',      // Sky blue
-    border: '#93C5FD',  // Sky blue border
+    bg: COLORS.card,
+    border: COLORS.border,
     iconBg: 'bg-sky-400',
     iconColor: '#38BDF8',
-    color: '#0284C7',   // Deep sky blue for shadows
+    color: COLORS.primary,
   },
   2: {
     emoji: 'message-circle',
     name: 'Relationship',
-    bg: '#D1FAE5',      // Emerald/teal green - VERY DIFFERENT from blue
-    border: '#6EE7B7',  // Bright emerald border
+    bg: COLORS.card,
+    border: COLORS.success,
     iconBg: 'bg-emerald-400',
     iconColor: '#34D399',
-    color: '#059669',   // Deep emerald for shadows
+    color: COLORS.success,
   },
   3: {
     emoji: 'heart',
     name: 'Reflective',
-    bg: '#FCE7F3',      // Pink
-    border: '#F9A8D4',  // Pink border
+    bg: COLORS.card,
+    border: COLORS.border,
     iconBg: 'bg-fuchsia-400',
     iconColor: '#E879F9',
-    color: '#C026D3',   // Deep fuchsia for shadows
+    color: COLORS.primary,
   },
 } as const;
 

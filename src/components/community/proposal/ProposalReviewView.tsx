@@ -86,9 +86,9 @@ const DIVIDER_WIDTH = 13;
 // ─── Section accent spectrum ──────────────────────────────────────────────────
 // Colors sweep the visible spectrum (cool → warm → violet) as sections appear
 // in scroll order: Badges → Questions → Interests → Values → Lifestyle → Beliefs
-const ACCENT_QUESTIONS = '#06B6D4'; // cyan
-const ACCENT_INTERESTS = COLORS.emerald;
-const ACCENT_VALUES    = '#D97706'; // deep amber — distinct from YellowPill border (#F59E0B)
+const ACCENT_QUESTIONS = COLORS.primary; // unified blue
+const ACCENT_INTERESTS = COLORS.primary;
+const ACCENT_VALUES    = COLORS.primary;
 const PHOTO_WIDTH = (SCREEN_WIDTH - 32 - DIVIDER_WIDTH) / 2;
 
 const SCROLL_CONTENT_PAD_H = 16;
@@ -127,7 +127,9 @@ export function ProposalReviewView({
   // Track whether the user has voted on the current proposal (for vote bar reveal)
   const [hasVotedCurrent, setHasVotedCurrent] = useState(false);
   // Proportional header spacing — ~0.5% of screen height above button, ~0.9% below
+  // Gate voting is inside ScreenWrapper which already handles safe area — don't double-dip
   const headerTopPadding = insets.top + Math.round(SCREEN_HEIGHT * 0.005);
+  const gateTopPadding = Math.round(SCREEN_HEIGHT * 0.005);
   const headerBottomPadding = Math.round(SCREEN_HEIGHT * 0.009);
 
   const {
@@ -143,6 +145,7 @@ export function ProposalReviewView({
   const {
     showForFriendModal, forFriendStep, selectedPersonSide,
     selectedFriendId, setSelectedFriendId, friendsList, loadingFriends,
+    recommendSentIndices,
     handleForFriendPress, handlePersonSelect, handleForFriendCancel, handleForFriendConfirm,
   } = useForFriendModal(
     voting, proposals, currentIndex, isMountedRef,
@@ -182,9 +185,12 @@ export function ProposalReviewView({
   }, [currentIndex, proposals]);
 
   // ── Confetti on Yes vote ──────────────────────────────────────────────────
+  // LottieView stays mounted (hidden) — play() is called imperatively to avoid
+  // the 15-30ms mount/unmount cost on every Yes vote.
   const confettiRef = useRef<LottieView>(null);
   const confettiTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [confettiReady, setConfettiReady] = useState(false);
 
   // Clean up confetti timeout on unmount
   useEffect(() => {
@@ -198,8 +204,11 @@ export function ProposalReviewView({
       // Load confetti JSON once on first yes-vote, cache in module variable
       if (!confettiAnimSource) {
         confettiAnimSource = require('../../../../assets/Icons/AnimatedIcons/confetti.json');
+        setConfettiReady(true);
       }
       setShowConfetti(true);
+      // Play imperatively after a microtask to ensure the ref is set
+      requestAnimationFrame(() => confettiRef.current?.play());
       if (confettiTimeoutRef.current) clearTimeout(confettiTimeoutRef.current);
       confettiTimeoutRef.current = setTimeout(() => setShowConfetti(false), 2500);
     }
@@ -226,6 +235,13 @@ export function ProposalReviewView({
     transform: [{ scaleX: 0.85 + dotPulse.value * 0.15 }],
   }));
 
+  // ── Empty — gate should never show with 0 proposals ─────────────────────
+  // This hook MUST be above all early returns to satisfy Rules of Hooks.
+  const isDone = !loading && (proposals.length === 0 || currentIndex >= proposals.length);
+  useEffect(() => {
+    if (isDone) onVotesComplete?.();
+  }, [isDone, onVotesComplete]);
+
   // ── Loading skeleton — matches photo pair + section card layout ──────────
   if (loading) {
     return (
@@ -245,19 +261,7 @@ export function ProposalReviewView({
     );
   }
 
-  // ── Empty ────────────────────────────────────────────────────────────────
-  if (proposals.length === 0 || currentIndex >= proposals.length) {
-    return (
-      <View style={proposalStyles.emptyContainer}>
-        <EmptyState
-          variant="illustrated"
-          icon={<EvaIcon name="heart" variant="outline" size={40} color={COLORS.primary} />}
-          title="No proposals today"
-          description="Check back tomorrow — your friends will propose new matches for you."
-        />
-      </View>
-    );
-  }
+  if (isDone) return null;
 
   // ── Data ─────────────────────────────────────────────────────────────────
   if (!matchData) return null;
@@ -288,11 +292,11 @@ export function ProposalReviewView({
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             activeOpacity={0.7}
           >
-            <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.heading} />
+            <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.primary} />
           </TouchableOpacity>
         </View>
       ) : isGateVoting ? (
-        <View style={[proposalStyles.progressRow, { paddingTop: headerTopPadding, paddingBottom: headerBottomPadding }]}>
+        <View style={[proposalStyles.progressRow, { paddingTop: gateTopPadding, paddingBottom: headerBottomPadding }]}>
           <View style={{ width: 40 }} />
           <View style={proposalStyles.progressDotsCenter}>
             <GuideTarget id="matching-gates">
@@ -422,7 +426,7 @@ export function ProposalReviewView({
 
       {/* ── Vote bar — only visible after voting ── */}
       {hasVotedCurrent && (
-        <View style={{ paddingHorizontal: 16, paddingTop: 6, backgroundColor: COLORS.card }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4, backgroundColor: COLORS.card }}>
           <LiveVoteBar
             yesVotes={proposal.yesVotes ?? 0}
             noVotes={proposal.noVotes ?? 0}
@@ -440,6 +444,7 @@ export function ProposalReviewView({
         yesButtonAnimatedStyle={yesButtonAnimatedStyle}
         noButtonAnimatedStyle={noButtonAnimatedStyle}
         recommendButtonAnimatedStyle={recommendButtonAnimatedStyle}
+        recommendSent={recommendSentIndices.has(currentIndex)}
         bottomInset={insets.bottom}
       />
 
@@ -473,13 +478,13 @@ export function ProposalReviewView({
         />
       )}
 
-      {/* Confetti overlay on Yes vote */}
-      {showConfetti && (
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {/* Confetti overlay — stays mounted after first Yes vote, played imperatively */}
+      {(showConfetti || confettiReady) && (
+        <View style={[StyleSheet.absoluteFill, !showConfetti && { opacity: 0 }]} pointerEvents="none">
           <LottieView
             ref={confettiRef}
             source={confettiAnimSource!}
-            autoPlay
+            autoPlay={false}
             loop={false}
             style={StyleSheet.absoluteFill}
           />
