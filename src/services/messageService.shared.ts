@@ -95,7 +95,7 @@ export const uploadAudioFile = async (
     // Get signed URL (more reliable than public URL for iOS AVPlayer)
     const { data: signedData, error: signError } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .createSignedUrl(filename, 60 * 60 * 24 * 365); // 1 year expiry
+      .createSignedUrl(filename, 86400); // 24h expiry
 
     if (signError || !signedData?.signedUrl) {
       logger.error('[MESSAGE SERVICE] Signed URL error:', signError);

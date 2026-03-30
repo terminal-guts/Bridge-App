@@ -13,6 +13,7 @@
 
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { encode } from 'https://esm.sh/blurhash@2.0.5';
 import { decode as decodeJpeg } from 'https://esm.sh/jpeg-js@0.4.4';
 import { PNG } from 'https://esm.sh/pngjs@7.0.0';
@@ -88,6 +89,23 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // ── Auth check ──────────────────────────────────────────────────────
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing authorization' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const userClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: { user }, error: authErr } = await userClient.auth.getUser();
+    if (authErr || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     const { storagePath } = await req.json();
 
     if (!storagePath || typeof storagePath !== 'string') {

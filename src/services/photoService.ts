@@ -392,7 +392,7 @@ export const deletePhoto = async (photoId: string): Promise<ApiResponse<void>> =
  */
 export const getPhotoSignedUrl = async (
   storagePath: string,
-  expiresIn: number = 3600
+  expiresIn: number = 86400
 ): Promise<ApiResponse<string>> => {
   try {
     // If we're using mock Supabase, createSignedUrl won't work normally with real auth.
@@ -435,7 +435,7 @@ export const getPhotoSignedUrl = async (
  */
 export const getMultiplePhotoSignedUrls = async (
   storagePaths: string[],
-  expiresIn: number = 3600
+  expiresIn: number = 86400
 ): Promise<ApiResponse<Record<string, string>>> => {
   try {
     if (!storagePaths || storagePaths.length === 0) {
