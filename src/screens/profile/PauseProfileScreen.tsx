@@ -38,7 +38,7 @@ const BulletRow = ({
           width: 22,
           height: 22,
           borderRadius: 11,
-          backgroundColor: isAllowed ? COLORS.match.bg : COLORS.mismatch.bg,
+          backgroundColor: isAllowed ? 'rgba(52, 199, 89, 0.08)' : 'rgba(239, 68, 68, 0.08)',
           alignItems: 'center',
           justifyContent: 'center',
           marginRight: 12,
@@ -54,7 +54,7 @@ const BulletRow = ({
       </StyledView>
       <Body
         className="flex-1"
-        style={{ color: COLORS.text.muted, fontSize: FONT_SIZES.base }}
+        style={{ color: COLORS.text.secondary, fontSize: FONT_SIZES.base }}
       >
         {text}
       </Body>
@@ -188,10 +188,10 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
               <Card
                 className="mb-6 border"
                 style={{
-                  backgroundColor: isPaused ? COLORS.warning.bg : COLORS.match.bg,
+                  backgroundColor: isPaused ? 'rgba(245, 158, 11, 0.08)' : 'rgba(52, 199, 89, 0.08)',
                   borderColor: isPaused
-                    ? COLORS.warning.icon + '4D' // 30% opacity
-                    : COLORS.match.icon + '4D',
+                    ? COLORS.amber + '4D' // 30% opacity
+                    : COLORS.success + '4D',
                 }}
               >
                 <StyledView className="flex-row items-center justify-between">
@@ -219,7 +219,7 @@ export const PauseProfileScreen: React.FC<PauseProfileScreenProps> = ({ navigati
                     disabled={saving}
                     trackColor={{
                       false: COLORS.success,
-                      true: COLORS.warning.icon,
+                      true: COLORS.amber,
                     }}
                     thumbColor="white"
                     ios_backgroundColor={COLORS.success}

@@ -254,7 +254,7 @@ export const FriendCodeCard = React.memo(({ friendCode, onShareCode, onEnterCode
       <StyledText style={contactStyles.friendCodeText}>
         {friendCode}
       </StyledText>
-      <StyledText style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.regular, color: copied ? COLORS.success : COLORS.text.disabled, marginTop: 2 }}>
+      <StyledText style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.regular, color: copied ? COLORS.success : COLORS.text.tertiary, marginTop: 2 }}>
         {copied ? 'Copied!' : 'Tap to copy'}
       </StyledText>
     </TouchableOpacity>
@@ -301,7 +301,7 @@ export const EnterCodeInput = React.memo(({ inputRef, value, onChangeText, onSub
           ref={inputRef}
           style={{ flex: 1, fontSize: FONT_SIZES.base, fontFamily: FONTS.regular, color: '#0B1226' }}
           placeholder="Enter friend code"
-          placeholderTextColor={COLORS.text.disabled}
+          placeholderTextColor={COLORS.text.tertiary}
           value={value}
           onChangeText={onChangeText}
           autoCapitalize="characters"
@@ -398,11 +398,11 @@ export interface ContactSearchBarProps {
 export const ContactSearchBar = React.memo(({ value, onChangeText }: ContactSearchBarProps) => (
   <StyledView className="px-3 py-2 bg-white border-b border-neutral-100">
     <StyledView className="flex-row items-center bg-neutral-100 rounded-lg px-3 py-2">
-      <EvaIcon name="search" variant="outline" size={18} color={COLORS.text.disabled} />
+      <EvaIcon name="search" variant="outline" size={18} color={COLORS.text.tertiary} />
       <TextInput
         style={{ flex: 1, marginLeft: 8, fontSize: FONT_SIZES.sm, fontFamily: FONTS.regular, color: COLORS.text.primary }}
         placeholder="Search contacts..."
-        placeholderTextColor={COLORS.text.disabled}
+        placeholderTextColor={COLORS.text.tertiary}
         value={value}
         onChangeText={onChangeText}
         autoCorrect={false}
@@ -508,7 +508,7 @@ export const GrantedHeaderStrip = React.memo(({ friendCode, enterCodeValue, ente
         <TextInput
           className="flex-1 text-sm text-neutral-900"
           placeholder="Enter friend code"
-          placeholderTextColor={COLORS.text.disabled}
+          placeholderTextColor={COLORS.text.tertiary}
           value={enterCodeValue}
           onChangeText={onChangeText}
           autoCapitalize="characters"

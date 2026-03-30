@@ -19,7 +19,7 @@ interface ShareMatchSheetProps {
 
 const SHARE_TARGETS = [
     { key: 'snapchat', label: 'Snapchat', icon: 'share' as const, color: '#FFFC00', iconColor: '#000000', action: 'onShareSnapchat' },
-    { key: 'message', label: 'iMessage', icon: 'message-circle' as const, color: COLORS.primaryButton, iconColor: '#FFFFFF', action: 'onShareMessages' },
+    { key: 'message', label: 'iMessage', icon: 'message-circle' as const, color: COLORS.primary, iconColor: '#FFFFFF', action: 'onShareMessages' },
     { key: 'more', label: 'More...', icon: 'share' as const, color: '#667085', iconColor: '#FFFFFF', action: 'onShareMore' },
 ] as const;
 
@@ -63,7 +63,7 @@ export const ShareMatchSheet: React.FC<ShareMatchSheetProps> = ({
                     <View style={styles.previewWrap}>
                         {loading ? (
                             <View style={styles.previewPlaceholder}>
-                                <ActivityIndicator size="small" color={COLORS.primaryButton} />
+                                <ActivityIndicator size="small" color={COLORS.primary} />
                                 <Text style={styles.previewLoadingText}>Creating your card...</Text>
                             </View>
                         ) : imageUri ? (
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
         width: 180,
         height: 320,
         borderRadius: 16,
-        backgroundColor: COLORS.backgroundProgressTrack,
+        backgroundColor: COLORS.card,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -204,13 +204,13 @@ const styles = StyleSheet.create({
         gap: 8,
         paddingVertical: 14,
         borderRadius: 14,
-        backgroundColor: COLORS.backgroundFriendActive,
+        backgroundColor: COLORS.card,
         marginBottom: 10,
     },
     saveBtnText: {
         fontFamily: FONTS.semiBold,
         fontSize: FONT_SIZES.lg,
-        color: COLORS.primaryButton,
+        color: COLORS.primary,
     },
     doneBtn: {
         paddingVertical: 14,

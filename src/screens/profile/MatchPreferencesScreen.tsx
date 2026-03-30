@@ -322,7 +322,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
       {/* Offline banner */}
       {isOffline && (
         <StyledView className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex-row items-center">
-          <EvaIcon name="wifi-off-outline" variant="outline" size={16} color={COLORS.darkAmber} />
+          <EvaIcon name="wifi-off-outline" variant="outline" size={16} color={COLORS.amber} />
           <BodySmall className="text-amber-700 ml-2">
             You're offline. Changes won't be saved until you reconnect.
           </BodySmall>
@@ -333,7 +333,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
       <StyledView className="border-b px-4 py-3" style={{ backgroundColor: COLORS.card, borderBottomColor: COLORS.border }}>
         <StyledView className="flex-row items-center justify-between">
           <StyledTouchableOpacity onPress={handleBack} disabled={saving} className="mr-2 items-center justify-center" style={{ minWidth: 44, minHeight: 44 }} accessibilityRole="button" accessibilityLabel="Go back">
-            <EvaIcon name="arrow-ios-back" variant="outline" size={24} color={saving ? COLORS.text.disabled : COLORS.textDarkHeading} />
+            <EvaIcon name="arrow-ios-back" variant="outline" size={24} color={saving ? COLORS.text.tertiary : COLORS.text.primary} />
           </StyledTouchableOpacity>
           <StyledView className="flex-1">
             <H3>Match Preferences</H3>
@@ -362,7 +362,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
                 {matchPrefsCompletion.percentage}%
               </Body>
             </StyledView>
-            <StyledView className="rounded-full h-1.5 overflow-hidden" style={{ backgroundColor: COLORS.backgroundProgressTrack }}>
+            <StyledView className="rounded-full h-1.5 overflow-hidden" style={{ backgroundColor: COLORS.card }}>
               <StyledView
                 className="h-full rounded-full transition-all"
                 style={{

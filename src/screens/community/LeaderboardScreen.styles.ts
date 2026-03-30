@@ -19,8 +19,9 @@ export const s = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: FONTS.bold,
+    fontWeight: '700' as const,
     fontSize: FONT_SIZES['5xl'],
-    color: COLORS.textDarkHeading,
+    color: COLORS.text.primary,
   },
 
   // Layer 2 — Banner (floating)
@@ -39,12 +40,14 @@ export const s = StyleSheet.create({
   },
   bannerText: {
     fontFamily: FONTS.regular,
+    fontWeight: '400' as const,
     fontSize: FONT_SIZES.md,
     color: COLORS.primaryAccent,
     textAlign: 'center',
   },
   bannerBold: {
     fontFamily: FONTS.bold,
+    fontWeight: '700' as const,
   },
 
   // Countdown
@@ -58,29 +61,9 @@ export const s = StyleSheet.create({
   },
   countdownText: {
     fontFamily: FONTS.semiBold,
+    fontWeight: '600' as const,
     fontSize: FONT_SIZES.md,
     color: COLORS.navInactiveIcon,
-  },
-
-  // Layer 6 — Karma pill with shadow
-  karmaPillShadow: {
-    ...SHADOWS.accentGreen,
-  },
-  karmaPillShadowLarge: {
-    shadowOpacity: 0.22,
-    shadowRadius: 6,
-  },
-  karmaPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: COLORS.success,
-    borderRadius: 999,
-    backgroundColor: 'rgba(52, 199, 89, 0.08)',
-  },
-  karmaPillText: {
-    fontFamily: FONTS.semiBold,
-    color: COLORS.success,
   },
 
   // Friend badge
@@ -107,6 +90,7 @@ export const s = StyleSheet.create({
   },
   initialAvatarText: {
     fontFamily: FONTS.bold,
+    fontWeight: '700' as const,
     color: COLORS.card,
   },
 
@@ -165,9 +149,9 @@ export const s = StyleSheet.create({
     ...SHADOWS.accentBronze,
   },
 
-  avatarLarge: { width: 88, height: 88, borderRadius: 44, backgroundColor: COLORS.backgroundGrayMedium },
-  avatarMedium: { width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.backgroundGrayMedium },
-  avatarSmall: { width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.backgroundGrayMedium },
+  avatarLarge: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#E5E7EB' },
+  avatarMedium: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#E5E7EB' },
+  avatarSmall: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#E5E7EB' },
 
   // Rank badges
   rankBadge: {
@@ -184,14 +168,15 @@ export const s = StyleSheet.create({
     ...SHADOWS.sm,
   },
   rankBadgeLarge: { width: 30, height: 30, borderRadius: 15 },
-  rankBadgeText: { fontFamily: FONTS.bold, fontSize: FONT_SIZES.sm, color: COLORS.card },
+  rankBadgeText: { fontFamily: FONTS.bold, fontWeight: '700' as const, fontSize: FONT_SIZES.sm, color: COLORS.card },
   rankBadgeTextLarge: { fontSize: FONT_SIZES.base },
 
   // Podium text
   podiumName: {
     fontFamily: FONTS.semiBold,
+    fontWeight: '600' as const,
     fontSize: FONT_SIZES.base,
-    color: COLORS.textDarkHeading,
+    color: COLORS.text.primary,
     maxWidth: 100,
     textAlign: 'center',
     marginBottom: 8,
@@ -200,6 +185,7 @@ export const s = StyleSheet.create({
     color: COLORS.primaryAccent,
     fontSize: FONT_SIZES.xl,
     fontFamily: FONTS.bold,
+    fontWeight: '700' as const,
   },
 
   // Layer 4 — How to Earn (inline in podium)
@@ -216,18 +202,20 @@ export const s = StyleSheet.create({
   },
   howToEarnItem: {
     fontFamily: FONTS.regular,
+    fontWeight: '400' as const,
     fontSize: FONT_SIZES.sm,
     color: COLORS.navInactiveIcon,
   },
   howToEarnBold: {
     fontFamily: FONTS.semiBold,
+    fontWeight: '600' as const,
     color: COLORS.primaryAccent,
   },
   howToEarnDot: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: COLORS.borderDivider,
+    backgroundColor: COLORS.border,
   },
 
   // Layer 5 — List (card-style rows)
@@ -261,7 +249,7 @@ export const s = StyleSheet.create({
     width: 36,
     height: 28,
     borderRadius: 999,
-    backgroundColor: COLORS.backgroundProgressTrack,
+    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -272,6 +260,7 @@ export const s = StyleSheet.create({
   },
   rankPillText: {
     fontFamily: FONTS.bold,
+    fontWeight: '700' as const,
     fontSize: FONT_SIZES.md,
     color: COLORS.navInactiveIcon,
   },
@@ -291,20 +280,23 @@ export const s = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.9)',
-    backgroundColor: COLORS.backgroundGrayMedium,
+    backgroundColor: '#E5E7EB',
   },
   listNameCol: { flex: 1 },
   listName: {
     fontFamily: FONTS.semiBold,
+    fontWeight: '600' as const,
     fontSize: FONT_SIZES.xl,
-    color: COLORS.textDarkHeading,
+    color: COLORS.text.primary,
   },
   listNameHighlighted: {
     color: COLORS.primaryAccent,
     fontFamily: FONTS.bold,
+    fontWeight: '700' as const,
   },
   gapText: {
     fontFamily: FONTS.regular,
+    fontWeight: '400' as const,
     fontSize: FONT_SIZES.sm,
     color: COLORS.navInactiveIcon,
     marginTop: 2,
@@ -339,6 +331,7 @@ export const s = StyleSheet.create({
   },
   stickyRankText: {
     fontFamily: FONTS.bold,
+    fontWeight: '700' as const,
     fontSize: FONT_SIZES.md,
     color: COLORS.card,
   },
@@ -347,16 +340,18 @@ export const s = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     marginRight: 12,
-    backgroundColor: COLORS.backgroundGrayMedium,
+    backgroundColor: '#E5E7EB',
   },
   stickyNameCol: { flex: 1 },
   stickyName: {
     fontFamily: FONTS.bold,
+    fontWeight: '700' as const,
     fontSize: FONT_SIZES.lg,
     color: COLORS.primaryAccent,
   },
   stickyGapText: {
     fontFamily: FONTS.regular,
+    fontWeight: '400' as const,
     fontSize: FONT_SIZES.xs,
     color: COLORS.navInactiveIcon,
     marginTop: 1,
@@ -371,12 +366,14 @@ export const s = StyleSheet.create({
   },
   emptyTitle: {
     fontFamily: FONTS.bold,
+    fontWeight: '700' as const,
     fontSize: FONT_SIZES['3xl'],
-    color: COLORS.textDarkHeading,
+    color: COLORS.text.primary,
     marginTop: 16,
   },
   emptyBody: {
     fontFamily: FONTS.regular,
+    fontWeight: '400' as const,
     fontSize: FONT_SIZES.lg,
     color: COLORS.navInactiveIcon,
     textAlign: 'center',
@@ -392,6 +389,7 @@ export const s = StyleSheet.create({
   },
   retryBtnText: {
     fontFamily: FONTS.semiBold,
+    fontWeight: '600' as const,
     fontSize: FONT_SIZES.lg,
     color: COLORS.card,
   },
@@ -417,6 +415,7 @@ export const s = StyleSheet.create({
   headerBackButton: {
     minWidth: 44,
     minHeight: 44,
+    alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
 
@@ -447,6 +446,7 @@ export const s = StyleSheet.create({
   },
   headerSubtitle: {
     fontFamily: FONTS.medium,
+    fontWeight: '500' as const,
     fontSize: FONT_SIZES.sm,
     color: COLORS.navInactiveIcon,
     marginTop: -2,
@@ -461,8 +461,34 @@ export const s = StyleSheet.create({
     paddingVertical: 8,
     marginBottom: 4,
   },
+  metaRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 16,
+    paddingVertical: 10,
+    marginBottom: 4,
+  },
+  metaItem: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+  },
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: COLORS.navInactiveIcon,
+  },
+  metaText: {
+    fontFamily: FONTS.medium,
+    fontWeight: '500' as const,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.navInactiveIcon,
+  },
   participantsText: {
     fontFamily: FONTS.medium,
+    fontWeight: '500' as const,
     fontSize: FONT_SIZES.sm,
     color: COLORS.navInactiveIcon,
   },

@@ -102,7 +102,7 @@ export const notificationService = {
                         .upsert({
                             user_id: userData.user.id,
                             push_token: newToken,
-                            push_enabled: true,
+                            push_notifications: true,
                             updated_at: new Date().toISOString(),
                         }, { onConflict: 'user_id' });
 
@@ -163,7 +163,7 @@ export const notificationService = {
                         .from('user_settings')
                         .upsert({
                             user_id: userData.user.id,
-                            push_enabled: false,
+                            push_notifications: false,
                             updated_at: new Date().toISOString(),
                         }, { onConflict: 'user_id' });
                 }
@@ -175,7 +175,9 @@ export const notificationService = {
 
         let token: string | undefined;
         try {
-            token = (await Notifications.getExpoPushTokenAsync()).data;
+            token = (await Notifications.getExpoPushTokenAsync({
+                projectId: '1836c5e9-009d-477d-8769-8aef37693e5f',
+            })).data;
 
             // Only write to DB if the token actually changed (avoids redundant writes)
             if (token && token !== notificationService._lastSavedToken) {
@@ -186,7 +188,7 @@ export const notificationService = {
                         .upsert({
                             user_id: userData.user.id,
                             push_token: token,
-                            push_enabled: true,
+                            push_notifications: true,
                             updated_at: new Date().toISOString(),
                         }, { onConflict: 'user_id' });
 

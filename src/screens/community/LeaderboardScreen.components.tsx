@@ -11,23 +11,6 @@ import { COLORS } from '../../theme/colors';
 import { getInitialColor } from '../../utils/communityHelpers';
 import { s } from './LeaderboardScreen.styles';
 
-// ─── Karma Pill ──────────────────────────────────────────────────────────────
-
-export const KarmaPill = ({ karma, size = 'medium' }: { karma: number; size?: 'small' | 'medium' | 'large' }) => {
-  const fontSize = size === 'large' ? FONT_SIZES.xl : size === 'medium' ? FONT_SIZES.base : FONT_SIZES.md;
-  const iconSize = size === 'large' ? 15 : size === 'medium' ? 13 : 12;
-  const paddingV = size === 'large' ? 8 : 4;
-  const paddingH = size === 'large' ? 16 : size === 'medium' ? 12 : 8;
-  return (
-    <View style={[s.karmaPillShadow, size === 'large' && s.karmaPillShadowLarge]}>
-      <View style={[s.karmaPill, { paddingVertical: paddingV, paddingHorizontal: paddingH }]}>
-        <EvaIcon name="star" variant="outline" size={iconSize} color={COLORS.success} style={{ marginRight: 4 }} />
-        <Text style={[s.karmaPillText, { fontSize }]}>{karma} {karma === 1 ? 'pt' : 'pts'}</Text>
-      </View>
-    </View>
-  );
-};
-
 // ─── Friend Badge ────────────────────────────────────────────────────────────
 
 export const FriendBadge = () => (
@@ -67,9 +50,9 @@ export const RankChangeArrow = ({ change }: { change: number }) => {
         name={isUp ? 'arrow-upward' : 'arrow-downward'}
         variant="outline"
         size={12}
-        color={isUp ? COLORS.rankUp : COLORS.danger}
+        color={isUp ? COLORS.success : COLORS.error}
       />
-      <Text style={[s.rankChangeText, { color: isUp ? COLORS.rankUp : COLORS.danger }]}>
+      <Text style={[s.rankChangeText, { color: isUp ? COLORS.success : COLORS.error }]}>
         {Math.abs(change)}
       </Text>
     </View>

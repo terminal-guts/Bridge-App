@@ -168,7 +168,7 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
         ) : null}
 
         {/* Ethnicity */}
-        <Label style={{ color: COLORS.text.muted }} className="mb-2 mt-4">
+        <Label style={{ color: COLORS.text.secondary }} className="mb-2 mt-4">
           Ethnicity <StyledText style={{ color: COLORS.error }}>*</StyledText> (Select all that apply)
         </Label>
         <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
@@ -230,7 +230,7 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
         <H3 className="mb-4">Identity & Attraction</H3>
 
         {/* Pronouns */}
-        <Label style={{ color: COLORS.text.muted }} className="mb-2">
+        <Label style={{ color: COLORS.text.secondary }} className="mb-2">
           Pronouns <StyledText style={{ color: COLORS.error }}>*</StyledText> (Select up to {MAX_PRONOUNS})
         </Label>
         <Caption style={{ color: COLORS.primaryAccent }} className="font-semibold mb-2">
@@ -277,7 +277,7 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
         </StyledView>
 
         {/* Gender Identity */}
-        <Label style={{ color: COLORS.text.muted }} className="mb-2 mt-4">
+        <Label style={{ color: COLORS.text.secondary }} className="mb-2 mt-4">
           Gender <StyledText style={{ color: COLORS.error }}>*</StyledText> (Select all that apply)
         </Label>
         <StyledView className="flex-row flex-wrap gap-2.5 mb-4">

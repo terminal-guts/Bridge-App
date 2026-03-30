@@ -54,7 +54,7 @@ export const BackHeader: React.FC<BackHeaderProps> = ({
     }
   };
 
-  const iconColor = backDisabled ? COLORS.text.disabled : COLORS.text.heading;
+  const iconColor = backDisabled ? COLORS.text.tertiary : COLORS.text.primary;
 
   return (
     <View
@@ -114,7 +114,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: COLORS.card,
   },
   border: {
     borderBottomWidth: 1,
@@ -127,10 +126,10 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   title: {
-    color: COLORS.text.heading,
+    color: COLORS.text.primary,
   },
   titleLeft: {
-    color: COLORS.text.heading,
+    color: COLORS.text.primary,
     flex: 1,
   },
   centerTitleWrap: {

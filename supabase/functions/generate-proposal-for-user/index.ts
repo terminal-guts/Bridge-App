@@ -96,13 +96,16 @@ Deno.serve(async (req: Request) => {
           }, { headers: corsHeaders });
         }
 
-        // Fetch all other eligible profiles (not paused, profile completed)
+        // Fetch all other eligible profiles (not paused, profile completed, daters only)
+        // Matchmakers are excluded — they facilitate but are never proposed as candidates.
         const { data: allProfiles } = await supabase
           .from('user_profiles')
           .select('*')
           .eq('is_paused', false)
           .eq('profile_completed', true)
-          .neq('user_id', userId);
+          .neq('user_id', userId)
+          .or('role.eq.dater,role.is.null')
+          .or('matchmaking_only.is.null,matchmaking_only.eq.false');
 
         const otherIds = (allProfiles || []).map((p: { user_id: string }) => p.user_id).filter(Boolean);
 

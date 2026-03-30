@@ -174,7 +174,7 @@ export const AnswerQuestionModal: React.FC<AnswerQuestionModalProps> = ({
               value={answer}
               onChangeText={setAnswer}
               placeholder="Share your authentic thoughts..."
-              placeholderTextColor={COLORS.text.placeholder}
+              placeholderTextColor={COLORS.text.tertiary}
               multiline
               maxLength={500}
               className="text-neutral-900 text-base leading-6 p-4 pb-10 bg-neutral-50 rounded-xl border border-neutral-200"
@@ -185,7 +185,7 @@ export const AnswerQuestionModal: React.FC<AnswerQuestionModalProps> = ({
             <StyledView className="absolute bottom-3 right-3 bg-white/90 px-2 py-1 rounded-full">
               <Body
                 className="text-xs font-semibold"
-                style={{ color: answer.length === 0 ? COLORS.error : COLORS.text.placeholder }}
+                style={{ color: answer.length === 0 ? COLORS.error : COLORS.text.tertiary }}
               >
                 {answer.length}/500
               </Body>

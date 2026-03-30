@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.sm,
-    color: COLORS.text.disabled,
+    color: COLORS.text.tertiary,
     fontStyle: 'italic',
     paddingVertical: 8,
     textAlign: 'center',

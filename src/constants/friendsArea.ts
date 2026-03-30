@@ -5,6 +5,8 @@
  * Includes card dimensions, typography, spacing, colors, and timer states.
  */
 
+import { COLORS as THEME_COLORS } from '../theme/colors';
+
 // Friend card dimensions
 export const FRIEND_CARD = {
   HEIGHT: 76,
@@ -40,60 +42,60 @@ export const SPACING = {
 // Colors
 export const COLORS = {
   // Card backgrounds
-  PENDING_BG: '#FFFFFF',
-  COMPLETED_BG: '#F8FAFC',
+  PENDING_BG: THEME_COLORS.card,
+  COMPLETED_BG: THEME_COLORS.card,
 
   // Card borders
-  PENDING_BORDER: '#F1F5F9',
-  COMPLETED_BORDER: '#E2E8F0',
+  PENDING_BORDER: THEME_COLORS.borderLight,
+  COMPLETED_BORDER: THEME_COLORS.border,
 
   // Text colors
-  NAME_COLOR: '#1E293B',
-  STREAK_COLOR: '#475569',
+  NAME_COLOR: THEME_COLORS.text.primary,
+  STREAK_COLOR: THEME_COLORS.text.secondary,
 
   // Karma tier colors
-  KARMA_DIAMOND: '#8B5CF6', // 20+ assists (violet)
-  KARMA_GOLD: '#D97706',    // 15-19 assists (amber)
-  KARMA_SILVER: '#C0C0C0',  // 10-14 assists
-  KARMA_BRONZE: '#CD7F32',  // 5-9 assists
-  KARMA_GRAY: '#94A3B8',    // 0-4 assists (neutral)
+  KARMA_DIAMOND: THEME_COLORS.primary,      // 20+ assists
+  KARMA_GOLD: THEME_COLORS.amber,           // 15-19 assists (amber)
+  KARMA_SILVER: THEME_COLORS.podiumSilver,  // 10-14 assists
+  KARMA_BRONZE: THEME_COLORS.podiumBronze,  // 5-9 assists
+  KARMA_GRAY: THEME_COLORS.text.tertiary,   // 0-4 assists (neutral)
 
-  // Streak glow (for 10+ streaks)
-  STREAK_GLOW_BG: '#FEF3C7',
-  STREAK_GLOW_BORDER: '#FCD34D',
+  // Streak glow — removed (streaks are persistent info, no colored glow)
+  STREAK_GLOW_BG: 'transparent',
+  STREAK_GLOW_BORDER: THEME_COLORS.border,
 };
 
-// Timer urgency states
+// Timer urgency states — neutral for plenty of time, status colors only for real urgency
 export const TIMER_STATES = {
   PLENTY: {
     icon: 'clock',
-    color: '#64748B',
-    bgColor: '#F8FAFC',
-    borderColor: '#E2E8F0',
+    color: THEME_COLORS.text.tertiary,
+    bgColor: THEME_COLORS.card,
+    borderColor: THEME_COLORS.border,
     thresholdHours: 6,
     shouldPulse: false,
   },
   MODERATE: {
-    icon: 'flash',
-    color: '#F59E0B',
-    bgColor: '#FFFBEB',
-    borderColor: '#FDE68A',
+    icon: 'clock',
+    color: THEME_COLORS.text.tertiary,
+    bgColor: THEME_COLORS.card,
+    borderColor: THEME_COLORS.border,
     thresholdHours: 2,
     shouldPulse: false,
   },
   URGENT: {
     icon: 'flash',
-    color: '#F43F5E',
-    bgColor: '#FFF1F2',
-    borderColor: '#FECDD3',
+    color: THEME_COLORS.amber,
+    bgColor: 'rgba(245, 158, 11, 0.08)',
+    borderColor: 'rgba(245, 158, 11, 0.25)',
     thresholdHours: 2,
-    shouldPulse: true,
+    shouldPulse: false,
   },
   CRITICAL: {
     icon: 'alert-triangle',
-    color: '#DC2626',
-    bgColor: '#FEE2E2',
-    borderColor: '#FCA5A5',
+    color: THEME_COLORS.error,
+    bgColor: 'rgba(239, 68, 68, 0.08)',
+    borderColor: 'rgba(239, 68, 68, 0.25)',
     thresholdHours: 0.25,
     shouldPulse: true,
   },
@@ -103,12 +105,12 @@ export const TIMER_STATES = {
 export const SEPARATOR = {
   HEIGHT: 48,
   TEXT_SIZE: 12,
-  TEXT_COLOR: '#64748B',
-  LINE_COLOR: '#E2E8F0',
-  BG_COLOR: '#FAFBFC',
+  TEXT_COLOR: THEME_COLORS.text.secondary,
+  LINE_COLOR: THEME_COLORS.border,
+  BG_COLOR: THEME_COLORS.screenBackground,
 };
 
-// Celebration banner styling
+// Celebration banner styling — neutral to match color philosophy
 export const CELEBRATION_BANNER = {
   PADDING_VERTICAL: 16,
   PADDING_HORIZONTAL: 20,
@@ -116,13 +118,13 @@ export const CELEBRATION_BANNER = {
   MARGIN_TOP: 16,
   MARGIN_BOTTOM: 8,
   BORDER_RADIUS: 12,
-  BORDER_WIDTH: 2,
-  BORDER_COLOR: '#FECDD3',
+  BORDER_WIDTH: 1,
+  BORDER_COLOR: THEME_COLORS.border,
   TEXT_SIZE: 16,
   TEXT_WEIGHT: '600' as const,
-  TEXT_COLOR: '#9F1239',
-  GRADIENT_START: '#FFF1F2',
-  GRADIENT_END: '#FFFBEB',
+  TEXT_COLOR: THEME_COLORS.text.primary,
+  GRADIENT_START: THEME_COLORS.card,
+  GRADIENT_END: THEME_COLORS.card,
 };
 
 // Streak celebration thresholds

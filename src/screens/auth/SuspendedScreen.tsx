@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { supabase } from '../../lib/supabase';
+import { setIntentionalSignOut } from '../../services/authService';
 import { useNavigation } from '@react-navigation/native';
 import type { RootStackParamList } from '../../types';
 import { EvaIcon } from '../../components/icons';
@@ -20,6 +21,7 @@ export default function SuspendedScreen({ reason }: SuspendedScreenProps) {
   };
 
   const handleSignOut = async () => {
+    setIntentionalSignOut();
     await supabase.auth.signOut();
   };
 
@@ -27,7 +29,7 @@ export default function SuspendedScreen({ reason }: SuspendedScreenProps) {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <EvaIcon name="alert-circle" variant="outline" size={64} color={COLORS.rejectRed} />
+          <EvaIcon name="alert-circle" variant="outline" size={64} color={COLORS.error} />
         </View>
 
         <Text style={styles.title}>Your account is on hold</Text>
@@ -77,7 +79,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: FONTS.bold,
     fontSize: FONT_SIZES['3xl'],
-    color: COLORS.text.heading,
+    color: COLORS.text.primary,
     marginBottom: 12,
     textAlign: 'center',
   },
@@ -90,7 +92,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   reasonBox: {
-    backgroundColor: COLORS.mismatch.bg,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
     borderRadius: 12,
     padding: 16,
     width: '100%',
@@ -99,13 +101,13 @@ const styles = StyleSheet.create({
   reasonLabel: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.sm,
-    color: COLORS.rejectRed,
+    color: COLORS.error,
     marginBottom: 4,
   },
   reasonText: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.sm,
-    color: COLORS.text.heading,
+    color: COLORS.text.primary,
   },
   helpText: {
     fontFamily: FONTS.regular,
@@ -141,6 +143,6 @@ const styles = StyleSheet.create({
   signOutButtonText: {
     fontFamily: FONTS.medium,
     fontSize: FONT_SIZES.md,
-    color: COLORS.rejectRed,
+    color: COLORS.error,
   },
 });

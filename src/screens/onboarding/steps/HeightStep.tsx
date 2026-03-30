@@ -109,7 +109,7 @@ export const HeightStep: React.FC<HeightStepProps> = ({
             maximumValue={MAX_HEIGHT}
             step={1}
             minimumTrackTintColor={COLORS.primaryAccent}
-            maximumTrackTintColor={COLORS.backgroundGrayMedium}
+            maximumTrackTintColor={'#E5E7EB'}
             thumbTintColor={COLORS.primaryAccent}
           />
           <StyledView className="flex-row justify-between mt-2">

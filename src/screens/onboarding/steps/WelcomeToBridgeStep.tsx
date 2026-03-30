@@ -15,21 +15,21 @@ interface WelcomeToBridgeStepProps {
 const STEPS = [
   {
     icon: 'flash' as const,
-    color: COLORS.primaryButton,
+    color: COLORS.primary,
     bgColor: '#EEF3FF',
     title: 'Our AI proposes a match',
     description: 'Based on who you are, not just how you look.',
   },
   {
     icon: 'people' as const,
-    color: COLORS.emerald,
+    color: COLORS.success,
     bgColor: '#ECFDF5',
     title: 'Your community votes first',
     description: 'Friends vote yes, no, or nominate a better match.',
   },
   {
     icon: 'checkmark-circle-2' as const,
-    color: COLORS.primaryButton,
+    color: COLORS.primary,
     bgColor: '#EEF3FF',
     title: 'If it passes, it\'s yours to decide',
     description: 'Every match you see has already been vetted.',
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: COLORS.emerald,
+    backgroundColor: COLORS.success,
     alignItems: 'center',
     justifyContent: 'center',
     // Warm shadow for depth
@@ -127,13 +127,13 @@ const styles = StyleSheet.create({
   completionLabel: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.base,
-    color: COLORS.emerald,
+    color: COLORS.success,
     marginBottom: 8,
   },
   title: {
     fontFamily: FONTS.bold,
     fontSize: FONT_SIZES['2xl'],
-    color: COLORS.text.heading,
+    color: COLORS.text.primary,
     marginBottom: 8,
   },
   subtitle: {
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
     width: 2,
     flex: 1,
     minHeight: 20,
-    backgroundColor: COLORS.borderSubtle,
+    backgroundColor: COLORS.borderLight,
     marginVertical: 6,
   },
   rightCol: {
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.base,
-    color: COLORS.text.heading,
+    color: COLORS.text.primary,
     marginBottom: 4,
   },
   stepDescription: {
@@ -197,14 +197,14 @@ const styles = StyleSheet.create({
   calloutAccent: {
     width: 3,
     borderRadius: 2,
-    backgroundColor: COLORS.primaryButton,
+    backgroundColor: COLORS.primary,
     alignSelf: 'stretch',
   },
   calloutText: {
     flex: 1,
     fontFamily: FONTS.medium,
     fontSize: FONT_SIZES.sm,
-    color: COLORS.primaryButton,
+    color: COLORS.primary,
     lineHeight: LINE_HEIGHTS.sm,
   },
 });

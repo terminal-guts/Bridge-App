@@ -3,7 +3,6 @@ import {
   View,
   TouchableOpacity,
   Text,
-  Alert,
   RefreshControl,
 } from 'react-native';
 import { FlashList, ViewToken as FlashViewToken } from '@shopify/flash-list';
@@ -16,7 +15,8 @@ import { Image } from 'expo-image';
 import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../../theme/colors';
-import { ScreenWrapper } from '../../components/ui';
+import { ScreenWrapper, InfoModal } from '../../components/ui';
+import { Body } from '../../components/ui/Typography';
 import { LeaderboardSkeleton } from '../../components/ui/SkeletonLoader';
 import { getCentralOffsetHours } from '../../utils/centralTime';
 import {
@@ -30,7 +30,8 @@ import { getBridgeUserCount } from '../../services/contactsService';
 
 // Extracted
 import { s } from './LeaderboardScreen.styles';
-import { KarmaPill, FriendBadge, InitialAvatar, RankChangeArrow } from './LeaderboardScreen.components';
+import { FriendBadge, InitialAvatar, RankChangeArrow } from './LeaderboardScreen.components';
+import { KarmaPill } from '../../components/ui/KarmaPill';
 
 const ListSeparator = () => <View style={s.listSeparator} />;
 
@@ -137,14 +138,18 @@ const PodiumSlot = ({
         onPress={() => onPress(user)}
         activeOpacity={0.7}
         accessibilityRole="button"
-        accessibilityLabel={`View ${user.firstName}'s profile`}
+        accessibilityLabel={`Rank ${rank}, ${user.firstName}, ${user.karma} karma points. View profile`}
       >
         {content}
       </TouchableOpacity>
     );
   }
 
-  return content;
+  return (
+    <View accessibilityLabel={`Rank ${rank}, ${user.firstName}, ${user.karma} karma points`}>
+      {content}
+    </View>
+  );
 };
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -168,6 +173,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
   const [error, setError] = useState<string | null>(null);
   const [userRowVisible, setUserRowVisible] = useState(false);
   const [bridgeUserCount, setBridgeUserCount] = useState(0);
+  const [showInfoModal, setShowInfoModal] = useState(false);
 
   const [countdown, setCountdown] = useState(getTimeUntilReset);
   useFocusEffect(
@@ -258,7 +264,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
   }, [data, currentUserIndex]);
 
   const top3 = useMemo(() => data.slice(0, Math.min(3, data.length)), [data]);
-  // Show ALL users ranked 4+, not just 4-10
+  // Ranks 4–10 shown in list below the podium (top 10 max by design)
   const rest = useMemo(() => data.slice(3, 10), [data]);
 
   const currentUserListIndex = useMemo(() => {
@@ -281,10 +287,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
   const handleBack = useCallback(() => navigation.goBack(), [navigation]);
 
   const handleInfo = useCallback(() => {
-    Alert.alert(
-      'Weekly Karma',
-      'Tracks karma earned this week only. Resets every Sunday at 7 PM.',
-    );
+    setShowInfoModal(true);
   }, []);
 
   const handleRetry = useCallback(async () => {
@@ -358,7 +361,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
   const renderHeader = (showInfo = false) => (
     <View style={s.header}>
       <TouchableOpacity onPress={handleBack} style={s.headerBackButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel="Go back">
-        <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.heading} />
+        <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.primary} />
       </TouchableOpacity>
       <View style={s.headerTitleCol}>
         <Text style={s.headerTitle} accessibilityRole="header">Leaderboard</Text>
@@ -386,19 +389,12 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
           style={s.banner}
         >
           <Text style={s.bannerText} numberOfLines={1}>
-            <Text style={s.bannerBold}>1st place wins $100!</Text>
+            <Text style={s.bannerBold}>1st place wins $50!</Text>
             {currentUserRank > 1
               ? ` ${ptsBehindFirst} ${ptsBehindFirst === 1 ? 'pt' : 'pts'} to go`
               : ' You\'re in the lead!'}
           </Text>
         </LinearGradient>
-      </View>
-
-      <View style={s.countdownRow}>
-        <EvaIcon name="clock" variant="outline" size={14} color={COLORS.navInactiveIcon} />
-        <Text style={s.countdownText}>
-          Resets in {countdown.days}d {countdown.hours}h {countdown.minutes}m
-        </Text>
       </View>
 
       {top3.length > 0 && (
@@ -428,11 +424,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
                 </Text>
                 <View style={s.howToEarnDot} />
                 <Text style={s.howToEarnItem}>
-                  <Text style={s.howToEarnBold}>Accurate</Text> +3
-                </Text>
-                <View style={s.howToEarnDot} />
-                <Text style={s.howToEarnItem}>
-                  <Text style={s.howToEarnBold}>Assist</Text> +10
+                  <Text style={s.howToEarnBold}>Accurate vote</Text> +3
                 </Text>
               </View>
             </View>
@@ -440,15 +432,26 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
         </View>
       )}
 
-      {/* Total participants count */}
-      {bridgeUserCount > 0 && (
-        <View style={s.participantsRow}>
-          <EvaIcon name="people" variant="outline" size={14} color={COLORS.navInactiveIcon} />
-          <Text style={s.participantsText}>
-            {bridgeUserCount} participants
+      {/* Resets countdown + participants on one row */}
+      <View style={s.metaRow}>
+        <View style={s.metaItem}>
+          <EvaIcon name="clock" variant="outline" size={14} color={COLORS.navInactiveIcon} />
+          <Text style={s.metaText}>
+            Resets in {countdown.days}d {countdown.hours}h {countdown.minutes}m
           </Text>
         </View>
-      )}
+        {bridgeUserCount > 0 && (
+          <>
+            <View style={s.metaDot} />
+            <View style={s.metaItem}>
+              <EvaIcon name="people" variant="outline" size={14} color={COLORS.navInactiveIcon} />
+              <Text style={s.metaText}>
+                {bridgeUserCount} participants
+              </Text>
+            </View>
+          </>
+        )}
+      </View>
     </>
   ), [top3, currentUserRank, ptsBehindFirst, countdown, bridgeUserCount, handleProfilePress]);
 
@@ -467,7 +470,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
       <ScreenWrapper>
         {renderHeader()}
         <View style={s.emptyState}>
-          <EvaIcon name="wifi-off" variant="outline" size={64} color={COLORS.borderDivider} />
+          <EvaIcon name="wifi-off" variant="outline" size={64} color={COLORS.border} />
           <Text style={s.emptyTitle}>Something went wrong</Text>
           <Text style={s.emptyBody}>{error}</Text>
           <TouchableOpacity style={s.retryBtn} onPress={handleRetry} accessibilityRole="button" accessibilityLabel="Try again">
@@ -483,7 +486,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
       <ScreenWrapper>
         {renderHeader()}
         <View style={s.emptyState}>
-          <EvaIcon name="award" variant="outline" size={64} color={COLORS.borderDivider} />
+          <EvaIcon name="award" variant="outline" size={64} color={COLORS.border} />
           <Text style={s.emptyTitle}>No Rankings Yet</Text>
           <Text style={s.emptyBody}>Be the first to earn karma and climb the leaderboard!</Text>
         </View>
@@ -551,6 +554,20 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
             </View>
           </View>
         )}
+
+        {/* Info modal — replaces Alert.alert per CLAUDE.md */}
+        <InfoModal
+          visible={showInfoModal}
+          onClose={() => setShowInfoModal(false)}
+          title="Weekly Karma"
+          icon="award"
+          iconColor={COLORS.success}
+          iconBackground="rgba(52, 199, 89, 0.1)"
+        >
+          <Body className="text-neutral-600 leading-6">
+            Tracks karma earned this week only. Resets every Sunday at 7 PM Central.
+          </Body>
+        </InfoModal>
     </ScreenWrapper>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import Animated, {
     useSharedValue,
@@ -15,13 +15,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { FriendWithGridStatus } from '../../types/community';
-import { FireIcon, StarIcon } from '../icons/Icons';
+import { FireIcon } from '../icons/Icons';
 import { EvaIcon } from '../icons';
-import { KarmaInfoModal } from './karma/KarmaInfoModal';
 import { lightHaptic, mediumHaptic } from '../../utils/haptics';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
-import { SHADOWS, glowShadow } from '../../theme/shadows';
+import { SHADOWS } from '../../theme/shadows';
+import { KarmaPill } from '../ui/KarmaPill';
 
 // ── Responsive sizing ────────────────────────────────────────────────────────
 // iPhone SE / 8 = 375pt, standard iPhones = 390-393pt, Plus/Max = 428-430pt
@@ -40,23 +40,26 @@ interface UserRowProps {
     onChat?: () => void;
     rank?: number;
     onRankPress?: () => void;
-    statusLine?: string;
+    statusLine?: string | { text: string; color?: string };
     showVoteRing?: boolean;
     hasUnread?: boolean;
     onBadgePress?: () => void;
     onCrushPress?: () => void; // DEFERRED: Crush feature — dormant by product decision
     onStreakMilestone?: (days: number, friendName: string) => void;
     previousStreakDays?: number;
+    onKarmaPress?: () => void;
 }
 
-// Streak tier — color & size intensify with streak length (4 tiers + default)
+// Streak tier — flame color gradually heats up to reward longer streaks.
+// Size stays constant; only color intensifies from cool gray → warm orange → hot red-orange.
 const STREAK_TIERS = [
-    { min: 30, color: COLORS.error, ringColor: COLORS.error, size: 18, label: 'legendary' as const, sublabel: 'Legendary!' },
-    { min: 14, color: COLORS.warmOrange, ringColor: COLORS.darkAmber, size: 17, label: 'hot' as const, sublabel: 'Hot streak!' },
-    { min: 7,  color: COLORS.warning.icon, ringColor: COLORS.warning.icon, size: 16, label: 'warm' as const, sublabel: null },
-    { min: 1,  color: COLORS.primaryButton, ringColor: COLORS.primaryButton, size: 15, label: 'new' as const, sublabel: null },
+    { min: 30, color: '#E8450E', ringColor: COLORS.border, size: 15, label: 'legendary' as const, sublabel: null },
+    { min: 14, color: '#EF6820', ringColor: COLORS.border, size: 15, label: 'hot' as const, sublabel: null },
+    { min: 7,  color: '#F59E0B', ringColor: COLORS.border, size: 15, label: 'warm' as const, sublabel: null },
+    { min: 3,  color: '#D4A054', ringColor: COLORS.borderLight, size: 15, label: 'kindling' as const, sublabel: null },
+    { min: 1,  color: COLORS.text.tertiary, ringColor: COLORS.borderLight, size: 15, label: 'new' as const, sublabel: null },
 ] as const;
-const DEFAULT_STREAK_TIER = { color: COLORS.text.disabled, ringColor: COLORS.borderLight, size: 14, label: 'none' as const, sublabel: null };
+const DEFAULT_STREAK_TIER = { color: COLORS.text.tertiary, ringColor: COLORS.borderLight, size: 15, label: 'none' as const, sublabel: null };
 
 // Milestone thresholds for streak celebrations
 const STREAK_MILESTONES = [30, 14, 7] as const;
@@ -65,7 +68,7 @@ function getStreakTier(days: number) {
     return STREAK_TIERS.find(t => days >= t.min) ?? DEFAULT_STREAK_TIER;
 }
 
-export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onViewProfile, onChat, rank, onRankPress, statusLine, showVoteRing, hasUnread, onBadgePress, onCrushPress, onStreakMilestone, previousStreakDays }) => {
+export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onViewProfile, onChat, rank, onRankPress, statusLine, showVoteRing, hasUnread, onBadgePress, onCrushPress, onStreakMilestone, previousStreakDays, onKarmaPress }) => {
     const name = item.friend.firstName || 'User';
     const rawImageUrl = item.friend.photos?.[0]?.url || undefined;
     const photoBlurhash = item.friend.photos?.[0]?.blurhash || undefined;
@@ -76,14 +79,11 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
     // Matchmakers are not in the dating pool — show points row instead of Vote button
     const actionType = (item.hasCompletedGrid || isFriendMatchmaker) ? 'points' : 'match';
     const points = item.karmaScore?.karmaPoints || 0;
-    const [showKarmaModal, setShowKarmaModal] = useState(false);
     const streakTier = useMemo(() => getStreakTier(streak), [streak]);
     const avatarStyle = useMemo(() => [
         styles.avatar,
-        { borderColor: streakTier.ringColor, backgroundColor: COLORS.backgroundGrayMedium },
-        streak >= 14 && { borderWidth: 2.5, borderColor: COLORS.darkAmber },
-        streak >= 30 && { borderColor: COLORS.error },
-    ], [streak, streakTier.ringColor]);
+        { borderColor: streakTier.ringColor, backgroundColor: '#E5E7EB' },
+    ], [streakTier.ringColor]);
 
     // Streak milestone / death detection
     useEffect(() => {
@@ -143,19 +143,31 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
         transform: [{ translateX: shimmerX.value * 80 }],
     }));
 
+    // Badge press animation
+    const badgeScale = useSharedValue(1);
+    const handleBadgeTap = useCallback(() => {
+        lightHaptic();
+        badgeScale.value = withSequence(
+            withTiming(0.8, { duration: 80 }),
+            withSpring(1, SPRINGS.snappy),
+        );
+        onBadgePress?.();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [onBadgePress]);
+    const badgeAnimStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: badgeScale.value }],
+    }));
+
     // #7: Karma tap haptic
     const handleKarmaTap = useCallback(() => {
         lightHaptic();
-        setShowKarmaModal(true);
-    }, []);
+        onKarmaPress?.();
+    }, [onKarmaPress]);
 
-    const rankColor = rank === 1 ? '#FFD700' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : COLORS.primaryButton;
+    const rankColor = rank === 1 ? '#FFD700' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : COLORS.primaryAccent;
 
-    const avatarShadow = useMemo(() => streak >= 14
-        ? glowShadow(streakTier.ringColor, 'strong')
-        : streak >= 7
-            ? glowShadow(streakTier.ringColor, 'medium')
-            : {}, [streak, streakTier.ringColor]);
+    // No colored glow on avatars — streaks are persistent info, not status events
+    const avatarShadow = useMemo(() => ({}), []);
 
     // Legendary pulse animation (30+ day streaks)
     const pulseAnim = useSharedValue(1);
@@ -198,26 +210,14 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
             </View>
             <View style={styles.streakRow}>
                 <FireIcon size={streakTier.size} color={streakTier.color} />
-                <View>
-                    <Text style={[
-                        styles.streakText,
-                        streak >= 30 && styles.streakTextHot,
-                        streak >= 14 && streak < 30 && styles.streakTextHot14,
-                        streak >= 7 && streak < 14 && styles.streakTextWarm,
-                    ]}>
-                        {streak} day{streak !== 1 ? 's' : ''}
-                    </Text>
-                    {streakTier.sublabel && (
-                        <Text style={[styles.streakSublabel, { color: streakTier.color }]}>{streakTier.sublabel}</Text>
-                    )}
-                </View>
+                <Text style={styles.streakText}>
+                    {streak} day{streak !== 1 ? 's' : ''}
+                </Text>
             </View>
             {statusLine ? (
-                <Text style={[
-                    styles.statusLine,
-                    statusLine === 'Has a match!' && styles.statusLineActive,
-                    statusLine.startsWith('Suggested for') && styles.statusLineSuggestion,
-                ]} numberOfLines={1}>{statusLine}</Text>
+                <Text style={[styles.statusLine, typeof statusLine === 'object' && statusLine.color ? { color: statusLine.color } : undefined]} numberOfLines={1}>
+                    {typeof statusLine === 'string' ? statusLine : statusLine.text}
+                </Text>
             ) : null}
         </View>
     );
@@ -263,7 +263,6 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                         ]}>Vote</Text>
                     </TouchableOpacity>
                 </Animated.View>
-                <KarmaInfoModal visible={showKarmaModal} onClose={() => setShowKarmaModal(false)} />
             </View>
         );
     }
@@ -306,28 +305,28 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                             name="heart"
                             variant={item.hasCrushed ? 'fill' : 'outline'}
                             size={20}
-                            color={item.hasCrushed ? COLORS.error : COLORS.text.muted}
+                            color={item.hasCrushed ? COLORS.error : COLORS.text.secondary}
                         />
                     </TouchableOpacity>
                 )}
                 {onBadgePress && (
-                    <TouchableOpacity
-                        onPress={() => { lightHaptic(); onBadgePress(); }}
-                        activeOpacity={0.7}
-                        style={styles.badgeBtn}
-                        accessibilityLabel={`Award badge to ${name}`}
-                        accessibilityRole="button"
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                        <EvaIcon name="award" variant="outline" size={20} color={COLORS.text.muted} />
-                    </TouchableOpacity>
+                    <Animated.View style={badgeAnimStyle}>
+                        <TouchableOpacity
+                            onPress={handleBadgeTap}
+                            activeOpacity={0.7}
+                            style={styles.badgeBtn}
+                            accessibilityLabel={`Award badge to ${name}`}
+                            accessibilityRole="button"
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                            <EvaIcon name="award" variant="outline" size={18} color={COLORS.text.secondary} />
+                        </TouchableOpacity>
+                    </Animated.View>
                 )}
-                <TouchableOpacity style={styles.pointsBtn} activeOpacity={0.75} onPress={handleKarmaTap} accessibilityLabel={`${name}'s karma: ${points} points`} accessibilityRole="button">
-                    <StarIcon size={15} color={COLORS.successAlt} />
-                    <Text style={styles.pointsBtnText}>{points} pts</Text>
+                <TouchableOpacity activeOpacity={0.75} onPress={handleKarmaTap} accessibilityLabel={`${name}'s karma: ${points} points`} accessibilityRole="button">
+                    <KarmaPill karma={points} />
                 </TouchableOpacity>
             </View>
-            <KarmaInfoModal visible={showKarmaModal} onClose={() => setShowKarmaModal(false)} />
         </TouchableOpacity>
     );
 });
@@ -341,7 +340,7 @@ const styles = StyleSheet.create({
         paddingVertical: isCompact ? 12 : 16,
         backgroundColor: COLORS.card,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: COLORS.borderLightBlue,
+        borderBottomColor: COLORS.border,
     },
     left: {
         flexDirection: 'row',
@@ -372,8 +371,8 @@ const styles = StyleSheet.create({
         ...SHADOWS.accentBlue,
     },
     matchBtnGlow: {
-        backgroundColor: COLORS.primaryButton,
-        borderColor: COLORS.primaryButton,
+        backgroundColor: COLORS.primary,
+        borderColor: COLORS.primary,
     },
     matchBtnTextGlow: {
         color: COLORS.card,
@@ -382,7 +381,7 @@ const styles = StyleSheet.create({
         width: AVATAR_SIZE,
         height: AVATAR_SIZE,
         borderRadius: AVATAR_RADIUS,
-        backgroundColor: COLORS.backgroundGrayMedium,
+        backgroundColor: '#E5E7EB',
         borderWidth: 2,
         borderColor: COLORS.borderLight,
     },
@@ -398,10 +397,10 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     name: {
-        fontFamily: FONTS.bold,
+        fontFamily: FONTS.extraBold,
         fontSize: isCompact ? FONT_SIZES.xl : FONT_SIZES['2xl'],
         lineHeight: isCompact ? LINE_HEIGHTS.lg : LINE_HEIGHTS['2xl'],
-        color: COLORS.text.dark,
+        color: COLORS.text.primary,
     },
     streakRow: {
         flexDirection: 'row',
@@ -412,46 +411,20 @@ const styles = StyleSheet.create({
         fontFamily: FONTS.regular,
         fontSize: FONT_SIZES.base,
         lineHeight: LINE_HEIGHTS.base,
-        color: COLORS.text.dimmed,
+        color: COLORS.text.secondary,
     },
-    // #1: Streak text color upgrades at tiers
-    streakTextWarm: {
-        color: COLORS.darkAmber,
-        fontFamily: FONTS.medium,
-    },
-    streakTextHot14: {
-        color: COLORS.warmOrange,
-        fontFamily: FONTS.semiBold,
-    },
-    streakTextHot: {
-        color: COLORS.danger,
-        fontFamily: FONTS.bold,
-    },
-    streakSublabel: {
-        fontFamily: FONTS.semiBold,
-        fontSize: FONT_SIZES.xs,
-        marginTop: 1,
-    },
-    // #2: Contextual status line
+    // Status line — always neutral; status is persistent info, not a success event
     statusLine: {
         fontFamily: FONTS.regular,
         fontSize: FONT_SIZES.sm,
-        color: COLORS.navInactiveIcon,
+        color: COLORS.text.secondary,
         marginTop: 2,
-    },
-    statusLineActive: {
-        color: COLORS.successAlt,
-        fontFamily: FONTS.medium,
-    },
-    statusLineSuggestion: {
-        color: COLORS.primaryAccent,
-        fontFamily: FONTS.medium,
     },
     unreadDot: {
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: COLORS.primaryButton,
+        backgroundColor: COLORS.primaryAccent,
         marginLeft: 2,
     },
     shimmerContainer: {
@@ -472,43 +445,33 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         borderRadius: 999,
         borderWidth: 1.5,
-        borderColor: COLORS.primaryButton,
-        backgroundColor: COLORS.backgroundFriendActive,
+        borderColor: COLORS.primaryAccent,
+        backgroundColor: COLORS.card,
         overflow: 'hidden' as const,
     },
     matchBtnText: {
         fontFamily: FONTS.bold,
         fontSize: FONT_SIZES.lg,
-        color: COLORS.primaryButton,
+        color: COLORS.primaryAccent,
     },
     matchBtnDisabled: {
-        borderColor: COLORS.borderGray,
-        backgroundColor: COLORS.backgroundGray,
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.card,
     },
     matchBtnTextDisabled: {
-        color: COLORS.text.disabled,
-    },
-    pointsBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 999,
-        borderWidth: 1.5,
-        borderColor: COLORS.successAlt,
-        backgroundColor: COLORS.backgroundSuccessBadge,
-        gap: 6,
-        ...SHADOWS.accentGreen,
+        color: COLORS.text.tertiary,
     },
     crushBtn: {
         padding: 6,
     },
     badgeBtn: {
-        padding: 6,
-    },
-    pointsBtnText: {
-        fontFamily: FONTS.bold,
-        fontSize: FONT_SIZES.lg,
-        color: COLORS.successAlt,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: COLORS.screenBackground,
+        borderWidth: 1,
+        borderColor: COLORS.borderLight,
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
     },
 });

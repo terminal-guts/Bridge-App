@@ -107,7 +107,7 @@ const SectionCard: React.FC<SectionCardProps> = ({ title, icon, summary, onPress
       <Body className="font-semibold text-neutral-900">{title}</Body>
       <Body className="text-xs text-neutral-500 mt-0.5" numberOfLines={1}>{summary}</Body>
     </StyledView>
-    <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color={COLORS.text.disabled} />
+    <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color={COLORS.text.tertiary} />
   </StyledTouchableOpacity>
 );
 

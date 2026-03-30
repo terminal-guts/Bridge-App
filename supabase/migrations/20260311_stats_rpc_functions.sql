@@ -261,11 +261,11 @@ AS $function$
       'avg_approval_rate', CASE WHEN COALESCE(wk_votes, 0) = 0 THEN 0
                                 ELSE ROUND((COALESCE(wk_yes, 0)::numeric / wk_votes) * 100) END,
       'active_matchmakers', COALESCE(wk_active, 0),
-      'proposals_this_week', (v_all_time->>'proposals_this_week')::int,
-      'top_matchmaker_name', v_all_time->>'top_matchmaker_name',
-      'top_matchmaker_assists', (v_all_time->>'top_matchmaker_assists')::int,
+      'proposals_this_week', COALESCE(wk_proposals, 0),
+      'top_matchmaker_name', COALESCE(wk_top_name, 'None yet'),
+      'top_matchmaker_assists', COALESCE(wk_top_assists, 0),
       'most_popular_day', COALESCE(wk_popular_day, 'N/A'),
-      'streak_record', (v_all_time->>'streak_record')::int,
+      'streak_record', COALESCE(wk_streak_record, 0),
       'match_rate', CASE WHEN COALESCE(wk_proposals, 0) = 0 THEN 0
                          ELSE ROUND((COALESCE(wk_matched, 0)::numeric / wk_proposals) * 100) END
     ) INTO v_week
@@ -291,6 +291,21 @@ AS $function$
         (SELECT count(*) FROM proposals
          WHERE (user_a_id = ANY(v_campus_users) OR user_b_id = ANY(v_campus_users))
            AND created_at >= v_week_start) AS wk_proposals,
+        (SELECT up.first_name || ' ' || LEFT(up.last_name, 1) || '.'
+         FROM proposal_votes pv
+         JOIN user_profiles up ON up.user_id = pv.voter_user_id
+         WHERE pv.voter_user_id = ANY(v_campus_users) AND pv.created_at >= v_week_start
+         GROUP BY up.first_name, up.last_name
+         ORDER BY count(*) DESC LIMIT 1) AS wk_top_name,
+        (SELECT count(*)
+         FROM proposal_votes pv
+         WHERE pv.voter_user_id = ANY(v_campus_users) AND pv.created_at >= v_week_start
+         GROUP BY pv.voter_user_id
+         ORDER BY count(*) DESC LIMIT 1) AS wk_top_assists,
+        (SELECT GREATEST(
+          COALESCE((SELECT MAX(streak_days) FROM friends WHERE user_id = ANY(v_campus_users)), 0),
+          COALESCE((SELECT MAX(streak_days) FROM friends WHERE friend_id = ANY(v_campus_users)), 0)
+        )) AS wk_streak_record,
         (SELECT count(DISTINCT m.proposal_id) FROM matches m
          JOIN proposals p ON p.id = m.proposal_id
          WHERE (p.user_a_id = ANY(v_campus_users) OR p.user_b_id = ANY(v_campus_users))

@@ -114,7 +114,7 @@ const calculateStrength = (profile: UserProfile): {
     score: breakdown.sections.matchPreferences.score,
     maxScore: breakdown.sections.matchPreferences.maxScore,
     suggestions: preferencesSuggestions.slice(0, 2),
-    color: COLORS.purple,
+    color: COLORS.primary,
     displayPercentage: breakdown.sections.matchPreferences.percentage,
   });
 
@@ -133,7 +133,7 @@ const calculateStrength = (profile: UserProfile): {
     score: breakdown.sections.photos.score,
     maxScore: breakdown.sections.photos.maxScore,
     suggestions: photosSuggestions,
-    color: COLORS.emerald,
+    color: COLORS.success,
     displayPercentage: breakdown.sections.photos.percentage,
   });
 
@@ -156,7 +156,7 @@ const calculateStrength = (profile: UserProfile): {
     score: breakdown.sections.deepQuestions.score,
     maxScore: breakdown.sections.deepQuestions.maxScore,
     suggestions: questionsSuggestions.slice(0, 2),
-    color: COLORS.warning.icon,
+    color: COLORS.amber,
     displayPercentage: breakdown.sections.deepQuestions.percentage,
   });
 
@@ -168,21 +168,21 @@ const calculateStrength = (profile: UserProfile): {
  * profileCompleted = true means user previously hit 100% (one-way gate) — use softer messaging
  */
 const getStrengthLevel = (score: number, profileCompleted?: boolean): { level: string; message: string; color: string } => {
-  if (score >= 100) return { level: 'Complete', message: 'Your profile is at full strength', color: COLORS.emerald };
+  if (score >= 100) return { level: 'Complete', message: 'Your profile is at full strength', color: COLORS.success };
 
   // User already completed once — softer "dropped" messaging
   if (profileCompleted) {
     if (score >= 90) return { level: 'Slightly Incomplete', message: 'A field was removed from your profile', color: COLORS.primaryAccent };
-    if (score >= 75) return { level: 'Dropped', message: "Your profile isn't at full strength", color: COLORS.warning.icon };
-    return { level: 'Needs Attention', message: 'Some profile info is missing', color: COLORS.danger };
+    if (score >= 75) return { level: 'Dropped', message: "Your profile isn't at full strength", color: COLORS.amber };
+    return { level: 'Needs Attention', message: 'Some profile info is missing', color: COLORS.error };
   }
 
   // First-time user — motivating "build toward the pool" messaging
-  if (score >= 90) return { level: 'So Close', message: 'One more step to start receiving matches', color: COLORS.emerald };
+  if (score >= 90) return { level: 'So Close', message: 'One more step to start receiving matches', color: COLORS.success };
   if (score >= 75) return { level: 'Almost There', message: 'Just a few more fields to go', color: COLORS.primaryAccent };
-  if (score >= 60) return { level: 'Looking Good', message: "You're getting close to the matching pool", color: COLORS.warning.icon };
-  if (score >= 40) return { level: 'Making Progress', message: 'Your friends need more to find your match', color: COLORS.danger };
-  return { level: 'Getting Started', message: 'Fill this out to enter the matching pool', color: COLORS.criticalRed };
+  if (score >= 60) return { level: 'Looking Good', message: "You're getting close to the matching pool", color: COLORS.amber };
+  if (score >= 40) return { level: 'Making Progress', message: 'Your friends need more to find your match', color: COLORS.error };
+  return { level: 'Getting Started', message: 'Fill this out to enter the matching pool', color: COLORS.error };
 };
 
 export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> = React.memo(({
@@ -221,7 +221,7 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
           <StyledView
             className="w-10 h-10 rounded-lg items-center justify-center mr-3"
             style={{
-              backgroundColor: isComplete ? COLORS.emerald : COLORS.primaryAccent,
+              backgroundColor: isComplete ? COLORS.success : COLORS.primaryAccent,
             }}
           >
             <EvaIcon
@@ -278,7 +278,7 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
                   {section.name}
                 </Body>
                 {sectionComplete && (
-                  <EvaIcon name="checkmark-circle-2" variant="outline" size={14} color={COLORS.emerald} />
+                  <EvaIcon name="checkmark-circle-2" variant="outline" size={14} color={COLORS.success} />
                 )}
               </StyledView>
 

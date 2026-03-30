@@ -8,8 +8,10 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Heart, X, Sparkles, Users, Star, Eye } from '../../components/icons/LucideReplacements';
+import { Sparkles } from '../../components/icons/LucideReplacements';
 import { communityService } from '../../services/communityServiceIndex';
+import { supabase } from '../../lib/supabase';
+import { getMultiplePhotoSignedUrls } from '../../services/photoService';
 import { getUserProfile, getFullUserProfileById } from '../../services/profileService';
 import { getOptimizedImageUrl, getOptimizedPhotoUrl } from '../../utils/imageUtils';
 import { KarmaInfoModal } from '../../components/community/karma/KarmaInfoModal';
@@ -25,7 +27,6 @@ import { getCurrentUserId } from '../../services/communityBackendService.helpers
 import { COLORS } from '../../theme/colors';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { SHADOWS, OVERLAYS } from '../../theme/shadows';
-import Svg, { Circle } from 'react-native-svg';
 import { ProfileBadgesSection } from '../../components/badges/ProfileBadgesSection';
 
 const REPORT_REASONS = [
@@ -36,13 +37,7 @@ const REPORT_REASONS = [
     'Other',
 ] as const;
 
-const MoreVerticalIcon = ({ size = 24, color = '#FFF' }: { size?: number; color?: string }) => (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <Circle cx="12" cy="5" r="1.5" fill={color} />
-        <Circle cx="12" cy="12" r="1.5" fill={color} />
-        <Circle cx="12" cy="19" r="1.5" fill={color} />
-    </Svg>
-);
+// MoreVerticalIcon replaced by EvaIcon name="more-vertical"
 
 const formatHeight = (height: any): string | null => {
     if (!height) return null;
@@ -92,22 +87,29 @@ export default function ProfileMatchScreen() {
                 if (isMountedRef.current && result.ok && result.data) setProfileData(result.data);
             }).finally(() => { if (isMountedRef.current) setLoading(false); });
         } else if (!isProposal && params.profile?.userId) {
-            setLoading(true);
+            // Render instantly from navigation params (photos already signed by community screen).
+            // Only show loading if params have no useful data (e.g., just a userId).
+            const hasParamsData = !!(params.profile?.firstName);
+            if (!hasParamsData) setLoading(true);
+            // Background enrichment — adds deep questions, preferences, karma (not blocking render)
             getFullUserProfileById(params.profile.userId).then(full => {
                 if (!isMountedRef.current || !full) return;
-                const mergedPhotos = (full.photos && full.photos.length > 0)
-                    ? full.photos
-                    : (params.profile?.photos ?? []);
+                // Keep already-signed photo URLs from params; only use full's photos if params had none
+                const mergedPhotos = (params.profile?.photos?.length && params.profile.photos[0]?.url?.startsWith('http'))
+                    ? params.profile.photos
+                    : (full.photos?.length ? full.photos : params.profile?.photos ?? []);
                 setProfileData({ ...full, photos: mergedPhotos });
-            }).catch(() => { /* keep whatever was passed */ }).finally(() => { if (isMountedRef.current) setLoading(false); });
+            }).catch(() => {}).finally(() => { if (isMountedRef.current) setLoading(false); });
         } else if (isProposal && params.partnerProfile?.userId) {
+            const hasParamsData = !!(params.partnerProfile?.firstName);
+            if (!hasParamsData) setLoading(true);
             getFullUserProfileById(params.partnerProfile.userId).then(full => {
                 if (!isMountedRef.current || !full) return;
-                const mergedPhotos = (full.photos && full.photos.length > 0)
-                    ? full.photos
-                    : (params.partnerProfile?.photos ?? []);
+                const mergedPhotos = (params.partnerProfile?.photos?.length && params.partnerProfile.photos[0]?.url?.startsWith('http'))
+                    ? params.partnerProfile.photos
+                    : (full.photos?.length ? full.photos : params.partnerProfile?.photos ?? []);
                 setProfileData({ ...full, photos: mergedPhotos });
-            }).catch(() => { /* profile already visible from params */ });
+            }).catch(() => {});
         }
     }, [isPreview, isProposal, params.profile?.userId, params.partnerProfile?.userId]);
 
@@ -165,7 +167,35 @@ export default function ProfileMatchScreen() {
         };
     }, [currentUserProfile, partnerProfile]);
 
-    const allPhotos = useMemo(() => partnerProfile?.photos ?? [], [partnerProfile]);
+    // Sign any unsigned photo storage paths — the bucket is private, public URLs won't work.
+    // Uses getMultiplePhotoSignedUrls from photoService which properly returns full HTTP URLs.
+    const [signedPhotos, setSignedPhotos] = useState<any[]>(partnerProfile?.photos ?? []);
+    useEffect(() => {
+        const photos = partnerProfile?.photos ?? [];
+        const unsigned = photos.filter((p: any) => p.url && !p.url.startsWith('http'));
+        if (unsigned.length === 0) {
+            setSignedPhotos(photos);
+            // Prefetch already-signed URLs into expo-image disk cache
+            const urls = photos.map((p: any) => p.url).filter((u: string) => u?.startsWith('http'));
+            if (urls.length > 0) Image.prefetch(urls).catch(() => {});
+            return;
+        }
+        const paths = unsigned.map((p: any) => p.url);
+        getMultiplePhotoSignedUrls(paths, 86400).then((res) => {
+            if (!isMountedRef.current) return;
+            if (res.ok && res.data) {
+                const resolved = photos.map((p: any) => ({
+                    ...p,
+                    url: res.data![p.url] || p.url,
+                }));
+                setSignedPhotos(resolved);
+                // Prefetch newly signed URLs
+                const urls = resolved.map((p: any) => p.url).filter((u: string) => u?.startsWith('http'));
+                if (urls.length > 0) Image.prefetch(urls).catch(() => {});
+            }
+        }).catch(() => {});
+    }, [partnerProfile?.photos]);
+    const allPhotos = signedPhotos;
     const inlinePhotos = useMemo(() => allPhotos.slice(1), [allPhotos]);
 
     const interleavedContent = useMemo(() => {
@@ -334,7 +364,7 @@ export default function ProfileMatchScreen() {
                             accessibilityLabel="Go back"
                             accessibilityRole="button"
                         >
-                            <ArrowLeft size={22} color="#FFF" />
+                            <EvaIcon name="arrow-back" variant="outline" size={22} color="#FFFFFF" />
                         </TouchableOpacity>
                     </View>
 
@@ -342,32 +372,32 @@ export default function ProfileMatchScreen() {
                         {matchmakerPhoto ? (
                             <Image
                                 source={{ uri: getOptimizedPhotoUrl(matchmakerPhoto, 'card') }}
-                                style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: '#E5E7EB' }}
+                                style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: COLORS.border }}
                                 contentFit="cover"
                                 accessibilityLabel={`${partnerProfile.firstName}'s photo`}
                             />
                         ) : (
                             <View style={styles.photoPlaceholder} accessibilityLabel="No photo available">
-                                <EvaIcon name="person" variant="outline" size={48} color="#9CA3AF" />
+                                <EvaIcon name="person" variant="outline" size={48} color={COLORS.text.tertiary} />
                             </View>
                         )}
 
                         <Text
-                            style={{ fontFamily: FONTS.bold, fontSize: FONT_SIZES['3xl'], color: '#1F2937', marginTop: 16, textAlign: 'center' }}
+                            style={{ fontFamily: FONTS.bold, fontSize: FONT_SIZES['3xl'], color: COLORS.text.primary, marginTop: 16, textAlign: 'center' }}
                             numberOfLines={2}
                             accessibilityRole="header"
                         >
                             {partnerProfile.firstName}
                         </Text>
 
-                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, marginTop: 12, gap: 6 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(37, 99, 235, 0.08)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, marginTop: 12, gap: 6 }}>
                             <EvaIcon name="lock" variant="fill" size={16} color={COLORS.primary} />
                             <Text style={{ fontFamily: FONTS.semiBold, fontSize: FONT_SIZES.sm, color: COLORS.primary }}>
                                 Matchmaker
                             </Text>
                         </View>
 
-                        <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.md, color: '#6B7280', marginTop: 8, textAlign: 'center' }}>
+                        <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.md, color: COLORS.text.secondary, marginTop: 8, textAlign: 'center' }}>
                             Not in the dating pool
                         </Text>
 
@@ -435,7 +465,7 @@ export default function ProfileMatchScreen() {
                             accessibilityLabel="Go back"
                             accessibilityRole="button"
                         >
-                            <ArrowLeft size={24} color="#FFFFFF" strokeWidth={2} />
+                            <EvaIcon name="arrow-back" variant="outline" size={24} color="#FFFFFF" />
                         </TouchableOpacity>
                         {isProfileView ? (
                             <TouchableOpacity
@@ -444,7 +474,7 @@ export default function ProfileMatchScreen() {
                                 accessibilityLabel="More options"
                                 accessibilityRole="button"
                             >
-                                <MoreVerticalIcon size={24} color="#FFFFFF" />
+                                <EvaIcon name="more-vertical" variant="outline" size={24} color="#FFFFFF" />
                             </TouchableOpacity>
                         ) : (
                             <View />
@@ -481,7 +511,7 @@ export default function ProfileMatchScreen() {
                                                 </View>
                                             ))
                                             : [0, 1, 2].map((_, i) => (
-                                                <View key={i} style={[styles.stackAvatarWrap, { marginLeft: i === 0 ? 0 : -8, backgroundColor: COLORS.paginationInactive }]} />
+                                                <View key={i} style={[styles.stackAvatarWrap, { marginLeft: i === 0 ? 0 : -8, backgroundColor: COLORS.border }]} />
                                             ))
                                         }
                                     </View>
@@ -496,7 +526,7 @@ export default function ProfileMatchScreen() {
                             accessibilityLabel={`${karmaPts} karma points. Tap to learn more`}
                             accessibilityRole="button"
                         >
-                            <Star size={12} color="#FFFFFF" strokeWidth={2.5} />
+                            <EvaIcon name="star" variant="outline" size={12} color="#FFFFFF" />
                             <Text style={styles.karmaText}>{karmaPts}</Text>
                         </TouchableOpacity>
                     </View>
@@ -505,7 +535,7 @@ export default function ProfileMatchScreen() {
                 <View style={styles.content}>
                     {isPreview && (
                         <View style={styles.previewBanner} accessibilityLabel="Profile preview mode">
-                            <Eye size={16} color={COLORS.primary} strokeWidth={2} />
+                            <EvaIcon name="eye" variant="outline" size={16} color={COLORS.primary} />
                             <Text style={styles.previewBannerText}>This is how others see your profile</Text>
                         </View>
                     )}
@@ -514,11 +544,14 @@ export default function ProfileMatchScreen() {
                         <View style={styles.validationCard} accessibilityLabel={`Community validation score: ${communityScore} percent`}>
                             <View style={styles.cardHeaderRow}>
                                 <View style={styles.iconCircle}>
-                                    <Users size={16} color={COLORS.primary} />
+                                    <EvaIcon name="people" variant="outline" size={18} color={COLORS.primary} />
                                 </View>
-                                <Text style={styles.cardTitle}>Community validation</Text>
+                                <Text style={styles.cardTitle}>Your Friends' Verdict</Text>
                             </View>
-                            <Text style={styles.scoreValue}>{communityScore}%</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+                                <Text style={styles.scoreValue}>{communityScore}</Text>
+                                <Text style={styles.scorePercent}>%</Text>
+                            </View>
                             <View style={styles.progressBg}>
                                 <View style={[styles.progressFill, { width: `${communityScore}%` }]} />
                             </View>
@@ -560,14 +593,15 @@ export default function ProfileMatchScreen() {
                         <View style={styles.card}>
                             {partnerProfile.values?.length > 0 && (
                                 <>
-                                    <Text style={styles.chipSectionLabel}>VALUES</Text>
+                                    <Text style={styles.cardSectionTitle}>Values</Text>
+                                    {sharedValuesSet.size > 0 && <Text style={styles.sharedHint}>Filled = you both share this</Text>}
                                     <View style={styles.chipRow}>
                                         {partnerProfile.values.map((v: string) => {
                                             const shared = sharedValuesSet.has(v.toLowerCase());
                                             return (
-                                                <View key={v} style={[styles.tag, styles.tagValue, shared && styles.tagSharedValue]}>
+                                                <View key={v} style={[styles.tag, shared ? styles.tagSharedValue : styles.tagValue]}>
                                                     {valueIconName(v) && <IconScoutIcon name={valueIconName(v)!} size={15} style={{ marginRight: 5 }} />}
-                                                    <Text style={[styles.tagText, styles.tagTextValue, shared && styles.tagTextSharedValue]}>{v}</Text>
+                                                    <Text style={[styles.tagText, shared ? styles.tagTextSharedValue : styles.tagTextValue]}>{v}</Text>
                                                 </View>
                                             );
                                         })}
@@ -576,14 +610,15 @@ export default function ProfileMatchScreen() {
                             )}
                             {partnerProfile.interests?.length > 0 && (
                                 <>
-                                    <Text style={[styles.chipSectionLabel, partnerProfile.values?.length > 0 && { marginTop: 18 }]}>INTERESTS</Text>
+                                    <Text style={[styles.cardSectionTitle, partnerProfile.values?.length > 0 && { marginTop: 18 }]}>Interests</Text>
+                                    {sharedInterestsSet.size > 0 && <Text style={[styles.sharedHint, { color: '#C2410C' }]}>Filled = you both share this</Text>}
                                     <View style={styles.chipRow}>
                                         {partnerProfile.interests.map((i: string) => {
                                             const shared = sharedInterestsSet.has(i.toLowerCase());
                                             return (
-                                                <View key={i} style={[styles.tag, styles.tagInterest, shared && styles.tagSharedInterest]}>
+                                                <View key={i} style={[styles.tag, shared ? styles.tagSharedInterest : styles.tagInterest]}>
                                                     {interestIconName(i) && <IconScoutIcon name={interestIconName(i)!} size={15} style={{ marginRight: 5 }} />}
-                                                    <Text style={[styles.tagText, styles.tagTextInterest, shared && styles.tagTextSharedInterest]}>{i}</Text>
+                                                    <Text style={[styles.tagText, shared ? styles.tagTextSharedInterest : styles.tagTextInterest]}>{i}</Text>
                                                 </View>
                                             );
                                         })}
@@ -626,7 +661,7 @@ export default function ProfileMatchScreen() {
                             accessibilityLabel="Pass on this match"
                             accessibilityRole="button"
                         >
-                            <X size={24} color="#FFFFFF" strokeWidth={3} />
+                            <EvaIcon name="close" variant="outline" size={24} color="#FFFFFF" />
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.btnHeart, submitting && { opacity: 0.5 }]}
@@ -637,7 +672,7 @@ export default function ProfileMatchScreen() {
                         >
                             {submitting
                                 ? <ActivityIndicator size="small" color="#FFF" />
-                                : <Heart size={28} color="#FFFFFF" fill="#FFFFFF" />}
+                                : <EvaIcon name="heart" variant="fill" size={28} color="#FFFFFF" />}
                         </TouchableOpacity>
                     </View>
                 ) : (
@@ -714,7 +749,7 @@ export default function ProfileMatchScreen() {
                                             ref={reportInputRef}
                                             style={styles.reportOtherInput}
                                             placeholder="Please describe the issue..."
-                                            placeholderTextColor={COLORS.text.light}
+                                            placeholderTextColor={COLORS.text.tertiary}
                                             value={reportOtherText}
                                             onChangeText={(text) => setReportOtherText(text.slice(0, 300))}
                                             multiline
@@ -938,13 +973,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        backgroundColor: COLORS.backgroundInfoBlue,
+        backgroundColor: COLORS.card,
         borderRadius: 12,
         paddingVertical: 10,
         paddingHorizontal: 16,
         marginBottom: 16,
         borderWidth: 1,
-        borderColor: COLORS.borderBlue,
+        borderColor: COLORS.border,
     },
     previewBannerText: {
         fontFamily: FONTS.medium,
@@ -954,45 +989,59 @@ const styles = StyleSheet.create({
     validationCard: {
         backgroundColor: COLORS.card,
         borderRadius: 20,
-        padding: 18,
+        padding: 20,
         ...SHADOWS.md,
         marginBottom: 16,
+        borderWidth: 1.5,
+        borderColor: '#EFF6FF',
     },
     cardHeaderRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        marginBottom: 10,
+        gap: 10,
+        marginBottom: 4,
     },
     iconCircle: {
-        width: 32,
-        height: 32,
-        backgroundColor: COLORS.backgroundIconBlue,
-        borderRadius: 16,
+        width: 36,
+        height: 36,
+        backgroundColor: '#EFF6FF',
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
     },
     cardTitle: {
-        fontFamily: FONTS.semiBold,
+        fontFamily: FONTS.bold,
+        fontWeight: '700' as const,
         fontSize: FONT_SIZES.lg,
-        color: COLORS.text.heading,
+        color: COLORS.text.primary,
     },
     scoreValue: {
+        fontFamily: FONTS.extraBold,
+        fontWeight: '800' as const,
+        fontSize: FONT_SIZES['7xl'],
+        color: COLORS.primary,
+        marginBottom: 0,
+    },
+    scorePercent: {
         fontFamily: FONTS.bold,
-        fontSize: FONT_SIZES['6xl'],
-        color: COLORS.scoreBlue,
+        fontWeight: '700' as const,
+        fontSize: FONT_SIZES['2xl'],
+        color: COLORS.primary,
+        opacity: 0.5,
         marginBottom: 8,
+        marginLeft: 2,
     },
     progressBg: {
         width: '100%',
-        height: 6,
-        backgroundColor: COLORS.backgroundProgressTrack,
-        borderRadius: 3,
+        height: 8,
+        backgroundColor: '#EFF6FF',
+        borderRadius: 4,
+        marginTop: 4,
     },
     progressFill: {
         height: '100%',
-        backgroundColor: COLORS.scoreBlue,
-        borderRadius: 3,
+        backgroundColor: COLORS.primary,
+        borderRadius: 4,
     },
     inlinePhotoWrap: {
         marginBottom: 16,
@@ -1035,7 +1084,7 @@ const styles = StyleSheet.create({
     promptAnswer: {
         fontFamily: FONTS.regular,
         fontSize: FONT_SIZES.lg,
-        color: COLORS.text.heading,
+        color: COLORS.text.primary,
         lineHeight: LINE_HEIGHTS['2xl'],
     },
     card: {
@@ -1048,7 +1097,7 @@ const styles = StyleSheet.create({
     cardSectionTitle: {
         fontFamily: FONTS.semiBold,
         fontSize: FONT_SIZES.xl,
-        color: COLORS.text.heading,
+        color: COLORS.text.primary,
         marginBottom: 12,
     },
     chipRow: {
@@ -1082,17 +1131,17 @@ const styles = StyleSheet.create({
         borderColor: '#FED7AA',
     },
     tagSharedValue: {
-        backgroundColor: '#DCFCE7',
-        borderColor: '#86EFAC',
+        backgroundColor: '#16A34A',
+        borderColor: '#16A34A',
     },
     tagSharedInterest: {
-        backgroundColor: '#FFEDD5',
-        borderColor: '#FB923C',
+        backgroundColor: '#EA580C',
+        borderColor: '#EA580C',
     },
     tagText: {
         fontFamily: FONTS.medium,
         fontSize: FONT_SIZES.base,
-        color: COLORS.text.primary,
+        color: COLORS.text.secondary,
     },
     tagTextValue: {
         color: '#166534',
@@ -1101,12 +1150,21 @@ const styles = StyleSheet.create({
         color: '#9A3412',
     },
     tagTextSharedValue: {
-        color: '#14532D',
+        color: '#FFFFFF',
         fontFamily: FONTS.bold,
+        fontWeight: '700' as const,
     },
     tagTextSharedInterest: {
-        color: '#7C2D12',
+        color: '#FFFFFF',
         fontFamily: FONTS.bold,
+        fontWeight: '700' as const,
+    },
+    sharedHint: {
+        fontFamily: FONTS.semiBold,
+        fontWeight: '600' as const,
+        fontSize: FONT_SIZES.xs,
+        color: '#16A34A',
+        marginBottom: 8,
     },
     lifestyleRow: {
         flexDirection: 'row',
@@ -1116,12 +1174,12 @@ const styles = StyleSheet.create({
     },
     lifestyleRowBorder: {
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.borderSubtle,
+        borderBottomColor: COLORS.borderLight,
     },
     lifestyleLabel: {
         fontFamily: FONTS.regular,
         fontSize: FONT_SIZES.lg,
-        color: COLORS.text.primary,
+        color: COLORS.text.secondary,
         marginLeft: 10,
     },
     lifestyleValue: {
@@ -1140,7 +1198,7 @@ const styles = StyleSheet.create({
         width: 62,
         height: 62,
         borderRadius: 31,
-        backgroundColor: COLORS.passButton,
+        backgroundColor: '#565164',
         alignItems: 'center',
         justifyContent: 'center',
         ...SHADOWS.lg,
@@ -1168,7 +1226,7 @@ const styles = StyleSheet.create({
     waitingText: {
         fontFamily: FONTS.medium,
         fontSize: FONT_SIZES.base,
-        color: COLORS.waitingAmber,
+        color: COLORS.amber,
     },
     sheetOverlay: {
         flex: 1,
@@ -1201,13 +1259,13 @@ const styles = StyleSheet.create({
     },
     sheetDivider: {
         height: 1,
-        backgroundColor: COLORS.borderSubtle,
+        backgroundColor: COLORS.borderLight,
         marginHorizontal: 20,
     },
     reportSheetTitle: {
         fontFamily: FONTS.semiBold,
         fontSize: FONT_SIZES.lg,
-        color: COLORS.text.heading,
+        color: COLORS.text.primary,
         textAlign: 'center',
         paddingVertical: 16,
         paddingHorizontal: 20,
@@ -1232,7 +1290,7 @@ const styles = StyleSheet.create({
     reportOtherCharCount: {
         fontFamily: FONTS.regular,
         fontSize: FONT_SIZES.sm,
-        color: COLORS.text.light,
+        color: COLORS.text.tertiary,
         textAlign: 'right',
         marginTop: 6,
     },

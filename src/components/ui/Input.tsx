@@ -72,13 +72,13 @@ export const Input: React.FC<InputProps> = ({
             fontFamily: FONTS.medium,
             fontSize: FONT_SIZES.base,
             lineHeight: LINE_HEIGHTS.base,
-            color: COLORS.text.heading,
+            color: COLORS.text.primary,
             marginBottom: 6,
           }}
         >
           {label}
           {required && <StyledText style={{ color: COLORS.error }}> *</StyledText>}
-          {optional && <StyledText style={{ color: COLORS.text.light }}> (optional)</StyledText>}
+          {optional && <StyledText style={{ color: COLORS.text.tertiary }}> (optional)</StyledText>}
         </StyledText>
       )}
       <StyledTextInput
@@ -91,7 +91,7 @@ export const Input: React.FC<InputProps> = ({
         onFocus={handleFocus}
         onBlur={handleBlur}
         className={`rounded-lg px-3 py-3 ${className}`}
-        placeholderTextColor={COLORS.text.placeholder}
+        placeholderTextColor={COLORS.text.tertiary}
         style={{
           fontFamily: FONTS.regular,
           fontSize: FONT_SIZES.lg,

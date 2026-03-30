@@ -295,8 +295,8 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
                 variant={hasAnswerInTier ? 'fill' : 'outline'}
                 size={28}
                 color={hasAnswerInTier
-                  ? COLORS.emerald
-                  : tier === 1 ? COLORS.primary : tier === 2 ? COLORS.indigo : COLORS.primaryAccent}
+                  ? COLORS.success
+                  : tier === 1 ? COLORS.primary : tier === 2 ? COLORS.primary : COLORS.primaryAccent}
               />
             </StyledView>
             <StyledView className="flex-1">
@@ -312,7 +312,7 @@ export const DeepQuestionsStep: React.FC<DeepQuestionsStepProps> = ({
               name={isExpanded ? 'arrow-ios-upward' : 'arrow-ios-downward'}
               variant="outline"
               size={24}
-              color={COLORS.text.disabled}
+              color={COLORS.text.tertiary}
             />
           </StyledView>
         </StyledTouchableOpacity>

@@ -72,7 +72,7 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const primaryBgStyle = variant === 'primary'
-    ? { backgroundColor: disabled ? COLORS.primaryButtonDisabled : COLORS.primaryButton }
+    ? { backgroundColor: disabled ? COLORS.primaryDisabled : COLORS.primary }
     : undefined;
 
   return (

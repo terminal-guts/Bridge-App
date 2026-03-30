@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Alert, Platform, ActionSheetIOS } from 'react-native';
+import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LottieView from 'lottie-react-native';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
@@ -29,11 +30,17 @@ import { createLogger } from '../../utils/secureLogger';
 
 const logger = createLogger('ProfileScreen');
 const PROFILE_COMPLETE_CELEBRATION_KEY = '@profile_complete_celebration_shown';
+const CACHED_MAIN_PHOTO_KEY = '@profile_main_photo_cache';
+
+/** Persisted main photo URL + blurhash so the avatar renders instantly from expo-image disk cache */
+type CachedPhoto = { id: string; url: string; blurhash?: string };
 
 export function useProfileScreen(navigation: any) {
   const route = useRoute<any>();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  // Instant photo: loaded from AsyncStorage before the API call finishes
+  const [cachedMainPhoto, setCachedMainPhoto] = useState<CachedPhoto | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [friendCount, setFriendCount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'about' | 'badges' | 'questions'>('about');
@@ -42,6 +49,9 @@ export function useProfileScreen(navigation: any) {
   const [showKarmaInfoModal, setShowKarmaInfoModal] = useState(false);
   const [showPhotoCarousel, setShowPhotoCarousel] = useState(false);
   const [photoLoadFailed, setPhotoLoadFailed] = useState(false);
+  // Stabilize photo URLs: keep the first signed URL per photo ID so expo-image's
+  // disk cache isn't busted by rotating tokens on every getUserProfile() refresh.
+  const stablePhotoUrlsRef = useRef<Map<string, string>>(new Map());
   const [friendCode, setFriendCode] = useState<string | null>(null);
   const [photoCarouselIndex] = useState(0);
   const [communityRank, setCommunityRank] = useState<number | null>(null);
@@ -82,6 +92,25 @@ export function useProfileScreen(navigation: any) {
   const [celebrationActive, setCelebrationActive] = useState(false);
   const confettiRef = useRef<LottieView>(null);
   const celebrationFiredRef = useRef(false);
+
+  // Load cached photo URL on mount: seed stablePhotoUrlsRef so loadProfile reuses
+  // the same URL expo-image already has on disk, and prefetch into memory cache.
+  useEffect(() => {
+    AsyncStorage.getItem(CACHED_MAIN_PHOTO_KEY).then(raw => {
+      if (raw && isMountedRef.current) {
+        try {
+          const cached: CachedPhoto = JSON.parse(raw);
+          setCachedMainPhoto(cached);
+          // Seed the stable ref so loadProfile won't replace this URL with a fresh signed one
+          if (cached.id && cached.url?.startsWith('http')) {
+            stablePhotoUrlsRef.current.set(cached.id, cached.url);
+            // Warm expo-image's memory cache (no-op if already in memory, fast disk read otherwise)
+            Image.prefetch(cached.url).catch(() => {});
+          }
+        } catch {}
+      }
+    });
+  }, []);
 
   // Performance: Cache timing ref
   const lastFetchRef = useRef<number>(0);
@@ -125,13 +154,26 @@ export function useProfileScreen(navigation: any) {
       const loadedProfile = profileResult.data;
       if (!isMountedRef.current) return;
 
-      logger.info('[ProfileScreen] Profile loaded successfully:', {
-        preferredPolitics: loadedProfile.preferredPolitics,
-        matchPrefsCompleteness: loadedProfile.preferences ? 'exists' : 'missing'
-      });
+      // Stabilize photo URLs: reuse the first signed URL we see per photo ID so
+      // expo-image's disk cache doesn't bust when tokens rotate on every refresh.
+      if (loadedProfile.photos) {
+        loadedProfile.photos = loadedProfile.photos.map(p => {
+          const existing = stablePhotoUrlsRef.current.get(p.id);
+          if (existing && existing.startsWith('http')) return { ...p, url: existing };
+          if (p.url?.startsWith('http')) stablePhotoUrlsRef.current.set(p.id, p.url);
+          return p;
+        });
+      }
 
       if (isMountedRef.current) {
         setProfile(loadedProfile);
+
+        // Persist main photo URL so next mount can seed stablePhotoUrlsRef + prefetch
+        const mainPhoto = loadedProfile.photos?.find(p => p.isMain) || loadedProfile.photos?.[0];
+        if (mainPhoto?.id && mainPhoto?.url?.startsWith('http')) {
+          const cached: CachedPhoto = { id: mainPhoto.id, url: mainPhoto.url, blurhash: mainPhoto.blurhash };
+          AsyncStorage.setItem(CACHED_MAIN_PHOTO_KEY, JSON.stringify(cached)).catch(() => {});
+        }
       }
     } catch (error: any) {
       if (!isOffline) {
@@ -553,6 +595,7 @@ export function useProfileScreen(navigation: any) {
 
   return {
     // State
+    cachedMainPhoto,
     profile,
     setProfile,
     loading,

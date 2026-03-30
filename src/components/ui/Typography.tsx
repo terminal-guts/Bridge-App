@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text, TextProps, TextStyle } from 'react-native';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
+import { COLORS } from '../../theme/colors';
 
 interface TypographyProps extends TextProps {
   children: React.ReactNode;
@@ -67,12 +68,6 @@ export const Caption: React.FC<TypographyProps> = ({ children, className = '', s
   </Text>
 );
 
-export const Display: React.FC<TypographyProps> = ({ children, className = '', style, ...props }) => (
-  <Text className={`text-3xl text-neutral-900 ${className}`} style={[resolveFontStyle(className, FONTS.bold, '700'), style]} {...props}>
-    {children}
-  </Text>
-);
-
 /**
  * ScreenTitle — locked style for main tab screen headers (Community, Match, Your Profile).
  * DO NOT override fontFamily, fontWeight, fontSize, or lineHeight. This is the single source
@@ -81,9 +76,9 @@ export const Display: React.FC<TypographyProps> = ({ children, className = '', s
 export const SCREEN_TITLE_STYLE: TextStyle = {
   fontFamily: FONTS.bold,
   fontWeight: '700',
-  fontSize: 28, // FONT_SIZES['5xl'] — hardcoded to avoid circular import
-  lineHeight: 34, // LINE_HEIGHTS['5xl']
-  color: '#1E293B', // COLORS.text.heading — hardcoded to avoid circular import
+  fontSize: FONT_SIZES['5xl'],
+  lineHeight: LINE_HEIGHTS['5xl'],
+  color: COLORS.text.primary,
   letterSpacing: -0.5,
 } as const;
 

@@ -27,6 +27,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const validateAndContinue = async () => {
+    if (isLoading) return;
     setError('');
 
     if (!email.trim()) {
@@ -103,7 +104,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             fontFamily: FONTS.regular,
             fontSize: FONT_SIZES.sm,
             lineHeight: LINE_HEIGHTS.sm,
-            color: COLORS.text.light,
+            color: COLORS.text.tertiary,
             marginTop: 8,
           }}
         >
@@ -140,7 +141,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 fontFamily: FONTS.semiBold,
                 fontSize: FONT_SIZES.base,
                 lineHeight: LINE_HEIGHTS.base,
-                color: COLORS.primaryButton,
+                color: COLORS.primary,
               }}
             >
               Sign Up

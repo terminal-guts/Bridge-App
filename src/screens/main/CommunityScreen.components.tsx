@@ -19,9 +19,9 @@ import { FriendRequestCard } from '../../components/friends/FriendRequestCard';
 import { FriendRequest } from '../../services/friendService';
 
 // ── Responsive sizing ────────────────────────────────────────────────────────
-const SCREEN_WIDTH = Dimensions.get('window').width;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const isCompact = SCREEN_WIDTH < 380; // iPhone SE / 8 = 375pt
-const LOTTIE_SIZE = isCompact ? 200 : 260;
+const LOTTIE_SIZE = Math.round(Math.min(SCREEN_HEIGHT * 0.28, 260));
 const INVITE_BTN_WIDTH = Math.min(280, SCREEN_WIDTH - 64); // 32px padding each side
 const SECTION_H_PADDING = isCompact ? 16 : 24;
 
@@ -52,10 +52,10 @@ export function partitionFriends(friends: FriendWithGridStatus[]) {
 /** Compute activity status line for a crew member */
 export function getFriendStatusLine(
   user: FriendWithGridStatus,
-): string | undefined {
-  if (user.isMatched) return 'Has a match!';
+): { text: string; color?: string } | undefined {
+  if (user.isMatched) return { text: 'Has a match!', color: COLORS.success };
   const assists = user.assistsCount || 0;
-  if (assists > 0) return `${assists} match${assists === 1 ? '' : 'es'} made`;
+  if (assists > 0) return { text: `${assists} match${assists === 1 ? '' : 'es'} made`, color: COLORS.success };
   return undefined;
 }
 
@@ -136,22 +136,25 @@ export function MatchResetTimer() {
     label = `${seconds}s`;
   }
 
-  // Color thresholds: green 12-24h, orange 4-12h, red <4h
+  // Color thresholds — urgency builds gradually over the ~7h cycle:
+  //   Green  >3h  — plenty of time, no pressure
+  //   Amber  1-3h — time is getting limited, gentle nudge
+  //   Red    <1h  — urgent, vote now or miss the window
   let color: string;
   let bgColor: string;
   let borderColor: string;
-  if (remaining > 12 * 3600000) {
-    color = '#1D9E50';
+  if (remaining > 3 * 3600000) {
+    color = COLORS.success;
     bgColor = 'rgba(52, 199, 89, 0.08)';
     borderColor = 'rgba(52, 199, 89, 0.25)';
-  } else if (remaining > 4 * 3600000) {
-    color = '#C96B00';
-    bgColor = 'rgba(255, 141, 40, 0.08)';
-    borderColor = 'rgba(255, 141, 40, 0.25)';
+  } else if (remaining > 1 * 3600000) {
+    color = COLORS.amber;
+    bgColor = 'rgba(245, 158, 11, 0.08)';
+    borderColor = 'rgba(245, 158, 11, 0.25)';
   } else {
-    color = '#D92D20';
-    bgColor = 'rgba(255, 56, 60, 0.08)';
-    borderColor = 'rgba(255, 56, 60, 0.25)';
+    color = COLORS.error;
+    bgColor = 'rgba(239, 68, 68, 0.08)';
+    borderColor = 'rgba(239, 68, 68, 0.25)';
   }
 
   return (
@@ -171,7 +174,7 @@ export function MatchResetTimer() {
           <View style={timerInfoStyles.card}>
             <Text style={timerInfoStyles.title}>Fresh matches at 7 PM</Text>
             <Text style={timerInfoStyles.body}>
-              Every evening, new pairings show up for your friends. Pop in, share your take, and see who Bridge has in mind for you too.
+              Every evening, 3 pairings from the community show up first. Vote on those, then help your friends find their person.
             </Text>
             <TouchableOpacity style={timerInfoStyles.btn} onPress={() => setInfoVisible(false)} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel="Dismiss daily reset info">
               <Text style={timerInfoStyles.btnText}>Got it</Text>
@@ -205,7 +208,7 @@ export function InlineLoadError({ onRetry }: InlineLoadErrorProps) {
         accessibilityRole="button"
         accessibilityLabel="Retry loading community data"
       >
-        <EvaIcon name="refresh" variant="outline" size={16} color={COLORS.primaryButton} />
+        <EvaIcon name="refresh" variant="outline" size={16} color={COLORS.primaryAccent} />
         <Text style={inlineErrorStyles.retryText}>Retry</Text>
       </TouchableOpacity>
     </View>
@@ -241,21 +244,22 @@ const inlineErrorStyles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 8,
-    backgroundColor: COLORS.backgroundBlueTint,
+    backgroundColor: COLORS.card,
   },
   retryText: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.sm,
-    color: COLORS.primaryButton,
+    color: COLORS.primaryAccent,
   },
 });
 
 // ── Empty state (no friends yet) ──────────────────────────────────────────────
 interface EmptyStateProps {
   onInvite: () => void;
+  isMatchmaker?: boolean;
 }
 
-export function EmptyState({ onInvite }: EmptyStateProps) {
+export function EmptyState({ onInvite, isMatchmaker }: EmptyStateProps) {
   return (
     <View style={styles.emptyContainer}>
       {/* Lottie animation centerpiece */}
@@ -271,7 +275,9 @@ export function EmptyState({ onInvite }: EmptyStateProps) {
         Bring your people
       </Text>
       <Text style={styles.emptySubtext}>
-        The friends you trust most pick who you meet.{'\n'}Start by inviting a few from your contacts.
+        {isMatchmaker
+          ? 'Invite friends and help them find their person.'
+          : 'The friends you trust most pick who you meet.\nStart by inviting a few from your contacts.'}
       </Text>
 
       {/* Primary CTA — Invite from Contacts */}
@@ -336,7 +342,7 @@ export function InviteBanner({ avatarFriends, onPress }: InviteBannerProps) {
           );
         })}
         <View style={[styles.crewAddCircle, avatarFriends.length > 0 && { marginLeft: -10 }]}>
-          <EvaIcon name="plus" variant="outline" size={16} color={COLORS.primaryButton} />
+          <EvaIcon name="plus" variant="outline" size={16} color={COLORS.primaryAccent} />
         </View>
       </View>
       <Text style={styles.crewBannerHeadline}>Grow your crew</Text>
@@ -352,7 +358,7 @@ interface ImpactCardProps {
 export function ImpactCard({ totalAssists }: ImpactCardProps) {
   return (
     <View style={styles.impactCard}>
-      <EvaIcon name="heart" variant="outline" size={22} color={COLORS.primaryButton} />
+      <EvaIcon name="heart" variant="outline" size={22} color={COLORS.primaryAccent} />
       <Text style={styles.impactText}>
         {totalAssists > 0
           ? `You've played a part in ${totalAssists} match${totalAssists === 1 ? '' : 'es'} so far`
@@ -365,9 +371,12 @@ export function ImpactCard({ totalAssists }: ImpactCardProps) {
 // ── Caught-up footer ─────────────────────────────────────────────────────────
 export function CaughtUpFooter() {
   return (
-    <Text style={styles.caughtUpFooter}>
-      You're all set for now — check back at 7 PM for new matches
-    </Text>
+    <View style={styles.caughtUpContainer}>
+      <EvaIcon name="checkmark-circle-2" variant="outline" size={16} color={COLORS.primaryAccent} />
+      <Text style={styles.caughtUpFooter}>
+        You're all set — check back at 7 PM for new matches
+      </Text>
+    </View>
   );
 }
 
@@ -378,17 +387,17 @@ const HOW_IT_WORKS_DISMISSED_KEY = '@bridge_how_it_works_dismissed';
 const HOW_IT_WORKS_STEPS = [
   {
     icon: 'flash' as const,
-    color: COLORS.primaryButton,
+    color: COLORS.primaryAccent,
     label: 'Someone gets suggested for your friend — by Bridge or by you',
   },
   {
     icon: 'people' as const,
-    color: COLORS.emerald,
+    color: COLORS.primaryAccent,
     label: 'Friends weigh in together on whether it\'s a good fit',
   },
   {
     icon: 'checkmark-circle-2' as const,
-    color: COLORS.primaryButton,
+    color: COLORS.primaryAccent,
     label: 'Only friend-approved matches go through — no swiping, no guessing',
   },
 ];
@@ -440,11 +449,11 @@ const howStyles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 12,
     marginBottom: 4,
-    backgroundColor: COLORS.backgroundFriendActive,
+    backgroundColor: COLORS.primaryLight,
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: COLORS.borderPeriwinkle,
+    borderColor: 'rgba(67, 127, 255, 0.15)',
   },
   howHeader: {
     flexDirection: 'row',
@@ -454,7 +463,7 @@ const howStyles = StyleSheet.create({
   heading: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.sm,
-    color: COLORS.primaryButton,
+    color: COLORS.text.primary,
   },
   stepRow: {
     flexDirection: 'row',
@@ -474,7 +483,7 @@ const howStyles = StyleSheet.create({
     flex: 1,
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.xs,
-    color: COLORS.text.muted,
+    color: COLORS.text.secondary,
     lineHeight: LINE_HEIGHTS.xs,
   },
 });
@@ -572,7 +581,7 @@ export function PendingRequestsSection({
   return (
     <View style={requestStyles.container}>
       <View style={requestStyles.header}>
-        <View style={[requestStyles.accent, { backgroundColor: COLORS.match.icon }]} />
+        <View style={[requestStyles.accent, { backgroundColor: COLORS.primaryAccent }]} />
         <Text style={requestStyles.title}>FRIEND REQUESTS</Text>
         <View style={requestStyles.badge}>
           <Text style={requestStyles.badgeText}>{requests.length}</Text>
@@ -619,12 +628,12 @@ const requestStyles = StyleSheet.create({
   title: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.base,
-    color: COLORS.navInactiveIcon,
+    color: COLORS.text.secondary,
     letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
   badge: {
-    backgroundColor: COLORS.match.icon,
+    backgroundColor: COLORS.primaryAccent,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -642,14 +651,14 @@ const requestStyles = StyleSheet.create({
     backgroundColor: COLORS.card,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.borderSubtle,
+    borderColor: COLORS.border,
   },
   overflowRow: {
     paddingVertical: 10,
     paddingHorizontal: SECTION_H_PADDING,
     alignItems: 'center',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.borderSubtle,
+    borderTopColor: COLORS.borderLight,
   },
   overflowText: {
     fontFamily: FONTS.medium,
@@ -696,20 +705,20 @@ const timerInfoStyles = StyleSheet.create({
   title: {
     fontFamily: FONTS.bold,
     fontSize: FONT_SIZES['2xl'],
-    color: COLORS.text.heading,
+    color: COLORS.text.primary,
     marginBottom: 8,
     textAlign: 'center',
   },
   body: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.base,
-    color: COLORS.navInactiveIcon,
+    color: COLORS.text.secondary,
     textAlign: 'center',
     lineHeight: LINE_HEIGHTS.lg,
     marginBottom: 20,
   },
   btn: {
-    backgroundColor: COLORS.primaryButton,
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 32,
@@ -722,18 +731,20 @@ const timerInfoStyles = StyleSheet.create({
 });
 
 export const styles = StyleSheet.create({
-  emptyContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: isCompact ? 24 : 32, paddingBottom: 24 },
+  emptyContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: isCompact ? 24 : 32, paddingBottom: 24, backgroundColor: COLORS.screenBackground },
   emptyLottie: {
     width: LOTTIE_SIZE,
     height: LOTTIE_SIZE,
-    marginBottom: isCompact ? 8 : 16,
+    marginBottom: 2,
+    marginRight: 20,
   },
   emptyHeroText: {
     fontFamily: FONTS.bold,
+    fontWeight: '700' as const,
     fontSize: isCompact ? FONT_SIZES['3xl'] : FONT_SIZES['4xl'],
     lineHeight: isCompact ? LINE_HEIGHTS['3xl'] : LINE_HEIGHTS['4xl'],
-    color: COLORS.text.heading,
-    textAlign: 'center',
+    color: COLORS.text.primary,
+    textAlign: 'center' as const,
     marginBottom: 8,
     letterSpacing: -0.3,
     width: '100%',
@@ -742,12 +753,12 @@ export const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     fontSize: isCompact ? FONT_SIZES.md : FONT_SIZES.base,
     lineHeight: isCompact ? LINE_HEIGHTS.md : LINE_HEIGHTS.base,
-    color: COLORS.text.light,
+    color: COLORS.text.secondary,
     textAlign: 'center',
     marginBottom: isCompact ? 20 : 28,
   },
   crewBanner: {
-    backgroundColor: COLORS.backgroundFriendActive,
+    backgroundColor: COLORS.card,
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 16,
@@ -755,7 +766,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: COLORS.borderPeriwinkle,
+    borderColor: COLORS.border,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -770,15 +781,15 @@ export const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: COLORS.backgroundFriendActive,
-    backgroundColor: COLORS.backgroundGrayMedium,
+    borderColor: COLORS.card,
+    backgroundColor: '#E5E7EB',
   },
   crewAddCircle: {
     width: 32,
     height: 32,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: COLORS.primaryButton,
+    borderColor: COLORS.primaryAccent,
     borderStyle: 'dashed',
     backgroundColor: COLORS.card,
     alignItems: 'center',
@@ -787,13 +798,13 @@ export const styles = StyleSheet.create({
   crewBannerHeadline: {
     fontFamily: FONTS.bold,
     fontSize: FONT_SIZES.base,
-    color: COLORS.textDarkHeading,
+    color: COLORS.text.primary,
     flex: 1,
   },
   impactCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.backgroundBlueTint,
+    backgroundColor: COLORS.primaryLight,
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 16,
@@ -801,18 +812,18 @@ export const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: COLORS.borderPeriwinkle,
+    borderColor: COLORS.borderLight,
     gap: 12,
-    ...SHADOWS.sm,
   },
   impactText: {
-    fontFamily: FONTS.semiBold,
+    fontFamily: FONTS.medium,
+    fontWeight: '500' as const,
     fontSize: FONT_SIZES.md,
-    color: COLORS.primaryButton,
+    color: COLORS.text.secondary,
     flex: 1,
   },
   inviteContactsButton: {
-    backgroundColor: COLORS.primaryButton,
+    backgroundColor: COLORS.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -835,7 +846,7 @@ export const styles = StyleSheet.create({
     fontWeight: '700' as const,
     fontSize: FONT_SIZES['5xl'],
     lineHeight: LINE_HEIGHTS['5xl'],
-    color: COLORS.text.heading,
+    color: COLORS.text.primary,
     letterSpacing: -0.5,
   },
   headerRight: {
@@ -847,9 +858,9 @@ export const styles = StyleSheet.create({
     width: isCompact ? 30 : 34,
     height: isCompact ? 30 : 34,
     borderRadius: isCompact ? 15 : 17,
-    backgroundColor: COLORS.backgroundBlueTint,
-    borderWidth: 1,
-    borderColor: COLORS.borderPeriwinkle,
+    backgroundColor: COLORS.card,
+    borderWidth: 1.5,
+    borderColor: COLORS.primaryAccent,
     alignItems: 'center',
     justifyContent: 'center',
     ...SHADOWS.sm,
@@ -857,7 +868,8 @@ export const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 10,
     paddingHorizontal: SECTION_H_PADDING,
     gap: 8,
   },
@@ -869,25 +881,25 @@ export const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.base,
-    color: COLORS.navInactiveIcon,
+    color: COLORS.text.secondary,
     letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
   voteListBg: {
-    backgroundColor: COLORS.backgroundBlueTint,
+    backgroundColor: COLORS.card,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.borderPeriwinkle,
+    borderColor: COLORS.border,
   },
   sectionDivider: {
     height: 1,
-    backgroundColor: COLORS.borderWarm,
+    backgroundColor: COLORS.border,
     marginHorizontal: 24,
-    marginTop: 24,
-    marginBottom: 16,
+    marginTop: 20,
+    marginBottom: 8,
   },
   helpCountBadge: {
-    backgroundColor: COLORS.primaryButton,
+    backgroundColor: COLORS.primaryAccent,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -901,15 +913,36 @@ export const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xs,
     color: COLORS.card,
   },
+  crewCountBadge: {
+    backgroundColor: COLORS.primaryMuted,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    paddingHorizontal: 8,
+    marginLeft: 4,
+  },
   crewListContainer: {
-    paddingBottom: 32,
+    paddingBottom: 16,
+  },
+  caughtUpContainer: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: SECTION_H_PADDING,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 24,
+    backgroundColor: COLORS.primaryTint,
+    borderRadius: 12,
   },
   caughtUpFooter: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.md,
-    color: COLORS.text.placeholder,
-    textAlign: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: SECTION_H_PADDING,
+    color: COLORS.text.tertiary,
+    textAlign: 'center' as const,
   },
 });

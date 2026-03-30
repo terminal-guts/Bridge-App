@@ -250,7 +250,7 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
                       name={isMainSlot ? 'camera' : 'plus'}
                       variant="outline"
                       size={isMainSlot ? 36 : 28}
-                      color={COLORS.text.placeholder}
+                      color={COLORS.text.tertiary}
                     />
                     <Body className="text-neutral-400 text-xs mt-1">
                       {isMainSlot ? 'Main Photo' : 'Add Photo'}

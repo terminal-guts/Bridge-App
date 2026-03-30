@@ -8,14 +8,14 @@ module.exports = {
     extend: {
       colors: {
         primary: {
-          50: '#F5F7FF',
-          100: '#EBF0FF',
-          200: '#D4E1FF',
-          300: '#A8C5FF',
-          400: '#7BA8FF',
-          500: '#5B8FFF', // Warmer primary blue
-          600: '#3D72E8',
-          700: '#2854B8',
+          50: '#EFF3FF',
+          100: '#DBEAFE',
+          200: '#BFDBFE',
+          300: '#93C5FD',
+          400: '#60A5FA',
+          500: '#2563EB', // Matches COLORS.primary
+          600: '#2563EB',
+          700: '#1D4ED8',
         },
         purple: {
           50: '#FAF5FF',

@@ -278,11 +278,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     sendingRef.current = true;
     const targetRecipientId = isFriend ? recipientId! : (match!.currentUserId === match!.user1Id ? match!.user2Id : match!.user1Id);
     setSendingMessage(true); setSendError(null);
+    const AUDIO_TIMEOUT_MS = 30000;
     try {
-      let result;
-      if (isFriend && friendshipId) result = await sendFriendMessage(friendshipId, targetRecipientId, uri, 'audio', durationMillis);
-      else if (matchId) result = await sendMessageAPI(matchId, targetRecipientId, uri, 'audio', durationMillis);
+      let sendPromise: Promise<any>;
+      if (isFriend && friendshipId) sendPromise = sendFriendMessage(friendshipId, targetRecipientId, uri, 'audio', durationMillis);
+      else if (matchId) sendPromise = sendMessageAPI(matchId, targetRecipientId, uri, 'audio', durationMillis);
       else return;
+      const result = await Promise.race([
+        sendPromise,
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Voice note took too long — try again.')), AUDIO_TIMEOUT_MS)),
+      ]);
       if (!result.ok || !result.data) throw new Error(result.error?.message || 'Your voice note didn\'t go through — try again?');
       const sentMsg = result.data;
       setMessages(prev => { if (prev.some(m => m.id === sentMsg.id)) return prev; return [...prev, sentMsg]; });
@@ -374,7 +379,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     const isDateProposal = item.type === 'text' && item.content.startsWith('📅 Date Proposal:');
     const dateProposalBody = isDateProposal ? item.content.replace('📅 Date Proposal: ', '') : '';
     return (
-      <>
+      <View>
         {dateSepLabel != null && renderDateSeparator(dateSepLabel)}
         <View style={[cs.messageRow, isOwnMessage ? cs.messageRowOwn : cs.messageRowOther]}>
           {isDateProposal ? (
@@ -405,7 +410,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
             )}
           </View>
         </View>
-      </>
+      </View>
     );
   }, [currentUserId, dateSeparatorMap, renderDateSeparator]);
 
@@ -480,7 +485,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       <View style={cs.header}>
         <View style={cs.headerLeft}>
           <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel="Go back">
-            <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.textDarkHeading} />
+            <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.primary} />
           </TouchableOpacity>
           {(() => {
             const photoUrl = (recipientProfile?.photos?.find((p: any) => p.isMain) || recipientProfile?.photos?.[0])?.url || recipientPhoto;
@@ -506,7 +511,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
         </View>
         {!isFriend && (
           <TouchableOpacity onPress={() => setMenuVisible(true)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={cs.menuBtn} accessibilityRole="button" accessibilityLabel="Chat options menu">
-            <EvaIcon name="more-vertical" variant="outline" size={22} color={COLORS.navInactiveIcon} />
+            <EvaIcon name="more-vertical" variant="outline" size={22} color={COLORS.text.secondary} />
           </TouchableOpacity>
         )}
       </View>
@@ -548,7 +553,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
                     multiline
                     maxLength={1000}
                     style={cs.inputField}
-                    placeholderTextColor={COLORS.text.placeholder}
+                    placeholderTextColor={COLORS.text.tertiary}
                     editable={!sendingMessage}
                     accessibilityLabel="Message input"
                   />
@@ -562,7 +567,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
                     accessibilityLabel="Send message"
                     accessibilityState={{ disabled: !newMessage.trim() || sendingMessage }}
                   >
-                    {sendingMessage ? <ActivityIndicator size="small" color={COLORS.card} /> : <EvaIcon name="paper-plane" variant="outline" size={20} color={newMessage.trim() ? COLORS.card : COLORS.text.placeholder} />}
+                    {sendingMessage ? <ActivityIndicator size="small" color={COLORS.card} /> : <EvaIcon name="paper-plane" variant="outline" size={20} color={newMessage.trim() ? COLORS.card : COLORS.text.tertiary} />}
                   </TouchableOpacity>
                 ) : null}
               </>
@@ -603,7 +608,7 @@ const cs = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: COLORS.backgroundIconBlue,
+    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -612,7 +617,7 @@ const cs = StyleSheet.create({
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.base,
     lineHeight: LINE_HEIGHTS.base,
-    color: COLORS.text.light,
+    color: COLORS.text.tertiary,
     marginTop: 12,
   },
 
@@ -679,7 +684,7 @@ const cs = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.backgroundGrayMedium,
+    backgroundColor: COLORS.card,
   },
   headerTitleWrap: {
     flex: 1,
@@ -710,7 +715,7 @@ const cs = StyleSheet.create({
     marginVertical: 16,
   },
   dateSepPill: {
-    backgroundColor: COLORS.backgroundGray,
+    backgroundColor: COLORS.card,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 999,
@@ -768,7 +773,7 @@ const cs = StyleSheet.create({
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.xs,
     lineHeight: LINE_HEIGHTS.xs,
-    color: COLORS.text.light,
+    color: COLORS.text.tertiary,
   },
   readReceipt: {
     marginLeft: 4,
@@ -785,7 +790,7 @@ const cs = StyleSheet.create({
   emptyIcon: {
     width: 80,
     height: 80,
-    backgroundColor: COLORS.backgroundIconBlue,
+    backgroundColor: COLORS.card,
     borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
@@ -813,7 +818,7 @@ const cs = StyleSheet.create({
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.base,
     lineHeight: LINE_HEIGHTS.base,
-    color: COLORS.text.muted,
+    color: COLORS.text.secondary,
     textAlign: 'center',
   },
 
@@ -823,9 +828,9 @@ const cs = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: COLORS.mismatch.bg,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
     borderTopWidth: 1,
-    borderTopColor: COLORS.borderPink,
+    borderTopColor: COLORS.border,
   },
   sendErrorText: {
     flex: 1,
@@ -850,7 +855,7 @@ const cs = StyleSheet.create({
   },
   inputFieldWrap: {
     flex: 1,
-    backgroundColor: COLORS.backgroundGray,
+    backgroundColor: COLORS.card,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -876,13 +881,13 @@ const cs = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   sendBtnDisabled: {
-    backgroundColor: COLORS.backgroundGrayMedium,
+    backgroundColor: COLORS.card,
   },
   charCount: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.xs,
     lineHeight: LINE_HEIGHTS.xs,
-    color: COLORS.text.light,
+    color: COLORS.text.tertiary,
     marginTop: 4,
     textAlign: 'right',
   },

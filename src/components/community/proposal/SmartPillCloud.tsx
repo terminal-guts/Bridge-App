@@ -31,22 +31,22 @@ const GREY_BORDER = '#EDE9E3';   // very faint warm border
 const GREY_TEXT = COLORS.text.secondary; // #64748B — muted
 
 // Yellow/similar pill tokens
-const YELLOW_BORDER = COLORS.warning.icon; // #F59E0B
-const YELLOW_BG = COLORS.backgroundSoftYellow; // #FFFBEB
-const YELLOW_TEXT = COLORS.warning.text; // #92400E
+const SIMILAR_BORDER = COLORS.primaryAccent; // blue accent for similar pills
+const SIMILAR_BG = COLORS.card; // #EEF3FF — light blue tint
+const SIMILAR_TEXT = COLORS.primary; // #1E40AF — dark blue, readable
 // Max unique pills shown per person before collapsing to "+N more"
 const MAX_UNIQUE_PILLS = 3;
 
 // ─── MatchIcon ───────────────────────────────────────────────────────────────
 export function MatchIcon({ status }: { status: MatchStatus }) {
   if (status === 'both_happy') {
-    return <EvaIcon name="checkmark" variant="outline" size={20} color={COLORS.emerald} />;
+    return <EvaIcon name="checkmark" variant="outline" size={20} color={COLORS.success} />;
   }
   if (status === 'neither_happy') {
     return <EvaIcon name="close" variant="outline" size={20} color={COLORS.error} />;
   }
   if (status === 'left_happy' || status === 'right_happy') {
-    return <EvaIcon name="alert-triangle" variant="outline" size={18} color={COLORS.warningIcon} />;
+    return <EvaIcon name="alert-triangle" variant="outline" size={18} color={COLORS.amber} />;
   }
   return null;
 }
@@ -63,7 +63,7 @@ export function TagPill({ label }: { label: string }) {
       paddingVertical: 6,
       alignSelf: 'flex-start',
     }}>
-      <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.base, color: COLORS.text.black }}>{label}</Text>
+      <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.base, color: COLORS.text.primary }}>{label}</Text>
     </View>
   );
 }
@@ -98,7 +98,7 @@ function UniqueOverflowPill({ count }: { count: number }) {
       paddingVertical: 4,
       alignSelf: 'flex-start',
     }}>
-      <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.sm, color: COLORS.text.light }}>+{count} more</Text>
+      <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.sm, color: COLORS.text.tertiary }}>+{count} more</Text>
     </View>
   );
 }
@@ -107,7 +107,7 @@ function UniqueOverflowPill({ count }: { count: number }) {
 export function GreenPill({ label }: { label: string }) {
   return (
     <View style={{
-      backgroundColor: COLORS.backgroundSuccessBadge,
+      backgroundColor: 'rgba(52, 199, 89, 0.08)',
       borderWidth: 1,
       borderColor: GREEN,
       borderRadius: 40,
@@ -124,16 +124,16 @@ export function GreenPill({ label }: { label: string }) {
 export function SimilarPairPill({ itemA, itemB }: { itemA: string; itemB: string }) {
   return (
     <View style={{
-      backgroundColor: YELLOW_BG,
+      backgroundColor: SIMILAR_BG,
       borderWidth: 1,
       borderStyle: 'dashed',
-      borderColor: YELLOW_BORDER,
+      borderColor: SIMILAR_BORDER,
       borderRadius: 40,
       paddingHorizontal: 10,
       paddingVertical: 6,
       alignSelf: 'flex-start',
     }}>
-      <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.base, color: YELLOW_TEXT }}>
+      <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.base, color: SIMILAR_TEXT }}>
         {itemA} {'~'} {itemB}
       </Text>
     </View>
@@ -144,16 +144,16 @@ export function SimilarPairPill({ itemA, itemB }: { itemA: string; itemB: string
 export function YellowPill({ label }: { label: string }) {
   return (
     <View style={{
-      backgroundColor: YELLOW_BG,
+      backgroundColor: SIMILAR_BG,
       borderWidth: 1,
       borderStyle: 'dashed',
-      borderColor: YELLOW_BORDER,
+      borderColor: SIMILAR_BORDER,
       borderRadius: 40,
       paddingHorizontal: 9,
       paddingVertical: 5,
       alignSelf: 'flex-start',
     }}>
-      <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.base, color: YELLOW_TEXT }}>{label}</Text>
+      <Text style={{ fontFamily: FONTS.medium, fontWeight: '500', fontSize: FONT_SIZES.base, color: SIMILAR_TEXT }}>{label}</Text>
     </View>
   );
 }
@@ -171,8 +171,8 @@ export function ValueBox({ label, value }: { label: string; value: string }) {
       padding: 10,
       justifyContent: 'space-between',
     }}>
-      <Text style={{ fontFamily: FONTS.regular, fontWeight: '400', fontSize: FONT_SIZES.md, color: COLORS.text.label }}>{label}</Text>
-      <Text style={{ fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: FONT_SIZES.lg, color: COLORS.text.black }} numberOfLines={1}>{value || '—'}</Text>
+      <Text style={{ fontFamily: FONTS.regular, fontWeight: '400', fontSize: FONT_SIZES.md, color: COLORS.text.secondary }}>{label}</Text>
+      <Text style={{ fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: FONT_SIZES.lg, color: COLORS.text.primary }} numberOfLines={1}>{value || '—'}</Text>
     </View>
   );
 }
@@ -245,7 +245,7 @@ function UniquePillColumn({ tags, label }: { tags: string[]; label: string }) {
 
   return (
     <View style={{ flex: 1 }}>
-      <TierLabel text={label} color={COLORS.text.light} />
+      <TierLabel text={label} color={COLORS.text.tertiary} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
         {visible.map(t => <UniquePill key={t} label={t} />)}
         {overflow > 0 && <UniqueOverflowPill count={overflow} />}
@@ -324,7 +324,7 @@ export const MatchBadge = React.memo(function MatchBadge({ matched, total }: { m
   const RED_BG = 'rgba(255, 56, 60, 0.1)';
   const AMBER_BG = 'rgba(245, 158, 11, 0.12)';
   const bg = allMatch ? GREEN_BG : noneMatch ? RED_BG : AMBER_BG;
-  const color = allMatch ? GREEN_TEXT : noneMatch ? '#B91C1C' : COLORS.warning.text; // WCAG AA compliant
+  const color = allMatch ? GREEN_TEXT : noneMatch ? '#B91C1C' : COLORS.amber; // WCAG AA compliant
   const label = total === 1
     ? allMatch ? 'Match' : 'No Match'
     : `${matched}/${total} Match`;
@@ -343,7 +343,7 @@ export const PercentBadge = React.memo(function PercentBadge({ percent }: { perc
   const RED_BG = 'rgba(255, 56, 60, 0.1)';
   const AMBER_BG = 'rgba(245, 158, 11, 0.12)';
   const bg = allMatch ? GREEN_BG : noneMatch ? RED_BG : AMBER_BG;
-  const color = allMatch ? GREEN_TEXT : noneMatch ? '#B91C1C' : COLORS.warning.text; // WCAG AA compliant
+  const color = allMatch ? GREEN_TEXT : noneMatch ? '#B91C1C' : COLORS.amber; // WCAG AA compliant
 
   return (
     <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: bg }}>

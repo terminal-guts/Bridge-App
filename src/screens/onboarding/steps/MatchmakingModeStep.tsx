@@ -68,7 +68,7 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
                 name={icon}
                 variant="outline"
                 size={24}
-                color={isSelected ? COLORS.card : COLORS.text.label}
+                color={isSelected ? COLORS.card : COLORS.text.secondary}
               />
             </StyledView>
             <StyledView className="flex-1 mt-1">
@@ -84,7 +84,7 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
                 name={isSelected ? 'checkmark-circle-2' : 'radio-button-off'}
                 variant={isSelected ? 'fill' : 'outline'}
                 size={24}
-                color={isSelected ? COLORS.primaryAccent : COLORS.borderDivider}
+                color={isSelected ? COLORS.primaryAccent : COLORS.border}
               />
             </StyledView>
           </StyledView>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, useWindowDimensions } from 'react-native';
 import ReanimatedAnimated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -83,17 +83,23 @@ export function MatchesScreen() {
     }
 
     // ── Active match / proposal view ─────────────────────────────────────────
-    const { timerLabel, timerClr, timerBg, timerBdrClr } = computeTimerInfo(
+    // Timer label updates every second — isolated so it doesn't bust cardProps memo
+    const timerInfo = useMemo(() => computeTimerInfo(
         state.screenState,
         state.activeMatch,
         state.currentProposal,
         state.now,
+    ), [state.screenState, state.activeMatch, state.currentProposal, state.now]);
+    const { timerLabel, timerClr, timerBg, timerBdrClr } = timerInfo;
+
+    // Card props do NOT depend on `now` — only recompute when match/proposal data changes
+    const cardProps = useMemo(() =>
+        buildCardProps(state.screenState, state.activeMatch, state.currentProposal),
+        [state.screenState, state.activeMatch, state.currentProposal],
     );
+    const { partner, partnerPhoto, partnerPhotoBlurhash, partnerName, partnerAge, endorserAvatars, endorserNames, matchDate } = cardProps;
 
-    const { partner, partnerPhoto, partnerPhotoBlurhash, partnerName, partnerAge, endorserAvatars, endorserNames, matchDate } =
-        buildCardProps(state.screenState, state.activeMatch, state.currentProposal);
-
-    const handleCardPress = () => {
+    const handleCardPress = useCallback(() => {
         if (state.screenState === 'active_match') {
             const match = state.activeMatch;
             if (!match) return;
@@ -118,7 +124,9 @@ export function MatchesScreen() {
                 proposalId: proposal.proposalId,
             });
         }
-    };
+    }, [state.screenState, state.activeMatch, state.currentProposal, state.navigation, partnerName, partner, partnerPhoto]);
+
+    const handleDismiss = useCallback(() => state.setEndMatchModalVisible(true), [state.setEndMatchModalVisible]);
 
     return (
         <View style={{ flex: 1, backgroundColor: COLORS.screenBackground }}>
@@ -148,7 +156,7 @@ export function MatchesScreen() {
             <ScrollView
                 style={{ flex: 1, paddingHorizontal: 16, marginTop: scrollMargin }}
                 refreshControl={
-                    <RefreshControl refreshing={state.refreshing} onRefresh={state.handleRefresh} tintColor={COLORS.primaryButton} />
+                    <RefreshControl refreshing={state.refreshing} onRefresh={state.handleRefresh} tintColor={COLORS.primary} />
                 }
             >
                 <ReanimatedAnimated.View style={[{ marginBottom: cardMB, height: activeCardHeight }, state.cardEntranceStyle]}>
@@ -164,7 +172,7 @@ export function MatchesScreen() {
                         celebrate={state.celebrationActive}
                         messagePreview={state.screenState === 'active_match' ? (state.firstMatchMessage ?? undefined) : undefined}
                         onPress={handleCardPress}
-                        onDismiss={state.screenState === 'active_match' ? () => state.setEndMatchModalVisible(true) : undefined}
+                        onDismiss={state.screenState === 'active_match' ? handleDismiss : undefined}
                         onShare={state.screenState === 'active_match' ? state.handleSharePress : undefined}
                     />
                 </ReanimatedAnimated.View>

@@ -23,7 +23,7 @@ export const proposalStyles = StyleSheet.create({
   },
   loadingText: {
     fontSize: FONT_SIZES.xl,
-    color: COLORS.text.subtle,
+    color: COLORS.text.secondary,
     fontFamily: FONTS.regular,
   },
   emptyContainer: {
@@ -32,7 +32,7 @@ export const proposalStyles = StyleSheet.create({
     backgroundColor: COLORS.card,
   },
   votingGateBanner: {
-    backgroundColor: COLORS.backgroundBlueTint,
+    backgroundColor: COLORS.card,
     paddingVertical: 10,
     paddingHorizontal: 20,
     alignItems: 'center',
@@ -40,7 +40,7 @@ export const proposalStyles = StyleSheet.create({
   votingGateText: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.md,
-    color: COLORS.primaryButton,
+    color: COLORS.primary,
     textAlign: 'center',
   },
   headerRow: {
@@ -103,14 +103,14 @@ export const styles = StyleSheet.create({
   valueBoxLabel: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.md,
-    color: COLORS.text.label,
+    color: COLORS.text.secondary,
     marginBottom: 2,
   },
   valueBoxText: {
     fontFamily: FONTS.medium,
     fontWeight: '500' as const,
     fontSize: FONT_SIZES.lg,
-    color: COLORS.text.black,
+    color: COLORS.text.primary,
     textAlign: 'center' as const,
   },
 
@@ -144,7 +144,22 @@ export const styles = StyleSheet.create({
     fontFamily: FONTS.medium,
     fontWeight: '500' as const,
     fontSize: FONT_SIZES.md,
-    color: COLORS.text.muted,  // #475569 — WCAG AA compliant (was navInactiveIcon #667085, borderline)
+    color: COLORS.text.secondary,  // #475569 — WCAG AA compliant (was navInactiveIcon #667085, borderline)
+  },
+
+  // Recommend sent confirmation badge (replaces button after recommendation)
+  recommendSentBadge: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 4,
+    paddingHorizontal: 12,
+  },
+  recommendSentText: {
+    fontFamily: FONTS.medium,
+    fontWeight: '500' as const,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.success,
   },
 
   // Modal
@@ -170,7 +185,7 @@ export const styles = StyleSheet.create({
   progressLabel: {
     fontFamily: FONTS.medium,
     fontSize: FONT_SIZES.xs,
-    color: COLORS.text.disabled,
+    color: COLORS.text.tertiary,
     marginLeft: 4,
   },
 
@@ -242,21 +257,21 @@ export const styles = StyleSheet.create({
   modalHeading: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES['3xl'],
-    color: COLORS.text.black,
+    color: COLORS.text.primary,
     textAlign: 'center' as const,
     marginBottom: 6,
   },
   modalSubtext: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.base,
-    color: COLORS.text.muted,  // WCAG AA compliant (was text.black + opacity: 0.6)
+    color: COLORS.text.secondary,  // WCAG AA compliant (was text.black + opacity: 0.6)
     textAlign: 'center' as const,
     marginBottom: 20,
   },
   modalSubtextNoMargin: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.base,
-    color: COLORS.text.muted,
+    color: COLORS.text.secondary,
     textAlign: 'center' as const,
   },
   modalPersonRow: {
@@ -300,7 +315,7 @@ export const styles = StyleSheet.create({
   modalCancelText: {
     fontFamily: FONTS.medium,
     fontSize: FONT_SIZES.lg,
-    color: COLORS.text.muted,
+    color: COLORS.text.secondary,
   },
   modalStep2Header: {
     paddingHorizontal: 24,
@@ -337,7 +352,7 @@ export const styles = StyleSheet.create({
   modalFriendName: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.lg,
-    color: COLORS.text.black,
+    color: COLORS.text.primary,
   },
   modalFriendJob: {
     fontFamily: FONTS.regular,

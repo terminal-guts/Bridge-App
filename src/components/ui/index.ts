@@ -21,7 +21,6 @@ export {
   BodySmall,
   Label,
   Caption,
-  Display,
   ScreenTitle,
   SCREEN_TITLE_STYLE,
 } from './Typography';

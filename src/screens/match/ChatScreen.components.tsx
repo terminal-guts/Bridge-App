@@ -82,18 +82,18 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
     <TouchableOpacity style={cs.menuOverlay} activeOpacity={1} onPress={onClose}>
       <View style={cs.menuCard}>
         <TouchableOpacity style={cs.menuItem} onPress={onProposeDate} accessibilityRole="button" accessibilityLabel="Ask them out">
-          <EvaIcon name="calendar" variant="outline" size={18} color={COLORS.textDarkHeading} />
+          <EvaIcon name="calendar" variant="outline" size={18} color={COLORS.text.primary} />
           <Text style={cs.menuItemText}>Ask them out</Text>
         </TouchableOpacity>
         <View style={cs.menuDivider} />
         <TouchableOpacity style={cs.menuItem} onPress={onEndMatch} accessibilityRole="button" accessibilityLabel="Move on from match">
-          <EvaIcon name="close-circle" variant="outline" size={18} color={COLORS.textDarkHeading} />
+          <EvaIcon name="close-circle" variant="outline" size={18} color={COLORS.text.primary} />
           <Text style={cs.menuItemText}>Move on</Text>
         </TouchableOpacity>
         <View style={cs.menuDivider} />
         <TouchableOpacity style={cs.menuItem} onPress={onReport} accessibilityRole="button" accessibilityLabel={`Report ${recipientName}`}>
-          <EvaIcon name="flag" variant="outline" size={18} color={COLORS.danger} />
-          <Text style={[cs.menuItemText, { color: COLORS.danger }]}>Report</Text>
+          <EvaIcon name="flag" variant="outline" size={18} color={COLORS.error} />
+          <Text style={[cs.menuItemText, { color: COLORS.error }]}>Report</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -118,9 +118,9 @@ export const ProposeDateModal: React.FC<ProposeDateModalProps> = ({
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={ts.overlay}>
       <View style={ts.card}>
         <TouchableOpacity style={ts.closeBtn} onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <EvaIcon name="close" variant="outline" size={22} color={COLORS.navInactiveIcon} />
+          <EvaIcon name="close" variant="outline" size={22} color={COLORS.text.secondary} />
         </TouchableOpacity>
-        <View style={[ts.iconWrap, { backgroundColor: COLORS.backgroundFriendActive }]}>
+        <View style={[ts.iconWrap, { backgroundColor: COLORS.card }]}>
           <EvaIcon name="calendar" variant="outline" size={26} color={COLORS.primaryAccent} />
         </View>
         <Text style={ts.title}>Ask {recipientName} out</Text>
@@ -128,7 +128,7 @@ export const ProposeDateModal: React.FC<ProposeDateModalProps> = ({
         <TextInput
           style={[ts.textArea, { minHeight: 80 }]}
           placeholder={`e.g. Coffee at Brochstein on Saturday at 2pm?`}
-          placeholderTextColor={COLORS.text.placeholder}
+          placeholderTextColor={COLORS.text.tertiary}
           value={dateProposalText}
           onChangeText={onChangeText}
           multiline
@@ -169,10 +169,10 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={ts.overlay}>
       <View style={ts.card}>
         <TouchableOpacity style={ts.closeBtn} onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <EvaIcon name="close" variant="outline" size={22} color={COLORS.navInactiveIcon} />
+          <EvaIcon name="close" variant="outline" size={22} color={COLORS.text.secondary} />
         </TouchableOpacity>
-        <View style={[ts.iconWrap, { backgroundColor: COLORS.backgroundWarmPeach }]}>
-          <EvaIcon name="close-square" variant="outline" size={26} color={COLORS.warmOrange} />
+        <View style={[ts.iconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.08)' }]}>
+          <EvaIcon name="close-square" variant="outline" size={26} color={COLORS.amber} />
         </View>
         <Text style={ts.title}>Ready to move on?</Text>
         <Text style={ts.subtitle}>No worries — you'll be back in the mix for a new match.{'\n'}Let us know what happened so we can do better.</Text>
@@ -192,7 +192,7 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
         <TextInput
           style={ts.textArea}
           placeholder={endMatchReason === 'Other' ? 'Tell us a bit more...' : 'Additional details (optional)'}
-          placeholderTextColor={COLORS.text.placeholder}
+          placeholderTextColor={COLORS.text.tertiary}
           value={endMatchCustomReason}
           onChangeText={onChangeCustomReason}
           multiline
@@ -236,10 +236,10 @@ export const ReportModal: React.FC<ReportModalProps> = ({
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={ts.overlay}>
         <View style={ts.card}>
           <TouchableOpacity style={ts.closeBtn} onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <EvaIcon name="close" variant="outline" size={22} color={COLORS.navInactiveIcon} />
+            <EvaIcon name="close" variant="outline" size={22} color={COLORS.text.secondary} />
           </TouchableOpacity>
-          <View style={[ts.iconWrap, { backgroundColor: COLORS.backgroundSoftRed }]}>
-            <EvaIcon name="flag" variant="outline" size={26} color={COLORS.danger} />
+          <View style={[ts.iconWrap, { backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}>
+            <EvaIcon name="flag" variant="outline" size={26} color={COLORS.error} />
           </View>
           <Text style={ts.title}>Report {recipientName}</Text>
           <Text style={ts.subtitle}>We take this seriously — our team looks into every report within 24 hours</Text>
@@ -259,7 +259,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
           <TextInput
             style={[ts.textArea, isOther && ts.textAreaRequired]}
             placeholder={isOther ? 'Please describe the issue...' : 'Anything else we should know? (optional)'}
-            placeholderTextColor={COLORS.text.placeholder}
+            placeholderTextColor={COLORS.text.tertiary}
             value={reportDetails}
             onChangeText={(text) => onChangeDetails(text.slice(0, 300))}
             multiline
@@ -290,8 +290,8 @@ export const dateProposalStyles = StyleSheet.create({
   card: {
     maxWidth: '85%',
     borderWidth: 1.5,
-    borderColor: COLORS.borderMediumBlue,
-    backgroundColor: COLORS.backgroundLightBlue,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.card,
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -310,7 +310,7 @@ export const dateProposalStyles = StyleSheet.create({
   body: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.lg,
-    color: COLORS.textDarkHeading,
+    color: COLORS.text.primary,
     lineHeight: LINE_HEIGHTS.xl,
   },
 });
@@ -342,7 +342,7 @@ const cs = StyleSheet.create({
   menuItemText: {
     fontSize: FONT_SIZES.lg,
     fontFamily: FONTS.medium,
-    color: COLORS.textDarkHeading,
+    color: COLORS.text.primary,
   },
   menuDivider: {
     height: 1,
@@ -375,7 +375,7 @@ export const ts = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COLORS.backgroundProgressTrack,
+    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
@@ -392,14 +392,14 @@ export const ts = StyleSheet.create({
   title: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES['3xl'],
-    color: COLORS.textDarkHeading,
+    color: COLORS.text.primary,
     textAlign: 'center',
     marginBottom: 6,
   },
   subtitle: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.base,
-    color: COLORS.navInactiveIcon,
+    color: COLORS.text.secondary,
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: LINE_HEIGHTS.lg,
@@ -415,17 +415,17 @@ export const ts = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1.5,
-    borderColor: COLORS.borderNeutral,
+    borderColor: COLORS.border,
     backgroundColor: COLORS.card,
   },
   pillActive: {
     borderColor: COLORS.primaryAccent,
-    backgroundColor: COLORS.backgroundFriendActive,
+    backgroundColor: COLORS.card,
   },
   pillText: {
     fontFamily: FONTS.medium,
     fontSize: FONT_SIZES.md,
-    color: COLORS.navInactiveIcon,
+    color: COLORS.text.secondary,
   },
   pillTextActive: {
     fontFamily: FONTS.semiBold,
@@ -433,17 +433,17 @@ export const ts = StyleSheet.create({
   },
   textArea: {
     borderWidth: 1.5,
-    borderColor: COLORS.borderNeutral,
+    borderColor: COLORS.border,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.lg,
-    color: COLORS.textDarkHeading,
+    color: COLORS.text.primary,
     minHeight: 64,
     textAlignVertical: 'top',
     marginBottom: 20,
-    backgroundColor: COLORS.backgroundOffWhite,
+    backgroundColor: COLORS.screenBackground,
   },
   textAreaRequired: {
     borderColor: COLORS.border,
@@ -453,7 +453,7 @@ export const ts = StyleSheet.create({
   charCount: {
     fontFamily: FONTS.regular,
     fontSize: FONT_SIZES.sm,
-    color: COLORS.text.light,
+    color: COLORS.text.tertiary,
     textAlign: 'right' as const,
     marginBottom: 16,
   },

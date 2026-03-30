@@ -49,12 +49,12 @@ const SettingRow = ({
     <StyledView className="flex-row items-center">
       <StyledView
         className="w-10 h-10 rounded-lg items-center justify-center mr-3"
-        style={{ backgroundColor: COLORS.backgroundGray }}
+        style={{ backgroundColor: COLORS.card }}
       >
         <EvaIcon name={icon} variant="outline" size={20} color={COLORS.navInactiveIcon} />
       </StyledView>
       <StyledView className="flex-1">
-        <Body style={{ color: COLORS.text.heading, marginBottom: 2 }}>{title}</Body>
+        <Body style={{ color: COLORS.text.primary, marginBottom: 2 }}>{title}</Body>
         {subtitle ? (
           <Body style={{ color: COLORS.text.secondary, fontSize: FONT_SIZES.md }}>{subtitle}</Body>
         ) : null}
@@ -63,12 +63,12 @@ const SettingRow = ({
         <Switch
           value={toggleValue}
           onValueChange={(val: boolean) => onToggle?.(val)}
-          trackColor={{ false: COLORS.borderDivider, true: COLORS.primaryAccent }}
+          trackColor={{ false: COLORS.border, true: COLORS.primaryAccent }}
           thumbColor="white"
-          ios_backgroundColor={COLORS.borderDivider}
+          ios_backgroundColor={COLORS.border}
         />
       ) : showArrow ? (
-        <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color={COLORS.text.placeholder} />
+        <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color={COLORS.text.tertiary} />
       ) : null}
     </StyledView>
   </AnimatedPressable>
@@ -124,22 +124,22 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
 
       <StyledScrollView className="flex-1">
         <StyledView className="px-4 py-4">
-          {/* Account */}
+          {/* Matchmaking / Account — top card with navigation items */}
           <Card className="mb-6">
             <StyledView className="flex-row items-center justify-between mb-4">
-              <H3>Account</H3>
-              <Body style={{ color: COLORS.text.secondary, fontSize: FONT_SIZES.xs }}>v1.0.0</Body>
+              <H3>{userRole === 'matchmaker' ? 'Matchmaking' : 'Account'}</H3>
+              <Body style={{ color: COLORS.text.tertiary, fontSize: FONT_SIZES.xs }}>v1.0.0</Body>
             </StyledView>
             <SettingRow
               icon="award"
               title="Leaderboard"
-              subtitle="Best matchmaker wins $100!"
+              subtitle="Best matchmaker wins $50!"
               onPress={() => navigation.navigate('Leaderboard')}
             />
             <SettingRow
               icon="message-circle"
               title="Feedback"
-              subtitle="Improve the app to win $50!"
+              subtitle="Improve the app to win $25!"
               onPress={() => navigation.navigate('SupportChat')}
             />
             <SettingRow
@@ -150,18 +150,82 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
             />
           </Card>
 
-          {/* Switch to Dater — matchmakers only */}
-          {userRole === 'matchmaker' && (
-            <Card className="mb-6">
-              <H3 className="mb-4">Your Role</H3>
+          {/* Preferences — consolidates toggles, settings, and role switch */}
+          <Card className="mb-6">
+            <H3 className="mb-4">Preferences</H3>
+            <SettingRow
+              icon="heart"
+              title={userRole === 'matchmaker' ? 'Voting & Karma' : 'Matches & Proposals'}
+              subtitle={userRole === 'matchmaker' ? 'New proposals, vote reminders, accuracy bonuses' : 'Matches, voting, accuracy bonuses'}
+              toggle
+              toggleValue={matchesEnabled}
+              onToggle={(val: boolean) => updatePreference('matchesEnabled', val)}
+              showArrow={false}
+            />
+            {userRole !== 'matchmaker' && (
+            <SettingRow
+              icon="message-square"
+              title="Messages"
+              subtitle="New messages and ghosting alerts"
+              toggle
+              toggleValue={messagesEnabled}
+              onToggle={(val: boolean) => updatePreference('messagesEnabled', val)}
+              showArrow={false}
+            />
+            )}
+            <SettingRow
+              icon="eye"
+              title="Show me on Leaderboard"
+              subtitle="Friends always see you regardless"
+              toggle
+              toggleValue={leaderboardVisible}
+              onToggle={async (newValue: boolean) => {
+                if (!prefsLoaded) return;
+                selectionHaptic();
+                setLeaderboardVisible(newValue);
+                setShowNameIfWinner(newValue);
+                await notificationPreferencesService.updatePreferences({
+                  leaderboardVisible: newValue,
+                  showNameIfWinner: newValue,
+                });
+              }}
+              showArrow={false}
+            />
+            {userRole !== 'matchmaker' && (
+            <SettingRow
+              icon="pause-circle"
+              title="Pause Profile"
+              subtitle="Take a break from Bridge"
+              onPress={() => navigation.navigate('PauseProfile')}
+            />
+            )}
+            <SettingRow
+              icon="slash"
+              title="Blocked Users"
+              subtitle="Manage blocked profiles"
+              onPress={() => navigation.navigate('BlockedUsers')}
+            />
+            {userRole !== 'matchmaker' && (
+              <SettingRow
+                icon="book"
+                title="Tutorial"
+                subtitle="Replay the app walkthrough"
+                onPress={async () => {
+                  selectionHaptic();
+                  await resetGuide('beginner_tour' as any);
+                  navigation.navigate('MainTabs' as any, { screen: 'Community' });
+                }}
+              />
+            )}
+            {userRole === 'matchmaker' && (
               <SettingRow
                 icon="swap"
-                title="Switch to Dater"
-                subtitle="Join the dating pool yourself"
+                title="Switch to Standard"
+                subtitle="Join the matching pool yourself"
                 onPress={() => {
                   Alert.alert(
-                    'Switch to Dater?',
-                    "You'll need to complete your dating profile (age, photos, interests, etc.) to enter the dating pool.",
+                    'Switch to Standard?',
+                    "You'll need to complete your profile (age, photos, interests, etc.) to enter the matching pool.",
                     [
                       { text: 'Cancel', style: 'cancel' },
                       {
@@ -181,77 +245,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
                   );
                 }}
               />
-            </Card>
-          )}
-
-          {/* Preferences */}
-          <Card className="mb-6">
-            <H3 className="mb-4">Preferences</H3>
-            {userRole !== 'matchmaker' && (
-            <SettingRow
-              icon="pause-circle"
-              title="Pause Profile"
-              subtitle="Take a break from Bridge"
-              onPress={() => navigation.navigate('PauseProfile')}
-            />
             )}
-            <SettingRow
-              icon="slash"
-              title="Blocked Users"
-              subtitle="Manage blocked profiles"
-              onPress={() => navigation.navigate('BlockedUsers')}
-            />
-            <SettingRow
-              icon="eye"
-              title="Show me on Leaderboard"
-              subtitle="Friends always see you regardless"
-              toggle
-              toggleValue={leaderboardVisible}
-              onToggle={async (newValue: boolean) => {
-                if (!prefsLoaded) return;
-                selectionHaptic();
-                setLeaderboardVisible(newValue);
-                setShowNameIfWinner(newValue);
-                await notificationPreferencesService.updatePreferences({
-                  leaderboardVisible: newValue,
-                  showNameIfWinner: newValue,
-                });
-              }}
-              showArrow={false}
-            />
-            <SettingRow
-              icon="book"
-              title="Tutorial"
-              subtitle="Replay the app walkthrough"
-              onPress={async () => {
-                selectionHaptic();
-                await resetGuide('beginner_tour' as any);
-                navigation.navigate('MainTabs' as any, { screen: 'Community' });
-              }}
-            />
-          </Card>
-
-          {/* Notifications */}
-          <Card className="mb-6">
-            <H3 className="mb-4">Notifications</H3>
-            <SettingRow
-              icon="heart"
-              title="Matches & Proposals"
-              subtitle="Matches, voting, accuracy bonuses"
-              toggle
-              toggleValue={matchesEnabled}
-              onToggle={(val: boolean) => updatePreference('matchesEnabled', val)}
-              showArrow={false}
-            />
-            <SettingRow
-              icon="message-square"
-              title="Messages"
-              subtitle="New messages and ghosting alerts"
-              toggle
-              toggleValue={messagesEnabled}
-              onToggle={(val: boolean) => updatePreference('messagesEnabled', val)}
-              showArrow={false}
-            />
           </Card>
 
           {/* Legal & Support */}
@@ -299,7 +293,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
                         if (result.ok) {
                           navigation.navigate('Welcome');
                         } else {
-                          Alert.alert('Error', 'Failed to sign out. Please try again.');
+                          showToast.error('Failed to sign out. Please try again.');
                         }
                       },
                     },
@@ -314,7 +308,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
               onPress={() => {
                 Alert.alert(
                   'Delete Account',
-                  'This will permanently delete your account, profile, matches, and all associated data. This action cannot be undone.',
+                  userRole === 'matchmaker'
+                    ? 'This will permanently delete your account, karma, voting history, and all associated data. This action cannot be undone.'
+                    : 'This will permanently delete your account, profile, matches, and all associated data. This action cannot be undone.',
                   [
                     { text: 'Cancel', style: 'cancel' },
                     {

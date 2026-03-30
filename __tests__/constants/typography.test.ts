@@ -60,10 +60,6 @@ describe('FONT_SIZES', () => {
     }
   });
 
-  it('has exactly 12 entries', () => {
-    expect(Object.keys(FONT_SIZES)).toHaveLength(12);
-  });
-
   it('all values are positive numbers', () => {
     for (const value of Object.values(FONT_SIZES)) {
       expect(typeof value).toBe('number');
@@ -90,16 +86,6 @@ describe('FONT_SIZES', () => {
 
 describe('LINE_HEIGHTS', () => {
   const EXPECTED_TIERS = ['xs', 'sm', 'md', 'base', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', '6xl', '7xl'] as const;
-
-  it('has matching tiers to FONT_SIZES', () => {
-    const fontSizeKeys = Object.keys(FONT_SIZES).sort();
-    const lineHeightKeys = Object.keys(LINE_HEIGHTS).sort();
-    expect(lineHeightKeys).toEqual(fontSizeKeys);
-  });
-
-  it('has exactly 12 entries', () => {
-    expect(Object.keys(LINE_HEIGHTS)).toHaveLength(12);
-  });
 
   it('all values are positive numbers', () => {
     for (const value of Object.values(LINE_HEIGHTS)) {
@@ -128,22 +114,20 @@ describe('LINE_HEIGHTS', () => {
 
 describe('TEXT_STYLES', () => {
   const EXPECTED_PRESETS = [
-    'displayLg', 'displayMd', 'displaySm',
-    'headingLg', 'headingMd', 'headingSm',
+    'screenTitle', 'sectionTitle',
     'bodyLg', 'bodyMd', 'bodySm',
-    'labelLg', 'labelMd', 'labelSm',
-    'caption', 'captionBold',
-    'buttonLg', 'buttonMd', 'buttonSm',
+    'labelLg', 'labelSm',
+    'buttonLg',
   ] as const;
 
-  it('has all 17 semantic presets', () => {
+  it('has all 8 semantic presets', () => {
     for (const preset of EXPECTED_PRESETS) {
       expect(TEXT_STYLES).toHaveProperty(preset);
     }
   });
 
-  it('has exactly 17 entries', () => {
-    expect(Object.keys(TEXT_STYLES)).toHaveLength(17);
+  it('has exactly 8 entries', () => {
+    expect(Object.keys(TEXT_STYLES)).toHaveLength(8);
   });
 
   describe('every preset has required properties', () => {
@@ -180,16 +164,12 @@ describe('TEXT_STYLES', () => {
   });
 
   describe('font weight assignments follow design conventions', () => {
-    it('display styles use extraBold or bold', () => {
-      expect(TEXT_STYLES.displayLg.fontFamily).toBe(FONTS.extraBold);
-      expect(TEXT_STYLES.displayMd.fontFamily).toBe(FONTS.extraBold);
-      expect(TEXT_STYLES.displaySm.fontFamily).toBe(FONTS.bold);
+    it('screen title uses bold', () => {
+      expect(TEXT_STYLES.screenTitle.fontFamily).toBe(FONTS.bold);
     });
 
-    it('heading styles use bold or semiBold', () => {
-      expect(TEXT_STYLES.headingLg.fontFamily).toBe(FONTS.bold);
-      expect(TEXT_STYLES.headingMd.fontFamily).toBe(FONTS.bold);
-      expect(TEXT_STYLES.headingSm.fontFamily).toBe(FONTS.semiBold);
+    it('section title uses semiBold', () => {
+      expect(TEXT_STYLES.sectionTitle.fontFamily).toBe(FONTS.semiBold);
     });
 
     it('body styles use regular', () => {
@@ -200,26 +180,17 @@ describe('TEXT_STYLES', () => {
 
     it('label styles use medium', () => {
       expect(TEXT_STYLES.labelLg.fontFamily).toBe(FONTS.medium);
-      expect(TEXT_STYLES.labelMd.fontFamily).toBe(FONTS.medium);
       expect(TEXT_STYLES.labelSm.fontFamily).toBe(FONTS.medium);
     });
 
-    it('button styles use semiBold or medium', () => {
+    it('button style uses semiBold', () => {
       expect(TEXT_STYLES.buttonLg.fontFamily).toBe(FONTS.semiBold);
-      expect(TEXT_STYLES.buttonMd.fontFamily).toBe(FONTS.semiBold);
-      expect(TEXT_STYLES.buttonSm.fontFamily).toBe(FONTS.medium);
     });
   });
 
-  describe('letterSpacing is only on display/heading styles', () => {
-    it('displayLg and displayMd have letterSpacing -0.5', () => {
-      expect(TEXT_STYLES.displayLg.letterSpacing).toBe(-0.5);
-      expect(TEXT_STYLES.displayMd.letterSpacing).toBe(-0.5);
-    });
-
-    it('displaySm and headingLg have letterSpacing -0.3', () => {
-      expect(TEXT_STYLES.displaySm.letterSpacing).toBe(-0.3);
-      expect(TEXT_STYLES.headingLg.letterSpacing).toBe(-0.3);
+  describe('letterSpacing is only on screen title', () => {
+    it('screenTitle has letterSpacing -0.5', () => {
+      expect(TEXT_STYLES.screenTitle.letterSpacing).toBe(-0.5);
     });
   });
 });

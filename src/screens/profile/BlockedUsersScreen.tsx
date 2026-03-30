@@ -200,7 +200,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
               alignItems: 'center',
               backgroundColor: COLORS.card,
               borderWidth: 1,
-              borderColor: COLORS.borderNeutral,
+              borderColor: COLORS.border,
               borderRadius: 12,
               overflow: 'hidden',
               ...SHADOWS.sm,
@@ -209,7 +209,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                 value={emailInput}
                 onChangeText={setEmailInput}
                 placeholder="email@example.com"
-                placeholderTextColor={COLORS.text.disabled}
+                placeholderTextColor={COLORS.text.tertiary}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -245,7 +245,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                     name="arrow-circle-right"
                     variant="outline"
                     size={26}
-                    color={emailInput.trim() ? COLORS.primaryAccent : COLORS.borderGray}
+                    color={emailInput.trim() ? COLORS.primaryAccent : COLORS.border}
                   />
                 )}
               </TouchableOpacity>
@@ -263,7 +263,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                 fontFamily: FONTS.medium,
                 fontSize: FONT_SIZES.xs,
                 lineHeight: LINE_HEIGHTS.xs,
-                color: COLORS.text.light,
+                color: COLORS.text.tertiary,
                 marginBottom: 12,
                 marginLeft: 4,
                 letterSpacing: 0.5,
@@ -287,7 +287,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     borderWidth: 1,
-                    borderColor: COLORS.borderSubtle,
+                    borderColor: COLORS.borderLight,
                     ...SHADOWS.sm,
                   }}>
                     <View style={{ flex: 1, marginRight: 12 }}>
@@ -295,7 +295,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                         fontFamily: FONTS.semiBold,
                         fontSize: FONT_SIZES.base,
                         lineHeight: LINE_HEIGHTS.base,
-                        color: COLORS.text.heading,
+                        color: COLORS.text.primary,
                       }}>
                         {userName}
                       </Body>
@@ -303,7 +303,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                         fontFamily: FONTS.regular,
                         fontSize: FONT_SIZES.xs,
                         lineHeight: LINE_HEIGHTS.xs,
-                        color: COLORS.text.light,
+                        color: COLORS.text.tertiary,
                         marginTop: 2,
                       }}>
                         {formatDate(user.blockedAt)}
@@ -326,7 +326,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                         fontFamily: FONTS.medium,
                         fontSize: FONT_SIZES.sm,
                         lineHeight: LINE_HEIGHTS.sm,
-                        color: COLORS.text.muted,
+                        color: COLORS.text.secondary,
                       }}>
                         Unblock
                       </Body>
@@ -346,18 +346,18 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                 width: 56,
                 height: 56,
                 borderRadius: 28,
-                backgroundColor: COLORS.backgroundGray,
+                backgroundColor: COLORS.card,
                 justifyContent: 'center',
                 alignItems: 'center',
                 marginBottom: 16,
               }}>
-                <EvaIcon name="shield-off" variant="outline" size={28} color={COLORS.text.light} />
+                <EvaIcon name="shield-off" variant="outline" size={28} color={COLORS.text.tertiary} />
               </View>
               <Body style={{
                 fontFamily: FONTS.semiBold,
                 fontSize: FONT_SIZES.xl,
                 lineHeight: LINE_HEIGHTS.xl,
-                color: COLORS.text.heading,
+                color: COLORS.text.primary,
                 marginBottom: 8,
                 textAlign: 'center',
               }}>
@@ -379,12 +379,12 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
           {!loading && (
             <View style={{ marginTop: 24, paddingHorizontal: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <EvaIcon name="info" variant="outline" size={15} color={COLORS.text.disabled} />
+                <EvaIcon name="info" variant="outline" size={15} color={COLORS.text.tertiary} />
                 <Body style={{
                   fontFamily: FONTS.medium,
                   fontSize: FONT_SIZES.xs,
                   lineHeight: LINE_HEIGHTS.xs,
-                  color: COLORS.text.light,
+                  color: COLORS.text.tertiary,
                   marginLeft: 6,
                 }}>
                   What happens when you block someone
@@ -394,7 +394,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                 fontFamily: FONTS.regular,
                 fontSize: FONT_SIZES.xs,
                 lineHeight: LINE_HEIGHTS.lg,
-                color: COLORS.text.light,
+                color: COLORS.text.tertiary,
                 marginLeft: 2,
               }}>
                 Active proposals and matches are cancelled. You won't appear in each other's proposals. Your friendship is removed.

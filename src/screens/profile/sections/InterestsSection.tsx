@@ -4,6 +4,7 @@ import { styled } from 'nativewind';
 import { Card } from '../../../components/ui/Card';
 import { H3, Body } from '../../../components/ui/Typography';
 import { SimpleChip } from '../../../components/ui/SimpleChip';
+import { interestIconName } from '../../../utils/emojiMaps';
 import { lightHaptic } from '../../../utils/haptics';
 import { COLORS } from '../../../theme/colors';
 import { FONTS } from '../../../constants/typography';
@@ -58,7 +59,7 @@ export const InterestsSection: React.FC<InterestsSectionProps> = ({
         <H3>Interests <StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}>*</StyledText></H3>
         <Body
           className="text-xs font-medium"
-          style={{ color: atLimit ? COLORS.darkAmber : COLORS.text.light }}
+          style={{ color: atLimit ? COLORS.amber : COLORS.text.tertiary }}
           accessibilityLabel={`${count} of ${MAX_INTERESTS} interests selected`}
         >
           {count}/{MAX_INTERESTS}
@@ -70,14 +71,14 @@ export const InterestsSection: React.FC<InterestsSectionProps> = ({
 
       {/* Empty state */}
       {count === 0 && (
-        <Body className="text-sm italic mb-4" style={{ color: COLORS.text.light }}>
+        <Body className="text-sm italic mb-4" style={{ color: COLORS.text.tertiary }}>
           Tap any chip below to get started.
         </Body>
       )}
 
       {/* At-limit hint */}
       {atLimit && (
-        <Body className="text-xs mb-3" style={{ color: COLORS.darkAmber }}>
+        <Body className="text-xs mb-3" style={{ color: COLORS.amber }}>
           Maximum reached. Remove one to add a different interest.
         </Body>
       )}
@@ -85,7 +86,7 @@ export const InterestsSection: React.FC<InterestsSectionProps> = ({
       {/* Grouped Interests */}
       {INTEREST_GROUPS.map((group) => (
         <StyledView key={group.label} className="mb-5">
-          <Body style={{ color: COLORS.text.light }} className="text-xs font-semibold tracking-wider mb-2.5">{group.label}</Body>
+          <Body style={{ color: COLORS.text.tertiary }} className="text-xs font-semibold tracking-wider mb-2.5">{group.label}</Body>
           <StyledView className="flex-row flex-wrap" style={{ gap: CHIP_GAP }}>
             {group.items.map((interest) => {
               const isSelected = interestsSet.has(interest);
@@ -97,6 +98,7 @@ export const InterestsSection: React.FC<InterestsSectionProps> = ({
                   selected={isSelected}
                   disabled={isDisabled}
                   onPress={() => handleToggleInterest(interest)}
+                  iconName={interestIconName(interest)}
                 />
               );
             })}
@@ -107,7 +109,7 @@ export const InterestsSection: React.FC<InterestsSectionProps> = ({
       {/* Custom interests */}
       {customInterests.length > 0 && (
         <StyledView className="mb-5">
-          <Body style={{ color: COLORS.text.light }} className="text-xs font-semibold tracking-wider mb-2.5">Custom</Body>
+          <Body style={{ color: COLORS.text.tertiary }} className="text-xs font-semibold tracking-wider mb-2.5">Custom</Body>
           <StyledView className="flex-row flex-wrap" style={{ gap: CHIP_GAP }}>
             {customInterests.map((customInterest) => (
               <SimpleChip
@@ -136,12 +138,12 @@ export const InterestsSection: React.FC<InterestsSectionProps> = ({
         style={{
           minHeight: 44,
           justifyContent: 'center',
-          borderColor: atLimit ? COLORS.borderLight : COLORS.borderGray,
-          backgroundColor: atLimit ? COLORS.borderLight : COLORS.backgroundSubtle,
+          borderColor: atLimit ? COLORS.borderLight : COLORS.border,
+          backgroundColor: atLimit ? COLORS.borderLight : COLORS.card,
           opacity: atLimit ? 0.5 : 1,
         }}
       >
-        <Body style={{ color: atLimit ? COLORS.text.light : COLORS.text.secondary }} className="text-sm">+ Other</Body>
+        <Body style={{ color: atLimit ? COLORS.text.tertiary : COLORS.text.secondary }} className="text-sm">+ Other</Body>
       </StyledTouchableOpacity>
     </Card>
   );

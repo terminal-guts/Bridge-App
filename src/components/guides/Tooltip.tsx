@@ -269,7 +269,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
           <View style={{ flex: 1 }}>
             <TouchableOpacity
               onPress={handlePrimary}
-              style={{ paddingVertical: 12, paddingHorizontal: 16, backgroundColor: COLORS.primaryButton, borderRadius: 12, alignItems: 'center' }}
+              style={{ paddingVertical: 12, paddingHorizontal: 16, backgroundColor: COLORS.primary, borderRadius: 12, alignItems: 'center' }}
               activeOpacity={0.8}
             >
               <Body className="text-white font-semibold">{primaryButtonText}</Body>

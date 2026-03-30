@@ -39,15 +39,15 @@ const MAX_AVATARS = 5;
 
 // Confetti dots — larger, bolder, more festive
 const CONFETTI_DOTS = [
-  { top: 100, left: 70, size: 12, color: COLORS.primaryButton, opacity: 0.65 },
+  { top: 100, left: 70, size: 12, color: COLORS.primary, opacity: 0.65 },
   { top: 180, right: 100, size: 10, color: COLORS.success, opacity: 0.55 },
-  { top: 340, left: 140, size: 14, color: COLORS.urgentRed, opacity: 0.5 },
+  { top: 340, left: 140, size: 14, color: COLORS.error, opacity: 0.5 },
   { top: 480, right: 180, size: 11, color: '#FFD700', opacity: 0.6 },
   { top: 620, left: 50, size: 8, color: '#A78BFA', opacity: 0.5 },
   { top: 780, right: 60, size: 13, color: '#F472B6', opacity: 0.45 },
-  { top: 1250, left: 90, size: 12, color: COLORS.primaryButton, opacity: 0.5 },
+  { top: 1250, left: 90, size: 12, color: COLORS.primary, opacity: 0.5 },
   { top: 1380, right: 130, size: 10, color: COLORS.success, opacity: 0.55 },
-  { top: 1500, left: 220, size: 11, color: COLORS.urgentRed, opacity: 0.45 },
+  { top: 1500, left: 220, size: 11, color: COLORS.error, opacity: 0.45 },
   { top: 1620, right: 260, size: 9, color: '#FFD700', opacity: 0.5 },
   { top: 1100, left: 40, size: 10, color: '#A78BFA', opacity: 0.45 },
   { top: 950, right: 70, size: 14, color: '#F472B6', opacity: 0.5 },
@@ -145,7 +145,7 @@ export const ShareableMatchCard = React.forwardRef<ViewShot, ShareableMatchCardP
                   cachePolicy="memory-disk"
                 />
               ) : (
-                <LinearGradient colors={[COLORS.primaryButton, '#162850']} style={styles.photo} />
+                <LinearGradient colors={[COLORS.primary, '#162850']} style={styles.photo} />
               )}
             </View>
 
@@ -164,7 +164,7 @@ export const ShareableMatchCard = React.forwardRef<ViewShot, ShareableMatchCardP
                   cachePolicy="memory-disk"
                 />
               ) : (
-                <LinearGradient colors={[COLORS.primaryButton, '#162850']} style={styles.photo} />
+                <LinearGradient colors={[COLORS.primary, '#162850']} style={styles.photo} />
               )}
             </View>
           </View>
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     width: ICON_CIRCLE_SIZE,
     height: ICON_CIRCLE_SIZE,
     borderRadius: ICON_CIRCLE_SIZE / 2,
-    backgroundColor: COLORS.primaryButton,
+    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 3,

@@ -83,7 +83,7 @@ export const MatchmakerProfileStep: React.FC<MatchmakerProfileStepProps> = ({
               />
             ) : (
               <StyledView className="items-center">
-                <EvaIcon name="camera" variant="outline" size={32} color={COLORS.text.placeholder} />
+                <EvaIcon name="camera" variant="outline" size={32} color={COLORS.text.tertiary} />
                 <Body className="text-neutral-400 text-xs mt-2 text-center px-2">
                   Add Photo
                 </Body>

@@ -208,14 +208,19 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
       try {
         await communityService.respondToMatchProposal(route.params.proposalId, true);
         logger.info('[MatchProposalScreen] Proposal accepted:', route.params.proposalId);
-      } catch (error) {
+      } catch (error: any) {
         logger.error('[MatchProposalScreen] Error accepting proposal:', error);
         acceptingRef.current = false;
         if (isMountedRef.current) {
           setIsAccepting(false);
           swipeX.setValue(0);
           swipeOpacity.setValue(1);
-          showToast.error('Something went wrong', 'This match may no longer be available. Head back and try again.');
+          const errMsg = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
+          if (errMsg.includes('expired') || errMsg.includes('no longer available')) {
+            showToast.error('Time\'s up', 'This match has expired');
+          } else {
+            showToast.error('Something went wrong', 'This match may no longer be available. Head back and try again.');
+          }
         }
         return;
       }
@@ -289,6 +294,12 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
         logger.info('[MatchProposalScreen] Proposal passed:', route.params.proposalId);
       } catch (error) {
         logger.error('[MatchProposalScreen] Error passing proposal:', error);
+        passingRef.current = false;
+        if (isMountedRef.current) {
+          setIsPassing(false);
+          showToast.error('Could not submit feedback. Try again.');
+        }
+        return;
       }
     }
 
@@ -298,7 +309,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
     navigationTimerRef.current = setTimeout(() => {
       if (!isMountedRef.current) return;
       setIsPassing(false);
-      navigation.navigate('MainTabs', { screen: 'Matches' });
+      navigation.goBack();
       navigationTimerRef.current = null;
     }, 500);
   }, [navigation, route.params, profile]);
@@ -379,7 +390,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
         <StyledView className="rounded-full p-4" style={{ backgroundColor: COLORS.error }}><EvaIcon name="close" variant="fill" size={32} color={COLORS.white} /></StyledView>
       </Animated.View>
       <Animated.View style={{ position: 'absolute', top: '33%', right: 32, zIndex: 40, opacity: swipeX.interpolate({ inputRange: [0, 100], outputRange: [0, 1], extrapolate: 'clamp' }), transform: [{ scale: swipeX.interpolate({ inputRange: [0, 100], outputRange: [0.8, 1.2], extrapolate: 'clamp' }) }] }}>
-        <StyledView className="rounded-full p-4" style={{ backgroundColor: COLORS.pink }}><EvaIcon name="heart" variant="fill" size={32} color={COLORS.white} /></StyledView>
+        <StyledView className="rounded-full p-4" style={{ backgroundColor: COLORS.error }}><EvaIcon name="heart" variant="fill" size={32} color={COLORS.white} /></StyledView>
       </Animated.View>
 
       {/* Fixed Header */}
@@ -444,8 +455,14 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
           {profile.userId && (
             <ProfileBadgesSection userId={profile.userId} revealAuthor={false} />
           )}
-          {profile.interests?.length > 0 && <Section title="Interests" icon="heart" delay={50}><StyledView className="flex-row flex-wrap">{profile.interests.map((interest) => <Tag key={interest} label={interest} iconName={interestIconName(interest)} variant="primary" isMutual={mutualInterests.includes(interest)} />)}</StyledView></Section>}
-          {profile.values?.length > 0 && <Section title="Values" icon="award" delay={100}><StyledView className="flex-row flex-wrap">{profile.values.map((value) => <Tag key={value} label={value} iconName={valueIconName(value)} variant="success" isMutual={mutualValues.includes(value)} />)}</StyledView></Section>}
+          {profile.interests?.length > 0 && <Section title="Interests" icon="heart" delay={50}>
+            {mutualInterests.length > 0 && <Body className="text-xs font-semibold mb-2" style={{ color: COLORS.primary500 }}>Filled = you both picked this</Body>}
+            <StyledView className="flex-row flex-wrap">{profile.interests.map((interest) => <Tag key={interest} label={interest} iconName={interestIconName(interest)} variant="primary" isMutual={mutualInterests.includes(interest)} />)}</StyledView>
+          </Section>}
+          {profile.values?.length > 0 && <Section title="Values" icon="award" delay={100}>
+            {mutualValues.length > 0 && <Body className="text-xs font-semibold mb-2" style={{ color: COLORS.success }}>Filled = you both picked this</Body>}
+            <StyledView className="flex-row flex-wrap">{profile.values.map((value) => <Tag key={value} label={value} iconName={valueIconName(value)} variant="success" isMutual={mutualValues.includes(value)} />)}</StyledView>
+          </Section>}
           {(profile.hasChildren || profile.familyPlans) && (
             <Section title="Family" icon="people" delay={150}>
               <StyledView className="rounded-2xl p-4" style={{ backgroundColor: COLORS.neutral50 }}>

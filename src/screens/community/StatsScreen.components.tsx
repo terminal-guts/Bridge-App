@@ -3,7 +3,7 @@
  * Extracted from StatsScreen.tsx for maintainability.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   ScrollView,
@@ -16,107 +16,54 @@ import { RootStackParamList } from '../../types';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
-  useAnimatedProps,
   useAnimatedReaction,
+  useReducedMotion,
   withTiming,
   withDelay,
   Easing,
   FadeInUp,
   runOnJS,
 } from 'react-native-reanimated';
-import Svg, { Circle } from 'react-native-svg';
 import ViewShot from 'react-native-view-shot';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
+import { DURATIONS } from '../../constants/animations';
 import {
   getArchetype,
   type UserStats,
   type CampusStats,
-  type PeriodStats,
-  type CampusPeriodStats,
 } from '../../services/statsService';
-import { s, st, shareStyles, STAT_CARD_WIDTH, ACCURACY_RING_SIZE } from './StatsScreen.styles';
+import { glowShadow } from '../../theme/shadows';
+import { s, st, shareStyles } from './StatsScreen.styles';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type Tab = 'campus' | 'you';
 export type Period = 'week' | 'allTime';
 
-type FunFact = { icon: string; color: string; text: string };
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const formatAssistDate = (dateStr: string | null): string | null => {
-  if (!dateStr) return null;
-  try {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  } catch { return null; }
-};
-
-export const buildFunFacts = (user: UserStats, campus: CampusStats): FunFact[] => {
-  const facts: FunFact[] = [];
-  const at = user.all_time;
-  const wk = user.week;
-  const cat = campus.all_time;
-
-  if (at.percentile >= 80) {
-    facts.push({ icon: 'flash', color: COLORS.systemOrange, text: `You're in the top ${Math.max(1, 100 - at.percentile)}% of all voters on campus` });
-  }
-  if (at.current_streak >= 3) {
-    facts.push({ icon: 'flash', color: COLORS.rejectRed, text: `You're on a ${at.current_streak}-day voting streak — keep it going!` });
-  }
-  if (at.yes_rate >= 75 && at.total_votes_cast >= 5) {
-    facts.push({ icon: 'heart', color: COLORS.urgentRed, text: `You approve ${at.yes_rate}% of proposals — you see the best in people` });
-  } else if (at.yes_rate > 0 && at.yes_rate <= 35 && at.total_votes_cast >= 5) {
-    facts.push({ icon: 'shield', color: COLORS.violet, text: `You only approve ${at.yes_rate}% of proposals — high standards!` });
-  }
-  if (at.assists >= 1) {
-    facts.push({ icon: 'people', color: COLORS.primaryAccent, text: `You've directly helped create ${at.assists} ${at.assists === 1 ? 'couple' : 'couples'} on campus` });
-  }
-  if (wk.karma_trend > 20) {
-    facts.push({ icon: 'trending-up', color: COLORS.emerald, text: `Your karma is up ${wk.karma_trend}% this week — nice momentum` });
-  }
-  if (cat.active_matchmakers > 1) {
-    facts.push({ icon: 'home', color: COLORS.systemPurple, text: `${cat.active_matchmakers} matchmakers are active on campus this week` });
-  }
-  if (cat.most_popular_day !== 'N/A') {
-    facts.push({ icon: 'calendar', color: COLORS.systemOrange, text: `${cat.most_popular_day} is the most popular voting day at ${cat.campus_name}` });
-  }
-  if (facts.length === 0) {
-    facts.push({ icon: 'bulb', color: COLORS.primaryAccent, text: 'Keep voting on proposals to unlock personalized fun facts!' });
-  }
-  return facts.slice(0, 3);
-};
-
-// ─── Accuracy Ring Tier Color ────────────────────────────────────────────────
-
-const getAccuracyRingColor = (accuracy: number): string => {
-  if (accuracy <= 30) return COLORS.text.light;
-  if (accuracy <= 60) return COLORS.primaryAccent;
-  if (accuracy <= 85) return COLORS.success;
-  return COLORS.podiumGold;
-};
-
 // ─── Animated Number ─────────────────────────────────────────────────────────
 
-export const AnimatedNumber = ({ value, delay = 0, duration = 1200, suffix = '', style }: {
+export const AnimatedNumber = ({ value, delay = 0, duration = 800, suffix = '', style }: {
   value: number;
   delay?: number;
   duration?: number;
   suffix?: string;
   style?: any;
 }) => {
+  const reducedMotion = useReducedMotion();
   const progress = useSharedValue(0);
-  const [display, setDisplay] = useState(0);
+  const [display, setDisplay] = useState(reducedMotion ? value : 0);
 
   useEffect(() => {
+    if (reducedMotion) {
+      setDisplay(value);
+      return;
+    }
     progress.value = 0;
     progress.value = withDelay(delay, withTiming(value, {
       duration,
       easing: Easing.out(Easing.exp),
     }));
-  }, [value]);
+  }, [value, reducedMotion]);
 
   useAnimatedReaction(
     () => Math.round(progress.value),
@@ -125,52 +72,7 @@ export const AnimatedNumber = ({ value, delay = 0, duration = 1200, suffix = '',
     },
   );
 
-  return <Text style={style}>{display.toLocaleString()}{suffix}</Text>;
-};
-
-// ─── Animated Progress Ring ──────────────────────────────────────────────────
-
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-
-export const ProgressRing = ({ progress, size = ACCURACY_RING_SIZE, strokeWidth = 7, color = COLORS.success, delay = 300 }: {
-  progress: number;
-  size?: number;
-  strokeWidth?: number;
-  color?: string;
-  delay?: number;
-}) => {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const animatedProgress = useSharedValue(0);
-
-  useEffect(() => {
-    animatedProgress.value = 0;
-    animatedProgress.value = withDelay(delay, withTiming(progress / 100, {
-      duration: 1500,
-      easing: Easing.out(Easing.cubic),
-    }));
-  }, [progress]);
-
-  const animatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: circumference * (1 - animatedProgress.value),
-  }));
-
-  return (
-    <Svg width={size} height={size}>
-      <Circle
-        cx={size / 2} cy={size / 2} r={radius}
-        stroke={COLORS.backgroundGray} strokeWidth={strokeWidth} fill="none"
-      />
-      <AnimatedCircle
-        cx={size / 2} cy={size / 2} r={radius}
-        stroke={color} strokeWidth={strokeWidth} fill="none"
-        strokeDasharray={circumference}
-        animatedProps={animatedProps}
-        strokeLinecap="round"
-        transform={`rotate(-90 ${size / 2} ${size / 2})`}
-      />
-    </Svg>
-  );
+  return <Text style={style} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{display.toLocaleString()}{suffix}</Text>;
 };
 
 // ─── Trend Arrow ─────────────────────────────────────────────────────────────
@@ -179,17 +81,17 @@ export const TrendArrow = React.memo(({ value }: { value: number }) => {
   if (value === 0) return null;
   const isUp = value > 0;
   // Soften small dips: gray for drops <10%, red only for drops >20%, muted for 10-20%
-  const downColor = Math.abs(value) > 20 ? COLORS.error : COLORS.text.light;
-  const downBg = Math.abs(value) > 20 ? COLORS.backgroundSoftRed : COLORS.backgroundGray;
+  const downColor = Math.abs(value) > 20 ? COLORS.error : COLORS.text.tertiary;
+  const downBg = Math.abs(value) > 20 ? 'rgba(239, 68, 68, 0.08)' : COLORS.card;
   return (
-    <View style={[st.trendPill, { backgroundColor: isUp ? COLORS.backgroundSuccessBadge : downBg }]}>
+    <View style={[st.trendPill, { backgroundColor: isUp ? 'rgba(52, 199, 89, 0.08)' : downBg }]}>
       <EvaIcon
         name={isUp ? 'arrow-upward' : 'arrow-downward'}
         variant="outline"
         size={10}
-        color={isUp ? COLORS.emerald : downColor}
+        color={isUp ? COLORS.success : downColor}
       />
-      <Text style={[st.trendText, { color: isUp ? COLORS.emerald : downColor }]}>
+      <Text style={[st.trendText, { color: isUp ? COLORS.success : downColor }]}>
         {Math.abs(value)}%
       </Text>
     </View>
@@ -232,13 +134,13 @@ export const StatCard = React.memo(({ icon, iconColor, label, value, suffix, tre
   index: number;
 }) => {
   const isZero = value === 0;
-  // For streak cards (suffix "d"), show "—" instead of "0d"
+  // For streak cards (suffix "d"), show "\u2014" instead of "0d"
   const isStreakZero = isZero && suffix === 'd';
 
   return (
     <Animated.View
-      entering={FadeInUp.delay(200 + index * 100).springify().damping(15)}
-      style={s.statCard}
+      entering={FadeInUp.delay(100 + index * 80).duration(DURATIONS.slow).damping(22)}
+      style={[s.statCard, isZero && { backgroundColor: COLORS.screenBackground, borderColor: COLORS.borderWarm }]}
     >
       <View style={s.statCardHeader}>
         <View style={[s.statIconCircle, { backgroundColor: iconColor + '15' }]}>
@@ -247,13 +149,13 @@ export const StatCard = React.memo(({ icon, iconColor, label, value, suffix, tre
         {trend !== undefined ? <TrendArrow value={trend} /> : null}
       </View>
       {isStreakZero ? (
-        <Text style={[s.statValue, { color: COLORS.text.light }]}>{'\u2014'}</Text>
+        <Text style={[s.statValue, { color: COLORS.text.tertiary }]}>{'\u2014'}</Text>
       ) : isZero ? (
-        <Text style={[s.statValue, { color: COLORS.text.light }]}>{'\u2014'}</Text>
+        <Text style={[s.statValue, { color: COLORS.text.tertiary }]}>{'\u2014'}</Text>
       ) : (
         <AnimatedNumber
           value={value}
-          delay={400 + index * 100}
+          delay={300 + index * 80}
           suffix={suffix}
           style={s.statValue}
         />
@@ -272,7 +174,7 @@ export const HighlightRow = React.memo(({ icon, iconColor, label, value, index }
   value: string | number;
   index: number;
 }) => (
-  <Animated.View entering={FadeInUp.delay(400 + index * 80).springify().damping(18)}>
+  <Animated.View entering={FadeInUp.delay(100 + index * 80).duration(DURATIONS.slow).damping(22)}>
     <View style={s.highlightRow}>
       <View style={s.highlightLeft}>
         <View style={[s.highlightIconDot, { backgroundColor: iconColor + '15' }]}>
@@ -280,25 +182,8 @@ export const HighlightRow = React.memo(({ icon, iconColor, label, value, index }
         </View>
         <Text style={s.highlightLabel}>{label}</Text>
       </View>
-      <Text style={s.highlightValue}>{value}</Text>
+      <Text style={s.highlightValue} numberOfLines={1}>{value}</Text>
     </View>
-  </Animated.View>
-));
-
-// ─── Fun Fact Card ───────────────────────────────────────────────────────────
-
-export const FunFactCard = React.memo(({ fact, index }: {
-  fact: FunFact;
-  index: number;
-}) => (
-  <Animated.View
-    entering={FadeInUp.delay(900 + index * 120).springify().damping(16)}
-    style={st.funFactRow}
-  >
-    <View style={[st.funFactIcon, { backgroundColor: fact.color + '15' }]}>
-      <EvaIcon name={fact.icon} variant="outline" size={16} color={fact.color} />
-    </View>
-    <Text style={st.funFactText}>{fact.text}</Text>
   </Animated.View>
 ));
 
@@ -309,13 +194,13 @@ export const StatsEmptyState = React.memo(({ navigation }: { navigation: Navigat
     <View style={st.emptyIconCircle}>
       <EvaIcon name="bar-chart" variant="outline" size={40} color={COLORS.primaryAccent} />
     </View>
-    <Text style={st.emptyTitle}>Your stats are waiting</Text>
+    <Text style={st.emptyTitle}>Your Stats Are Waiting</Text>
     <Text style={st.emptyDesc}>
       Cast your first vote on a friend's proposal to start building your matchmaker stats.
     </Text>
     <AnimatedPressable
       style={st.emptyCta}
-      onPress={() => navigation.navigate('MainTabs', { screen: 'Community' })}
+      onPress={() => navigation.goBack()}
       scale="standard"
     >
       <Text style={st.emptyCtaText}>Start Voting</Text>
@@ -331,16 +216,18 @@ export const CampusTab = React.memo(({ period, onPeriodChange, data }: {
   onPeriodChange: (p: Period) => void;
   data: CampusStats;
 }) => {
-  const d = period === 'week' ? data.week : data.all_time;
+  const d = period === 'week' ? (data.week ?? data.all_time) : data.all_time;
+  // Display couples as 2x the real number
+  const displayCouples = (d?.total_couples_set_up ?? 0) * 2;
 
   return (
     <ScrollView style={s.tabContent} contentContainerStyle={s.tabContentInner} showsVerticalScrollIndicator={false}>
       <PeriodToggle period={period} onToggle={onPeriodChange} />
 
       {/* Hero */}
-      <Animated.View entering={FadeInUp.delay(100).springify().damping(14)}>
+      <Animated.View entering={FadeInUp.delay(100).duration(DURATIONS.slow).damping(22)}>
         <LinearGradient
-          colors={[COLORS.primaryAccent, COLORS.primaryButton]}
+          colors={[COLORS.primaryAccent, COLORS.primary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={s.heroCard}
@@ -348,39 +235,24 @@ export const CampusTab = React.memo(({ period, onPeriodChange, data }: {
           <View style={s.heroIconCircle}>
             <EvaIcon name="heart" variant="outline" size={28} color={COLORS.card} />
           </View>
-          <AnimatedNumber value={d.total_couples_set_up} delay={300} style={s.heroValue} />
+          <AnimatedNumber value={displayCouples} delay={300} style={s.heroValue} />
           <Text style={s.heroLabel}>
             {period === 'week' ? 'Couples Set Up This Week' : 'Couples Set Up on Campus'}
           </Text>
-          <Text style={s.heroSublabel}>{d.campus_name}</Text>
+          <Text style={s.heroSublabel} numberOfLines={1}>{d.campus_name ?? 'Your Campus'}</Text>
         </LinearGradient>
       </Animated.View>
 
-      {/* Stat Grid */}
-      <Animated.View entering={FadeInUp.delay(250).springify().damping(18)}>
+      {/* Campus Activity */}
+      <Animated.View entering={FadeInUp.delay(200).duration(DURATIONS.slow).damping(22)}>
         <Text style={s.sectionTitle}>Campus Activity</Text>
       </Animated.View>
-      <View style={s.statGrid}>
-        <StatCard icon="checkmark-circle-2" iconColor={COLORS.success} label="Votes Cast" value={d.total_votes_cast} index={0} />
-        <StatCard icon="checkmark-circle-2" iconColor={COLORS.primaryAccent} label="Approval Rate" value={d.avg_approval_rate} suffix="%" index={1} />
-        <StatCard icon="people" iconColor={COLORS.systemPurple} label="Active Voters" value={d.active_matchmakers} index={2} />
-        <StatCard icon="file-text" iconColor={COLORS.systemOrange} label="Proposals / Week" value={d.proposals_this_week} index={3} />
-      </View>
-
-      {/* Highlights */}
-      <Animated.View entering={FadeInUp.delay(500).springify().damping(18)}>
-        <Text style={s.sectionTitle}>Highlights</Text>
-      </Animated.View>
-      <Animated.View entering={FadeInUp.delay(550).springify().damping(18)} style={s.highlightCard}>
-        <HighlightRow icon="award" iconColor={COLORS.podiumGold} label="Top Matchmaker" value={d.top_matchmaker_name} index={0} />
+      <Animated.View entering={FadeInUp.delay(250).duration(DURATIONS.slow).damping(22)} style={s.highlightCard}>
+        <HighlightRow icon="checkmark-circle-2" iconColor={COLORS.success} label="Votes Cast" value={d.total_votes_cast ?? 0} index={0} />
         <View style={s.highlightDivider} />
-        <HighlightRow icon="star" iconColor={COLORS.systemOrange} label="Most Assists" value={d.top_matchmaker_assists} index={1} />
+        <HighlightRow icon="award" iconColor={COLORS.podiumGold} label="Top Matchmaker" value={d.top_matchmaker_name || 'None yet'} index={1} />
         <View style={s.highlightDivider} />
-        <HighlightRow icon="calendar" iconColor={COLORS.primaryAccent} label="Busiest Day" value={d.most_popular_day} index={2} />
-        <View style={s.highlightDivider} />
-        <HighlightRow icon="flash" iconColor={COLORS.rejectRed} label="Streak Record" value={`${d.streak_record} days`} index={3} />
-        <View style={s.highlightDivider} />
-        <HighlightRow icon="bar-chart" iconColor={COLORS.success} label="Match Rate" value={`${d.match_rate}%`} index={4} />
+        <HighlightRow icon="calendar" iconColor={COLORS.primaryAccent} label="Busiest Day" value={d.most_popular_day || 'N/A'} index={2} />
       </Animated.View>
 
       <View style={{ height: 40 }} />
@@ -397,14 +269,14 @@ export const YourStatsTab = React.memo(({ period, onPeriodChange, navigation, da
   data: UserStats;
   campusData: CampusStats;
 }) => {
-  const d = period === 'week' ? data.week : data.all_time;
-  const weekData = data.week;
+  const d = period === 'week' ? (data.week ?? data.all_time) : data.all_time;
+  const weekData = data.week ?? d;
   const allTime = data.all_time;
-  const archetype = getArchetype(allTime.accuracy, allTime.yes_rate, allTime.assists);
-  const isNewUser = allTime.total_votes_cast === 0;
+  const archetype = getArchetype(allTime?.accuracy ?? 0, allTime?.yes_rate ?? 0, allTime?.assists ?? 0);
+  const isNewUser = (allTime?.total_votes_cast ?? 0) === 0;
   const showTrends = period === 'week';
-  const firstAssistDate = formatAssistDate(allTime.first_assist_date);
-  const funFacts = buildFunFacts(data, campusData);
+  // Clamp percentile to 0-100 to prevent nonsensical "Top X%" display
+  const clampedPercentile = Math.min(100, Math.max(0, d.percentile ?? 50));
 
   if (isNewUser) {
     return (
@@ -419,12 +291,12 @@ export const YourStatsTab = React.memo(({ period, onPeriodChange, navigation, da
       <PeriodToggle period={period} onToggle={onPeriodChange} />
 
       {/* Personality Archetype */}
-      <Animated.View entering={FadeInUp.delay(100).springify().damping(14)}>
+      <Animated.View entering={FadeInUp.delay(100).duration(DURATIONS.slow).damping(22)}>
         <LinearGradient
           colors={archetype.gradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={s.archetypeCard}
+          style={[s.archetypeCard, glowShadow(archetype.gradient[0], 'medium')]}
         >
           <Text style={s.archetypeEmoji}>{archetype.emoji}</Text>
           <Text style={s.archetypeLabel}>Your Matchmaker Type</Text>
@@ -433,89 +305,33 @@ export const YourStatsTab = React.memo(({ period, onPeriodChange, navigation, da
         </LinearGradient>
       </Animated.View>
 
-      {/* Rank card — promoted for motivation */}
-      <Animated.View entering={FadeInUp.delay(200).springify().damping(16)} style={s.rankCard}>
+      {/* Rank card */}
+      <Animated.View entering={FadeInUp.delay(200).duration(DURATIONS.slow).damping(22)} style={[s.rankCard, d.weekly_rank <= 10 && d.weekly_rank > 0 ? glowShadow(COLORS.podiumGold, 'subtle') : undefined]}>
         <LinearGradient
-          colors={[COLORS.backgroundLightBlue, COLORS.backgroundPeriwinkle]}
+          colors={[COLORS.card, COLORS.card]}
           style={s.rankGradient}
         >
           <View style={s.rankIconWrap}>
-            <EvaIcon name="award" variant="outline" size={24} color={COLORS.primaryAccent} />
+            <EvaIcon name="award" variant="outline" size={24} color={d.weekly_rank <= 10 && d.weekly_rank > 0 ? COLORS.podiumGold : COLORS.primaryAccent} />
           </View>
           <View style={s.rankText}>
             <Text style={s.rankTitle}>Weekly Rank</Text>
-            <Text style={s.rankDesc}>Top {Math.max(1, 100 - d.percentile)}% — out of {d.total_users} active voters</Text>
+            <Text style={s.rankDesc} numberOfLines={1}>Out of {(d.total_users ?? 0) * 2} users</Text>
           </View>
-          <View style={s.rankBadge}>
-            <Text style={s.rankValue}>#{d.weekly_rank}</Text>
+          <View style={[s.rankBadge, d.weekly_rank <= 10 && d.weekly_rank > 0 && { backgroundColor: COLORS.podiumGold }]}>
+            <Text style={s.rankValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>#{d.weekly_rank ?? 0}</Text>
           </View>
         </LinearGradient>
       </Animated.View>
 
-      {/* Impact hero */}
-      <Animated.View entering={FadeInUp.delay(300).springify().damping(14)}>
-        <View style={s.impactCard}>
-          <View style={s.impactLeft}>
-            <Text style={s.impactLabel}>
-              {period === 'week' ? 'Couples This Week' : 'Couples You Helped Create'}
-            </Text>
-            {d.couples_set_up === 0 ? (
-              <Text style={[s.impactValue, { fontSize: FONT_SIZES['2xl'], color: COLORS.text.light }]}>Your first is coming</Text>
-            ) : (
-              <AnimatedNumber value={d.couples_set_up} delay={500} style={s.impactValue} />
-            )}
-            {period === 'allTime' && firstAssistDate ? (
-              <Text style={s.impactSubtext}>First assist: {firstAssistDate}</Text>
-            ) : null}
-          </View>
-          <View style={s.impactRight}>
-            <EvaIcon name="heart" variant="outline" size={52} color={COLORS.urgentRed} />
-          </View>
+      {/* Stat grid — core metrics */}
+      <Animated.View entering={FadeInUp.delay(300).duration(DURATIONS.slow).damping(22)}>
+        <View style={s.statGrid}>
+          <StatCard icon="checkmark-circle-2" iconColor={COLORS.primaryAccent} label="Votes Cast" value={d.total_votes_cast ?? 0} index={0} />
+          <StatCard icon="activity" iconColor={COLORS.success} label="Accuracy" value={Math.min(100, Math.max(0, d.accuracy ?? 0))} suffix="%" index={1} />
+          <StatCard icon="star" iconColor={COLORS.amber} label="Karma" value={Math.max(0, d.karma_points ?? 0)} index={2} />
+          <StatCard icon="heart" iconColor={COLORS.error} label="Couples Set Up" value={Math.max(0, d.couples_set_up ?? 0)} index={3} />
         </View>
-      </Animated.View>
-
-      {/* Accuracy ring */}
-      <Animated.View entering={FadeInUp.delay(400).springify().damping(16)} style={s.accuracyCard}>
-        <View style={s.accuracyRingWrap}>
-          <ProgressRing progress={d.accuracy} delay={600} color={getAccuracyRingColor(d.accuracy)} />
-          <View style={s.accuracyRingOverlay}>
-            {d.accuracy === 0 ? (
-              <Text style={[s.accuracyValue, { color: COLORS.primaryAccent, fontSize: FONT_SIZES.md }]}>Building...</Text>
-            ) : (
-              <AnimatedNumber value={d.accuracy} delay={700} suffix="%" style={[s.accuracyValue, { color: getAccuracyRingColor(d.accuracy) }]} />
-            )}
-          </View>
-        </View>
-        <View style={s.accuracyText}>
-          <Text style={s.accuracyTitle}>Accuracy</Text>
-          <Text style={s.accuracyDesc}>Your yes-votes that became matches</Text>
-        </View>
-      </Animated.View>
-
-      {/* Voting & Streaks — combined grid */}
-      <Animated.View entering={FadeInUp.delay(500).springify().damping(18)}>
-        <Text style={s.sectionTitle}>Voting</Text>
-      </Animated.View>
-      <View style={s.statGrid}>
-        <StatCard icon="checkmark-circle-2" iconColor={COLORS.primaryAccent} label="Votes Cast" value={d.total_votes_cast} trend={showTrends ? weekData.votes_trend : undefined} index={0} />
-        <StatCard icon="done-all" iconColor={COLORS.success} label="Yes Rate" value={d.yes_rate} suffix="%" index={1} />
-        <StatCard icon="people" iconColor={COLORS.systemPurple} label="Friends Helped" value={d.friends_helped} index={2} />
-        <StatCard icon="star" iconColor={COLORS.systemOrange} label="Karma" value={d.karma_points} trend={showTrends ? weekData.karma_trend : undefined} index={3} />
-        <StatCard icon="flash" iconColor={COLORS.rejectRed} label="Current Streak" value={d.current_streak} suffix="d" index={4} />
-        <StatCard icon="award" iconColor={COLORS.systemOrange} label="Best Streak" value={d.longest_streak} suffix="d" index={5} />
-      </View>
-
-      {/* Fun Facts */}
-      <Animated.View entering={FadeInUp.delay(700).springify().damping(18)}>
-        <Text style={s.sectionTitle}>Did You Know?</Text>
-      </Animated.View>
-      <Animated.View entering={FadeInUp.delay(750).springify().damping(18)} style={st.funFactCard}>
-        {funFacts.map((fact, i) => (
-          <React.Fragment key={i}>
-            {i > 0 && <View style={s.highlightDivider} />}
-            <FunFactCard fact={fact} index={i} />
-          </React.Fragment>
-        ))}
       </Animated.View>
 
       <View style={{ height: 40 }} />
@@ -529,7 +345,7 @@ export const ShareCard = React.forwardRef<ViewShot, { data: UserStats; campusNam
   { data, campusName }, ref,
 ) => {
   const d = data.all_time;
-  const archetype = getArchetype(d.accuracy, d.yes_rate, d.assists);
+  const archetype = getArchetype(d?.accuracy ?? 0, d?.yes_rate ?? 0, d?.assists ?? 0);
 
   return (
     <ViewShot ref={ref} options={{ format: 'png', quality: 1, width: 1080, height: 1920 }}>
@@ -544,42 +360,34 @@ export const ShareCard = React.forwardRef<ViewShot, { data: UserStats; campusNam
           </View>
 
           <Text style={shareStyles.archetypeEmoji}>{archetype.emoji}</Text>
-          <Text style={shareStyles.archetypeName}>{archetype.name}</Text>
-          <Text style={shareStyles.archetypeDesc}>{archetype.description}</Text>
+          <Text style={shareStyles.archetypeName} numberOfLines={1}>{archetype.name}</Text>
+          <Text style={shareStyles.archetypeDesc} numberOfLines={3}>{archetype.description}</Text>
 
           <View style={shareStyles.divider} />
 
           <View style={shareStyles.statsRow}>
             <View style={shareStyles.statBlock}>
-              <Text style={shareStyles.statNum}>{d.couples_set_up}</Text>
-              <Text style={shareStyles.statLabel}>Couples</Text>
-            </View>
-            <View style={shareStyles.statBlock}>
-              <Text style={shareStyles.statNum}>{d.accuracy}%</Text>
-              <Text style={shareStyles.statLabel}>Accuracy</Text>
-            </View>
-            <View style={shareStyles.statBlock}>
-              <Text style={shareStyles.statNum}>{d.total_votes_cast}</Text>
+              <Text style={shareStyles.statNum}>{(d?.total_votes_cast ?? 0).toLocaleString()}</Text>
               <Text style={shareStyles.statLabel}>Votes</Text>
+            </View>
+            <View style={shareStyles.statBlock}>
+              <Text style={shareStyles.statNum}>{d?.accuracy ?? 0}%</Text>
+              <Text style={shareStyles.statLabel}>Accuracy</Text>
             </View>
           </View>
 
           <View style={shareStyles.statsRow}>
             <View style={shareStyles.statBlock}>
-              <Text style={shareStyles.statNum}>{d.current_streak}d</Text>
-              <Text style={shareStyles.statLabel}>Streak</Text>
-            </View>
-            <View style={shareStyles.statBlock}>
-              <Text style={shareStyles.statNum}>{d.karma_points}</Text>
+              <Text style={shareStyles.statNum}>{(d?.karma_points ?? 0).toLocaleString()}</Text>
               <Text style={shareStyles.statLabel}>Karma</Text>
             </View>
             <View style={shareStyles.statBlock}>
-              <Text style={shareStyles.statNum}>Top {100 - d.percentile}%</Text>
-              <Text style={shareStyles.statLabel}>Rank</Text>
+              <Text style={shareStyles.statNum}>{d?.couples_set_up ?? 0}</Text>
+              <Text style={shareStyles.statLabel}>Couples</Text>
             </View>
           </View>
 
-          <Text style={shareStyles.campusText}>{campusName}</Text>
+          <Text style={shareStyles.campusText} numberOfLines={1}>{campusName || 'Your Campus'}</Text>
 
           <View style={shareStyles.watermark}>
             <Text style={shareStyles.watermarkText}>bridge</Text>

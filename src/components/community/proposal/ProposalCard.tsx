@@ -195,7 +195,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
       {/* Highly Recommended Badge */}
       {highlyRecommended && (
         <StyledView className="flex-row items-center mb-3 px-2 py-1.5 bg-amber-50 rounded-lg self-start">
-          <EvaIcon name="star" variant="outline" size={16} color={COLORS.warning.icon} />
+          <EvaIcon name="star" variant="outline" size={16} color={COLORS.amber} />
           <StyledText className="text-xs font-semibold text-amber-700 ml-1" style={{ fontFamily: FONTS.semiBold }}>
             Highly Recommended
           </StyledText>
@@ -228,7 +228,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
         <StyledTouchableOpacity
           className="flex-1 py-3 rounded-lg justify-center items-center"
           style={{
-            backgroundColor: hasVoted ? (yourVote === false ? COLORS.error : COLORS.backgroundGray) : COLORS.error,
+            backgroundColor: hasVoted ? (yourVote === false ? COLORS.error : COLORS.card) : COLORS.error,
             opacity: hasVoted ? (yourVote === false ? 1 : 0.5) : 1,
             marginRight: 12,
           }}
@@ -242,7 +242,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
           <StyledText
             className="font-semibold"
             style={{
-              color: hasVoted ? (yourVote === false ? COLORS.card : COLORS.text.disabled) : COLORS.card,
+              color: hasVoted ? (yourVote === false ? COLORS.card : COLORS.text.tertiary) : COLORS.card,
               fontFamily: FONTS.semiBold,
             }}
           >
@@ -254,7 +254,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
         <StyledTouchableOpacity
           className="flex-1 py-3 rounded-lg justify-center items-center"
           style={{
-            backgroundColor: hasVoted ? (yourVote === true ? COLORS.emerald : COLORS.backgroundGray) : COLORS.emerald,
+            backgroundColor: hasVoted ? (yourVote === true ? COLORS.success : COLORS.card) : COLORS.success,
             opacity: hasVoted ? (yourVote === true ? 1 : 0.5) : 1,
           }}
           onPress={() => handleVote(true)}
@@ -267,7 +267,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
           <StyledText
             className="font-semibold"
             style={{
-              color: hasVoted ? (yourVote === true ? COLORS.card : COLORS.text.disabled) : COLORS.card,
+              color: hasVoted ? (yourVote === true ? COLORS.card : COLORS.text.tertiary) : COLORS.card,
               fontFamily: FONTS.semiBold,
             }}
           >

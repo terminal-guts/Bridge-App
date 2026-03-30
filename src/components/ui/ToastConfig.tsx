@@ -15,7 +15,7 @@ export const toastConfig = {
     <BaseToast
       {...props}
       style={{
-        borderLeftColor: COLORS.emerald,
+        borderLeftColor: COLORS.success,
         borderLeftWidth: 6,
         backgroundColor: COLORS.card,
         borderRadius: 12,
@@ -30,13 +30,13 @@ export const toastConfig = {
       text1Style={{
         fontSize: FONT_SIZES.xl,
         fontFamily: FONTS.bold,
-        color: COLORS.text.heading,
+        color: COLORS.text.primary,
         marginBottom: 2,
       }}
       text2Style={{
         fontSize: FONT_SIZES.base,
         fontFamily: FONTS.regular,
-        color: COLORS.text.muted,
+        color: COLORS.text.secondary,
         lineHeight: LINE_HEIGHTS.base,
       }}
     />
@@ -61,13 +61,13 @@ export const toastConfig = {
       text1Style={{
         fontSize: FONT_SIZES.xl,
         fontFamily: FONTS.bold,
-        color: COLORS.text.heading,
+        color: COLORS.text.primary,
         marginBottom: 2,
       }}
       text2Style={{
         fontSize: FONT_SIZES.base,
         fontFamily: FONTS.regular,
-        color: COLORS.text.muted,
+        color: COLORS.text.secondary,
         lineHeight: LINE_HEIGHTS.base,
       }}
     />
@@ -92,13 +92,13 @@ export const toastConfig = {
       text1Style={{
         fontSize: FONT_SIZES.xl,
         fontFamily: FONTS.bold,
-        color: COLORS.text.heading,
+        color: COLORS.text.primary,
         marginBottom: 2,
       }}
       text2Style={{
         fontSize: FONT_SIZES.base,
         fontFamily: FONTS.regular,
-        color: COLORS.text.muted,
+        color: COLORS.text.secondary,
         lineHeight: LINE_HEIGHTS.base,
       }}
     />
@@ -123,7 +123,7 @@ export const toastConfig = {
         style={{
           fontSize: FONT_SIZES.xl,
           fontFamily: FONTS.bold,
-          color: COLORS.text.heading,
+          color: COLORS.text.primary,
           marginBottom: 4,
         }}
       >
@@ -134,7 +134,7 @@ export const toastConfig = {
           style={{
             fontSize: FONT_SIZES.base,
             fontFamily: FONTS.regular,
-            color: COLORS.text.muted,
+            color: COLORS.text.secondary,
             lineHeight: LINE_HEIGHTS.base,
           }}
         >

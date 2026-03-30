@@ -39,7 +39,15 @@ export function useMatchesScreen() {
 
     useEffect(() => {
         isMountedRef.current = true;
-        return () => { isMountedRef.current = false; };
+        return () => {
+            isMountedRef.current = false;
+            // Clean up any leftover share image file on unmount
+            const uri = shareImageUriRef.current;
+            if (uri) {
+                FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
+                shareImageUriRef.current = null;
+            }
+        };
     }, []);
 
     const [now, setNow] = useState(Date.now());
@@ -57,6 +65,7 @@ export function useMatchesScreen() {
     const [celebrationActive, setCelebrationActive] = useState(false);
     const confettiRef = useRef<LottieView>(null);
     const viewShotRef = useRef<ViewShot>(null);
+    const shareImageUriRef = useRef<string | null>(null);
     const wasLockedRef = useRef(false);
     const cardEntrance = useSharedValue(0);
     const hasAnimatedEntrance = useRef(false);
@@ -254,6 +263,13 @@ export function useMatchesScreen() {
         setShareSheetVisible(true);
         setShareLoading(true);
         try {
+            // Clean up previous share image before generating a new one
+            const prevUri = shareImageUriRef.current;
+            if (prevUri) {
+                FileSystem.deleteAsync(prevUri, { idempotent: true }).catch(() => {});
+                shareImageUriRef.current = null;
+            }
+
             let uri: string | null = null;
             for (let attempt = 0; attempt < 8; attempt++) {
                 if (!isMountedRef.current) return;
@@ -264,7 +280,10 @@ export function useMatchesScreen() {
                 await new Promise(resolve => setTimeout(resolve, 250));
             }
             if (!uri) throw new Error('Card not ready');
-            if (isMountedRef.current) setShareImageUri(uri);
+            if (isMountedRef.current) {
+                shareImageUriRef.current = uri;
+                setShareImageUri(uri);
+            }
         } catch (error) {
             showToast.error('Could not generate card', 'Try again later');
             if (isMountedRef.current) setShareSheetVisible(false);
@@ -274,30 +293,30 @@ export function useMatchesScreen() {
     }, [activeMatch, shareLoading, shareSheetVisible]);
 
     const handleCloseShareSheet = useCallback(() => {
-        const uri = shareImageUri;
         setShareSheetVisible(false);
-        setShareImageUri(null);
-        if (uri) {
-            setTimeout(async () => {
-                try { await FileSystem.deleteAsync(uri, { idempotent: true }); } catch {}
-            }, 10000);
-        }
-    }, [shareImageUri]);
+        // Don't null shareImageUri or delete the file here — a share action
+        // may still be in progress. Cleanup happens when a new card is generated
+        // (in handleSharePress) or on unmount.
+    }, []);
 
     const handleShareSnapchat = useCallback(() => {
-        if (shareImageUri) shareGeneric(shareImageUri);
-    }, [shareImageUri]);
+        const uri = shareImageUriRef.current;
+        if (uri) shareGeneric(uri);
+    }, []);
 
     const handleShareMessages = useCallback(() => {
-        if (shareImageUri) shareToMessages(shareImageUri);
-    }, [shareImageUri]);
+        const uri = shareImageUriRef.current;
+        if (uri) shareToMessages(uri);
+    }, []);
 
     const handleShareMore = useCallback(() => {
-        if (shareImageUri) shareGeneric(shareImageUri);
-    }, [shareImageUri]);
+        const uri = shareImageUriRef.current;
+        if (uri) shareGeneric(uri);
+    }, []);
 
     const handleSaveToPhotos = useCallback(async () => {
-        if (!shareImageUri) return;
+        const uri = shareImageUriRef.current;
+        if (!uri) return;
         try {
             const MediaLibrary = await import('expo-media-library');
             const { status } = await MediaLibrary.requestPermissionsAsync();
@@ -305,13 +324,13 @@ export function useMatchesScreen() {
                 showToast.error('Permission needed', 'Allow photo access to save');
                 return;
             }
-            await MediaLibrary.saveToLibraryAsync(shareImageUri);
+            await MediaLibrary.saveToLibraryAsync(uri);
             lightHaptic();
             showToast.success('Saved', 'Match card saved to your photos');
         } catch {
             showToast.error('Could not save', 'Try again later');
         }
-    }, [shareImageUri]);
+    }, []);
 
     const emptyCountdown = useMemo(() => {
         const next7pmMs = getNext7PMCentral();
@@ -324,9 +343,10 @@ export function useMatchesScreen() {
         return h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`;
     }, [now]);
 
-    // Profile gate
+    // Profile gate — acts as a visual cover when strength < 100%.
+    // Matches/proposals are NOT deleted — they reappear once strength is restored.
     const profileStrength = profile ? calculateOverallProfileStrength(profile) : 0;
-    const isLocked = !loading && profileStrength < 100 && !profile?.profileCompleted;
+    const isLocked = !loading && profileStrength < 100;
 
     // Derive screen state
     let screenState: ScreenState = 'empty';
