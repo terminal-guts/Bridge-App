@@ -219,9 +219,9 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
       <StyledView className="flex-row items-center justify-between mb-3">
         <StyledView className="flex-row items-center">
           <StyledView
-            className="w-10 h-10 rounded-xl items-center justify-center mr-3"
+            className="w-10 h-10 rounded-lg items-center justify-center mr-3"
             style={{
-              backgroundColor: isComplete ? 'rgba(52, 199, 89, 0.12)' : COLORS.primaryLight,
+              backgroundColor: isComplete ? 'rgba(52, 199, 89, 0.12)' : 'rgba(67, 127, 255, 0.12)',
             }}
           >
             <EvaIcon
