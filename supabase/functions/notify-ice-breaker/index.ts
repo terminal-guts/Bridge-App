@@ -49,7 +49,7 @@ Deno.serve(async (req: Request) => {
     // Find matches created 18–48h ago
     const { data: matches, error } = await supabase
       .from('matches')
-      .select('id, user1_id, user2_id, created_at')
+      .select('id, user_id_1, user_id_2, created_at')
       .gte('created_at', minTime)
       .lte('created_at', maxTime);
 
@@ -77,15 +77,15 @@ Deno.serve(async (req: Request) => {
       const { data: user2Profile } = await supabase
         .from('user_profiles')
         .select('first_name')
-        .eq('user_id', match.user2_id)
+        .eq('user_id', match.user_id_2)
         .maybeSingle();
 
       const user2Name = user2Profile?.first_name || 'your match';
-      const variant1 = await getNextCopyVariant(supabase, match.user1_id, 'ice_breaker', COPY_VARIANTS.length);
+      const variant1 = await getNextCopyVariant(supabase, match.user_id_1, 'ice_breaker', COPY_VARIANTS.length);
       const copy1 = COPY_VARIANTS[variant1];
 
       const result1 = await sendPush(supabase, {
-        userId: match.user1_id,
+        userId: match.user_id_1,
         notificationType: 'ice_breaker',
         category: 'engagement',
         title: copy1.title(user2Name),
@@ -100,15 +100,15 @@ Deno.serve(async (req: Request) => {
       const { data: user1Profile } = await supabase
         .from('user_profiles')
         .select('first_name')
-        .eq('user_id', match.user1_id)
+        .eq('user_id', match.user_id_1)
         .maybeSingle();
 
       const user1Name = user1Profile?.first_name || 'your match';
-      const variant2 = await getNextCopyVariant(supabase, match.user2_id, 'ice_breaker', COPY_VARIANTS.length);
+      const variant2 = await getNextCopyVariant(supabase, match.user_id_2, 'ice_breaker', COPY_VARIANTS.length);
       const copy2 = COPY_VARIANTS[variant2];
 
       const result2 = await sendPush(supabase, {
-        userId: match.user2_id,
+        userId: match.user_id_2,
         notificationType: 'ice_breaker',
         category: 'engagement',
         title: copy2.title(user1Name),

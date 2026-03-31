@@ -105,7 +105,7 @@ Deno.serve(async (req: Request) => {
       const { data: votes } = await supabase
         .from('proposal_votes')
         .select('proposal_id')
-        .eq('voter_id', voterId)
+        .eq('voter_user_id', voterId)
         .in('proposal_id', proposalIds);
 
       const votedProposalIds = new Set((votes || []).map((v: { proposal_id: string }) => v.proposal_id));
