@@ -77,8 +77,8 @@ Deno.serve(async (req: Request) => {
 
     // ── NEW MATCH ──────────────────────────────────────────────────
     if (type === 'match') {
-      const user1Id = record.user1_id;
-      const user2Id = record.user2_id;
+      const user1Id = record.user_id_1;
+      const user2Id = record.user_id_2;
 
       // Get both users' names
       const { data: profiles } = await supabase
@@ -124,14 +124,14 @@ Deno.serve(async (req: Request) => {
         // TODO: Use pg_cron one-off or queue for 15min delay
         const { data: voters } = await supabase
           .from('proposal_votes')
-          .select('voter_id')
+          .select('voter_user_id')
           .eq('proposal_id', record.proposal_id)
           .eq('vote_type', 'YES')
-          .neq('voter_id', user1Id)
-          .neq('voter_id', user2Id);
+          .neq('voter_user_id', user1Id)
+          .neq('voter_user_id', user2Id);
 
         if (voters && voters.length > 0) {
-          const voterIds = voters.map((v: { voter_id: string }) => v.voter_id);
+          const voterIds = voters.map((v: { voter_user_id: string }) => v.voter_user_id);
 
           // Get voter names for the copy
           const { data: voterProfiles } = await supabase

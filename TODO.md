@@ -194,6 +194,14 @@ Target: `src/components/community/proposal/ProposalReviewView.tsx`. Uses Reanima
 - [ ] PERF-6: Add `useReducedMotion()` checks to 5+ animation components
 - [ ] PERF-7: Pause Lottie animations when tab loses focus (Community empty state)
 
+### Notifications — P1 (deferred from 2026-03-30 polish sprint, too risky pre-TestFlight)
+- [ ] `send-weekly-summary` bypasses `send-push.ts` — no preference gating, no logging, no dedup. Rewrite to use shared `sendPush`. File: `supabase/functions/send-weekly-summary/index.ts`
+- [ ] `deciding` notification tap does nothing — server sends `deciding`, client handles `proposal_deciding`. Add `'deciding'` to type check. File: `src/navigation/AppNavigator.tsx:472`
+- [ ] `vote_reminder` notification tap does nothing — no handler. Route to Community tab. File: `src/navigation/AppNavigator.tsx`
+- [ ] `pref_nudges_enabled` not exposed in Settings — users can't opt out of nudge notifications (vote reminders, streak warnings, dormant re-engagement, morning leaderboard). File: `src/screens/profile/SettingsScreen.tsx`
+- [ ] Preference `syncToServer` is fire-and-forget — can silently revert on next app open. File: `src/services/notificationPreferencesService.ts`
+- [ ] Create `karma_scores` row during onboarding — if proposal step is skipped, matchmaker has no row. File: `src/services/profileService.onboarding.ts`
+
 ### UX/Bugs — P1
 - [ ] BUG-1: Add OfflineBanner to ScreenWrapper or 13+ screens that lack it
 - [ ] BUG-2: Add double-tap debounce guard to AnimatedPressable/Button

@@ -78,7 +78,7 @@ Deno.serve(async (req: Request) => {
         .from('proposal_votes')
         .select('id')
         .eq('proposal_id', proposal.id)
-        .eq('voter_id', streak.user_id)
+        .eq('voter_user_id', streak.user_id)
         .limit(1)
         .maybeSingle();
 
