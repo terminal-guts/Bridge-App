@@ -114,7 +114,7 @@ const calculateStrength = (profile: UserProfile): {
     score: breakdown.sections.matchPreferences.score,
     maxScore: breakdown.sections.matchPreferences.maxScore,
     suggestions: preferencesSuggestions.slice(0, 2),
-    color: COLORS.primary,
+    color: '#8B5CF6',
     displayPercentage: breakdown.sections.matchPreferences.percentage,
   });
 
@@ -219,16 +219,16 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
       <StyledView className="flex-row items-center justify-between mb-3">
         <StyledView className="flex-row items-center">
           <StyledView
-            className="w-10 h-10 rounded-lg items-center justify-center mr-3"
+            className="w-10 h-10 rounded-xl items-center justify-center mr-3"
             style={{
-              backgroundColor: isComplete ? COLORS.success : COLORS.primaryAccent,
+              backgroundColor: isComplete ? 'rgba(52, 199, 89, 0.12)' : COLORS.primaryLight,
             }}
           >
             <EvaIcon
-              name={isComplete ? 'checkmark-circle-2' : 'bar-chart'}
+              name={isComplete ? 'checkmark-circle-2' : 'trending-up'}
               variant="outline"
               size={20}
-              color="white"
+              color={isComplete ? COLORS.success : COLORS.primary}
             />
           </StyledView>
           <H3 className="font-semibold text-base">Profile Strength</H3>
