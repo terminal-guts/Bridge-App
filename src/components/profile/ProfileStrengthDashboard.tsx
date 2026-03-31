@@ -228,7 +228,7 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
               name={isComplete ? 'checkmark-circle-2' : 'trending-up'}
               variant="outline"
               size={20}
-              color={isComplete ? COLORS.success : COLORS.primary}
+              color={isComplete ? COLORS.success : COLORS.primaryAccent}
             />
           </StyledView>
           <H3 className="font-semibold text-base">Profile Strength</H3>
