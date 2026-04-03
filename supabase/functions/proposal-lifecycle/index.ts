@@ -144,7 +144,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Day 5+ quality floor: auto-promote only if quality is acceptable
+      // Expired quality floor (day 4+): auto-promote only if quality is acceptable
       if (newStatus === 'pending' && isExpired) {
         const totalAll = poolYes + poolNo + friendYes + friendNo;
         const totalYes = poolYes + friendYes;

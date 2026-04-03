@@ -10,13 +10,12 @@ export const KARMA_WEIGHTS: Record<string, number> = {
   elite: 1.3,
 };
 
-export const MAX_PROPOSAL_DAYS = 5;
+export const MAX_PROPOSAL_DAYS = 3;
 export const DECISION_DEADLINE_HOURS = 48;
 
 export const THRESHOLD_SCHEDULE: Record<number, number | null> = {
-  1: 0.65, 2: 0.65,
-  3: 0.60, 4: 0.55,
-  5: null, // bypass — auto-send
+  1: 0.65, 2: 0.60,
+  3: null, // final day — auto-send if min votes met; quality floor handles expiry
 };
 
 export const CONFIRMATION_MIN_POOL_VOTES = 3;

@@ -313,10 +313,10 @@ export const KARMA_TIERS: Record<KarmaTier, KarmaBadge> = {
 };
 
 export const VOTES_NEEDED_PER_DAY = 3;
-export const PROPOSAL_VOTING_DAYS = 5;         // Max days a proposal is in voting
+export const PROPOSAL_VOTING_DAYS = 3;         // Max days a proposal is in voting
 export const DECISION_DEADLINE_HOURS = 48;      // Hours to accept/decline after confirmed
 export const POOL_VOTERS_PER_DAY = 6;           // ~6 pool votes per proposal per day
-export const MAX_POOL_VOTES = 30;               // Max pool votes over 5 days
+export const MAX_POOL_VOTES = 30;               // Max pool votes over 3 days
 export const FRIEND_VOTE_WEIGHT = 1.25;         // Friend votes weighted 1.25x in percentage
 export const CONFIRMATION_MIN_POOL_VOTES = 6;   // Min pool votes to confirm
 export const CONFIRMATION_MIN_TOTAL_VOTES = 12; // Min total votes to confirm
@@ -324,9 +324,8 @@ export const CONFIRMATION_MIN_YES_VOTES = 8;    // Min YES votes to confirm
 export const ACTIVE_MATCH_MINIMUM_DAYS = 0;
 export const CANDIDATE_COOLDOWN_DAYS = 7;
 
-// Threshold relaxation schedule (5-day window)
+// Threshold relaxation schedule (3-day window)
 export const THRESHOLD_SCHEDULE: Record<number, number | null> = {
-  1: 0.65, 2: 0.65,
-  3: 0.60, 4: 0.55,
-  5: null, // bypass — auto-send
+  1: 0.65, 2: 0.60,
+  3: null, // final day — auto-send if min votes met; quality floor handles expiry
 };

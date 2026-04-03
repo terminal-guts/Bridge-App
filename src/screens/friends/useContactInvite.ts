@@ -24,6 +24,7 @@ import {
   sendFriendRequestByCode,
 } from '../../services/friendService';
 import { getUserProfile } from '../../services/profileService';
+import { communityBackendService } from '../../services/communityBackendService';
 import {
   NormalizedContact,
   ContactSection,
@@ -114,6 +115,7 @@ export function useContactInvite(route: RouteProp<RootStackParamList, 'ContactIn
         const result = await sendFriendRequestByCode(code);
         if (result.success) {
           processedCodeRef.current = code;
+          communityBackendService.invalidateFriendsCache();
           if (result.wasAutoAccepted) {
             showToast.success('Friend added!', 'You were connected via invite link');
           } else {
@@ -166,7 +168,6 @@ export function useContactInvite(route: RouteProp<RootStackParamList, 'ContactIn
   }, [contacts, suggestedPreSelected]);
 
   const handleToggleSelect = useCallback((contact: NormalizedContact) => {
-    if (contact.isInvited) return;
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(contact.id)) {
@@ -203,6 +204,7 @@ export function useContactInvite(route: RouteProp<RootStackParamList, 'ContactIn
         return;
       }
 
+      communityBackendService.invalidateFriendsCache();
       if (result.wasAutoAccepted) {
         showToast.success('Friend added!', `${contact.name} is now your friend on Bridge`);
       } else {
@@ -318,6 +320,7 @@ export function useContactInvite(route: RouteProp<RootStackParamList, 'ContactIn
       const result = await addFriendByCode(code);
       if (result.ok) {
         setEnterCodeValue('');
+        communityBackendService.invalidateFriendsCache();
         const name = result.data?.friendProfile?.firstName || 'Friend';
         if (result.data?.wasAutoAccepted) {
           showToast.success('Friend added!', `${name} is now your friend`);
@@ -356,6 +359,7 @@ export function useContactInvite(route: RouteProp<RootStackParamList, 'ContactIn
 
     const count = addedUserIds.size;
     if (count > 0) {
+      communityBackendService.invalidateFriendsCache();
       setContacts((prev) => prev.map((c) =>
         c.bridgeUserId && addedUserIds.has(c.bridgeUserId) ? { ...c, isAlreadyFriend: true } : c
       ));

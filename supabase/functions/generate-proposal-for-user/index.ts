@@ -5,7 +5,6 @@ import { calculateCompatibility, passesBasicFilter } from '../_shared/scoring.ts
 import { corsHeaders } from '../_shared/cors.ts';
 import { MAX_POOL_VOTES } from '../_shared/constants.ts';
 
-const MIN_COMPATIBILITY_SCORE = 30.0;
 const VOTERS_PER_PROPOSAL = 6;
 const MAX_VOTING_GATE = 3;
 
@@ -245,7 +244,9 @@ Deno.serve(async (req: Request) => {
             // Apply starvation boost (average of both)
             result.total_score += myStarvationBoost / 2;
 
-            if (result.total_score >= MIN_COMPATIBILITY_SCORE && result.total_score > bestScore) {
+            // No minimum score floor — hard blockers already filter above.
+            // Community voting is the quality gate.
+            if (result.total_score > bestScore) {
               bestScore = result.total_score;
               bestCandidate = {
                 profile: other,
@@ -260,7 +261,7 @@ Deno.serve(async (req: Request) => {
           if (bestCandidate) {
             const [aId, bId] = [userId, bestCandidate.profile.user_id].sort();
             const now = new Date().toISOString();
-            const expiresAt = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
+            const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
 
             const displayScore = Math.floor(Math.random() * 30) + 70; // Random 70-99
             const { error: insertErr } = await supabase

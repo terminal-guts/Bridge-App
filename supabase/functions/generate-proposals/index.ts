@@ -5,7 +5,6 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { requireServiceRole } from '../_shared/admin-auth.ts';
 import { MAX_POOL_VOTES } from '../_shared/constants.ts';
 
-const MIN_COMPATIBILITY_SCORE = 30.0;
 const MAX_PROPOSALS_PER_RUN = 50;
 const VOTERS_PER_PROPOSAL = 6;
 
@@ -305,20 +304,21 @@ Deno.serve(async (req: Request) => {
         result.total_score *= 1.25;
       }
 
-      if (result.total_score >= MIN_COMPATIBILITY_SCORE) {
-        // Enforce user_a_id < user_b_id
-        const [uA, uB] = profileA.user_id < profileB.user_id
-          ? [profileA.user_id, profileB.user_id]
-          : [profileB.user_id, profileA.user_id];
+      // No minimum score floor — hard blockers (gender, age, prior pairing,
+      // active proposal/match, blocked users) already filter in passesBasicFilter
+      // and the exclusion sets above. Community voting is the quality gate.
+      // Enforce user_a_id < user_b_id
+      const [uA, uB] = profileA.user_id < profileB.user_id
+        ? [profileA.user_id, profileB.user_id]
+        : [profileB.user_id, profileA.user_id];
 
-        scored.push({
-          user_a_id: uA,
-          user_b_id: uB,
-          compatibility_score: result.total_score,
-          category_scores: result.category_scores,
-          weighted_scores: result.weighted_scores,
-        });
-      }
+      scored.push({
+        user_a_id: uA,
+        user_b_id: uB,
+        compatibility_score: result.total_score,
+        category_scores: result.category_scores,
+        weighted_scores: result.weighted_scores,
+      });
     }
 
     scored.sort((a, b) => b.compatibility_score - a.compatibility_score);
@@ -347,7 +347,7 @@ Deno.serve(async (req: Request) => {
 
     // 7. Create proposals in DB
     const now = new Date().toISOString();
-    const votingExpires = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
+    const votingExpires = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
 
     for (const pair of topPairs) {
       const { data: created, error: insertErr } = await supabase

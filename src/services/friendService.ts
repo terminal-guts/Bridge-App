@@ -162,6 +162,9 @@ export const bulkAddFriendsByCodes = async (
   for (const r of results) {
     if (r.status === 'fulfilled' && r.value) added.add(r.value);
   }
+  if (added.size > 0) {
+    _invalidate();
+  }
   return added;
 };
 
