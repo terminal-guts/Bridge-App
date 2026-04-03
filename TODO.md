@@ -21,6 +21,7 @@ These are the most important screens in the app. All work (polish, bugs, feature
 ## Beta Feedback (Unresolved)
 
 ### TODO
+- Leaderboard: rank gap when anonymous users tie (e.g. two users at rank 8 → rank 9 missing). Root cause: SQL RANK() skips numbers on ties + edge function assigns duplicate anon IDs causing FlashList to drop a row. Fix: use DENSE_RANK() + unique anon IDs.
 - Onboarding: transition from code entry to name entry is unnatural (Leif)
 - Onboarding: lifestyle page should indicate more buttons to scroll to beneath cannabis (Leif)
 - Onboarding: page transition polish — Leif likes haptics but not the transitions
