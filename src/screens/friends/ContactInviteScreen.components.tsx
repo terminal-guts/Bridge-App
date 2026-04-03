@@ -112,16 +112,12 @@ export const ContactRow = React.memo(({ contact, isSelected, isAdding, onToggleS
     );
   }
 
-  // Check if invite is old enough to show "Remind"
-  const canRemind = contact.isInvited && contact.invitedAt && (Date.now() - contact.invitedAt) > REMIND_AFTER_MS;
-
   // Regular contacts — selectable for batch invite
   return (
     <StyledTouchableOpacity
       className="flex-row items-center px-4 py-3 bg-white"
-      onPress={() => canRemind ? onInviteSingle(contact) : onToggleSelect(contact)}
+      onPress={() => onToggleSelect(contact)}
       activeOpacity={0.7}
-      disabled={contact.isInvited && !canRemind}
     >
       {/* Avatar / checkbox */}
       {isSelected ? (
@@ -131,17 +127,15 @@ export const ContactRow = React.memo(({ contact, isSelected, isAdding, onToggleS
       ) : (
         <ContactAvatar
           contact={contact}
-          bgColor={contact.isInvited ? 'bg-neutral-200' : 'bg-primary-100'}
-          textColor={contact.isInvited ? 'text-neutral-400' : 'text-primary-500'}
+          bgColor="bg-primary-100"
+          textColor="text-primary-500"
         />
       )}
 
       {/* Name + phone */}
       <StyledView className="flex-1 mr-3">
         <StyledView className="flex-row items-center">
-          <StyledText className={`font-medium text-sm ${
-            contact.isInvited && !canRemind ? 'text-neutral-400' : 'text-neutral-900'
-          }`} numberOfLines={1}>
+          <StyledText className="font-medium text-sm text-neutral-900" numberOfLines={1}>
             {contact.name}
           </StyledText>
           {contact.hasRiceEmail && (
@@ -155,25 +149,12 @@ export const ContactRow = React.memo(({ contact, isSelected, isAdding, onToggleS
         </StyledText>
       </StyledView>
 
-      {/* Right side: checkbox, status, or remind */}
-      {canRemind ? (
-        <StyledTouchableOpacity
-          className="bg-primary-100 px-3 py-1.5 rounded-full"
-          onPress={() => onInviteSingle(contact)}
-        >
-          <StyledText className="text-primary-500 text-xs font-semibold">Remind</StyledText>
-        </StyledTouchableOpacity>
-      ) : contact.isInvited ? (
-        <StyledView className="bg-neutral-100 px-3 py-1.5 rounded-full">
-          <StyledText className="text-neutral-400 text-xs font-semibold">Invited</StyledText>
-        </StyledView>
-      ) : (
-        <StyledView className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
-          isSelected ? 'bg-primary-500 border-primary-500' : 'border-neutral-300'
-        }`}>
-          {isSelected && <EvaIcon name="checkmark" variant="outline" color="white" size={14} />}
-        </StyledView>
-      )}
+      {/* Right side: checkbox */}
+      <StyledView className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
+        isSelected ? 'bg-primary-500 border-primary-500' : 'border-neutral-300'
+      }`}>
+        {isSelected && <EvaIcon name="checkmark" variant="outline" color="white" size={14} />}
+      </StyledView>
     </StyledTouchableOpacity>
   );
 });

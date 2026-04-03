@@ -193,9 +193,16 @@ export const createUserProfile = async (
       ...(data.role === 'matchmaker' ? { profile_completed: true } : {}),
     };
 
-    // Remove undefined values so they don't overwrite existing data
+    // Strip undefined, empty arrays, and empty strings so they don't overwrite
+    // data already saved by step-level saves. The DB has matching defaults
+    // ('', '{}', '[]'), so omitting these from the UPSERT is safe — the ON
+    // CONFLICT SET clause simply won't touch those columns.
     Object.keys(profilePayload).forEach(key => {
-      if (profilePayload[key] === undefined) delete profilePayload[key];
+      if (key === 'user_id') return; // Never strip the primary key
+      const val = profilePayload[key];
+      if (val === undefined) { delete profilePayload[key]; return; }
+      if (Array.isArray(val) && val.length === 0) { delete profilePayload[key]; return; }
+      if (val === '') { delete profilePayload[key]; return; }
     });
 
     const { error: profileError } = await supabase

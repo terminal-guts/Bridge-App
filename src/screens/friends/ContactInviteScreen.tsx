@@ -6,7 +6,6 @@ import { ScreenWrapper } from '../../components/ui';
 // Extracted hook + components
 import { useContactInvite } from './useContactInvite';
 import {
-  CelebrationOverlay,
   LoadingView,
   PermissionView,
   GrantedContactList,
@@ -32,7 +31,6 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
     enterCodeValue,
     enterCodeError,
     addingCode,
-    celebrationCount,
     addingFriendId,
     invitesSentCount,
     invitesRemaining,
@@ -118,8 +116,6 @@ export const ContactInviteScreen: React.FC<Props> = ({ navigation, route }) => {
           totalContactCount={contacts.length}
         />
       )}
-
-      <CelebrationOverlay count={celebrationCount} />
     </ScreenWrapper>
   );
 };

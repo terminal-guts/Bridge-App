@@ -440,13 +440,7 @@ export const buildInviteMessage = async (
 
   const body = variant(namePrefix);
 
-  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-  const inviteLink = supabaseUrl
-    ? `${supabaseUrl}/functions/v1/invite-redirect?code=${friendCode}`
-    : '';
-  const linkLine = inviteLink
-    ? `\n\n${inviteLink}`
-    : `\n\nUse my code: ${friendCode}`;
+  const appStoreLink = 'https://apps.apple.com/app/bridge/id6759764704';
 
-  return `${body}${linkLine}`;
+  return `${body}\n\n${appStoreLink}\n\nUse my code: ${friendCode}`;
 };

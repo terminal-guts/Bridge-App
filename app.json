@@ -3,7 +3,7 @@
     "newArchEnabled": true,
     "name": "Bridge: Social Matchmaking",
     "slug": "bridge",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/BridgeIcon_Final.png",
     "userInterfaceStyle": "light",
@@ -22,7 +22,7 @@
       "jsEngine": "hermes",
       "supportsTablet": false,
       "bundleIdentifier": "com.bridgedate.app",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "appleTeamId": "D9C93RG4RZ",
       "infoPlist": {
         "CADisableMinimumFrameDurationOnPhone": true,

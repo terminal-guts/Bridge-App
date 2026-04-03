@@ -456,6 +456,10 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         }
       }
 
+      // Cache minimal profile status so the fast startup path works on next launch.
+      // (Matchmaker path already does this at line 437 — dater path was missing it.)
+      await checkMinimalProfileStatus();
+
       // Celebration haptics
       successHaptic();
       setTimeout(() => successHaptic(), 300);

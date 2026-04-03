@@ -168,13 +168,23 @@ const uploadPhotoInternal = async (
       return createErrorResponse('INVALID_INPUT', 'Image URI is required');
     }
 
-    // Step 1: Compress and optimize image (always outputs JPEG)
-    logger.debug('Compressing image...');
-    const compressedUri = await compressImage(imageUri, compressionOptions);
-
-    // Step 2: Read file as base64
-    logger.debug('Reading file as base64...');
-    const base64Data = await uriToBase64(compressedUri);
+    // Steps 1-2: Compress image and read as base64.
+    // iOS may still be converting HEIC → JPEG when the file:// URI is first
+    // returned by ImagePicker. A single retry after a short delay handles this
+    // race without requiring the user to re-pick.
+    let compressedUri: string;
+    let base64Data: string;
+    try {
+      logger.debug('Compressing image...');
+      compressedUri = await compressImage(imageUri, compressionOptions);
+      logger.debug('Reading file as base64...');
+      base64Data = await uriToBase64(compressedUri);
+    } catch (firstAttemptError: unknown) {
+      logger.warn('Image prep failed, retrying in 800ms:', firstAttemptError instanceof Error ? firstAttemptError.message : String(firstAttemptError));
+      await new Promise(resolve => setTimeout(resolve, 800));
+      compressedUri = await compressImage(imageUri, compressionOptions);
+      base64Data = await uriToBase64(compressedUri);
+    }
 
     // Step 3: Generate storage path (always .jpg since compression outputs JPEG)
     const photoId = generatePhotoId();

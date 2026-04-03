@@ -1,7 +1,8 @@
 import { corsHeaders } from '../_shared/cors.ts';
 
 const REVIEWER_PASSWORD = Deno.env.get('REVIEWER_PASSWORD');
-const REVIEWER_AUTH_PASSWORD = Deno.env.get('REVIEWER_AUTH_PASSWORD');
+// Strip backslash escapes — Supabase secrets dashboard may escape special chars like !
+const REVIEWER_AUTH_PASSWORD = Deno.env.get('REVIEWER_AUTH_PASSWORD')?.replace(/\\/g, '');
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {

@@ -11,6 +11,7 @@ import { ApiResponse, UserProfile } from '../types';
 import { requireAuth } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { invalidateFriendCountCache } from './friendService.shared';
 
 const logger = createLogger('FriendService');
 
@@ -24,11 +25,6 @@ export interface FriendCode {
   createdAt: string;
   updatedAt: string;
 }
-
-const createErrorResponse = <T>(code: string, message: string): ApiResponse<T> => ({
-  ok: false,
-  error: { code, message },
-});
 
 /**
  * Generate a mock friend code in BRIDGE-XXXX-XXXX format
@@ -272,8 +268,12 @@ export const sendFriendRequestByCode = async (
   if (error) {
     return { success: false, message: error.message };
   }
+  const success = !!row?.success || !!row?.message?.includes('already friends');
+  if (success) {
+    invalidateFriendCountCache();
+  }
   return {
-    success: !!row?.success || !!row?.message?.includes('already friends'),
+    success,
     wasAutoAccepted: row?.was_auto_accepted,
     message: row?.message,
   };

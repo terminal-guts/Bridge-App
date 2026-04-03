@@ -632,15 +632,21 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
                 }
               }
             });
-            fetchAndSetUserProfile(session.user.id).then(profileResult => {
+            fetchAndSetUserProfile(session.user.id).then(async profileResult => {
               if (!isMountedRef.current) return;
-              if (!profileResult.ok) {
-                if (profileResult.error?.code === 'PROFILE_NOT_FOUND') {
-                  logger.info('[AppNavigator] No profile found — resuming onboarding');
+              if (!profileResult.ok && profileResult.error?.code === 'PROFILE_NOT_FOUND') {
+                // Retry once after 2s — transient errors shouldn't dump users into fresh onboarding
+                logger.info('[AppNavigator] Profile not found, retrying in 2s...');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                if (!isMountedRef.current) return;
+                const retry = await fetchAndSetUserProfile(session.user.id);
+                if (!isMountedRef.current) return;
+                if (!retry.ok && retry.error?.code === 'PROFILE_NOT_FOUND') {
+                  logger.info('[AppNavigator] No profile found after retry — resuming onboarding');
                   navigationRef.current?.reset({ index: 0, routes: [{ name: 'Onboarding' as any }] });
-                } else {
-                  logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
                 }
+              } else if (!profileResult.ok) {
+                logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
               }
             });
           });
@@ -686,15 +692,21 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
             }
           });
 
-          fetchAndSetUserProfile(user.id).then(profileResult => {
+          fetchAndSetUserProfile(user.id).then(async profileResult => {
             if (!isMountedRef.current) return;
-            if (!profileResult.ok) {
-              if (profileResult.error?.code === 'PROFILE_NOT_FOUND') {
-                logger.info('[AppNavigator] No profile found — resuming onboarding');
+            if (!profileResult.ok && profileResult.error?.code === 'PROFILE_NOT_FOUND') {
+              // Retry once after 2s — transient errors shouldn't dump users into fresh onboarding
+              logger.info('[AppNavigator] Profile not found (slow path), retrying in 2s...');
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              if (!isMountedRef.current) return;
+              const retry = await fetchAndSetUserProfile(user.id);
+              if (!isMountedRef.current) return;
+              if (!retry.ok && retry.error?.code === 'PROFILE_NOT_FOUND') {
+                logger.info('[AppNavigator] No profile found after retry — resuming onboarding');
                 navigationRef.current?.reset({ index: 0, routes: [{ name: 'Onboarding' as any }] });
-              } else {
-                logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
               }
+            } else if (!profileResult.ok) {
+              logger.warn('[AppNavigator] Could not load profile:', profileResult.error?.message);
             }
           });
         }

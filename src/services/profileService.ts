@@ -444,12 +444,13 @@ export const updateUserProfile = async (
       }
     }
 
-    // Invalidate cache so the profile completion check below reads fresh data
-    invalidateProfileCache();
-
-    // Check if profile strength reached 100% → set profile_completed = true
+    // Fetch fresh profile for the completion check below.
+    // Use _fetchUserProfile directly (bypasses cache-read layer) so we always
+    // get post-update data from the DB.  As a side-effect it repopulates the
+    // cache with fresh signed URLs — so the Profile screen never sees a null
+    // cache and photos don't flash blank during background saves.
     try {
-      const fullProfile = await getUserProfile();
+      const fullProfile = await _fetchUserProfile();
       if (fullProfile.ok && fullProfile.data && !fullProfile.data.profileCompleted) {
         const strength = calculateProfileStrengthBreakdown(fullProfile.data);
         if (strength.overall >= 100) {
@@ -476,7 +477,12 @@ export const updateUserProfile = async (
       logger.warn('[ProfileService] Profile completion check failed (non-blocking):', err instanceof Error ? err.message : String(err));
     }
 
-    invalidateProfileCache();
+    // Soft-invalidate: mark data as stale so the next getUserProfile() triggers
+    // a background refresh, but keep the cached signed URLs so photos render
+    // instantly instead of flashing blank for ~10s.
+    if (profileCache) {
+      profileCache.ts = 0;
+    }
     return { ok: true };
   } catch (error: unknown) {
     logger.error('[ProfileService] updateUserProfile error:', error);
