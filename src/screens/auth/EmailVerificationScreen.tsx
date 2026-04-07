@@ -7,7 +7,6 @@ import { RootStackParamList } from '../../types';
 import { verifyEmail, sendOtpToEmail, signInWithPassword, isReviewerBypassEmail, validateReviewerAccess } from '../../services/authService';
 import { fetchAndSetUserProfile } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
-import { EvaIcon } from '../../components/icons';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
@@ -235,19 +234,10 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
           <StyledView className="flex-1 px-6 pt-2">
             <BackHeader title="Verify Email" showBorder={false} />
 
-            {/* Icon */}
-            <StyledView className="items-center mb-6">
-              <StyledView className="w-20 h-20 bg-primary-100 rounded-full items-center justify-center mb-4">
-                <EvaIcon name="email" variant="outline" size={28} color={COLORS.primaryAccent} />
-              </StyledView>
-
-              <H2 className="text-center mb-2">Verify your email</H2>
-
-              <Body className="text-neutral-600 text-center mb-2 px-6">
+            {/* Header */}
+            <StyledView className="items-center mb-4">
+              <Body className="text-neutral-600 text-center px-6">
                 Enter the 6-digit code sent to {email}
-              </Body>
-              <Body style={{ color: COLORS.text.tertiary, fontSize: FONT_SIZES.sm, fontFamily: FONTS.regular, textAlign: 'center', marginBottom: 16, paddingHorizontal: 24 }}>
-                Check your inbox and spam folder. Only the most recent code will work.
               </Body>
             </StyledView>
 
@@ -293,7 +283,7 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
             )}
 
             {/* Resend Section */}
-            <StyledView className="items-center mb-6">
+            <StyledView className="items-center mb-3">
               <Body className="text-neutral-600 mb-2">Didn't receive the code?</Body>
               {canResend ? (
                 <StyledTouchableOpacity
