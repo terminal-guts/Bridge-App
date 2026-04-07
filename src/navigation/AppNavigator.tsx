@@ -797,11 +797,13 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
       if (event === 'SIGNED_IN' && session?.user) {
         invalidateProfileCache();
         setCachedUserId(session.user.id);
+        Sentry.setUser({ id: session.user.id, email: session.user.email });
         setupNotifications();
         // Development mock data creation removed — use real Supabase data
       } else if (event === 'TOKEN_REFRESHED' && !session) {
         // Auto-refresh failed (refresh token expired or revoked) — treat as sign-out
         logger.info('[AppNavigator] TOKEN_REFRESHED with null session — forcing sign-out');
+        Sentry.setUser(null);
         clearCachedUserId();
         invalidateProfileCache();
         clearMinimalProfileStatusCache();

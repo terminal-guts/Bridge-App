@@ -18,6 +18,7 @@
 > | Moderation, safety, trust | [Community, Trust & Safety](#community-trust--safety) |
 > | RN performance, Expo, optimization | [React Native, Expo & Performance](#react-native-expo--performance) — JS thread, memory leaks, FlatList, images, bundle size |
 > | Supabase, edge functions, infra | [Backend & Infrastructure](#backend--infrastructure) |
+> | Local dev, env switching, staging | [Local Development & Environment Switching](#local-development--environment-switching) — physical device testing, feature flags, OTA rollouts |
 > | Jest, E2E, pgTAP | [Testing](#testing) |
 > | App Store submission, ASO | [App Store & Distribution](#app-store--distribution) |
 
@@ -193,6 +194,52 @@
 ## Backend & Infrastructure
 
 - [Supabase Production Checklist](https://supabase.com/docs/guides/deployment/going-into-prod) — RLS, SSL enforcement, MFA, indexing, load testing, backups, rate limiting
+- [Supabase Local Development Overview](https://supabase.com/docs/guides/local-development/overview) — Full local stack: Postgres, Auth, Storage, Realtime, Edge Runtime, Studio, Inbucket
+- [Supabase CLI Getting Started](https://supabase.com/docs/guides/local-development/cli/getting-started) — `supabase start`, `supabase db reset`, `supabase functions serve`
+- [Supabase CLI Config Reference (config.toml)](https://supabase.com/docs/guides/local-development/cli/config) — All config options for local dev (auth, storage, edge runtime, seeds, test OTPs)
+- [Supabase Managing Environments](https://supabase.com/docs/guides/deployment/managing-environments) — Dev/staging/prod environment separation, linked projects, migration workflow
+- [Supabase Database Migrations](https://supabase.com/docs/guides/deployment/database-migrations) — `supabase db diff`, migration files, applying to remote projects
+- [Supabase Maturity Model](https://supabase.com/docs/guides/deployment/maturity-model) — Progression from hobby to enterprise: environments, CI/CD, monitoring
+- [The Vibe Coder's Guide to Supabase Environments](https://supabase.com/blog/the-vibe-coders-guide-to-supabase-environments) — Practical walkthrough of local → staging → prod workflow
+- [Supabase Branching](https://supabase.com/docs/guides/deployment/branching) — Git-based preview environments (creates a Supabase project per branch)
+- [Supabase Edge Functions Quickstart](https://supabase.com/docs/guides/functions/quickstart) — Writing, testing, and deploying edge functions
+- [Supabase Edge Functions Dev Tips](https://supabase.com/docs/guides/functions/development-tips) — Hot reload with `functions serve`, env vars, debugging
+- [Troubleshooting Edge Functions Locally](https://supabase.com/docs/guides/troubleshooting/issues-serving-edge-functions-locally) — Common local dev issues and fixes
+- [Managing Config and Secrets (Local)](https://supabase.com/docs/guides/local-development/managing-config) — `.env` files for edge functions, secrets injection
+
+## Local Development & Environment Switching
+
+### Expo Environment Variables
+- [Expo Environment Variables (Official)](https://docs.expo.dev/guides/environment-variables/) — `EXPO_PUBLIC_` prefix, `.env` loading order, build-time substitution
+- [Expo EAS Environment Variables](https://docs.expo.dev/eas/environment-variables/) — `eas env:create`, `eas env:pull`, per-environment secrets on EAS servers
+- [Expo + Supabase Guide](https://docs.expo.dev/guides/using-supabase/) — Official integration guide for Expo with Supabase
+
+### Physical Device Testing
+- [Running Expo on Device with Local Backend](https://dev.to/katkelly/running-your-react-native-expo-app-on-a-device-with-local-backend-k8l) — Using LAN IP to connect physical device to local server
+- [Expo React Native Local Network with Bonjour](https://bleepingswift.com/blog/expo-react-native-local-network-bonjour) — Network discovery for local dev servers
+- [Connecting Local Supabase from Android Emulators](https://www.pranavkhandelwal.com/blog/2025/6/9/connecting-to-supabase-running-locally-from-android-emulators) — `10.0.2.2` for Android emulator, `adb reverse` for physical Android
+
+### Multi-Environment Strategy
+- [Supabase Managing Multiple Environments (DEV.to)](https://dev.to/parth24072001/supabase-managing-database-migrations-across-multiple-environments-local-staging-production-4emg) — Migration workflow across local/staging/prod
+- [GitHub Discussion: Multiple Environments](https://github.com/orgs/supabase/discussions/542) — Community patterns for environment management
+- [Testing Supabase Magic Login with Playwright](https://www.bekapod.dev/articles/supabase-magic-login-testing-with-playwright/) — Automated auth testing using Inbucket API
+
+### Feature Flags & Staged Rollouts
+- [Feature Toggles (Martin Fowler)](https://martinfowler.com/articles/feature-toggles.html) — Canonical reference on feature flag types, lifecycle, and best practices
+- [Feature Flags for Mobile Apps (DevCycle)](https://devcycle.com/blog/how-can-mobile-teams-best-use-feature-flags) — Mobile-specific patterns: kill switches, percentage rollouts, A/B testing
+- [Feature Flag Testing (LaunchDarkly)](https://launchdarkly.com/blog/testing-with-feature-flags/) — Testing strategies when using feature flags
+- [Mobile Feature Flags (Statsig)](https://www.statsig.com/perspectives/mobile-feature-flags-ios-android) — iOS/Android implementation patterns and pitfalls
+
+### OTA Updates & Staged Deployment
+- [Expo EAS Update — How It Works](https://docs.expo.dev/eas-update/how-it-works/) — Channel-based OTA updates, runtime version pinning
+- [Expo — Preview Updates](https://docs.expo.dev/eas-update/preview/) — Testing OTA updates before rolling out to all users
+- [5 OTA Update Best Practices (Expo Blog)](https://expo.dev/blog/5-ota-update-best-practices-every-mobile-team-should-know) — Channels, rollbacks, runtime versioning
+- [The Production Playbook for OTA Updates (Expo Blog)](https://expo.dev/blog/the-production-playbook-for-ota-updates) — Staged rollouts, monitoring, rollback strategies
+
+### Industry Testing Patterns
+- [Tinder's Move to Kubernetes](https://medium.com/tinder/tinders-move-to-kubernetes-cda2a6372f44) — How Tinder containerized ~200 services for testing/staging parity
+- [Building Resiliency at Scale at Tinder (AWS)](https://aws.amazon.com/blogs/database/building-resiliency-at-scale-at-tinder-with-amazon-elasticache/) — Staging environment strategy at scale
+- [It's Time to Kill Staging (The New Stack)](https://thenewstack.io/its-time-to-kill-staging-the-case-for-testing-in-production/) — Counterargument: testing in production with feature flags and observability
 
 ## Testing
 

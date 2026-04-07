@@ -14,10 +14,36 @@ import * as SplashScreen from 'expo-splash-screen';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import Toast from 'react-native-toast-message';
 import { toastConfig } from './src/components/ui/ToastConfig';
-import { GuideProvider } from './src/contexts/GuideContext';
+import { GuideProvider, useGuideContext } from './src/contexts/GuideContext';
 import { GuideOverlay } from './src/components/guides/GuideOverlay';
 import { ErrorBoundary, CardErrorBoundary } from './src/components/ui/ErrorBoundary';
 import { createLogger } from './src/utils/secureLogger';
+
+/**
+ * Wraps GuideOverlay with crash protection. Must be INSIDE GuideProvider
+ * so it can access the context to permanently disable a crashing guide.
+ *
+ * When the guide crashes:
+ * 1. CardErrorBoundary catches it → renders nothing (guide hidden)
+ * 2. onError calls stopGuide() → clears isPlaying + marks guide as skipped in AsyncStorage
+ * 3. Guide never restarts — not on this session, not on any future app open
+ *
+ * This prevents the infinite crash loop that bricked Boyan's app.
+ */
+const SafeGuideOverlay = () => {
+  const { stopGuide } = useGuideContext();
+  return (
+    <CardErrorBoundary
+      onError={(error) => {
+        console.error('[App] GuideOverlay crashed — permanently disabling guide:', error.message);
+        try { stopGuide(); } catch {} // Belt + suspenders: don't crash in the crash handler
+      }}
+      fallback={() => null}
+    >
+      <GuideOverlay />
+    </CardErrorBoundary>
+  );
+};
 
 // Keep the native splash screen visible until the navigator signals it is ready.
 // Called at module level per Expo docs — must not be inside a component or hook.
@@ -29,9 +55,10 @@ SplashScreen.preventAutoHideAsync();
 // the correct fontFamily mappings applied to Text and TextInput.
 require('./src/utils/setDefaultFonts');
 
-// Configure Google Sign-In before any auth checks
+// Configure Google Sign-In before any auth checks.
+// Wrapped in try-catch: app must load even if Google SDK fails.
 import { configureGoogleSignIn } from './src/services/authService';
-configureGoogleSignIn();
+try { configureGoogleSignIn(); } catch (e) { console.warn('Google Sign-In config failed:', e); }
 
 const logger = createLogger('App');
 
@@ -88,16 +115,7 @@ export default function App() {
           <GuideProvider>
             <View style={{ flex: 1 }}>
               <AppNavigator onReady={() => setAppReady(true)} />
-              <CardErrorBoundary
-                fallback={(error, reset) => {
-                  // Guide crashed — silently hide it instead of crashing the entire app.
-                  // The guide can be retried on next app open.
-                  console.error('[App] GuideOverlay crashed, hiding:', error.message);
-                  return null;
-                }}
-              >
-                <GuideOverlay />
-              </CardErrorBoundary>
+              <SafeGuideOverlay />
             </View>
             <Toast config={toastConfig} />
           </GuideProvider>

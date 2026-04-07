@@ -310,7 +310,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     // Triple guard: synchronous route check + synchronous profile check + async cache check.
     // All three must agree this is NOT a matchmaker before starting the dater tour.
     // Skip guide entirely until profile loads — prevents dater tour flashing for matchmakers on cold start
-    if (profile) {
+    // Only start guide AFTER the voting gate has been completed.
+    // Starting it during the gate overlays a dark screen on top of proposals — unusable.
+    if (profile && hasCompletedVoting) {
       const routeNames: string[] = (navigation as any).getState?.()?.routeNames ?? [];
       const isInMatchmakerTabs = !routeNames.includes('Matches');
       if (!isInMatchmakerTabs && profile.role !== 'matchmaker') {
