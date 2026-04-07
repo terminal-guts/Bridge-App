@@ -3,10 +3,9 @@ import { View, TouchableOpacity, Alert, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { H3, Body, BodySmall, Label, Caption } from '../../components/ui/Typography';
+import { H3, BodySmall, Label, Caption } from '../../components/ui/Typography';
 import { Card, Input } from '../../components/ui';
 import { selectionHaptic, mediumHaptic } from '../../utils/haptics';
-import { FONTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SectionScreenWrapper } from './sections/SectionScreenWrapper';
 import { useEditProfile } from './sections/useEditProfile';
@@ -92,14 +91,6 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
       originalProfileJson={originalProfileJson}
       onGoBack={() => navigation.goBack()}
     >
-      {(!profile.firstName || profile.firstName.trim() === '') && (
-        <Card className="mb-4" style={{ backgroundColor: COLORS.primaryLight }}>
-          <Body style={{ color: COLORS.primary, fontFamily: FONTS.medium }}>
-            Please enter your name below to complete your profile.
-          </Body>
-        </Card>
-      )}
-
       <Card className="mb-6">
         <H3 className="mb-4">Demographics</H3>
 
