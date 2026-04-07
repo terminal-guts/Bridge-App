@@ -268,7 +268,7 @@ export function ProposalReviewView({
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
         <Text style={{ fontSize: 16, color: '#64748B', textAlign: 'center', marginBottom: 16 }}>
-          Could not load proposals. Please switch tabs and come back to retry.
+          Could not load proposals. Please try again in a moment.
         </Text>
       </View>
     );
