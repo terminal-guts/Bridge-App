@@ -37,17 +37,21 @@ DO $$ BEGIN
       bucket_id = 'chat-audio'
       AND (storage.foldername(name))[2] = auth.uid()::text
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN duplicate_object OR insufficient_privilege THEN NULL;
 END $$;
 
 -- ── Read policy ──────────────────────────────────────────────────────────────
 -- Only match participants (folder[1] == matchId) may read audio files.
 -- Drop any older, more permissive read policies first.
-DROP POLICY IF EXISTS "Users can read chat audio"             ON storage.objects;
-DROP POLICY IF EXISTS "Users can read their own chat audio"   ON storage.objects;
-DROP POLICY IF EXISTS "Match participants can read chat audio" ON storage.objects;
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Users can read chat audio"             ON storage.objects;
+  DROP POLICY IF EXISTS "Users can read their own chat audio"   ON storage.objects;
+  DROP POLICY IF EXISTS "Match participants can read chat audio" ON storage.objects;
+EXCEPTION WHEN insufficient_privilege THEN NULL;
+END $$;
 
-CREATE POLICY "Match participants can read chat audio"
+DO $$ BEGIN
+  CREATE POLICY "Match participants can read chat audio"
   ON storage.objects FOR SELECT
   TO authenticated
   USING (
@@ -58,6 +62,8 @@ CREATE POLICY "Match participants can read chat audio"
         AND (matches.user_id_1 = auth.uid() OR matches.user_id_2 = auth.uid())
     )
   );
+EXCEPTION WHEN duplicate_object OR insufficient_privilege THEN NULL;
+END $$;
 
 -- ── Delete policy ────────────────────────────────────────────────────────────
 -- Users may only delete files they uploaded (folder[2] == their userId).
@@ -69,5 +75,5 @@ DO $$ BEGIN
       bucket_id = 'chat-audio'
       AND (storage.foldername(name))[2] = auth.uid()::text
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN duplicate_object OR insufficient_privilege THEN NULL;
 END $$;

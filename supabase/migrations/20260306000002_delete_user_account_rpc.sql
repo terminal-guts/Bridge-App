@@ -8,10 +8,34 @@
 CREATE OR REPLACE FUNCTION delete_user_account(target_user_id UUID)
 RETURNS VOID AS $$
 BEGIN
-  -- Expire pending proposals (not 'cancelled' — that status doesn't exist)
-  UPDATE proposals SET status = 'expired', expired_at = now(), updated_at = now()
-  WHERE (user_a_id = target_user_id OR user_b_id = target_user_id)
-    AND status = 'pending';
+  -- Clean up all pool_vote_assignments for proposals involving this user
+  -- (OTHER voters assigned to this user's proposals — prevents them from
+  -- being served dead proposals in the voting gate)
+  BEGIN
+    DELETE FROM pool_vote_assignments
+    WHERE proposal_id IN (
+      SELECT id FROM proposals WHERE user_a_id = target_user_id OR user_b_id = target_user_id
+    );
+  EXCEPTION WHEN undefined_table THEN NULL;
+  END;
+
+  -- Delete proposals involving this user entirely (not soft-expire).
+  -- Soft-expiring leaves rows with user_a/user_b pointing to a deleted user,
+  -- which crashes profile lookups when other users' screens try to render them.
+  -- Must clear referencing tables first to avoid FK violations.
+  DELETE FROM proposal_votes
+  WHERE proposal_id IN (
+    SELECT id FROM proposals WHERE user_a_id = target_user_id OR user_b_id = target_user_id
+  );
+  -- friend_suggestions.converted_proposal_id has no ON DELETE CASCADE — null it out
+  BEGIN
+    UPDATE friend_suggestions SET converted_proposal_id = NULL
+    WHERE converted_proposal_id IN (
+      SELECT id FROM proposals WHERE user_a_id = target_user_id OR user_b_id = target_user_id
+    );
+  EXCEPTION WHEN undefined_table THEN NULL;
+  END;
+  DELETE FROM proposals WHERE user_a_id = target_user_id OR user_b_id = target_user_id;
 
   -- End active matches
   UPDATE matches SET status = 'ended', updated_at = now()
@@ -75,10 +99,7 @@ BEGIN
   EXCEPTION WHEN undefined_table THEN NULL;
   END;
 
-  BEGIN
-    DELETE FROM pool_vote_assignments WHERE voter_id = target_user_id;
-  EXCEPTION WHEN undefined_table THEN NULL;
-  END;
+  -- pool_vote_assignments already cleaned up above (both as voter and for this user's proposals)
 
   BEGIN
     DELETE FROM user_reports WHERE reporter_id = target_user_id OR reported_user_id = target_user_id;
