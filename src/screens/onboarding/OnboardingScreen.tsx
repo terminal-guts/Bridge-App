@@ -63,24 +63,38 @@ interface StepDefinition {
 const StyledView = styled(View);
 const StyledSafeAreaView = styled(SafeAreaView);
 
+// Auth steps — email signup + OTP verification (skipped when user signs in with Google)
+const AUTH_STEPS: StepDefinition[] = [
+  { component: EmailSignUpStep, title: 'Email', hasTextInput: true },
+  { component: EmailSignUpVerificationStep, title: 'Verify Email', hasTextInput: true },
+];
+
 // Profile steps shared by both signup paths
-// Profile steps — only mandatory fields collected during onboarding.
-// Optional fields (pronouns, height, ethnicity, children, job, religion,
-// politics, lifestyle, preferences, add friends) are available in profile edit.
 const PROFILE_STEPS: StepDefinition[] = [
   { component: NameStep, title: 'Name', hasTextInput: true, mappingKey: 'name' },
   { component: MatchmakingModeStep, title: 'Role', hasTextInput: false, mappingKey: 'role' },
   { component: OnboardingProposalStep, title: 'First Votes', hasTextInput: false },
   { component: AgeStep, title: 'Birthday', hasTextInput: false, mappingKey: 'age' },
   { component: GenderStep, title: 'Gender', hasTextInput: false, mappingKey: 'gender' },
+  { component: PronounsStep, title: 'Pronouns', hasTextInput: false, mappingKey: 'pronouns' },
+  { component: HeightStep, title: 'Height', hasTextInput: false, mappingKey: 'height' },
+  { component: EthnicityStep, title: 'Ethnicity', hasTextInput: false, mappingKey: 'ethnicity' },
+  { component: ChildrenStep, title: 'Children', hasTextInput: false, mappingKey: 'children' },
+  { component: CurrentJobStep, title: 'Occupation', hasTextInput: true, mappingKey: 'current_job' },
+  { component: ReligionStep, title: 'Religion', hasTextInput: false, mappingKey: 'religion' },
+  { component: PoliticalBeliefsStep, title: 'Politics', hasTextInput: false, mappingKey: 'political_beliefs' },
+  { component: LifestyleStep, title: 'Lifestyle', hasTextInput: false, mappingKey: 'lifestyle' },
   { component: ValuesStep, title: 'Values', hasTextInput: false, mappingKey: 'values' },
   { component: InterestsStep, title: 'Interests', hasTextInput: false, mappingKey: 'interests' },
   { component: PhotoUploadStep, title: 'Photos', hasTextInput: false, mappingKey: 'photos' },
+  { component: PreferencesStep, title: 'Commitment Level', hasTextInput: false, mappingKey: 'preferences' },
+  { component: AddFriendsStep, title: 'Add Friends', hasTextInput: false },
   { component: WelcomeToBridgeStep, title: 'Welcome', hasTextInput: false, mappingKey: 'welcome' },
 ];
 
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }) => {
   const isRoleSwitch = route.params?.isRoleSwitch ?? false;
+  const skipAuth = route.params?.skipAuth ?? false;
   const initialData = route.params?.initialData;
   const [currentStep, setCurrentStep] = useState(0);
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
@@ -95,6 +109,14 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   useEffect(() => {
     return () => { isMountedRef.current = false; };
   }, []);
+
+  // Reset to step 0 when navigating back to this screen with different params
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      setCurrentStep(0);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   // Clear the "seen post-proposal prompt" flag so AgeStep's motivational
   // bottom sheet always fires for any fresh onboarding run.
@@ -168,11 +190,13 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
       return PROFILE_STEPS.filter(step => !skipComponents.has(step.component));
     }
 
-    // Google Sign-In handles auth before onboarding — no email steps needed.
+    // Auth steps: included unless user already signed in via Google (skipAuth)
+    const authPrefix = skipAuth ? [] : AUTH_STEPS;
 
     if (onboardingData.role === 'matchmaker') {
-      // Matchmaker path: Name → Role → First Votes → Photo → Add Friends
+      // Matchmaker path: [Email → Verify →] Name → Role → First Votes → Photo → Add Friends
       return [
+        ...authPrefix,
         ...PROFILE_STEPS.filter(step =>
           step.component === NameStep ||
           step.component === MatchmakingModeStep ||
@@ -182,9 +206,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
       ];
     }
 
-    // Dater path: all PROFILE_STEPS (Name, Role, proposals, demographics, etc.)
-    return [...PROFILE_STEPS];
-  }, [onboardingData.role, isRoleSwitch]);
+    // Dater path: [Email → Verify →] all PROFILE_STEPS
+    return [...authPrefix, ...PROFILE_STEPS];
+  }, [onboardingData.role, isRoleSwitch, skipAuth]);
 
   const totalSteps = steps.length;
 
@@ -238,8 +262,6 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
 
     try {
       // Save current step data before advancing (key-based mapping)
-      // Step saves are best-effort insurance — the final createUserProfile()
-      // sends all data from React state, so nothing is lost if a step save fails.
       const stepKey = steps[stepAtCall].mappingKey;
       if (stepKey) {
         const mapping = ONBOARDING_STEP_MAPPING[stepKey];
@@ -247,6 +269,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
           const saveResult = await saveOnboardingStep(mapping.key, onboardingData, authUserId || undefined);
 
           if (!saveResult.ok) {
+            // Intermediate step saves are best-effort — never block the user.
             logger.warn('[OnboardingScreen] Step save failed (non-blocking):', saveResult.error?.message);
           }
         }
@@ -362,11 +385,12 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         };
       }
 
-      // Safety net: never create/update a profile without a name
+      // Fallback: if name is somehow empty, derive from email (never block the user)
       if (!dataForProfile.firstName?.trim()) {
-        setIsCreatingProfile(false);
-        Alert.alert('Missing Name', 'Please go back and enter your name to continue.');
-        return;
+        const email = dataForProfile.email || '';
+        const fallbackName = email.split('@')[0] || 'Bridge User';
+        dataForProfile = { ...dataForProfile, firstName: fallbackName };
+        logger.warn('[OnboardingScreen] Empty name — using email-derived fallback:', fallbackName);
       }
 
       // Role switch: update existing profile instead of creating new one
