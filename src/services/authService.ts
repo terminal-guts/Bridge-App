@@ -6,8 +6,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// TEMPORARILY DISABLED — native module not linked in Expo Go, causes red screen
-// import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { ApiResponse } from '../types';
 import { invalidateProfileCache } from './profileService';
 import { supabase } from '../lib/supabase';
@@ -69,23 +68,79 @@ export const validateReviewerAccess = async (password: string): Promise<{ valid:
   }
 };
 
-// ── Google Sign-In (TEMPORARILY DISABLED — native module not in Expo Go) ──────
-// Uncomment when using a development build with the native module linked.
+// ── Google Sign-In ─────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const configureGoogleSignIn = () => {
-  // GoogleSignin.configure({
-  //   webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-  //   iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-  //   hostedDomain: 'rice.edu',
-  // });
+  GoogleSignin.configure({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    hostedDomain: 'rice.edu',
+  });
 };
 
 export const signInWithGoogle = async (): Promise<ApiResponse<User>> => {
-  return {
-    ok: false,
-    error: { code: 'GOOGLE_DISABLED', message: 'Google Sign-In is temporarily disabled in this build.' },
-  };
+  try {
+    await GoogleSignin.hasPlayServices();
+    const response = await GoogleSignin.signIn();
+
+    const idToken = response.data?.idToken;
+    if (!idToken) {
+      return {
+        ok: false,
+        error: { code: 'NO_TOKEN', message: 'Could not get credentials from Google. Please try again.' },
+      };
+    }
+
+    const { data, error } = await supabase.auth.signInWithIdToken({
+      provider: 'google',
+      token: idToken,
+    });
+
+    if (error) {
+      logger.error('[Auth] Supabase signInWithIdToken error:', error.message);
+      return {
+        ok: false,
+        error: { code: 'AUTH_ERROR', message: error.message },
+      };
+    }
+
+    // Defense in depth: verify the email is @rice.edu
+    const email = data.user?.email;
+    if (email && !isAllowedEmailDomain(email)) {
+      await supabase.auth.signOut();
+      await GoogleSignin.signOut();
+      return {
+        ok: false,
+        error: { code: 'INVALID_DOMAIN', message: 'Only @rice.edu accounts can use Bridge.' },
+      };
+    }
+
+    return {
+      ok: true,
+      data: {
+        id: data.user!.id,
+        email: data.user?.email,
+      },
+    };
+  } catch (err: any) {
+    if (err.code === statusCodes.SIGN_IN_CANCELLED) {
+      return {
+        ok: false,
+        error: { code: 'CANCELLED', message: 'Sign in cancelled.' },
+      };
+    }
+    if (err.code === statusCodes.IN_PROGRESS) {
+      return {
+        ok: false,
+        error: { code: 'IN_PROGRESS', message: 'Sign in already in progress.' },
+      };
+    }
+    logger.error('[Auth] Google Sign-In error:', err);
+    return {
+      ok: false,
+      error: { code: 'GOOGLE_ERROR', message: 'Something went wrong with Google Sign-In. Please try again.' },
+    };
+  }
 };
 
 // Flag set before intentional sign-outs so AppNavigator doesn't show a "Session Expired" toast
@@ -176,7 +231,7 @@ export const signInWithPassword = async (email: string, password: string): Promi
  * @param email - The email to send the OTP to
  * @param skipAccountCheck - When true, skips the ACCOUNT_EXISTS guard (used for resending during login)
  */
-export const sendOtpToEmail = async (email: string, skipAccountCheck = false): Promise<ApiResponse<void>> => {
+export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> => {
   try {
     const normalized = normalizeEmail(email);
     if (!normalized) {
@@ -220,27 +275,8 @@ export const sendOtpToEmail = async (email: string, skipAccountCheck = false): P
         },
       };
     }
-    // Check if this email already has an account — redirect to sign in instead.
-    // Skipped when resending a code during an active login/verification flow.
-    if (!skipAccountCheck) {
-      const { data: existing } = await supabase
-        .from('user_profiles')
-        .select('user_id')
-        .eq('email', normalized)
-        .maybeSingle();
-
-      if (existing) {
-        logger.info('[EMAIL] Account already exists for:', normalized);
-        return {
-          ok: false,
-          error: {
-            code: 'ACCOUNT_EXISTS',
-            message: 'You already have an account! Tap "Sign In" on the welcome screen to log in.',
-          },
-        };
-      }
-    }
-
+    // NOTE: Cannot check user_profiles here — RLS blocks anon reads (auth.role() = 'authenticated').
+    // Existing account detection happens post-OTP in the verification step via fetchAndSetUserProfile.
     logger.info('[EMAIL] Sending OTP via Supabase to:', normalized);
 
     const { error } = await supabase.auth.signInWithOtp({ email: normalized, options: { shouldCreateUser: true } });
@@ -326,9 +362,15 @@ export const sendLoginOtpToEmail = async (email: string): Promise<ApiResponse<vo
 
     if (error) {
       logger.warn('[EMAIL] Login OTP error:', error.message);
+      const isNoAccount = error.message.toLowerCase().includes('signups not allowed');
       return {
         ok: false,
-        error: { code: 'EMAIL_OTP_ERROR', message: error.message },
+        error: {
+          code: isNoAccount ? 'NO_ACCOUNT' : 'EMAIL_OTP_ERROR',
+          message: isNoAccount
+            ? 'No account found for that email. Try "Continue with Rice Google" or tap "Sign Up".'
+            : error.message,
+        },
       };
     }
 

@@ -321,6 +321,7 @@ export type RootStackParamList = {
   };
   Onboarding: {
     isRoleSwitch?: boolean;
+    skipAuth?: boolean;
     initialData?: Partial<OnboardingData>;
   } | undefined;
 

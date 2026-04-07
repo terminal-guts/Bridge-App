@@ -20,10 +20,6 @@ import { RootStackParamList } from '../../types';
 import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
 import { lightHaptic } from '../../utils/haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { signInWithGoogle } from '../../services/authService';
-import { fetchAndSetUserProfile } from '../../services/profileService';
-import { showToast } from '../../utils/toast';
-import { EvaIcon } from '../../components/icons';
 
 interface WelcomeScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Welcome'>;
@@ -156,36 +152,8 @@ const BUTTON_SHADOW = Platform.select({
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const [signingIn, setSigningIn] = React.useState(false);
   const logoTapCount = React.useRef(0);
   const logoTapTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleGoogleSignIn = async () => {
-    if (signingIn) return;
-    lightHaptic();
-    setSigningIn(true);
-
-    const result = await signInWithGoogle();
-
-    if (!result.ok) {
-      setSigningIn(false);
-      if (result.error?.code === 'CANCELLED') return; // User cancelled, no toast
-      showToast.error('Sign In Failed', result.error?.message || 'Please try again.');
-      return;
-    }
-
-    // Check if user has a profile (returning user vs new signup)
-    const profileResult = await fetchAndSetUserProfile(result.data!.id);
-    setSigningIn(false);
-
-    if (profileResult.ok && profileResult.data?.profileCompleted) {
-      // Returning user — go to main app
-      (navigation as any).reset({ index: 0, routes: [{ name: 'MainTabs' }] });
-    } else {
-      // New user or incomplete profile — go to onboarding (skip email steps)
-      navigation.navigate('Onboarding');
-    }
-  };
 
   // Hidden reviewer entry: tap logo 5 times to access OTP login
   const handleLogoTap = () => {
@@ -273,21 +241,21 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
             style={{ paddingBottom: bottomPadding, alignItems: 'center' }}
           >
             <AnimatedPressable
-              onPress={handleGoogleSignIn}
+              onPress={() => {
+                lightHaptic();
+                navigation.navigate('Onboarding', { skipAuth: false });
+              }}
               scale="standard"
-              className="rounded-full items-center flex-row justify-center"
+              className="rounded-full items-center justify-center"
               style={{
                 backgroundColor: COLORS.card,
                 paddingVertical: 16,
                 width: buttonMaxWidth,
                 ...BUTTON_SHADOW,
-                opacity: signingIn ? 0.7 : 1,
               }}
-              disabled={signingIn}
               accessibilityRole="button"
-              accessibilityLabel="Continue with Rice Google"
+              accessibilityLabel="Join the Community"
             >
-              <EvaIcon name="google" variant="outline" size={20} color={COLORS.text.primary} style={{ marginRight: 10 }} />
               <StyledText
                 style={{
                   ...TEXT_STYLES.buttonLg,
@@ -295,32 +263,32 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
                   textAlign: 'center',
                 }}
               >
-                {signingIn ? 'Signing in...' : 'Continue with Rice Google'}
+                Join the Community
               </StyledText>
             </AnimatedPressable>
 
             <AnimatedPressable
-              onPress={() => navigation.navigate('Login')}
+              onPress={() => {
+                lightHaptic();
+                navigation.navigate('Login');
+              }}
               scale="standard"
-              className="rounded-full items-center justify-center"
+              className="items-center justify-center"
               style={{
                 paddingVertical: 14,
-                width: buttonMaxWidth,
-                borderWidth: 1.5,
-                borderColor: 'rgba(255,255,255,0.4)',
                 marginTop: 12,
               }}
               accessibilityRole="button"
-              accessibilityLabel="Sign in with Rice email"
+              accessibilityLabel="Sign In"
             >
               <StyledText
                 style={{
                   ...TEXT_STYLES.buttonLg,
-                  color: COLORS.card,
+                  color: 'rgba(255,255,255,0.8)',
                   textAlign: 'center',
                 }}
               >
-                Sign in with Rice email
+                Sign In
               </StyledText>
             </AnimatedPressable>
           </Animated.View>

@@ -243,8 +243,11 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
 
               <H2 className="text-center mb-2">Verify your email</H2>
 
-              <Body className="text-neutral-600 text-center mb-6 px-6">
+              <Body className="text-neutral-600 text-center mb-2 px-6">
                 Enter the 6-digit code sent to {email}
+              </Body>
+              <Body style={{ color: COLORS.text.tertiary, fontSize: FONT_SIZES.sm, fontFamily: FONTS.regular, textAlign: 'center', marginBottom: 16, paddingHorizontal: 24 }}>
+                Check your inbox and spam folder. Only the most recent code will work.
               </Body>
             </StyledView>
 
