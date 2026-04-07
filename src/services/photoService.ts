@@ -9,6 +9,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '../lib/supabase';
 import { Photo, ApiResponse } from '../types';
+import { moderateImage } from './imageModerationService';
 import { getAuthenticatedUserId, requireAuth } from '../utils/auth';
 import {
   checkRateLimit,
@@ -206,15 +207,30 @@ const uploadPhotoInternal = async (
       return createErrorResponse('UPLOAD_FAILED', uploadError.message);
     }
 
-    // Step 5: Generate blurhash via edge function (non-blocking — if it fails, photo still works)
-    let blurhash: string | undefined;
-    try {
-      blurhash = await generateBlurhash(storagePath);
-      if (blurhash) {
-        logger.info('Blurhash generated for photo:', photoId);
-      }
-    } catch (blurhashError: unknown) {
+    // Step 5 & 6: Moderate image + generate blurhash in parallel
+    // Moderation is blocking (rejected photos are deleted), blurhash is best-effort.
+    const moderationPromise = moderateImage(storagePath, isMain).catch((moderationError: unknown) => {
+      // Fail open — if moderation service is down, allow the photo
+      logger.warn('Image moderation failed (non-blocking):', moderationError instanceof Error ? moderationError.message : String(moderationError));
+      return { approved: true, reasons: [] as string[] };
+    });
+
+    const blurhashPromise = generateBlurhash(storagePath).catch((blurhashError: unknown) => {
       logger.warn('Blurhash generation failed (non-blocking):', blurhashError instanceof Error ? blurhashError.message : String(blurhashError));
+      return undefined;
+    });
+
+    const [moderationResult, blurhash] = await Promise.all([moderationPromise, blurhashPromise]);
+
+    if (!moderationResult.approved) {
+      // Delete the rejected photo from storage
+      await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
+      const reason = moderationResult.reasons[0] || 'This photo does not meet our guidelines.';
+      return createErrorResponse('MODERATION_REJECTED', reason);
+    }
+
+    if (blurhash) {
+      logger.info('Blurhash generated for photo:', photoId);
     }
 
     // Step 6: Create photo metadata with storage path

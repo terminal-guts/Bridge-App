@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { Sentry } from '../lib/sentry';
 import type {
   Proposal,
   ProposalVoteType,
@@ -40,9 +41,33 @@ export async function getProposalsForVoting(_userId: string): Promise<{
   friend_count: number;
 }> {
   // Edge Function extracts user ID from JWT — no need to pass userId
-  const { data, error } = await supabase.functions.invoke('get-proposals-for-voting');
-  if (error) throw new Error(`Fetch proposals failed: ${error.message}`);
-  return data;
+  // Retry once for transient relay/auth failures
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, error, response } = await supabase.functions.invoke('get-proposals-for-voting');
+    if (!error) return data;
+
+    const status = response?.status;
+
+    // 401 = expired JWT — refresh and retry
+    if (status === 401 && attempt === 0) {
+      await supabase.auth.refreshSession();
+      continue;
+    }
+
+    // Undefined status = relay/timeout error — retry once (no delay on gate-critical path)
+    if (status === undefined && attempt === 0) {
+      await new Promise(r => setTimeout(r, 300));
+      continue;
+    }
+
+    // Definitive error — throw immediately
+    Sentry.captureException(new Error(`Fetch proposals failed: ${error.message}`), {
+      extra: { status },
+    });
+    throw new Error(`Fetch proposals failed: ${error.message}`);
+  }
+
+  throw new Error('Fetch proposals failed after retries');
 }
 
 export async function castProposalVote(
@@ -51,18 +76,45 @@ export async function castProposalVote(
   voteType: ProposalVoteType,
 ): Promise<VoteResult> {
   // Edge Function extracts voter ID from JWT — no need to pass voterId
-  const { data, error, response } = await supabase.functions.invoke('process-vote', {
-    body: {
-      proposal_id: proposalId,
-      vote_type: voteType,
-    },
-  });
-  if (error) {
+  // Retry once for transient relay/timeout errors (undefined status = not an HTTP error)
+  let lastError: (Error & { status?: number }) | null = null;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, error, response } = await supabase.functions.invoke('process-vote', {
+      body: {
+        proposal_id: proposalId,
+        vote_type: voteType,
+      },
+    });
+
+    if (!error) return data;
+
     const err: Error & { status?: number } = new Error(`Cast vote failed: ${error.message}`);
     err.status = response?.status;
-    throw err;
+    lastError = err;
+
+    // 401 = expired JWT — refresh session and retry
+    if (err.status === 401 && attempt === 0) {
+      await supabase.auth.refreshSession();
+      continue;
+    }
+
+    // Retry once for transient relay/timeout errors (undefined status = not an HTTP error)
+    if (err.status === undefined && attempt === 0) {
+      await new Promise(r => setTimeout(r, 1000));
+      continue;
+    }
+
+    // All other errors (400, 403, 404, 429, 500) — don't retry
+    break;
   }
-  return data;
+
+  // Capture vote errors in Sentry for visibility
+  Sentry.captureException(lastError, {
+    extra: { proposalId, voteType, status: lastError?.status },
+  });
+
+  throw lastError;
 }
 
 // ============================================================================

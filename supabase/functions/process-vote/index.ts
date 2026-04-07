@@ -267,7 +267,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // 7. Atomic tally update via SQL expressions (eliminates read-modify-write race)
-    const tallyChanged = isNewVote || (existingVote && existingVote.vote_type !== vote_type);
+    const tallyChanged = confirmedNewVote || (existingVote && existingVote.vote_type !== vote_type);
 
     if (tallyChanged) {
       // Build per-column signed deltas so a single UPDATE is atomic.

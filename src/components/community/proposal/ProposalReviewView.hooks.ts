@@ -109,17 +109,21 @@ export function useProposalVoting(
     entranceTranslateX.value = withTiming(0, { duration: 250 });
   }, [currentIndex, reducedMotion]);
 
+  const [fetchFailed, setFetchFailed] = useState(false);
+
   useEffect(() => {
     if (initialProposals) return; // skip fetch if proposals provided externally
     const load = async () => {
       try {
         setLoading(true);
+        setFetchFailed(false);
         const result = await communityService.getProposalsToVote();
         if (isMountedRef.current) {
           setProposals(result);
         }
       } catch (error) {
         logger.error('[ProposalReviewView] Error loading proposals:', error);
+        if (isMountedRef.current) setFetchFailed(true);
       } finally {
         if (isMountedRef.current) {
           setLoading(false);
@@ -199,41 +203,20 @@ export function useProposalVoting(
 
     setVoting(true);
 
-    // Submit vote
-    try {
-      await communityService.submitProposalVote(current.id, vote);
-    } catch (err: any) {
-      logger.error('[ProposalReviewView] Vote submission failed:', err);
-      votingRef.current = false;
-      if (isMountedRef.current) {
-        setVoting(false);
-        if (err?.status === 429) {
-          showToast.info('Daily limit reached', "You've reached your daily vote limit.");
-        } else {
-          showToast.error('Vote failed', 'Check your connection and try again');
-        }
-      }
-      return;
-    }
-
-    if (!isMountedRef.current) return;
-
-    // Button micro-interaction (after confirmed)
+    // Optimistic UI: play animation + haptics immediately (like Tinder/Hinge)
     if (vote === 'yes') animateButtonPress(yesButtonScale, 'yes');
     else animateButtonPress(noButtonScale, 'no');
 
-    // Haptics (after confirmed)
     if (vote === 'yes') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     } else {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     }
 
-    // Vote flash (after confirmed)
     if (vote === 'yes') triggerVoteFlash(COLORS.success);
     else triggerVoteFlash(COLORS.error);
 
-    // Update local vote counts after confirmed
+    // Update local vote counts optimistically
     setProposals(prev => prev.map((p, i) => {
       if (i !== currentIndex) return p;
       return {
@@ -243,6 +226,72 @@ export function useProposalVoting(
         totalVotes: (p.totalVotes ?? 0) + 1,
       };
     }));
+
+    // Submit vote to server
+    try {
+      const tallies = await communityService.submitProposalVote(current.id, vote);
+
+      // Update with real server tallies so the vote bar shows accurate proportions
+      if (tallies && isMountedRef.current) {
+        const serverYes = tallies.poolYes + tallies.friendYes;
+        const serverNo = tallies.poolNo + tallies.friendNo;
+        setProposals(prev => prev.map((p, i) => {
+          if (i !== currentIndex) return p;
+          return {
+            ...p,
+            poolYesVotes: tallies.poolYes,
+            poolNoVotes: tallies.poolNo,
+            friendYesVotes: tallies.friendYes,
+            friendNoVotes: tallies.friendNo,
+            yesVotes: serverYes,
+            noVotes: serverNo,
+            totalVotes: serverYes + serverNo,
+          };
+        }));
+      }
+    } catch (err: any) {
+      logger.error('[ProposalReviewView] Vote submission failed:', err);
+      if (isMountedRef.current) {
+        if (err?.status === 429) {
+          votingRef.current = false;
+          setVoting(false);
+          showToast.info('Daily limit reached', "You've reached your daily vote limit.");
+          return;
+        }
+        if (err?.status === 400 || err?.status === 403 || err?.status === 404) {
+          // Stale proposal, already voted, not assigned, or blocked — silently advance.
+          // The user's intent was to vote and move on; the proposal is already resolved.
+          advanceProposal();
+          // Background refresh so remaining proposals are fresh
+          communityService.getProposalsToVote().then(fresh => {
+            if (!isMountedRef.current || fresh.length === 0) return;
+            setProposals(prev => {
+              const seenIds = new Set(prev.slice(0, currentIndexRef.current + 1).map(p => p.id));
+              const newProposals = fresh.filter(p => !seenIds.has(p.id));
+              if (newProposals.length === 0) return prev;
+              return [...prev.slice(0, currentIndexRef.current + 1), ...newProposals];
+            });
+          }).catch(() => {}); // Best-effort refresh
+          return;
+        }
+        // Genuine network/server failure — roll back optimistic count and show error
+        setProposals(prev => prev.map((p, i) => {
+          if (i !== currentIndex) return p;
+          return {
+            ...p,
+            yesVotes: vote === 'yes' ? Math.max(0, (p.yesVotes ?? 1) - 1) : (p.yesVotes ?? 0),
+            noVotes: vote === 'no' ? Math.max(0, (p.noVotes ?? 1) - 1) : (p.noVotes ?? 0),
+            totalVotes: Math.max(0, (p.totalVotes ?? 1) - 1),
+          };
+        }));
+        votingRef.current = false;
+        setVoting(false);
+        showToast.error('Vote failed', 'Something went wrong. Please try again.');
+      }
+      return;
+    }
+
+    if (!isMountedRef.current) return;
 
     advanceProposal();
   }, [currentIndex, proposals, advanceProposal, triggerVoteFlash, reducedMotion]);
@@ -268,6 +317,8 @@ export function useProposalVoting(
     handleVote,
     advanceProposal,
     animateButtonPress,
+    // Fetch state
+    fetchFailed,
   };
 }
 

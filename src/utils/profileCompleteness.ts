@@ -9,46 +9,18 @@ import { UserProfile } from '../types';
 
 /**
  * Field weights for profile completeness calculation
- * Total = 100 points (only mandatory fields)
+ * Total = 100 points — only 8 MANDATORY fields (12.5 each)
+ * Everything else is optional and available in profile edit.
  */
 const FIELD_WEIGHTS = {
-  // Photos (10 points)
-  photos: 10,     // at least 1 photo required
-
-  // Basic Info (22 points)
-  firstName: 3,
-  lastName: 3,
-  age: 2,
-  height: 2,
-  ethnicity: 3,
-  currentJob: 3,
-  religion: 3,
-
-  // Identity (10 points)
-  pronouns: 5,
-  gender: 5,
-
-  // Lifestyle (15 points)
-  politicalLeaning: 3,
-  hasChildren: 3,
-  familyPlans: 3,
-  drinkingFrequency: 1.5,
-  cannabisFrequency: 1.5,
-  tobaccoFrequency: 1.5,
-  otherDrugsFrequency: 1.5,
-
-  // Personal (13 points)
-  values: 6.5,    // at least 1 required
-  interests: 6.5, // at least 1 required
-
-  // Match Preferences (30 points)
-  ageRange: 4,
-  interestedInGenders: 5,
-  heightPreference: 4,
-  partnerLifestylePreferences: 5,  // all 4 habits
-  preferredEthnicities: 4,
-  preferredReligions: 3,
-  preferredPolitics: 4,
+  name: 12.5,              // firstName + lastName
+  age: 12.5,
+  gender: 12.5,
+  photos: 12.5,            // at least 1 photo
+  interestedInGenders: 12.5,
+  interests: 12.5,         // 3+ required
+  values: 12.5,            // 3+ required
+  ageRange: 12.5,          // age preference
 };
 
 /**
@@ -68,7 +40,8 @@ export interface ProfileCompleteness {
 }
 
 /**
- * Calculate profile completeness percentage (MANDATORY FIELDS ONLY)
+ * Calculate profile completeness percentage (8 MANDATORY FIELDS ONLY)
+ * All other fields are optional and available in profile edit.
  */
 export const calculateProfileCompleteness = (
   profile: UserProfile | null
@@ -86,336 +59,66 @@ export const calculateProfileCompleteness = (
   let score = 0;
   const missingFields: ProfileCompleteness['missingFields'] = [];
 
-  // NOTE: Company, education, school, and hometown are OPTIONAL and NOT scored
-  // Photos are now MANDATORY
+  // 1. Name (12.5 points) — firstName + lastName both required
+  if (profile.firstName?.trim() && profile.lastName?.trim()) {
+    score += FIELD_WEIGHTS.name;
+  } else {
+    missingFields.push({ field: 'name', label: 'Add your name', weight: FIELD_WEIGHTS.name, category: 'essential' });
+  }
 
-  // Photos (10 points) - At least 1 photo required
+  // 2. Age (12.5 points)
+  if (profile.age && profile.age >= 18) {
+    score += FIELD_WEIGHTS.age;
+  } else {
+    missingFields.push({ field: 'age', label: 'Add your age', weight: FIELD_WEIGHTS.age, category: 'essential' });
+  }
+
+  // 3. Gender (12.5 points)
+  if (profile.gender && profile.gender.length > 0) {
+    score += FIELD_WEIGHTS.gender;
+  } else {
+    missingFields.push({ field: 'gender', label: 'Add your gender', weight: FIELD_WEIGHTS.gender, category: 'essential' });
+  }
+
+  // 4. Photos (12.5 points) — at least 1
   const photoCount = profile.photos?.length || 0;
   if (photoCount >= 1) {
     score += FIELD_WEIGHTS.photos;
   } else {
-    missingFields.push({
-      field: 'photos',
-      label: `Add at least 1 photo (${photoCount}/1)`,
-      weight: FIELD_WEIGHTS.photos,
-      category: 'essential',
-    });
+    missingFields.push({ field: 'photos', label: 'Add at least 1 photo', weight: FIELD_WEIGHTS.photos, category: 'essential' });
   }
 
-  // First Name (3 points)
-  if (profile.firstName && profile.firstName.trim()) {
-    score += FIELD_WEIGHTS.firstName;
-  } else {
-    missingFields.push({
-      field: 'firstName',
-      label: 'Add your first name',
-      weight: FIELD_WEIGHTS.firstName,
-      category: 'essential',
-    });
-  }
-
-  // Last Name (3 points)
-  if (profile.lastName && profile.lastName.trim()) {
-    score += FIELD_WEIGHTS.lastName;
-  } else {
-    missingFields.push({
-      field: 'lastName',
-      label: 'Add your last name',
-      weight: FIELD_WEIGHTS.lastName,
-      category: 'essential',
-    });
-  }
-
-  // Age (3 points)
-  if (profile.age && profile.age >= 18) {
-    score += FIELD_WEIGHTS.age;
-  } else {
-    missingFields.push({
-      field: 'age',
-      label: 'Add your age',
-      weight: FIELD_WEIGHTS.age,
-      category: 'essential',
-    });
-  }
-
-  // Height (3 points)
-  if (profile.height && profile.height.trim()) {
-    score += FIELD_WEIGHTS.height;
-  } else {
-    missingFields.push({
-      field: 'height',
-      label: 'Add your height',
-      weight: FIELD_WEIGHTS.height,
-      category: 'essential',
-    });
-  }
-
-  // Ethnicity (3 points)
-  if (profile.ethnicity && profile.ethnicity.trim()) {
-    score += FIELD_WEIGHTS.ethnicity;
-  } else {
-    missingFields.push({
-      field: 'ethnicity',
-      label: 'Add your ethnicity',
-      weight: FIELD_WEIGHTS.ethnicity,
-      category: 'essential',
-    });
-  }
-
-  // Occupation (4 points)
-  if (profile.currentJob && profile.currentJob.trim()) {
-    score += FIELD_WEIGHTS.currentJob;
-  } else {
-    missingFields.push({
-      field: 'currentJob',
-      label: 'Add your occupation',
-      weight: FIELD_WEIGHTS.currentJob,
-      category: 'essential',
-    });
-  }
-
-  // Religion (3 points)
-  if (profile.religion && profile.religion.trim()) {
-    score += FIELD_WEIGHTS.religion;
-  } else {
-    missingFields.push({
-      field: 'religion',
-      label: 'Add your religion',
-      weight: FIELD_WEIGHTS.religion,
-      category: 'essential',
-    });
-  }
-
-  // Pronouns (5 points)
-  if (profile.pronounsList && profile.pronounsList.length > 0) {
-    score += FIELD_WEIGHTS.pronouns;
-  } else if (profile.pronouns && profile.pronouns !== 'prefer_not_to_say') {
-    // Fallback to old field for backwards compatibility
-    score += FIELD_WEIGHTS.pronouns;
-  } else {
-    missingFields.push({
-      field: 'pronounsList',
-      label: 'Add your pronouns',
-      weight: FIELD_WEIGHTS.pronouns,
-      category: 'important',
-    });
-  }
-
-  // Gender (5 points)
-  if (profile.gender && profile.gender.length > 0) {
-    score += FIELD_WEIGHTS.gender;
-  } else {
-    missingFields.push({
-      field: 'gender',
-      label: 'Add your gender',
-      weight: FIELD_WEIGHTS.gender,
-      category: 'important',
-    });
-  }
-
-  // Political Leaning (3 points)
-  if (profile.politicalLeaning && profile.politicalLeaning !== 'prefer_not_to_say') {
-    score += FIELD_WEIGHTS.politicalLeaning;
-  } else {
-    missingFields.push({
-      field: 'politicalLeaning',
-      label: 'Add your political views',
-      weight: FIELD_WEIGHTS.politicalLeaning,
-      category: 'important',
-    });
-  }
-
-  // Has Children (3 points)
-  if (profile.hasChildren !== undefined && profile.hasChildren !== null) {
-    score += FIELD_WEIGHTS.hasChildren;
-  } else {
-    missingFields.push({
-      field: 'hasChildren',
-      label: 'Answer if you have children',
-      weight: FIELD_WEIGHTS.hasChildren,
-      category: 'important',
-    });
-  }
-
-  // Family Plans (3 points)
-  if (profile.familyPlans && profile.familyPlans.trim()) {
-    score += FIELD_WEIGHTS.familyPlans;
-  } else {
-    missingFields.push({
-      field: 'familyPlans',
-      label: 'Add your family plans',
-      weight: FIELD_WEIGHTS.familyPlans,
-      category: 'important',
-    });
-  }
-
-  // Drinking Frequency (1.5 points)
-  if (profile.drinkingFrequency && profile.drinkingFrequency.trim()) {
-    score += FIELD_WEIGHTS.drinkingFrequency;
-  } else {
-    missingFields.push({
-      field: 'drinkingFrequency',
-      label: 'Add your drinking habits',
-      weight: FIELD_WEIGHTS.drinkingFrequency,
-      category: 'important',
-    });
-  }
-
-  // Cannabis Frequency (1.5 points)
-  if (profile.cannabisFrequency && profile.cannabisFrequency.trim()) {
-    score += FIELD_WEIGHTS.cannabisFrequency;
-  } else {
-    missingFields.push({
-      field: 'cannabisFrequency',
-      label: 'Add your cannabis habits',
-      weight: FIELD_WEIGHTS.cannabisFrequency,
-      category: 'important',
-    });
-  }
-
-  // Tobacco Frequency (1.5 points)
-  if (profile.tobaccoFrequency && profile.tobaccoFrequency.trim()) {
-    score += FIELD_WEIGHTS.tobaccoFrequency;
-  } else {
-    missingFields.push({
-      field: 'tobaccoFrequency',
-      label: 'Add your tobacco/vaping habits',
-      weight: FIELD_WEIGHTS.tobaccoFrequency,
-      category: 'important',
-    });
-  }
-
-  // Other Drugs Frequency (1.5 points)
-  if (profile.otherDrugsFrequency && profile.otherDrugsFrequency.trim()) {
-    score += FIELD_WEIGHTS.otherDrugsFrequency;
-  } else {
-    missingFields.push({
-      field: 'otherDrugsFrequency',
-      label: 'Add your other substances habits',
-      weight: FIELD_WEIGHTS.otherDrugsFrequency,
-      category: 'important',
-    });
-  }
-
-  // Values (7 points) - At least 1 required
-  const valueCount = profile.values?.length || 0;
-  if (valueCount >= 1) {
-    score += FIELD_WEIGHTS.values;
-  } else {
-    missingFields.push({
-      field: 'values',
-      label: 'Add at least one value',
-      weight: FIELD_WEIGHTS.values,
-      category: 'important',
-    });
-  }
-
-  // Interests (7 points) - At least 1 required
-  const interestCount = profile.interests?.length || 0;
-  if (interestCount >= 1) {
-    score += FIELD_WEIGHTS.interests;
-  } else {
-    missingFields.push({
-      field: 'interests',
-      label: 'Add at least one interest',
-      weight: FIELD_WEIGHTS.interests,
-      category: 'important',
-    });
-  }
-
-  // Age Range (6 points)
-  if (profile.preferences?.ageMin && profile.preferences?.ageMax) {
-    score += FIELD_WEIGHTS.ageRange;
-  } else {
-    missingFields.push({
-      field: 'ageRange',
-      label: 'Set your age range preference',
-      weight: FIELD_WEIGHTS.ageRange,
-      category: 'important',
-    });
-  }
-
-  // Interested In Genders (6 points)
+  // 5. Interested-in genders (12.5 points)
   if (profile.interestedInGenders && profile.interestedInGenders.length > 0) {
     score += FIELD_WEIGHTS.interestedInGenders;
   } else {
-    missingFields.push({
-      field: 'interestedInGenders',
-      label: 'Select genders you want to match with',
-      weight: FIELD_WEIGHTS.interestedInGenders,
-      category: 'important',
-    });
+    missingFields.push({ field: 'interestedInGenders', label: 'Select who you want to match with', weight: FIELD_WEIGHTS.interestedInGenders, category: 'essential' });
   }
 
-  // Height Preference (6 points)
-  if (profile.preferences?.heightMin && profile.preferences?.heightMax) {
-    score += FIELD_WEIGHTS.heightPreference;
+  // 6. Interests (12.5 points) — 3+ required
+  const interestCount = profile.interests?.length || 0;
+  if (interestCount >= 3) {
+    score += FIELD_WEIGHTS.interests;
   } else {
-    missingFields.push({
-      field: 'heightPreference',
-      label: 'Set your height preference',
-      weight: FIELD_WEIGHTS.heightPreference,
-      category: 'important',
-    });
+    missingFields.push({ field: 'interests', label: `Add interests (${interestCount}/3)`, weight: FIELD_WEIGHTS.interests, category: 'essential' });
   }
 
-  // Partner Lifestyle Preferences (6 points) - All 4 habits required
-  if (
-    profile.partnerLifestylePreferences?.drinking &&
-    profile.partnerLifestylePreferences?.cannabis &&
-    profile.partnerLifestylePreferences?.tobacco &&
-    profile.partnerLifestylePreferences?.otherDrugs
-  ) {
-    score += FIELD_WEIGHTS.partnerLifestylePreferences;
+  // 7. Values (12.5 points) — 3+ required
+  const valueCount = profile.values?.length || 0;
+  if (valueCount >= 3) {
+    score += FIELD_WEIGHTS.values;
   } else {
-    missingFields.push({
-      field: 'partnerLifestylePreferences',
-      label: 'Set partner lifestyle preferences',
-      weight: FIELD_WEIGHTS.partnerLifestylePreferences,
-      category: 'important',
-    });
+    missingFields.push({ field: 'values', label: `Add values (${valueCount}/3)`, weight: FIELD_WEIGHTS.values, category: 'essential' });
   }
 
-  // Preferred Ethnicities (4 points)
-  if (profile.preferredEthnicities && profile.preferredEthnicities.length > 0) {
-    score += FIELD_WEIGHTS.preferredEthnicities;
+  // 8. Age range preference (12.5 points)
+  if (profile.preferences?.ageMin && profile.preferences?.ageMax) {
+    score += FIELD_WEIGHTS.ageRange;
   } else {
-    missingFields.push({
-      field: 'preferredEthnicities',
-      label: 'Select preferred ethnicities',
-      weight: FIELD_WEIGHTS.preferredEthnicities,
-      category: 'important',
-    });
+    missingFields.push({ field: 'ageRange', label: 'Set your age range preference', weight: FIELD_WEIGHTS.ageRange, category: 'essential' });
   }
 
-  // Preferred Religions (3 points)
-  if (profile.preferredReligions && profile.preferredReligions.length > 0) {
-    score += FIELD_WEIGHTS.preferredReligions;
-  } else {
-    missingFields.push({
-      field: 'preferredReligions',
-      label: 'Select preferred religions',
-      weight: FIELD_WEIGHTS.preferredReligions,
-      category: 'important',
-    });
-  }
-
-  // Preferred Politics (4 points)
-  if (profile.preferredPolitics && profile.preferredPolitics.length > 0) {
-    score += FIELD_WEIGHTS.preferredPolitics;
-  } else {
-    missingFields.push({
-      field: 'preferredPolitics',
-      label: 'Select preferred political views',
-      weight: FIELD_WEIGHTS.preferredPolitics,
-      category: 'important',
-    });
-  }
-
-  // Calculate percentage
   const percentage = Math.round(score);
-
-  // Generate suggestions
   const suggestions = generateSuggestions(percentage, missingFields);
 
   return {
@@ -481,70 +184,30 @@ export interface EditProfileCompleteness {
 
 /**
  * Calculate Edit Profile completion percentage
- * Matches the "About Me" calculation from Profile Strength Dashboard
- * All fields equally weighted (1 point each)
- * Excludes: Photos, Match Preferences, Deep Questions
+ * Only counts the 8 mandatory fields — everything else is optional.
  */
 export const calculateEditProfileCompleteness = (
   profile: UserProfile | null
 ): EditProfileCompleteness => {
   if (!profile) {
-    return {
-      percentage: 0,
-      completedCount: 0,
-      totalCount: 18,
-      missingFields: [],
-    };
+    return { percentage: 0, completedCount: 0, totalCount: 8, missingFields: [] };
   }
 
   let completedCount = 0;
-  const totalCount = 18; // Total mandatory fields in "About Me" section (location removed)
+  const totalCount = 8;
   const missingFields: string[] = [];
 
-  // Basic Demographics (6 fields — location removed)
-  if (profile.firstName?.trim()) completedCount++; else missingFields.push('First Name');
-  if (profile.lastName?.trim()) completedCount++; else missingFields.push('Last Name');
+  if (profile.firstName?.trim() && profile.lastName?.trim()) completedCount++; else missingFields.push('Name');
   if (profile.age && profile.age >= 18) completedCount++; else missingFields.push('Age');
-  if (profile.height?.trim()) completedCount++; else missingFields.push('Height');
-  if (profile.ethnicity?.trim()) completedCount++; else missingFields.push('Ethnicity');
-  if (profile.currentJob?.trim()) completedCount++; else missingFields.push('Occupation');
-
-  // Identity (3 fields)
-  if ((profile.pronounsList && profile.pronounsList.length > 0) ||
-      (profile.pronouns && profile.pronouns !== 'prefer_not_to_say')) {
-    completedCount++;
-  } else {
-    missingFields.push('Pronouns');
-  }
   if (profile.gender && profile.gender.length > 0) completedCount++; else missingFields.push('Gender');
-  if (profile.religion?.trim()) completedCount++; else missingFields.push('Religion');
-  if (profile.politicalLeaning && profile.politicalLeaning !== 'prefer_not_to_say') {
-    completedCount++;
-  } else {
-    missingFields.push('Political Leaning');
-  }
-
-  // Family (2 fields)
-  if (profile.hasChildren !== undefined && profile.hasChildren !== null) completedCount++; else missingFields.push('Children Status');
-  if (profile.familyPlans?.trim()) completedCount++; else missingFields.push('Family Plans');
-
-  // Lifestyle/Substances (4 fields - each counts separately)
-  if (profile.drinkingFrequency?.trim()) completedCount++; else missingFields.push('Drinking');
-  if (profile.cannabisFrequency?.trim()) completedCount++; else missingFields.push('Cannabis');
-  if (profile.tobaccoFrequency?.trim()) completedCount++; else missingFields.push('Tobacco/Vaping');
-  if (profile.otherDrugsFrequency?.trim()) completedCount++; else missingFields.push('Other Drugs');
-
-  // Personal (2 fields - require 3+ each)
-  const interestCount = profile.interests?.length || 0;
-  const valueCount = profile.values?.length || 0;
-
-  if (interestCount >= 3) completedCount++; else missingFields.push(`Interests (${interestCount}/3)`);
-  if (valueCount >= 3) completedCount++; else missingFields.push(`Values (${valueCount}/3)`);
-
-  const percentage = Math.round((completedCount / totalCount) * 100);
+  if ((profile.photos?.length || 0) >= 1) completedCount++; else missingFields.push('Photo');
+  if (profile.interestedInGenders && profile.interestedInGenders.length > 0) completedCount++; else missingFields.push('Interested In');
+  if ((profile.interests?.length || 0) >= 3) completedCount++; else missingFields.push(`Interests (${profile.interests?.length || 0}/3)`);
+  if ((profile.values?.length || 0) >= 3) completedCount++; else missingFields.push(`Values (${profile.values?.length || 0}/3)`);
+  if (profile.preferences?.ageMin && profile.preferences?.ageMax) completedCount++; else missingFields.push('Age Range Preference');
 
   return {
-    percentage,
+    percentage: Math.round((completedCount / totalCount) * 100),
     completedCount,
     totalCount,
     missingFields,
@@ -553,104 +216,35 @@ export const calculateEditProfileCompleteness = (
 
 /**
  * Calculate Match Preferences completion percentage
- * Only considers the 7 mandatory match preference fields
+ * Only 2 mandatory preference fields: interestedInGenders + ageRange
+ * Everything else (height, ethnicity, religion, politics, lifestyle prefs) is optional.
  */
 export const calculateMatchPreferencesCompleteness = (
   profile: UserProfile | null
 ): MatchPreferencesCompleteness => {
   if (!profile) {
-    return {
-      percentage: 0,
-      completedCount: 0,
-      totalCount: 7,
-      missingFields: [
-        'Gender',
-        'Age Range',
-        'Height',
-        'Ethnicity',
-        'Religion',
-        'Politics',
-        'Lifestyle',
-      ],
-    };
+    return { percentage: 0, completedCount: 0, totalCount: 2, missingFields: ['Gender', 'Age Range'] };
   }
 
   let completedCount = 0;
   const missingFields: string[] = [];
 
-  // 1. Gender (interestedInGenders)
   if (profile.interestedInGenders && profile.interestedInGenders.length > 0) {
     completedCount++;
   } else {
     missingFields.push('Gender');
   }
 
-  // 2. Age Range
   if (profile.preferences?.ageMin && profile.preferences?.ageMax) {
     completedCount++;
   } else {
     missingFields.push('Age Range');
   }
 
-  // 3. Height Preference
-  if (profile.preferences?.heightMin && profile.preferences?.heightMax) {
-    completedCount++;
-  } else {
-    missingFields.push('Height');
-  }
-
-  // 4. Preferred Ethnicities
-  if (profile.preferredEthnicities && profile.preferredEthnicities.length > 0) {
-    completedCount++;
-  } else {
-    missingFields.push('Ethnicity');
-  }
-
-  // 5. Preferred Religions
-  if (profile.preferredReligions && profile.preferredReligions.length > 0) {
-    completedCount++;
-  } else {
-    missingFields.push('Religion');
-  }
-
-  // 6. Preferred Politics
-  if (profile.preferredPolitics && profile.preferredPolitics.length > 0) {
-    completedCount++;
-  } else {
-    missingFields.push('Politics');
-  }
-
-  // 7. Partner Lifestyle Preferences (all 4 required - arrays must have at least one selection each)
-  const drinkingValid = Array.isArray(profile.partnerLifestylePreferences?.drinking)
-    ? profile.partnerLifestylePreferences.drinking.length > 0
-    : (profile.partnerLifestylePreferences?.drinking && profile.partnerLifestylePreferences.drinking.trim() !== '');
-
-  const cannabisValid = Array.isArray(profile.partnerLifestylePreferences?.cannabis)
-    ? profile.partnerLifestylePreferences.cannabis.length > 0
-    : (profile.partnerLifestylePreferences?.cannabis && profile.partnerLifestylePreferences.cannabis.trim() !== '');
-
-  const tobaccoValid = Array.isArray(profile.partnerLifestylePreferences?.tobacco)
-    ? profile.partnerLifestylePreferences.tobacco.length > 0
-    : (profile.partnerLifestylePreferences?.tobacco && profile.partnerLifestylePreferences.tobacco.trim() !== '');
-
-  const otherDrugsValid = Array.isArray(profile.partnerLifestylePreferences?.otherDrugs)
-    ? profile.partnerLifestylePreferences.otherDrugs.length > 0
-    : (profile.partnerLifestylePreferences?.otherDrugs && profile.partnerLifestylePreferences.otherDrugs.trim() !== '');
-
-  const hasAllLifestylePrefs = drinkingValid && cannabisValid && tobaccoValid && otherDrugsValid;
-
-  if (hasAllLifestylePrefs) {
-    completedCount++;
-  } else {
-    missingFields.push('Lifestyle');
-  }
-
-  const percentage = Math.round((completedCount / 7) * 100);
-
   return {
-    percentage,
+    percentage: Math.round((completedCount / 2) * 100),
     completedCount,
-    totalCount: 7,
+    totalCount: 2,
     missingFields,
   };
 };
@@ -697,6 +291,9 @@ export interface ProfileStrengthBreakdown {
  * Calculate comprehensive profile strength breakdown
  * This is the SINGLE SOURCE OF TRUTH for all profile strength calculations
  * Used by: ProfileStrengthDashboard, ProfileCompletionBanner, all screens
+ *
+ * Only 8 mandatory fields — each worth 12.5 points.
+ * Sections are kept for UI compatibility but simplified.
  */
 export const calculateProfileStrengthBreakdown = (
   profile: UserProfile | null
@@ -705,124 +302,61 @@ export const calculateProfileStrengthBreakdown = (
     return {
       overall: 0,
       sections: {
-        aboutMe: { score: 0, maxScore: 60, percentage: 0 },
-        matchPreferences: { score: 0, maxScore: 25, percentage: 0, completedCount: 0, totalCount: 7 },
-        photos: { score: 0, maxScore: 5, percentage: 0, count: 0 },
-        deepQuestions: { score: 0, maxScore: 10, percentage: 0, displayedCount: 0, answeredCount: 0 },
+        aboutMe: { score: 0, maxScore: 50, percentage: 0 },
+        matchPreferences: { score: 0, maxScore: 25, percentage: 0, completedCount: 0, totalCount: 2 },
+        photos: { score: 0, maxScore: 12, percentage: 0, count: 0 },
+        deepQuestions: { score: 0, maxScore: 13, percentage: 0, displayedCount: 0, answeredCount: 0 },
       },
       totalScore: 0,
       maxTotalScore: 100,
     };
   }
 
-  // 1. ABOUT ME SECTION (max 18 points) - All fields equally weighted (location removed)
-  let aboutScore = 0;
+  // ── About Me section: name, age, gender, interests, values (5 of 8 fields) ──
+  let aboutCount = 0;
+  const aboutTotal = 5;
+  if (profile.firstName?.trim() && profile.lastName?.trim()) aboutCount++;
+  if (profile.age && profile.age >= 18) aboutCount++;
+  if (profile.gender && profile.gender.length > 0) aboutCount++;
+  if ((profile.interests?.length || 0) >= 3) aboutCount++;
+  if ((profile.values?.length || 0) >= 3) aboutCount++;
+  const aboutMePercentage = Math.round((aboutCount / aboutTotal) * 100);
+  const aboutMePoints = Math.round((aboutCount / aboutTotal) * 50);
 
-  // Basic Demographics (6 fields)
-  if (profile.firstName?.trim()) aboutScore += 1;
-  if (profile.lastName?.trim()) aboutScore += 1;
-  if (profile.age) aboutScore += 1;
-  if (profile.height) aboutScore += 1;
-  if (profile.ethnicity) aboutScore += 1;
-  if (profile.currentJob) aboutScore += 1;
+  // ── Match Preferences section: interestedInGenders, ageRange (2 of 8 fields) ──
+  let prefsCount = 0;
+  const prefsTotal = 2;
+  if (profile.interestedInGenders && profile.interestedInGenders.length > 0) prefsCount++;
+  if (profile.preferences?.ageMin && profile.preferences?.ageMax) prefsCount++;
+  const prefsPercentage = Math.round((prefsCount / prefsTotal) * 100);
+  const prefsPoints = Math.round((prefsCount / prefsTotal) * 25);
 
-  // Identity (4 fields)
-  if ((profile.pronounsList && profile.pronounsList.length > 0) ||
-      (profile.pronouns && profile.pronouns !== 'prefer_not_to_say')) {
-    aboutScore += 1;
-  }
-  if (profile.gender && profile.gender.length > 0) aboutScore += 1;
-  if (profile.religion) aboutScore += 1;
-  if (profile.politicalLeaning && profile.politicalLeaning !== 'prefer_not_to_say') {
-    aboutScore += 1;
-  }
-
-  // Family (2 fields)
-  if (profile.hasChildren !== undefined && profile.hasChildren !== null) aboutScore += 1;
-  if (profile.familyPlans) aboutScore += 1;
-
-  // Lifestyle (4 fields)
-  if (profile.drinkingFrequency) aboutScore += 1;
-  if (profile.cannabisFrequency) aboutScore += 1;
-  if (profile.tobaccoFrequency) aboutScore += 1;
-  if (profile.otherDrugsFrequency) aboutScore += 1;
-
-  // Personal (2 fields - require 3+ each)
-  const interestCount = profile.interests?.length || 0;
-  const valueCount = profile.values?.length || 0;
-  if (interestCount >= 3) aboutScore += 1;
-  if (valueCount >= 3) aboutScore += 1;
-
-  const aboutMePercentage = Math.round((aboutScore / 18) * 100);
-
-  // 2. MATCH PREFERENCES SECTION (max 25 points)
-  const matchPrefsCompletion = calculateMatchPreferencesCompleteness(profile);
-  const preferencesScore = Math.round((matchPrefsCompletion.percentage / 100) * 25);
-
-  // 3. PHOTOS SECTION (max 25 points) - 1 photo = 100%
+  // ── Photos section: 1+ photo (1 of 8 fields) ──
   const photoCount = profile.photos?.length || 0;
-  const photosScore = photoCount >= 1 ? 25 : 0;
+  const photosPoints = photoCount >= 1 ? 12 : 0;
   const photosPercentage = photoCount >= 1 ? 100 : 0;
 
-  // 4. DEEP QUESTIONS SECTION (max 25 points) - 3 displayed questions = 100%
+  // ── Deep Questions: optional (not required for 100%) ──
   const displayedCount = profile.displayedQuestions?.length || 0;
   const answeredCount = profile.deepQuestions?.length || 0;
-  let questionsScore = 0;
-  if (displayedCount >= 3) {
-    questionsScore = 25;
-  } else if (displayedCount > 0) {
-    questionsScore = Math.round((displayedCount / 3) * 25);
-  } else if (answeredCount > 0) {
-    // Small credit for answering without displaying
-    questionsScore = Math.min(Math.round((answeredCount / 3) * 10), 10);
-  }
+  const questionsPoints = displayedCount >= 3 ? 13 : Math.round((displayedCount / 3) * 13);
   const questionsPercentage = displayedCount >= 3 ? 100 : Math.round((displayedCount / 3) * 100);
 
-  // TOTAL CALCULATION
-  // About Me: 60 pts (18 fields equally weighted)
-  const aboutMePoints = Math.round((aboutScore / 18) * 60);
-  // Match Preferences: 25 pts (7 fields equally weighted)
-  const preferencesPoints = Math.round((matchPrefsCompletion.percentage / 100) * 25);
-  // Photos: 5 pts (1 photo = full 5)
-  const photosPoints = photoCount >= 1 ? 5 : 0;
-  // Deep Questions: 10 pts (3 displayed = full 10, linear partial credit)
-  const questionsPoints = displayedCount >= 3 ? 10 : Math.round((displayedCount / 3) * 10);
-
-  const totalScore = aboutMePoints + preferencesPoints + photosPoints + questionsPoints;
-  const maxTotal = 100; // 60 + 25 + 5 + 10
-  const finalPercentage = Math.round((totalScore / maxTotal) * 100);
+  // ── Total: 8 fields = 100 points ──
+  // aboutMe (5 fields × 12.5 = 62.5, mapped to 50pts) + prefs (2 × 12.5 = 25pts) + photo (12.5pts mapped to 12pts) + questions (bonus)
+  // Simplified: use the 8-field calculateProfileCompleteness for the real gate number
+  const completion = calculateProfileCompleteness(profile);
 
   return {
-    overall: finalPercentage,
+    overall: completion.percentage,
     sections: {
-      aboutMe: {
-        score: aboutMePoints,
-        maxScore: 50,
-        percentage: aboutMePercentage,
-      },
-      matchPreferences: {
-        score: preferencesPoints,
-        maxScore: 30,
-        percentage: matchPrefsCompletion.percentage,
-        completedCount: matchPrefsCompletion.completedCount,
-        totalCount: matchPrefsCompletion.totalCount,
-      },
-      photos: {
-        score: photosPoints,
-        maxScore: 10,
-        percentage: Math.min(photosPercentage, 100),
-        count: photoCount,
-      },
-      deepQuestions: {
-        score: questionsPoints,
-        maxScore: 10,
-        percentage: questionsPercentage,
-        displayedCount,
-        answeredCount,
-      },
+      aboutMe: { score: aboutMePoints, maxScore: 50, percentage: aboutMePercentage },
+      matchPreferences: { score: prefsPoints, maxScore: 25, percentage: prefsPercentage, completedCount: prefsCount, totalCount: prefsTotal },
+      photos: { score: photosPoints, maxScore: 12, percentage: photosPercentage, count: photoCount },
+      deepQuestions: { score: questionsPoints, maxScore: 13, percentage: questionsPercentage, displayedCount, answeredCount },
     },
-    totalScore,
-    maxTotalScore: maxTotal,
+    totalScore: completion.score,
+    maxTotalScore: 100,
   };
 };
 

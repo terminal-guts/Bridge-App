@@ -178,8 +178,10 @@ const CustomTabBar = ({ state, navigation, icons: iconsProp, targetIds: targetId
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { activeGuide, currentStep, nextStep } = useGuideContext();
-  // Content height (above home indicator) scales with device
-  const contentHeight = Math.round(screenHeight * 0.057);
+  // Content height (above home indicator) scales with device.
+  // Floor at 49pt — Apple's standard UITabBar height and minimum for reliable touch targets.
+  // Only affects small devices (iPhone SE: 38pt → 49pt). Larger phones unchanged.
+  const contentHeight = Math.max(Math.round(screenHeight * 0.057), 49);
   // Icon size and vertical offset are both proportional to content height
   const iconSize = Math.round(contentHeight * 0.65);
   const iconPaddingTop = Math.round(contentHeight * 0.25);

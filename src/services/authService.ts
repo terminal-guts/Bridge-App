@@ -6,6 +6,8 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+// TEMPORARILY DISABLED — native module not linked in Expo Go, causes red screen
+// import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { ApiResponse } from '../types';
 import { invalidateProfileCache } from './profileService';
 import { supabase } from '../lib/supabase';
@@ -65,6 +67,25 @@ export const validateReviewerAccess = async (password: string): Promise<{ valid:
   } catch {
     return { valid: false };
   }
+};
+
+// ── Google Sign-In (TEMPORARILY DISABLED — native module not in Expo Go) ──────
+// Uncomment when using a development build with the native module linked.
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const configureGoogleSignIn = () => {
+  // GoogleSignin.configure({
+  //   webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  //   iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+  //   hostedDomain: 'rice.edu',
+  // });
+};
+
+export const signInWithGoogle = async (): Promise<ApiResponse<User>> => {
+  return {
+    ok: false,
+    error: { code: 'GOOGLE_DISABLED', message: 'Google Sign-In is temporarily disabled in this build.' },
+  };
 };
 
 // Flag set before intentional sign-outs so AppNavigator doesn't show a "Session Expired" toast

@@ -69,7 +69,7 @@ function getStreakTier(days: number) {
 }
 
 export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onViewProfile, onChat, rank, onRankPress, statusLine, showVoteRing, hasUnread, onBadgePress, onCrushPress, onStreakMilestone, previousStreakDays, onKarmaPress }) => {
-    const name = item.friend.firstName || 'User';
+    const name = item.friend.firstName || '';
     const rawImageUrl = item.friend.photos?.[0]?.url || undefined;
     const photoBlurhash = item.friend.photos?.[0]?.blurhash || undefined;
     const imageUrl = useMemo(() => getOptimizedImageUrl(rawImageUrl, AVATAR_SIZE), [rawImageUrl]);

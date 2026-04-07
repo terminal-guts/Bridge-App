@@ -20,6 +20,10 @@ import { RootStackParamList } from '../../types';
 import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
 import { lightHaptic } from '../../utils/haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { signInWithGoogle } from '../../services/authService';
+import { fetchAndSetUserProfile } from '../../services/profileService';
+import { showToast } from '../../utils/toast';
+import { EvaIcon } from '../../components/icons';
 
 interface WelcomeScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Welcome'>;
@@ -152,10 +156,46 @@ const BUTTON_SHADOW = Platform.select({
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const [signingIn, setSigningIn] = React.useState(false);
+  const logoTapCount = React.useRef(0);
+  const logoTapTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleGetStarted = () => {
+  const handleGoogleSignIn = async () => {
+    if (signingIn) return;
     lightHaptic();
-    navigation.navigate('Onboarding');
+    setSigningIn(true);
+
+    const result = await signInWithGoogle();
+
+    if (!result.ok) {
+      setSigningIn(false);
+      if (result.error?.code === 'CANCELLED') return; // User cancelled, no toast
+      showToast.error('Sign In Failed', result.error?.message || 'Please try again.');
+      return;
+    }
+
+    // Check if user has a profile (returning user vs new signup)
+    const profileResult = await fetchAndSetUserProfile(result.data!.id);
+    setSigningIn(false);
+
+    if (profileResult.ok && profileResult.data?.profileCompleted) {
+      // Returning user — go to main app
+      (navigation as any).reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+    } else {
+      // New user or incomplete profile — go to onboarding (skip email steps)
+      navigation.navigate('Onboarding');
+    }
+  };
+
+  // Hidden reviewer entry: tap logo 5 times to access OTP login
+  const handleLogoTap = () => {
+    logoTapCount.current += 1;
+    if (logoTapTimer.current) clearTimeout(logoTapTimer.current);
+    logoTapTimer.current = setTimeout(() => { logoTapCount.current = 0; }, 3000);
+    if (logoTapCount.current >= 5) {
+      logoTapCount.current = 0;
+      navigation.navigate('Login');
+    }
   };
 
   // Bottom padding: respects home indicator on notched phones, 16pt floor on SE
@@ -195,20 +235,26 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
         <StyledView className="flex-1 px-6 justify-between">
           {/* Logo + tagline group — pushed slightly below center for visual weight */}
           <StyledView style={{ flex: 1, justifyContent: 'center', paddingTop: screenHeight * 0.06 }}>
-            {/* Logo — proportional to screen width */}
-            <Animated.Image
-              entering={FadeInUp.duration(600).delay(100)}
-              source={require('../../../assets/BridgeAppLogo.png')}
-              style={{
-                width: logoWidth,
-                height: logoHeight,
-                tintColor: COLORS.card,
-                marginBottom: 22,
-              }}
-              resizeMode="contain"
+            {/* Logo — proportional to screen width. 5x tap = reviewer login */}
+            <AnimatedPressable
+              onPress={handleLogoTap}
+              scale="subtle"
+              style={{ alignSelf: 'flex-start' }}
               accessibilityLabel="Bridge logo"
-              accessibilityRole="image"
-            />
+            >
+              <Animated.Image
+                entering={FadeInUp.duration(600).delay(100)}
+                source={require('../../../assets/BridgeAppLogo.png')}
+                style={{
+                  width: logoWidth,
+                  height: logoHeight,
+                  tintColor: COLORS.card,
+                  marginBottom: 22,
+                }}
+                resizeMode="contain"
+                accessibilityRole="image"
+              />
+            </AnimatedPressable>
             <Animated.View entering={FadeInUp.duration(500).delay(500)}>
               <StyledText
                 style={{
@@ -227,19 +273,21 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
             style={{ paddingBottom: bottomPadding, alignItems: 'center' }}
           >
             <AnimatedPressable
-              onPress={handleGetStarted}
+              onPress={handleGoogleSignIn}
               scale="standard"
-              className="rounded-full items-center"
+              className="rounded-full items-center flex-row justify-center"
               style={{
                 backgroundColor: COLORS.card,
                 paddingVertical: 16,
                 width: buttonMaxWidth,
-                marginBottom: 16,
                 ...BUTTON_SHADOW,
+                opacity: signingIn ? 0.7 : 1,
               }}
+              disabled={signingIn}
               accessibilityRole="button"
-              accessibilityLabel="Join the Community"
+              accessibilityLabel="Continue with Rice Google"
             >
+              <EvaIcon name="google" variant="outline" size={20} color={COLORS.text.primary} style={{ marginRight: 10 }} />
               <StyledText
                 style={{
                   ...TEXT_STYLES.buttonLg,
@@ -247,29 +295,32 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
                   textAlign: 'center',
                 }}
               >
-                Join the Community
+                {signingIn ? 'Signing in...' : 'Continue with Rice Google'}
               </StyledText>
             </AnimatedPressable>
 
             <AnimatedPressable
-              onPress={() => {
-                lightHaptic();
-                navigation.navigate('Login');
+              onPress={() => navigation.navigate('Login')}
+              scale="standard"
+              className="rounded-full items-center justify-center"
+              style={{
+                paddingVertical: 14,
+                width: buttonMaxWidth,
+                borderWidth: 1.5,
+                borderColor: 'rgba(255,255,255,0.4)',
+                marginTop: 12,
               }}
-              scale="pronounced"
-              className="items-center"
-              style={{ paddingVertical: 12, width: buttonMaxWidth }}
               accessibilityRole="button"
-              accessibilityLabel="Sign In"
+              accessibilityLabel="Sign in with Rice email"
             >
               <StyledText
                 style={{
-                  ...TEXT_STYLES.labelLg,
-                  color: 'rgba(255,255,255,0.9)',
+                  ...TEXT_STYLES.buttonLg,
+                  color: COLORS.card,
                   textAlign: 'center',
                 }}
               >
-                Sign In
+                Sign in with Rice email
               </StyledText>
             </AnimatedPressable>
           </Animated.View>

@@ -16,7 +16,7 @@ import Toast from 'react-native-toast-message';
 import { toastConfig } from './src/components/ui/ToastConfig';
 import { GuideProvider } from './src/contexts/GuideContext';
 import { GuideOverlay } from './src/components/guides/GuideOverlay';
-import { ErrorBoundary } from './src/components/ui/ErrorBoundary';
+import { ErrorBoundary, CardErrorBoundary } from './src/components/ui/ErrorBoundary';
 import { createLogger } from './src/utils/secureLogger';
 
 // Keep the native splash screen visible until the navigator signals it is ready.
@@ -28,6 +28,10 @@ SplashScreen.preventAutoHideAsync();
 // patch here (not in useEffect) ensures the very first React render already has
 // the correct fontFamily mappings applied to Text and TextInput.
 require('./src/utils/setDefaultFonts');
+
+// Configure Google Sign-In before any auth checks
+import { configureGoogleSignIn } from './src/services/authService';
+configureGoogleSignIn();
 
 const logger = createLogger('App');
 
@@ -84,7 +88,16 @@ export default function App() {
           <GuideProvider>
             <View style={{ flex: 1 }}>
               <AppNavigator onReady={() => setAppReady(true)} />
-              <GuideOverlay />
+              <CardErrorBoundary
+                fallback={(error, reset) => {
+                  // Guide crashed — silently hide it instead of crashing the entire app.
+                  // The guide can be retried on next app open.
+                  console.error('[App] GuideOverlay crashed, hiding:', error.message);
+                  return null;
+                }}
+              >
+                <GuideOverlay />
+              </CardErrorBoundary>
             </View>
             <Toast config={toastConfig} />
           </GuideProvider>
