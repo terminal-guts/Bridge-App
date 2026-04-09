@@ -4,14 +4,10 @@ import { styled } from 'nativewind';
 import { H1, Body, Input } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
-import { isAllowedEmailDomain, sendOtpToEmail, signInWithGoogle } from '../../../services/authService';
-import { fetchAndSetUserProfile } from '../../../services/profileService';
+import { isAllowedEmailDomain, sendOtpToEmail } from '../../../services/authService';
 import { createLogger } from '../../../utils/secureLogger';
 import { COLORS } from '../../../theme/colors';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../../constants/typography';
-import { EvaIcon } from '../../../components/icons';
-import { showToast } from '../../../utils/toast';
-import { lightHaptic } from '../../../utils/haptics';
 import { useNavigation } from '@react-navigation/native';
 
 const logger = createLogger('EmailSignUpStep');
@@ -39,35 +35,13 @@ export const EmailSignUpStep: React.FC<EmailSignUpStepProps> = ({
   const [email, setEmail] = useState(data.email || '');
   const [error, setError] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [signingInGoogle, setSigningInGoogle] = useState(false);
-
-  const handleGoogleSignIn = async () => {
-    if (signingInGoogle) return;
-    lightHaptic();
-    setSigningInGoogle(true);
-
-    const result = await signInWithGoogle();
-
-    if (!result.ok) {
-      setSigningInGoogle(false);
-      if (result.error?.code === 'CANCELLED') return;
-      showToast.error('Sign In Failed', result.error?.message || 'Please try again.');
-      return;
-    }
-
-    const profileResult = await fetchAndSetUserProfile(result.data!.id);
-    setSigningInGoogle(false);
-
-    if (profileResult.ok && profileResult.data?.profileCompleted) {
-      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
-    } else {
-      // Already authenticated — skip to NameStep (skip remaining auth steps)
-      // Navigate fresh to Onboarding with skipAuth so email steps are removed
-      navigation.reset({ index: 0, routes: [{ name: 'Onboarding', params: { skipAuth: true } }] });
-    }
-  };
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const validateAndContinue = async () => {
+    if (!agreedToTerms) {
+      setError('Please agree to the Terms of Service to continue');
+      return;
+    }
     const trimmed = email.trim().toLowerCase();
 
     if (!trimmed) {
@@ -142,57 +116,48 @@ export const EmailSignUpStep: React.FC<EmailSignUpStepProps> = ({
         </Body>
       </StyledView>
 
-      {/* Divider */}
-      <StyledView
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          marginTop: 24,
-          marginBottom: 16,
-        }}
-      >
-        <StyledView style={{ flex: 1, height: 1, backgroundColor: COLORS.border }} />
-        <StyledText
-          style={{
-            fontFamily: FONTS.regular,
-            fontSize: FONT_SIZES.sm,
-            color: COLORS.text.tertiary,
-            marginHorizontal: 12,
-          }}
-        >
-          or
-        </StyledText>
-        <StyledView style={{ flex: 1, height: 1, backgroundColor: COLORS.border }} />
-      </StyledView>
-
-      {/* Google Sign In */}
+      {/* Terms of Service checkbox */}
       <StyledTouchableOpacity
-        onPress={handleGoogleSignIn}
-        disabled={signingInGoogle}
+        onPress={() => {
+          setAgreedToTerms(!agreedToTerms);
+          if (error) setError('');
+        }}
         style={{
           flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingVertical: 14,
-          borderRadius: 12,
-          borderWidth: 1.5,
-          borderColor: COLORS.border,
-          backgroundColor: COLORS.card,
-          opacity: signingInGoogle ? 0.7 : 1,
+          alignItems: 'flex-start',
+          marginTop: 20,
+          minHeight: 44,
         }}
-        accessibilityRole="button"
-        accessibilityLabel="Continue with Rice Google"
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: agreedToTerms }}
+        accessibilityLabel="Agree to Terms of Service"
       >
-        <EvaIcon name="google" variant="outline" size={20} color={COLORS.text.primary} style={{ marginRight: 10 }} />
-        <StyledText
+        <StyledView
           style={{
-            fontFamily: FONTS.semiBold,
-            fontSize: FONT_SIZES.base,
-            lineHeight: LINE_HEIGHTS.base,
-            color: COLORS.text.primary,
+            width: 22,
+            height: 22,
+            borderRadius: 6,
+            borderWidth: 2,
+            borderColor: agreedToTerms ? COLORS.primary : COLORS.border,
+            backgroundColor: agreedToTerms ? COLORS.primary : 'transparent',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 10,
+            marginTop: 2,
           }}
         >
-          {signingInGoogle ? 'Signing in...' : 'Continue with Rice Google'}
+          {agreedToTerms && (
+            <StyledText style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>✓</StyledText>
+          )}
+        </StyledView>
+        <StyledText style={{ flex: 1, fontFamily: FONTS.regular, fontSize: FONT_SIZES.sm, color: COLORS.text.secondary, lineHeight: 20 }}>
+          I agree to the{' '}
+          <StyledText
+            onPress={() => navigation.navigate('TermsOfService')}
+            style={{ color: COLORS.primary, fontFamily: FONTS.semiBold }}
+          >
+            Terms of Service
+          </StyledText>
         </StyledText>
       </StyledTouchableOpacity>
 

@@ -6,7 +6,8 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+// Google Sign-In disabled for this build (Apple requires Sign in with Apple alongside third-party login)
+// import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { ApiResponse } from '../types';
 import { invalidateProfileCache } from './profileService';
 import { supabase } from '../lib/supabase';
@@ -68,79 +69,18 @@ export const validateReviewerAccess = async (password: string): Promise<{ valid:
   }
 };
 
-// ── Google Sign-In ─────────────────────────────────────────────────────────────
+// ── Google Sign-In (DISABLED — Apple requires Sign in with Apple alongside third-party login) ──
+// Full implementation preserved on session/security-perf-bugfix branch for future use.
 
 export const configureGoogleSignIn = () => {
-  GoogleSignin.configure({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    hostedDomain: 'rice.edu',
-  });
+  // No-op: Google Sign-In disabled for this build
 };
 
 export const signInWithGoogle = async (): Promise<ApiResponse<User>> => {
-  try {
-    await GoogleSignin.hasPlayServices();
-    const response = await GoogleSignin.signIn();
-
-    const idToken = response.data?.idToken;
-    if (!idToken) {
-      return {
-        ok: false,
-        error: { code: 'NO_TOKEN', message: 'Could not get credentials from Google. Please try again.' },
-      };
-    }
-
-    const { data, error } = await supabase.auth.signInWithIdToken({
-      provider: 'google',
-      token: idToken,
-    });
-
-    if (error) {
-      logger.error('[Auth] Supabase signInWithIdToken error:', error.message);
-      return {
-        ok: false,
-        error: { code: 'AUTH_ERROR', message: error.message },
-      };
-    }
-
-    // Defense in depth: verify the email is @rice.edu
-    const email = data.user?.email;
-    if (email && !isAllowedEmailDomain(email)) {
-      await supabase.auth.signOut();
-      await GoogleSignin.signOut();
-      return {
-        ok: false,
-        error: { code: 'INVALID_DOMAIN', message: 'Only @rice.edu accounts can use Bridge.' },
-      };
-    }
-
-    return {
-      ok: true,
-      data: {
-        id: data.user!.id,
-        email: data.user?.email,
-      },
-    };
-  } catch (err: any) {
-    if (err.code === statusCodes.SIGN_IN_CANCELLED) {
-      return {
-        ok: false,
-        error: { code: 'CANCELLED', message: 'Sign in cancelled.' },
-      };
-    }
-    if (err.code === statusCodes.IN_PROGRESS) {
-      return {
-        ok: false,
-        error: { code: 'IN_PROGRESS', message: 'Sign in already in progress.' },
-      };
-    }
-    logger.error('[Auth] Google Sign-In error:', err);
-    return {
-      ok: false,
-      error: { code: 'GOOGLE_ERROR', message: 'Something went wrong with Google Sign-In. Please try again.' },
-    };
-  }
+  return {
+    ok: false,
+    error: { code: 'GOOGLE_DISABLED', message: 'Google Sign-In is not available in this version.' },
+  };
 };
 
 // Flag set before intentional sign-outs so AppNavigator doesn't show a "Session Expired" toast
