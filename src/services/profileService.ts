@@ -451,7 +451,8 @@ export const updateUserProfile = async (
     // cache and photos don't flash blank during background saves.
     try {
       const fullProfile = await _fetchUserProfile();
-      if (fullProfile.ok && fullProfile.data && !fullProfile.data.profileCompleted) {
+      const isReviewer = fullProfile.ok && fullProfile.data?.email?.toLowerCase() === 'reviewer@bridgedate.app';
+      if (fullProfile.ok && fullProfile.data && !fullProfile.data.profileCompleted && !isReviewer) {
         const strength = calculateProfileStrengthBreakdown(fullProfile.data);
         if (strength.overall >= 100) {
           const { error: completeError } = await supabase
