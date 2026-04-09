@@ -73,6 +73,8 @@ export const NameStep: React.FC<NameStepProps> = ({
             }}
             error={errors.firstName}
             autoFocus={true}
+            autoCapitalize="words"
+            autoCorrect={false}
           />
         </StyledView>
 
@@ -86,6 +88,8 @@ export const NameStep: React.FC<NameStepProps> = ({
               if (errors.lastName) setErrors({ ...errors, lastName: undefined });
             }}
             error={errors.lastName}
+            autoCapitalize="words"
+            autoCorrect={false}
           />
         </StyledView>
       </StyledView>

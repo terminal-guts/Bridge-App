@@ -212,10 +212,9 @@ export const SectionHeader = React.memo(({ title, onAddAll, addAllDisabled, addA
 export interface FriendCodeCardProps {
   friendCode: string;
   onShareCode: () => void;
-  onEnterCodePress: () => void;
 }
 
-export const FriendCodeCard = React.memo(({ friendCode, onShareCode, onEnterCodePress }: FriendCodeCardProps) => {
+export const FriendCodeCard = React.memo(({ friendCode, onShareCode }: FriendCodeCardProps) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopyCode = useCallback(async () => {
@@ -226,36 +225,28 @@ export const FriendCodeCard = React.memo(({ friendCode, onShareCode, onEnterCode
   }, [friendCode]);
 
   return (
-  <StyledView
-    className="bg-primary-50 rounded-2xl px-6 pt-5 pb-6 items-center mb-8"
-    style={{ borderWidth: 1, borderColor: 'rgba(67, 127, 255, 0.12)' }}
-  >
-    <StyledText className="text-xs font-bold text-primary-400 tracking-widest mb-1">YOUR FRIEND CODE</StyledText>
-    <TouchableOpacity onPress={handleCopyCode} activeOpacity={0.7} style={{ alignItems: 'center', marginBottom: 4 }}>
-      <StyledText style={contactStyles.friendCodeText}>
-        {friendCode}
-      </StyledText>
-      <StyledText style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.regular, color: copied ? COLORS.success : COLORS.text.tertiary, marginTop: 2 }}>
-        {copied ? 'Copied!' : 'Tap to copy'}
+  <StyledView className="items-center mb-3">
+    <TouchableOpacity onPress={handleCopyCode} activeOpacity={0.7} style={{ alignItems: 'center', marginBottom: 8 }}>
+      <StyledText
+        style={{
+          fontSize: FONT_SIZES.lg,
+          fontFamily: FONTS.bold,
+          fontWeight: '700',
+          color: copied ? COLORS.success : COLORS.text.primary,
+          letterSpacing: 1,
+        }}
+      >
+        {copied ? 'Copied!' : friendCode}
       </StyledText>
     </TouchableOpacity>
-    <StyledView className="flex-row" style={{ gap: 12 }}>
-      <StyledTouchableOpacity
-        className="flex-1 flex-row items-center justify-center py-3 rounded-xl"
-        style={{ borderWidth: 1.5, borderColor: COLORS.primaryAccent }}
-        onPress={onShareCode}
-      >
-        <EvaIcon name="share" variant="outline" size={18} color={COLORS.primaryAccent} />
-        <StyledText className="ml-2 font-semibold text-sm" style={{ color: COLORS.primaryAccent }}>Share Code</StyledText>
-      </StyledTouchableOpacity>
-      <StyledTouchableOpacity
-        className="flex-1 flex-row items-center justify-center py-3 rounded-xl"
-        style={{ borderWidth: 1.5, borderColor: COLORS.primaryAccent }}
-        onPress={onEnterCodePress}
-      >
-        <StyledText className="font-semibold text-sm" style={{ color: COLORS.primaryAccent }}>Enter a Code</StyledText>
-      </StyledTouchableOpacity>
-    </StyledView>
+    <StyledTouchableOpacity
+      className="flex-row items-center justify-center py-2 px-5 rounded-lg"
+      style={{ backgroundColor: COLORS.primary }}
+      onPress={onShareCode}
+    >
+      <EvaIcon name="share" variant="outline" size={15} color="#FFFFFF" />
+      <StyledText className="ml-1.5" style={{ color: '#FFFFFF', fontSize: FONT_SIZES.sm, fontFamily: FONTS.semiBold, fontWeight: '600' }}>Share</StyledText>
+    </StyledTouchableOpacity>
   </StyledView>
   );
 });
@@ -274,36 +265,43 @@ export interface EnterCodeInputProps {
   errorClassName?: string;
 }
 
-export const EnterCodeInput = React.memo(({ inputRef, value, onChangeText, onSubmit, error, adding, wrapperClassName, errorClassName }: EnterCodeInputProps) => (
-  <>
-    <StyledView className={`flex-row items-center ${wrapperClassName || 'mb-4'}`}>
-      <StyledView className="flex-1 flex-row items-center bg-neutral-100 rounded-lg px-3 py-2 mr-2">
-        <TextInput
-          ref={inputRef}
-          style={{ flex: 1, fontSize: FONT_SIZES.base, fontFamily: FONTS.regular, color: '#0B1226' }}
-          placeholder="Enter friend code"
-          placeholderTextColor={COLORS.text.tertiary}
-          value={value}
-          onChangeText={onChangeText}
-          autoCapitalize="characters"
-          autoCorrect={false}
-        />
+export const EnterCodeInput = React.memo(({ inputRef, value, onChangeText, onSubmit, error, adding, wrapperClassName, errorClassName }: EnterCodeInputProps) => {
+  const isEmpty = !value.trim();
+  const isDisabled = adding || isEmpty;
+  return (
+    <>
+      <StyledView className={`flex-row items-center ${wrapperClassName || 'mb-4'}`}>
+        <StyledView className="flex-1 flex-row items-center bg-neutral-100 rounded-lg px-3 py-2 mr-2">
+          <TextInput
+            ref={inputRef}
+            style={{ flex: 1, fontSize: FONT_SIZES.base, fontFamily: FONTS.regular, color: '#0B1226' }}
+            placeholder="Enter a friend's code"
+            placeholderTextColor={COLORS.text.tertiary}
+            value={value}
+            onChangeText={onChangeText}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            onSubmitEditing={onSubmit}
+            returnKeyType="go"
+          />
+        </StyledView>
+        <StyledTouchableOpacity
+          className={`px-4 py-2 rounded-lg ${isDisabled ? 'bg-primary-300' : 'bg-primary-500'}`}
+          onPress={onSubmit}
+          disabled={isDisabled}
+          style={{ opacity: isDisabled ? 0.5 : 1 }}
+        >
+          <StyledText className="text-white text-sm font-semibold">
+            {adding ? '...' : 'Add'}
+          </StyledText>
+        </StyledTouchableOpacity>
       </StyledView>
-      <StyledTouchableOpacity
-        className={`px-4 py-2 rounded-lg ${adding ? 'bg-primary-300' : 'bg-primary-500'}`}
-        onPress={onSubmit}
-        disabled={adding}
-      >
-        <StyledText className="text-white text-sm font-semibold">
-          {adding ? '...' : 'Add'}
-        </StyledText>
-      </StyledTouchableOpacity>
-    </StyledView>
-    {error ? (
-      <StyledText className={`text-red-500 text-xs ${errorClassName || 'mb-4 -mt-2'}`}>{error}</StyledText>
-    ) : null}
-  </>
-));
+      {error ? (
+        <StyledText className={`text-red-500 text-xs ${errorClassName || 'mb-4 -mt-2'}`}>{error}</StyledText>
+      ) : null}
+    </>
+  );
+});
 
 // ── Celebration Overlay ───────────────────────────────────────────────────────
 
@@ -402,25 +400,30 @@ export interface ContactsAccessPromptProps {
 }
 
 export const ContactsAccessPrompt = React.memo(({ bridgeUserCount, onRequestPermission }: ContactsAccessPromptProps) => (
-  <StyledView className="items-center mt-6">
-    <StyledView className="w-16 h-16 bg-primary-100 rounded-full items-center justify-center mb-3">
-      <EvaIcon name="people" variant="outline" color="primary" size={30} />
-    </StyledView>
-    <StyledText className="text-base font-semibold text-neutral-900 text-center mb-1">
-      See who's already here
-    </StyledText>
-    <StyledText className="text-sm text-neutral-500 text-center mb-4">
+  <StyledView className="items-center">
+    <StyledText
+      className="text-center mb-2"
+      style={{ fontSize: FONT_SIZES.lg, fontFamily: FONTS.semiBold, fontWeight: '600', color: COLORS.text.primary }}
+    >
       {bridgeUserCount > 0
-        ? `${bridgeUserCount} ${bridgeUserCount === 1 ? 'person' : 'people'} from your contacts ${bridgeUserCount === 1 ? 'is' : 'are'} already on Bridge`
-        : 'Bridge checks your contacts to find friends who can vouch for your matches -- nothing is stored or shared'}
+        ? `${bridgeUserCount} of your contacts are on Bridge`
+        : 'See who\u2019s already on Bridge'}
+    </StyledText>
+    <StyledText
+      className="text-center mb-4"
+      style={{ fontSize: FONT_SIZES.md, fontFamily: FONTS.regular, color: COLORS.text.secondary, lineHeight: 18 }}
+    >
+      We check your contacts to find friends who can vote on your matches. Nothing is stored or shared.
     </StyledText>
     <StyledTouchableOpacity
-      className="bg-primary-500 px-6 py-3 rounded-xl"
+      className="w-full py-3 rounded-xl items-center flex-row justify-center"
+      style={{ backgroundColor: COLORS.primary }}
       onPress={onRequestPermission}
       accessibilityRole="button"
       accessibilityLabel="Allow contacts access"
     >
-      <StyledText className="text-white font-semibold">Allow Contacts Access</StyledText>
+      <EvaIcon name="people" variant="outline" size={18} color="#FFFFFF" />
+      <StyledText className="ml-2" style={{ color: '#FFFFFF', fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: FONT_SIZES.base }}>Find Friends in Contacts</StyledText>
     </StyledTouchableOpacity>
   </StyledView>
 ));
@@ -432,15 +435,26 @@ export interface SettingsPromptProps {
 }
 
 export const SettingsPrompt = React.memo(({ onOpenSettings }: SettingsPromptProps) => (
-  <StyledView className="items-center mt-4">
-    <StyledText className="text-sm text-neutral-500 text-center mb-3">
-      Allow contacts access to find friends who can help with your matches
+  <StyledView className="items-center">
+    <StyledText
+      className="text-center mb-2"
+      style={{ fontSize: FONT_SIZES.lg, fontFamily: FONTS.semiBold, fontWeight: '600', color: COLORS.text.primary }}
+    >
+      See who's already on Bridge
+    </StyledText>
+    <StyledText
+      className="text-center mb-4"
+      style={{ fontSize: FONT_SIZES.md, fontFamily: FONTS.regular, color: COLORS.text.secondary, lineHeight: 18 }}
+    >
+      Enable contacts to find friends who can vote on your matches.
     </StyledText>
     <StyledTouchableOpacity
-      className="px-5 py-2.5 rounded-xl bg-neutral-100"
+      className="w-full py-3 rounded-xl items-center flex-row justify-center"
+      style={{ borderWidth: 1.5, borderColor: COLORS.primary }}
       onPress={onOpenSettings}
     >
-      <StyledText className="text-neutral-700 font-semibold text-sm">Enable Contacts in Settings</StyledText>
+      <EvaIcon name="settings-2" variant="outline" size={16} color={COLORS.primary} />
+      <StyledText className="ml-2" style={{ fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: FONT_SIZES.base, color: COLORS.primary }}>Enable in Settings</StyledText>
     </StyledTouchableOpacity>
   </StyledView>
 ));
@@ -632,12 +646,34 @@ export const PermissionView = React.memo(({
   onRequestPermission,
   onOpenSettings,
 }: PermissionViewProps) => (
-  <StyledView className="flex-1 px-8 pt-12">
+  <StyledView className="flex-1 px-6 pt-6">
+    {/* Section 1: Contacts discovery — primary action */}
+    {permissionStatus === 'denied' ? (
+      <SettingsPrompt onOpenSettings={onOpenSettings} />
+    ) : (
+      <ContactsAccessPrompt
+        bridgeUserCount={bridgeUserCount}
+        onRequestPermission={onRequestPermission}
+      />
+    )}
+
+    {/* Divider */}
+    <StyledView className="flex-row items-center" style={{ marginTop: 28, marginBottom: 24 }}>
+      <StyledView className="flex-1" style={{ height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border }} />
+      <StyledText
+        className="mx-3"
+        style={{ fontSize: FONT_SIZES.xs, fontFamily: FONTS.regular, color: COLORS.text.tertiary }}
+      >
+        or use a friend code
+      </StyledText>
+      <StyledView className="flex-1" style={{ height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border }} />
+    </StyledView>
+
+    {/* Section 2: Code exchange — compact secondary path */}
     {friendCode ? (
       <FriendCodeCard
         friendCode={friendCode}
         onShareCode={onShareCode}
-        onEnterCodePress={() => enterCodeInputRef.current?.focus()}
       />
     ) : null}
     <EnterCodeInput
@@ -648,14 +684,6 @@ export const PermissionView = React.memo(({
       error={enterCodeError}
       adding={addingCode}
     />
-    {permissionStatus === 'denied' ? (
-      <SettingsPrompt onOpenSettings={onOpenSettings} />
-    ) : (
-      <ContactsAccessPrompt
-        bridgeUserCount={bridgeUserCount}
-        onRequestPermission={onRequestPermission}
-      />
-    )}
   </StyledView>
 ));
 

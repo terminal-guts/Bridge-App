@@ -2,7 +2,12 @@
 
 ## Codebase Status
 
-This is the **production codebase** for Bridge — the app being deployed to the App Store. It contains both the frontend (React Native/Expo) and backend (Supabase, in the `supabase/` subdirectory). Treat all code here as production-quality.
+This is the **production codebase** for Bridge — the app is **LIVE on the App Store** as of 2026-04-05. It contains both the frontend (React Native/Expo) and backend (Supabase, in the `supabase/` subdirectory). Treat all code here as production-quality.
+
+**CRITICAL — Never Alter Live User Experience Without Direct Approval:**
+No change — whether Supabase or frontend — should alter the experience of live users who have downloaded the app without the user's direct, clear approval. Supabase edge functions, database migrations, and RPC changes go live **immediately** when deployed — there is no review gate. This means any Supabase alteration instantly impacts real users. **Never deploy Supabase changes (deploy functions, run migrations, modify RLS policies, alter tables, update edge functions) without explicit user confirmation.** Always describe the change and its impact first, then wait for a clear "go ahead" before executing.
+
+Frontend code changes (React Native/Expo) go through the normal build-and-review process and do not reach users immediately — these are safe to make and test locally. However, even frontend changes must be reviewed before being pushed to production.
 
 **Notable removals:**
 - `src/screens/profile/BadgeManagementScreen.tsx` — deleted. Badge management is now fully in-modal via `BadgeAwardModal.tsx`.
@@ -58,7 +63,7 @@ The reviewer bypass (`EXPO_PUBLIC_REVIEWER_PASSWORD` and the `isReviewerBypassEm
 
 The bottom nav bar values in `src/navigation/AppNavigator.tsx` (`CustomTabBar`) are **finalized and must not be changed** without explicit user instruction. Do not adjust any of the following:
 
-- `contentHeight = Math.round(screenHeight * 0.057)` — bar height as % of screen
+- `contentHeight = Math.max(Math.round(screenHeight * 0.057), 49)` — bar height as % of screen, floored at 49pt (Apple's standard UITabBar height) to prevent undersized bar on small devices like iPhone SE
 - `iconSize = Math.round(contentHeight * 0.65)` — icon size proportional to bar
 - `iconPaddingTop = Math.round(contentHeight * 0.25)` — icon vertical placement proportional to bar
 - `top: 0` on the blue indicator — keeps it flush at the top border

@@ -43,6 +43,50 @@ export function MatchesScreen() {
     const headerTotal = headerPad + 38 + 8 + scrollMargin;
     const activeCardHeight = windowHeight - insets.top - headerTotal - tabBarH - cardMB;
 
+    // ── Hooks MUST be called before any early returns (React Rules of Hooks) ──
+    const timerInfo = useMemo(() => computeTimerInfo(
+        state.screenState,
+        state.activeMatch,
+        state.currentProposal,
+        state.now,
+    ), [state.screenState, state.activeMatch, state.currentProposal, state.now]);
+    const { timerLabel, timerClr, timerBg, timerBdrClr } = timerInfo;
+
+    const cardProps = useMemo(() =>
+        buildCardProps(state.screenState, state.activeMatch, state.currentProposal),
+        [state.screenState, state.activeMatch, state.currentProposal],
+    );
+    const { partner, partnerPhoto, partnerPhotoBlurhash, partnerName, partnerAge, endorserAvatars, endorserNames, matchDate } = cardProps;
+
+    const handleCardPress = useCallback(() => {
+        if (state.screenState === 'active_match') {
+            const match = state.activeMatch;
+            if (!match) return;
+            state.navigation.navigate('Chat', {
+                matchId: match.matchId ?? match.id,
+                recipientName: partnerName,
+                recipientId: partner?.userId ?? partner?.id,
+                recipientPhoto: partnerPhoto,
+            });
+        } else {
+            const proposal = state.currentProposal;
+            if (!proposal) return;
+            const heroUrl = getOptimizedPhotoUrl(
+                proposal.partnerProfile?.photos?.[0]?.url, 'profile'
+            );
+            if (heroUrl) Image.prefetch(heroUrl).catch(() => {});
+            state.navigation.navigate('ProposalProfile', {
+                partnerProfile: proposal.partnerProfile,
+                communityScore: computeApprovalPercent(proposal.proposalId || ''),
+                endorsers: proposal.endorsers ?? [],
+                screenState: state.screenState,
+                proposalId: proposal.proposalId,
+            });
+        }
+    }, [state.screenState, state.activeMatch, state.currentProposal, state.navigation, partnerName, partner, partnerPhoto]);
+
+    const handleDismiss = useCallback(() => state.setEndMatchModalVisible(true), [state.setEndMatchModalVisible]);
+
     // ── Loading state ────────────────────────────────────────────────────────
     if (state.loading && !state.popupEvent) {
         return <MatchesLoadingView />;
@@ -81,52 +125,6 @@ export function MatchesScreen() {
             />
         );
     }
-
-    // ── Active match / proposal view ─────────────────────────────────────────
-    // Timer label updates every second — isolated so it doesn't bust cardProps memo
-    const timerInfo = useMemo(() => computeTimerInfo(
-        state.screenState,
-        state.activeMatch,
-        state.currentProposal,
-        state.now,
-    ), [state.screenState, state.activeMatch, state.currentProposal, state.now]);
-    const { timerLabel, timerClr, timerBg, timerBdrClr } = timerInfo;
-
-    // Card props do NOT depend on `now` — only recompute when match/proposal data changes
-    const cardProps = useMemo(() =>
-        buildCardProps(state.screenState, state.activeMatch, state.currentProposal),
-        [state.screenState, state.activeMatch, state.currentProposal],
-    );
-    const { partner, partnerPhoto, partnerPhotoBlurhash, partnerName, partnerAge, endorserAvatars, endorserNames, matchDate } = cardProps;
-
-    const handleCardPress = useCallback(() => {
-        if (state.screenState === 'active_match') {
-            const match = state.activeMatch;
-            if (!match) return;
-            state.navigation.navigate('Chat', {
-                matchId: match.matchId ?? match.id,
-                recipientName: partnerName,
-                recipientId: partner?.userId ?? partner?.id,
-                recipientPhoto: partnerPhoto,
-            });
-        } else {
-            const proposal = state.currentProposal;
-            if (!proposal) return;
-            const heroUrl = getOptimizedPhotoUrl(
-                proposal.partnerProfile?.photos?.[0]?.url, 'profile'
-            );
-            if (heroUrl) Image.prefetch(heroUrl).catch(() => {});
-            state.navigation.navigate('ProposalProfile', {
-                partnerProfile: proposal.partnerProfile,
-                communityScore: computeApprovalPercent(proposal.proposalId || ''),
-                endorsers: proposal.endorsers ?? [],
-                screenState: state.screenState,
-                proposalId: proposal.proposalId,
-            });
-        }
-    }, [state.screenState, state.activeMatch, state.currentProposal, state.navigation, partnerName, partner, partnerPhoto]);
-
-    const handleDismiss = useCallback(() => state.setEndMatchModalVisible(true), [state.setEndMatchModalVisible]);
 
     return (
         <View style={{ flex: 1, backgroundColor: COLORS.screenBackground }}>

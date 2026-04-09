@@ -1,0 +1,26 @@
+📱 Bridge Launch SMS Sender
+🚀 LIVE MODE — messages will be sent
+
+Parsed 285 records from CSV
+
+✅ 279 valid unique phone numbers
+⏭️  6 skipped (3 duplicates, 3 invalid)
+
+Skipped (invalid phone):
+  - Aishwarya Ramasubramanian | (no email) | raw: ""
+  - Ian | is53@rice.edu | raw: "9;02184475"
+  - Isaias Palacios | (no email) | raw: ""
+
+Message (162 chars):
+  "Bridge just went live 🎉
+
+100+ people have already downloaded it at Rice!
+
+Check it out here: https://apps.apple.com/us/app/bridge-social-matchmaking/id6759764704"
+
+⏰ Scheduled to send at: 2026-04-05T19:30:00 Central (4/5/2026, 7:30:00 PM)
+   Waiting 20h 53m...
+
+   Leave this terminal open. Messages will send automatically.
+   Press Ctrl+C to cancel.
+

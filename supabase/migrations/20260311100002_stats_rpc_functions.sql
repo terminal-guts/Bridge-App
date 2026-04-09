@@ -187,11 +187,9 @@ AS $function$
   BEGIN
     v_week_start := get_current_week_start();
 
-    -- Collect all user IDs at this campus (match both 'Rice' and 'Rice University' etc)
-    SELECT array_agg(user_id) INTO v_campus_users
-    FROM user_profiles
-    WHERE school IS NOT NULL
-      AND (school = p_university OR school ILIKE p_university || '%' OR p_university ILIKE school || '%');
+    -- Include ALL users — app is Rice-only (@rice.edu restricted),
+    -- so every user is a Rice student by definition.
+    SELECT array_agg(user_id) INTO v_campus_users FROM user_profiles;
 
     IF v_campus_users IS NULL THEN
       v_campus_users := ARRAY[]::uuid[];

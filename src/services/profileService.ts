@@ -86,7 +86,7 @@ function mapBackendToUserProfile(data: Record<string, any>): UserProfile {
   return {
     id: data.id,
     userId: data.user_id || data.id,
-    firstName: data.first_name || 'User',
+    firstName: data.first_name || '',
     lastName: data.last_name || '',
     age: (data.age && data.age > 0) ? data.age : undefined,
     gender: data.gender || [],
@@ -451,7 +451,8 @@ export const updateUserProfile = async (
     // cache and photos don't flash blank during background saves.
     try {
       const fullProfile = await _fetchUserProfile();
-      if (fullProfile.ok && fullProfile.data && !fullProfile.data.profileCompleted) {
+      const isReviewer = fullProfile.ok && fullProfile.data?.email?.toLowerCase() === 'reviewer@bridgedate.app';
+      if (fullProfile.ok && fullProfile.data && !fullProfile.data.profileCompleted && !isReviewer) {
         const strength = calculateProfileStrengthBreakdown(fullProfile.data);
         if (strength.overall >= 100) {
           const { error: completeError } = await supabase

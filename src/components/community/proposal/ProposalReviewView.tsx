@@ -140,6 +140,7 @@ export function ProposalReviewView({
     recommendButtonAnimatedStyle,
     recommendButtonScale,
     handleVote, advanceProposal, animateButtonPress,
+    fetchFailed,
   } = useProposalVoting(initialProposals, onVotesComplete, onBack, onVoteComplete);
 
   const {
@@ -237,7 +238,9 @@ export function ProposalReviewView({
 
   // ── Empty — gate should never show with 0 proposals ─────────────────────
   // This hook MUST be above all early returns to satisfy Rules of Hooks.
-  const isDone = !loading && (proposals.length === 0 || currentIndex >= proposals.length);
+  // CRITICAL: Do NOT signal "done" if the fetch failed — that would skip the gate
+  // on a transient error, making the user think there are no proposals.
+  const isDone = !loading && !fetchFailed && (proposals.length === 0 || currentIndex >= proposals.length);
   useEffect(() => {
     if (isDone) onVotesComplete?.();
   }, [isDone, onVotesComplete]);
@@ -257,6 +260,16 @@ export function ProposalReviewView({
           <SkeletonLoader width="100%" height={100} borderRadius="rounded-xl" className="mb-4" />
           <SkeletonLoader width="100%" height={80} borderRadius="rounded-xl" />
         </View>
+      </View>
+    );
+  }
+
+  if (fetchFailed) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+        <Text style={{ fontSize: 16, color: '#64748B', textAlign: 'center', marginBottom: 16 }}>
+          Could not load proposals. Please try again in a moment.
+        </Text>
       </View>
     );
   }

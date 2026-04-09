@@ -119,7 +119,7 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
         <Input
           label="Age"
           required
-          value={profile.age.toString()}
+          value={profile.age != null ? profile.age.toString() : ''}
           onChangeText={(text) => {
             const numericOnly = text.replace(/[^0-9]/g, '');
             const age = numericOnly ? parseInt(numericOnly, 10) : 0;

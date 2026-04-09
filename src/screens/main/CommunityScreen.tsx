@@ -3,6 +3,7 @@ import { AppState, View, Text, ScrollView, TouchableOpacity, RefreshControl } fr
 
 import { UserRow } from '../../components/community/UserRow';
 import { StaggerItem } from '../../hooks/useStaggeredList';
+import { CardErrorBoundary } from '../../components/ui/ErrorBoundary';
 import { ProposalReviewView } from '../../components/community/proposal/ProposalReviewView';
 import { GuideTarget } from '../../components/guides';
 import { NavigationProp, useFocusEffect } from '@react-navigation/native';
@@ -12,7 +13,7 @@ import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { communityService } from '../../services/communityServiceIndex';
 import { getIncomingRequests, acceptFriendRequest, declineFriendRequest, FriendRequest } from '../../services/friendService';
-import { FriendWithGridStatus } from '../../types/community';
+import { FriendWithGridStatus, Proposal } from '../../types/community';
 import { getUserProfile, getCachedMinimalProfileStatus } from '../../services/profileService';
 import { getAuthenticatedUserId } from '../../utils/auth';
 import { UserProfile } from '../../types';
@@ -186,9 +187,18 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
     if (cachedFriends) {
       // Show cached friends instantly (will be refreshed in background)
-      const { toMatch, helped } = partitionFriends(cachedFriends);
-      setUsersToMatch(toMatch);
-      setAlreadyHelped(helped);
+      // Wrap in try-catch: corrupted cache should never crash the app.
+      // If cache is bad, silently discard it — fresh data will load from network.
+      try {
+        const { toMatch, helped } = partitionFriends(cachedFriends);
+        setUsersToMatch(toMatch);
+        setAlreadyHelped(helped);
+      } catch (cacheErr) {
+        console.error('Corrupted friends cache, discarding:', cacheErr);
+        if ('invalidateFriendsCache' in communityService) {
+          (communityService as any).invalidateFriendsCache();
+        }
+      }
     }
 
     // ── Always check voting gate from network — never skip ────────────────
@@ -196,18 +206,23 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       const [profileResult, task, available] = await Promise.all([
         getUserProfile(),
         communityService.getCommunityTaskProgress(),
-        communityService.getProposalsToVote(),
+        communityService.getProposalsToVote().catch((err) => {
+          console.error('Failed to fetch proposals:', err);
+          showToast.error('Could not load proposals', 'Pull down to refresh and try again.');
+          return null; // null = fetch failed (distinct from [] = genuinely no proposals)
+        }),
       ]);
 
       if (profileResult.ok && profileResult.data) setProfile(profileResult.data);
 
       // Gate shows whenever there are unvoted proposals.
-      // If no proposals exist at all (e.g., matchmaker with few friends), pass through.
-      const votingDone = available.length === 0 || task.hasVotedOnProposals;
+      // If fetch failed (null), DON'T skip the gate — require the user to retry.
+      // Only pass through when we successfully confirmed zero proposals exist.
+      const votingDone = available !== null && (available.length === 0 || task.hasVotedOnProposals);
 
       // Only cache "done" when user genuinely voted 3+ AND no proposals remain.
       // Never cache when votingDone is just "no proposals exist" — new ones may appear.
-      if (task.hasVotedOnProposals && available.length === 0) {
+      if (task.hasVotedOnProposals && available !== null && available.length === 0) {
         communityService.cacheVotingComplete(true, cycleId).catch(() => {});
       } else {
         // Clear stale cache so gate always shows when proposals exist
@@ -295,7 +310,9 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     // Triple guard: synchronous route check + synchronous profile check + async cache check.
     // All three must agree this is NOT a matchmaker before starting the dater tour.
     // Skip guide entirely until profile loads — prevents dater tour flashing for matchmakers on cold start
-    if (profile) {
+    // Only start guide AFTER the voting gate has been completed.
+    // Starting it during the gate overlays a dark screen on top of proposals — unusable.
+    if (profile && hasCompletedVoting) {
       const routeNames: string[] = (navigation as any).getState?.()?.routeNames ?? [];
       const isInMatchmakerTabs = !routeNames.includes('Matches');
       if (!isInMatchmakerTabs && profile.role !== 'matchmaker') {
@@ -443,6 +460,15 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
   return (
     <ScreenWrapper>
+      <CardErrorBoundary
+        onError={(error) => {
+          // Clear potentially corrupted cache on crash so next render works
+          if ('invalidateFriendsCache' in communityService) {
+            (communityService as any).invalidateFriendsCache();
+          }
+          console.error('[CommunityScreen] Render crash caught:', error.message);
+        }}
+      >
       <OfflineBanner />
       {profile?.role !== 'matchmaker' && (
         <ProfileCompletionBanner
@@ -602,6 +628,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
           }}
         />
       )}
+      </CardErrorBoundary>
     </ScreenWrapper>
   );
 }

@@ -1,11 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, TextInput, Pressable } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import { verifyEmail, sendOtpToEmail } from '../../../services/authService';
+import { fetchAndSetUserProfile } from '../../../services/profileService';
+import { useNavigation } from '@react-navigation/native';
 import { createLogger } from '../../../utils/secureLogger';
+
+const RESEND_COOLDOWN_SECONDS = 60;
 
 const logger = createLogger('EmailSignUpVerificationStep');
 
@@ -26,11 +30,20 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
   onNext,
   onBack,
 }) => {
+  const navigation = useNavigation<any>();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [isResending, setIsResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_SECONDS);
   const isVerifyingRef = useRef(false);
   const inputRef = useRef<TextInput>(null);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown(prev => prev - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   const handleCodeChange = (text: string) => {
     const digits = text.replace(/\D/g, '').slice(0, 6);
@@ -65,26 +78,46 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
 
     if (result.ok) {
       logger.info('[EMAIL] Email signup verification successful! User ID:', result.data?.id);
+
+      // Check if this user already has a profile (existing account trying to "sign up")
+      if (result.data?.id) {
+        const profileResult = await fetchAndSetUserProfile(result.data.id);
+        if (profileResult.ok && profileResult.data?.profileCompleted) {
+          logger.info('[EMAIL] Existing account detected — routing to MainTabs');
+          navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+          return;
+        }
+      }
+
       updateData({ email: data.email, emailVerified: true });
       onNext();
     } else {
-      setError(result.error?.message || 'Verification failed. Please try again.');
+      const msg = result.error?.message || '';
+      if (msg.toLowerCase().includes('expired')) {
+        setError("That code has expired. Tap 'Resend' to get a new one.");
+      } else {
+        setError(msg || 'Verification failed. Please try again.');
+      }
     }
   };
 
-  const resendCode = async () => {
-    if (!data.email || isResending) return;
+  const resendCode = useCallback(async () => {
+    if (!data.email || isResending || resendCooldown > 0) return;
     setIsResending(true);
     setCode('');
+    setError('');
     inputRef.current?.focus();
 
     const result = await sendOtpToEmail(data.email);
     setIsResending(false);
 
-    if (!result.ok) {
+    if (result.ok) {
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    } else {
+      // Don't start cooldown on failure — let user retry immediately
       setError(result.error?.message || 'Failed to resend code');
     }
-  };
+  }, [data.email, isResending, resendCooldown]);
 
   const digits = code.split('');
 
@@ -140,10 +173,10 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
         <StyledView className="flex-row justify-center">
           <Body className="text-neutral-600">Didn't receive a code? </Body>
           <Body
-            className="text-primary-500 font-semibold"
+            className={resendCooldown > 0 ? 'text-neutral-400' : 'text-primary-500 font-semibold'}
             onPress={resendCode}
           >
-            {isResending ? 'Sending...' : 'Resend'}
+            {isResending ? 'Sending...' : resendCooldown > 0 ? `Resend (${resendCooldown}s)` : 'Resend'}
           </Body>
         </StyledView>
       </StyledView>

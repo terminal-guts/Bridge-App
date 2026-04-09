@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Enrique",
+    "email": "ea87@rice.edu",
+    "phone": "+17874150922",
+    "error": "Twilio 400: Permission to send an SMS has not been enabled for the region indicated by the 'To' number: +1787415XXXX"
+  },
+  {
+    "name": "haider",
+    "email": "haidernadaf67@gmail.com",
+    "phone": "+919900768505",
+    "error": "Twilio 400: Permission to send an SMS has not been enabled for the region indicated by the 'To' number: +91990076XXXX"
+  },
+  {
+    "name": "Jermaine Cole",
+    "email": "jc123@rice.edu",
+    "phone": "+11234567890",
+    "error": "Twilio 400: Invalid 'To' Phone Number: +1123456XXXX"
+  },
+  {
+    "name": "Mateo",
+    "email": "jc508@rice.edu",
+    "phone": "+15620985249",
+    "error": "Twilio 400: Invalid 'To' Phone Number: +1562098XXXX"
+  }
+]

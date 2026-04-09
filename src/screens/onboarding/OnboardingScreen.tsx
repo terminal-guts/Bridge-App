@@ -63,6 +63,12 @@ interface StepDefinition {
 const StyledView = styled(View);
 const StyledSafeAreaView = styled(SafeAreaView);
 
+// Auth steps — email signup + OTP verification (skipped when user signs in with Google)
+const AUTH_STEPS: StepDefinition[] = [
+  { component: EmailSignUpStep, title: 'Email', hasTextInput: true },
+  { component: EmailSignUpVerificationStep, title: 'Verify Email', hasTextInput: true },
+];
+
 // Profile steps shared by both signup paths
 const PROFILE_STEPS: StepDefinition[] = [
   { component: NameStep, title: 'Name', hasTextInput: true, mappingKey: 'name' },
@@ -88,6 +94,7 @@ const PROFILE_STEPS: StepDefinition[] = [
 
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }) => {
   const isRoleSwitch = route.params?.isRoleSwitch ?? false;
+  const skipAuth = route.params?.skipAuth ?? false;
   const initialData = route.params?.initialData;
   const [currentStep, setCurrentStep] = useState(0);
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
@@ -102,6 +109,14 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   useEffect(() => {
     return () => { isMountedRef.current = false; };
   }, []);
+
+  // Reset to step 0 when navigating back to this screen with different params
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      setCurrentStep(0);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   // Clear the "seen post-proposal prompt" flag so AgeStep's motivational
   // bottom sheet always fires for any fresh onboarding run.
@@ -175,16 +190,13 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
       return PROFILE_STEPS.filter(step => !skipComponents.has(step.component));
     }
 
-    // Both paths share these initial two auth screens
-    const baseSteps = [
-      { component: EmailSignUpStep, title: 'Email', hasTextInput: true },
-      { component: EmailSignUpVerificationStep, title: 'Verify Email', hasTextInput: true },
-    ];
+    // Auth steps: included unless user already signed in via Google (skipAuth)
+    const authPrefix = skipAuth ? [] : AUTH_STEPS;
 
     if (onboardingData.role === 'matchmaker') {
-      // Matchmaker path: Name → Role → First Votes → Photo → Add Friends
+      // Matchmaker path: [Email → Verify →] Name → Role → First Votes → Photo → Add Friends
       return [
-        ...baseSteps,
+        ...authPrefix,
         ...PROFILE_STEPS.filter(step =>
           step.component === NameStep ||
           step.component === MatchmakingModeStep ||
@@ -194,9 +206,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
       ];
     }
 
-    // Dater path: all PROFILE_STEPS (Name, Role, proposals, demographics, etc.)
-    return [...baseSteps, ...PROFILE_STEPS];
-  }, [onboardingData.role, isRoleSwitch]);
+    // Dater path: [Email → Verify →] all PROFILE_STEPS
+    return [...authPrefix, ...PROFILE_STEPS];
+  }, [onboardingData.role, isRoleSwitch, skipAuth]);
 
   const totalSteps = steps.length;
 
@@ -371,6 +383,14 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
             order: i,
           })),
         };
+      }
+
+      // Fallback: if name is somehow empty, derive from email (never block the user)
+      if (!dataForProfile.firstName?.trim()) {
+        const email = dataForProfile.email || '';
+        const fallbackName = email.split('@')[0] || 'Bridge User';
+        dataForProfile = { ...dataForProfile, firstName: fallbackName };
+        logger.warn('[OnboardingScreen] Empty name — using email-derived fallback:', fallbackName);
       }
 
       // Role switch: update existing profile instead of creating new one

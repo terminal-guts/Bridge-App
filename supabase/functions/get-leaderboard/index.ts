@@ -90,7 +90,7 @@ Deno.serve(async (req: Request) => {
     const [profilesResult, friendsAsUser, friendsAsFriend, visibilityResult] = await Promise.all([
       supabase
         .from('user_profiles')
-        .select('user_id, photos')
+        .select('user_id, photos, first_name, last_name')
         .in('user_id', participantIdList),
       supabase
         .from('friends')
@@ -126,7 +126,15 @@ Deno.serve(async (req: Request) => {
     };
 
     const photosMap: Record<string, string> = {};
+    const initialsMap: Record<string, string> = {};
+    const activeProfileIds = new Set<string>();
     for (const p of (profilesResult.data || [])) {
+      activeProfileIds.add(p.user_id);
+      // Build initials for anonymous display (e.g., "S.B." or "S.")
+      const firstInit = p.first_name?.[0]?.toUpperCase() || '';
+      const lastInit = p.last_name?.[0]?.toUpperCase() || '';
+      initialsMap[p.user_id] = lastInit ? `${firstInit}.${lastInit}.` : (firstInit ? `${firstInit}.` : '?');
+
       const photos = p.photos as Array<{ url?: string; isMain?: boolean; is_main?: boolean }> | null;
       if (!photos || photos.length === 0) continue;
       const main = photos.find((ph) => ph.isMain || ph.is_main) || photos[0];
@@ -175,20 +183,22 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Anonymize users who haven't opted in and aren't friends of the viewer
-    const finalLeaderboard = topEntries.map(e => {
-      const isFriend = friendIds.has(e.userId);
-      const isSelf = e.userId === userId;
-      const isVisible = isSelf || isFriend || visibleUserIds.has(e.userId);
-      return {
-        ...e,
-        userId: isVisible ? e.userId : `anon-${e.rank}`,
-        firstName: isVisible ? e.firstName : 'Bridger',
-        photoUrl: isVisible ? (signedUrlsMap[e.userId] || null) : null,
-        isFriend,
-        isAnonymous: !isVisible,
-      };
-    });
+    // Filter out deleted accounts (profile no longer exists) and anonymize non-visible users
+    const finalLeaderboard = topEntries
+      .filter(e => activeProfileIds.has(e.userId) || e.userId === userId)
+      .map(e => {
+        const isFriend = friendIds.has(e.userId);
+        const isSelf = e.userId === userId;
+        const isVisible = isSelf || isFriend || visibleUserIds.has(e.userId);
+        return {
+          ...e,
+          userId: isVisible ? e.userId : `anon-${e.rank}`,
+          firstName: isVisible ? e.firstName : (initialsMap[e.userId] || '?'),
+          photoUrl: isVisible ? (signedUrlsMap[e.userId] || null) : null,
+          isFriend,
+          isAnonymous: !isVisible,
+        };
+      });
 
     const finalCurrentUser = {
       ...currentUserEntry,
@@ -198,11 +208,15 @@ Deno.serve(async (req: Request) => {
       spotsBehindFirst: entries.length > 0 ? entries[0].weeklyKarma - currentUserEntry.weeklyKarma : 0
     };
 
+    // Use active profile count instead of raw karma_scores count
+    // (deleted accounts may still have karma_scores rows)
+    const activeTotalParticipants = Math.min(Number(totalParticipants), activeProfileIds.size);
+
     return Response.json({
       leaderboard: finalLeaderboard,
       currentUser: finalCurrentUser,
       weekStart: currentWeekStart,
-      totalParticipants: Number(totalParticipants)
+      totalParticipants: activeTotalParticipants
     }, { headers: corsHeaders });
 
   } catch (err: unknown) {

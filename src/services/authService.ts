@@ -6,6 +6,8 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+// Google Sign-In disabled for this build (Apple requires Sign in with Apple alongside third-party login)
+// import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { ApiResponse } from '../types';
 import { invalidateProfileCache } from './profileService';
 import { supabase } from '../lib/supabase';
@@ -65,6 +67,20 @@ export const validateReviewerAccess = async (password: string): Promise<{ valid:
   } catch {
     return { valid: false };
   }
+};
+
+// ── Google Sign-In (DISABLED — Apple requires Sign in with Apple alongside third-party login) ──
+// Full implementation preserved on session/security-perf-bugfix branch for future use.
+
+export const configureGoogleSignIn = () => {
+  // No-op: Google Sign-In disabled for this build
+};
+
+export const signInWithGoogle = async (): Promise<ApiResponse<User>> => {
+  return {
+    ok: false,
+    error: { code: 'GOOGLE_DISABLED', message: 'Google Sign-In is not available in this version.' },
+  };
 };
 
 // Flag set before intentional sign-outs so AppNavigator doesn't show a "Session Expired" toast
@@ -155,7 +171,7 @@ export const signInWithPassword = async (email: string, password: string): Promi
  * @param email - The email to send the OTP to
  * @param skipAccountCheck - When true, skips the ACCOUNT_EXISTS guard (used for resending during login)
  */
-export const sendOtpToEmail = async (email: string, skipAccountCheck = false): Promise<ApiResponse<void>> => {
+export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> => {
   try {
     const normalized = normalizeEmail(email);
     if (!normalized) {
@@ -199,27 +215,8 @@ export const sendOtpToEmail = async (email: string, skipAccountCheck = false): P
         },
       };
     }
-    // Check if this email already has an account — redirect to sign in instead.
-    // Skipped when resending a code during an active login/verification flow.
-    if (!skipAccountCheck) {
-      const { data: existing } = await supabase
-        .from('user_profiles')
-        .select('user_id')
-        .eq('email', normalized)
-        .maybeSingle();
-
-      if (existing) {
-        logger.info('[EMAIL] Account already exists for:', normalized);
-        return {
-          ok: false,
-          error: {
-            code: 'ACCOUNT_EXISTS',
-            message: 'You already have an account! Tap "Sign In" on the welcome screen to log in.',
-          },
-        };
-      }
-    }
-
+    // NOTE: Cannot check user_profiles here — RLS blocks anon reads (auth.role() = 'authenticated').
+    // Existing account detection happens post-OTP in the verification step via fetchAndSetUserProfile.
     logger.info('[EMAIL] Sending OTP via Supabase to:', normalized);
 
     const { error } = await supabase.auth.signInWithOtp({ email: normalized, options: { shouldCreateUser: true } });
@@ -305,9 +302,15 @@ export const sendLoginOtpToEmail = async (email: string): Promise<ApiResponse<vo
 
     if (error) {
       logger.warn('[EMAIL] Login OTP error:', error.message);
+      const isNoAccount = error.message.toLowerCase().includes('signups not allowed');
       return {
         ok: false,
-        error: { code: 'EMAIL_OTP_ERROR', message: error.message },
+        error: {
+          code: isNoAccount ? 'NO_ACCOUNT' : 'EMAIL_OTP_ERROR',
+          message: isNoAccount
+            ? 'No account found for that email. Try "Continue with Rice Google" or tap "Sign Up".'
+            : error.message,
+        },
       };
     }
 

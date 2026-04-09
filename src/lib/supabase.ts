@@ -15,15 +15,19 @@ const logger = createLogger('Supabase');
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-// Check if we have real credentials
+// Check if we have real credentials (production or local Supabase)
+const isLocalSupabase = supabaseUrl?.includes('127.0.0.1') || supabaseUrl?.includes('localhost');
 const hasRealCredentials = supabaseUrl && supabaseAnonKey &&
   supabaseUrl !== 'mock-url' &&
   supabaseAnonKey !== 'mock-key' &&
-  supabaseUrl.includes('supabase.co');
+  (supabaseUrl.includes('supabase.co') || isLocalSupabase);
 
 // Log the connection mode
 if (hasRealCredentials) {
-  logger.info('Connecting to real Supabase instance');
+  logger.info(`Connecting to ${isLocalSupabase ? 'LOCAL' : 'PRODUCTION'} Supabase instance`);
+  if (isLocalSupabase) {
+    logger.info(`Local Supabase URL: ${supabaseUrl}`);
+  }
 } else {
   logger.info('Using mock Supabase client - no valid credentials found');
   logger.info('Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY for real database');

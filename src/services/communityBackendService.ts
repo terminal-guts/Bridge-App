@@ -128,18 +128,29 @@ class CommunityBackendService {
     return fetchProposalsToVote();
   }
 
-  async submitProposalVote(proposalId: string, vote: 'yes' | 'no'): Promise<void> {
+  async submitProposalVote(proposalId: string, vote: 'yes' | 'no'): Promise<{ poolYes: number; poolNo: number; friendYes: number; friendNo: number } | undefined> {
     const userId = await getCurrentUserId();
     const voteTypeMap = { yes: 'YES', no: 'NO' } as const;
     const voteType = voteTypeMap[vote];
 
-    await castProposalVote(proposalId, userId, voteType);
+    const result = await castProposalVote(proposalId, userId, voteType);
     this.invalidateFriendsCache();
     if (!this.sessionVotedProposals.has(proposalId)) {
       this.sessionVotedProposals.add(proposalId);
       this.sessionVoteCount++;
       AsyncStorage.setItem(STORAGE_KEY_VOTES, String(this.sessionVoteCount)).catch(() => {});
     }
+
+    // Return server tallies so the UI can show real vote proportions
+    if (result?.tallies) {
+      return {
+        poolYes: result.tallies.pool_yes ?? 0,
+        poolNo: result.tallies.pool_no ?? 0,
+        friendYes: result.tallies.friend_yes ?? 0,
+        friendNo: result.tallies.friend_no ?? 0,
+      };
+    }
+    return undefined;
   }
 
   // ========================================================================

@@ -10,6 +10,7 @@
 type SentryLike = {
   init: (options: any) => void;
   captureException: (error: any, context?: any) => void;
+  setUser: (user: { id: string; email?: string } | null) => void;
 };
 
 let realSentry: SentryLike | null = null;
@@ -50,6 +51,11 @@ export const Sentry: SentryLike = {
       realSentry.captureException(error, context);
     } else {
       pendingExceptions.push([error, context]);
+    }
+  },
+  setUser: (user: { id: string; email?: string } | null) => {
+    if (realSentry && 'setUser' in realSentry) {
+      (realSentry as any).setUser(user);
     }
   },
 };

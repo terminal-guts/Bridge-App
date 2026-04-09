@@ -53,8 +53,8 @@ Deno.serve(async (req: Request) => {
       supabase.from('blocked_users').select('user_id').eq('blocked_user_id', userId),
       supabase.from('friends').select('user_id, friend_id').eq('status', 'accepted').or(`user_id.eq.${userId},friend_id.eq.${userId}`),
       supabase.from('proposal_votes').select('proposal_id').eq('voter_user_id', userId),
-      // Only fetch the columns needed for filtering — no SELECT *
-      supabase.from('proposals').select('id, user_a_id, user_b_id').eq('status', 'pending'),
+      // Fetch columns needed for filtering + vote counts for the LiveVoteBar
+      supabase.from('proposals').select('id, user_a_id, user_b_id, pool_yes_votes, pool_no_votes, friend_yes_votes, friend_no_votes, compatibility_score, status, created_at, voting_started_at, voting_expires_at').eq('status', 'pending'),
     ]);
 
     // ── Build lookup sets ───────────────────────────────────────────────────
@@ -129,16 +129,22 @@ Deno.serve(async (req: Request) => {
 
     const selected = eligible.slice(0, GATE_SIZE);
 
-    // ── Daily assignment quota: cap at 6 new assignments per user per day ──
-    const DAILY_ASSIGNMENT_CAP = 6;
+    // ── Daily assignment quota ──
+    // Only count assignments for proposals that are still pending — stale
+    // assignments (for rejected/deciding proposals) shouldn't eat the quota.
+    const DAILY_ASSIGNMENT_CAP = 12;
     const todayMidnightUTC = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z').toISOString();
-    const { count: todayAssignmentCount } = await supabase
+
+    // Get today's assignment count, excluding stale ones
+    const pendingProposalIds = (pendingProposals || []).map((p: ProposalRow) => p.id);
+    const { count: todayActiveAssignments } = await supabase
       .from('pool_vote_assignments')
       .select('*', { count: 'exact', head: true })
       .eq('voter_id', userId)
-      .gte('created_at', todayMidnightUTC);
+      .gte('created_at', todayMidnightUTC)
+      .in('proposal_id', pendingProposalIds.length > 0 ? pendingProposalIds : ['00000000-0000-0000-0000-000000000000']);
 
-    const remainingQuota = Math.max(0, DAILY_ASSIGNMENT_CAP - (todayAssignmentCount ?? 0));
+    const remainingQuota = Math.max(0, DAILY_ASSIGNMENT_CAP - (todayActiveAssignments ?? 0));
 
     // ── Create pool_vote_assignments for any newly assigned proposals ────
     // Only create new rows for proposals not already assigned, up to remaining quota.
@@ -159,9 +165,17 @@ Deno.serve(async (req: Request) => {
         );
     }
 
+    // Only return proposals that have valid assignments (pre-existing or newly created).
+    // Without an assignment, process-vote will reject the vote with 403.
+    const newAssignmentIds = new Set(newAssignments.map(p => p.id));
+    const assignable = selected.filter(p =>
+      userAssignedIds.has(p.id) || newAssignmentIds.has(p.id) ||
+      friendEligible.some(fp => fp.id === p.id) // friend votes don't need assignments
+    );
+
     // Tag proposals with correct vote context (friend vs pool)
     const friendEligibleIds = new Set(friendEligible.map(p => p.id));
-    const gateProposals = selected.map(p => ({
+    const gateProposals = assignable.map(p => ({
       ...p,
       vote_context: friendEligibleIds.has(p.id) ? 'friend' : 'pool',
       is_friend_vote: friendEligibleIds.has(p.id),

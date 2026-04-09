@@ -152,10 +152,18 @@ const BUTTON_SHADOW = Platform.select({
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const logoTapCount = React.useRef(0);
+  const logoTapTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleGetStarted = () => {
-    lightHaptic();
-    navigation.navigate('Onboarding');
+  // Hidden reviewer entry: tap logo 5 times to access OTP login
+  const handleLogoTap = () => {
+    logoTapCount.current += 1;
+    if (logoTapTimer.current) clearTimeout(logoTapTimer.current);
+    logoTapTimer.current = setTimeout(() => { logoTapCount.current = 0; }, 3000);
+    if (logoTapCount.current >= 5) {
+      logoTapCount.current = 0;
+      navigation.navigate('Login');
+    }
   };
 
   // Bottom padding: respects home indicator on notched phones, 16pt floor on SE
@@ -195,20 +203,26 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
         <StyledView className="flex-1 px-6 justify-between">
           {/* Logo + tagline group — pushed slightly below center for visual weight */}
           <StyledView style={{ flex: 1, justifyContent: 'center', paddingTop: screenHeight * 0.06 }}>
-            {/* Logo — proportional to screen width */}
-            <Animated.Image
-              entering={FadeInUp.duration(600).delay(100)}
-              source={require('../../../assets/BridgeAppLogo.png')}
-              style={{
-                width: logoWidth,
-                height: logoHeight,
-                tintColor: COLORS.card,
-                marginBottom: 22,
-              }}
-              resizeMode="contain"
+            {/* Logo — proportional to screen width. 5x tap = reviewer login */}
+            <AnimatedPressable
+              onPress={handleLogoTap}
+              scale="subtle"
+              style={{ alignSelf: 'flex-start' }}
               accessibilityLabel="Bridge logo"
-              accessibilityRole="image"
-            />
+            >
+              <Animated.Image
+                entering={FadeInUp.duration(600).delay(100)}
+                source={require('../../../assets/BridgeAppLogo.png')}
+                style={{
+                  width: logoWidth,
+                  height: logoHeight,
+                  tintColor: COLORS.card,
+                  marginBottom: 22,
+                }}
+                resizeMode="contain"
+                accessibilityRole="image"
+              />
+            </AnimatedPressable>
             <Animated.View entering={FadeInUp.duration(500).delay(500)}>
               <StyledText
                 style={{
@@ -227,14 +241,16 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
             style={{ paddingBottom: bottomPadding, alignItems: 'center' }}
           >
             <AnimatedPressable
-              onPress={handleGetStarted}
+              onPress={() => {
+                lightHaptic();
+                navigation.navigate('Onboarding', { skipAuth: false });
+              }}
               scale="standard"
-              className="rounded-full items-center"
+              className="rounded-full items-center justify-center"
               style={{
                 backgroundColor: COLORS.card,
                 paddingVertical: 16,
                 width: buttonMaxWidth,
-                marginBottom: 16,
                 ...BUTTON_SHADOW,
               }}
               accessibilityRole="button"
@@ -256,16 +272,19 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
                 lightHaptic();
                 navigation.navigate('Login');
               }}
-              scale="pronounced"
-              className="items-center"
-              style={{ paddingVertical: 12, width: buttonMaxWidth }}
+              scale="standard"
+              className="items-center justify-center"
+              style={{
+                paddingVertical: 14,
+                marginTop: 12,
+              }}
               accessibilityRole="button"
               accessibilityLabel="Sign In"
             >
               <StyledText
                 style={{
-                  ...TEXT_STYLES.labelLg,
-                  color: 'rgba(255,255,255,0.9)',
+                  ...TEXT_STYLES.buttonLg,
+                  color: 'rgba(255,255,255,0.8)',
                   textAlign: 'center',
                 }}
               >

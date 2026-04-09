@@ -51,7 +51,7 @@ BEGIN
         END LOOP;
         
         -- Check for uniqueness
-        IF NOT EXISTS (SELECT 1 FROM friend_codes WHERE code = new_code) THEN
+        IF NOT EXISTS (SELECT 1 FROM public.friend_codes WHERE code = new_code) THEN
             RETURN new_code;
         END IF;
     END LOOP;
@@ -65,11 +65,11 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION handle_new_user_friend_code()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO friend_codes (user_id, code)
-    VALUES (NEW.id, generate_friend_code());
+    INSERT INTO public.friend_codes (user_id, code)
+    VALUES (NEW.id, public.generate_friend_code());
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Apply trigger to auth.users (run once)
 DROP TRIGGER IF EXISTS on_auth_user_created_friend_code ON auth.users;

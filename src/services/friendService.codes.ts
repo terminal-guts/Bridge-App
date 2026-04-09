@@ -225,14 +225,24 @@ const createFriendCode = async (userId: string): Promise<ApiResponse<FriendCode>
 /**
  * Look up a single user's friend code by their user_id.
  * Returns the code string or null if not found.
+ * Times out after 10 seconds to prevent infinite spinner.
  */
 export const getFriendCodeByUserId = async (userId: string): Promise<string | null> => {
-  const { data } = await supabase
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), 10000);
+  });
+  const query = supabase
     .from('friend_codes')
     .select('code')
     .eq('user_id', userId)
-    .single();
-  return data?.code ?? null;
+    .single()
+    .then(({ data, error }) => {
+      clearTimeout(timer);
+      if (error) return null;
+      return data?.code ?? null;
+    });
+  return Promise.race([query, timeout]);
 };
 
 /**

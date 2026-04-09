@@ -48,7 +48,7 @@ function mapBackendToUserProfile(data: Record<string, any>): UserProfile {
   return {
     id: data.id,
     userId: data.user_id || data.id,
-    firstName: data.first_name || 'User',
+    firstName: data.first_name || '',
     lastName: data.last_name || '',
     age: (data.age && data.age > 0) ? data.age : undefined,
     gender: data.gender || [],

@@ -77,7 +77,8 @@ export async function fetchProposalsToVote(): Promise<Proposal[]> {
     return transformedProposals;
   } catch (error: unknown) {
     logger.error('Failed to fetch proposals for voting', error instanceof Error ? error.message : String(error));
-    return [];
+    // Re-throw so the caller can show an error state instead of silently showing zero proposals
+    throw error;
   }
 }
 

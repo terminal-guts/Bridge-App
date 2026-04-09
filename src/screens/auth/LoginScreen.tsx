@@ -50,7 +50,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
       if (result.ok) {
         navigation.navigate('EmailVerification', {
-          email: email,
+          email: email.trim().toLowerCase(),
         });
       } else {
         setError(result.error?.message || 'We couldn\'t send your code. Give it another try.');
@@ -89,11 +89,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           placeholder="netid@rice.edu"
           value={email}
           onChangeText={(text) => {
-            setEmail(text);
+            setEmail(text.toLowerCase());
             if (error) setError('');
           }}
           keyboardType="email-address"
           autoCapitalize="none"
+          autoCorrect={false}
           error={error}
           autoFocus={true}
         />

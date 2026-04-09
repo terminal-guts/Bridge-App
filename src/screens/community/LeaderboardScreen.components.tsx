@@ -24,14 +24,11 @@ export const FriendBadge = () => (
 export const InitialAvatar = ({ name, size, isAnonymous }: { name: string; size: number; isAnonymous?: boolean }) => {
   const bg = isAnonymous ? '#B0B8C4' : getInitialColor(name);
   const fontSize = size * 0.42;
-  if (isAnonymous) {
-    return (
-      <View style={[s.initialAvatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }]}>
-        <EvaIcon name="eye-off" variant="outline" size={fontSize} color={COLORS.card} />
-      </View>
-    );
-  }
-  const initial = (name && name !== 'You' ? name[0] : '?').toUpperCase();
+  // Anonymous users now show their initials (e.g., "S.B.") instead of eye-off icon
+  // The edge function sends initials like "S.B." for anonymous users
+  const initial = isAnonymous
+    ? (name && name !== '?' ? name.replace(/\./g, '').charAt(0) : '?').toUpperCase()
+    : (name && name !== 'You' ? name[0] : '?').toUpperCase();
   return (
     <View style={[s.initialAvatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }]}>
       <Text style={[s.initialAvatarText, { fontSize }]}>{initial}</Text>
