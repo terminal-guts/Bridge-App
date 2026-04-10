@@ -389,10 +389,10 @@ export const notificationService = {
                     event: 'INSERT',
                     schema: 'public',
                     table: 'matches',
-                    filter: `user1_id=eq.${userId}`,
+                    filter: `user_id_1=eq.${userId}`,
                 },
                 async (payload) => {
-                    const partnerId = (payload.new as Record<string, unknown>).user2_id;
+                    const partnerId = (payload.new as Record<string, unknown>).user_id_2;
                     const { data: partner } = await supabase
                         .from('user_profiles')
                         .select('first_name')
@@ -407,10 +407,10 @@ export const notificationService = {
                     event: 'INSERT',
                     schema: 'public',
                     table: 'matches',
-                    filter: `user2_id=eq.${userId}`,
+                    filter: `user_id_2=eq.${userId}`,
                 },
                 async (payload) => {
-                    const partnerId = (payload.new as Record<string, unknown>).user1_id;
+                    const partnerId = (payload.new as Record<string, unknown>).user_id_1;
                     const { data: partner } = await supabase
                         .from('user_profiles')
                         .select('first_name')
