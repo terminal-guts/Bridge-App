@@ -85,7 +85,7 @@ export const EditLifestyleScreen: React.FC<EditLifestyleScreenProps> = ({ naviga
         {/* Children Status */}
         <StyledView className="mb-3 mt-2">
           <Body style={{ fontFamily: FONTS.semiBold, fontSize: 11, lineHeight: 14, color: COLORS.text.secondary, letterSpacing: 0.8 }}>
-            DO YOU HAVE CHILDREN?<StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}> *</StyledText>
+            DO YOU HAVE CHILDREN? (optional)
           </Body>
         </StyledView>
         <StyledView className="flex-row flex-wrap mb-5" style={{ gap: 10 }}>
@@ -102,7 +102,7 @@ export const EditLifestyleScreen: React.FC<EditLifestyleScreenProps> = ({ naviga
         {/* Family Plans */}
         <StyledView className="mb-3 mt-2">
           <Body style={{ fontFamily: FONTS.semiBold, fontSize: 11, lineHeight: 14, color: COLORS.text.secondary, letterSpacing: 0.8 }}>
-            FAMILY PLANS<StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}> *</StyledText>
+            FAMILY PLANS (optional)
           </Body>
         </StyledView>
         <StyledView className="flex-row flex-wrap mb-5" style={{ gap: 10 }}>

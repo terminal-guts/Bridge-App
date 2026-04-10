@@ -70,24 +70,19 @@ const AUTH_STEPS: StepDefinition[] = [
 ];
 
 // Profile steps shared by both signup paths
+// Simplified: 14 total steps (7 removed — pronouns, children, occupation, religion, politics, lifestyle, commitment)
+// Removed steps are now optional in profile edit screens
 const PROFILE_STEPS: StepDefinition[] = [
   { component: NameStep, title: 'Name', hasTextInput: true, mappingKey: 'name' },
   { component: MatchmakingModeStep, title: 'Role', hasTextInput: false, mappingKey: 'role' },
   { component: OnboardingProposalStep, title: 'First Votes', hasTextInput: false },
   { component: AgeStep, title: 'Birthday', hasTextInput: false, mappingKey: 'age' },
   { component: GenderStep, title: 'Gender', hasTextInput: false, mappingKey: 'gender' },
-  { component: PronounsStep, title: 'Pronouns', hasTextInput: false, mappingKey: 'pronouns' },
   { component: HeightStep, title: 'Height', hasTextInput: false, mappingKey: 'height' },
   { component: EthnicityStep, title: 'Ethnicity', hasTextInput: false, mappingKey: 'ethnicity' },
-  { component: ChildrenStep, title: 'Children', hasTextInput: false, mappingKey: 'children' },
-  { component: CurrentJobStep, title: 'Occupation', hasTextInput: true, mappingKey: 'current_job' },
-  { component: ReligionStep, title: 'Religion', hasTextInput: false, mappingKey: 'religion' },
-  { component: PoliticalBeliefsStep, title: 'Politics', hasTextInput: false, mappingKey: 'political_beliefs' },
-  { component: LifestyleStep, title: 'Lifestyle', hasTextInput: false, mappingKey: 'lifestyle' },
   { component: ValuesStep, title: 'Values', hasTextInput: false, mappingKey: 'values' },
   { component: InterestsStep, title: 'Interests', hasTextInput: false, mappingKey: 'interests' },
   { component: PhotoUploadStep, title: 'Photos', hasTextInput: false, mappingKey: 'photos' },
-  { component: PreferencesStep, title: 'Commitment Level', hasTextInput: false, mappingKey: 'preferences' },
   { component: AddFriendsStep, title: 'Add Friends', hasTextInput: false },
   { component: WelcomeToBridgeStep, title: 'Welcome', hasTextInput: false, mappingKey: 'welcome' },
 ];

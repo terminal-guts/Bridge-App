@@ -52,7 +52,7 @@ export const LifestyleSection = React.memo<LifestyleSectionProps>(({
       <H3 className="mb-4">Lifestyle Habits</H3>
 
       {/* Drinking Frequency */}
-      <SectionHeader title="DRINKING" titleExtra={<StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}> *</StyledText>} />
+      <SectionHeader title="DRINKING" titleExtra={<StyledText style={{ color: COLORS.text.tertiary, fontFamily: FONTS.regular }}> (optional)</StyledText>} />
       <StyledView className="flex-row flex-wrap mb-5" style={{ gap: 10 }}>
         {[...FREQUENCY_OPTIONS, PREFER_NOT_TO_SAY].map((option) => (
           <Chip
@@ -65,7 +65,7 @@ export const LifestyleSection = React.memo<LifestyleSectionProps>(({
       </StyledView>
 
       {/* Cannabis */}
-      <SectionHeader title="CANNABIS" titleExtra={<StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}> *</StyledText>} />
+      <SectionHeader title="CANNABIS" titleExtra={<StyledText style={{ color: COLORS.text.tertiary, fontFamily: FONTS.regular }}> (optional)</StyledText>} />
       <StyledView className="flex-row flex-wrap mb-5" style={{ gap: 10 }}>
         {[...FREQUENCY_OPTIONS, PREFER_NOT_TO_SAY].map((option) => (
           <Chip
@@ -78,7 +78,7 @@ export const LifestyleSection = React.memo<LifestyleSectionProps>(({
       </StyledView>
 
       {/* Tobacco/Vaping */}
-      <SectionHeader title="TOBACCO/VAPING" titleExtra={<StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}> *</StyledText>} />
+      <SectionHeader title="TOBACCO/VAPING" titleExtra={<StyledText style={{ color: COLORS.text.tertiary, fontFamily: FONTS.regular }}> (optional)</StyledText>} />
       <StyledView className="flex-row flex-wrap mb-5" style={{ gap: 10 }}>
         {[...FREQUENCY_OPTIONS, PREFER_NOT_TO_SAY].map((option) => (
           <Chip
@@ -91,7 +91,7 @@ export const LifestyleSection = React.memo<LifestyleSectionProps>(({
       </StyledView>
 
       {/* Other Drugs */}
-      <SectionHeader title="OTHER DRUGS" titleExtra={<StyledText style={{ color: COLORS.error, fontFamily: FONTS.regular }}> *</StyledText>} />
+      <SectionHeader title="OTHER DRUGS" titleExtra={<StyledText style={{ color: COLORS.text.tertiary, fontFamily: FONTS.regular }}> (optional)</StyledText>} />
       <StyledView className="flex-row flex-wrap mb-5" style={{ gap: 10 }}>
         {[...FREQUENCY_OPTIONS, PREFER_NOT_TO_SAY].map((option) => (
           <Chip

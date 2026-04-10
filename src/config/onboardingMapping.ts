@@ -10,12 +10,11 @@
  * 3. Users CANNOT enter matching pool until ALL mandatory fields are complete
  * 4. Mandatory fields not collected in onboarding must be completed in-app
  *
- * MANDATORY FIELDS NOT IN ONBOARDING:
- * - preferredEthnicities (Match Preferences - collected post-onboarding)
- * - preferredPolitics (Match Preferences - collected post-onboarding)
- * - partnerLifestylePreferences (Match Preferences - collected post-onboarding)
+ * OPTIONAL FIELDS NOT IN ONBOARDING:
+ * - religion, politicalLeaning (optional bonus weight — improves match quality)
+ * - pronouns, lifestyle habits, children, family plans, occupation (cosmetic only)
+ * - preferredReligions, preferredPolitics, partnerLifestylePreferences (optional prefs)
  * - displayedQuestions (Deep Questions - collected post-onboarding)
- * - Additional photos (Onboarding collects 1, need 3 total for matching pool)
  */
 
 export type StepType = 'text' | 'single_choice' | 'multi_choice' | 'complex';
@@ -145,11 +144,13 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
   // Step 7: Ethnicity (my ethnicity only - preferred ethnicities NOT collected in onboarding)
   ethnicity: {
     key: 'ethnicity',
-    type: 'single_choice',
+    type: 'complex',
     table: 'user_profiles',
     columns: ['ethnicity'],
     transform: (data: any) => ({
       ethnicity: data.ethnicity || '',
+      // preferredEthnicities saved to user_preferences by createUserProfile/updateUserProfile
+      preferredEthnicities: data.preferredEthnicities || [],
     }),
   },
 

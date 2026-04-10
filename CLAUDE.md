@@ -7,6 +7,13 @@ This is the **production codebase** for Bridge — the app is **LIVE on the App 
 **CRITICAL — Never Alter Live User Experience Without Direct Approval:**
 No change — whether Supabase or frontend — should alter the experience of live users who have downloaded the app without the user's direct, clear approval. Supabase edge functions, database migrations, and RPC changes go live **immediately** when deployed — there is no review gate. This means any Supabase alteration instantly impacts real users. **Never deploy Supabase changes (deploy functions, run migrations, modify RLS policies, alter tables, update edge functions) without explicit user confirmation.** Always describe the change and its impact first, then wait for a clear "go ahead" before executing.
 
+**Multiple layers of protection for production database:**
+1. **`.env.local` toggle** — local Supabase URL (`127.0.0.1:54321`) overrides production when uncommented. Always verify which environment is active before any database operation.
+2. **Service role key** — production `SUPABASE_SERVICE_ROLE_KEY` is required for admin operations. Local Supabase uses a different demo key.
+3. **`exec_sql` RPC** — production SQL execution requires the service role key and is only available on the production instance.
+4. **Explicit user approval** — even with technical access, never execute writes against production without the user's direct, clear approval in the conversation.
+5. **Local dev environment** — all testing, screenshot staging, and data manipulation should use local Supabase (`supabase start`). See `scripts/snapshot-export.sh` for importing production data read-only.
+
 Frontend code changes (React Native/Expo) go through the normal build-and-review process and do not reach users immediately — these are safe to make and test locally. However, even frontend changes must be reviewed before being pushed to production.
 
 **Notable removals:**

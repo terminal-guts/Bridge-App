@@ -39,6 +39,12 @@ export const EthnicityStep: React.FC<EthnicityStepProps> = ({
   const [myEthnicity, setMyEthnicity] = useState<string[]>(
     Array.isArray(data.ethnicity) ? data.ethnicity : (data.ethnicity ? [data.ethnicity] : [])
   );
+  const [preferredEthnicities, setPreferredEthnicities] = useState<string[]>(
+    data.preferredEthnicities || []
+  );
+  const [openToAll, setOpenToAll] = useState(
+    !data.preferredEthnicities || data.preferredEthnicities.length === 0
+  );
   const [error, setError] = useState<string>('');
 
   const toggleEthnicity = (ethnicity: string) => {
@@ -50,6 +56,22 @@ export const EthnicityStep: React.FC<EthnicityStepProps> = ({
     setError('');
   };
 
+  const togglePreferred = (ethnicity: string) => {
+    if (openToAll) return;
+    if (preferredEthnicities.includes(ethnicity)) {
+      setPreferredEthnicities(preferredEthnicities.filter(e => e !== ethnicity));
+    } else {
+      setPreferredEthnicities([...preferredEthnicities, ethnicity]);
+    }
+  };
+
+  const handleOpenToAll = () => {
+    setOpenToAll(!openToAll);
+    if (!openToAll) {
+      setPreferredEthnicities([]);
+    }
+  };
+
   const validateAndContinue = () => {
     if (myEthnicity.length === 0) {
       setError('Please select your ethnicity');
@@ -57,39 +79,38 @@ export const EthnicityStep: React.FC<EthnicityStepProps> = ({
     }
 
     updateData({
-      ethnicity: myEthnicity.length > 0 ? myEthnicity.join(' / ') : '',
+      ethnicity: myEthnicity.join(' / '),
+      preferredEthnicities: openToAll ? ETHNICITY_OPTIONS : preferredEthnicities,
     });
     onNext();
   };
 
-  const getButtonStyle = (ethnicity: string) => {
-    const isSelected = myEthnicity.includes(ethnicity);
-
-    if (isSelected) {
-      return 'bg-primary-500 border-primary-500';
-    } else {
-      // Not selected
-      return 'bg-white border-neutral-300';
-    }
+  const getButtonStyle = (ethnicity: string, selected: boolean) => {
+    return selected ? 'bg-primary-500 border-primary-500' : 'bg-white border-neutral-300';
   };
 
-  const getButtonTextColor = (ethnicity: string) => {
-    const isSelected = myEthnicity.includes(ethnicity);
-    return isSelected ? 'text-white font-medium' : 'text-neutral-700';
+  const getButtonTextColor = (selected: boolean) => {
+    return selected ? 'text-white font-medium' : 'text-neutral-700';
   };
 
   const OptionButton = ({
     label,
-    onPress
+    selected,
+    onPress,
+    disabled,
   }: {
     label: string;
+    selected: boolean;
     onPress: () => void;
+    disabled?: boolean;
   }) => (
     <StyledTouchableOpacity
       onPress={onPress}
-      className={`px-4 py-3 rounded-lg border mb-3 ${getButtonStyle(label)}`}
+      disabled={disabled}
+      className={`px-4 py-3 rounded-lg border mb-3 ${getButtonStyle(label, selected)}`}
+      style={disabled ? { opacity: 0.4 } : undefined}
     >
-      <Body className={getButtonTextColor(label)}>
+      <Body className={getButtonTextColor(selected)}>
         {label}
       </Body>
     </StyledTouchableOpacity>
@@ -112,6 +133,7 @@ export const EthnicityStep: React.FC<EthnicityStepProps> = ({
             <OptionButton
               key={option}
               label={option}
+              selected={myEthnicity.includes(option)}
               onPress={() => toggleEthnicity(option)}
             />
           ))}
@@ -120,6 +142,33 @@ export const EthnicityStep: React.FC<EthnicityStepProps> = ({
         {error && (
           <Body className="text-error text-sm mt-2">{error}</Body>
         )}
+
+        {/* Preferred Ethnicities Section */}
+        <StyledView className="mt-8">
+          <H1 className="mb-3">Ethnicity preferences</H1>
+          <Body className="text-neutral-600 mb-6">
+            Who are you open to matching with?
+          </Body>
+
+          <OptionButton
+            label="Open to all"
+            selected={openToAll}
+            onPress={handleOpenToAll}
+          />
+
+          {!openToAll && (
+            <StyledView className="mt-2">
+              {ETHNICITY_OPTIONS.map((option) => (
+                <OptionButton
+                  key={`pref-${option}`}
+                  label={option}
+                  selected={preferredEthnicities.includes(option)}
+                  onPress={() => togglePreferred(option)}
+                />
+              ))}
+            </StyledView>
+          )}
+        </StyledView>
       </StyledView>
     </OnboardingLayout>
   );

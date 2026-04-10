@@ -231,7 +231,7 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
 
         {/* Pronouns */}
         <Label style={{ color: COLORS.text.secondary }} className="mb-2">
-          Pronouns <StyledText style={{ color: COLORS.error }}>*</StyledText> (Select up to {MAX_PRONOUNS})
+          Pronouns (optional, select up to {MAX_PRONOUNS})
         </Label>
         <Caption style={{ color: COLORS.primaryAccent }} className="font-semibold mb-2">
           {(profile.pronounsList?.length || 0)}/{MAX_PRONOUNS} selected

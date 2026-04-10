@@ -100,7 +100,7 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
         <H3 className="mb-4">Background & Beliefs</H3>
 
         {/* Religion */}
-        <FieldLabel label="Religion" required />
+        <FieldLabel label="Religion" optional />
         <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
           {RELIGION_OPTIONS.map((option) => {
             const isSelected = religionArray.includes(option);
@@ -131,7 +131,7 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
         </StyledView>
 
         {/* Political Leaning */}
-        <FieldLabel label="Political Leaning" required />
+        <FieldLabel label="Political Leaning" optional />
         <StyledView className="flex-row flex-wrap gap-2.5">
           {POLITICAL_OPTIONS.map((option) => {
             const isSelected = profile.politicalLeaning === option.value;
@@ -177,7 +177,7 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
         <H3 className="mb-4">Professional & Education</H3>
 
         <StyledView className="mb-4">
-          <FieldLabel label="Occupation" required />
+          <FieldLabel label="Occupation" optional />
           <Input
             value={profile.currentJob || ''}
             onChangeText={(text) => updateProfile({ currentJob: text })}
