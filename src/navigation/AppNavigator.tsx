@@ -103,10 +103,8 @@ import { RootStackParamList, MainTabParamList, MatchmakerTabParamList } from '..
 import { createLogger } from '../utils/secureLogger';
 import { slideWithFade, modalSlideUp, fadeTransition } from '../utils/screenTransitions';
 
-// Dev tools — only bundled in __DEV__ builds, lazy-loaded when feature flag is on
-const LazyDevStateToggle = __DEV__ && FEATURES.ENABLE_DEV_STATE_TOGGLE
-  ? withSuspense(React.lazy(() => import('../components/dev/DevStateToggle').then(m => ({ default: m.DevStateToggle }))))
-  : () => null;
+// Dev tools — lazy-loaded when active (either __DEV__ flag or reviewer account)
+const LazyDemoToggle = withSuspense(React.lazy(() => import('../components/dev/DemoToggle').then(m => ({ default: m.DemoToggle }))));
 
 const logger = createLogger('AppNavigator');
 
@@ -375,6 +373,7 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
   const [isSuspended, setIsSuspended] = useState(() => getInMemoryMinimalStatus()?.isSuspended ?? false);
   const [suspensionReason, setSuspensionReason] = useState<string | null>(() => getInMemoryMinimalStatus()?.reason ?? null);
   const [userRole, setUserRole] = useState<'dater' | 'matchmaker'>(() => getInMemoryMinimalStatus()?.role ?? 'dater');
+  const [isReviewer, setIsReviewer] = useState(false);
   const { stopGuide, isPlaying } = useGuideContext();
   const navigationRef = React.useRef<any>(null);
   const authStateRef = React.useRef<boolean | null>(null);
@@ -601,6 +600,13 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
           // Render main app immediately — no waiting for JWT validation
           setIsAuthenticated(true);
 
+          // Check for reviewer email in background
+          supabase.auth.getUser().then(({ data }) => {
+            if (data?.user?.email?.toLowerCase() === 'reviewer@bridgedate.app') {
+              setIsReviewer(true);
+            }
+          });
+
           // Network prefetches (community cache already warmed above)
           if (cachedStatus.role === 'dater') {
             import('../services/communityServiceIndex').then(({ communityService }) => {
@@ -667,6 +673,9 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
         } else {
           const user = session.user;
           setCachedUserId(user.id);
+          if (user.email?.toLowerCase() === 'reviewer@bridgedate.app') {
+            setIsReviewer(true);
+          }
           logger.info('[AppNavigator] Authenticated user (slow path):', user.id);
 
           // Defaults — checkMinimalProfileStatus() will fill in real values in background
@@ -797,6 +806,9 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
       if (event === 'SIGNED_IN' && session?.user) {
         invalidateProfileCache();
         setCachedUserId(session.user.id);
+        if (session.user.email?.toLowerCase() === 'reviewer@bridgedate.app') {
+          setIsReviewer(true);
+        }
         Sentry.setUser({ id: session.user.id, email: session.user.email });
         setupNotifications();
         // Development mock data creation removed — use real Supabase data
@@ -807,6 +819,7 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
         clearCachedUserId();
         invalidateProfileCache();
         clearMinimalProfileStatusCache();
+        setIsReviewer(false);
         setIsAuthenticated(false);
         showToast.error('Session Expired', 'Your session expired. Please sign in again.');
         if (navigationRef.current) {
@@ -931,8 +944,8 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
           {/* Suspension */}
           <Stack.Screen name="Suspended" component={SuspendedScreen} options={{ gestureEnabled: false }} />
         </Stack.Navigator>
-        {/* Dev State Toggle - quick UI state switcher */}
-        {FEATURES.ENABLE_DEV_STATE_TOGGLE && <LazyDevStateToggle />}
+        {/* Demo Toggle - quick UI state switcher for reviewers or dev */}
+        {(isReviewer || (__DEV__ && FEATURES.ENABLE_DEV_STATE_TOGGLE)) && <LazyDemoToggle />}
       </ErrorBoundary>
     </NavigationContainer>
   );
