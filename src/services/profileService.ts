@@ -11,6 +11,7 @@ import {
   UserProfile,
 } from '../types';
 import { supabase } from '../lib/supabase';
+import { isReviewerBypassEmail } from './authService';
 import { getAuthenticatedUserId } from '../utils/auth';
 import { createLogger } from '../utils/secureLogger';
 import { getMultiplePhotoSignedUrls } from './photoService';
@@ -451,7 +452,7 @@ export const updateUserProfile = async (
     // cache and photos don't flash blank during background saves.
     try {
       const fullProfile = await _fetchUserProfile();
-      const isReviewer = fullProfile.ok && fullProfile.data?.email?.toLowerCase() === 'reviewer@bridgedate.app';
+      const isReviewer = fullProfile.ok && isReviewerBypassEmail(fullProfile.data?.email ?? '');
       if (fullProfile.ok && fullProfile.data && !fullProfile.data.profileCompleted && !isReviewer) {
         const strength = calculateProfileStrengthBreakdown(fullProfile.data);
         if (strength.overall >= 100) {

@@ -133,7 +133,7 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
           clearCodeAndFocus();
           return;
         }
-        const bypassResult = await signInWithPassword('reviewer@bridgedate.app', reviewerResult.authPassword);
+        const bypassResult = await signInWithPassword(email, reviewerResult.authPassword);
 
         if (bypassResult.ok) {
           const userId = bypassResult.data!.id;

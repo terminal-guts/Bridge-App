@@ -19,8 +19,8 @@ const logger = createLogger('AuthService');
 
 const ALLOWED_EMAIL_DOMAIN = 'rice.edu';
 
-/** Email used by the App Store reviewer bypass account */
-const REVIEWER_EMAIL = 'reviewer@bridgedate.app';
+/** Emails used by App Store reviewer bypass accounts */
+const REVIEWER_EMAILS = ['reviewer@bridgedate.app', 'reviewer2@bridgedate.app'];
 
 /** Basic email format check — rejects obviously invalid input before it hits the network. */
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -47,7 +47,7 @@ export const isAllowedEmailDomain = (email: string): boolean => {
  * Only checks the email format — actual password validation is server-side.
  */
 export const isReviewerBypassEmail = (email: string): boolean => {
-  return email.trim().toLowerCase() === REVIEWER_EMAIL;
+  return REVIEWER_EMAILS.includes(email.trim().toLowerCase());
 };
 
 /**
