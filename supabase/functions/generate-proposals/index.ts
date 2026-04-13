@@ -35,12 +35,16 @@ Deno.serve(async (req: Request) => {
 
     if (profilesErr) throw profilesErr;
 
-    // Fetch ALL active profiles for voter eligibility (even those without completed profiles)
+    // Fetch active profiles with completed profiles for voter eligibility.
+    // Only users who finished onboarding (profile_completed=true) should be
+    // assigned as pool voters.  This excludes demo/reviewer accounts and
+    // users still in onboarding who can't access the Community tab yet.
     const { data: allActiveProfiles, error: activeErr } = await supabase
       .from('user_profiles')
       .select('user_id')
       .eq('is_paused', false)
-      .eq('is_suspended', false);
+      .eq('is_suspended', false)
+      .eq('profile_completed', true);
 
     if (activeErr) throw activeErr;
     if (!profiles || profiles.length < 2) {

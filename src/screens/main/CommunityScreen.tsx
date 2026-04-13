@@ -231,7 +231,14 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
       setHasCompletedVoting(votingDone);
       if (votingDone) {
-        await loadFriendsData();
+        // Wrap in separate try/catch so a friends-area load failure
+        // does NOT revert the voting state. The user genuinely voted.
+        try {
+          await loadFriendsData();
+        } catch (friendsErr) {
+          console.error('[CommunityScreen] loadFriendsData failed (non-blocking):', friendsErr);
+          setLoadError(true);
+        }
       }
     } catch (error) {
       console.error("Failed to check task progress:", error);
@@ -351,23 +358,47 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
     loadFriendsData();
   }, [hasCompletedVoting, loadFriendsData, startGuideIfNeeded]));
 
+  // Guard: prevent handleVotesComplete from running multiple times concurrently.
+  // Multiple code paths (advanceProposal timeout, isDone useEffect, double-tap)
+  // can trigger onVotesComplete. Only the first invocation should execute.
+  const votesCompleteCalledRef = useRef(false);
+
   const handleVotesComplete = useCallback(async () => {
-    // Brief delay to allow the last vote to commit to the database
-    // before querying hasCompletedGrid (which checks proposal_votes)
-    await new Promise(resolve => setTimeout(resolve, 800));
-    // Invalidate friends cache so friend proposals voted in the gate
-    // correctly move from "Waiting on you" to "Your crew"
-    if ('invalidateFriendsCache' in communityService) {
-      (communityService as any).invalidateFriendsCache();
+    if (votesCompleteCalledRef.current) return;
+    votesCompleteCalledRef.current = true;
+
+    try {
+      // Brief delay to allow the last vote to commit to the database
+      await new Promise(resolve => setTimeout(resolve, 800));
+      // Invalidate friends cache so friend proposals voted in the gate
+      // correctly move from "Waiting on you" to "Your crew"
+      if ('invalidateFriendsCache' in communityService) {
+        (communityService as any).invalidateFriendsCache();
+      }
+      try {
+        await loadFriendsData();
+      } catch (friendsErr) {
+        // Friends will load on next focus/refresh — don't block gate transition
+        console.error('[CommunityScreen] loadFriendsData failed after voting (non-blocking):', friendsErr);
+      }
+      // ALWAYS clear the gate — this is the most important line. If loadFriendsData
+      // failed above, the user sees an empty friends area with a retry button
+      // instead of being stuck in a crashed voting gate.
+      setHasCompletedVoting(true);
+      successHaptic();
+      // Cache so next cold open skips the voting gate
+      const cycleId = String(getLast7PMCentral());
+      communityService.cacheVotingComplete(true, cycleId).catch(() => {});
+      // Removed: navigation.navigate('Community') — already on Community screen.
+      // setHasCompletedVoting(true) handles the view transition. The navigate
+      // call caused unnecessary re-initialization and navigation state conflicts
+      // on slower devices.
+    } catch (error) {
+      console.error('[CommunityScreen] handleVotesComplete error:', error);
+      // Even on unexpected error, clear the gate so user isn't permanently stuck
+      setHasCompletedVoting(true);
     }
-    await loadFriendsData();
-    setHasCompletedVoting(true);
-    successHaptic();
-    // Cache so next cold open skips the voting gate
-    const cycleId = String(getLast7PMCentral());
-    communityService.cacheVotingComplete(true, cycleId).catch(() => {});
-    navigation.navigate('Community');
-  }, [loadFriendsData, navigation]);
+  }, [loadFriendsData]);
 
   const processingRequestRef = useRef(new Set<string>());
   const handleAcceptRequest = useCallback(async (requestId: string) => {

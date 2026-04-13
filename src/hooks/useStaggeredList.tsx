@@ -20,6 +20,7 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withDelay,
+  cancelAnimation,
   Easing,
 } from 'react-native-reanimated';
 import { DURATIONS, STAGGER, EASINGS } from '../constants/animations';
@@ -71,6 +72,7 @@ export const StaggerItem: React.FC<{
         withTiming(0, { duration, easing: Easing.bezier(0.25, 0.1, 0.25, 1.0) }),
       );
     }
+    return () => { cancelAnimation(opacity); cancelAnimation(translateY); };
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => ({

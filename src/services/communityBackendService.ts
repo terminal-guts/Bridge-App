@@ -346,11 +346,13 @@ class CommunityBackendService {
       logger.error('Failed to fetch recommendation count', recResult.error.message);
     }
 
-    const voteCount = voteResult.count;
-    const recCount = recResult.count;
+    // Use ?? (nullish coalescing) instead of || (logical OR) so that
+    // a legitimate 0 vote count is preserved rather than conflated with null.
+    const voteCount = voteResult.count ?? 0;
+    const recCount = recResult.count ?? 0;
 
     // Only actual votes count toward the gate — recommendations do not.
-    const dbVotes = voteCount || 0;
+    const dbVotes = voteCount;
     // DB is source of truth. Session count is used as a floor for votes
     // taken this session that may not have propagated to DB yet.
     const pendingSessionVotes = this.sessionVotedProposals.size;

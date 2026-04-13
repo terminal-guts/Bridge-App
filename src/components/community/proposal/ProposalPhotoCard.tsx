@@ -11,6 +11,12 @@ import { FONTS, FONT_SIZES } from '../../../constants/typography';
 import { COLORS } from '../../../theme/colors';
 import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
 
+// Local fallback images when remote photos are unavailable
+const FALLBACK_PHOTOS = {
+  left: require('../../../../assets/stockface-female3.jpg'),
+  right: require('../../../../assets/stockface-male3.jpg'),
+};
+
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const PHOTO_HEIGHT = Math.max(220, Math.min(Math.round(SCREEN_HEIGHT * 0.36), 340));
 const PHOTO_RADIUS = 16;
@@ -36,13 +42,15 @@ export const ProposalPhotoCard = React.memo(function ProposalPhotoCard({
 }) {
   const [currentPage, setCurrentPage] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
+  const [imageError, setImageError] = useState(false);
   const validPhotos = useMemo(() => (photos || []).filter((p: any) => p.url).map((p: any) => ({
     ...p,
     url: getOptimizedPhotoUrl(p.url, 'card') || p.url,
     blurhash: p.blurhash,
   })), [photos]);
-  const showCarousel = validPhotos.length > 1;
+  const showCarousel = !imageError && validPhotos.length > 1;
   const mainPhoto = validPhotos.find((p: any) => p.isMain) || validPhotos[0];
+  const useFallback = imageError || validPhotos.length === 0;
 
   // Wrap-around carousel: [last, ...originals, first]
   const loopPhotos = useMemo(() => {
@@ -88,7 +96,7 @@ export const ProposalPhotoCard = React.memo(function ProposalPhotoCard({
           {loopPhotos.map((photo: any, i: number) => (
             <Image
               key={`${proposalId}-${side}-loop-${i}`}
-              source={{ uri: photo.url }}
+              source={photo.url ? { uri: photo.url } : FALLBACK_PHOTOS[side]}
               placeholder={photo.blurhash ? { blurhash: photo.blurhash } : undefined}
               style={{ width, height, backgroundColor: '#E5E7EB' }}
               contentFit="cover"
@@ -96,19 +104,21 @@ export const ProposalPhotoCard = React.memo(function ProposalPhotoCard({
               cachePolicy="memory-disk"
               priority={i <= 1 ? 'high' : 'normal'}
               recyclingKey={`${proposalId}-${side}-loop-${i}`}
+              onError={() => setImageError(true)}
             />
           ))}
         </ScrollView>
       ) : (
         <Image
-          source={mainPhoto?.url ? { uri: mainPhoto.url } : null}
-          placeholder={mainPhoto?.blurhash ? { blurhash: mainPhoto.blurhash } : undefined}
+          source={useFallback ? FALLBACK_PHOTOS[side] : (mainPhoto?.url ? { uri: mainPhoto.url } : FALLBACK_PHOTOS[side])}
+          placeholder={(!useFallback && mainPhoto?.blurhash) ? { blurhash: mainPhoto.blurhash } : undefined}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, ...borderRadiusStyle, backgroundColor: '#E5E7EB' }}
           contentFit="cover"
           transition={300}
           cachePolicy="memory-disk"
           priority="high"
           recyclingKey={`${proposalId}-${side}`}
+          onError={() => setImageError(true)}
         />
       )}
       <LinearGradient

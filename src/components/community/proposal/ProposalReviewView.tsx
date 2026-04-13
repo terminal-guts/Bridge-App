@@ -74,9 +74,9 @@ import type { DeepQuestionData } from './proposalHelpers';
 export type { DeepQuestionData } from './proposalHelpers';
 import { Proposal } from '../../../types/community';
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+// Removed: LayoutAnimationEnabledExperimental — this is dead code (no LayoutAnimation
+// calls exist in this file) and conflicts with Reanimated 4.x on Android, causing
+// intermittent "Unknown animated node" crashes.
 
 // ─── Layout constants ────────────────────────────────────────────────────────
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -240,9 +240,17 @@ export function ProposalReviewView({
   // This hook MUST be above all early returns to satisfy Rules of Hooks.
   // CRITICAL: Do NOT signal "done" if the fetch failed — that would skip the gate
   // on a transient error, making the user think there are no proposals.
+  // Guard: prevent onVotesComplete from firing multiple times.
+  // advanceProposal (in hooks) also calls onVotesComplete on the last proposal.
+  // Without this guard, both paths can fire, causing handleVotesComplete to run
+  // concurrently with itself — the root cause of the post-voting crash.
+  const completionFiredRef = useRef(false);
   const isDone = !loading && !fetchFailed && (proposals.length === 0 || currentIndex >= proposals.length);
   useEffect(() => {
-    if (isDone) onVotesComplete?.();
+    if (isDone && !completionFiredRef.current) {
+      completionFiredRef.current = true;
+      onVotesComplete?.();
+    }
   }, [isDone, onVotesComplete]);
 
   // ── Loading skeleton — matches photo pair + section card layout ──────────

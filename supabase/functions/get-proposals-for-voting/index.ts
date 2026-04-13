@@ -48,13 +48,17 @@ Deno.serve(async (req: Request) => {
       { data: friendRows },
       { data: existingVotes },
       { data: pendingProposals },
+      { data: userPreAssignments },
     ] = await Promise.all([
       supabase.from('blocked_users').select('blocked_user_id').eq('user_id', userId),
       supabase.from('blocked_users').select('user_id').eq('blocked_user_id', userId),
       supabase.from('friends').select('user_id, friend_id').eq('status', 'accepted').or(`user_id.eq.${userId},friend_id.eq.${userId}`),
       supabase.from('proposal_votes').select('proposal_id').eq('voter_user_id', userId),
       // Fetch columns needed for filtering + vote counts for the LiveVoteBar
-      supabase.from('proposals').select('id, user_a_id, user_b_id, pool_yes_votes, pool_no_votes, friend_yes_votes, friend_no_votes, compatibility_score, status, created_at, voting_started_at, voting_expires_at').eq('status', 'pending'),
+      // Include pool_eligible so we can filter out non-pool-eligible (demo) proposals
+      supabase.from('proposals').select('id, user_a_id, user_b_id, pool_yes_votes, pool_no_votes, friend_yes_votes, friend_no_votes, compatibility_score, status, created_at, voting_started_at, voting_expires_at, pool_eligible').eq('status', 'pending'),
+      // Fetch this user's pre-existing vote assignments (allows reviewer to see demo proposals)
+      supabase.from('pool_vote_assignments').select('proposal_id').eq('voter_id', userId).eq('has_voted', false),
     ]);
 
     // ── Build lookup sets ───────────────────────────────────────────────────
@@ -82,6 +86,12 @@ Deno.serve(async (req: Request) => {
     const strangerEligible: ProposalRow[] = [];
     const friendEligible: ProposalRow[] = [];
 
+    // Pre-assigned proposal IDs — allows specific users (e.g. Apple reviewer)
+    // to see non-pool-eligible (demo) proposals via pool_vote_assignments.
+    const preAssignedIds = new Set(
+      (userPreAssignments || []).map((a: { proposal_id: string }) => a.proposal_id),
+    );
+
     for (const p of (pendingProposals || [])) {
       // Skip proposals the user is part of
       if (p.user_a_id === userId || p.user_b_id === userId) continue;
@@ -89,6 +99,9 @@ Deno.serve(async (req: Request) => {
       if (alreadyActedIds.has(p.id)) continue;
       // Skip proposals involving blocked users
       if (blockedIds.has(p.user_a_id) || blockedIds.has(p.user_b_id)) continue;
+      // Skip non-pool-eligible proposals unless user has a pre-existing assignment
+      // (Demo proposals use pool_eligible=false; reviewer gets them via assignments)
+      if (p.pool_eligible === false && !preAssignedIds.has(p.id)) continue;
 
       // Separate stranger vs friend proposals (friends are fallback)
       if (friendIds.has(p.user_a_id) || friendIds.has(p.user_b_id)) {

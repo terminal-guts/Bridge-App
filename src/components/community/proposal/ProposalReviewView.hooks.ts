@@ -17,6 +17,7 @@ import {
   withSequence,
   runOnJS,
   useReducedMotion,
+  cancelAnimation,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
@@ -93,10 +94,18 @@ export function useProposalVoting(
   const voteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
+  // Guard: ensure onVotesComplete fires at most once per voting session.
+  const completionFiredRef = useRef(false);
+
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
       if (voteTimeoutRef.current) clearTimeout(voteTimeoutRef.current);
+      // Cancel in-flight Reanimated animations to prevent runOnJS callbacks
+      // from firing into a destroyed fiber (crash on slower devices).
+      cancelAnimation(flashOpacity);
+      cancelAnimation(entranceOpacity);
+      cancelAnimation(entranceTranslateX);
     };
   }, []);
 
@@ -172,17 +181,24 @@ export function useProposalVoting(
     if (voteTimeoutRef.current) clearTimeout(voteTimeoutRef.current);
     voteTimeoutRef.current = setTimeout(() => {
       if (!isMountedRef.current) return;
-      votingRef.current = false;
-      setVoting(false);
       if (currentIndexRef.current >= proposalCountRef.current - 1) {
+        // Last proposal — keep vote buttons DISABLED (don't reset votingRef/voting)
+        // to prevent double-tap during the 2-second unmount transition window.
+        if (completionFiredRef.current) return; // Already signaled completion
+        completionFiredRef.current = true;
         if (onVoteComplete) {
           onVoteComplete();
         } else if (onBack) {
           onBack();
         } else {
-          onVotesComplete?.();
+          // Wrap in Promise.resolve().catch() so an async handleVotesComplete
+          // that throws doesn't become an unhandled rejection from setTimeout.
+          Promise.resolve(onVotesComplete?.()).catch(() => {});
         }
       } else {
+        // Not the last proposal — re-enable buttons and advance
+        votingRef.current = false;
+        setVoting(false);
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         setCurrentIndex(prev => prev + 1);
       }

@@ -4,11 +4,13 @@
  */
 
 import React, { useEffect, useState } from 'react';
+// cancelAnimation added for unmount cleanup (prevent runOnJS crash)
 import { View, Text, LayoutChangeEvent } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  cancelAnimation,
   runOnJS,
   interpolate,
 } from 'react-native-reanimated';
@@ -41,6 +43,11 @@ export function LiveVoteBar({
 
   const yesPct = useSharedValue(0);
   const noPct = useSharedValue(0);
+
+  // Cancel animations on unmount to prevent runOnJS(lightHaptic) firing into destroyed fiber
+  useEffect(() => {
+    return () => { cancelAnimation(yesPct); cancelAnimation(noPct); };
+  }, []);
 
   useEffect(() => {
     if (total === 0) return;

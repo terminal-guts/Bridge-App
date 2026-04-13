@@ -337,11 +337,14 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Fetch all eligible users (not paused, have preferences)
+    // Fetch all eligible voters (not paused, profile completed, have preferences).
+    // Only profile_completed=true users should be pool voters — this excludes
+    // demo/reviewer accounts and users still in onboarding.
     const { data: allUsers } = await supabase
       .from('user_profiles')
       .select('user_id')
-      .eq('is_paused', false);
+      .eq('is_paused', false)
+      .eq('profile_completed', true);
 
     const { data: allUserPrefs } = await supabase
       .from('user_preferences')

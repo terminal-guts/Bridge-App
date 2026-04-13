@@ -20,12 +20,13 @@
  *   </AnimatedPressable>
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Platform, ViewStyle, StyleProp, AccessibilityRole, AccessibilityState } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  cancelAnimation,
   interpolate,
   runOnJS,
 } from 'react-native-reanimated';
@@ -78,6 +79,7 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
   hitSlop,
 }) => {
   const pressed = useSharedValue(0);
+  useEffect(() => { return () => { cancelAnimation(pressed); }; }, []);
   const targetScale = PRESS_SCALES[scale];
 
   // Determine if depth animation is active (iOS only, valid depth level)

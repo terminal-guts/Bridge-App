@@ -229,21 +229,23 @@ Deno.serve(async (req: Request) => {
       .eq('status', 'deciding')
       .lt('decision_deadline_at', nowIso);
 
-    let autoDeclinedCount = 0;
+    let autoExpiredCount = 0;
     for (const proposal of (decidingProposals || [])) {
       if (proposal.user_a_decision === 'pending' || proposal.user_b_decision === 'pending') {
-        await supabase
+        const { error: expireErr } = await supabase
           .from('proposals')
-          .update({ status: 'declined', updated_at: nowIso })
+          .update({ status: 'expired', expired_at: nowIso, updated_at: nowIso })
           .eq('id', proposal.id);
 
-        // Apply karma for auto-declined deciding proposal
-        await supabase.rpc('apply_karma_on_outcome', {
-          p_proposal_id: proposal.id,
-          p_outcome: 'rejected',
-        });
+        if (expireErr) {
+          console.error(`Failed to expire deciding proposal ${proposal.id}:`, expireErr.message);
+          continue;
+        }
 
-        autoDeclinedCount++;
+        // Skip karma adjustment — the community approved these proposals.
+        // They expired because subjects didn't respond, not because of voter inaccuracy.
+
+        autoExpiredCount++;
       }
     }
 
@@ -253,7 +255,7 @@ Deno.serve(async (req: Request) => {
       confirmed: confirmedCount,
       rejected: rejectedCount,
       expired: expiredCount,
-      auto_declined: autoDeclinedCount,
+      auto_expired_deciding: autoExpiredCount,
     }, { headers: corsHeaders });
 
   } catch (err: unknown) {

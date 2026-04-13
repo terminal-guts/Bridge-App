@@ -245,7 +245,7 @@ export function ForFriendModal({
                     style={styles.modalPersonGradient}
                   />
                   <View style={styles.modalPersonInfo}>
-                    <Text style={styles.modalPersonName}>{userA.firstName}</Text>
+                    <Text style={styles.modalPersonName}>{userA.firstName?.[0] ?? '?'}.</Text>
                     {userA.age ? <Text style={styles.modalPersonAge}>{userA.age} yrs</Text> : null}
                   </View>
                 </TouchableOpacity>
@@ -271,7 +271,7 @@ export function ForFriendModal({
                     style={styles.modalPersonGradient}
                   />
                   <View style={styles.modalPersonInfo}>
-                    <Text style={styles.modalPersonName}>{userB.firstName}</Text>
+                    <Text style={styles.modalPersonName}>{userB.firstName?.[0] ?? '?'}.</Text>
                     {userB.age ? <Text style={styles.modalPersonAge}>{userB.age} yrs</Text> : null}
                   </View>
                 </TouchableOpacity>
@@ -288,7 +288,7 @@ export function ForFriendModal({
               <View style={styles.modalStep2Header}>
                 <Text style={styles.modalHeading}>Send to a Friend</Text>
                 <Text style={styles.modalSubtextNoMargin}>
-                  Recommend {selectedPersonSide === 'userA' ? userA.firstName : userB.firstName} to...
+                  Recommend {selectedPersonSide === 'userA' ? `${userA.firstName?.[0] ?? '?'}.` : `${userB.firstName?.[0] ?? '?'}.`} to...
                 </Text>
               </View>
 

@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Modal, View, TouchableWithoutFeedback, TouchableOpacity, PanResponder, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  cancelAnimation,
   runOnJS,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -60,6 +61,11 @@ export const OnboardingVotingTutorial: React.FC<OnboardingVotingTutorialProps> =
   const currentSlideRef = useRef(0);
   const opacity = useSharedValue(1);
   const contentStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  // Cancel fade animation on unmount to prevent runOnJS(updateSlide) firing into destroyed fiber
+  useEffect(() => {
+    return () => { cancelAnimation(opacity); };
+  }, []);
 
   const updateSlide = (n: number) => {
     currentSlideRef.current = n;

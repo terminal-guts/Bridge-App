@@ -20,6 +20,7 @@ import Animated, {
   useReducedMotion,
   withTiming,
   withDelay,
+  cancelAnimation,
   Easing,
   FadeInUp,
   runOnJS,
@@ -63,6 +64,7 @@ export const AnimatedNumber = ({ value, delay = 0, duration = 800, suffix = '', 
       duration,
       easing: Easing.out(Easing.exp),
     }));
+    return () => { cancelAnimation(progress); };
   }, [value, reducedMotion]);
 
   useAnimatedReaction(
