@@ -142,7 +142,7 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
           if (fetchResult.ok && fetchResult.data) {
             navigation.navigate('MainTabs');
           } else {
-            navigation.navigate('Onboarding');
+            navigation.navigate('Onboarding', { skipAuth: true });
           }
           return;
         } else {
