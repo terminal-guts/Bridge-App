@@ -140,7 +140,11 @@ Deno.serve(async (req: Request) => {
       return countA - countB;
     });
 
-    const selected = eligible.slice(0, GATE_SIZE);
+    // If the user has pre-assigned demo proposals (pool_eligible=false),
+    // show ONLY those — never mix real proposals with demo proposals.
+    // This ensures the Apple reviewer sees exactly the demo bubble content.
+    const demoOnly = eligible.filter(p => p.pool_eligible === false && preAssignedIds.has(p.id));
+    const selected = (demoOnly.length > 0 ? demoOnly : eligible).slice(0, GATE_SIZE);
 
     // ── Daily assignment quota ──
     // Only count assignments for proposals that are still pending — stale

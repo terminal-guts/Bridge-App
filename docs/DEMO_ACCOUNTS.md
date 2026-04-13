@@ -76,6 +76,7 @@ All demo data lives in a **sealed bubble** — real users never see demo users, 
 | All SQL scoped to demo UUIDs | Real user data being touched | WHERE clauses in seed/reset scripts |
 | `pool_eligible = false` on demo proposals | Real users seeing demo proposals in voting | `supabase/functions/get-proposals-for-voting/index.ts` filters on `pool_eligible` |
 | Pre-assigned `pool_vote_assignments` | Reviewer can still see demo proposals | Assignment bypass in `get-proposals-for-voting` |
+| Demo-only selection | Reviewer never sees real proposals | If user has demo pre-assignments, ONLY those are returned — real proposals are excluded |
 | No friend connections to real users | Real users seeing demo people in friends | All friends are demo-to-reviewer only |
 
 ### Known Gaps (Low Risk, Post-Submission Fix)
