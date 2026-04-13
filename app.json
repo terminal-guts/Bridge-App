@@ -5,7 +5,7 @@
     "slug": "bridge",
     "version": "1.1.2",
     "orientation": "portrait",
-    "icon": "./assets/BridgeIcon_Final.png",
+    "icon": "./assets/icon.jpg",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
@@ -39,7 +39,6 @@
     "android": {
       "jsEngine": "hermes",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/BridgeLogo-Photoroom.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.bridge.app",
@@ -77,7 +76,6 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/BridgeLogo-Photoroom.png",
           "color": "#437FFF"
         }
       ],

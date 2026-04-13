@@ -30,9 +30,9 @@ const StyledText = styled(Text);
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-// Responsive logo: ~48% screen width, 2:1 aspect — scales from SE (180px) to Pro Max (206px)
-const logoWidth = Math.round(screenWidth * 0.48);
-const logoHeight = Math.round(logoWidth * 0.3);
+// Responsive logo: ~60% screen width, square aspect for ampersand + "Bridge" stacked logo
+const logoWidth = Math.round(screenWidth * 0.60);
+const logoHeight = Math.round(logoWidth * 1.0);
 
 // Button max width: caps at 380px so pill shape holds on Pro Max (430pt wide)
 const buttonMaxWidth = Math.min(screenWidth - 48, 380);
@@ -152,6 +152,7 @@ const BUTTON_SHADOW = Platform.select({
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  // Logo positioning — proportional to screen for consistent look across all phones
   const logoTapCount = React.useRef(0);
   const logoTapTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -207,7 +208,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
             <AnimatedPressable
               onPress={handleLogoTap}
               scale="subtle"
-              style={{ alignSelf: 'flex-start' }}
+              style={{ alignSelf: 'flex-start', marginLeft: Math.round(screenWidth * -0.1) }}
               accessibilityLabel="Bridge logo"
             >
               <Animated.Image
@@ -217,7 +218,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
                   width: logoWidth,
                   height: logoHeight,
                   tintColor: COLORS.card,
-                  marginBottom: 22,
+                  marginBottom: Math.round(screenHeight * -0.047),
                 }}
                 resizeMode="contain"
                 accessibilityRole="image"

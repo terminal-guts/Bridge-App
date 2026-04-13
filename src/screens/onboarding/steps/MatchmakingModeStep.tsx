@@ -101,7 +101,7 @@ export const MatchmakingModeStep: React.FC<MatchmakingModeStepProps> = ({
           <Animated.View entering={FadeInUp.duration(DURATIONS.slow)}>
             <StyledView className="items-center mb-4">
               <StyledImage
-                source={require('../../../../assets/favicon.png')}
+                source={require('../../../../assets/icon.png')}
                 style={{ width: 104, height: 104 }}
                 resizeMode="contain"
               />
