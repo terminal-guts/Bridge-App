@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { Button, H2, Body, ScreenWrapper, BackHeader } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { verifyEmail, sendOtpToEmail, signInWithPassword, isReviewerBypassEmail, validateReviewerAccess } from '../../services/authService';
+import { verifyEmail, sendLoginOtpToEmail, signInWithPassword, isReviewerBypassEmail, validateReviewerAccess } from '../../services/authService';
 import { fetchAndSetUserProfile } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
@@ -199,7 +199,7 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
     setError('');
 
     try {
-      const result = await sendOtpToEmail(email);
+      const result = await sendLoginOtpToEmail(email);
 
       if (!result.ok) {
         setError('Couldn\'t resend the code. Try again in a moment.');

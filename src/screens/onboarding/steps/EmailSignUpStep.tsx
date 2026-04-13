@@ -86,6 +86,7 @@ export const EmailSignUpStep: React.FC<EmailSignUpStepProps> = ({
       onContinue={validateAndContinue}
       hasTextInput={true}
       keyboardPersistent={true}
+      continueDisabled={isSending}
     >
       <H1 className="mb-3">Sign up with Rice email</H1>
       <Body className="text-neutral-600 mb-8">

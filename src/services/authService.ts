@@ -171,7 +171,7 @@ export const signInWithPassword = async (email: string, password: string): Promi
  * @param email - The email to send the OTP to
  * @param skipAccountCheck - When true, skips the ACCOUNT_EXISTS guard (used for resending during login)
  */
-export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> => {
+export const sendOtpToEmail = async (email: string, skipAccountCheck = false): Promise<ApiResponse<void>> => {
   try {
     const normalized = normalizeEmail(email);
     if (!normalized) {
@@ -215,9 +215,29 @@ export const sendOtpToEmail = async (email: string): Promise<ApiResponse<void>> 
         },
       };
     }
-    // NOTE: Cannot check user_profiles here — RLS blocks anon reads (auth.role() = 'authenticated').
-    // Existing account detection happens post-OTP in the verification step via fetchAndSetUserProfile.
-    logger.info('[EMAIL] Sending OTP via Supabase to:', normalized);
+    // Check if account already exists — RPC returns boolean, no OTP sent.
+    // Skip this check when resending during signup (account is created on first OTP send).
+    // NOTE: The reviewer bypass (line ~195) returns BEFORE this point, so the reviewer
+    // account is never blocked. Do NOT move this check above the bypass.
+    if (!skipAccountCheck) {
+      const { data: emailExists, error: checkErr } = await supabase.rpc('check_email_exists', { p_email: normalized });
+
+      if (checkErr) {
+        // Fail open — if the check itself errors, proceed with OTP send (don't block signups)
+        logger.warn('[EMAIL] Email exists check failed (proceeding anyway):', checkErr.message);
+      } else if (emailExists) {
+        logger.info('[EMAIL] Account already exists for:', normalized);
+        return {
+          ok: false,
+          error: {
+            code: 'ACCOUNT_EXISTS',
+            message: 'An account with this email already exists. Please sign in instead.',
+          },
+        };
+      }
+    }
+
+    logger.info('[EMAIL] Sending signup OTP to:', normalized);
 
     const { error } = await supabase.auth.signInWithOtp({ email: normalized, options: { shouldCreateUser: true } });
 

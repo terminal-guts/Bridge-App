@@ -108,7 +108,7 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
     setError('');
     inputRef.current?.focus();
 
-    const result = await sendOtpToEmail(data.email);
+    const result = await sendOtpToEmail(data.email, true);
     setIsResending(false);
 
     if (result.ok) {
