@@ -489,7 +489,12 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         } as any);
         setIsCreatingProfile(false);
         if (!updateResult.ok) {
-          Alert.alert('Update Failed', updateResult.error?.message || 'Something went wrong. Please try again.');
+          // No Cancel option — user must retry to avoid getting stuck
+          Alert.alert(
+            'Almost There!',
+            updateResult.error?.message || 'Something went wrong. Please try again.',
+            [{ text: 'Try Again', onPress: () => completeOnboarding() }]
+          );
           return;
         }
         await checkMinimalProfileStatus();
