@@ -47,6 +47,7 @@ import { WelcomeToBridgeStep } from './steps/WelcomeToBridgeStep';
 import { MatchmakingModeStep } from './steps/MatchmakingModeStep';
 import { MatchmakerProfileStep } from './steps/MatchmakerProfileStep';
 import { OnboardingProposalStep } from './steps/OnboardingProposalStep';
+import { PreferredEthnicitiesStep } from './steps/PreferredEthnicitiesStep';
 
 interface OnboardingScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Onboarding'>;
@@ -69,22 +70,26 @@ const AUTH_STEPS: StepDefinition[] = [
   { component: EmailSignUpVerificationStep, title: 'Verify Email', hasTextInput: true },
 ];
 
-// Profile steps shared by both signup paths
-// Simplified: 14 total steps (7 removed — pronouns, children, occupation, religion, politics, lifestyle, commitment)
-// Removed steps are now optional in profile edit screens
+// Profile steps — 16 steps (after auth), no skip buttons, all required.
+// Finish onboarding = profile_completed = true = in the matching pool.
+// Removed: Pronouns, Children, CurrentJob, DeepQuestions, AddFriends, Welcome
+// See docs/ONBOARDING_SIMPLIFICATION_PLAN.md for full rationale.
 const PROFILE_STEPS: StepDefinition[] = [
-  { component: NameStep, title: 'Name', hasTextInput: true, mappingKey: 'name' },
   { component: MatchmakingModeStep, title: 'Role', hasTextInput: false, mappingKey: 'role' },
   { component: OnboardingProposalStep, title: 'First Votes', hasTextInput: false },
+  { component: NameStep, title: 'Name', hasTextInput: true, mappingKey: 'name' },
   { component: AgeStep, title: 'Birthday', hasTextInput: false, mappingKey: 'age' },
   { component: GenderStep, title: 'Gender', hasTextInput: false, mappingKey: 'gender' },
   { component: HeightStep, title: 'Height', hasTextInput: false, mappingKey: 'height' },
   { component: EthnicityStep, title: 'Ethnicity', hasTextInput: false, mappingKey: 'ethnicity' },
-  { component: ValuesStep, title: 'Values', hasTextInput: false, mappingKey: 'values' },
+  { component: PreferredEthnicitiesStep, title: 'Ethnicity Preferences', hasTextInput: false, mappingKey: 'preferredEthnicities' },
+  { component: ReligionStep, title: 'Religion', hasTextInput: false, mappingKey: 'religion' },
+  { component: PoliticalBeliefsStep, title: 'Politics', hasTextInput: false, mappingKey: 'politics' },
+  { component: LifestyleStep, title: 'Lifestyle', hasTextInput: false, mappingKey: 'lifestyle' },
+  { component: PreferencesStep, title: 'Preferences', hasTextInput: false, mappingKey: 'preferences' },
   { component: InterestsStep, title: 'Interests', hasTextInput: false, mappingKey: 'interests' },
+  { component: ValuesStep, title: 'Values', hasTextInput: false, mappingKey: 'values' },
   { component: PhotoUploadStep, title: 'Photos', hasTextInput: false, mappingKey: 'photos' },
-  { component: AddFriendsStep, title: 'Add Friends', hasTextInput: false },
-  { component: WelcomeToBridgeStep, title: 'Welcome', hasTextInput: false, mappingKey: 'welcome' },
 ];
 
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }) => {

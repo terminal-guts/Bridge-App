@@ -5,16 +5,15 @@
  * Used by saveOnboardingStep() to persist answers incrementally.
  *
  * IMPORTANT NOTES:
- * 1. Onboarding does NOT need to collect all mandatory fields
- * 2. Users can skip many steps and enter the app with incomplete profiles
- * 3. Users CANNOT enter matching pool until ALL mandatory fields are complete
- * 4. Mandatory fields not collected in onboarding must be completed in-app
+ * 1. Every onboarding step is required (no skip buttons)
+ * 2. Finishing onboarding = profile_completed = true = in matching pool
+ * 3. profile_completed is one-way: never reverts to false
  *
- * OPTIONAL FIELDS NOT IN ONBOARDING:
- * - religion, politicalLeaning (optional bonus weight — improves match quality)
- * - pronouns, lifestyle habits, children, family plans, occupation (cosmetic only)
- * - preferredReligions, preferredPolitics, partnerLifestylePreferences (optional prefs)
- * - displayedQuestions (Deep Questions - collected post-onboarding)
+ * REMOVED FROM ONBOARDING + EDIT PROFILE (kept in DB):
+ * - pronouns, children, currentJob
+ *
+ * OPTIONAL (profile area only, not in onboarding):
+ * - deepQuestions, extra photos
  */
 
 export type StepType = 'text' | 'single_choice' | 'multi_choice' | 'complex';
@@ -141,7 +140,7 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
     },
   },
 
-  // Step 7: Ethnicity (my ethnicity only - preferred ethnicities NOT collected in onboarding)
+  // Ethnicity (your own)
   ethnicity: {
     key: 'ethnicity',
     type: 'complex',
@@ -149,8 +148,17 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
     columns: ['ethnicity'],
     transform: (data: any) => ({
       ethnicity: data.ethnicity || '',
-      // preferredEthnicities saved to user_preferences by createUserProfile/updateUserProfile
-      preferredEthnicities: data.preferredEthnicities || [],
+    }),
+  },
+
+  // Preferred ethnicities (separate screen)
+  preferredEthnicities: {
+    key: 'preferredEthnicities',
+    type: 'multi_choice',
+    table: 'user_preferences',
+    columns: ['preferred_ethnicities'],
+    transform: (data: any) => ({
+      preferred_ethnicities: data.preferredEthnicities || [],
     }),
   },
 
@@ -189,8 +197,8 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
     columns: ['religion'],
   },
 
-  // Step 15: Political Beliefs
-  political_beliefs: {
+  // Political Beliefs
+  politics: {
     key: 'political_beliefs',
     type: 'single_choice',
     table: 'user_profiles',
