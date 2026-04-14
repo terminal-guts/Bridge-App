@@ -64,7 +64,7 @@ const calculateStrength = (profile: UserProfile): {
   if (!profile.ethnicity) aboutSuggestions.push('Add your ethnicity');
   if (!(profile.gender && profile.gender.length > 0)) aboutSuggestions.push('Add your gender');
   if (!profile.religion) aboutSuggestions.push('Add your religion');
-  if (!(profile.politicalLeaning && profile.politicalLeaning !== 'prefer_not_to_say')) {
+  if (!profile.politicalLeaning) {
     aboutSuggestions.push('Add political views');
   }
   if (!profile.familyPlans) aboutSuggestions.push('Add family plans');

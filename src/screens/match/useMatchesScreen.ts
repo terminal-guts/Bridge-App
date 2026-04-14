@@ -348,12 +348,9 @@ export function useMatchesScreen() {
     // If profile_completed is already true (one-way gate), never show the locked view
     // even if the strength formula changes and the user's score drops below 100.
     // Memoized to avoid recalculating on timer-driven re-renders (the `now` state updates every second).
-    const { profileStrength, isLocked } = useMemo(() => {
+    const isLocked = useMemo(() => {
       const strength = profile ? calculateOverallProfileStrength(profile) : 0;
-      return {
-        profileStrength: strength,
-        isLocked: !loading && strength < 100 && !profile?.profileCompleted,
-      };
+      return !loading && strength < 100 && !profile?.profileCompleted;
     }, [profile, loading]);
 
     // Derive screen state

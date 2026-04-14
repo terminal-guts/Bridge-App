@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { View, StatusBar, Alert, ActivityIndicator, InteractionManager } from 'react-native';
+import { View, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -106,14 +106,13 @@ const stripSensitiveFields = (data: Partial<OnboardingData>): Partial<Onboarding
   return safe;
 };
 
-/** Persist step progress to AsyncStorage, deferred to avoid blocking animations */
+/** Persist step progress to AsyncStorage. AsyncStorage.setItem is non-blocking
+ *  (native I/O on background thread), so no InteractionManager deferral needed. */
 const persistProgress = (step: number, dataRef: React.MutableRefObject<Partial<OnboardingData>>) => {
-  InteractionManager.runAfterInteractions(() => {
-    AsyncStorage.setItem('@bridge/onboarding_progress', JSON.stringify({
-      step,
-      data: stripSensitiveFields(dataRef.current),
-    })).catch(() => {});
-  });
+  AsyncStorage.setItem('@bridge/onboarding_progress', JSON.stringify({
+    step,
+    data: stripSensitiveFields(dataRef.current),
+  })).catch(() => {});
 };
 
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }) => {
@@ -131,8 +130,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   // Section celebration interstitial — shows briefly between section transitions
   const [celebrationMessage, setCelebrationMessage] = useState<string | null>(null);
   // Ref tracking latest onboardingData for use in stale closures (goNext setTimeout, etc.)
+  // Updated synchronously inside setOnboardingData updater, NOT via useEffect,
+  // so goNext always sees the latest data even when called in the same tick as updateData.
   const onboardingDataRef = useRef(onboardingData);
-  useEffect(() => { onboardingDataRef.current = onboardingData; }, [onboardingData]);
   // Celebration timeout ref for cleanup on unmount
   const celebrationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Guard: prevent orphaned upload promises from writing state after unmount
@@ -303,7 +303,13 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   const CurrentStepComponent = steps[clampedStep].component;
 
   const updateData = (data: Partial<OnboardingData>) => {
-    setOnboardingData(prev => ({ ...prev, ...data }));
+    setOnboardingData(prev => {
+      const next = { ...prev, ...data };
+      // Sync ref inside updater so goNext always sees latest data,
+      // even when called in the same tick (updateData + onNext pattern).
+      onboardingDataRef.current = next;
+      return next;
+    });
     // Cache role immediately so app reloads mid-onboarding route correctly
     if (data.role) {
       setCachedRole(data.role as 'dater' | 'matchmaker');
@@ -326,7 +332,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
       if (stepKey) {
         const mapping = ONBOARDING_STEP_MAPPING[stepKey];
         if (mapping && mapping.columns.length > 0) {
-          const saveResult = await saveOnboardingStep(mapping.key, onboardingData, authUserId || undefined);
+          const saveResult = await saveOnboardingStep(mapping.key, onboardingDataRef.current, authUserId || undefined);
 
           if (!saveResult.ok) {
             // Intermediate step saves are best-effort — never block the user.
