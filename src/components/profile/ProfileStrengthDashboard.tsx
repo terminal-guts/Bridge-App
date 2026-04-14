@@ -138,11 +138,11 @@ const calculateStrength = (profile: UserProfile): {
   const answeredCount = breakdown.sections.deepQuestions.answeredCount;
 
   if (displayedCount === 0 && answeredCount === 0) {
-    questionsSuggestions.push('Answer 3 questions to enter matching pool');
+    questionsSuggestions.push('Answer 3 questions to strengthen your profile');
   } else if (displayedCount === 0 && answeredCount > 0) {
-    questionsSuggestions.push('Star 3 questions to enter matching pool');
+    questionsSuggestions.push('Star 3 questions to strengthen your profile');
   } else if (displayedCount < 3) {
-    questionsSuggestions.push(`Star ${3 - displayedCount} more to enter matching pool`);
+    questionsSuggestions.push(`Star ${3 - displayedCount} more to strengthen your profile`);
   }
 
   sections.push({
@@ -177,7 +177,7 @@ const getStrengthLevel = (score: number, profileCompleted?: boolean): { level: s
   if (score >= 75) return { level: 'Almost There', message: 'Just a few more fields to go', color: COLORS.primaryAccent };
   if (score >= 60) return { level: 'Looking Good', message: "You're getting close to the matching pool", color: COLORS.amber };
   if (score >= 40) return { level: 'Making Progress', message: 'Your friends need more to find your match', color: COLORS.error };
-  return { level: 'Getting Started', message: 'Fill this out to enter the matching pool', color: COLORS.error };
+  return { level: 'Getting Started', message: 'Complete your profile to improve your matches', color: COLORS.error };
 };
 
 export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> = React.memo(({

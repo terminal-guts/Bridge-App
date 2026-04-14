@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { View, StatusBar, Alert, ActivityIndicator } from 'react-native';
+import { View, StatusBar, Alert, ActivityIndicator, InteractionManager } from 'react-native';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -98,6 +98,24 @@ const SECTION_CELEBRATIONS: Record<string, string> = {
   'Your Background': 'Almost there — just the fun stuff left!',
 };
 
+/** Strip sensitive fields before persisting to AsyncStorage (plaintext on disk) */
+const stripSensitiveFields = (data: Partial<OnboardingData>): Partial<OnboardingData> => {
+  const safe = { ...data };
+  delete (safe as any).password;
+  delete (safe as any).verificationCode;
+  return safe;
+};
+
+/** Persist step progress to AsyncStorage, deferred to avoid blocking animations */
+const persistProgress = (step: number, dataRef: React.MutableRefObject<Partial<OnboardingData>>) => {
+  InteractionManager.runAfterInteractions(() => {
+    AsyncStorage.setItem('@bridge/onboarding_progress', JSON.stringify({
+      step,
+      data: stripSensitiveFields(dataRef.current),
+    })).catch(() => {});
+  });
+};
+
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }) => {
   const isRoleSwitch = route.params?.isRoleSwitch ?? false;
   const skipAuth = route.params?.skipAuth ?? false;
@@ -112,10 +130,18 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   const photoUploadResultRef = useRef<Array<{ id: string; url: string }> | null>(null);
   // Section celebration interstitial — shows briefly between section transitions
   const [celebrationMessage, setCelebrationMessage] = useState<string | null>(null);
+  // Ref tracking latest onboardingData for use in stale closures (goNext setTimeout, etc.)
+  const onboardingDataRef = useRef(onboardingData);
+  useEffect(() => { onboardingDataRef.current = onboardingData; }, [onboardingData]);
+  // Celebration timeout ref for cleanup on unmount
+  const celebrationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Guard: prevent orphaned upload promises from writing state after unmount
   const isMountedRef = useRef(true);
   useEffect(() => {
-    return () => { isMountedRef.current = false; };
+    return () => {
+      isMountedRef.current = false;
+      if (celebrationTimeoutRef.current) clearTimeout(celebrationTimeoutRef.current);
+    };
   }, []);
 
   // Restore step position from AsyncStorage on mount (if user was interrupted)
@@ -357,7 +383,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
           lightHaptic();
           setCelebrationMessage(SECTION_CELEBRATIONS[currentSection]);
           celebrationOwnsGuard = true; // Don't release in finally — setTimeout owns it
-          setTimeout(() => {
+          celebrationTimeoutRef.current = setTimeout(() => {
             if (!isMountedRef.current) {
               isGoingNextRef.current = false;
               return;
@@ -365,21 +391,14 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
             setCelebrationMessage(null);
             setCurrentStep(prev => prev === stepAtCall ? nextStep : prev);
             isGoingNextRef.current = false; // Release guard after celebration ends
-            AsyncStorage.setItem('@bridge/onboarding_progress', JSON.stringify({
-              step: nextStep,
-              data: onboardingData,
-            })).catch(() => {});
+            persistProgress(nextStep, onboardingDataRef);
           }, 1400);
         } else {
           setCurrentStep(prev => {
             if (prev === stepAtCall) return nextStep;
             return prev;
           });
-          // Persist step position so interrupted users can resume
-          AsyncStorage.setItem('@bridge/onboarding_progress', JSON.stringify({
-            step: nextStep,
-            data: onboardingData,
-          })).catch(() => {});
+          persistProgress(nextStep, onboardingDataRef);
         }
       } else {
         // Complete onboarding (final validation & photo upload)
@@ -394,8 +413,11 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   };
 
   const goBack = () => {
+    if (celebrationMessage) return; // Block during section celebration
     if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
+      const prevStep = currentStep - 1;
+      setCurrentStep(prevStep);
+      persistProgress(prevStep, onboardingDataRef);
     } else {
       navigation.navigate('Welcome');
     }
@@ -602,7 +624,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
           style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}
         >
           <StyledView className="w-14 h-14 rounded-full bg-green-50 items-center justify-center mb-5">
-            <EvaIcon name="checkmark-circle-2" variant="fill" size={32} color="#34C759" />
+            <EvaIcon name="checkmark-circle-2" variant="fill" size={32} color={COLORS.success} />
           </StyledView>
           <Body style={{ fontSize: FONT_SIZES['2xl'], fontFamily: FONTS.bold, color: COLORS.text.primary, textAlign: 'center', marginBottom: 8 }}>
             {celebrationMessage}

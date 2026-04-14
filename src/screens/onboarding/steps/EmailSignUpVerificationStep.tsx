@@ -122,8 +122,14 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
     if (result.ok) {
       setResendCooldown(RESEND_COOLDOWN_SECONDS);
     } else {
-      // Don't start cooldown on failure — let user retry immediately
-      setError(result.error?.message || 'Failed to resend code');
+      // Don't start cooldown on failure — let user retry immediately.
+      // Sanitize error message to avoid leaking Supabase internals.
+      const msg = (result.error?.message || '').toLowerCase();
+      if (msg.includes('rate') || msg.includes('too many') || msg.includes('once every')) {
+        setError('Too many requests. Wait a moment and try again.');
+      } else {
+        setError('Could not resend code. Check your connection and try again.');
+      }
     }
   }, [data.email, isResending, resendCooldown]);
 
@@ -134,6 +140,7 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
       onContinue={() => validateAndContinue()}
       onBack={onBack}
       showBackButton={true}
+      continueDisabled={isVerifying}
       hasTextInput={true}
       keyboardPersistent={false}
     >
@@ -176,7 +183,7 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
 
         {isVerifying ? (
           <StyledView className="flex-row items-center justify-center mb-4">
-            <ActivityIndicator size="small" color={COLORS.primaryAccent} />
+            <ActivityIndicator size="small" color={COLORS.primary} />
             <Body className="text-neutral-500 text-sm ml-2">Verifying...</Body>
           </StyledView>
         ) : error ? (

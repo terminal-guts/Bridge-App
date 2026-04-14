@@ -197,15 +197,17 @@ export const sendOtpToEmail = async (email: string, skipAccountCheck = false): P
       return { ok: true };
     }
 
-    // Rate limit — fail open: if the check itself errors (DB hiccup, network),
-    // allow the OTP send rather than blocking a real user. Supabase has its own
-    // built-in rate limits as a safety net.
+    // Rate limit — fail closed: if the check itself errors, block the request.
+    // This prevents OTP spam when the rate limit DB is degraded.
     const rateLimitCheck = await checkRateLimit(normalized, RateLimitAction.OTP_SEND);
     if (!rateLimitCheck.ok) {
-      logger.warn('[EMAIL] Rate limit check failed — proceeding anyway (fail-open)');
-      // Continue to OTP send — don't block users over a transient DB issue
+      logger.warn('[EMAIL] Rate limit check failed — blocking request as a precaution');
+      return {
+        ok: false,
+        error: { code: 'RATE_LIMITED', message: 'Please wait a moment before trying again.' },
+      };
     }
-    if (rateLimitCheck.ok && rateLimitCheck.data && !rateLimitCheck.data.allowed) {
+    if (rateLimitCheck.data && !rateLimitCheck.data.allowed) {
       return {
         ok: false,
         error: {
@@ -294,12 +296,16 @@ export const sendLoginOtpToEmail = async (email: string): Promise<ApiResponse<vo
       return { ok: true };
     }
 
-    // Rate limit — fail open: if the check itself errors, allow the OTP send
+    // Rate limit — fail closed: block on error to prevent OTP spam
     const rateLimitCheck = await checkRateLimit(normalized, RateLimitAction.OTP_SEND);
     if (!rateLimitCheck.ok) {
-      logger.warn('[EMAIL] Rate limit check failed — proceeding anyway (fail-open)');
+      logger.warn('[EMAIL] Rate limit check failed — blocking login OTP request');
+      return {
+        ok: false,
+        error: { code: 'RATE_LIMITED', message: 'Please wait a moment before trying again.' },
+      };
     }
-    if (rateLimitCheck.ok && rateLimitCheck.data && !rateLimitCheck.data.allowed) {
+    if (rateLimitCheck.data && !rateLimitCheck.data.allowed) {
       return {
         ok: false,
         error: {

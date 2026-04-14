@@ -347,8 +347,14 @@ export function useMatchesScreen() {
     // Matches/proposals are NOT deleted — they reappear once strength is restored.
     // If profile_completed is already true (one-way gate), never show the locked view
     // even if the strength formula changes and the user's score drops below 100.
-    const profileStrength = profile ? calculateOverallProfileStrength(profile) : 0;
-    const isLocked = !loading && profileStrength < 100 && !profile?.profileCompleted;
+    // Memoized to avoid recalculating on timer-driven re-renders (the `now` state updates every second).
+    const { profileStrength, isLocked } = useMemo(() => {
+      const strength = profile ? calculateOverallProfileStrength(profile) : 0;
+      return {
+        profileStrength: strength,
+        isLocked: !loading && strength < 100 && !profile?.profileCompleted,
+      };
+    }, [profile, loading]);
 
     // Derive screen state
     let screenState: ScreenState = 'empty';

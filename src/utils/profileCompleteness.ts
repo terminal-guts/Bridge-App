@@ -96,7 +96,7 @@ export const calculateProfileCompleteness = (
   check('ethnicity', 'Add your ethnicity', !!(profile.ethnicity?.trim()));
   check('preferredEthnicities', 'Select preferred ethnicities', !!(profile.preferredEthnicities && profile.preferredEthnicities.length > 0));
   check('religion', 'Add your religion', !!(profile.religion?.trim()));
-  check('politicalLeaning', 'Add your political views', !!(profile.politicalLeaning && profile.politicalLeaning !== 'prefer_not_to_say'));
+  check('politicalLeaning', 'Add your political views', !!(profile.politicalLeaning));
   check('lifestyle', 'Add your lifestyle habits', !!(
     profile.drinkingFrequency && profile.cannabisFrequency &&
     profile.tobaccoFrequency && profile.otherDrugsFrequency
@@ -196,7 +196,7 @@ export const calculateEditProfileCompleteness = (
   if (profile.ethnicity?.trim()) completedCount++; else missingFields.push('Ethnicity');
   if (profile.gender && profile.gender.length > 0) completedCount++; else missingFields.push('Gender');
   if (profile.religion?.trim()) completedCount++; else missingFields.push('Religion');
-  if (profile.politicalLeaning && profile.politicalLeaning !== 'prefer_not_to_say') completedCount++; else missingFields.push('Political Views');
+  if (profile.politicalLeaning) completedCount++; else missingFields.push('Political Views');
 
   // Interests + Values combined as 1 field
   const interestCount = profile.interests?.length || 0;
@@ -316,9 +316,9 @@ export const calculateProfileStrengthBreakdown = (
     return {
       overall: 0,
       sections: {
-        aboutMe: { score: 0, maxScore: 60, percentage: 0 },
-        matchPreferences: { score: 0, maxScore: 25, percentage: 0, completedCount: 0, totalCount: 4 },
-        photos: { score: 0, maxScore: 5, percentage: 0, count: 0 },
+        aboutMe: { score: 0, maxScore: 50, percentage: 0 },
+        matchPreferences: { score: 0, maxScore: 30, percentage: 0, completedCount: 0, totalCount: 4 },
+        photos: { score: 0, maxScore: 10, percentage: 0, count: 0 },
         deepQuestions: { score: 0, maxScore: 10, percentage: 0, displayedCount: 0, answeredCount: 0 },
       },
       totalScore: 0,

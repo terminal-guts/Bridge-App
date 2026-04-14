@@ -38,7 +38,11 @@ export const EthnicityStep: React.FC<EthnicityStepProps> = ({
   onBack,
 }) => {
   const [myEthnicity, setMyEthnicity] = useState<string[]>(
-    Array.isArray(data.ethnicity) ? data.ethnicity : (data.ethnicity ? [data.ethnicity] : [])
+    Array.isArray(data.ethnicity)
+      ? data.ethnicity
+      : (data.ethnicity
+          ? data.ethnicity.includes(' / ') ? data.ethnicity.split(' / ') : [data.ethnicity]
+          : [])
   );
   const [preferredEthnicities, setPreferredEthnicities] = useState<string[]>(
     data.preferredEthnicities || []
