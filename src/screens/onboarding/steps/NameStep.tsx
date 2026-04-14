@@ -53,6 +53,7 @@ export const NameStep: React.FC<NameStepProps> = ({
     <OnboardingLayout
       onBack={onBack}
       onContinue={validateAndContinue}
+      showBackButton={false}
       hasTextInput={true}
       keyboardPersistent={true}
     >

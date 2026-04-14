@@ -136,6 +136,7 @@ export const GenderStep: React.FC<GenderStepProps> = ({
     <OnboardingLayout
       onBack={onBack}
       onContinue={validateAndContinue}
+      showBackButton={false}
       hasTextInput={false}
     >
       <StyledView className="mt-8">
