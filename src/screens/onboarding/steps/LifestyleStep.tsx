@@ -49,22 +49,11 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
   };
 
   const validateAndContinue = () => {
-    if (!lifestyle.drinking && !lifestyle.cannabis && !lifestyle.tobacco && !lifestyle.otherDrugs) {
-      setError('Answer at least one, or tap Skip to move on');
+    if (!lifestyle.drinking || !lifestyle.cannabis || !lifestyle.tobacco || !lifestyle.otherDrugs) {
+      setError('Please answer all four questions to continue');
       return;
     }
 
-    updateData({
-      drinkingFrequency: lifestyle.drinking,
-      cannabisFrequency: lifestyle.cannabis,
-      tobaccoFrequency: lifestyle.tobacco,
-      otherDrugsFrequency: lifestyle.otherDrugs,
-    });
-    onNext();
-  };
-
-  const handleSkip = () => {
-    // Save any answered questions before skipping
     updateData({
       drinkingFrequency: lifestyle.drinking,
       cannabisFrequency: lifestyle.cannabis,
@@ -171,7 +160,6 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
     <OnboardingLayout
       onBack={onBack}
       onContinue={validateAndContinue}
-      onSkip={handleSkip}
       hasTextInput={false}
     >
       <StyledView className="mt-8">

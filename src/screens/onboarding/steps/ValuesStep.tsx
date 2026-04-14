@@ -61,15 +61,6 @@ export const ValuesStep: React.FC<ValuesStepProps> = ({
     setError('');
   };
 
-  const handleSkip = () => {
-    // Save whatever the user selected (even if < 3) so the matching
-    // algorithm has partial data rather than nothing (12% weight).
-    if (myValues.length > 0) {
-      updateData({ values: myValues });
-    }
-    onNext();
-  };
-
   const validateAndContinue = () => {
     if (totalMyValues < 3) {
       setError('Please select at least 3 values');
@@ -93,7 +84,6 @@ export const ValuesStep: React.FC<ValuesStepProps> = ({
     <OnboardingLayout
       onBack={onBack}
       onContinue={validateAndContinue}
-      onSkip={handleSkip}
       hasTextInput={false}
     >
       <StyledView className="mt-8">

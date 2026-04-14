@@ -7,7 +7,6 @@ import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AgeRangeStepper } from '../../../components/ui/AgeRangeStepper';
-import { OnboardingResumePrompt } from '../../../components/onboarding/OnboardingResumePrompt';
 
 interface BirthdayStepProps {
   data: Partial<OnboardingData>;
@@ -92,8 +91,6 @@ export const BirthdayStep: React.FC<BirthdayStepProps> = ({
   };
 
   return (
-    <>
-    <OnboardingResumePrompt />
     <OnboardingLayout
       onBack={onBack}
       showBackButton={false}
@@ -146,7 +143,6 @@ export const BirthdayStep: React.FC<BirthdayStepProps> = ({
         )}
       </StyledView>
     </OnboardingLayout>
-    </>
   );
 };
 

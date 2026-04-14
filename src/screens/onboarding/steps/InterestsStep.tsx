@@ -66,15 +66,6 @@ export const InterestsStep: React.FC<InterestsStepProps> = ({
     setError('');
   };
 
-  const handleSkip = () => {
-    // Save whatever the user selected (even if < 3) so the matching
-    // algorithm has partial data rather than nothing (22% weight).
-    if (myInterests.length > 0) {
-      updateData({ interests: myInterests });
-    }
-    onNext();
-  };
-
   const validateAndContinue = () => {
     if (totalMyInterests < 3) {
       setError('Pick at least 3 so we can find great matches for you');
@@ -98,7 +89,6 @@ export const InterestsStep: React.FC<InterestsStepProps> = ({
     <OnboardingLayout
       onBack={onBack}
       onContinue={validateAndContinue}
-      onSkip={handleSkip}
       hasTextInput={false}
     >
       <StyledView className="mt-8">

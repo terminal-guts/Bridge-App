@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { View, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import Animated, {
   FadeIn,
+  FadeOut,
   useSharedValue,
   useAnimatedStyle,
   withTiming,
@@ -18,7 +19,9 @@ import { supabase } from '../../lib/supabase';
 import { Body } from '../../components/ui';
 import { ONBOARDING_STEP_MAPPING } from '../../config/onboardingMapping';
 import { createLogger } from '../../utils/secureLogger';
-import { successHaptic } from '../../utils/haptics';
+import { successHaptic, lightHaptic } from '../../utils/haptics';
+import { EvaIcon } from '../../components/icons';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { assignNewUserProposals, generateProposalForUser } from '../../services/proposalApiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -30,24 +33,19 @@ import { EmailSignUpVerificationStep } from './steps/EmailSignUpVerificationStep
 import { NameStep } from './steps/NameStep';
 import { AgeStep } from './steps/AgeStep';
 import { GenderStep } from './steps/GenderStep';
-import { PronounsStep } from './steps/PronounsStep';
 import { HeightStep } from './steps/HeightStep';
 import { EthnicityStep } from './steps/EthnicityStep';
-import { ChildrenStep } from './steps/ChildrenStep';
-import { CurrentJobStep } from './steps/CurrentJobStep';
 import { ReligionStep } from './steps/ReligionStep';
 import { PoliticalBeliefsStep } from './steps/PoliticalBeliefsStep';
 import { LifestyleStep } from './steps/LifestyleStep';
 import { ValuesStep } from './steps/ValuesStep';
 import { InterestsStep } from './steps/InterestsStep';
 import { PhotoUploadStep } from './steps/PhotoUploadStep';
-import { PreferencesStep } from './steps/PreferencesStep';
 import { AddFriendsStep } from './steps/AddFriendsStep';
 import { WelcomeToBridgeStep } from './steps/WelcomeToBridgeStep';
 import { MatchmakingModeStep } from './steps/MatchmakingModeStep';
 import { MatchmakerProfileStep } from './steps/MatchmakerProfileStep';
 import { OnboardingProposalStep } from './steps/OnboardingProposalStep';
-import { PreferredEthnicitiesStep } from './steps/PreferredEthnicitiesStep';
 
 interface OnboardingScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Onboarding'>;
@@ -59,6 +57,7 @@ interface StepDefinition {
   title: string;
   hasTextInput: boolean;
   mappingKey?: string; // Key into ONBOARDING_STEP_MAPPING; undefined = no data to save
+  section?: string; // Section label for progress display (e.g., "The Basics")
 }
 
 const StyledView = styled(View);
@@ -70,27 +69,34 @@ const AUTH_STEPS: StepDefinition[] = [
   { component: EmailSignUpVerificationStep, title: 'Verify Email', hasTextInput: true },
 ];
 
-// Profile steps — 16 steps (after auth), no skip buttons, all required.
+// Profile steps — 13 steps (after auth), no skip buttons, all required.
 // Finish onboarding = profile_completed = true = in the matching pool.
-// Removed: Pronouns, Children, CurrentJob, DeepQuestions, AddFriends, Welcome
+// Order: Name + Birthday first (low friction, creates investment), then Role + Voting tutorial,
+// then demographics and preferences, finally photos.
+// Removed: Pronouns, Children, CurrentJob, DeepQuestions, AddFriends, Welcome, PreferencesStep
 // See docs/ONBOARDING_SIMPLIFICATION_PLAN.md for full rationale.
 const PROFILE_STEPS: StepDefinition[] = [
-  { component: MatchmakingModeStep, title: 'Role', hasTextInput: false, mappingKey: 'role' },
-  { component: OnboardingProposalStep, title: 'First Votes', hasTextInput: false },
-  { component: NameStep, title: 'Name', hasTextInput: true, mappingKey: 'name' },
-  { component: AgeStep, title: 'Birthday', hasTextInput: false, mappingKey: 'age' },
-  { component: GenderStep, title: 'Gender', hasTextInput: false, mappingKey: 'gender' },
-  { component: HeightStep, title: 'Height', hasTextInput: false, mappingKey: 'height' },
-  { component: EthnicityStep, title: 'Ethnicity', hasTextInput: false, mappingKey: 'ethnicity' },
-  { component: PreferredEthnicitiesStep, title: 'Ethnicity Preferences', hasTextInput: false, mappingKey: 'preferredEthnicities' },
-  { component: ReligionStep, title: 'Religion', hasTextInput: false, mappingKey: 'religion' },
-  { component: PoliticalBeliefsStep, title: 'Politics', hasTextInput: false, mappingKey: 'politics' },
-  { component: LifestyleStep, title: 'Lifestyle', hasTextInput: false, mappingKey: 'lifestyle' },
-  { component: PreferencesStep, title: 'Preferences', hasTextInput: false, mappingKey: 'preferences' },
-  { component: InterestsStep, title: 'Interests', hasTextInput: false, mappingKey: 'interests' },
-  { component: ValuesStep, title: 'Values', hasTextInput: false, mappingKey: 'values' },
-  { component: PhotoUploadStep, title: 'Photos', hasTextInput: false, mappingKey: 'photos' },
+  { component: NameStep, title: 'Name', hasTextInput: true, mappingKey: 'name', section: 'Getting Started' },
+  { component: AgeStep, title: 'Birthday', hasTextInput: false, mappingKey: 'age', section: 'Getting Started' },
+  { component: MatchmakingModeStep, title: 'Role', hasTextInput: false, mappingKey: 'role', section: 'Getting Started' },
+  { component: OnboardingProposalStep, title: 'First Votes', hasTextInput: false, section: 'Getting Started' },
+  { component: GenderStep, title: 'Gender', hasTextInput: false, mappingKey: 'gender', section: 'The Basics' },
+  { component: HeightStep, title: 'Height', hasTextInput: false, mappingKey: 'height', section: 'The Basics' },
+  { component: EthnicityStep, title: 'Ethnicity', hasTextInput: false, mappingKey: 'ethnicity', section: 'Your Background' },
+  { component: ReligionStep, title: 'Religion', hasTextInput: false, mappingKey: 'religion', section: 'Your Background' },
+  { component: PoliticalBeliefsStep, title: 'Politics', hasTextInput: false, mappingKey: 'politics', section: 'Your Background' },
+  { component: LifestyleStep, title: 'Lifestyle', hasTextInput: false, mappingKey: 'lifestyle', section: 'Your Background' },
+  { component: InterestsStep, title: 'Interests', hasTextInput: false, mappingKey: 'interests', section: 'The Fun Stuff' },
+  { component: ValuesStep, title: 'Values', hasTextInput: false, mappingKey: 'values', section: 'The Fun Stuff' },
+  { component: PhotoUploadStep, title: 'Photos', hasTextInput: false, mappingKey: 'photos', section: 'The Fun Stuff' },
 ];
+
+// Messages shown when completing a section (between section transitions)
+const SECTION_CELEBRATIONS: Record<string, string> = {
+  'Getting Started': "You're in! Now let's build your profile.",
+  'The Basics': 'Basics done — looking good!',
+  'Your Background': 'Almost there — just the fun stuff left!',
+};
 
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }) => {
   const isRoleSwitch = route.params?.isRoleSwitch ?? false;
@@ -104,21 +110,38 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   // Background photo upload: starts after PhotoUploadStep, results used by completeOnboarding
   const photoUploadPromiseRef = useRef<Promise<any> | null>(null);
   const photoUploadResultRef = useRef<Array<{ id: string; url: string }> | null>(null);
+  // Section celebration interstitial — shows briefly between section transitions
+  const [celebrationMessage, setCelebrationMessage] = useState<string | null>(null);
   // Guard: prevent orphaned upload promises from writing state after unmount
   const isMountedRef = useRef(true);
   useEffect(() => {
     return () => { isMountedRef.current = false; };
   }, []);
 
-  // Reset to step 0 when navigating back to this screen with different params
+  // Restore step position from AsyncStorage on mount (if user was interrupted)
+  const [hasRestoredStep, setHasRestoredStep] = useState(false);
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      setCurrentStep(0);
-    });
-    return unsubscribe;
-  }, [navigation]);
+    if (isRoleSwitch || hasRestoredStep) return;
+    const restoreProgress = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('@bridge/onboarding_progress');
+        if (saved) {
+          const { step, data } = JSON.parse(saved);
+          if (typeof step === 'number' && step > 0) {
+            logger.info(`[OnboardingScreen] Restoring onboarding progress to step ${step}`);
+            setCurrentStep(step);
+            if (data) setOnboardingData(prev => ({ ...prev, ...data }));
+          }
+        }
+      } catch (e) {
+        logger.warn('[OnboardingScreen] Failed to restore onboarding progress:', e);
+      }
+      setHasRestoredStep(true);
+    };
+    restoreProgress();
+  }, [isRoleSwitch]);
 
-  // Clear the "seen post-proposal prompt" flag so AgeStep's motivational
+  // Clear the "seen post-proposal prompt" flag so GenderStep's motivational
   // bottom sheet always fires for any fresh onboarding run.
   // Skip for role switch — the prompt is irrelevant when switching from matchmaker to dater.
   useEffect(() => {
@@ -165,7 +188,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
       ageMin: 24,
       ageMax: 32,
       // NOTE: gender will be derived from interestedInGenders automatically
-      // NOTE: lookingFor is required and collected in PreferencesStep
+      lookingFor: 'relationship', // Default — PreferencesStep removed, this is always 'relationship'
       heightMin: 60,
       heightMax: 84,
     } as any,
@@ -224,10 +247,19 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
 
   const progressBarStyle = useAnimatedStyle(() => ({
     width: `${progressWidth.value * 100}%`,
-    height: 4,
+    height: 6,
     backgroundColor: COLORS.primaryAccent,
-    borderRadius: 2,
+    borderRadius: 3,
   }));
+
+  // Step counter label for progress display (e.g., "Step 3 of 14 · The Basics")
+  const stepLabel = useMemo(() => {
+    const step = steps[clampedStep];
+    const section = step?.section;
+    const stepNum = clampedStep + 1;
+    if (section) return `Step ${stepNum} of ${totalSteps} · ${section}`;
+    return `Step ${stepNum} of ${totalSteps}`;
+  }, [clampedStep, totalSteps, steps]);
 
   // Clamp step inline so we never render null during a steps-array change
   const clampedStep = currentStep < 0 || currentStep >= totalSteps
@@ -314,11 +346,35 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
 
       // Advance to next step using functional update to avoid stale closure
       if (stepAtCall < totalSteps - 1) {
-        setCurrentStep(prev => {
-          // Only advance if we're still on the step we started from
-          if (prev === stepAtCall) return prev + 1;
-          return prev;
-        });
+        const nextStep = stepAtCall + 1;
+        const currentSection = steps[stepAtCall]?.section;
+        const nextSection = steps[nextStep]?.section;
+
+        // Show celebration interstitial when transitioning between sections
+        if (currentSection && nextSection && currentSection !== nextSection && SECTION_CELEBRATIONS[currentSection]) {
+          lightHaptic();
+          setCelebrationMessage(SECTION_CELEBRATIONS[currentSection]);
+          // Show for 1.4 seconds, then advance
+          setTimeout(() => {
+            if (!isMountedRef.current) return;
+            setCelebrationMessage(null);
+            setCurrentStep(prev => prev === stepAtCall ? nextStep : prev);
+            AsyncStorage.setItem('@bridge/onboarding_progress', JSON.stringify({
+              step: nextStep,
+              data: onboardingData,
+            })).catch(() => {});
+          }, 1400);
+        } else {
+          setCurrentStep(prev => {
+            if (prev === stepAtCall) return nextStep;
+            return prev;
+          });
+          // Persist step position so interrupted users can resume
+          AsyncStorage.setItem('@bridge/onboarding_progress', JSON.stringify({
+            step: nextStep,
+            data: onboardingData,
+          })).catch(() => {});
+        }
       } else {
         // Complete onboarding (final validation & photo upload)
         completeOnboarding();
@@ -419,27 +475,19 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
 
       if (!profileResult.ok) {
         logger.error('Profile creation failed:', profileResult.error);
-        const errorMessage = profileResult.error?.message || 'Unable to create your profile. Please try again.';
         const errorCode = profileResult.error?.code || '';
 
         // Show more specific error message for photo upload failures
         const displayMessage = errorCode === 'PHOTO_UPLOAD_FAILED'
           ? 'Failed to upload your photos. Please check your internet connection and try again.'
-          : errorMessage;
+          : 'Unable to create your profile. Please check your connection and try again.';
 
+        // No Cancel option — user must retry. Tapping Cancel previously trapped users
+        // with no way forward (profile never created, stuck on onboarding).
         Alert.alert(
-          'Profile Creation Failed',
+          'Almost There!',
           displayMessage,
-          [
-            {
-              text: 'Try Again',
-              onPress: () => completeOnboarding(),
-            },
-            {
-              text: 'Cancel',
-              style: 'cancel',
-            },
-          ]
+          [{ text: 'Try Again', onPress: () => completeOnboarding() }]
         );
         return;
       }
@@ -455,6 +503,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         // Flush the minimal status cache with the correct role so any screen that
         // mounts in MatchmakerTabs immediately knows the user is a matchmaker.
         await checkMinimalProfileStatus();
+        AsyncStorage.removeItem('@bridge/onboarding_progress').catch(() => {});
         successHaptic();
         setTimeout(() => successHaptic(), 300);
         (navigation as any).reset({ index: 0, routes: [{ name: 'MatchmakerTabs' }] });
@@ -484,25 +533,20 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
       successHaptic();
       setTimeout(() => successHaptic(), 300);
 
+      // Clear persisted onboarding progress — user is done
+      AsyncStorage.removeItem('@bridge/onboarding_progress').catch(() => {});
+
       // Navigate to main app after proposals are assigned — reset clears
       // the stack so Onboarding doesn't linger beneath MainTabs.
       (navigation as any).reset({ index: 0, routes: [{ name: 'MainTabs' }] });
     } catch (error: any) {
       logger.error('Onboarding error:', error);
       setIsCreatingProfile(false);
+      // No Cancel option — user must retry to avoid getting stuck
       Alert.alert(
-        'Error',
-        'An unexpected error occurred while creating your profile. Please try again.',
-        [
-          {
-            text: 'Retry',
-            onPress: () => completeOnboarding(),
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-        ]
+        'Almost There!',
+        'Something went wrong. Let\'s try that again.',
+        [{ text: 'Try Again', onPress: () => completeOnboarding() }]
       );
     }
   };
@@ -525,31 +569,52 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         </StyledView>
       )}
 
-      {/* Continuous Progress Bar */}
+      {/* Continuous Progress Bar + Step Counter */}
       <StyledSafeAreaView
         edges={['top']}
         className="absolute top-0 left-0 right-0 z-50 bg-neutral-50"
       >
-        <StyledView style={{ height: 4, backgroundColor: COLORS.card }}>
+        <StyledView style={{ height: 6, backgroundColor: COLORS.card }}>
           <Animated.View style={progressBarStyle} />
+        </StyledView>
+        <StyledView className="px-4 py-1">
+          <Body style={{ fontSize: 11, color: COLORS.text.tertiary, textAlign: 'center' }}>
+            {stepLabel}
+          </Body>
         </StyledView>
       </StyledSafeAreaView>
 
-      {/* Step Content — keyed by step index for entrance/exit animations */}
-      <Animated.View
-        key={clampedStep}
-        entering={FadeIn.duration(DURATIONS.normal)}
-        style={{ flex: 1 }}
-      >
-        <CurrentStepComponent
-          data={onboardingData}
-          updateData={updateData}
-          onNext={goNext}
-          onBack={goBack}
-          isFirstStep={clampedStep === 0}
-          isLastStep={clampedStep === totalSteps - 1}
-        />
-      </Animated.View>
+      {/* Section Celebration Interstitial */}
+      {celebrationMessage ? (
+        <Animated.View
+          entering={FadeIn.duration(DURATIONS.normal)}
+          exiting={FadeOut.duration(DURATIONS.micro)}
+          style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}
+        >
+          <StyledView className="w-14 h-14 rounded-full bg-green-50 items-center justify-center mb-5">
+            <EvaIcon name="checkmark-circle-2" variant="fill" size={32} color="#34C759" />
+          </StyledView>
+          <Body style={{ fontSize: FONT_SIZES['2xl'], fontFamily: FONTS.bold, color: COLORS.text.primary, textAlign: 'center', marginBottom: 8 }}>
+            {celebrationMessage}
+          </Body>
+        </Animated.View>
+      ) : (
+        /* Step Content — keyed by step index for entrance/exit animations */
+        <Animated.View
+          key={clampedStep}
+          entering={FadeIn.duration(DURATIONS.normal)}
+          style={{ flex: 1 }}
+        >
+          <CurrentStepComponent
+            data={onboardingData}
+            updateData={updateData}
+            onNext={goNext}
+            onBack={goBack}
+            isFirstStep={clampedStep === 0}
+            isLastStep={clampedStep === totalSteps - 1}
+          />
+        </Animated.View>
+      )}
     </StyledView>
   );
 };

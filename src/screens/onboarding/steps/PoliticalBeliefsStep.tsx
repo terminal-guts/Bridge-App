@@ -35,15 +35,6 @@ export const PoliticalBeliefsStep: React.FC<PoliticalBeliefsStepProps> = ({
   const [selectedPolitics, setSelectedPolitics] = useState<string>(data.politicalLeaning || '');
   const [error, setError] = useState<string>('');
 
-  const handleSkip = () => {
-    // Save whatever the user selected so the matching algorithm has
-    // partial data (7% weight) rather than nothing.
-    if (selectedPolitics) {
-      updateData({ politicalLeaning: selectedPolitics as any });
-    }
-    onNext();
-  };
-
   const validateAndContinue = () => {
     if (!selectedPolitics) {
       setError('Please select a political belief');
@@ -65,7 +56,6 @@ export const PoliticalBeliefsStep: React.FC<PoliticalBeliefsStepProps> = ({
     <OnboardingLayout
       onBack={onBack}
       onContinue={validateAndContinue}
-      onSkip={handleSkip}
       hasTextInput={false}
     >
       <StyledView className="mt-8">

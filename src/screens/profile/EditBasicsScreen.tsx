@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Alert, Text } from 'react-native';
+import { View, TouchableOpacity, Text } from 'react-native';
 import { styled } from 'nativewind';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { H3, BodySmall, Label, Caption } from '../../components/ui/Typography';
+import { H3, BodySmall, Label } from '../../components/ui/Typography';
 import { Card, Input } from '../../components/ui';
 import { selectionHaptic, mediumHaptic } from '../../utils/haptics';
 import { COLORS } from '../../theme/colors';
@@ -13,14 +13,6 @@ import { useEditProfile } from './sections/useEditProfile';
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledText = styled(Text);
-
-const PRONOUN_OPTIONS = [
-  'He', 'Him', 'His',
-  'She', 'Her', 'Hers',
-  'They', 'Them', 'Theirs',
-  'Ze', 'Zir',
-];
-const MAX_PRONOUNS = 4;
 
 const GENDER_OPTIONS = [
   { value: 'male', label: 'Man' },
@@ -228,53 +220,6 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
       {/* Identity & Attraction */}
       <Card className="mb-6">
         <H3 className="mb-4">Identity & Attraction</H3>
-
-        {/* Pronouns */}
-        <Label style={{ color: COLORS.text.secondary }} className="mb-2">
-          Pronouns (optional, select up to {MAX_PRONOUNS})
-        </Label>
-        <Caption style={{ color: COLORS.primaryAccent }} className="font-semibold mb-2">
-          {(profile.pronounsList?.length || 0)}/{MAX_PRONOUNS} selected
-        </Caption>
-        <StyledView className="flex-row flex-wrap gap-2.5 mb-4">
-          {PRONOUN_OPTIONS.map((pronoun) => {
-            const isSelected = profile.pronounsList?.includes(pronoun);
-            return (
-              <StyledTouchableOpacity
-                key={pronoun}
-                activeOpacity={1}
-                delayPressIn={0}
-                onPress={() => {
-                  selectionHaptic();
-                  const currentPronouns = profile.pronounsList || [];
-                  let updatedPronouns: string[];
-                  if (isSelected) {
-                    updatedPronouns = currentPronouns.filter(p => p !== pronoun);
-                  } else {
-                    if (currentPronouns.length >= MAX_PRONOUNS) {
-                      Alert.alert('Limit Reached', `You can only select up to ${MAX_PRONOUNS} pronouns`);
-                      return;
-                    }
-                    updatedPronouns = [...currentPronouns, pronoun];
-                  }
-                  updateProfile({ pronounsList: updatedPronouns });
-                }}
-                style={{ minHeight: 44 }}
-                className={`px-4 py-2.5 rounded-full border items-center justify-center ${isSelected
-                  ? 'bg-primary-500 border-primary-500'
-                  : 'bg-white border-neutral-300'
-                }`}
-                accessibilityRole="checkbox"
-                accessibilityLabel={pronoun}
-                accessibilityState={{ checked: !!isSelected }}
-              >
-                <BodySmall className={isSelected ? 'text-white font-medium' : 'text-neutral-700'}>
-                  {pronoun}
-                </BodySmall>
-              </StyledTouchableOpacity>
-            );
-          })}
-        </StyledView>
 
         {/* Gender Identity */}
         <Label style={{ color: COLORS.text.secondary }} className="mb-2 mt-4">

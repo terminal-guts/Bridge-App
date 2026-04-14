@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
+import { EvaIcon } from '../../../components/icons';
+import { COLORS } from '../../../theme/colors';
 import { ProposalReviewView } from '../../../components/community/proposal/ProposalReviewView';
 import { OnboardingVotingTutorial } from '../../../components/onboarding/OnboardingVotingTutorial';
 import { communityService } from '../../../services/communityServiceIndex';
@@ -18,6 +20,7 @@ interface OnboardingProposalStepProps {
 
 const StyledView = styled(View);
 const StyledSafeAreaView = styled(SafeAreaView);
+const StyledTouchableOpacity = styled(TouchableOpacity);
 
 export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
   onNext,
@@ -25,8 +28,8 @@ export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
 }) => {
   const [proposals, setProposals] = useState<Proposal[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [noProposals, setNoProposals] = useState(false);
   const [showTutorial, setShowTutorial] = useState(true);
-  const didSkip = useRef(false);
 
   useEffect(() => {
     const load = async () => {
@@ -34,25 +37,16 @@ export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
         const result = await communityService.getProposalsToVote();
         logger.info('[OnboardingProposal] getProposalsToVote returned:', result.length, 'proposals');
         if (result.length === 0) {
-          // No proposals available — skip this step silently
-          logger.info('No proposals available during onboarding, skipping step');
-          if (!didSkip.current) {
-            didSkip.current = true;
-            onNext();
-          }
+          // No proposals available — show explainer instead of silent skip
+          logger.info('No proposals available during onboarding, showing explainer');
+          setNoProposals(true);
           return;
         }
-        // Only show 1 proposal in onboarding — the rest surface in the Community
-        // gate so the user has something to engage with on first open.
         setProposals(result.slice(0, 1));
       } catch (error: any) {
         logger.error('[OnboardingProposal] Error loading proposals:', error.message);
-        logger.error('Failed to load proposals during onboarding:', error.message);
-        // On error, skip gracefully so onboarding isn't blocked
-        if (!didSkip.current) {
-          didSkip.current = true;
-          onNext();
-        }
+        // On error, show explainer so onboarding isn't blocked
+        setNoProposals(true);
       } finally {
         setLoading(false);
       }
@@ -61,11 +55,38 @@ export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
   }, []);
 
   // Loading state
-  if (loading || proposals === null) {
+  if (loading && !noProposals) {
     return (
       <StyledSafeAreaView className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator size="large" color="#437FFF" />
-        <Body className="mt-4 text-neutral-500">Searching the community...</Body>
+        <ActivityIndicator size="large" color={COLORS.primaryAccent} />
+        <Body className="mt-4 text-neutral-500">Loading your first vote...</Body>
+      </StyledSafeAreaView>
+    );
+  }
+
+  // No proposals available — show an explainer about how Bridge works
+  if (noProposals || proposals === null) {
+    return (
+      <StyledSafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+        <StyledView className="flex-1 px-6 justify-center items-center">
+          <StyledView className="w-16 h-16 rounded-full bg-blue-50 items-center justify-center mb-6">
+            <EvaIcon name="people" variant="outline" size={32} color={COLORS.primaryAccent} />
+          </StyledView>
+          <H1 className="text-center mb-3">Here's how Bridge works</H1>
+          <Body className="text-neutral-600 text-center mb-2" style={{ lineHeight: 22 }}>
+            Your friends vote on potential matches for you — and you do the same for them.
+          </Body>
+          <Body className="text-neutral-500 text-center text-sm mb-8" style={{ lineHeight: 20 }}>
+            Once you're set up, you'll see proposals to vote on every day. For now, let's finish building your profile.
+          </Body>
+          <StyledTouchableOpacity
+            onPress={onNext}
+            className="bg-primary-500 rounded-xl px-8 py-4"
+            style={{ minWidth: 200 }}
+          >
+            <Body className="text-white font-semibold text-center">Continue</Body>
+          </StyledTouchableOpacity>
+        </StyledView>
       </StyledSafeAreaView>
     );
   }

@@ -345,8 +345,10 @@ export function useMatchesScreen() {
 
     // Profile gate — acts as a visual cover when strength < 100%.
     // Matches/proposals are NOT deleted — they reappear once strength is restored.
+    // If profile_completed is already true (one-way gate), never show the locked view
+    // even if the strength formula changes and the user's score drops below 100.
     const profileStrength = profile ? calculateOverallProfileStrength(profile) : 0;
-    const isLocked = !loading && profileStrength < 100;
+    const isLocked = !loading && profileStrength < 100 && !profile?.profileCompleted;
 
     // Derive screen state
     let screenState: ScreenState = 'empty';

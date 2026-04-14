@@ -187,7 +187,6 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
     <OnboardingLayout
       onBack={onBack}
       onContinue={validateAndContinue}
-      onSkip={onNext}
       hasTextInput={false}
     >
       <StyledScrollView className="mt-8" showsVerticalScrollIndicator={false}>
@@ -240,22 +239,35 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
                     </StyledTouchableOpacity>
                   </StyledView>
                 ) : (
-                  <StyledTouchableOpacity
-                    onPress={() => showPhotoOptions(index)}
-                    className="w-full h-full bg-neutral-100 rounded-xl items-center justify-center border-2 border-dashed border-neutral-300"
-                    accessibilityRole="button"
-                    accessibilityLabel={isMainSlot ? 'Add main photo' : `Add photo ${index + 1}`}
-                  >
-                    <EvaIcon
-                      name={isMainSlot ? 'camera' : 'plus'}
-                      variant="outline"
-                      size={isMainSlot ? 36 : 28}
-                      color={COLORS.text.tertiary}
-                    />
-                    <Body className="text-neutral-400 text-xs mt-1">
-                      {isMainSlot ? 'Main Photo' : 'Add Photo'}
-                    </Body>
-                  </StyledTouchableOpacity>
+                  <StyledView className="w-full h-full relative">
+                    {/* Tap empty slot → library directly (most common path) */}
+                    <StyledTouchableOpacity
+                      onPress={() => handleAddPhoto(index)}
+                      className="w-full h-full bg-neutral-100 rounded-xl items-center justify-center border-2 border-dashed border-neutral-300"
+                      accessibilityRole="button"
+                      accessibilityLabel={isMainSlot ? 'Add main photo from library' : `Add photo ${index + 1} from library`}
+                    >
+                      <EvaIcon
+                        name={isMainSlot ? 'image' : 'plus'}
+                        variant="outline"
+                        size={isMainSlot ? 36 : 28}
+                        color={COLORS.text.tertiary}
+                      />
+                      <Body className="text-neutral-400 text-xs mt-1">
+                        {isMainSlot ? 'Main Photo' : 'Add Photo'}
+                      </Body>
+                    </StyledTouchableOpacity>
+                    {/* Small camera icon for users who prefer to take a photo */}
+                    <StyledTouchableOpacity
+                      onPress={() => handleTakePhoto(index)}
+                      className="absolute bottom-2 right-2 bg-neutral-800/50 rounded-full w-8 h-8 items-center justify-center"
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Take photo with camera"
+                    >
+                      <EvaIcon name="camera" variant="outline" size={16} color="white" />
+                    </StyledTouchableOpacity>
+                  </StyledView>
                 )}
               </StyledView>
             );

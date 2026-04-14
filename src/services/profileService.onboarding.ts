@@ -188,9 +188,9 @@ export const createUserProfile = async (
       non_negotiables: [],
       matchmaking_only: data.matchmakingOnly ?? false,
       role: data.role || 'dater',
-      // Matchmakers have no profile-strength gate — mark complete immediately.
-      // Daters are marked complete later by updateUserProfile once strength hits 100%.
-      ...(data.role === 'matchmaker' ? { profile_completed: true } : {}),
+      // All onboarding steps are mandatory (no skip buttons), so every user who
+      // finishes onboarding has all required fields filled → mark complete now.
+      profile_completed: true,
     };
 
     // Strip undefined, empty arrays, and empty strings so they don't overwrite

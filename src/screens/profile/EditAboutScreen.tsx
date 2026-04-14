@@ -177,15 +177,6 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
         <H3 className="mb-4">Professional & Education</H3>
 
         <StyledView className="mb-4">
-          <FieldLabel label="Occupation" optional />
-          <Input
-            value={profile.currentJob || ''}
-            onChangeText={(text) => updateProfile({ currentJob: text })}
-            placeholder="What do you do?"
-            maxLength={80}
-          />
-        </StyledView>
-        <StyledView className="mb-4">
           <FieldLabel label="Company/Position" optional />
           <Input
             value={profile.companyPosition || ''}

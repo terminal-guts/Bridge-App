@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, TextInput, Pressable } from 'react-native';
+import { View, TextInput, Pressable, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
+import { COLORS } from '../../../theme/colors';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
@@ -9,7 +10,7 @@ import { fetchAndSetUserProfile } from '../../../services/profileService';
 import { useNavigation } from '@react-navigation/native';
 import { createLogger } from '../../../utils/secureLogger';
 
-const RESEND_COOLDOWN_SECONDS = 60;
+const RESEND_COOLDOWN_SECONDS = 30;
 
 const logger = createLogger('EmailSignUpVerificationStep');
 
@@ -34,6 +35,7 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [isResending, setIsResending] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_SECONDS);
   const isVerifyingRef = useRef(false);
   const inputRef = useRef<TextInput>(null);
@@ -70,11 +72,13 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
     }
 
     isVerifyingRef.current = true;
+    setIsVerifying(true);
     logger.info('[EMAIL] Verifying signup code for:', data.email);
 
     // This verifies the code AND creates the auth session via native Supabase OTP
     const result = await verifyEmail(data.email, fullCode);
     isVerifyingRef.current = false;
+    setIsVerifying(false);
 
     if (result.ok) {
       logger.info('[EMAIL] Email signup verification successful! User ID:', result.data?.id);
@@ -92,11 +96,15 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
       updateData({ email: data.email, emailVerified: true });
       onNext();
     } else {
-      const msg = result.error?.message || '';
-      if (msg.toLowerCase().includes('expired')) {
-        setError("That code has expired. Tap 'Resend' to get a new one.");
+      const msg = (result.error?.message || '').toLowerCase();
+      if (msg.includes('expired') || msg.includes('otp has expired')) {
+        setError("That code has expired. Tap 'Resend' below for a new one.");
+      } else if (msg.includes('invalid') || msg.includes('incorrect') || msg.includes('mismatch')) {
+        setError('Wrong code. Double-check and try again.');
+      } else if (msg.includes('rate') || msg.includes('too many')) {
+        setError('Too many attempts. Wait a moment and try again.');
       } else {
-        setError(msg || 'Verification failed. Please try again.');
+        setError('Something went wrong. Check your connection and try again.');
       }
     }
   };
@@ -166,7 +174,12 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
           style={{ position: 'absolute', opacity: 0, width: 1, height: 1 }}
         />
 
-        {error ? (
+        {isVerifying ? (
+          <StyledView className="flex-row items-center justify-center mb-4">
+            <ActivityIndicator size="small" color={COLORS.primaryAccent} />
+            <Body className="text-neutral-500 text-sm ml-2">Verifying...</Body>
+          </StyledView>
+        ) : error ? (
           <Body className="text-red-500 text-sm mb-4">{error}</Body>
         ) : null}
 

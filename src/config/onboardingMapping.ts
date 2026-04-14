@@ -140,18 +140,23 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
     },
   },
 
-  // Ethnicity (your own)
+  // Ethnicity (yours + preferences — combined on one screen)
   ethnicity: {
     key: 'ethnicity',
     type: 'complex',
     table: 'user_profiles',
     columns: ['ethnicity'],
     transform: (data: any) => ({
-      ethnicity: data.ethnicity || '',
+      profiles: {
+        ethnicity: data.ethnicity || '',
+      },
+      preferences: {
+        preferred_ethnicities: data.preferredEthnicities || [],
+      },
     }),
   },
 
-  // Preferred ethnicities (separate screen)
+  // Preferred ethnicities — kept for backward compatibility (no longer a separate step)
   preferredEthnicities: {
     key: 'preferredEthnicities',
     type: 'multi_choice',

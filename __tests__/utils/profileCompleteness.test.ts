@@ -73,10 +73,9 @@ describe('calculateProfileCompleteness', () => {
     expect(result.score).toBe(0);
   });
 
-  it('returns max percentage for complete profile', () => {
+  it('returns 100% for complete profile', () => {
     const result = calculateProfileCompleteness(makeCompleteProfile());
-    // Weights sum to 96 (includes preferredReligions weight 3)
-    expect(result.percentage).toBe(96);
+    expect(result.percentage).toBe(100);
     expect(result.missingFields).toHaveLength(0);
   });
 
@@ -134,13 +133,13 @@ describe('calculateEditProfileCompleteness', () => {
   it('returns 0% for null profile', () => {
     const result = calculateEditProfileCompleteness(null);
     expect(result.percentage).toBe(0);
-    expect(result.totalCount).toBe(18);
+    expect(result.totalCount).toBe(9);
   });
 
   it('returns 100% for complete profile', () => {
     const result = calculateEditProfileCompleteness(makeCompleteProfile());
     expect(result.percentage).toBe(100);
-    expect(result.completedCount).toBe(18);
+    expect(result.completedCount).toBe(9);
   });
 
   it('requires 3+ interests for credit', () => {
@@ -157,12 +156,11 @@ describe('calculateEditProfileCompleteness', () => {
     expect(result.missingFields.some(f => f.includes('Values'))).toBe(true);
   });
 
-  it('accepts pronounsList as fallback for pronouns', () => {
+  it('requires religion for credit', () => {
     const profile = makeCompleteProfile();
-    delete (profile as any).pronounsList;
-    profile.pronouns = 'he/him';
+    delete (profile as any).religion;
     const result = calculateEditProfileCompleteness(profile);
-    expect(result.missingFields).not.toContain('Pronouns');
+    expect(result.missingFields.some(f => f.includes('Religion'))).toBe(true);
   });
 });
 
@@ -174,8 +172,8 @@ describe('calculateMatchPreferencesCompleteness', () => {
   it('returns 0% for null profile', () => {
     const result = calculateMatchPreferencesCompleteness(null);
     expect(result.percentage).toBe(0);
-    expect(result.totalCount).toBe(7);
-    expect(result.missingFields).toHaveLength(7);
+    expect(result.totalCount).toBe(4);
+    expect(result.missingFields).toHaveLength(4);
   });
 
   it('returns 100% for complete preferences', () => {
@@ -192,23 +190,11 @@ describe('calculateMatchPreferencesCompleteness', () => {
     expect(result.percentage).toBe(100);
   });
 
-  it('requires all 4 lifestyle preference habits', () => {
+  it('requires preferred ethnicities', () => {
     const profile = makeCompleteProfile();
-    delete (profile as any).partnerLifestylePreferences.cannabis;
+    profile.preferredEthnicities = [];
     const result = calculateMatchPreferencesCompleteness(profile);
-    expect(result.missingFields).toContain('Lifestyle');
-  });
-
-  it('supports array-format lifestyle preferences', () => {
-    const profile = makeCompleteProfile();
-    (profile as any).partnerLifestylePreferences = {
-      drinking: ['Socially'],
-      cannabis: ['Never'],
-      tobacco: ['Never'],
-      otherDrugs: ['Never'],
-    };
-    const result = calculateMatchPreferencesCompleteness(profile);
-    expect(result.missingFields).not.toContain('Lifestyle');
+    expect(result.missingFields).toContain('Ethnicity');
   });
 });
 
@@ -254,10 +240,10 @@ describe('calculateProfileStrengthBreakdown', () => {
     expect(calculateProfileStrengthBreakdown(profile).sections.deepQuestions.percentage).toBe(0);
   });
 
-  it('maxTotalScore is 93 for both null and calculated', () => {
-    expect(calculateProfileStrengthBreakdown(null).maxTotalScore).toBe(93);
+  it('maxTotalScore is 100 for both null and calculated', () => {
+    expect(calculateProfileStrengthBreakdown(null).maxTotalScore).toBe(100);
     const profile = makeCompleteProfile();
-    expect(calculateProfileStrengthBreakdown(profile).maxTotalScore).toBe(93);
+    expect(calculateProfileStrengthBreakdown(profile).maxTotalScore).toBe(100);
   });
 });
 
