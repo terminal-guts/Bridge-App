@@ -117,7 +117,7 @@ const calculateStrength = (profile: UserProfile): {
   const photosSuggestions: string[] = [];
   const photoCount = breakdown.sections.photos.count;
   if (photoCount === 0) {
-    photosSuggestions.push('Add profile photos (3 required)');
+    photosSuggestions.push('Add at least 1 profile photo');
   } else if (photoCount < 3) {
     photosSuggestions.push(`Add ${3 - photoCount} more photo${3 - photoCount > 1 ? 's' : ''}`);
   }

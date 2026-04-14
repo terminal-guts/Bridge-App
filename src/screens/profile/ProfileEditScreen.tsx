@@ -57,7 +57,7 @@ const getBasicsSummary = (profile: UserProfile): string => {
 const getAboutSummary = (profile: UserProfile): string => {
   const parts: string[] = [];
   if (profile.religion) parts.push(profile.religion);
-  if (profile.currentJob) parts.push(profile.currentJob);
+  if (profile.companyPosition) parts.push(profile.companyPosition);
   if (profile.educationLevel) parts.push(formatProfileValue(profile.educationLevel));
   return parts.length > 0 ? parts.join(', ') : 'Not set';
 };

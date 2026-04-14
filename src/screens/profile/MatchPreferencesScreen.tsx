@@ -268,7 +268,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
 
   // Calculate match preferences completion for current editing state
   const matchPrefsCompletion = useMemo(() => {
-    if (!profile) return { percentage: 0, completedCount: 0, totalCount: 7, missingFields: [] };
+    if (!profile) return { percentage: 0, completedCount: 0, totalCount: 4, missingFields: [] };
 
     const currentProfile = {
       ...profile,

@@ -252,6 +252,11 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
     borderRadius: 3,
   }));
 
+  // Clamp step inline so we never render null during a steps-array change
+  const clampedStep = currentStep < 0 || currentStep >= totalSteps
+    ? 0
+    : currentStep;
+
   // Step counter label for progress display (e.g., "Step 3 of 14 · The Basics")
   const stepLabel = useMemo(() => {
     const step = steps[clampedStep];
@@ -260,11 +265,6 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
     if (section) return `Step ${stepNum} of ${totalSteps} · ${section}`;
     return `Step ${stepNum} of ${totalSteps}`;
   }, [clampedStep, totalSteps, steps]);
-
-  // Clamp step inline so we never render null during a steps-array change
-  const clampedStep = currentStep < 0 || currentStep >= totalSteps
-    ? 0
-    : currentStep;
 
   // Sync state back when clamping was needed (e.g. role switch shrinks steps array)
   React.useEffect(() => {
@@ -291,6 +291,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
 
     // Snapshot currentStep at call time to avoid stale closure issues
     const stepAtCall = currentStep;
+    // Track whether the celebration path owns the guard release
+    let celebrationOwnsGuard = false;
 
     try {
       // Save current step data before advancing (key-based mapping)
@@ -354,11 +356,15 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         if (currentSection && nextSection && currentSection !== nextSection && SECTION_CELEBRATIONS[currentSection]) {
           lightHaptic();
           setCelebrationMessage(SECTION_CELEBRATIONS[currentSection]);
-          // Show for 1.4 seconds, then advance
+          celebrationOwnsGuard = true; // Don't release in finally — setTimeout owns it
           setTimeout(() => {
-            if (!isMountedRef.current) return;
+            if (!isMountedRef.current) {
+              isGoingNextRef.current = false;
+              return;
+            }
             setCelebrationMessage(null);
             setCurrentStep(prev => prev === stepAtCall ? nextStep : prev);
+            isGoingNextRef.current = false; // Release guard after celebration ends
             AsyncStorage.setItem('@bridge/onboarding_progress', JSON.stringify({
               step: nextStep,
               data: onboardingData,
@@ -380,7 +386,10 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         completeOnboarding();
       }
     } finally {
-      isGoingNextRef.current = false;
+      // Don't release the guard if the celebration setTimeout owns it
+      if (!celebrationOwnsGuard) {
+        isGoingNextRef.current = false;
+      }
     }
   };
 
@@ -462,6 +471,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
           return;
         }
         await checkMinimalProfileStatus();
+        AsyncStorage.removeItem('@bridge/onboarding_progress').catch(() => {});
         successHaptic();
         setTimeout(() => successHaptic(), 300);
         (navigation as any).reset({ index: 0, routes: [{ name: 'MainTabs' }] });
