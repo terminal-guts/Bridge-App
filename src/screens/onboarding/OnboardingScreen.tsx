@@ -609,7 +609,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
       {/* Continuous Progress Bar + Step Counter */}
       <StyledSafeAreaView
         edges={['top']}
-        className="absolute top-0 left-0 right-0 z-50 bg-neutral-50"
+        className="absolute top-0 left-0 right-0 bg-neutral-50"
+        style={{ zIndex: 40 }}
       >
         <StyledView style={{ height: 6, backgroundColor: COLORS.card }}>
           <Animated.View style={progressBarStyle} />
