@@ -101,33 +101,6 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
       </StyledView>
     </CollapsibleCard>
 
-    {/* Professional & Education */}
-    {(profile.currentJob || profile.school) && (
-      <CollapsibleCard
-        title={<H3>Professional & Education</H3>}
-        defaultExpanded={false}
-      >
-        <StyledView className="space-y-3">
-          {profile.currentJob && (
-            <ProfileInfoItem
-              icon="briefcase"
-              label="Current Job"
-              value={profile.currentJob}
-              subtitle={profile.companyPosition}
-            />
-          )}
-          {profile.school && (
-            <ProfileInfoItem
-              icon="book-open"
-              label="Education"
-              value={profile.school}
-              subtitle={profile.educationLevel ? formatProfileValue(profile.educationLevel) : undefined}
-            />
-          )}
-        </StyledView>
-      </CollapsibleCard>
-    )}
-
     {/* Identity & Beliefs */}
     {((profile.pronounsList && profile.pronounsList.length > 0) ||
       profile.customMyGender ||
@@ -173,31 +146,6 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
               icon="flag"
               label="Political Views"
               value={formatProfileValue(profile.politicalLeaning)}
-            />
-          )}
-        </StyledView>
-      </CollapsibleCard>
-    )}
-
-    {/* Family & Relationships */}
-    {(profile.hasChildren || profile.familyPlans) && (
-      <CollapsibleCard
-        title={<H3>Family & Relationships</H3>}
-        defaultExpanded={false}
-      >
-        <StyledView className="space-y-3">
-          {profile.hasChildren && (
-            <ProfileInfoItem
-              icon="people"
-              label="Has Children"
-              value={formatProfileValue(profile.hasChildren)}
-            />
-          )}
-          {profile.familyPlans && (
-            <ProfileInfoItem
-              icon="heart"
-              label="Family Plans"
-              value={formatProfileValue(profile.familyPlans)}
             />
           )}
         </StyledView>
@@ -620,14 +568,8 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
     if (profile.ethnicity) count++;
     if (profile.location) count++;
 
-    // Professional
-    if (profile.currentJob) count++;
-    // School is optional and not shown in About Me card
-
     // Lifestyle
     if (profile.drinkingFrequency) count++;
-    if (profile.hasChildren) count++;
-    if (profile.familyPlans) count++;
 
     // Interests & Values
     if (profile.interests?.length > 0) count++;

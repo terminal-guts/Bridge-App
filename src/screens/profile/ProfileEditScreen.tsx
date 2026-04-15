@@ -57,8 +57,7 @@ const getBasicsSummary = (profile: UserProfile): string => {
 const getAboutSummary = (profile: UserProfile): string => {
   const parts: string[] = [];
   if (profile.religion) parts.push(profile.religion);
-  if (profile.companyPosition) parts.push(profile.companyPosition);
-  if (profile.educationLevel) parts.push(formatProfileValue(profile.educationLevel));
+  if (profile.politicalLeaning) parts.push(formatProfileValue(profile.politicalLeaning));
   return parts.length > 0 ? parts.join(', ') : 'Not set';
 };
 
@@ -72,7 +71,6 @@ const getLifestyleSummary = (profile: UserProfile): string => {
   const parts: string[] = [];
   if (profile.drinkingFrequency) parts.push(formatProfileValue(profile.drinkingFrequency));
   if (profile.cannabisFrequency) parts.push(formatProfileValue(profile.cannabisFrequency));
-  if (profile.familyPlans) parts.push(formatProfileValue(profile.familyPlans));
   return parts.length > 0 ? parts.join(', ') : 'Not set';
 };
 
@@ -277,7 +275,7 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
           />
 
           <SectionCard
-            title="Lifestyle & Family"
+            title="Lifestyle"
             icon="home"
             summary={getLifestyleSummary(profile)}
             onPress={() => navigation.navigate('EditLifestyle')}

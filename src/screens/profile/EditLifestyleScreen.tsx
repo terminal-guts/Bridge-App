@@ -78,45 +78,6 @@ export const EditLifestyleScreen: React.FC<EditLifestyleScreenProps> = ({ naviga
         onUpdateOtherDrugs={handleUpdateOtherDrugs}
       />
 
-      {/* Family & Children */}
-      <Card className="mb-6">
-        <H3 className="mb-4">Family &amp; Children</H3>
-
-        {/* Children Status */}
-        <StyledView className="mb-3 mt-2">
-          <Body style={{ fontFamily: FONTS.semiBold, fontSize: 11, lineHeight: 14, color: COLORS.text.secondary, letterSpacing: 0.8 }}>
-            DO YOU HAVE CHILDREN? (optional)
-          </Body>
-        </StyledView>
-        <StyledView className="flex-row flex-wrap mb-5" style={{ gap: 10 }}>
-          {CHILDREN_STATUS_OPTIONS.map((option) => (
-            <Chip
-              key={option.value}
-              label={option.label}
-              selected={profile.hasChildren === option.value}
-              onPress={() => updateProfile({ hasChildren: profile.hasChildren === option.value ? '' : option.value })}
-            />
-          ))}
-        </StyledView>
-
-        {/* Family Plans */}
-        <StyledView className="mb-3 mt-2">
-          <Body style={{ fontFamily: FONTS.semiBold, fontSize: 11, lineHeight: 14, color: COLORS.text.secondary, letterSpacing: 0.8 }}>
-            FAMILY PLANS (optional)
-          </Body>
-        </StyledView>
-        <StyledView className="flex-row flex-wrap mb-5" style={{ gap: 10 }}>
-          {FAMILY_PLANS_OPTIONS.map((option) => (
-            <Chip
-              key={option.value}
-              label={option.label}
-              selected={profile.familyPlans === option.value}
-              onPress={() => updateProfile({ familyPlans: profile.familyPlans === option.value ? '' : option.value })}
-            />
-          ))}
-        </StyledView>
-      </Card>
-
     </SectionScreenWrapper>
   );
 };

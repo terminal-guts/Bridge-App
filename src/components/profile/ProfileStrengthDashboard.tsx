@@ -67,7 +67,6 @@ const calculateStrength = (profile: UserProfile): {
   if (!profile.politicalLeaning) {
     aboutSuggestions.push('Add political views');
   }
-  if (!profile.familyPlans) aboutSuggestions.push('Add family plans');
   if (!profile.drinkingFrequency) aboutSuggestions.push('Add drinking habits');
   if (!profile.cannabisFrequency) aboutSuggestions.push('Add cannabis habits');
   if (!profile.tobaccoFrequency) aboutSuggestions.push('Add tobacco/vaping habits');

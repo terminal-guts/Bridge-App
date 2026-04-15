@@ -37,7 +37,7 @@ export const BirthdayStep: React.FC<BirthdayStepProps> = ({
   });
 
   const [ageMin, setAgeMin] = useState<number>(data.preferences?.ageMin || MIN_AGE);
-  const [ageMax, setAgeMax] = useState<number>(data.preferences?.ageMax || 24);
+  const [ageMax, setAgeMax] = useState<number>(data.preferences?.ageMax || 22);
   const [error, setError] = useState('');
 
   const calculateAge = (birthDate: Date) => {

@@ -211,8 +211,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
     lifestyle: {}, // Deprecated: kept for backward compatibility
     nonNegotiables: [],
     preferences: {
-      ageMin: 24,
-      ageMax: 32,
+      ageMin: 18,
+      ageMax: 22,
       // NOTE: gender will be derived from interestedInGenders automatically
       lookingFor: 'relationship', // Default — PreferencesStep removed, this is always 'relationship'
       heightMin: 60,

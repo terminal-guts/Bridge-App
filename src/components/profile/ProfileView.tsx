@@ -411,34 +411,6 @@ export function ProfileView({
             </StyledView>
           )}
 
-          {/* Family */}
-          {(profile.hasChildren || profile.familyPlans) && (
-          <StyledView style={{ marginBottom: 20 }}>
-            <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <EvaIcon name="people" variant="outline" size={18} color={COLORS.amber} style={{ marginRight: 8 }} />
-              <StyledText style={{ fontSize: FONT_SIZES.lg, color: COLORS.text.secondary, fontWeight: '600', fontFamily: FONTS.semiBold }}>Family</StyledText>
-            </StyledView>
-            {profile.hasChildren && (
-            <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <EvaIcon name="person" variant="outline" size={16} color={COLORS.text.secondary} style={{ marginRight: 8 }} />
-              <StyledText style={{ fontSize: FONT_SIZES.base, fontFamily: FONTS.regular, color: COLORS.text.secondary }}>
-                {profile.hasChildren === 'no' ? 'No children' : profile.hasChildren === 'yes' ? 'Has children' : 'Prefer not to say'}
-              </StyledText>
-            </StyledView>
-            )}
-            {profile.familyPlans && (
-              <StyledView style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <EvaIcon name="heart" variant="outline" size={16} color={COLORS.text.secondary} style={{ marginRight: 8 }} />
-                <StyledText style={{ fontSize: FONT_SIZES.base, fontFamily: FONTS.regular, color: COLORS.text.secondary }}>
-                  {profile.familyPlans === 'want_children' ? 'Want children someday' :
-                    profile.familyPlans === 'open_to_children' ? 'Open to children' :
-                      profile.familyPlans === 'dont_want_children' ? 'Don\'t want children' : 'Not sure yet'}
-                </StyledText>
-              </StyledView>
-            )}
-          </StyledView>
-          )}
-
           {/* Lifestyle */}
           <StyledView style={{ marginBottom: 20 }}>
             <StyledView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>

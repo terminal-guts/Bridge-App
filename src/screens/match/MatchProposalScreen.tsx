@@ -179,7 +179,6 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
     const h: string[] = [];
     if (mutualInterests.length >= 2) h.push('Strong interest alignment');
     if (mutualValues.length >= 2) h.push('Core values align');
-    if (profile?.familyPlans) h.push('Similar life goals');
     return h;
   }, [mutualInterests, mutualValues, profile]);
 
@@ -463,14 +462,6 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
             {mutualValues.length > 0 && <Body className="text-xs font-semibold mb-2" style={{ color: COLORS.success }}>Filled = you both picked this</Body>}
             <StyledView className="flex-row flex-wrap">{profile.values.map((value) => <Tag key={value} label={value} iconName={valueIconName(value)} variant="success" isMutual={mutualValues.includes(value)} />)}</StyledView>
           </Section>}
-          {(profile.hasChildren || profile.familyPlans) && (
-            <Section title="Family" icon="people" delay={150}>
-              <StyledView className="rounded-2xl p-4" style={{ backgroundColor: COLORS.neutral50 }}>
-                {profile.hasChildren && <StyledView className="flex-row items-center mb-2.5"><EvaIcon name="people" variant="outline" size={17} color={COLORS.neutral400} /><Body className="ml-2.5" style={{ color: COLORS.neutral600 }}>{formatFrequency(profile.hasChildren)}</Body></StyledView>}
-                {profile.familyPlans && <StyledView className="flex-row items-center"><EvaIcon name="heart" variant="outline" size={17} color={COLORS.neutral400} /><Body className="ml-2.5" style={{ color: COLORS.neutral600 }}>{formatFrequency(profile.familyPlans)}</Body></StyledView>}
-              </StyledView>
-            </Section>
-          )}
           {hasLifestyleInfo && (
             <Section title="Lifestyle" icon="trending-up" delay={200}>
               <StyledView className="rounded-2xl px-4 py-1" style={{ backgroundColor: COLORS.neutral50 }}>

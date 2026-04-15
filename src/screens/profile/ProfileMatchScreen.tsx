@@ -423,11 +423,7 @@ export default function ProfileMatchScreen() {
     const sharedInterestsSet = new Set(inCommon.interests.map((i: string) => i.toLowerCase()));
     const sharedValuesSet = new Set(inCommon.values.map((v: string) => v.toLowerCase()));
 
-    const subtitleParts: string[] = [];
-    if (partnerProfile.school) subtitleParts.push(partnerProfile.school);
-    if (partnerProfile.education) subtitleParts.push(partnerProfile.education);
-    if (partnerProfile.currentJob) subtitleParts.push(partnerProfile.currentJob);
-    const heroSubtitleStr = subtitleParts.join(' \u00B7 ');
+    const heroSubtitleStr = '';
 
     return (
         <View style={styles.container}>
