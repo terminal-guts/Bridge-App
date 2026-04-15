@@ -325,9 +325,6 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
 
     // Snapshot currentStep at call time to avoid stale closure issues
     const stepAtCall = currentStep;
-    // Track whether the celebration path owns the guard release
-    let celebrationOwnsGuard = false;
-
     try {
       // Save current step data before advancing (key-based mapping)
       const stepKey = steps[stepAtCall].mappingKey;
@@ -390,16 +387,14 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         if (currentSection && nextSection && currentSection !== nextSection && SECTION_CELEBRATIONS[currentSection]) {
           lightHaptic();
           setCelebrationMessage(SECTION_CELEBRATIONS[currentSection]);
-          celebrationOwnsGuard = true; // Don't release in finally — setTimeout owns it
+          // Advance step immediately (so persistence captures the right step),
+          // but show celebration overlay for 1.4s before hiding it
+          setCurrentStep(prev => prev === stepAtCall ? nextStep : prev);
+          persistProgress(nextStep, onboardingDataRef);
           celebrationTimeoutRef.current = setTimeout(() => {
-            if (!isMountedRef.current) {
-              isGoingNextRef.current = false;
-              return;
+            if (isMountedRef.current) {
+              setCelebrationMessage(null);
             }
-            setCelebrationMessage(null);
-            setCurrentStep(prev => prev === stepAtCall ? nextStep : prev);
-            isGoingNextRef.current = false; // Release guard after celebration ends
-            persistProgress(nextStep, onboardingDataRef);
           }, 1400);
         } else {
           setCurrentStep(prev => {
@@ -413,10 +408,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         completeOnboarding();
       }
     } finally {
-      // Don't release the guard if the celebration setTimeout owns it
-      if (!celebrationOwnsGuard) {
-        isGoingNextRef.current = false;
-      }
+      isGoingNextRef.current = false;
     }
   };
 
