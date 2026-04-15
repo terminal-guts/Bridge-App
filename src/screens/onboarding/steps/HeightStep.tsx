@@ -56,14 +56,18 @@ export const HeightStep: React.FC<HeightStepProps> = ({
     return MIN_HEIGHT;
   };
 
+  const DEFAULT_HEIGHT = 66; // 5'6" — sensible starting point for college students
+  const DEFAULT_PREF_MIN = 60; // 5'0"
+  const DEFAULT_PREF_MAX = 72; // 6'0"
+
   const [myHeight, setMyHeight] = useState<number>(
-    data.height ? parseHeight(data.height) : MIN_HEIGHT // No default - start at minimum
+    data.height ? parseHeight(data.height) : DEFAULT_HEIGHT
   );
   const [minHeight, setMinHeight] = useState<number>(
-    data.preferences?.heightMin || MIN_HEIGHT
+    data.preferences?.heightMin || DEFAULT_PREF_MIN
   );
   const [maxHeight, setMaxHeight] = useState<number>(
-    data.preferences?.heightMax || MAX_HEIGHT
+    data.preferences?.heightMax || DEFAULT_PREF_MAX
   );
 
   const validateAndContinue = () => {

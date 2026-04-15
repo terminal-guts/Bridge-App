@@ -27,6 +27,7 @@ export const PreferredEthnicitiesStep: React.FC<PreferredEthnicitiesStepProps> =
   const [preferredEthnicities, setPreferredEthnicities] = useState<string[]>(
     data.preferredEthnicities || []
   );
+  // Default to "Open to all" for new users
   const [openToAll, setOpenToAll] = useState(
     !data.preferredEthnicities || data.preferredEthnicities.length === 0
   );

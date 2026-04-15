@@ -102,10 +102,11 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
             {showBackButton && onBack && (
               <StyledRNTouchableOpacity
                 onPress={onBack}
-                className="absolute top-4 left-4 z-50 p-2"
+                className="absolute left-4 z-50 p-2"
+                style={{ top: 32 }}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
+                <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.primary} />
               </StyledRNTouchableOpacity>
             )}
 
@@ -114,7 +115,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
               className="flex-1"
               contentContainerStyle={{
                 paddingHorizontal: 24,
-                paddingTop: topPadding ?? 64,
+                paddingTop: topPadding ?? 76,
                 paddingBottom: 16,
                 flexGrow: 1,
               }}

@@ -46,6 +46,7 @@ import { WelcomeToBridgeStep } from './steps/WelcomeToBridgeStep';
 import { MatchmakingModeStep } from './steps/MatchmakingModeStep';
 import { MatchmakerProfileStep } from './steps/MatchmakerProfileStep';
 import { OnboardingProposalStep } from './steps/OnboardingProposalStep';
+import { PreferredEthnicitiesStep } from './steps/PreferredEthnicitiesStep';
 
 interface OnboardingScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Onboarding'>;
@@ -69,7 +70,7 @@ const AUTH_STEPS: StepDefinition[] = [
   { component: EmailSignUpVerificationStep, title: 'Verify Email', hasTextInput: true },
 ];
 
-// Profile steps — 13 steps (after auth), no skip buttons, all required.
+// Profile steps — 14 steps (after auth), no skip buttons, all required.
 // Finish onboarding = profile_completed = true = in the matching pool.
 // Order: Name + Birthday first (low friction, creates investment), then Role + Voting tutorial,
 // then demographics and preferences, finally photos.
@@ -83,6 +84,7 @@ const PROFILE_STEPS: StepDefinition[] = [
   { component: GenderStep, title: 'Gender', hasTextInput: false, mappingKey: 'gender', section: 'The Basics' },
   { component: HeightStep, title: 'Height', hasTextInput: false, mappingKey: 'height', section: 'The Basics' },
   { component: EthnicityStep, title: 'Ethnicity', hasTextInput: false, mappingKey: 'ethnicity', section: 'Your Background' },
+  { component: PreferredEthnicitiesStep, title: 'Ethnicity Preferences', hasTextInput: false, mappingKey: 'preferredEthnicities', section: 'Your Background' },
   { component: ReligionStep, title: 'Religion', hasTextInput: false, mappingKey: 'religion', section: 'Your Background' },
   { component: PoliticalBeliefsStep, title: 'Politics', hasTextInput: false, mappingKey: 'politics', section: 'Your Background' },
   { component: LifestyleStep, title: 'Lifestyle', hasTextInput: false, mappingKey: 'lifestyle', section: 'Your Background' },
@@ -216,7 +218,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
       // NOTE: gender will be derived from interestedInGenders automatically
       lookingFor: 'relationship', // Default — PreferencesStep removed, this is always 'relationship'
       heightMin: 60,
-      heightMax: 84,
+      heightMax: 72,
     } as any,
     photos: [],
     // Merge any pre-filled data (used when switching from matchmaker to dater)
