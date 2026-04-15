@@ -329,7 +329,7 @@ export const sendLoginOtpToEmail = async (email: string): Promise<ApiResponse<vo
         error: {
           code: isNoAccount ? 'NO_ACCOUNT' : 'EMAIL_OTP_ERROR',
           message: isNoAccount
-            ? 'No account found for that email. Try "Continue with Rice Google" or tap "Sign Up".'
+            ? 'No account found for that email. Tap "Sign Up" to create one.'
             : error.message,
         },
       };
@@ -643,6 +643,12 @@ export const sendEmailSignUpCode = async (email: string): Promise<ApiResponse<vo
       };
     }
 
+    // Reviewer bypass — skip actual code send; the verification screen handles login via password
+    if (isReviewerBypassEmail(normalized)) {
+      logger.info('[EMAIL_SIGNUP] Reviewer bypass — skipping code send');
+      return { ok: true };
+    }
+
     logger.info('[EMAIL_SIGNUP] Sending verification code to:', normalized);
 
     const { data, error } = await supabase.functions.invoke('email-signup', {
@@ -658,9 +664,11 @@ export const sendEmailSignUpCode = async (email: string): Promise<ApiResponse<vo
     }
 
     if (data?.error) {
+      // Propagate specific error codes from the edge function
+      const errorCode = data?.code || 'SEND_ERROR';
       return {
         ok: false,
-        error: { code: 'SEND_ERROR', message: data.error },
+        error: { code: errorCode, message: data.error },
       };
     }
 
