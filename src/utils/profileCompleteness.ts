@@ -335,8 +335,8 @@ export const calculateProfileStrengthBreakdown = (
       sections: {
         aboutMe: { score: 0, maxScore: 50, percentage: 0 },
         matchPreferences: { score: 0, maxScore: 30, percentage: 0, completedCount: 0, totalCount: 4 },
-        photos: { score: 0, maxScore: 10, percentage: 0, count: 0 },
-        deepQuestions: { score: 0, maxScore: 10, percentage: 0, displayedCount: 0, answeredCount: 0 },
+        photos: { score: 0, maxScore: 15, percentage: 0, count: 0 },
+        deepQuestions: { score: 0, maxScore: 12, percentage: 0, displayedCount: 0, answeredCount: 0 },
       },
       totalScore: 0,
       maxTotalScore: 100,
@@ -357,16 +357,16 @@ export const calculateProfileStrengthBreakdown = (
   const matchPrefsCompletion = calculateMatchPreferencesCompleteness(profile);
   const preferencesPoints = Math.round((matchPrefsCompletion.percentage / 100) * 30);
 
-  // 3. PHOTOS SECTION - 1 photo = 100%
-  const photoCount = profile.photos?.length || 0;
-  const photosPercentage = photoCount >= 1 ? 100 : 0;
-  const photosPoints = photoCount >= 1 ? 10 : 0;
+  // 3. PHOTOS SECTION — 3 photos needed for 100%
+  const photoCount = Math.min(profile.photos?.length || 0, 3);
+  const photosPercentage = Math.round((photoCount / 3) * 100);
+  const photosPoints = Math.round((photoCount / 3) * 15);
 
-  // 4. DEEP QUESTIONS SECTION (optional bonus — not required for pool entry)
-  const displayedCount = profile.displayedQuestions?.length || 0;
+  // 4. DEEP QUESTIONS SECTION — 3 displayed questions needed for 100%
+  const displayedCount = Math.min(profile.displayedQuestions?.length || 0, 3);
   const answeredCount = profile.deepQuestions?.length || 0;
-  const questionsPercentage = displayedCount >= 3 ? 100 : Math.round((displayedCount / 3) * 100);
-  const questionsPoints = displayedCount >= 3 ? 10 : Math.round((displayedCount / 3) * 10);
+  const questionsPercentage = Math.round((displayedCount / 3) * 100);
+  const questionsPoints = Math.round((displayedCount / 3) * 12);
 
   return {
     overall: finalPercentage,
@@ -385,13 +385,13 @@ export const calculateProfileStrengthBreakdown = (
       },
       photos: {
         score: photosPoints,
-        maxScore: 10,
+        maxScore: 15,
         percentage: Math.min(photosPercentage, 100),
         count: photoCount,
       },
       deepQuestions: {
         score: questionsPoints,
-        maxScore: 10,
+        maxScore: 12,
         percentage: questionsPercentage,
         displayedCount,
         answeredCount,
