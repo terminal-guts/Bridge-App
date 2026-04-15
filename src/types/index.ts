@@ -425,14 +425,16 @@ export interface OnboardingData {
   deepQuestions?: DeepQuestionAnswer[];
   nonNegotiables?: NonNegotiable[];
 
-  // Partner Preferences (collected via double-tap in onboarding)
+  // Partner Preferences — auto-saved from own selections during onboarding
+  preferredReligions?: string[];
+  preferredPolitics?: string[];
   partnerLifestylePreferences?: {
-    drinking: string;
-    cannabis?: string; // New field name
-    weed?: string; // Legacy field name, prefer cannabis
-    tobacco: string;
-    otherDrugs?: string; // New field name
-    drugs?: string; // Legacy field name, prefer otherDrugs
+    drinking: string[];
+    cannabis?: string[];
+    weed?: string; // Legacy field name
+    tobacco: string[];
+    otherDrugs?: string[];
+    drugs?: string; // Legacy field name
   };
 
   // Onboarding progress
@@ -443,6 +445,7 @@ export interface OnboardingData {
   phoneVerified?: boolean;
   emailVerified?: boolean;
   verificationCode?: string;
+  termsAgreed?: boolean; // Persisted so mini-loop return doesn't require re-agreeing
 
   // Matchmaking role
   role?: 'dater' | 'matchmaker';

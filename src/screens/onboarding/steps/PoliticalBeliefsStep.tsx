@@ -43,6 +43,7 @@ export const PoliticalBeliefsStep: React.FC<PoliticalBeliefsStepProps> = ({
 
     updateData({
       politicalLeaning: selectedPolitics as any,
+      preferredPolitics: [selectedPolitics], // Auto-set partner preference to own selection
     });
     onNext();
   };

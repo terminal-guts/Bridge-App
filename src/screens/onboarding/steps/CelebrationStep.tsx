@@ -27,7 +27,7 @@ export const CelebrationStep: React.FC<CelebrationStepProps> = ({ onNext, messag
     lightHaptic();
     const timer = setTimeout(() => {
       onNext();
-    }, 1500);
+    }, 1125);
     return () => clearTimeout(timer);
   }, []);
 

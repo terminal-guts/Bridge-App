@@ -649,6 +649,21 @@ export const sendEmailSignUpCode = async (email: string): Promise<ApiResponse<vo
       return { ok: true };
     }
 
+    // Block existing accounts — check before sending code
+    try {
+      const { data: emailExists, error: checkErr } = await supabase.rpc('check_email_exists', { p_email: normalized });
+      if (checkErr) {
+        logger.warn('[EMAIL_SIGNUP] Email exists check failed (proceeding anyway):', checkErr.message);
+      } else if (emailExists) {
+        return {
+          ok: false,
+          error: { code: 'ACCOUNT_EXISTS', message: 'This account already exists. Tap Sign In instead.' },
+        };
+      }
+    } catch (e) {
+      logger.warn('[EMAIL_SIGNUP] Email exists check threw (proceeding anyway):', e);
+    }
+
     logger.info('[EMAIL_SIGNUP] Sending verification code to:', normalized);
 
     const { data, error } = await supabase.functions.invoke('email-signup', {

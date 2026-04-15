@@ -58,6 +58,7 @@ export const ReligionStep: React.FC<ReligionStepProps> = ({
 
     updateData({
       religion: selected.join(' / '),
+      preferredReligions: [...selected], // Auto-set partner preference to own selection
     });
     onNext();
   };

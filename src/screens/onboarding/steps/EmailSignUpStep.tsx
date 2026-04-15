@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { H1, Body, Input } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
-import { isAllowedEmailDomain, sendOtpToEmail } from '../../../services/authService';
+import { isAllowedEmailDomain, sendEmailSignUpCode } from '../../../services/authService';
 import { createLogger } from '../../../utils/secureLogger';
 import { COLORS } from '../../../theme/colors';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../../constants/typography';
@@ -35,7 +35,7 @@ export const EmailSignUpStep: React.FC<EmailSignUpStepProps> = ({
   const [email, setEmail] = useState(data.email || '');
   const [error, setError] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(data.termsAgreed ?? false);
 
   const validateAndContinue = async () => {
     if (!agreedToTerms) {
@@ -62,7 +62,7 @@ export const EmailSignUpStep: React.FC<EmailSignUpStepProps> = ({
     setIsSending(true);
 
     try {
-      const result = await sendOtpToEmail(trimmed);
+      const result = await sendEmailSignUpCode(trimmed);
 
       if (!result.ok) {
         setError(result.error?.message || 'Failed to send verification code');
@@ -70,7 +70,7 @@ export const EmailSignUpStep: React.FC<EmailSignUpStepProps> = ({
       }
 
       logger.info('[EMAIL] OTP sent for signup to:', trimmed);
-      updateData({ email: trimmed });
+      updateData({ email: trimmed, termsAgreed: true });
       onNext();
     } catch (err: any) {
       logger.error('[EMAIL] OTP send error:', err);

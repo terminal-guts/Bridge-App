@@ -35,9 +35,9 @@ function makeCompleteProfile(): UserProfile {
     otherDrugsFrequency: 'Never',
     values: ['Honesty', 'Trust', 'Kindness'],
     interests: ['Tennis', 'Cooking', 'Travel'],
-    photos: [{ url: 'photo1.jpg', isMain: true }],
+    photos: [{ url: 'photo1.jpg', isMain: true }, { url: 'photo2.jpg', isMain: false }, { url: 'photo3.jpg', isMain: false }],
     interestedInGenders: ['Male'],
-    preferredEthnicities: ['No Preference'],
+    preferredEthnicities: [],
     preferredReligions: ['No Preference'],
     preferredPolitics: ['No Preference'],
     preferences: {
@@ -190,11 +190,11 @@ describe('calculateMatchPreferencesCompleteness', () => {
     expect(result.percentage).toBe(100);
   });
 
-  it('requires preferred ethnicities', () => {
+  it('accepts empty preferredEthnicities as No Preference', () => {
     const profile = makeCompleteProfile();
     profile.preferredEthnicities = [];
     const result = calculateMatchPreferencesCompleteness(profile);
-    expect(result.missingFields).toContain('Ethnicity');
+    expect(result.missingFields).not.toContain('Ethnicity');
   });
 });
 
@@ -219,9 +219,12 @@ describe('calculateProfileStrengthBreakdown', () => {
     expect(result.sections.deepQuestions.percentage).toBe(100);
   });
 
-  it('scores photos as 0 or 100 (1 photo = full credit)', () => {
+  it('scores photos proportionally (3 photos = 100%)', () => {
     const profile = makeCompleteProfile();
     expect(calculateProfileStrengthBreakdown(profile).sections.photos.percentage).toBe(100);
+
+    profile.photos = [{ url: 'a.jpg', isMain: true }] as any;
+    expect(calculateProfileStrengthBreakdown(profile).sections.photos.percentage).toBe(33);
 
     profile.photos = [];
     expect(calculateProfileStrengthBreakdown(profile).sections.photos.percentage).toBe(0);

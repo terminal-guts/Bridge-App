@@ -45,7 +45,6 @@ import { MatchmakingModeStep } from './steps/MatchmakingModeStep';
 import { MatchmakerProfileStep } from './steps/MatchmakerProfileStep';
 import { OnboardingProposalStep } from './steps/OnboardingProposalStep';
 import { CelebrationStep } from './steps/CelebrationStep';
-import { PreferredEthnicitiesStep } from './steps/PreferredEthnicitiesStep';
 
 interface OnboardingScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Onboarding'>;
@@ -64,32 +63,28 @@ interface StepDefinition {
 const StyledView = styled(View);
 const StyledSafeAreaView = styled(SafeAreaView);
 
-// Auth steps — email signup + OTP verification (skipped when user signs in with Google)
+// Auth steps — Email sends code, Name + Birthday fill while code delivers, Verify enters code.
+// Name and Birthday are stored locally (no auth session) — committed to backend after verify.
 const AUTH_STEPS: StepDefinition[] = [
-  { component: EmailSignUpStep, title: 'Email', hasTextInput: true },
-  { component: EmailSignUpVerificationStep, title: 'Verify Email', hasTextInput: true },
+  { component: EmailSignUpStep, title: 'Email', hasTextInput: true, section: 'Getting Started' },
+  { component: NameStep, title: 'Name', hasTextInput: true, mappingKey: 'name', section: 'Getting Started' },
+  { component: AgeStep, title: 'Birthday', hasTextInput: false, mappingKey: 'age', section: 'Getting Started' },
+  { component: EmailSignUpVerificationStep, title: 'Verify Email', hasTextInput: true, section: 'Getting Started' },
 ];
 
-// Profile steps — 15 steps (after auth), no skip buttons, all required.
-// Finish onboarding = profile_completed = true = in the matching pool.
-// Order: Name + Birthday first (low friction, creates investment), then Role + Voting tutorial,
-// then demographics and preferences, finally photos.
-// Removed: Pronouns, Children, CurrentJob, DeepQuestions, AddFriends, Welcome, PreferencesStep
-// See docs/ONBOARDING_SIMPLIFICATION_PLAN.md for full rationale.
-// Celebration step wrappers — each passes a specific message
+// Celebration step wrappers — auto-advance after 1.125s
 const BasicsComplete: React.FC<any> = (props) => <CelebrationStep {...props} message="Basics done — looking good!" />;
 const BackgroundComplete: React.FC<any> = (props) => <CelebrationStep {...props} message="Almost there — just the fun stuff left!" />;
 
+// Profile steps — 12 real steps + 2 celebrations (hidden from counter).
+// Total with auth: 16 counted steps (4 auth + 12 profile).
 const PROFILE_STEPS: StepDefinition[] = [
-  { component: NameStep, title: 'Name', hasTextInput: true, mappingKey: 'name', section: 'Getting Started' },
-  { component: AgeStep, title: 'Birthday', hasTextInput: false, mappingKey: 'age', section: 'Getting Started' },
   { component: MatchmakingModeStep, title: 'Role', hasTextInput: false, mappingKey: 'role', section: 'Getting Started' },
   { component: OnboardingProposalStep, title: 'First Votes', hasTextInput: false, section: 'Getting Started' },
   { component: GenderStep, title: 'Gender', hasTextInput: false, mappingKey: 'gender', section: 'The Basics' },
   { component: HeightStep, title: 'Height', hasTextInput: false, mappingKey: 'height', section: 'The Basics' },
   { component: BasicsComplete, title: 'Celebration', hasTextInput: false, section: 'The Basics', hideFromCounter: true },
   { component: EthnicityStep, title: 'Ethnicity', hasTextInput: false, mappingKey: 'ethnicity', section: 'Your Background' },
-  { component: PreferredEthnicitiesStep, title: 'Ethnicity Preferences', hasTextInput: false, mappingKey: 'preferredEthnicities', section: 'Your Background' },
   { component: ReligionStep, title: 'Religion', hasTextInput: false, mappingKey: 'religion', section: 'Your Background' },
   { component: PoliticalBeliefsStep, title: 'Politics', hasTextInput: false, mappingKey: 'politics', section: 'Your Background' },
   { component: LifestyleStep, title: 'Lifestyle', hasTextInput: false, mappingKey: 'lifestyle', section: 'Your Background' },
@@ -133,6 +128,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   // Updated synchronously inside setOnboardingData updater, NOT via useEffect,
   // so goNext always sees the latest data even when called in the same tick as updateData.
   const onboardingDataRef = useRef(onboardingData);
+  // Mini-loop: "Didn't receive a code?" → go to email, skip back to verify after send
+  const skipToStepRef = useRef<number | null>(null);
+  const isInResendLoopRef = useRef(false);
   // Guard: prevent orphaned upload promises from writing state after unmount
   const isMountedRef = useRef(true);
   useEffect(() => {
@@ -147,22 +145,32 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
     if (isRoleSwitch || hasRestoredStep) return;
     const restoreProgress = async () => {
       try {
-        // Only restore if user has an active auth session — if the account was
-        // deleted or session expired, stale progress would land on a broken step
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          logger.info('[OnboardingScreen] No auth session — clearing stale progress');
-          await AsyncStorage.removeItem('@bridge/onboarding_progress');
+        const saved = await AsyncStorage.getItem('@bridge/onboarding_progress');
+
+        if (!user && saved) {
+          // No auth session but have saved data (pre-auth: user entered name/birthday
+          // but didn't verify yet). Restore the data but reset to step 0 (email).
+          const { data } = JSON.parse(saved);
+          if (data) {
+            logger.info('[OnboardingScreen] Pre-auth restore: merging name/birthday, resetting to step 0');
+            setOnboardingData(prev => ({ ...prev, ...data }));
+          }
           setHasRestoredStep(true);
           return;
         }
 
-        const saved = await AsyncStorage.getItem('@bridge/onboarding_progress');
+        if (!user) {
+          // No session, no saved data — fresh start
+          setHasRestoredStep(true);
+          return;
+        }
+
+        // Has auth session — full restore
         if (saved) {
           const { step, data } = JSON.parse(saved);
           if (typeof step === 'number' && step > 0) {
-            // Clamp to valid range in case step array changed
-            const maxStep = PROFILE_STEPS.length + (skipAuth ? 0 : 2) - 1;
+            const maxStep = steps.length - 1;
             const safeStep = Math.min(step, maxStep);
             logger.info(`[OnboardingScreen] Restoring onboarding progress to step ${safeStep}`);
             setCurrentStep(safeStep);
@@ -249,8 +257,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
       // Matchmaker path: [Email → Verify →] Name → Role → First Votes → Photo → Add Friends
       return [
         ...authPrefix,
+        // NameStep is now in AUTH_STEPS, so it comes via authPrefix
         ...PROFILE_STEPS.filter(step =>
-          step.component === NameStep ||
           step.component === MatchmakingModeStep ||
           step.component === OnboardingProposalStep
         ),
@@ -268,6 +276,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   const progressWidth = useSharedValue((currentStep + 1) / totalSteps);
 
   useEffect(() => {
+    // Don't animate backward during email resend mini-loop
+    if (isInResendLoopRef.current) return;
     progressWidth.value = withTiming((currentStep + 1) / totalSteps, {
       duration: DURATIONS.normal,
       easing: EASINGS.standard,
@@ -383,9 +393,12 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
           .catch((err) => logger.warn('Early proposal assignment failed (non-blocking):', err.message));
       }
 
-      // Advance to next step using functional update to avoid stale closure
+      // Advance to next step — check skipToStepRef for mini-loop jumps
       if (stepAtCall < totalSteps - 1) {
-        const nextStep = stepAtCall + 1;
+        const jumpTarget = skipToStepRef.current;
+        skipToStepRef.current = null; // consume immediately
+        if (isInResendLoopRef.current) isInResendLoopRef.current = false;
+        const nextStep = jumpTarget !== null ? jumpTarget : stepAtCall + 1;
         const currentSection = steps[stepAtCall]?.section;
         const nextSection = steps[nextStep]?.section;
 
@@ -607,7 +620,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         </StyledView>
         <StyledView className="px-4 py-1">
           <Body style={{ fontSize: FONT_SIZES.xs, color: COLORS.text.tertiary, textAlign: 'center' }}>
-            {stepLabel}
+            {isInResendLoopRef.current ? '' : stepLabel}
           </Body>
         </StyledView>
       </StyledSafeAreaView>
@@ -625,6 +638,13 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
           onBack={goBack}
           isFirstStep={clampedStep === 0}
           isLastStep={clampedStep === totalSteps - 1}
+          onResendCode={() => {
+            // Mini-loop: go to email step (0), then after send skip back to verify
+            const verifyIndex = steps.findIndex(s => s.component === EmailSignUpVerificationStep);
+            skipToStepRef.current = verifyIndex;
+            isInResendLoopRef.current = true;
+            setCurrentStep(0);
+          }}
         />
       </Animated.View>
     </StyledView>

@@ -5,7 +5,7 @@ import { COLORS } from '../../../theme/colors';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
-import { verifyEmail, sendOtpToEmail } from '../../../services/authService';
+import { verifyEmailSignUpCode, sendEmailSignUpCode } from '../../../services/authService';
 import { fetchAndSetUserProfile } from '../../../services/profileService';
 import { useNavigation } from '@react-navigation/native';
 import { createLogger } from '../../../utils/secureLogger';
@@ -21,6 +21,7 @@ interface EmailSignUpVerificationStepProps {
   onBack: () => void;
   isFirstStep: boolean;
   isLastStep: boolean;
+  onResendCode?: () => void; // Mini-loop: navigates to email screen for resend/email change
 }
 
 const StyledView = styled(View);
@@ -30,6 +31,7 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
   updateData,
   onNext,
   onBack,
+  onResendCode,
 }) => {
   const navigation = useNavigation<any>();
   const [code, setCode] = useState('');
@@ -76,7 +78,7 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
     logger.info('[EMAIL] Verifying signup code for:', data.email);
 
     // This verifies the code AND creates the auth session via native Supabase OTP
-    const result = await verifyEmail(data.email, fullCode);
+    const result = await verifyEmailSignUpCode(data.email, fullCode);
     isVerifyingRef.current = false;
     setIsVerifying(false);
 
@@ -116,7 +118,7 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
     setError('');
     inputRef.current?.focus();
 
-    const result = await sendOtpToEmail(data.email, true);
+    const result = await sendEmailSignUpCode(data.email);
     setIsResending(false);
 
     if (result.ok) {
@@ -139,7 +141,7 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
     <OnboardingLayout
       onContinue={() => validateAndContinue()}
       onBack={onBack}
-      showBackButton={true}
+      showBackButton={false}
       continueDisabled={isVerifying}
       hasTextInput={true}
       keyboardPersistent={false}
@@ -190,15 +192,23 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
           <Body className="text-red-500 text-sm mb-4">{error}</Body>
         ) : null}
 
-        <StyledView className="flex-row justify-center">
-          <Body className="text-neutral-600">Didn't receive a code? </Body>
+        <StyledView className="flex-row justify-center mb-3">
+          <Body className="text-neutral-600">Didn't get it? </Body>
           <Body
             className={resendCooldown > 0 ? 'text-neutral-400' : 'text-primary-500 font-semibold'}
             onPress={resendCode}
           >
-            {isResending ? 'Sending...' : resendCooldown > 0 ? `Resend (${resendCooldown}s)` : 'Resend'}
+            {isResending ? 'Sending...' : resendCooldown > 0 ? `Resend (${resendCooldown}s)` : 'Resend code'}
           </Body>
         </StyledView>
+        {onResendCode && (
+          <StyledView className="flex-row justify-center">
+            <Body className="text-neutral-600">Wrong email? </Body>
+            <Body className="text-primary-500 font-semibold" onPress={onResendCode}>
+              Change email
+            </Body>
+          </StyledView>
+        )}
       </StyledView>
     </OnboardingLayout>
   );

@@ -224,8 +224,13 @@ export const createUserProfile = async (
       preferred_height_max_inches: data.preferences?.heightMax,
       max_distance: data.preferences?.maxDistance,
       preferred_ethnicities: data.preferredEthnicities,
-      preferred_religions: (data as Partial<OnboardingData> & { preferredReligions?: string[] }).preferredReligions,
+      preferred_religions: data.preferredReligions,
+      preferred_politics: data.preferredPolitics,
       interested_in_genders: data.interestedInGenders,
+      partner_drinking: data.partnerLifestylePreferences?.drinking,
+      partner_cannabis: data.partnerLifestylePreferences?.cannabis,
+      partner_tobacco: data.partnerLifestylePreferences?.tobacco,
+      partner_other_drugs: data.partnerLifestylePreferences?.otherDrugs,
     };
 
     Object.keys(prefsPayload).forEach(key => {

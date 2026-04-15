@@ -194,41 +194,50 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
   // REMOVED FROM ONBOARDING: Education Level (still available in profile edit)
   // REMOVED FROM ONBOARDING: School (still available in profile edit)
 
-  // Step 14: Religion
+  // Religion — saves own religion + auto-sets partner preference
   religion: {
     key: 'religion',
-    type: 'single_choice',
+    type: 'complex',
     table: 'user_profiles',
     columns: ['religion'],
-  },
-
-  // Political Beliefs
-  politics: {
-    key: 'political_beliefs',
-    type: 'single_choice',
-    table: 'user_profiles',
-    columns: ['political_leaning'],
     transform: (data: any) => ({
-      political_leaning: data.politicalLeaning,
+      profiles: { religion: data.religion || '' },
+      preferences: { preferred_religions: data.preferredReligions || [] },
     }),
   },
 
-  // Step 14: Lifestyle (user's own habits only - partner preferences NOT collected in onboarding)
+  // Politics — saves own politics + auto-sets partner preference
+  politics: {
+    key: 'politics',
+    type: 'complex',
+    table: 'user_profiles',
+    columns: ['political_leaning'],
+    transform: (data: any) => ({
+      profiles: { political_leaning: data.politicalLeaning || '' },
+      preferences: { preferred_politics: data.preferredPolitics || [] },
+    }),
+  },
+
+  // Lifestyle — saves own habits + auto-sets partner preferences
   lifestyle: {
     key: 'lifestyle',
     type: 'complex',
     table: 'user_profiles',
     columns: ['drinking_frequency', 'cannabis_frequency', 'tobacco_frequency', 'other_drugs_frequency'],
-    transform: (data: any) => {
-      return {
-        profiles: {
-          drinking_frequency: data.drinkingFrequency,
-          cannabis_frequency: data.cannabisFrequency,
-          tobacco_frequency: data.tobaccoFrequency,
-          other_drugs_frequency: data.otherDrugsFrequency,
-        },
-      };
-    },
+    transform: (data: any) => ({
+      profiles: {
+        drinking_frequency: data.drinkingFrequency,
+        cannabis_frequency: data.cannabisFrequency,
+        tobacco_frequency: data.tobaccoFrequency,
+        other_drugs_frequency: data.otherDrugsFrequency,
+      },
+      preferences: {
+        partner_drinking: data.partnerLifestylePreferences?.drinking || [],
+        partner_cannabis: data.partnerLifestylePreferences?.cannabis || [],
+        partner_tobacco: data.partnerLifestylePreferences?.tobacco || [],
+        partner_other_drugs: data.partnerLifestylePreferences?.otherDrugs || [],
+      },
+    }),
   },
 
   // Step 17: Values (my values + partner values)

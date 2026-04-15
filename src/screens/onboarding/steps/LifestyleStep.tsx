@@ -59,6 +59,12 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
       cannabisFrequency: lifestyle.cannabis,
       tobaccoFrequency: lifestyle.tobacco,
       otherDrugsFrequency: lifestyle.otherDrugs,
+      partnerLifestylePreferences: {
+        drinking: [lifestyle.drinking],
+        cannabis: [lifestyle.cannabis],
+        tobacco: [lifestyle.tobacco],
+        otherDrugs: [lifestyle.otherDrugs],
+      },
     });
     onNext();
   };
