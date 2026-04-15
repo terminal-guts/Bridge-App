@@ -70,8 +70,8 @@ export const EthnicityStep: React.FC<EthnicityStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-        <H1 className="mb-3">What's your ethnicity?</H1>
-        <Body className="text-neutral-600 mb-6">
+        <H1 className="mb-2">What's your ethnicity?</H1>
+        <Body className="text-neutral-500 text-sm mb-6">
           Select all that apply. This stays private.
         </Body>
 

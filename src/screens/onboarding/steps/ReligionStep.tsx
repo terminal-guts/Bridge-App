@@ -71,8 +71,8 @@ export const ReligionStep: React.FC<ReligionStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-      <H1 className="mb-3">What's your religion?</H1>
-      <Body className="text-neutral-600 mb-8">
+      <H1 className="mb-2">What's your religion?</H1>
+      <Body className="text-neutral-500 text-sm mb-6">
         Helps us match you with someone who shares what matters to you.
       </Body>
 

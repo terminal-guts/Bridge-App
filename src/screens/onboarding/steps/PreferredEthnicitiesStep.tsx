@@ -62,8 +62,8 @@ export const PreferredEthnicitiesStep: React.FC<PreferredEthnicitiesStepProps> =
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-        <H1 className="mb-3">Ethnicity preferences</H1>
-        <Body className="text-neutral-600 mb-6">
+        <H1 className="mb-2">Ethnicity preferences</H1>
+        <Body className="text-neutral-500 text-sm mb-6">
           Who are you open to matching with?
         </Body>
 

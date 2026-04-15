@@ -94,9 +94,9 @@ export const HeightStep: React.FC<HeightStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-      <H1 className="mb-3">How tall are you?</H1>
-      <Body className="text-neutral-600 mb-8">
-        Just the basics -- we'll keep it between us.
+      <H1 className="mb-2">How tall are you?</H1>
+      <Body className="text-neutral-500 text-sm mb-6">
+        We'll keep it between us.
       </Body>
 
       {/* My Height */}

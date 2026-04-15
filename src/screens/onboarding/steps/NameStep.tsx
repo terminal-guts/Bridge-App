@@ -57,8 +57,8 @@ export const NameStep: React.FC<NameStepProps> = ({
       hasTextInput={true}
       keyboardPersistent={true}
     >
-      <H1 className="mb-3">First things first</H1>
-      <Body className="text-neutral-600 mb-8">
+      <H1 className="mb-2">First things first</H1>
+      <Body className="text-neutral-500 text-sm mb-6">
         Only your first and last initials are visible to others. Your full name stays private.
       </Body>
 

@@ -59,8 +59,8 @@ export const PoliticalBeliefsStep: React.FC<PoliticalBeliefsStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-      <H1 className="mb-3">What are your politics?</H1>
-      <Body className="text-neutral-600 mb-8">
+      <H1 className="mb-2">What are your politics?</H1>
+      <Body className="text-neutral-500 text-sm mb-6">
         Helps us find someone on your wavelength.
       </Body>
 

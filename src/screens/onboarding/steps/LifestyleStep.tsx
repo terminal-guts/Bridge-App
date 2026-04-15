@@ -163,8 +163,8 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-        <H1 className="mb-3">How do you unwind?</H1>
-        <Body className="text-neutral-600 mb-8">
+        <H1 className="mb-2">How do you unwind?</H1>
+        <Body className="text-neutral-500 text-sm mb-6">
           No judgment here -- this helps us match you with someone compatible.
         </Body>
 

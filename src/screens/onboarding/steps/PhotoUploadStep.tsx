@@ -123,7 +123,7 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
       hasTextInput={false}
     >
       <StyledView className="mt-8">
-        <H1 className="mb-3">Add a photo</H1>
+        <H1 className="mb-2">Add a photo</H1>
         <Body className="text-neutral-500 text-sm mb-8">
           Just one for now — you can add more from your profile later.
         </Body>
