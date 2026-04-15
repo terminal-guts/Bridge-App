@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { View, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import Animated, {
   FadeIn,
-  FadeOut,
   useSharedValue,
   useAnimatedStyle,
   withTiming,
@@ -19,9 +18,8 @@ import { supabase } from '../../lib/supabase';
 import { Body } from '../../components/ui';
 import { ONBOARDING_STEP_MAPPING } from '../../config/onboardingMapping';
 import { createLogger } from '../../utils/secureLogger';
-import { successHaptic, lightHaptic } from '../../utils/haptics';
-import { EvaIcon } from '../../components/icons';
-import { FONTS, FONT_SIZES } from '../../constants/typography';
+import { successHaptic } from '../../utils/haptics';
+import { FONT_SIZES } from '../../constants/typography';
 import { assignNewUserProposals, generateProposalForUser } from '../../services/proposalApiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -94,13 +92,6 @@ const PROFILE_STEPS: StepDefinition[] = [
   { component: AddFriendsStep, title: 'Add Friends', hasTextInput: false, section: 'Almost Done' },
 ];
 
-// Messages shown when completing a section (between section transitions)
-const SECTION_CELEBRATIONS: Record<string, string> = {
-  'Getting Started': "You're in! Now let's build your profile.",
-  'The Basics': 'Basics done — looking good!',
-  'Your Background': 'Almost there — just the fun stuff left!',
-};
-
 /** Strip sensitive fields before persisting to AsyncStorage (plaintext on disk) */
 const stripSensitiveFields = (data: Partial<OnboardingData>): Partial<OnboardingData> => {
   const safe = { ...data };
@@ -130,20 +121,15 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   // Background photo upload: starts after PhotoUploadStep, results used by completeOnboarding
   const photoUploadPromiseRef = useRef<Promise<any> | null>(null);
   const photoUploadResultRef = useRef<Array<{ id: string; url: string }> | null>(null);
-  // Section celebration interstitial — shows briefly between section transitions
-  const [celebrationMessage, setCelebrationMessage] = useState<string | null>(null);
   // Ref tracking latest onboardingData for use in stale closures (goNext setTimeout, etc.)
   // Updated synchronously inside setOnboardingData updater, NOT via useEffect,
   // so goNext always sees the latest data even when called in the same tick as updateData.
   const onboardingDataRef = useRef(onboardingData);
-  // Celebration timeout ref for cleanup on unmount
-  const celebrationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Guard: prevent orphaned upload promises from writing state after unmount
   const isMountedRef = useRef(true);
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
-      if (celebrationTimeoutRef.current) clearTimeout(celebrationTimeoutRef.current);
     };
   }, []);
 
@@ -390,26 +376,11 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         const currentSection = steps[stepAtCall]?.section;
         const nextSection = steps[nextStep]?.section;
 
-        // Show celebration interstitial when transitioning between sections
-        if (currentSection && nextSection && currentSection !== nextSection && SECTION_CELEBRATIONS[currentSection]) {
-          lightHaptic();
-          setCelebrationMessage(SECTION_CELEBRATIONS[currentSection]);
-          // Advance step immediately (so persistence captures the right step),
-          // but show celebration overlay for 1.4s before hiding it
-          setCurrentStep(prev => prev === stepAtCall ? nextStep : prev);
-          persistProgress(nextStep, onboardingDataRef);
-          celebrationTimeoutRef.current = setTimeout(() => {
-            if (isMountedRef.current) {
-              setCelebrationMessage(null);
-            }
-          }, 1400);
-        } else {
-          setCurrentStep(prev => {
-            if (prev === stepAtCall) return nextStep;
-            return prev;
-          });
-          persistProgress(nextStep, onboardingDataRef);
-        }
+        setCurrentStep(prev => {
+          if (prev === stepAtCall) return nextStep;
+          return prev;
+        });
+        persistProgress(nextStep, onboardingDataRef);
       } else {
         // Complete onboarding (final validation & photo upload)
         completeOnboarding();
@@ -420,7 +391,6 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   };
 
   const goBack = () => {
-    if (celebrationMessage) return; // Block during section celebration
     if (currentStep > 0) {
       const prevStep = currentStep - 1;
       setCurrentStep(prevStep);
@@ -629,37 +599,21 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         </StyledView>
       </StyledSafeAreaView>
 
-      {/* Section Celebration Interstitial */}
-      {celebrationMessage ? (
-        <Animated.View
-          entering={FadeIn.duration(DURATIONS.normal)}
-          exiting={FadeOut.duration(DURATIONS.micro)}
-          style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}
-        >
-          <StyledView className="w-14 h-14 rounded-full bg-green-50 items-center justify-center mb-5">
-            <EvaIcon name="checkmark-circle-2" variant="fill" size={32} color={COLORS.success} />
-          </StyledView>
-          <Body style={{ fontSize: FONT_SIZES['2xl'], fontFamily: FONTS.bold, color: COLORS.text.primary, textAlign: 'center', marginBottom: 8 }}>
-            {celebrationMessage}
-          </Body>
-        </Animated.View>
-      ) : (
-        /* Step Content — keyed by step index for entrance/exit animations */
-        <Animated.View
-          key={clampedStep}
-          entering={FadeIn.duration(DURATIONS.normal)}
-          style={{ flex: 1 }}
-        >
-          <CurrentStepComponent
-            data={onboardingData}
-            updateData={updateData}
-            onNext={goNext}
-            onBack={goBack}
-            isFirstStep={clampedStep === 0}
-            isLastStep={clampedStep === totalSteps - 1}
-          />
-        </Animated.View>
-      )}
+      {/* Step Content — keyed by step index for entrance/exit animations */}
+      <Animated.View
+        key={clampedStep}
+        entering={FadeIn.duration(DURATIONS.normal)}
+        style={{ flex: 1 }}
+      >
+        <CurrentStepComponent
+          data={onboardingData}
+          updateData={updateData}
+          onNext={goNext}
+          onBack={goBack}
+          isFirstStep={clampedStep === 0}
+          isLastStep={clampedStep === totalSteps - 1}
+        />
+      </Animated.View>
     </StyledView>
   );
 };
