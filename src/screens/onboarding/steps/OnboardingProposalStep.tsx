@@ -81,8 +81,7 @@ export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
           </Body>
           <StyledTouchableOpacity
             onPress={onNext}
-            className="bg-primary-500 rounded-xl px-8 py-4"
-            style={{ minWidth: 200 }}
+            className="bg-primary-500 rounded-xl px-8 py-4 w-full"
           >
             <Body className="text-white font-semibold text-center">Continue</Body>
           </StyledTouchableOpacity>

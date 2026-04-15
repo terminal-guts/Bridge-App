@@ -616,7 +616,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
           <Animated.View style={progressBarStyle} />
         </StyledView>
         <StyledView className="px-4 py-1">
-          <Body style={{ fontSize: 11, color: COLORS.text.tertiary, textAlign: 'center' }}>
+          <Body style={{ fontSize: FONT_SIZES.xs, color: COLORS.text.tertiary, textAlign: 'center' }}>
             {stepLabel}
           </Body>
         </StyledView>

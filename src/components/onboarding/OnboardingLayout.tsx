@@ -49,10 +49,13 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   topPadding,
 }) => {
   const insets = useSafeAreaInsets();
-  // iPhone 13 = 844pt, footer padding that looks right there is ~24pt + 34pt safe area = 58pt (~6.9%)
-  // Scale proportionally: subtract safe area inset so we don't double-count it
-  const screenHeight = Dimensions.get('window').height;
+  const { height: screenHeight } = Dimensions.get('window');
   const footerPaddingBottom = Math.max(16, Math.round(screenHeight * 0.069) - insets.bottom);
+
+  // Progress bar header height: 6px bar + ~22px label = 28px from safe area top
+  const HEADER_HEIGHT = 28;
+  const backButtonTop = HEADER_HEIGHT + 8; // 8px breathing room below header
+  const contentTopPadding = HEADER_HEIGHT + 48; // enough room for back button + spacing
 
   // Start with keyboard visible for persistent keyboard pages to prevent layout shift
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(keyboardPersistent);
@@ -103,7 +106,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
               <StyledRNTouchableOpacity
                 onPress={onBack}
                 className="absolute left-2 p-2"
-                style={{ top: 36, zIndex: 60 }}
+                style={{ top: backButtonTop, zIndex: 60 }}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.primary} />
@@ -115,7 +118,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
               className="flex-1"
               contentContainerStyle={{
                 paddingHorizontal: 24,
-                paddingTop: topPadding ?? 76,
+                paddingTop: topPadding ?? contentTopPadding,
                 paddingBottom: 16,
                 flexGrow: 1,
               }}
