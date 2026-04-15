@@ -4,7 +4,7 @@ import { styled } from 'nativewind';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { H3, Body } from '../../components/ui/Typography';
-import { Card, Input, ScreenWrapper } from '../../components/ui';
+import { Card, ScreenWrapper } from '../../components/ui';
 import { selectionHaptic, mediumHaptic } from '../../utils/haptics';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
@@ -42,17 +42,6 @@ const POLITICAL_OPTIONS = [
   { value: 'conservative', label: 'Conservative' },
   { value: 'very_conservative', label: 'Very Conservative' },
   { value: 'not_political', label: 'Not Political' },
-  { value: 'other', label: 'Other' },
-];
-
-const EDUCATION_LEVELS = [
-  { value: 'no_high_school', label: 'No High School Degree' },
-  { value: 'high_school', label: 'High School' },
-  { value: 'trade_school', label: 'Trade School' },
-  { value: 'associates', label: "Associate's Degree" },
-  { value: 'bachelors', label: "Bachelor's Degree" },
-  { value: 'masters', label: "Master's Degree" },
-  { value: 'beyond_masters', label: 'Beyond Masters' },
   { value: 'other', label: 'Other' },
 ];
 
