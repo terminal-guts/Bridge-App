@@ -58,6 +58,7 @@ interface StepDefinition {
   hasTextInput: boolean;
   mappingKey?: string; // Key into ONBOARDING_STEP_MAPPING; undefined = no data to save
   section?: string; // Section label for progress display (e.g., "The Basics")
+  hideFromCounter?: boolean; // Celebration steps: excluded from "Step X of Y" count
 }
 
 const StyledView = styled(View);
@@ -86,13 +87,13 @@ const PROFILE_STEPS: StepDefinition[] = [
   { component: OnboardingProposalStep, title: 'First Votes', hasTextInput: false, section: 'Getting Started' },
   { component: GenderStep, title: 'Gender', hasTextInput: false, mappingKey: 'gender', section: 'The Basics' },
   { component: HeightStep, title: 'Height', hasTextInput: false, mappingKey: 'height', section: 'The Basics' },
-  { component: BasicsComplete, title: 'Celebration', hasTextInput: false, section: 'The Basics' },
+  { component: BasicsComplete, title: 'Celebration', hasTextInput: false, section: 'The Basics', hideFromCounter: true },
   { component: EthnicityStep, title: 'Ethnicity', hasTextInput: false, mappingKey: 'ethnicity', section: 'Your Background' },
   { component: PreferredEthnicitiesStep, title: 'Ethnicity Preferences', hasTextInput: false, mappingKey: 'preferredEthnicities', section: 'Your Background' },
   { component: ReligionStep, title: 'Religion', hasTextInput: false, mappingKey: 'religion', section: 'Your Background' },
   { component: PoliticalBeliefsStep, title: 'Politics', hasTextInput: false, mappingKey: 'politics', section: 'Your Background' },
   { component: LifestyleStep, title: 'Lifestyle', hasTextInput: false, mappingKey: 'lifestyle', section: 'Your Background' },
-  { component: BackgroundComplete, title: 'Celebration', hasTextInput: false, section: 'Your Background' },
+  { component: BackgroundComplete, title: 'Celebration', hasTextInput: false, section: 'Your Background', hideFromCounter: true },
   { component: InterestsStep, title: 'Interests', hasTextInput: false, mappingKey: 'interests', section: 'The Fun Stuff' },
   { component: ValuesStep, title: 'Values', hasTextInput: false, mappingKey: 'values', section: 'The Fun Stuff' },
   { component: PhotoUploadStep, title: 'Photos', hasTextInput: false, mappingKey: 'photos', section: 'The Fun Stuff' },
@@ -285,14 +286,19 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
     ? 0
     : currentStep;
 
-  // Step counter label for progress display (e.g., "Step 3 of 14 · The Basics")
+  // Step counter label — excludes celebration steps from the count
   const stepLabel = useMemo(() => {
     const step = steps[clampedStep];
+    if (step?.hideFromCounter) return ''; // Hide label during celebrations
     const section = step?.section;
-    const stepNum = clampedStep + 1;
-    if (section) return `Step ${stepNum} of ${totalSteps} · ${section}`;
-    return `Step ${stepNum} of ${totalSteps}`;
-  }, [clampedStep, totalSteps, steps]);
+    // Count only non-celebration steps
+    const countableSteps = steps.filter(s => !s.hideFromCounter);
+    const countableBefore = steps.slice(0, clampedStep).filter(s => !s.hideFromCounter).length;
+    const stepNum = countableBefore + 1;
+    const total = countableSteps.length;
+    if (section) return `Step ${stepNum} of ${total} · ${section}`;
+    return `Step ${stepNum} of ${total}`;
+  }, [clampedStep, steps]);
 
   // Sync state back when clamping was needed (e.g. role switch shrinks steps array)
   React.useEffect(() => {
