@@ -59,7 +59,7 @@ export const NameStep: React.FC<NameStepProps> = ({
     >
       <H1 className="mb-3">First things first</H1>
       <Body className="text-neutral-600 mb-8">
-        Only your first name and last initial are visible to others. Your full name stays private.
+        Only your first and last initials are visible to others. Your full name stays private.
       </Body>
 
       <StyledView className="flex-row gap-3 mb-4">
