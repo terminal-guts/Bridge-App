@@ -214,14 +214,14 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
           <StyledView
             className="w-10 h-10 rounded-lg items-center justify-center mr-3"
             style={{
-              backgroundColor: isComplete ? 'rgba(52, 199, 89, 0.12)' : 'rgba(67, 127, 255, 0.12)',
+              backgroundColor: isFullyComplete ? 'rgba(52, 199, 89, 0.12)' : 'rgba(67, 127, 255, 0.12)',
             }}
           >
             <EvaIcon
-              name={isComplete ? 'checkmark-circle-2' : 'trending-up'}
+              name={isFullyComplete ? 'checkmark-circle-2' : 'trending-up'}
               variant="outline"
               size={20}
-              color={isComplete ? COLORS.success : COLORS.primaryAccent}
+              color={isFullyComplete ? COLORS.success : COLORS.primaryAccent}
             />
           </StyledView>
           <H3 className="font-semibold text-base">Profile Strength</H3>
