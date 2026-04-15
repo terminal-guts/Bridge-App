@@ -139,7 +139,7 @@ export const GenderStep: React.FC<GenderStepProps> = ({
       <StyledView className="mt-8">
         <H1 className="mb-2">Tell us about yourself</H1>
         <Body className="text-neutral-500 text-sm mb-6">
-          This helps your friends match you with the right people.
+          Used for matching.
         </Body>
 
         {/* My Gender */}
