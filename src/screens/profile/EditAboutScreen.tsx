@@ -10,6 +10,7 @@ import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SectionScreenWrapper } from './sections/SectionScreenWrapper';
 import { useEditProfile } from './sections/useEditProfile';
+import { LifestyleSection } from './sections/LifestyleSection';
 
 /** Minimum touch target height per iOS HIG (44px) */
 const MIN_TOUCH_TARGET = 44;
@@ -160,6 +161,18 @@ export const EditAboutScreen: React.FC<EditAboutScreenProps> = ({ navigation }) 
           )}
         </StyledView>
       </Card>
+
+      {/* Lifestyle Habits */}
+      <LifestyleSection
+        drinkingFrequency={profile.drinkingFrequency}
+        cannabisFrequency={profile.cannabisFrequency}
+        tobaccoFrequency={profile.tobaccoFrequency}
+        otherDrugsFrequency={profile.otherDrugsFrequency}
+        onUpdateDrinking={(v) => updateProfile({ drinkingFrequency: v })}
+        onUpdateCannabis={(v) => updateProfile({ cannabisFrequency: v })}
+        onUpdateTobacco={(v) => updateProfile({ tobaccoFrequency: v })}
+        onUpdateOtherDrugs={(v) => updateProfile({ otherDrugsFrequency: v })}
+      />
 
     </SectionScreenWrapper>
   );

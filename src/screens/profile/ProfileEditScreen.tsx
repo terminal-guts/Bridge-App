@@ -58,6 +58,7 @@ const getAboutSummary = (profile: UserProfile): string => {
   const parts: string[] = [];
   if (profile.religion) parts.push(profile.religion);
   if (profile.politicalLeaning) parts.push(formatProfileValue(profile.politicalLeaning));
+  if (profile.drinkingFrequency) parts.push('Lifestyle set');
   return parts.length > 0 ? parts.join(', ') : 'Not set';
 };
 
@@ -65,13 +66,6 @@ const getInterestsSummary = (profile: UserProfile): string => {
   const interests = profile.interests?.length || 0;
   const values = profile.values?.length || 0;
   return `${interests} interests, ${values} values`;
-};
-
-const getLifestyleSummary = (profile: UserProfile): string => {
-  const parts: string[] = [];
-  if (profile.drinkingFrequency) parts.push(formatProfileValue(profile.drinkingFrequency));
-  if (profile.cannabisFrequency) parts.push(formatProfileValue(profile.cannabisFrequency));
-  return parts.length > 0 ? parts.join(', ') : 'Not set';
 };
 
 interface SectionCardProps {
@@ -272,13 +266,6 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
             icon="color-palette"
             summary={getInterestsSummary(profile)}
             onPress={() => navigation.navigate('EditInterests')}
-          />
-
-          <SectionCard
-            title="Lifestyle"
-            icon="home"
-            summary={getLifestyleSummary(profile)}
-            onPress={() => navigation.navigate('EditLifestyle')}
           />
 
           <SectionCard

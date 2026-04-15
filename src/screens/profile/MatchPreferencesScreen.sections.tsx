@@ -354,9 +354,9 @@ export const ReligionSection: React.FC<{
   setPreferredReligions: React.Dispatch<React.SetStateAction<string[]>>;
 }> = ({ preferredReligions, setPreferredReligions }) => (
   <Card className="mb-6">
-    <H3 className="mb-2">Religion <RequiredMark /></H3>
+    <H3 className="mb-2">Religion <Body style={{ color: COLORS.text.tertiary, fontSize: 12 }}>(optional)</Body></H3>
     <Body style={{ color: COLORS.text.secondary }} className="text-sm mb-4">
-      Select the religious beliefs you're open to matching with
+      Defaults to your own religion if left empty
     </Body>
     <StringPillToggle
       options={RELIGION_PREF_OPTIONS}
@@ -380,9 +380,9 @@ export const PoliticsSection: React.FC<{
   setPreferredPolitics: React.Dispatch<React.SetStateAction<string[]>>;
 }> = ({ preferredPolitics, setPreferredPolitics }) => (
   <Card className="mb-6">
-    <H3 className="mb-2">Politics <RequiredMark /></H3>
+    <H3 className="mb-2">Politics <Body style={{ color: COLORS.text.tertiary, fontSize: 12 }}>(optional)</Body></H3>
     <Body style={{ color: COLORS.text.secondary }} className="text-sm mb-4">
-      Select the political views you're open to matching with
+      Defaults to your own views if left empty
     </Body>
     <PillToggle
       options={POLITICAL_OPTIONS}
@@ -466,9 +466,9 @@ export const LifestyleSection: React.FC<{
 
   return (
     <Card className="mb-6">
-      <H3 className="mb-2">Lifestyle <RequiredMark /></H3>
+      <H3 className="mb-2">Lifestyle <Body style={{ color: COLORS.text.tertiary, fontSize: 12 }}>(optional)</Body></H3>
       <Body style={{ color: COLORS.text.secondary }} className="text-sm mb-4">
-        What lifestyle habits do you prefer in a partner?
+        Defaults to your own habits if left empty
       </Body>
 
       <LifestyleSubSection
