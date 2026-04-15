@@ -152,12 +152,25 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
     if (isRoleSwitch || hasRestoredStep) return;
     const restoreProgress = async () => {
       try {
+        // Only restore if user has an active auth session — if the account was
+        // deleted or session expired, stale progress would land on a broken step
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          logger.info('[OnboardingScreen] No auth session — clearing stale progress');
+          await AsyncStorage.removeItem('@bridge/onboarding_progress');
+          setHasRestoredStep(true);
+          return;
+        }
+
         const saved = await AsyncStorage.getItem('@bridge/onboarding_progress');
         if (saved) {
           const { step, data } = JSON.parse(saved);
           if (typeof step === 'number' && step > 0) {
-            logger.info(`[OnboardingScreen] Restoring onboarding progress to step ${step}`);
-            setCurrentStep(step);
+            // Clamp to valid range in case step array changed
+            const maxStep = PROFILE_STEPS.length + (skipAuth ? 0 : 2) - 1;
+            const safeStep = Math.min(step, maxStep);
+            logger.info(`[OnboardingScreen] Restoring onboarding progress to step ${safeStep}`);
+            setCurrentStep(safeStep);
             if (data) setOnboardingData(prev => ({ ...prev, ...data }));
           }
         }
