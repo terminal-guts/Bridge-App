@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Image, Alert, Linking, Platform, ScrollView } from 'react-native';
+import { View, TouchableOpacity, Image, Alert, Linking, Platform } from 'react-native';
 import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import * as ImagePicker from 'expo-image-picker';
@@ -20,9 +20,7 @@ interface PhotoUploadStepProps {
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledImage = styled(Image);
-const StyledScrollView = styled(ScrollView);
 
-const MAX_PHOTOS = 3;
 const MIN_PHOTOS = 1;
 
 export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
@@ -68,60 +66,6 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
     }
   };
 
-  const openCamera = async (slotIndex: number) => {
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [3, 4],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        const newPhoto: Photo = {
-          id: `photo_${Date.now()}_${slotIndex}`,
-          url: asset.uri,
-          isMain: slotIndex === 0,
-          order: slotIndex,
-        };
-
-        setPhotos(prev => {
-          const updated = [...prev];
-          if (slotIndex < updated.length) {
-            updated[slotIndex] = newPhoto;
-          } else {
-            updated.push(newPhoto);
-          }
-          return updated;
-        });
-        setError('');
-      }
-    } catch (err) {
-      Alert.alert('Oops', 'Something went wrong with the camera. Give it another try!');
-    }
-  };
-
-  const handleTakePhoto = async (slotIndex: number) => {
-    try {
-      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-
-      if (permissionResult.granted) {
-        await openCamera(slotIndex);
-      } else {
-        Alert.alert(
-          'Camera Access Required',
-          'Please grant camera access to take photos.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() },
-          ]
-        );
-      }
-    } catch (err) {
-      Alert.alert('Oops', 'We couldn\'t open the camera. Give it another try!');
-    }
-  };
-
   const handleAddPhoto = async (slotIndex: number) => {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -162,14 +106,6 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
     });
   };
 
-  const showPhotoOptions = (slotIndex: number) => {
-    Alert.alert('Add Photo', 'Choose a source', [
-      { text: 'Take Photo', onPress: () => handleTakePhoto(slotIndex) },
-      { text: 'Choose from Library', onPress: () => handleAddPhoto(slotIndex) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
-
   const validateAndContinue = () => {
     if (photos.length < MIN_PHOTOS) {
       setError('Add at least one photo so your matches can see you');
@@ -180,103 +116,50 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
     onNext();
   };
 
-  // Generate slot indices: filled photos + empty slots up to MAX_PHOTOS
-  const totalSlots = Math.min(MAX_PHOTOS, Math.max(photos.length + 1, 2)); // Show at least 2 slots
-
   return (
     <OnboardingLayout
       onBack={onBack}
       onContinue={validateAndContinue}
       hasTextInput={false}
     >
-      <StyledScrollView className="mt-8" showsVerticalScrollIndicator={false}>
-        <H1 className="mb-3">Show off a little</H1>
-        <Body className="text-neutral-500 text-sm mb-6">
-          Add up to {MAX_PHOTOS} photos so people can put a face to the name. Your first one will be your main pic.
+      <StyledView className="mt-8">
+        <H1 className="mb-3">Add a photo</H1>
+        <Body className="text-neutral-500 text-sm mb-8">
+          Just one for now — you can add more from your profile later.
         </Body>
 
-        {/* Photo Grid - 2 columns */}
-        <StyledView className="flex-row flex-wrap justify-between mb-4">
-          {Array.from({ length: totalSlots }).map((_, index) => {
-            const existingPhoto = photos[index];
-            const isMainSlot = index === 0;
-
-            return (
-              <StyledView
-                key={index}
-                className="mb-3"
-                style={{ width: '48%', aspectRatio: 3 / 4 }}
-              >
-                {existingPhoto ? (
-                  <StyledView className="w-full h-full relative">
-                    <StyledImage
-                      source={{ uri: existingPhoto.url }}
-                      className="w-full h-full rounded-xl"
-                    />
-                    {/* Main badge */}
-                    {isMainSlot && (
-                      <StyledView className="absolute top-2 left-2 bg-primary-500 px-2 py-0.5 rounded-full">
-                        <Body className="text-white text-xs font-semibold">Main</Body>
-                      </StyledView>
-                    )}
-                    {/* Remove button */}
-                    <StyledTouchableOpacity
-                      onPress={() => removePhoto(index)}
-                      className="absolute top-2 right-2 bg-neutral-900/60 rounded-full w-7 h-7 items-center justify-center"
-                      accessibilityRole="button"
-                      accessibilityLabel={`Remove photo ${index + 1}`}
-                    >
-                      <EvaIcon name="close" variant="outline" size={16} color="white" />
-                    </StyledTouchableOpacity>
-                    {/* Replace button */}
-                    <StyledTouchableOpacity
-                      onPress={() => showPhotoOptions(index)}
-                      className="absolute bottom-2 right-2 bg-neutral-900/60 rounded-full w-7 h-7 items-center justify-center"
-                      accessibilityRole="button"
-                      accessibilityLabel={`Replace photo ${index + 1}`}
-                    >
-                      <EvaIcon name="refresh" variant="outline" size={14} color="white" />
-                    </StyledTouchableOpacity>
-                  </StyledView>
-                ) : (
-                  <StyledView className="w-full h-full relative">
-                    {/* Tap empty slot → library directly (most common path) */}
-                    <StyledTouchableOpacity
-                      onPress={() => handleAddPhoto(index)}
-                      className="w-full h-full bg-neutral-100 rounded-xl items-center justify-center border-2 border-dashed border-neutral-300"
-                      accessibilityRole="button"
-                      accessibilityLabel={isMainSlot ? 'Add main photo from library' : `Add photo ${index + 1} from library`}
-                    >
-                      <EvaIcon
-                        name={isMainSlot ? 'image' : 'plus'}
-                        variant="outline"
-                        size={isMainSlot ? 36 : 28}
-                        color={COLORS.text.tertiary}
-                      />
-                      <Body className="text-neutral-400 text-xs mt-1">
-                        {isMainSlot ? 'Main Photo' : 'Add Photo'}
-                      </Body>
-                    </StyledTouchableOpacity>
-                    {/* Small camera icon for users who prefer to take a photo */}
-                    <StyledTouchableOpacity
-                      onPress={() => handleTakePhoto(index)}
-                      className="absolute bottom-2 right-2 bg-neutral-800/50 rounded-full w-8 h-8 items-center justify-center"
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      accessibilityRole="button"
-                      accessibilityLabel="Take photo with camera"
-                    >
-                      <EvaIcon name="camera" variant="outline" size={16} color="white" />
-                    </StyledTouchableOpacity>
-                  </StyledView>
-                )}
+        {/* Single photo slot — centered, large */}
+        <StyledView className="items-center mb-6">
+          <StyledView style={{ width: '65%', aspectRatio: 3 / 4 }}>
+            {photos[0] ? (
+              <StyledView className="w-full h-full relative">
+                <StyledImage
+                  source={{ uri: photos[0].url }}
+                  className="w-full h-full rounded-2xl"
+                />
+                {/* Remove button */}
+                <StyledTouchableOpacity
+                  onPress={() => removePhoto(0)}
+                  className="absolute top-3 right-3 bg-neutral-900/60 rounded-full w-8 h-8 items-center justify-center"
+                  accessibilityRole="button"
+                  accessibilityLabel="Remove photo"
+                >
+                  <EvaIcon name="close" variant="outline" size={18} color="white" />
+                </StyledTouchableOpacity>
               </StyledView>
-            );
-          })}
+            ) : (
+              <StyledTouchableOpacity
+                onPress={() => handleAddPhoto(0)}
+                className="w-full h-full bg-neutral-100 rounded-2xl items-center justify-center border-2 border-dashed border-neutral-300"
+                accessibilityRole="button"
+                accessibilityLabel="Add your photo"
+              >
+                <EvaIcon name="image" variant="outline" size={48} color={COLORS.text.tertiary} />
+                <Body className="text-neutral-400 text-sm mt-3">Tap to add a photo</Body>
+              </StyledTouchableOpacity>
+            )}
+          </StyledView>
         </StyledView>
-
-        <Body className="text-neutral-400 text-xs text-center mb-4">
-          {photos.length}/{MAX_PHOTOS} photos added
-        </Body>
 
         {error && (
           <Body className="text-error text-sm mt-2">{error}</Body>
