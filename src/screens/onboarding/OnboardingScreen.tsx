@@ -44,6 +44,7 @@ import { WelcomeToBridgeStep } from './steps/WelcomeToBridgeStep';
 import { MatchmakingModeStep } from './steps/MatchmakingModeStep';
 import { MatchmakerProfileStep } from './steps/MatchmakerProfileStep';
 import { OnboardingProposalStep } from './steps/OnboardingProposalStep';
+import { CelebrationStep } from './steps/CelebrationStep';
 import { PreferredEthnicitiesStep } from './steps/PreferredEthnicitiesStep';
 
 interface OnboardingScreenProps {
@@ -74,6 +75,10 @@ const AUTH_STEPS: StepDefinition[] = [
 // then demographics and preferences, finally photos.
 // Removed: Pronouns, Children, CurrentJob, DeepQuestions, AddFriends, Welcome, PreferencesStep
 // See docs/ONBOARDING_SIMPLIFICATION_PLAN.md for full rationale.
+// Celebration step wrappers — each passes a specific message
+const BasicsComplete: React.FC<any> = (props) => <CelebrationStep {...props} message="Basics done — looking good!" />;
+const BackgroundComplete: React.FC<any> = (props) => <CelebrationStep {...props} message="Almost there — just the fun stuff left!" />;
+
 const PROFILE_STEPS: StepDefinition[] = [
   { component: NameStep, title: 'Name', hasTextInput: true, mappingKey: 'name', section: 'Getting Started' },
   { component: AgeStep, title: 'Birthday', hasTextInput: false, mappingKey: 'age', section: 'Getting Started' },
@@ -81,11 +86,13 @@ const PROFILE_STEPS: StepDefinition[] = [
   { component: OnboardingProposalStep, title: 'First Votes', hasTextInput: false, section: 'Getting Started' },
   { component: GenderStep, title: 'Gender', hasTextInput: false, mappingKey: 'gender', section: 'The Basics' },
   { component: HeightStep, title: 'Height', hasTextInput: false, mappingKey: 'height', section: 'The Basics' },
+  { component: BasicsComplete, title: 'Celebration', hasTextInput: false, section: 'The Basics' },
   { component: EthnicityStep, title: 'Ethnicity', hasTextInput: false, mappingKey: 'ethnicity', section: 'Your Background' },
   { component: PreferredEthnicitiesStep, title: 'Ethnicity Preferences', hasTextInput: false, mappingKey: 'preferredEthnicities', section: 'Your Background' },
   { component: ReligionStep, title: 'Religion', hasTextInput: false, mappingKey: 'religion', section: 'Your Background' },
   { component: PoliticalBeliefsStep, title: 'Politics', hasTextInput: false, mappingKey: 'politics', section: 'Your Background' },
   { component: LifestyleStep, title: 'Lifestyle', hasTextInput: false, mappingKey: 'lifestyle', section: 'Your Background' },
+  { component: BackgroundComplete, title: 'Celebration', hasTextInput: false, section: 'Your Background' },
   { component: InterestsStep, title: 'Interests', hasTextInput: false, mappingKey: 'interests', section: 'The Fun Stuff' },
   { component: ValuesStep, title: 'Values', hasTextInput: false, mappingKey: 'values', section: 'The Fun Stuff' },
   { component: PhotoUploadStep, title: 'Photos', hasTextInput: false, mappingKey: 'photos', section: 'The Fun Stuff' },
