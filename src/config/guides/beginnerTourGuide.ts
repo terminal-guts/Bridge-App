@@ -68,7 +68,7 @@ export const beginnerTourGuide: GuideDefinition = {
       tooltipOffset: { x: -20, y: -60 },
       title: 'Your Profile',
       message:
-        "You can vote anytime, but to receive matches you'll need 100% profile strength.",
+        "Your profile is all set! Add more photos and answer questions to stand out.",
       primaryButtonText: 'Finish',
       interactive: true,
     },

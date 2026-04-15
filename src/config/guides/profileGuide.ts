@@ -23,9 +23,9 @@ export const profileGuide: GuideDefinition = {
       spotlightShape: 'rounded-rect',
       spotlightPadding: 12,
       tooltipPosition: 'bottom',
-      title: 'Complete your profile to match',
+      title: 'Boost Your Profile',
       message:
-        'You need 100% profile completion to receive proposals.\n\nFill out:\n• All basic info\n• 3 deep questions (one per tier)\n• 3 photos minimum\n\nLet\'s make you matchable!',
+        'Your profile is complete — you\'re in the matching pool!\n\nTo stand out, try adding:\n• More photos\n• Deep questions\n\nStronger profiles get better matches.',
       primaryButtonText: 'Next',
     },
 

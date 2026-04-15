@@ -124,8 +124,8 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
     >
       <StyledView className="mt-8">
         <H1 className="mb-2">Add a Photo</H1>
-        <Body className="text-neutral-500 text-sm mb-8">
-          Just one for now — you can add more from your profile later.
+        <Body className="text-neutral-500 text-sm mb-6">
+          You can add more later.
         </Body>
 
         {/* Single photo slot — centered, large */}
