@@ -16,24 +16,26 @@ import { UserProfile } from '../types';
 // ─── Mandatory fields (all collected during onboarding, no skip) ───
 // Every user who completes onboarding has these filled.
 const MANDATORY_FIELDS = {
-  firstName: 5,
-  lastName: 5,
-  age: 5,
-  gender: 8,
-  interestedInGenders: 8,
-  height: 4,
-  heightPreference: 4,
-  ethnicity: 4,
-  preferredEthnicities: 4,
-  religion: 5,
-  politicalLeaning: 4,
-  lifestyle: 6,           // 4 substance fields combined
-  commitment: 4,          // lookingFor / preferences
-  interests: 12,          // at least 3 required
-  values: 12,             // at least 3 required
-  photos: 5,              // at least 1 required
-  ageRange: 5,
+  firstName: 4,
+  lastName: 4,
+  age: 4,
+  gender: 6,
+  interestedInGenders: 6,
+  height: 3,
+  heightPreference: 3,
+  ethnicity: 3,
+  preferredEthnicities: 3,
+  religion: 4,
+  politicalLeaning: 3,
+  lifestyle: 5,           // 4 substance fields combined
+  commitment: 3,          // lookingFor / preferences
+  interests: 9,           // at least 3 required
+  values: 9,              // at least 3 required
+  photos: 15,             // 5 pts per photo, 3 needed for full credit
+  ageRange: 4,
+  deepQuestions: 12,       // 4 pts per displayed question, 3 needed for full credit
 };
+// Total: 100
 // Total: 100
 
 /**
@@ -83,9 +85,7 @@ export const calculateProfileCompleteness = (
     }
   };
 
-  // ── All mandatory fields ──
-  const photoCount = profile.photos?.length || 0;
-  check('photos', `Add at least 1 photo (${photoCount}/1)`, photoCount >= 1);
+  // ── All fields ──
   check('firstName', 'Add your first name', !!(profile.firstName?.trim()));
   check('lastName', 'Add your last name', !!(profile.lastName?.trim()));
   check('age', 'Add your age', !!(profile.age && profile.age >= 18));
@@ -94,7 +94,6 @@ export const calculateProfileCompleteness = (
   check('height', 'Add your height', !!(profile.height?.trim()));
   check('heightPreference', 'Set your height preference', !!(profile.preferences?.heightMin && profile.preferences?.heightMax));
   check('ethnicity', 'Add your ethnicity', !!(profile.ethnicity?.trim()));
-  // preferredEthnicities: empty array = "No Preference" (valid answer from onboarding)
   check('preferredEthnicities', 'Set ethnicity preferences', profile.preferredEthnicities !== undefined);
   check('religion', 'Add your religion', !!(profile.religion?.trim()));
   check('politicalLeaning', 'Add your political views', !!(profile.politicalLeaning));
@@ -106,6 +105,22 @@ export const calculateProfileCompleteness = (
   check('interests', 'Add at least 3 interests', (profile.interests?.length || 0) >= 3);
   check('values', 'Add at least 3 values', (profile.values?.length || 0) >= 3);
   check('ageRange', 'Set your age range preference', !!(profile.preferences?.ageMin && profile.preferences?.ageMax));
+
+  // Photos: proportional — 5 pts per photo, max 3 (15 pts total)
+  const photoCount = Math.min(profile.photos?.length || 0, 3);
+  const photoWeight = MANDATORY_FIELDS.photos;
+  score += Math.round((photoCount / 3) * photoWeight);
+  if (photoCount < 3) {
+    missingFields.push({ field: 'photos', label: `Add ${3 - photoCount} more photo${photoCount === 2 ? '' : 's'} (${photoCount}/3)`, weight: photoWeight, category: 'essential' });
+  }
+
+  // Deep questions: proportional — 4 pts per displayed question, max 3 (12 pts total)
+  const displayedCount = profile.displayedQuestions?.length || 0;
+  const questionWeight = MANDATORY_FIELDS.deepQuestions;
+  score += Math.round((Math.min(displayedCount, 3) / 3) * questionWeight);
+  if (displayedCount < 3) {
+    missingFields.push({ field: 'deepQuestions', label: `Answer ${3 - displayedCount} more question${displayedCount === 2 ? '' : 's'}`, weight: questionWeight, category: 'nice-to-have' });
+  }
 
   const percentage = Math.round(score);
   const suggestions = generateSuggestions(percentage, missingFields);
