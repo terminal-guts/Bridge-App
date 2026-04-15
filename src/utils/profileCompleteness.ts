@@ -94,7 +94,8 @@ export const calculateProfileCompleteness = (
   check('height', 'Add your height', !!(profile.height?.trim()));
   check('heightPreference', 'Set your height preference', !!(profile.preferences?.heightMin && profile.preferences?.heightMax));
   check('ethnicity', 'Add your ethnicity', !!(profile.ethnicity?.trim()));
-  check('preferredEthnicities', 'Select preferred ethnicities', !!(profile.preferredEthnicities && profile.preferredEthnicities.length > 0));
+  // preferredEthnicities: empty array = "No Preference" (valid answer from onboarding)
+  check('preferredEthnicities', 'Set ethnicity preferences', profile.preferredEthnicities !== undefined);
   check('religion', 'Add your religion', !!(profile.religion?.trim()));
   check('politicalLeaning', 'Add your political views', !!(profile.politicalLeaning));
   check('lifestyle', 'Add your lifestyle habits', !!(
@@ -250,7 +251,8 @@ export const calculateMatchPreferencesCompleteness = (
     missingFields.push('Height');
   }
 
-  if (profile.preferredEthnicities && profile.preferredEthnicities.length > 0) {
+  // Empty array = "No Preference" (valid)
+  if (profile.preferredEthnicities !== undefined) {
     completedCount++;
   } else {
     missingFields.push('Ethnicity');

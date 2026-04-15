@@ -50,7 +50,7 @@ export const PreferredEthnicitiesStep: React.FC<PreferredEthnicitiesStepProps> =
 
   const validateAndContinue = () => {
     updateData({
-      preferredEthnicities: openToAll ? ETHNICITY_OPTIONS : preferredEthnicities,
+      preferredEthnicities: openToAll ? [] : preferredEthnicities,
     });
     onNext();
   };
@@ -72,7 +72,7 @@ export const PreferredEthnicitiesStep: React.FC<PreferredEthnicitiesStepProps> =
           className={`px-4 py-3 rounded-lg border mb-3 ${openToAll ? 'bg-primary-500 border-primary-500' : 'bg-white border-neutral-300'}`}
         >
           <Body className={openToAll ? 'text-white font-medium' : 'text-neutral-700'}>
-            Open to all
+            No Preference
           </Body>
         </StyledTouchableOpacity>
 

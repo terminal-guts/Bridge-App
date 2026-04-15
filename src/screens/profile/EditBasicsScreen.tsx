@@ -215,12 +215,6 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
             </StyledTouchableOpacity>
           ))}
         </StyledView>
-      </Card>
-
-      {/* Identity & Attraction */}
-      <Card className="mb-6">
-        <H3 className="mb-4">Identity & Attraction</H3>
-
         {/* Gender Identity */}
         <Label style={{ color: COLORS.text.secondary }} className="mb-2 mt-4">
           Gender <StyledText style={{ color: COLORS.error }}>*</StyledText> (Select all that apply)
