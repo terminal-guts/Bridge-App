@@ -42,7 +42,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   onSkip,
   continueLabel = 'Continue',
   continueDisabled = false,
-  showBackButton = true,
+  showBackButton = false,
   hideContinueButton = false,
   hasTextInput = false,
   keyboardPersistent = false,

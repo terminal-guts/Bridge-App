@@ -70,7 +70,7 @@ const AUTH_STEPS: StepDefinition[] = [
   { component: EmailSignUpVerificationStep, title: 'Verify Email', hasTextInput: true },
 ];
 
-// Profile steps — 14 steps (after auth), no skip buttons, all required.
+// Profile steps — 15 steps (after auth), no skip buttons, all required.
 // Finish onboarding = profile_completed = true = in the matching pool.
 // Order: Name + Birthday first (low friction, creates investment), then Role + Voting tutorial,
 // then demographics and preferences, finally photos.
@@ -91,6 +91,7 @@ const PROFILE_STEPS: StepDefinition[] = [
   { component: InterestsStep, title: 'Interests', hasTextInput: false, mappingKey: 'interests', section: 'The Fun Stuff' },
   { component: ValuesStep, title: 'Values', hasTextInput: false, mappingKey: 'values', section: 'The Fun Stuff' },
   { component: PhotoUploadStep, title: 'Photos', hasTextInput: false, mappingKey: 'photos', section: 'The Fun Stuff' },
+  { component: AddFriendsStep, title: 'Add Friends', hasTextInput: false, section: 'Almost Done' },
 ];
 
 // Messages shown when completing a section (between section transitions)

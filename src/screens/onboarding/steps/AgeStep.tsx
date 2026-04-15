@@ -93,7 +93,7 @@ export const BirthdayStep: React.FC<BirthdayStepProps> = ({
   return (
     <OnboardingLayout
       onBack={onBack}
-      showBackButton={true}
+      showBackButton={false}
       onContinue={validateAndContinue}
       hasTextInput={false}
     >

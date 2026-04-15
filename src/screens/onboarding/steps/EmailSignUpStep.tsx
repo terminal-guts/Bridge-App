@@ -84,6 +84,7 @@ export const EmailSignUpStep: React.FC<EmailSignUpStepProps> = ({
     <OnboardingLayout
       onBack={onBack}
       onContinue={validateAndContinue}
+      showBackButton={true}
       hasTextInput={true}
       keyboardPersistent={true}
       continueDisabled={isSending}
