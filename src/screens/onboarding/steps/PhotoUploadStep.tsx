@@ -164,7 +164,7 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
         {error && (
           <Body className="text-error text-sm mt-2">{error}</Body>
         )}
-      </StyledScrollView>
+      </StyledView>
     </OnboardingLayout>
   );
 };
