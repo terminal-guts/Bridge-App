@@ -454,8 +454,14 @@ export const updateUserProfile = async (
       const fullProfile = await _fetchUserProfile();
       const isReviewer = fullProfile.ok && isReviewerBypassEmail(fullProfile.data?.email ?? '');
       if (fullProfile.ok && fullProfile.data && !fullProfile.data.profileCompleted && !isReviewer) {
+        // Check mandatory fields only (not cosmetic photos/questions score).
+        // The overall score includes photos+questions which are cosmetic —
+        // profile_completed should be set when mandatory fields are done.
         const strength = calculateProfileStrengthBreakdown(fullProfile.data);
-        if (strength.overall >= 100) {
+        const mandatoryComplete =
+          strength.sections.aboutMe.percentage === 100 &&
+          strength.sections.matchPreferences.percentage === 100;
+        if (mandatoryComplete) {
           const { error: completeError } = await supabase
             .from('user_profiles')
             .update({ profile_completed: true, updated_at: new Date().toISOString() })

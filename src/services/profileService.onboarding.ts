@@ -198,7 +198,7 @@ export const createUserProfile = async (
     // ('', '{}', '[]'), so omitting these from the UPSERT is safe — the ON
     // CONFLICT SET clause simply won't touch those columns.
     Object.keys(profilePayload).forEach(key => {
-      if (key === 'user_id' || key === 'first_name' || key === 'last_name') return;
+      if (key === 'user_id' || key === 'first_name' || key === 'last_name' || key === 'profile_completed') return;
       const val = profilePayload[key];
       if (val === undefined) { delete profilePayload[key]; return; }
       if (Array.isArray(val) && val.length === 0) { delete profilePayload[key]; return; }

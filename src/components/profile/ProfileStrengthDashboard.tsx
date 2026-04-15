@@ -181,11 +181,15 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
   // - Match Preferences at 100%
   // - 3+ photos uploaded
   // - 3+ deep questions displayed
+  const aboutMeSection = sections.find(s => s.name === 'About Me');
+  const prefsSection = sections.find(s => s.name === 'Match Preferences');
+  const photoSection = sections.find(s => s.name === 'Photo');
+  const questionsSection = sections.find(s => s.name === 'Questions');
   const isFullyComplete =
-    sections[0].percentage === 100 &&  // About Me
-    sections[1].percentage === 100 &&  // Match Preferences
-    (profile.photos?.length || 0) >= 3 &&
-    (profile.displayedQuestions?.length || 0) >= 3;
+    (aboutMeSection?.displayPercentage ?? 0) === 100 &&
+    (prefsSection?.displayPercentage ?? 0) === 100 &&
+    (photoSection?.displayPercentage ?? 0) === 100 &&
+    (questionsSection?.displayPercentage ?? 0) === 100;
 
   // Fire success haptic when crossing milestone thresholds
   const prevOverallRef = React.useRef(overall);
