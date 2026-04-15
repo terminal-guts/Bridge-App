@@ -53,37 +53,25 @@ Icon names are mapped from interest/value strings via `src/utils/emojiMaps.ts` (
 
 ## Bridge Colors
 
-Use these color names with EvaIcon for consistent theming:
+Use these color names with EvaIcon for consistent theming. Full token list in `src/theme/colors.ts`.
 
 ### Primary
-- `primary` — `#437FFF` (main brand blue)
-- `primary-light` — `#7BA8FF`
-- `primary-dark` — `#2B65F9`
+- `primary` — `#2563EB` (main brand blue)
+- `primaryAccent` — `#437FFF` (nav active tab only)
 
 ### Text
-- `text` — `#2A1F1A` (primary text)
-- `text-secondary` — `#5A524A`
-- `text-light` — `#736B63`
+- `text` — `#1E293B` (primary text / headings)
+- `text-secondary` — `#64748B` (body / labels)
+- `text-tertiary` — `#94A3B8` (placeholders / disabled)
 
 ### Background
-- `background` — `#FDFAF7`
-- `background-cream` — `#F8F4F0`
-- `white` / `black`
-
-### Accent
-- `coral` — `#FF7A5C` (romantic/important)
-- `peach` — `#FF9966`
-- `romantic` — `#FF8B7C`
+- `background` — `#FDFAF7` (screen background)
+- `white` — `#FFFFFF` (card surfaces)
 
 ### Semantic
-- `success` — `#52C797`
+- `success` — `#34C759`
 - `warning` — `#F59E0B`
-- `error` — `#FF7A5C`
-
-### Neutral
-- `neutral` — `#A8A099`
-- `neutral-light` — `#E0D7CE`
-- `neutral-dark` — `#3D362F`
+- `error` — `#EF4444`
 
 ## Icon Variants (EvaIcon)
 

@@ -383,17 +383,17 @@ For testing and debugging, use these known user IDs:
 
 | Name | UUID |
 |------|------|
-| Saul (sb278) | `b853df7d-19db-4212-8fdf-8696bc72a167` |
+| Saul | `f2007ea8-c145-4ccc-bf5c-0e5db2258283` |
 | Carter | `8d24c252-d636-44c8-86ad-72e7381482b8` |
 | Shyla | `66ac610c-b164-43a7-afd8-82d6f9dd07fa` |
 | Mo | `db0bd2fd-9fb8-41ef-bdf6-0bddf0661458` |
 | Sam | `156e5f79-3950-482e-99a4-d858d6084794` |
 | Molly | `3ae08fed-c47f-4044-a5ca-f67be336ef90` |
-| Oneal | `66264173-c7ce-4066-9b4a-52a1855710ca` |
+| Oneal | `e0238639-7c48-413f-a39c-9c2a04ae4812` |
 | Ava | `d909b1d9-60f6-4a9a-b4b7-e945e8208e87` |
 | Abby | `d8aa2e79-f4cf-4d52-b5aa-03a0c13a0c88` |
 
-Active auth account: `ab278@rice.edu` (ID: `c8c15b1a`). The old IDs (`f4985c2c`, `82d7199b`) do not exist.
+The old IDs (`f4985c2c`, `82d7199b`, `b853df7d`, `66264173`) do not exist.
 
 For database access rules, see **section 6.3**.
 

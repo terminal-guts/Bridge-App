@@ -3,7 +3,7 @@
 
 **All work in React Native. testing on iOS (primary platform)**
 
-*Last Updated: March 2026*
+*Last Updated: April 2026*
 
 ---
 
@@ -597,22 +597,10 @@ Friend chats contain:
 - To re-enter pool, must submit reason for leaving the match
 - **Makes ghosting impossible**
 
-### Optional Enhancements
-- **Bridge Break:** Reject 5 straight real matches → frozen 1 week
-- **Conversation Starters:** Generated from survey overlap
-- **Mini-games:** "2 Truths & a Lie" to break ice
 
 ---
 
 ## Profile & Algorithm Design
-
-### Profile Notifications
-Send daily notifications about mutual interests to drive engagement:
-- "You both love Tarantino films."
-- "You both go to Barry's 5x/week."
-- "Both are the oldest sibling."
-
-Lead with these during prospective match reveals.
 
 ### Algorithm Weighting
 The algorithm considers:
