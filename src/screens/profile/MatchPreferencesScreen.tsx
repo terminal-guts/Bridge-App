@@ -109,13 +109,14 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         });
       }
 
-      // Load array preferences
-      // Empty array from onboarding = "No Preference" — display as such
+      // Load array preferences — [] in DB = "No Preference" in UI
       const ethnicities = profileResult.data.preferredEthnicities || [];
+      const religions = profileResult.data.preferredReligions || [];
+      const politics = profileResult.data.preferredPolitics || [];
       setPreferredEthnicities(ethnicities.length === 0 ? ['No Preference'] : ethnicities);
-      setPreferredReligions(profileResult.data.preferredReligions || []);
+      setPreferredReligions(religions.length === 0 ? ['No Preference'] : religions);
+      setPreferredPolitics(politics.length === 0 ? ['no_preference'] : politics);
       setInterestedInGenders(profileResult.data.interestedInGenders || []);
-      setPreferredPolitics(profileResult.data.preferredPolitics || []);
 
       // Store original data for change detection
       const originalPrefs: { drinking?: string | string[]; cannabis?: string | string[]; tobacco?: string | string[]; otherDrugs?: string | string[] } = profileResult.data.partnerLifestylePreferences ?? {};
@@ -134,10 +135,10 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
           partnerTobacco: Array.isArray(originalPrefs.tobacco) ? originalPrefs.tobacco : (originalPrefs.tobacco ? [originalPrefs.tobacco] : []),
           partnerOtherDrugs: Array.isArray(originalPrefs.otherDrugs) ? originalPrefs.otherDrugs : (originalPrefs.otherDrugs ? [originalPrefs.otherDrugs] : []),
         },
-        preferredEthnicities: profileResult.data.preferredEthnicities || [],
-        preferredReligions: profileResult.data.preferredReligions || [],
+        preferredEthnicities: ethnicities.length === 0 ? ['No Preference'] : ethnicities,
+        preferredReligions: religions.length === 0 ? ['No Preference'] : religions,
         interestedInGenders: profileResult.data.interestedInGenders || [],
-        preferredPolitics: profileResult.data.preferredPolitics || [],
+        preferredPolitics: politics.length === 0 ? ['no_preference'] : politics,
       });
     } catch (error) {
       logger.error('Failed to load profile:', error);
@@ -218,8 +219,13 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         }
       }
 
-      const updatedProfile = {
-        ...profile,
+      // Strip UI sentinels before DB write — [] = "No Preference" in the database
+      const cleanEthnicities = preferredEthnicities.filter(e => e !== 'No Preference');
+      const cleanReligions = preferredReligions.filter(r => r !== 'No Preference');
+      const cleanPolitics = preferredPolitics.filter(p => p !== 'no_preference');
+
+      // Only send preference fields — NOT own profile fields (no ...profile spread)
+      const prefUpdates: Partial<typeof profile> = {
         preferences: {
           ...preferences,
           ageMin: clampedAgeMin,
@@ -228,18 +234,18 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
           lookingFor: 'relationship' as const,
         },
         interestedInGenders: interestedInGenders,
-        preferredPolitics: preferredPolitics,
+        preferredPolitics: cleanPolitics,
         partnerLifestylePreferences: {
           drinking: partnerPreferences.partnerDrinking,
           cannabis: partnerPreferences.partnerCannabis,
           tobacco: partnerPreferences.partnerTobacco,
           otherDrugs: partnerPreferences.partnerOtherDrugs,
         },
-        preferredEthnicities: preferredEthnicities,
-        preferredReligions: preferredReligions,
-      };
+        preferredEthnicities: cleanEthnicities,
+        preferredReligions: cleanReligions,
+      } as any;
 
-      const result = await updateUserProfile(updatedProfile);
+      const result = await updateUserProfile(prefUpdates);
 
       if (result.ok) {
         navigation.goBack();

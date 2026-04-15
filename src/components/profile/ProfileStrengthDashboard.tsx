@@ -93,8 +93,9 @@ const calculateStrength = (profile: UserProfile): {
   if (!(profile.interestedInGenders && profile.interestedInGenders.length > 0)) preferencesSuggestions.push('Set gender preferences');
   if (!(profile.preferences?.ageMin && profile.preferences?.ageMax)) preferencesSuggestions.push('Set age range');
   if (!(profile.preferences?.heightMin && profile.preferences?.heightMax)) preferencesSuggestions.push('Set height preference');
-  if (!(profile.preferredEthnicities && profile.preferredEthnicities.length > 0)) preferencesSuggestions.push('Set ethnicity preferences');
-  if (!(profile.preferredPolitics && profile.preferredPolitics.length > 0)) preferencesSuggestions.push('Set political preferences');
+  // [] = "No Preference" (valid) — only suggest if truly undefined/null
+  if (profile.preferredEthnicities === undefined || profile.preferredEthnicities === null) preferencesSuggestions.push('Set ethnicity preferences');
+  if (profile.preferredPolitics === undefined || profile.preferredPolitics === null) preferencesSuggestions.push('Set political preferences');
   if (!(profile.partnerLifestylePreferences?.drinking &&
         profile.partnerLifestylePreferences?.cannabis &&
         profile.partnerLifestylePreferences?.tobacco &&
