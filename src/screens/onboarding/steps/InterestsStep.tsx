@@ -94,7 +94,7 @@ export const InterestsStep: React.FC<InterestsStepProps> = ({
       <StyledView className="mt-8">
       <H1 className="mb-2">What are you into?</H1>
       <Body className="text-neutral-500 text-sm mb-2">
-        Pick at least 3 -- we use these to find people with shared passions.
+        Select at least 3 — add custom interests later.
       </Body>
       <Body className="text-primary-500 font-semibold mb-6">
         {totalMyInterests} of 5 selected

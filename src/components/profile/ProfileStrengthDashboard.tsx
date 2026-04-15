@@ -176,7 +176,16 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
 }) => {
   const { overall, sections } = calculateStrength(profile);
   const { level, color } = getStrengthLevel(overall);
-  const isComplete = overall === 100;
+  // Dashboard stays visible until ALL of these are done:
+  // - About Me section at 100%
+  // - Match Preferences at 100%
+  // - 3+ photos uploaded
+  // - 3+ deep questions displayed
+  const isFullyComplete =
+    sections[0].percentage === 100 &&  // About Me
+    sections[1].percentage === 100 &&  // Match Preferences
+    (profile.photos?.length || 0) >= 3 &&
+    (profile.displayedQuestions?.length || 0) >= 3;
 
   // Fire success haptic when crossing milestone thresholds
   const prevOverallRef = React.useRef(overall);
@@ -192,8 +201,8 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
     }
   }, [overall]);
 
-  // Hide the card entirely when profile is 100% complete
-  if (isComplete) {
+  // Hide only when photos, questions, about me, and match prefs are all maxed
+  if (isFullyComplete) {
     return null;
   }
 
