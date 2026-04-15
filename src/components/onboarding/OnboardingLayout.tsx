@@ -12,7 +12,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { styled } from 'nativewind';
 import { Button } from '../ui';
 import { TouchableOpacity as RNTouchableOpacity } from 'react-native';
-import { EvaIcon } from '../icons';
 import { COLORS } from '../../theme/colors';
 
 interface OnboardingLayoutProps {
@@ -54,8 +53,6 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
 
   // Progress bar header height: 6px bar + ~22px label = 28px from safe area top
   const HEADER_HEIGHT = 28;
-  const backButtonTop = HEADER_HEIGHT + 8; // 8px breathing room below header
-  const contentTopPadding = HEADER_HEIGHT + 48; // enough room for back button + spacing
 
   // Start with keyboard visible for persistent keyboard pages to prevent layout shift
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(keyboardPersistent);
@@ -101,24 +98,12 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
           enabled={true}
         >
           <StyledView className="flex-1">
-            {/* Back Button */}
-            {showBackButton && onBack && (
-              <StyledRNTouchableOpacity
-                onPress={onBack}
-                className="absolute left-2 p-2"
-                style={{ top: backButtonTop, zIndex: 60 }}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.primary} />
-              </StyledRNTouchableOpacity>
-            )}
-
             {/* Scrollable Content */}
             <StyledScrollView
               className="flex-1"
               contentContainerStyle={{
                 paddingHorizontal: 24,
-                paddingTop: topPadding ?? contentTopPadding,
+                paddingTop: topPadding ?? HEADER_HEIGHT + 16,
                 paddingBottom: 16,
                 flexGrow: 1,
               }}
@@ -187,23 +172,12 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   return (
     <StyledSafeAreaView edges={['top', 'bottom']} className="flex-1" style={{ backgroundColor: COLORS.screenBackground }}>
       <StyledView className="flex-1">
-        {/* Back Button */}
-        {showBackButton && onBack && (
-          <StyledRNTouchableOpacity
-            onPress={onBack}
-            className="absolute top-4 left-4 z-50 p-2"
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <EvaIcon name="arrow-back" variant="outline" size={24} color="#101828" />
-          </StyledRNTouchableOpacity>
-        )}
-
         {/* Scrollable Content */}
         <StyledScrollView
           className="flex-1"
           contentContainerStyle={{
             paddingHorizontal: 24,
-            paddingTop: topPadding ?? 64,
+            paddingTop: topPadding ?? HEADER_HEIGHT + 16,
             paddingBottom: 24,
             flexGrow: 1,
           }}

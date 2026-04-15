@@ -4,7 +4,6 @@ import { styled } from 'nativewind';
 import { H1, H3, Body, Card } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
-import { OnboardingResumePrompt } from '../../../components/onboarding/OnboardingResumePrompt';
 import { lightHaptic } from '../../../utils/haptics';
 
 interface GenderStepProps {
@@ -131,8 +130,6 @@ export const GenderStep: React.FC<GenderStepProps> = ({
   );
 
   return (
-    <>
-    <OnboardingResumePrompt />
     <OnboardingLayout
       onBack={onBack}
       onContinue={validateAndContinue}
@@ -189,6 +186,5 @@ export const GenderStep: React.FC<GenderStepProps> = ({
       </StyledView>
 
     </OnboardingLayout>
-    </>
   );
 };

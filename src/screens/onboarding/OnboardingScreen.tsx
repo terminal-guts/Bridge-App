@@ -182,14 +182,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
     restoreProgress();
   }, [isRoleSwitch]);
 
-  // Clear the "seen post-proposal prompt" flag so GenderStep's motivational
-  // bottom sheet always fires for any fresh onboarding run.
-  // Skip for role switch — the prompt is irrelevant when switching from matchmaker to dater.
-  useEffect(() => {
-    if (!isRoleSwitch) {
-      AsyncStorage.removeItem('@bridge/seen_post_proposal_prompt').catch(() => {});
-    }
-  }, []);
+
 
   // Fetch the authenticated user ID from Supabase session.
   // Re-checks on step changes because the user gets authenticated during
