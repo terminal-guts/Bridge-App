@@ -11,6 +11,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { Button } from '../ui';
+import { Body } from '../ui/Typography';
 import { TouchableOpacity as RNTouchableOpacity } from 'react-native';
 import { COLORS } from '../../theme/colors';
 
@@ -98,12 +99,23 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
           enabled={true}
         >
           <StyledView className="flex-1">
+            {/* Back Button — auth screens only */}
+            {showBackButton && onBack && (
+              <StyledRNTouchableOpacity
+                onPress={onBack}
+                className="absolute left-4 p-2"
+                style={{ top: HEADER_HEIGHT + 4, zIndex: 60 }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Body style={{ fontSize: 22, color: COLORS.text.primary }}>←</Body>
+              </StyledRNTouchableOpacity>
+            )}
             {/* Scrollable Content */}
             <StyledScrollView
               className="flex-1"
               contentContainerStyle={{
                 paddingHorizontal: 24,
-                paddingTop: topPadding ?? HEADER_HEIGHT + 16,
+                paddingTop: topPadding ?? (showBackButton && onBack ? HEADER_HEIGHT + 48 : HEADER_HEIGHT + 16),
                 paddingBottom: 16,
                 flexGrow: 1,
               }}
@@ -172,12 +184,23 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   return (
     <StyledSafeAreaView edges={['top', 'bottom']} className="flex-1" style={{ backgroundColor: COLORS.screenBackground }}>
       <StyledView className="flex-1">
+        {/* Back Button — auth screens only */}
+        {showBackButton && onBack && (
+          <StyledRNTouchableOpacity
+            onPress={onBack}
+            className="absolute left-4 p-2"
+            style={{ top: HEADER_HEIGHT + 4, zIndex: 60 }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Body style={{ fontSize: 22, color: COLORS.text.primary }}>←</Body>
+          </StyledRNTouchableOpacity>
+        )}
         {/* Scrollable Content */}
         <StyledScrollView
           className="flex-1"
           contentContainerStyle={{
             paddingHorizontal: 24,
-            paddingTop: topPadding ?? HEADER_HEIGHT + 16,
+            paddingTop: topPadding ?? (showBackButton && onBack ? HEADER_HEIGHT + 48 : HEADER_HEIGHT + 16),
             paddingBottom: 24,
             flexGrow: 1,
           }}
