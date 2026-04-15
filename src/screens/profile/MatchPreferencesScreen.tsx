@@ -110,7 +110,9 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
       }
 
       // Load array preferences
-      setPreferredEthnicities(profileResult.data.preferredEthnicities || []);
+      // Empty array from onboarding = "No Preference" — display as such
+      const ethnicities = profileResult.data.preferredEthnicities || [];
+      setPreferredEthnicities(ethnicities.length === 0 ? ['No Preference'] : ethnicities);
       setPreferredReligions(profileResult.data.preferredReligions || []);
       setInterestedInGenders(profileResult.data.interestedInGenders || []);
       setPreferredPolitics(profileResult.data.preferredPolitics || []);
