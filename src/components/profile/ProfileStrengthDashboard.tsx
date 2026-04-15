@@ -158,25 +158,15 @@ const calculateStrength = (profile: UserProfile): {
 };
 
 /**
- * Get strength level and message
- * profileCompleted = true means user previously hit 100% (one-way gate) — use softer messaging
+ * Get strength level and message.
+ * Profile is COMPLETE after onboarding — strength just encourages adding
+ * more photos, questions, and optional fields to stand out.
  */
-const getStrengthLevel = (score: number, profileCompleted?: boolean): { level: string; message: string; color: string } => {
+const getStrengthLevel = (score: number): { level: string; message: string; color: string } => {
   if (score >= 100) return { level: 'Complete', message: 'Your profile is at full strength', color: COLORS.success };
-
-  // User already completed once — softer "dropped" messaging
-  if (profileCompleted) {
-    if (score >= 90) return { level: 'Slightly Incomplete', message: 'A field was removed from your profile', color: COLORS.primaryAccent };
-    if (score >= 75) return { level: 'Dropped', message: "Your profile isn't at full strength", color: COLORS.amber };
-    return { level: 'Needs Attention', message: 'Some profile info is missing', color: COLORS.error };
-  }
-
-  // First-time user — motivating "build toward the pool" messaging
-  if (score >= 90) return { level: 'So Close', message: 'One more step to start receiving matches', color: COLORS.success };
-  if (score >= 75) return { level: 'Almost There', message: 'Just a few more fields to go', color: COLORS.primaryAccent };
-  if (score >= 60) return { level: 'Looking Good', message: "You're getting close to the matching pool", color: COLORS.amber };
-  if (score >= 40) return { level: 'Making Progress', message: 'Your friends need more to find your match', color: COLORS.error };
-  return { level: 'Getting Started', message: 'Complete your profile to improve your matches', color: COLORS.error };
+  if (score >= 80) return { level: 'Strong', message: 'Add photos or questions to max out', color: COLORS.primaryAccent };
+  if (score >= 60) return { level: 'Good', message: 'A few more details and you\'ll stand out', color: COLORS.amber };
+  return { level: 'Getting Started', message: 'Stronger profiles get better matches', color: COLORS.error };
 };
 
 export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> = React.memo(({
@@ -185,7 +175,7 @@ export const ProfileStrengthDashboard: React.FC<ProfileStrengthDashboardProps> =
   className = '',
 }) => {
   const { overall, sections } = calculateStrength(profile);
-  const { level, color } = getStrengthLevel(overall, profile.profileCompleted);
+  const { level, color } = getStrengthLevel(overall);
   const isComplete = overall === 100;
 
   // Fire success haptic when crossing milestone thresholds

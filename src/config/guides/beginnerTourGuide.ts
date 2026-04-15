@@ -49,9 +49,9 @@ export const beginnerTourGuide: GuideDefinition = {
       targetElement: 'tab-matches',
       highlightType: 'spotlight',
       spotlightShape: 'rounded-rect',
-      spotlightPadding: 20,
+      spotlightPadding: 12,
       tooltipPosition: 'top',
-      tooltipOffset: { x: -20, y: -60 },
+      tooltipOffset: { x: 0, y: -20 },
       title: 'Your Matches',
       message:
         "Here you'll see matches verified by your friends and the Bridge community.",
@@ -63,9 +63,9 @@ export const beginnerTourGuide: GuideDefinition = {
       targetElement: 'tab-profile',
       highlightType: 'spotlight',
       spotlightShape: 'rounded-rect',
-      spotlightPadding: 20,
+      spotlightPadding: 12,
       tooltipPosition: 'top',
-      tooltipOffset: { x: -20, y: -60 },
+      tooltipOffset: { x: 0, y: -20 },
       title: 'Your Profile',
       message:
         "Your profile is all set! Add more photos and answer questions to stand out.",

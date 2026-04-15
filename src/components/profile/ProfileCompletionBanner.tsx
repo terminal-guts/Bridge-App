@@ -118,7 +118,7 @@ export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = (
             {completion}% Complete
           </Body>
           <Body className="text-white/90 text-xs">
-            Reach 100% profile strength to start matching
+            Add photos and questions to strengthen your profile
           </Body>
         </StyledView>
       </StyledTouchableOpacity>
