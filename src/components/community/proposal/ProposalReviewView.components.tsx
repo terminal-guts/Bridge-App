@@ -10,7 +10,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Modal,
-  ActivityIndicator,
 } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { Image } from 'expo-image';

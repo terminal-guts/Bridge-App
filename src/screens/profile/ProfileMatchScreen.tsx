@@ -844,12 +844,6 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: COLORS.screenBackground,
     },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: COLORS.screenBackground,
-    },
     heroContainer: {
         width: '100%',
         overflow: 'hidden',

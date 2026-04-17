@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, TouchableOpacity, Alert, TextInput, ActivityIndicator, Keyboard } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Alert, TextInput, Keyboard } from 'react-native';
 import { Body, ScreenWrapper, BackHeader, BlockedUsersSkeleton } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';

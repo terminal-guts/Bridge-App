@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { H1, Body, ProposalReviewSkeleton } from '../../../components/ui';
+import { COLORS } from '../../../theme/colors';
 import { ProposalReviewView } from '../../../components/community/proposal/ProposalReviewView';
 import { OnboardingVotingTutorial } from '../../../components/onboarding/OnboardingVotingTutorial';
 import { communityService } from '../../../services/communityServiceIndex';
