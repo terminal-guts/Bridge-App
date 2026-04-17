@@ -26,19 +26,13 @@ const SLIDES = [
   {
     icon: 'people' as const,
     title: "No swiping here.",
-    body: "Help others find their match. You'll see two people and vote on whether they'd be great together.",
+    body: "Help others find their match.",
     cta: 'Next',
   },
   {
     icon: 'eye' as const,
     title: "Get to know the pair.",
-    body: "Browse their photos, answers, and shared interests to see if they'd click.",
-    cta: 'Next',
-  },
-  {
-    icon: 'checkmark-circle-2' as const,
-    title: "Your three options.",
-    body: "Yes · No · Recommend (to a friend).\n\nVotes are anonymous unless you're friends.",
+    body: "Browse their photos and characteristics to see if they'd click.",
     cta: 'Next',
   },
   {
