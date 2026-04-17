@@ -40,7 +40,7 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
       ),
       -1, // infinite
     );
-  }, []);
+  }, [opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -128,11 +128,6 @@ export const DashboardSkeleton: React.FC<DashboardSkeletonProps> = ({ className 
 };
 
 /**
- * ProfileSkeleton Component
- *
- * Skeleton loading state for the profile screen
- */
-/**
  * SurveySkeleton Component
  *
  * Skeleton loading state for the daily survey screen
@@ -146,8 +141,8 @@ export const SurveySkeleton: React.FC<DashboardSkeletonProps> = ({ className = '
           <SkeletonLoader height={32} width={32} borderRadius="rounded-full" className="mr-2" />
           <SkeletonLoader height={12} width={80} borderRadius="rounded" />
         </View>
-        <SkeletonLoader height={28} width="70%" borderRadius="rounded" className="mb-2" />
-        <SkeletonLoader height={16} width="90%" borderRadius="rounded" />
+        <SkeletonLoader height={28} width={70} borderRadius="rounded" className="mb-2" />
+        <SkeletonLoader height={16} width={90} borderRadius="rounded" />
       </View>
 
       {/* Progress Indicator Skeleton */}
@@ -437,7 +432,7 @@ export const ProfileSkeleton: React.FC<DashboardSkeletonProps> = ({ className = 
  */
 export const BlockedUsersSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
   return (
-    <View className="flex-1" style={{ backgroundColor: COLORS.screenBackground }}>
+    <View className={`flex-1 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
       {[1, 2, 3, 4, 5, 6].map(i => (
         <View key={i} className="rounded-xl p-4 mb-2 flex-row items-center justify-between border shadow-sm" style={{ backgroundColor: COLORS.card, borderColor: COLORS.borderLight }}>
           <View className="flex-1">
@@ -457,9 +452,9 @@ export const BlockedUsersSkeleton: React.FC<DashboardSkeletonProps> = ({ classNa
  */
 export const SuggestMatchSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
   return (
-    <View className="flex-1" style={{ backgroundColor: COLORS.screenBackground }}>
+    <View className={`flex-1 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
       {[1, 2, 3, 4, 5, 6].map(i => (
-        <View key={i} className="flex-row items-center py-3 border-b" style={{ borderBottomColor: COLORS.card }}>
+        <View key={i} className="flex-row items-center py-3 border-b" style={{ borderBottomColor: COLORS.borderLight }}>
           <SkeletonLoader height={48} width={48} borderRadius="rounded-full" className="mr-3" />
           <View className="flex-1">
             <SkeletonLoader height={18} width={140} borderRadius="rounded" className="mb-2" />
@@ -478,7 +473,7 @@ export const SuggestMatchSkeleton: React.FC<DashboardSkeletonProps> = ({ classNa
  */
 export const ContactInviteSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
   return (
-    <View className="flex-1" style={{ backgroundColor: COLORS.screenBackground }}>
+    <View className={`flex-1 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
       {/* Search Bar Placeholder */}
       <View className="px-3 py-2 border-b" style={{ backgroundColor: COLORS.card, borderBottomColor: COLORS.borderLight }}>
         <View className="rounded-lg h-10 px-3 justify-center" style={{ backgroundColor: COLORS.borderLight }}>
@@ -510,7 +505,7 @@ export const ProfileMatchSkeleton: React.FC<DashboardSkeletonProps> = ({ classNa
   const heroPhotoHeight = Math.round(screenHeight * 0.55);
 
   return (
-    <View className="flex-1" style={{ backgroundColor: COLORS.screenBackground }}>
+    <View className={`flex-1 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
       {/* Hero area */}
       <View style={{ height: heroPhotoHeight, backgroundColor: COLORS.skeletonBone }}>
         {/* Hero bottom overlay info */}
@@ -561,7 +556,7 @@ export const ProfileMatchSkeleton: React.FC<DashboardSkeletonProps> = ({ classNa
  */
 export const FriendListSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
   return (
-    <View className="px-5">
+    <View className={`px-5 ${className}`}>
       {[1, 2, 3, 4].map(i => (
         <View key={i} className="flex-row items-center p-3 mb-2 rounded-xl border" style={{ backgroundColor: COLORS.borderLight, borderColor: COLORS.border }}>
           <SkeletonLoader height={48} width={48} borderRadius="rounded-full" className="mr-3" />
@@ -582,7 +577,7 @@ export const FriendListSkeleton: React.FC<DashboardSkeletonProps> = ({ className
  */
 export const ProposalReviewSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
   return (
-    <View className="flex-1" style={{ backgroundColor: COLORS.screenBackground }}>
+    <View className={`flex-1 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
       {/* Progress Dots */}
       <View className="flex-row justify-center py-4" style={{ gap: 8 }}>
         <SkeletonLoader height={10} width={40} borderRadius="rounded-full" />
