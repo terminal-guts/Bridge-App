@@ -38,7 +38,7 @@ const SLIDES = [
   {
     icon: 'heart' as const,
     title: "Your votes matter.",
-    body: "If the community signals yes, both people get notified and decide privately to match or not.\n\nIf the community signals no, it quietly disappears.",
+    body: "If the community approves a match,\nthey decide.\n\nIf not, it disappears.",
     cta: "Let's go!",
   },
 ] as const;
@@ -113,7 +113,7 @@ export const OnboardingVotingTutorial: React.FC<OnboardingVotingTutorialProps> =
             {...panResponder.panHandlers}
           >
             {/* Progress dots — tappable to jump to any slide */}
-            <StyledView className="flex-row justify-center gap-2 mb-8">
+            <StyledView className="flex-row justify-center gap-2 mb-10">
               {SLIDES.map((_, i) => (
                 <TouchableOpacity
                   key={i}
@@ -131,7 +131,7 @@ export const OnboardingVotingTutorial: React.FC<OnboardingVotingTutorialProps> =
             </StyledView>
 
             {/* Icon */}
-            <StyledView className="items-center mb-6">
+            <StyledView className="items-center mb-5">
               <StyledView
                 className="w-20 h-20 rounded-full items-center justify-center"
                 style={{ backgroundColor: '#EEF3FF' }}
@@ -141,12 +141,12 @@ export const OnboardingVotingTutorial: React.FC<OnboardingVotingTutorialProps> =
             </StyledView>
 
             {/* Title */}
-            <H2 className="text-center font-bold text-neutral-900 mb-4 px-2">
+            <H2 className="text-center font-bold text-neutral-900 mb-3 px-4">
               {slide.title}
             </H2>
 
             {/* Body */}
-            <Body className="text-center text-neutral-600 leading-6 px-2 mb-8">
+            <Body className="text-center text-neutral-600 leading-6 px-4 mb-10">
               {slide.body}
             </Body>
 
