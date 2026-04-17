@@ -212,13 +212,14 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
         </StyledScrollView>
 
         {/* Continue Button - Sticky footer at bottom */}
+        {/* SafeAreaView edges={['bottom']} already handles safe area — use fixed padding only */}
         {!hideContinueButton && (
           <StyledView
             className="px-6"
             style={{
               backgroundColor: COLORS.screenBackground,
               paddingTop: 16,
-              paddingBottom: footerPaddingBottom,
+              paddingBottom: 16,
               borderTopWidth: 1,
               borderTopColor: COLORS.border,
             }}
