@@ -236,7 +236,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
 
   // Start photo upload immediately when a photo is selected (not when step advances).
   // This gives the upload a head start while the user continues through remaining steps.
+  // Only runs when authenticated (photos require a JWT for Supabase Storage).
   useEffect(() => {
+    if (!authUserId) return; // No auth session yet — skip
     if (!onboardingData.photos || onboardingData.photos.length === 0) return;
     const uris = onboardingData.photos
       .map(p => p.url || (p as any).uri)
@@ -260,7 +262,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         logger.warn('[OnboardingScreen] Eager photo upload error:', err.message);
         return null;
       });
-  }, [onboardingData.photos]);
+  }, [onboardingData.photos, authUserId]);
 
   const MATCHMAKER_STEPS: StepDefinition[] = [
     { component: MatchmakerProfileStep, title: 'Photo', hasTextInput: false },
