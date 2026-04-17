@@ -183,7 +183,7 @@ export const EmailSignUpStep: React.FC<EmailSignUpStepProps> = ({
           Already have an account?{' '}
         </StyledText>
         <StyledTouchableOpacity
-          onPress={() => (navigation as any).replace('Login')}
+          onPress={() => navigation.reset({ index: 1, routes: [{ name: 'Welcome' as any }, { name: 'Login' as any }] })}
           style={{ minHeight: 44, justifyContent: 'center' }}
           accessibilityLabel="Sign In"
           accessibilityRole="button"

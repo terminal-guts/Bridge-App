@@ -107,7 +107,7 @@ export const EmailResendStep: React.FC<EmailResendStepProps> = ({
         <Body className="text-neutral-600">Already have an account? </Body>
         <Body
           className="text-primary-500 font-semibold"
-          onPress={() => (navigation as any).replace('Login')}
+          onPress={() => navigation.reset({ index: 1, routes: [{ name: 'Welcome' as any }, { name: 'Login' as any }] })}
         >
           Sign In
         </Body>

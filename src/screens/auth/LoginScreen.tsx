@@ -99,7 +99,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       <StyledView className="flex-row justify-center items-center">
         <Body className="text-neutral-600">Don't have an account? </Body>
         <StyledTouchableOpacity
-          onPress={() => (navigation as any).replace('Onboarding', { skipAuth: false })}
+          onPress={() => (navigation as any).reset({ index: 1, routes: [{ name: 'Welcome' }, { name: 'Onboarding', params: { skipAuth: false } }] })}
           style={{ minHeight: 44, justifyContent: 'center' }}
         >
           <Body style={{ fontFamily: FONTS.semiBold, color: COLORS.primary }}>
