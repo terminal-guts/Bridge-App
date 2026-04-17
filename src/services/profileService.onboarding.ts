@@ -135,22 +135,39 @@ export const createUserProfile = async (
     // Upload photos before building the payload
     let photoData: Array<{ id: string; url: string; is_main: boolean; display_order: number }> = [];
     if (data.photos && data.photos.length > 0) {
-      const uris = data.photos.map(p => p.url || (p as Photo & { uri?: string }).uri).filter((u): u is string => Boolean(u));
-      if (uris.length > 0) {
-        const uploadRes = await uploadMultiplePhotos(uris);
+      const allUrls = data.photos.map(p => p.url || (p as Photo & { uri?: string }).uri).filter((u): u is string => Boolean(u));
+      // Separate already-uploaded CDN URLs from local file:// URIs that need uploading
+      const cdnUrls = allUrls.filter(u => !u.startsWith('file://'));
+      const localUris = allUrls.filter(u => u.startsWith('file://'));
+
+      // Keep CDN URLs as-is (from eager upload)
+      photoData = cdnUrls.map((url, i) => ({
+        id: url,
+        url,
+        is_main: i === 0 && localUris.length === 0,
+        display_order: i,
+      }));
+
+      // Upload any remaining local files
+      if (localUris.length > 0) {
+        const uploadRes = await uploadMultiplePhotos(localUris);
         if (uploadRes.ok && uploadRes.data) {
-          photoData = uploadRes.data
-            .filter((p) => p.url && !p.url.startsWith('file://')) // Never save local file URIs
+          const uploaded = uploadRes.data
+            .filter((p) => p.url && !p.url.startsWith('file://'))
             .map((p, i) => ({
               id: p.id || p.url,
               url: p.url,
-              is_main: i === 0,
-              display_order: i,
+              is_main: photoData.length === 0 && i === 0,
+              display_order: photoData.length + i,
             }));
+          photoData = [...photoData, ...uploaded];
         } else {
-          // Photo upload failed — continue without photos. User can add them later.
-          logger.warn('[ProfileService] Photo upload failed — continuing without photos');
+          logger.warn('[ProfileService] Photo upload failed — continuing with CDN photos only');
         }
+      }
+
+      if (photoData.length === 0) {
+        logger.warn('[ProfileService] No photos available — continuing without photos');
       }
     }
 
