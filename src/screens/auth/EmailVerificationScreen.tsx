@@ -140,9 +140,9 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
           const fetchResult = await fetchAndSetUserProfile(userId);
           setLoading(false);
           if (fetchResult.ok && fetchResult.data) {
-            navigation.navigate('MainTabs');
+            (navigation as any).reset({ index: 0, routes: [{ name: 'MainTabs' }] });
           } else {
-            navigation.navigate('Onboarding', { skipAuth: true });
+            (navigation as any).reset({ index: 0, routes: [{ name: 'Onboarding', params: { skipAuth: true } }] });
           }
           return;
         } else {
@@ -177,10 +177,10 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
 
       if (fetchResult.ok && fetchResult.data) {
         logger.info('[AUTH] Profile found, navigating to MainTabs');
-        navigation.navigate('MainTabs');
+        (navigation as any).reset({ index: 0, routes: [{ name: 'MainTabs' }] });
       } else {
         logger.info('[AUTH] No profile found, navigating to Onboarding');
-        navigation.navigate('Onboarding');
+        (navigation as any).reset({ index: 0, routes: [{ name: 'Onboarding' }] });
       }
     } catch (e: any) {
       logger.error('[AUTH] Verification error:', e);

@@ -165,10 +165,15 @@ export const signInWithPassword = async (email: string, password: string): Promi
   }
 };
 
+// ============================================================================
+// LEGACY OTP FUNCTIONS — REMOVED
+// sendOtpToEmail and sendLoginOtpToEmail were the old Supabase-native OTP
+// path. Fully replaced by sendEmailSignUpCode / sendLoginCode which use the
+// email-signup edge function with Resend for faster delivery.
+// ============================================================================
+
 /**
- * Send OTP code to email via Supabase Auth (signup flow).
- *
- * @param email - The email to send the OTP to
+ * @deprecated Use sendEmailSignUpCode instead
  * @param skipAccountCheck - When true, skips the ACCOUNT_EXISTS guard (used for resending during login)
  */
 export const sendOtpToEmail = async (email: string, skipAccountCheck = false): Promise<ApiResponse<void>> => {
