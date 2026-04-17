@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, Text } from 'react-native';
 import { styled } from 'nativewind';
-import { Input } from '../../components/ui';
+import { H1, Body, Input } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { OnboardingLayout } from '../../components/onboarding/OnboardingLayout';
 import { sendLoginCode, isAllowedEmailDomain } from '../../services/authService';
 import { createLogger } from '../../utils/secureLogger';
-import { BackHeader } from '../../components/ui/BackHeader';
 import { COLORS } from '../../theme/colors';
-import { FONTS, FONT_SIZES, LINE_HEIGHTS, TEXT_STYLES } from '../../constants/typography';
+import { FONTS, FONT_SIZES } from '../../constants/typography';
 
 const logger = createLogger('LoginScreen');
 
@@ -31,15 +30,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     setError('');
 
     if (!email.trim()) {
-      setError('Pop in your Rice email so we can find you.');
+      setError('Please enter your email');
       return;
     }
     if (!email.includes('@')) {
-      setError('Hmm, that doesn\'t look like an email. Double-check and try again.');
+      setError('Please enter a valid email address');
       return;
     }
     if (!isAllowedEmailDomain(email)) {
-      setError('Bridge is only open to Rice students right now — use your @rice.edu email.');
+      setError('Please use your @rice.edu email address');
       return;
     }
 
@@ -53,102 +52,60 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           email: email.trim().toLowerCase(),
         });
       } else {
-        setError(result.error?.message || 'We couldn\'t send your code. Give it another try.');
+        setError(result.error?.message || 'Failed to send code. Try again.');
       }
       setIsLoading(false);
     } catch (error: any) {
       logger.error('Login error:', error);
-      setError('Something went wrong on our end. Try again in a sec.');
+      setError('Something went wrong. Check your connection and try again.');
       setIsLoading(false);
     }
   };
 
   return (
     <OnboardingLayout
+      onBack={() => navigation.goBack()}
+      showBackButton={true}
       onContinue={validateAndContinue}
+      continueDisabled={isLoading}
       hasTextInput={true}
       keyboardPersistent={true}
-      topPadding={20}
     >
-      <BackHeader title="Hey, welcome back" showBorder={false} />
+      <H1 className="mb-2">Welcome Back</H1>
+      <Body className="text-neutral-500 text-sm mb-6">
+        Enter your .edu email to sign in.
+      </Body>
 
-      <StyledView>
-        {/* Subtitle — tighter spacing to title */}
-        <StyledText
-          style={{
-            ...TEXT_STYLES.bodyMd,
-            color: COLORS.text.secondary,
-            marginBottom: 20,
-          }}
+      <Input
+        label="School Email"
+        placeholder="netid@rice.edu"
+        value={email}
+        onChangeText={(text) => {
+          setEmail(text.toLowerCase());
+          if (error) setError('');
+        }}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        error={error}
+        autoFocus={true}
+      />
+
+      <Body className="text-neutral-400 text-xs mt-2 mb-6">
+        {isLoading ? 'Looking up your account...' : "We'll send a quick code to your inbox."}
+      </Body>
+
+      {/* Sign Up link */}
+      <StyledView className="flex-row justify-center items-center">
+        <Body className="text-neutral-600">Don't have an account? </Body>
+        <StyledTouchableOpacity
+          onPress={() => (navigation as any).replace('Onboarding', { skipAuth: false })}
+          style={{ minHeight: 44, justifyContent: 'center' }}
         >
-          Log in with your .edu email and we'll get you right back in.
-        </StyledText>
-
-        <Input
-          label="School Email"
-          placeholder="netid@rice.edu"
-          value={email}
-          onChangeText={(text) => {
-            setEmail(text.toLowerCase());
-            if (error) setError('');
-          }}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          error={error}
-          autoFocus={true}
-        />
-
-        {/* Helper text — tighter to input */}
-        <StyledText
-          style={{
-            fontFamily: FONTS.regular,
-            fontSize: FONT_SIZES.sm,
-            lineHeight: LINE_HEIGHTS.sm,
-            color: COLORS.text.tertiary,
-            marginTop: 8,
-          }}
-        >
-          {isLoading ? 'Looking up your account...' : "We'll send a quick code to your inbox to make sure it's you."}
-        </StyledText>
-
-        {/* Sign Up row — vertically centered, tighter gap */}
-        <StyledView
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginTop: 20,
-          }}
-        >
-          <StyledText
-            style={{
-              fontFamily: FONTS.regular,
-              fontSize: FONT_SIZES.base,
-              lineHeight: LINE_HEIGHTS.base,
-              color: COLORS.text.secondary,
-            }}
-          >
-            Don't have an account?{' '}
-          </StyledText>
-          <StyledTouchableOpacity
-            onPress={() => (navigation as any).replace('Onboarding', { skipAuth: false })}
-            style={{ minHeight: 44, justifyContent: 'center' }}
-            accessibilityLabel="Sign Up"
-            accessibilityRole="button"
-          >
-            <StyledText
-              style={{
-                fontFamily: FONTS.semiBold,
-                fontSize: FONT_SIZES.base,
-                lineHeight: LINE_HEIGHTS.base,
-                color: COLORS.primary,
-              }}
-            >
-              Sign Up
-            </StyledText>
-          </StyledTouchableOpacity>
-        </StyledView>
+          <Body style={{ fontFamily: FONTS.semiBold, color: COLORS.primary }}>
+            Sign Up
+          </Body>
+        </StyledTouchableOpacity>
       </StyledView>
     </OnboardingLayout>
   );
