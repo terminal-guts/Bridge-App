@@ -89,13 +89,13 @@ export const EmailSignUpStep: React.FC<EmailSignUpStepProps> = ({
       keyboardPersistent={true}
       continueDisabled={isSending}
     >
-      <H1 className="mb-3">Sign up with Rice email</H1>
+      <H1 className="mb-3">Sign up with .edu email</H1>
       <Body className="text-neutral-600 mb-8">
-        Enter your @rice.edu email to get started.
+        Enter your .edu email to get started.
       </Body>
 
       <Input
-        label="Rice Email"
+        label="School Email"
         placeholder="netid@rice.edu"
         value={email}
         onChangeText={(text) => {
@@ -114,7 +114,7 @@ export const EmailSignUpStep: React.FC<EmailSignUpStepProps> = ({
         <Body className="text-neutral-500 text-sm">
           {isSending
             ? 'Sending verification code...'
-            : "We'll send a 6-digit code to verify your Rice email."}
+            : "We'll send a 6-digit code to verify your school email."}
         </Body>
       </StyledView>
 
@@ -183,7 +183,7 @@ export const EmailSignUpStep: React.FC<EmailSignUpStepProps> = ({
           Already have an account?{' '}
         </StyledText>
         <StyledTouchableOpacity
-          onPress={() => navigation.navigate('Login')}
+          onPress={() => (navigation as any).replace('Login')}
           style={{ minHeight: 44, justifyContent: 'center' }}
           accessibilityLabel="Sign In"
           accessibilityRole="button"

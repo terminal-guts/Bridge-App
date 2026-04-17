@@ -5,7 +5,7 @@ import { Input } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { OnboardingLayout } from '../../components/onboarding/OnboardingLayout';
-import { sendLoginOtpToEmail, isAllowedEmailDomain } from '../../services/authService';
+import { sendLoginCode, isAllowedEmailDomain } from '../../services/authService';
 import { createLogger } from '../../utils/secureLogger';
 import { BackHeader } from '../../components/ui/BackHeader';
 import { COLORS } from '../../theme/colors';
@@ -46,7 +46,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     setIsLoading(true);
 
     try {
-      const result = await sendLoginOtpToEmail(email.trim().toLowerCase());
+      const result = await sendLoginCode(email.trim().toLowerCase());
 
       if (result.ok) {
         navigation.navigate('EmailVerification', {
@@ -81,11 +81,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             marginBottom: 20,
           }}
         >
-          Log in with your Rice email and we'll get you right back in.
+          Log in with your .edu email and we'll get you right back in.
         </StyledText>
 
         <Input
-          label="Rice Email"
+          label="School Email"
           placeholder="netid@rice.edu"
           value={email}
           onChangeText={(text) => {
@@ -109,7 +109,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             marginTop: 8,
           }}
         >
-          {isLoading ? 'Sending your code...' : "We'll send a quick code to your inbox to make sure it's you."}
+          {isLoading ? 'Looking up your account...' : "We'll send a quick code to your inbox to make sure it's you."}
         </StyledText>
 
         {/* Sign Up row — vertically centered, tighter gap */}
@@ -132,7 +132,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             Don't have an account?{' '}
           </StyledText>
           <StyledTouchableOpacity
-            onPress={() => navigation.navigate('Onboarding')}
+            onPress={() => (navigation as any).replace('Onboarding', { skipAuth: false })}
             style={{ minHeight: 44, justifyContent: 'center' }}
             accessibilityLabel="Sign Up"
             accessibilityRole="button"
