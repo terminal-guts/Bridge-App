@@ -74,7 +74,7 @@ const AUTH_STEPS: StepDefinition[] = [
 ];
 
 // Celebration step wrappers — auto-advance after 1.125s
-const PostVotingCelebration: React.FC<any> = (props) => <CelebrationStep {...props} message="Finish your profile so friends can match you!" />;
+const PostVotingCelebration: React.FC<any> = (props) => <CelebrationStep {...props} message="Now let's build your profile!" />;
 const BasicsComplete: React.FC<any> = (props) => <CelebrationStep {...props} message="Basics done — looking good!" />;
 const BackgroundComplete: React.FC<any> = (props) => <CelebrationStep {...props} message="Almost there — just the fun stuff left!" />;
 
