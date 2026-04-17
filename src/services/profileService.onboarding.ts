@@ -148,8 +148,8 @@ export const createUserProfile = async (
               display_order: i,
             }));
         } else {
-          logger.error('[ProfileService] Photo upload failed — aborting profile creation');
-          return createErrorResponse('PHOTO_UPLOAD_FAILED', 'Failed to upload photos. Please try again.');
+          // Photo upload failed — continue without photos. User can add them later.
+          logger.warn('[ProfileService] Photo upload failed — continuing without photos');
         }
       }
     }

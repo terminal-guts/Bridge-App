@@ -234,6 +234,34 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
     ...initialData,
   });
 
+  // Start photo upload immediately when a photo is selected (not when step advances).
+  // This gives the upload a head start while the user continues through remaining steps.
+  useEffect(() => {
+    if (!onboardingData.photos || onboardingData.photos.length === 0) return;
+    const uris = onboardingData.photos
+      .map(p => p.url || (p as any).uri)
+      .filter((u: string) => u && u.startsWith('file://'));
+    if (uris.length === 0) return;
+    // Only start if not already uploading
+    if (photoUploadPromiseRef.current) return;
+    logger.info('[OnboardingScreen] Starting eager photo upload:', uris.length, 'photos');
+    photoUploadPromiseRef.current = uploadMultiplePhotos(uris)
+      .then(res => {
+        if (!isMountedRef.current) return res;
+        if (res.ok && res.data) {
+          photoUploadResultRef.current = res.data;
+          logger.info('[OnboardingScreen] Eager photo upload complete:', res.data.length);
+        } else {
+          logger.warn('[OnboardingScreen] Eager photo upload failed — will retry at profile creation');
+        }
+        return res;
+      })
+      .catch(err => {
+        logger.warn('[OnboardingScreen] Eager photo upload error:', err.message);
+        return null;
+      });
+  }, [onboardingData.photos]);
+
   const MATCHMAKER_STEPS: StepDefinition[] = [
     { component: MatchmakerProfileStep, title: 'Photo', hasTextInput: false },
     { component: AddFriendsStep, title: 'Add Friends', hasTextInput: false },
@@ -354,34 +382,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         }
       }
 
-      // After Photos step: start uploading photos in the background immediately
-      // so they're ready by the time completeOnboarding fires
-      if (steps[stepAtCall].title === 'Photos' && onboardingData.photos && onboardingData.photos.length > 0) {
-        const uris = onboardingData.photos
-          .map(p => p.url || (p as any).uri)
-          .filter((u: string) => u && u.startsWith('file://'));
-        if (uris.length > 0) {
-          logger.info('[OnboardingScreen] Starting background photo upload:', uris.length, 'photos');
-          photoUploadPromiseRef.current = uploadMultiplePhotos(uris)
-            .then(res => {
-              if (!isMountedRef.current) {
-                logger.info('[OnboardingScreen] Photo upload resolved after unmount — ignoring');
-                return res;
-              }
-              if (res.ok && res.data) {
-                photoUploadResultRef.current = res.data;
-                logger.info('[OnboardingScreen] Background photo upload complete:', res.data.length);
-              } else {
-                logger.warn('[OnboardingScreen] Background photo upload failed — will retry at profile creation');
-              }
-              return res;
-            })
-            .catch(err => {
-              logger.warn('[OnboardingScreen] Background photo upload error (will retry):', err.message);
-              return null;
-            });
-        }
-      }
+      // Photo upload is handled by the useEffect below (starts on photo selection)
 
       // After email verification completes (step index 1), the user has a JWT.
       // Fire-and-forget: assign existing proposals early so the gate isn't empty.
