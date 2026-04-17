@@ -15,7 +15,13 @@ import { corsHeaders } from "../_shared/cors.ts";
  * Outlook, and university mail systems.
  */
 
-const PAGE_HTML = (email: string, success: boolean) => `<!DOCTYPE html>
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+const PAGE_HTML = (email: string, success: boolean) => {
+  const safeEmail = escapeHtml(email);
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -33,13 +39,14 @@ const PAGE_HTML = (email: string, success: boolean) => `<!DOCTYPE html>
   <div class="card">
     <h1>Bridge</h1>
     ${success
-      ? `<p>You've unsubscribed <span class="email">${email}</span> from Bridge emails.</p>
+      ? `<p>You've unsubscribed <span class="email">${safeEmail}</span> from Bridge emails.</p>
          <p style="margin-top: 16px; font-size: 14px; color: #94A3B8;">If you request a verification code in the future, we'll still send it since you explicitly asked for it.</p>`
       : `<p>Something went wrong. Please try again or contact support.</p>`
     }
   </div>
 </body>
 </html>`;
+};
 
 Deno.serve(async (req: Request) => {
   // CORS preflight

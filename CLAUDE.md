@@ -451,3 +451,26 @@ SMS invite messages use **rotating variants** defined in `contactsService.ts`. T
 - Never use words from the "DON'T" list in BRIDGE_VISION.md (exclusive, elite, premium, etc.)
 - Messages must stay under 160 chars (before link) to avoid SMS splitting
 - The invite-redirect landing page (`supabase/functions/invite-redirect/index.ts`) is the web fallback — keep it clean and aligned
+
+## Migration & Infrastructure Tracking
+
+All Supabase migrations, edge functions, and secrets are tracked in `docs/migrations/`. **Always update these docs when making changes.**
+
+### When you create a new migration:
+1. Add it to `docs/migrations/MIGRATION_LOG.md` with status `LOCAL_ONLY`
+2. Test locally first (never apply to production without explicit approval)
+3. After production deployment, update status to `PRODUCTION`
+4. Update `docs/migrations/PRODUCTION_SCHEMA.md` if schema changed
+
+### When you deploy or modify an edge function:
+1. Update `docs/migrations/EDGE_FUNCTIONS.md` with deployment status
+2. If new secrets are needed, add them to `docs/migrations/SECRETS.md` (names only, never values)
+
+### Key files:
+| File | Tracks |
+|------|--------|
+| `docs/migrations/MIGRATION_LOG.md` | Every SQL migration with production status |
+| `docs/migrations/PRODUCTION_SCHEMA.md` | Current production tables, RPCs, indexes, policies |
+| `docs/migrations/EDGE_FUNCTIONS.md` | All edge functions with deployment status |
+| `docs/migrations/SECRETS.md` | Secret names and which functions use them |
+| `docs/migrations/LOCAL_SETUP.md` | How to spin up a new local environment |

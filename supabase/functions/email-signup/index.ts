@@ -157,6 +157,19 @@ async function handleSend(
     return jsonResponse({ error: "Too many requests. Please wait before requesting another code." });
   }
 
+  // 1b. Rate limit per-IP (prevents spamming different emails from one device)
+  if (clientIP && clientIP !== "unknown") {
+    const { count: ipCount } = await admin
+      .from("email_verification_codes")
+      .select("*", { count: "exact", head: true })
+      .eq("ip_address", clientIP)
+      .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
+
+    if ((ipCount ?? 0) >= MAX_SENDS_PER_IP_PER_HOUR) {
+      return jsonResponse({ error: "Too many requests. Please try again later." });
+    }
+  }
+
   // 2. Check user status — different logic for signup vs login
   const { data: existingUser } = await admin.rpc("get_user_by_email", {
     p_email: email,
@@ -166,9 +179,9 @@ async function handleSend(
   const hasCompletedProfile = userExists && existingUser[0].profile_completed === true;
 
   if (flow === "login") {
-    // Login: user MUST exist
+    // Login: user MUST exist. Anti-enumeration: return ok silently if no account.
     if (!userExists) {
-      return jsonResponse({ error: "No account found for that email. Please sign up first.", code: "NO_ACCOUNT" });
+      return jsonResponse({ ok: true });
     }
     // User exists — proceed to send code (whether profile is complete or not)
   } else {
@@ -242,6 +255,8 @@ async function handleSend(
   const { error: insertErr } = await admin.from("email_verification_codes").insert({
     email,
     code_hash: codeHash,
+    flow,
+    ip_address: clientIP,
     expires_at: new Date(Date.now() + CODE_EXPIRY_MINUTES * 60 * 1000).toISOString(),
   });
 
@@ -265,7 +280,7 @@ async function handleVerify(
   //    select the code, then immediately increment attempts as our "lock"
   const { data: codes, error: lookupErr } = await admin
     .from("email_verification_codes")
-    .select("id, code_hash, attempts")
+    .select("id, code_hash, attempts, flow")
     .eq("email", email)
     .eq("used", false)
     .gt("expires_at", new Date().toISOString())
@@ -315,13 +330,20 @@ async function handleVerify(
     p_email: email,
   });
 
+  const userExists = existingUsers && existingUsers.length > 0;
+
+  // Guard: login flow must NEVER create a new user
+  if (codeRow.flow === "login" && !userExists) {
+    return jsonResponse({ error: "No account found. Please sign up first." });
+  }
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const tempPassword = crypto.randomUUID();
   let userId: string;
   let userEmail: string;
 
-  if (existingUsers && existingUsers.length > 0) {
+  if (userExists) {
     // Existing user (abandoned signup or re-signup) — update password
     userId = existingUsers[0].id;
     userEmail = existingUsers[0].email;
