@@ -36,8 +36,6 @@ export const FriendRequestCard: React.FC<FriendRequestCardProps> = ({
   const name = request.senderProfile.firstName || 'Someone';
   const photoUrl = getOptimizedPhotoUrl(request.senderProfile.photos?.[0]?.url, 'avatar') || undefined;
   const photoBlurhash = request.senderProfile.photos?.[0]?.blurhash || undefined;
-  const school = request.senderProfile.school || '';
-
   return (
     <StyledView style={styles.container}>
       {/* Avatar */}
@@ -54,11 +52,6 @@ export const FriendRequestCard: React.FC<FriendRequestCardProps> = ({
         <StyledText numberOfLines={1} style={styles.name}>
           {name}
         </StyledText>
-        {school ? (
-          <StyledText numberOfLines={1} style={styles.subtitle}>
-            {school}
-          </StyledText>
-        ) : null}
       </StyledView>
 
       {/* Actions */}

@@ -274,16 +274,6 @@ export function ProfileView({
               </StyledView>
             )}
 
-            {/* Pronouns */}
-            {profile.pronouns && (
-              <StyledView style={pvStyles.infoPill}>
-                <EvaIcon name="message-circle" variant="outline" size={16} color={COLORS.text.secondary} style={{ marginRight: 8 }} />
-                <StyledText style={pvStyles.infoPillText}>
-                  {profile.pronouns.replace('_', '/')}
-                </StyledText>
-              </StyledView>
-            )}
-
             {/* Age */}
             <StyledView style={pvStyles.infoPill}>
               <EvaIcon name="calendar" variant="outline" size={16} color={COLORS.text.secondary} style={{ marginRight: 8 }} />
@@ -298,16 +288,6 @@ export function ProfileView({
                 <EvaIcon name="maximize" variant="outline" size={16} color={COLORS.success} style={{ marginRight: 8 }} />
                 <StyledText style={pvStyles.infoPillText}>
                   {formatHeight(profile.height)}
-                </StyledText>
-              </StyledView>
-            )}
-
-            {/* Occupation */}
-            {profile.currentJob && (
-              <StyledView style={pvStyles.infoPill}>
-                <EvaIcon name="briefcase" variant="outline" size={16} color={COLORS.primary} style={{ marginRight: 8 }} />
-                <StyledText style={pvStyles.infoPillText}>
-                  {profile.currentJob}
                 </StyledText>
               </StyledView>
             )}

@@ -102,8 +102,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
     </CollapsibleCard>
 
     {/* Identity & Beliefs */}
-    {((profile.pronounsList && profile.pronounsList.length > 0) ||
-      profile.customMyGender ||
+    {(profile.customMyGender ||
       (profile.interestedInGenders && profile.interestedInGenders.length > 0) ||
       profile.religion ||
       (profile.politicalLeaning && profile.politicalLeaning !== 'prefer_not_to_say')) && (
@@ -112,13 +111,6 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
         defaultExpanded={false}
       >
         <StyledView className="space-y-3">
-          {profile.pronounsList && profile.pronounsList.length > 0 && (
-            <ProfileInfoItem
-              icon="person"
-              label="Pronouns"
-              value={profile.pronounsList.join(' / ')}
-            />
-          )}
           {profile.customMyGender && (
             <ProfileInfoItem
               icon="people"
@@ -348,7 +340,6 @@ export const LifestyleSection: React.FC<LifestyleSectionProps> = ({ lifestyle })
     lifestyle.exercise ||
     lifestyle.drinking ||
     lifestyle.smoking ||
-    lifestyle.children ||
     (lifestyle.pets && lifestyle.pets.length > 0)
   );
 
@@ -379,13 +370,6 @@ export const LifestyleSection: React.FC<LifestyleSectionProps> = ({ lifestyle })
             customIcon={<CigaretteIcon size={18} color={COLORS.navInactiveIcon} />}
             label="Smoking"
             value={formatProfileValue(lifestyle.smoking)}
-          />
-        )}
-        {lifestyle.children && (
-          <LifestyleItem
-            icon="people"
-            label="Children Preference"
-            value={formatProfileValue(lifestyle.children)}
           />
         )}
         {lifestyle.pets && lifestyle.pets.length > 0 && (

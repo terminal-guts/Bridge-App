@@ -511,7 +511,6 @@ export function buildVoteHandlers(
         friendName: user.friend.firstName,
         friendPhotoUrl: user.friend.photos?.[0]?.url,
         friendAge: user.friend.age,
-        friendJob: user.friend.currentJob,
       });
   }
   return { viewProfile, matchHandlers };

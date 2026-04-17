@@ -336,11 +336,6 @@ export function ForFriendModal({
                         />
                         <View style={{ flex: 1 }}>
                           <Text style={styles.modalFriendName}>{item.friend?.firstName}</Text>
-                          {item.friend?.currentJob ? (
-                            <Text style={styles.modalFriendJob} numberOfLines={1}>
-                              {item.friend.currentJob}
-                            </Text>
-                          ) : null}
                         </View>
                         {isSelected && (
                           <View style={styles.modalCheckCircle}>

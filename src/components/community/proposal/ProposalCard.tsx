@@ -86,10 +86,7 @@ export const ProposalCard = React.memo<ProposalCardProps>(({
   // Render profile preview (anchor or candidate)
   const renderProfilePreview = (user: UserProfile, _label: string) => {
     // Get 1-2 key attributes
-    const attributes = [
-      user.currentJob && user.company ? `${user.currentJob} at ${user.company}` : user.currentJob,
-      user.education,
-    ].filter(Boolean);
+    const attributes: string[] = [];
 
     const displayAttributes = attributes.slice(0, 2);
 

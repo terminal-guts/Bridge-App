@@ -211,7 +211,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
       if (user?.id) {
         setAuthUserId(user.id);
         // Ensure a minimal profile row exists so we can track abandonment
-        ensureProfileRow(user.id, onboardingData.email || user.email || '');
+        ensureProfileRow(user.id, user.email || '');
       }
     };
     loadUserId();
@@ -223,7 +223,6 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
     // Initialize array fields to prevent undefined issues
     gender: [],
     interestedInGenders: [],
-    pronounsList: [],
     preferredEthnicities: [],
     // Lifestyle data now stored in separate frequency fields (not in lifestyle object)
     drinkingFrequency: '',

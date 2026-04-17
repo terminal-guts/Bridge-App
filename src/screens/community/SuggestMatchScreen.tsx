@@ -126,9 +126,6 @@ export default function SuggestMatchScreen() {
         )}
         <View style={styles.friendInfo}>
           <Text style={styles.friendName}>{item.firstName}, {item.age}</Text>
-          {item.currentJob && (
-            <Text style={styles.friendJob}>{item.currentJob}</Text>
-          )}
         </View>
         <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color={COLORS.border} />
       </TouchableOpacity>
