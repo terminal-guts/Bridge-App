@@ -9,6 +9,8 @@ import { supabase } from '../lib/supabase';
 import {
   UserProfile,
   FriendWithGridStatus,
+  FriendProposalState,
+  ProposalStatus,
 } from '../types/community';
 import { getBlockedUserIds } from './blockService';
 import { setCachedFriendsData } from './communityCache';
@@ -70,18 +72,18 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
       .from('user_profiles')
       .select('user_id, first_name, last_name, age, gender, pronouns, location, current_job, profile_photo_path, photos, profile_completed, interests, values, role')
       .in('user_id', friendIds),
-    // Proposals where friend is user_a
+    // Proposals where friend is user_a — fetch all active lifecycle states + recently resolved
     supabase
       .from('proposals')
-      .select('id, user_a_id, user_b_id, status')
+      .select('id, user_a_id, user_b_id, status, voting_expires_at, decision_deadline_at, confirmed_at, rejected_at, declined_at, expired_at')
       .in('user_a_id', friendIds)
-      .eq('status', 'pending'),
-    // Proposals where friend is user_b
+      .in('status', ['pending', 'voting', 'candidate_match', 'deciding', 'confirmed', 'rejected', 'expired_sent', 'accepted', 'declined']),
+    // Proposals where friend is user_b — same expanded fetch
     supabase
       .from('proposals')
-      .select('id, user_a_id, user_b_id, status')
+      .select('id, user_a_id, user_b_id, status, voting_expires_at, decision_deadline_at, confirmed_at, rejected_at, declined_at, expired_at')
       .in('user_b_id', friendIds)
-      .eq('status', 'pending'),
+      .in('status', ['pending', 'voting', 'candidate_match', 'deciding', 'confirmed', 'rejected', 'expired_sent', 'accepted', 'declined']),
     // Matches where friend is user_id_1
     supabase
       .from('matches')
@@ -130,26 +132,58 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
     karmaMap.set(k.user_id, k as unknown as Record<string, any>);
   });
 
-  // Build map: friendId -> ALL active proposal IDs (a friend can appear in multiple proposals)
-  const friendProposalMap = new Map<string, string[]>();
-  for (const p of (friendProposalsA || [])) {
-    const existing = friendProposalMap.get(p.user_a_id) || [];
-    existing.push(p.id);
-    friendProposalMap.set(p.user_a_id, existing);
+  // ── Proposal maps ────────────────────────────────────────────────────────
+  // Two maps: one for pending-only (drives hasCompletedGrid / voting gate),
+  // one for ALL proposals (drives the new proposalState status pill).
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DB rows have dynamic shape
+  type ProposalRow = { id: string; user_a_id: string; user_b_id: string; status: string; voting_expires_at?: string; decision_deadline_at?: string; confirmed_at?: string; rejected_at?: string; declined_at?: string; expired_at?: string };
+
+  // Pending-only map: friendId -> pending proposal IDs (for hasCompletedGrid — unchanged logic)
+  const friendPendingMap = new Map<string, string[]>();
+  // Full map: friendId -> all proposal rows (for proposalState)
+  const friendAllProposals = new Map<string, ProposalRow[]>();
+
+  // Helper to attribute a proposal to the correct friend
+  function addProposal(friendId: string, p: ProposalRow) {
+    if (p.status === 'pending') {
+      const existing = friendPendingMap.get(friendId) || [];
+      existing.push(p.id);
+      friendPendingMap.set(friendId, existing);
+    }
+    const all = friendAllProposals.get(friendId) || [];
+    all.push(p);
+    friendAllProposals.set(friendId, all);
   }
-  for (const p of (friendProposalsB || [])) {
-    const existing = friendProposalMap.get(p.user_b_id) || [];
-    existing.push(p.id);
-    friendProposalMap.set(p.user_b_id, existing);
+
+  // Iterate each array separately — friendProposalsA is keyed by user_a_id,
+  // friendProposalsB is keyed by user_b_id. When BOTH partners are friends,
+  // each gets the proposal attributed correctly (once from each array).
+  for (const p of (friendProposalsA || []) as ProposalRow[]) {
+    addProposal(p.user_a_id, p);
+  }
+  for (const p of (friendProposalsB || []) as ProposalRow[]) {
+    addProposal(p.user_b_id, p);
+  }
+
+  // Deduplicated list of all proposals (for votedProposalIds lookup below)
+  const allProposalIdSet = new Set<string>();
+  const allProposals: ProposalRow[] = [];
+  for (const p of [...(friendProposalsA || []) as ProposalRow[], ...(friendProposalsB || []) as ProposalRow[]]) {
+    if (!allProposalIdSet.has(p.id)) {
+      allProposalIdSet.add(p.id);
+      allProposals.push(p);
+    }
   }
 
   // Friends whose proposal involves the current user — can't vote on your own proposal
   const friendsProposedWithMe = new Set<string>();
-  for (const p of (friendProposalsA || [])) {
-    if (p.user_b_id === userId) friendsProposedWithMe.add(p.user_a_id);
-  }
-  for (const p of (friendProposalsB || [])) {
-    if (p.user_a_id === userId) friendsProposedWithMe.add(p.user_b_id);
+  for (const p of allProposals) {
+    if (p.status !== 'pending') continue;
+    if (p.user_a_id === userId || p.user_b_id === userId) {
+      const friendId = p.user_a_id === userId ? p.user_b_id : p.user_a_id;
+      if (friendIds.includes(friendId)) friendsProposedWithMe.add(friendId);
+    }
   }
 
   // Build set of friends with active matches
@@ -161,29 +195,74 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
     if (friendIds.includes(m.user_id_2)) friendsWithMatch.add(m.user_id_2);
   }
 
-  // Filter pre-fetched votes/recs to only friends' active proposals (in-memory)
-  const activeProposalIds = new Set(Array.from(friendProposalMap.values()).flat());
+  // Filter pre-fetched votes to friends' proposals (in-memory)
   const votedProposalIds = new Set<string>();
-
   for (const v of (allUserVotes || [])) {
-    if (activeProposalIds.has(v.proposal_id)) votedProposalIds.add(v.proposal_id);
+    if (allProposalIdSet.has(v.proposal_id)) votedProposalIds.add(v.proposal_id);
   }
 
-  // Determine hasCompletedGrid for each friend:
-  // false (Help) = friend has active proposal user has NEVER voted on or recommended from
+  // Determine hasCompletedGrid for each friend (unchanged — uses pending proposals only):
+  // false (Help) = friend has pending proposal user has NEVER voted on
   // true (Already Helped) = everything else
   const alreadyHelped = new Set<string>();
   for (const friendId of friendIds) {
-    const proposalIds = friendProposalMap.get(friendId);
-    if (!proposalIds || proposalIds.length === 0) {
+    const pendingIds = friendPendingMap.get(friendId);
+    if (!pendingIds || pendingIds.length === 0) {
       alreadyHelped.add(friendId);
     } else if (friendsProposedWithMe.has(friendId)) {
       alreadyHelped.add(friendId);
     } else if (friendsWithMatch.has(friendId)) {
       alreadyHelped.add(friendId);
-    } else if (proposalIds.every(pid => votedProposalIds.has(pid))) {
+    } else if (pendingIds.every(pid => votedProposalIds.has(pid))) {
       alreadyHelped.add(friendId);
     }
+  }
+
+  // ── Compute proposalState for each friend ─────────────────────────────
+  // Pick the most relevant proposal to surface as a status pill.
+  // Priority: deciding > voting (user voted) > confirmed (48h) > negative outcomes (48h)
+  const RESOLVED_WINDOW_MS = 48 * 60 * 60 * 1000; // 48 hours
+  const now = Date.now();
+
+  const STATUS_PRIORITY: Record<string, number> = {
+    deciding: 1, candidate_match: 2,
+    voting: 3, pending: 4,
+    confirmed: 5, accepted: 5,
+    rejected: 6, declined: 7, expired_sent: 8,
+  };
+
+  function pickProposalState(friendId: string): FriendProposalState | undefined {
+    const proposals = friendAllProposals.get(friendId);
+    if (!proposals || proposals.length === 0) return undefined;
+
+    // Filter out:
+    // 1. Proposals where the CURRENT USER is one of the matched people (not a spectator)
+    // 2. Resolved proposals older than 48h
+    const relevant = proposals.filter(p => {
+      // Skip proposals involving the current user — you're the match, not the voter
+      if (p.user_a_id === userId || p.user_b_id === userId) return false;
+
+      const resolvedAt = p.confirmed_at || p.rejected_at || p.declined_at || p.expired_at;
+      if (['confirmed', 'rejected', 'declined', 'expired_sent', 'accepted'].includes(p.status)) {
+        if (!resolvedAt) return false;
+        return now - new Date(resolvedAt).getTime() < RESOLVED_WINDOW_MS;
+      }
+      return true; // Active proposals always included
+    });
+
+    if (relevant.length === 0) return undefined;
+
+    // Sort by priority (lowest number = highest priority)
+    relevant.sort((a, b) => (STATUS_PRIORITY[a.status] ?? 99) - (STATUS_PRIORITY[b.status] ?? 99));
+    const best = relevant[0];
+
+    return {
+      status: best.status as ProposalStatus,
+      userVoted: votedProposalIds.has(best.id),
+      votingExpiresAt: best.voting_expires_at || undefined,
+      decisionDeadlineAt: best.decision_deadline_at || undefined,
+      resolvedAt: best.confirmed_at || best.rejected_at || best.declined_at || best.expired_at || undefined,
+    };
   }
 
   // Build friend list and filter blocked
@@ -247,6 +326,7 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
           proposalSuccessRate: friendKarma.proposal_success_rate || 0,
           votingAccuracyRate: friendKarma.voting_accuracy_rate || 0,
         } : undefined,
+        proposalState: pickProposalState(friendId),
       };
     });
 

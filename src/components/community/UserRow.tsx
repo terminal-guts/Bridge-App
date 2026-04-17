@@ -22,6 +22,7 @@ import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
 import { KarmaPill } from '../ui/KarmaPill';
+import { FriendStatusPill } from './FriendStatusPill';
 
 // ── Responsive sizing ────────────────────────────────────────────────────────
 // iPhone SE / 8 = 375pt, standard iPhones = 390-393pt, Plus/Max = 428-430pt
@@ -40,7 +41,6 @@ interface UserRowProps {
     onChat?: () => void;
     rank?: number;
     onRankPress?: () => void;
-    statusLine?: string | { text: string; color?: string };
     showVoteRing?: boolean;
     hasUnread?: boolean;
     onBadgePress?: () => void;
@@ -68,7 +68,7 @@ function getStreakTier(days: number) {
     return STREAK_TIERS.find(t => days >= t.min) ?? DEFAULT_STREAK_TIER;
 }
 
-export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onViewProfile, onChat, rank, onRankPress, statusLine, showVoteRing, hasUnread, onBadgePress, onCrushPress, onStreakMilestone, previousStreakDays, onKarmaPress }) => {
+export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onViewProfile, onChat, rank, onRankPress, showVoteRing, hasUnread, onBadgePress, onCrushPress, onStreakMilestone, previousStreakDays, onKarmaPress }) => {
     const name = item.friend.firstName || '';
     const rawImageUrl = item.friend.photos?.[0]?.url || undefined;
     const photoBlurhash = item.friend.photos?.[0]?.blurhash || undefined;
@@ -214,11 +214,11 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                     {streak} day{streak !== 1 ? 's' : ''}
                 </Text>
             </View>
-            {statusLine ? (
-                <Text style={[styles.statusLine, typeof statusLine === 'object' && statusLine.color ? { color: statusLine.color } : undefined]} numberOfLines={1}>
-                    {typeof statusLine === 'string' ? statusLine : statusLine.text}
-                </Text>
-            ) : null}
+            <FriendStatusPill
+                proposalState={item.proposalState}
+                isMatched={item.isMatched}
+                assistsCount={item.assistsCount}
+            />
         </View>
     );
 
@@ -412,13 +412,6 @@ const styles = StyleSheet.create({
         fontSize: FONT_SIZES.base,
         lineHeight: LINE_HEIGHTS.base,
         color: COLORS.text.secondary,
-    },
-    // Status line — always neutral; status is persistent info, not a success event
-    statusLine: {
-        fontFamily: FONTS.regular,
-        fontSize: FONT_SIZES.sm,
-        color: COLORS.text.secondary,
-        marginTop: 2,
     },
     unreadDot: {
         width: 8,

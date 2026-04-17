@@ -29,7 +29,17 @@ const SECTION_H_PADDING = isCompact ? 16 : 24;
 // Prevents layout bloat when a popular user has dozens of incoming requests.
 const MAX_VISIBLE_REQUESTS = 5;
 
-/** Split friends into needs-help vs already-helped, sorted by karma (highest first) */
+// Sort priority for proposal states in "Your Crew" — lower = appears higher.
+// Active lifecycle states bubble to top so you can follow the story arc.
+const CREW_SORT_PRIORITY: Record<string, number> = {
+  deciding: 0, candidate_match: 1,  // Most exciting — will they accept?
+  voting: 2, pending: 3,            // Votes coming in (user already voted)
+  confirmed: 4, accepted: 4,        // Recently matched!
+  rejected: 5, declined: 5, expired_sent: 5, // Recently resolved (negative)
+};
+const NO_PROPOSAL_PRIORITY = 10; // Resting friends sort below all active states
+
+/** Split friends into needs-help vs already-helped, with active proposals first */
 export function partitionFriends(friends: FriendWithGridStatus[]) {
   const toMatch: FriendWithGridStatus[] = [];
   const helped: FriendWithGridStatus[] = [];
@@ -41,23 +51,18 @@ export function partitionFriends(friends: FriendWithGridStatus[]) {
       toMatch.push(f);
     }
   }
-  // Sort helped by karma descending — higher karma = better rank = appears first.
-  // Direct numeric compare avoids the old getApproxRank linear-scan per comparison.
-  helped.sort((a, b) =>
-    (b.karmaScore?.karmaPoints ?? 0) - (a.karmaScore?.karmaPoints ?? 0)
-  );
+  // Sort helped: active proposal states first, then by karma descending within each tier.
+  helped.sort((a, b) => {
+    const aPri = a.proposalState ? (CREW_SORT_PRIORITY[a.proposalState.status] ?? NO_PROPOSAL_PRIORITY) : NO_PROPOSAL_PRIORITY;
+    const bPri = b.proposalState ? (CREW_SORT_PRIORITY[b.proposalState.status] ?? NO_PROPOSAL_PRIORITY) : NO_PROPOSAL_PRIORITY;
+    if (aPri !== bPri) return aPri - bPri;
+    return (b.karmaScore?.karmaPoints ?? 0) - (a.karmaScore?.karmaPoints ?? 0);
+  });
   return { toMatch, helped };
 }
 
-/** Compute activity status line for a crew member */
-export function getFriendStatusLine(
-  user: FriendWithGridStatus,
-): { text: string; color?: string } | undefined {
-  if (user.isMatched) return { text: 'Has a match!', color: COLORS.success };
-  const assists = user.assistsCount || 0;
-  if (assists > 0) return { text: `${assists} match${assists === 1 ? '' : 'es'} made`, color: COLORS.success };
-  return undefined;
-}
+// getFriendStatusLine removed — status rendering moved to FriendStatusPill component
+// which reads proposalState directly from the FriendWithGridStatus item.
 
 // ── Match reset countdown timer ───────────────────────────────────────────────
 //

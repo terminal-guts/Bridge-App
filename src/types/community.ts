@@ -193,6 +193,16 @@ export interface FriendWithGridStatus {
   assistsCount: number; // Total successful setups this friend has made
   hasCrushed?: boolean; // Current user has crushed on this friend
   crushedOnMe?: boolean; // This friend has crushed on current user (secret — only used for mutual detection)
+  proposalState?: FriendProposalState; // Lifecycle state of this friend's most relevant proposal
+}
+
+/** Enriched proposal lifecycle state surfaced on the community screen */
+export interface FriendProposalState {
+  status: ProposalStatus;
+  userVoted: boolean;       // Did the current user vote on this proposal?
+  votingExpiresAt?: string;
+  decisionDeadlineAt?: string;
+  resolvedAt?: string;      // When confirmed/rejected/declined/expired (for 48h fade)
 }
 
 // Extended type for UI rendering with variant (pending vs completed)

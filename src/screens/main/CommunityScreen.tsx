@@ -35,7 +35,6 @@ import { FriendBadge } from '../../types/badges';
 import {
   MatchResetTimer,
   partitionFriends,
-  getFriendStatusLine,
   EmptyState,
   InviteBanner,
   ImpactCard,
@@ -622,7 +621,6 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
                 <UserRow
                   item={user}
                   index={index}
-                  statusLine={getFriendStatusLine(user)}
                   hasUnread={!!unreadMap[user.friendId]}
                   onViewProfile={crewHandlers.viewProfile[user.friendId]}
                   onChat={crewHandlers.chatHandlers[user.friendId]}
