@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
-import { H1, Body } from '../../../components/ui';
+import { H1, Body, ProposalReviewSkeleton } from '../../../components/ui';
 import { ProposalReviewView } from '../../../components/community/proposal/ProposalReviewView';
 import { OnboardingVotingTutorial } from '../../../components/onboarding/OnboardingVotingTutorial';
 import { communityService } from '../../../services/communityServiceIndex';
@@ -63,10 +63,9 @@ export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
   // Loading state
   if (loading || proposals === null) {
     return (
-      <StyledSafeAreaView className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator size="large" color="#437FFF" />
-        <Body className="mt-4 text-neutral-500">Searching the community...</Body>
-      </StyledSafeAreaView>
+      <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.screenBackground }}>
+        <ProposalReviewSkeleton />
+      </SafeAreaView>
     );
   }
 

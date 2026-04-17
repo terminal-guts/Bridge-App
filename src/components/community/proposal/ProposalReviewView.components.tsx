@@ -20,6 +20,7 @@ import { COLORS } from '../../../theme/colors';
 import { FONTS, FONT_SIZES } from '../../../constants/typography';
 import { OVERLAYS } from '../../../theme/shadows';
 import { EvaIcon } from '../../icons';
+import { FriendListSkeleton } from '../../ui';
 import { proposalStyles, styles, BLUE, BOX_BG, BOX_BORDER } from './ProposalReviewView.styles';
 
 // Section accent — merged Lifestyle & Beliefs
@@ -294,7 +295,7 @@ export function ForFriendModal({
 
               {loadingFriends ? (
                 <View style={styles.modalLoadingContainer}>
-                  <ActivityIndicator size="large" color={BLUE} />
+                  <FriendListSkeleton />
                 </View>
               ) : filteredFriends.length === 0 ? (
                 <View style={styles.modalLoadingContainer}>

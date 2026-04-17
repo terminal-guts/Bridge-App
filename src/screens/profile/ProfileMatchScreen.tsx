@@ -28,6 +28,7 @@ import { COLORS } from '../../theme/colors';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { SHADOWS, OVERLAYS } from '../../theme/shadows';
 import { ProfileBadgesSection } from '../../components/badges/ProfileBadgesSection';
+import { ProfileMatchSkeleton } from '../../components/ui';
 
 const REPORT_REASONS = [
     'Inappropriate content',
@@ -344,9 +345,7 @@ export default function ProfileMatchScreen() {
 
     if (loading || !partnerProfile) {
         return (
-            <View style={styles.loadingContainer} accessibilityLabel="Loading profile">
-                <ActivityIndicator size="large" color={COLORS.primary} />
-            </View>
+            <ProfileMatchSkeleton />
         );
     }
 

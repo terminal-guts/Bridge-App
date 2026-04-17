@@ -19,6 +19,7 @@ import { showToast } from '../../utils/toast';
 import type { UserProfile } from '../../types';
 import { EvaIcon } from '../../components/icons';
 import { BackHeader } from '../../components/ui/BackHeader';
+import { SuggestMatchSkeleton } from '../../components/ui';
 import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -152,9 +153,7 @@ export default function SuggestMatchScreen() {
       />
 
       {loading ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={COLORS.primaryAccent} />
-        </View>
+        <SuggestMatchSkeleton />
       ) : step === 'confirm' && friendA && friendB ? (
         /* Confirmation screen */
         <View style={styles.confirmContainer}>
