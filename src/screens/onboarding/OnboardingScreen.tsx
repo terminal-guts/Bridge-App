@@ -45,6 +45,7 @@ import { MatchmakingModeStep } from './steps/MatchmakingModeStep';
 import { MatchmakerProfileStep } from './steps/MatchmakerProfileStep';
 import { OnboardingProposalStep } from './steps/OnboardingProposalStep';
 import { CelebrationStep } from './steps/CelebrationStep';
+import { EmailResendStep } from './steps/EmailResendStep';
 
 interface OnboardingScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Onboarding'>;
@@ -119,6 +120,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   const [currentStep, setCurrentStep] = useState(0);
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
+  // "Didn't receive a code?" — shows the email resend screen
+  const [showResendScreen, setShowResendScreen] = useState(false);
   // Guard against concurrent goNext invocations (rapid taps / double-submit)
   const isGoingNextRef = useRef(false);
   // Background photo upload: starts after PhotoUploadStep, results used by completeOnboarding
@@ -128,9 +131,6 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   // Updated synchronously inside setOnboardingData updater, NOT via useEffect,
   // so goNext always sees the latest data even when called in the same tick as updateData.
   const onboardingDataRef = useRef(onboardingData);
-  // Mini-loop: "Didn't receive a code?" → go to email, skip back to verify after send
-  const skipToStepRef = useRef<number | null>(null);
-  const isInResendLoopRef = useRef(false);
   // Guard: prevent orphaned upload promises from writing state after unmount
   const isMountedRef = useRef(true);
   useEffect(() => {
@@ -276,8 +276,6 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   const progressWidth = useSharedValue((currentStep + 1) / totalSteps);
 
   useEffect(() => {
-    // Don't animate backward during email resend mini-loop
-    if (isInResendLoopRef.current) return;
     progressWidth.value = withTiming((currentStep + 1) / totalSteps, {
       duration: DURATIONS.normal,
       easing: EASINGS.standard,
@@ -393,12 +391,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
           .catch((err) => logger.warn('Early proposal assignment failed (non-blocking):', err.message));
       }
 
-      // Advance to next step — check skipToStepRef for mini-loop jumps
+      // Advance to next step
       if (stepAtCall < totalSteps - 1) {
-        const jumpTarget = skipToStepRef.current;
-        skipToStepRef.current = null; // consume immediately
-        if (isInResendLoopRef.current) isInResendLoopRef.current = false;
-        const nextStep = jumpTarget !== null ? jumpTarget : stepAtCall + 1;
+        const nextStep = stepAtCall + 1;
         const currentSection = steps[stepAtCall]?.section;
         const nextSection = steps[nextStep]?.section;
 
@@ -620,33 +615,46 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         </StyledView>
         <StyledView className="px-4 py-1">
           <Body style={{ fontSize: FONT_SIZES.xs, color: COLORS.text.tertiary, textAlign: 'center' }}>
-            {isInResendLoopRef.current ? '' : stepLabel}
+            {showResendScreen ? '' : stepLabel}
           </Body>
         </StyledView>
       </StyledSafeAreaView>
 
-      {/* Step Content — keyed by step index for entrance/exit animations */}
-      <Animated.View
-        key={clampedStep}
-        entering={FadeIn.duration(DURATIONS.normal)}
-        style={{ flex: 1 }}
-      >
-        <CurrentStepComponent
-          data={onboardingData}
-          updateData={updateData}
-          onNext={goNext}
-          onBack={goBack}
-          isFirstStep={clampedStep === 0}
-          isLastStep={clampedStep === totalSteps - 1}
-          onResendCode={() => {
-            // Mini-loop: go to email step (0), then after send skip back to verify
-            const verifyIndex = steps.findIndex(s => s.component === EmailSignUpVerificationStep);
-            skipToStepRef.current = verifyIndex;
-            isInResendLoopRef.current = true;
-            setCurrentStep(0);
-          }}
-        />
-      </Animated.View>
+      {/* Email Resend Screen — shown when "Didn't receive a code?" is tapped */}
+      {showResendScreen ? (
+        <Animated.View
+          key="resend"
+          entering={FadeIn.duration(DURATIONS.normal)}
+          style={{ flex: 1 }}
+        >
+          <EmailResendStep
+            data={onboardingData}
+            updateData={updateData}
+            onNext={() => {
+              // Code re-sent — go back to verification
+              setShowResendScreen(false);
+            }}
+            onBack={() => setShowResendScreen(false)}
+          />
+        </Animated.View>
+      ) : (
+        /* Step Content — keyed by step index for entrance/exit animations */
+        <Animated.View
+          key={clampedStep}
+          entering={FadeIn.duration(DURATIONS.normal)}
+          style={{ flex: 1 }}
+        >
+          <CurrentStepComponent
+            data={onboardingData}
+            updateData={updateData}
+            onNext={goNext}
+            onBack={goBack}
+            isFirstStep={clampedStep === 0}
+            isLastStep={clampedStep === totalSteps - 1}
+            onResendCode={() => setShowResendScreen(true)}
+          />
+        </Animated.View>
+      )}
     </StyledView>
   );
 };

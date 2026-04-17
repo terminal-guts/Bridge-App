@@ -1,16 +1,14 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, TextInput, Pressable, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
 import { COLORS } from '../../../theme/colors';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
-import { verifyEmailSignUpCode, sendEmailSignUpCode } from '../../../services/authService';
+import { verifyEmailSignUpCode } from '../../../services/authService';
 import { fetchAndSetUserProfile } from '../../../services/profileService';
 import { useNavigation } from '@react-navigation/native';
 import { createLogger } from '../../../utils/secureLogger';
-
-const RESEND_COOLDOWN_SECONDS = 30;
 
 const logger = createLogger('EmailSignUpVerificationStep');
 
@@ -36,18 +34,9 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
   const navigation = useNavigation<any>();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
-  const [isResending, setIsResending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_SECONDS);
   const isVerifyingRef = useRef(false);
   const inputRef = useRef<TextInput>(null);
-
-  // Resend cooldown timer
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const timer = setTimeout(() => setResendCooldown(prev => prev - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [resendCooldown]);
 
   const handleCodeChange = (text: string) => {
     const digits = text.replace(/\D/g, '').slice(0, 6);
@@ -111,30 +100,6 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
     }
   };
 
-  const resendCode = useCallback(async () => {
-    if (!data.email || isResending || resendCooldown > 0) return;
-    setIsResending(true);
-    setCode('');
-    setError('');
-    inputRef.current?.focus();
-
-    const result = await sendEmailSignUpCode(data.email);
-    setIsResending(false);
-
-    if (result.ok) {
-      setResendCooldown(RESEND_COOLDOWN_SECONDS);
-    } else {
-      // Don't start cooldown on failure — let user retry immediately.
-      // Sanitize error message to avoid leaking Supabase internals.
-      const msg = (result.error?.message || '').toLowerCase();
-      if (msg.includes('rate') || msg.includes('too many') || msg.includes('once every')) {
-        setError('Too many requests. Wait a moment and try again.');
-      } else {
-        setError('Could not resend code. Check your connection and try again.');
-      }
-    }
-  }, [data.email, isResending, resendCooldown]);
-
   const digits = code.split('');
 
   return (
@@ -192,20 +157,10 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
           <Body className="text-red-500 text-sm mb-4">{error}</Body>
         ) : null}
 
-        <StyledView className="flex-row justify-center mb-3">
-          <Body className="text-neutral-600">Didn't get it? </Body>
-          <Body
-            className={resendCooldown > 0 ? 'text-neutral-400' : 'text-primary-500 font-semibold'}
-            onPress={resendCode}
-          >
-            {isResending ? 'Sending...' : resendCooldown > 0 ? `Resend (${resendCooldown}s)` : 'Resend code'}
-          </Body>
-        </StyledView>
         {onResendCode && (
           <StyledView className="flex-row justify-center">
-            <Body className="text-neutral-600">Wrong email? </Body>
             <Body className="text-primary-500 font-semibold" onPress={onResendCode}>
-              Change email
+              Didn't receive a code?
             </Body>
           </StyledView>
         )}
