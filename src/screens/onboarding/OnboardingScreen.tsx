@@ -74,6 +74,7 @@ const AUTH_STEPS: StepDefinition[] = [
 ];
 
 // Celebration step wrappers — auto-advance after 1.125s
+const PostVotingCelebration: React.FC<any> = (props) => <CelebrationStep {...props} message="Finish your profile so friends can match you!" />;
 const BasicsComplete: React.FC<any> = (props) => <CelebrationStep {...props} message="Basics done — looking good!" />;
 const BackgroundComplete: React.FC<any> = (props) => <CelebrationStep {...props} message="Almost there — just the fun stuff left!" />;
 
@@ -82,6 +83,7 @@ const BackgroundComplete: React.FC<any> = (props) => <CelebrationStep {...props}
 const PROFILE_STEPS: StepDefinition[] = [
   { component: MatchmakingModeStep, title: 'Role', hasTextInput: false, mappingKey: 'role', section: 'Getting Started' },
   { component: OnboardingProposalStep, title: 'First Votes', hasTextInput: false, section: 'Getting Started' },
+  { component: PostVotingCelebration, title: 'Celebration', hasTextInput: false, section: 'Getting Started', hideFromCounter: true },
   { component: GenderStep, title: 'Gender', hasTextInput: false, mappingKey: 'gender', section: 'The Basics' },
   { component: HeightStep, title: 'Height', hasTextInput: false, mappingKey: 'height', section: 'The Basics' },
   { component: BasicsComplete, title: 'Celebration', hasTextInput: false, section: 'The Basics', hideFromCounter: true },
