@@ -141,8 +141,8 @@ export const SurveySkeleton: React.FC<DashboardSkeletonProps> = ({ className = '
           <SkeletonLoader height={32} width={32} borderRadius="rounded-full" className="mr-2" />
           <SkeletonLoader height={12} width={80} borderRadius="rounded" />
         </View>
-        <SkeletonLoader height={28} width={70} borderRadius="rounded" className="mb-2" />
-        <SkeletonLoader height={16} width={90} borderRadius="rounded" />
+        <SkeletonLoader height={28} width="70%" borderRadius="rounded" className="mb-2" />
+        <SkeletonLoader height={16} width="90%" borderRadius="rounded" />
       </View>
 
       {/* Progress Indicator Skeleton */}
