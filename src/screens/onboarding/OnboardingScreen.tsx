@@ -12,7 +12,7 @@ import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { DURATIONS, EASINGS } from '../../constants/animations';
 import { COLORS } from '../../theme/colors';
 import { RootStackParamList, OnboardingData } from '../../types';
-import { createUserProfile, saveOnboardingStep, checkMinimalProfileStatus, updateUserProfile, setCachedRole } from '../../services/profileService';
+import { createUserProfile, saveOnboardingStep, checkMinimalProfileStatus, updateUserProfile, setCachedRole, ensureProfileRow } from '../../services/profileService';
 import { uploadMultiplePhotos } from '../../services/photoService';
 import { supabase } from '../../lib/supabase';
 import { Body } from '../../components/ui';
@@ -129,10 +129,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   // Background photo upload: starts after PhotoUploadStep, results used by completeOnboarding
   const photoUploadPromiseRef = useRef<Promise<any> | null>(null);
   const photoUploadResultRef = useRef<Array<{ id: string; url: string }> | null>(null);
-  // Ref tracking latest onboardingData for use in stale closures (goNext setTimeout, etc.)
-  // Updated synchronously inside setOnboardingData updater, NOT via useEffect,
-  // so goNext always sees the latest data even when called in the same tick as updateData.
-  const onboardingDataRef = useRef(onboardingData);
+  // Ref tracking latest onboardingData — initialized after useState below.
+  // Updated synchronously inside setOnboardingData updater, NOT via useEffect.
+  const onboardingDataRef = useRef<Partial<OnboardingData>>({});
   // Guard: prevent orphaned upload promises from writing state after unmount
   const isMountedRef = useRef(true);
   useEffect(() => {
@@ -156,7 +155,11 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
           const { data } = JSON.parse(saved);
           if (data) {
             logger.info('[OnboardingScreen] Pre-auth restore: merging name/birthday, resetting to step 0');
-            setOnboardingData(prev => ({ ...prev, ...data }));
+            setOnboardingData(prev => {
+              const next = { ...prev, ...data };
+              onboardingDataRef.current = next; // keep ref in sync
+              return next;
+            });
           }
           setHasRestoredStep(true);
           return;
@@ -176,7 +179,11 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
             const safeStep = Math.min(step, maxStep);
             logger.info(`[OnboardingScreen] Restoring onboarding progress to step ${safeStep}`);
             setCurrentStep(safeStep);
-            if (data) setOnboardingData(prev => ({ ...prev, ...data }));
+            if (data) setOnboardingData(prev => {
+              const next = { ...prev, ...data };
+              onboardingDataRef.current = next;
+              return next;
+            });
           }
         }
       } catch (e) {
@@ -203,6 +210,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
       }
       if (user?.id) {
         setAuthUserId(user.id);
+        // Ensure a minimal profile row exists so we can track abandonment
+        ensureProfileRow(user.id, onboardingData.email || user.email || '');
       }
     };
     loadUserId();
@@ -236,17 +245,27 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
     ...initialData,
   });
 
+  // Initialize the ref with the actual state (useRef above was initialized empty)
+  if (Object.keys(onboardingDataRef.current).length === 0) {
+    onboardingDataRef.current = onboardingData;
+  }
+
   // Start photo upload immediately when a photo is selected (not when step advances).
   // This gives the upload a head start while the user continues through remaining steps.
   // Only runs when authenticated (photos require a JWT for Supabase Storage).
   useEffect(() => {
-    if (!authUserId) return; // No auth session yet — skip
-    if (!onboardingData.photos || onboardingData.photos.length === 0) return;
+    if (!authUserId) return;
+    if (!onboardingData.photos || onboardingData.photos.length === 0) {
+      // Photos removed — clear upload refs so stale uploads don't persist
+      photoUploadPromiseRef.current = null;
+      photoUploadResultRef.current = null;
+      return;
+    }
     const uris = onboardingData.photos
       .map(p => p.url || (p as any).uri)
       .filter((u: string) => u && u.startsWith('file://'));
     if (uris.length === 0) return;
-    // Only start if not already uploading
+    // Only start if not already uploading the same set
     if (photoUploadPromiseRef.current) return;
     logger.info('[OnboardingScreen] Starting eager photo upload:', uris.length, 'photos');
     photoUploadPromiseRef.current = uploadMultiplePhotos(uris)
@@ -456,7 +475,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
       logger.info('Photos to upload:', onboardingData.photos?.length || 0);
 
       // Wait for background photo upload if it's in progress
-      let dataForProfile = onboardingData;
+      let dataForProfile = onboardingDataRef.current;
       if (photoUploadPromiseRef.current) {
         logger.info('[OnboardingScreen] Waiting for background photo upload to finish...');
         await photoUploadPromiseRef.current;

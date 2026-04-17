@@ -94,7 +94,7 @@ export const calculateProfileCompleteness = (
   check('height', 'Add your height', !!(profile.height?.trim()));
   check('heightPreference', 'Set your height preference', !!(profile.preferences?.heightMin && profile.preferences?.heightMax));
   check('ethnicity', 'Add your ethnicity', !!(profile.ethnicity?.trim()));
-  check('preferredEthnicities', 'Set ethnicity preferences', profile.preferredEthnicities !== undefined);
+  check('preferredEthnicities', 'Set ethnicity preferences', profile.preferredEthnicities != null);
   check('religion', 'Add your religion', !!(profile.religion?.trim()));
   check('politicalLeaning', 'Add your political views', !!(profile.politicalLeaning));
   check('lifestyle', 'Add your lifestyle habits', !!(
@@ -196,13 +196,13 @@ export const calculateEditProfileCompleteness = (
     return {
       percentage: 0,
       completedCount: 0,
-      totalCount: 9,
+      totalCount: 10,
       missingFields: [],
     };
   }
 
   let completedCount = 0;
-  const totalCount = 9;
+  const totalCount = 10; // 9 original fields + lifestyle
   const missingFields: string[] = [];
 
   if (profile.firstName?.trim()) completedCount++; else missingFields.push('First Name');
@@ -213,6 +213,9 @@ export const calculateEditProfileCompleteness = (
   if (profile.gender && profile.gender.length > 0) completedCount++; else missingFields.push('Gender');
   if (profile.religion?.trim()) completedCount++; else missingFields.push('Religion');
   if (profile.politicalLeaning) completedCount++; else missingFields.push('Political Views');
+  // Lifestyle habits (merged into About Me screen)
+  if (profile.drinkingFrequency && profile.cannabisFrequency &&
+      profile.tobaccoFrequency && profile.otherDrugsFrequency) completedCount++; else missingFields.push('Lifestyle Habits');
 
   // Interests + Values combined as 1 field
   const interestCount = profile.interests?.length || 0;
@@ -267,7 +270,7 @@ export const calculateMatchPreferencesCompleteness = (
   }
 
   // Empty array = "No Preference" (valid)
-  if (profile.preferredEthnicities !== undefined) {
+  if (profile.preferredEthnicities != null) {
     completedCount++;
   } else {
     missingFields.push('Ethnicity');

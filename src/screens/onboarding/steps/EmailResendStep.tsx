@@ -29,6 +29,7 @@ export const EmailResendStep: React.FC<EmailResendStepProps> = ({
   data,
   updateData,
   onNext,
+  onBack,
 }) => {
   const navigation = useNavigation<any>();
   const [email, setEmail] = useState(data.email || '');
@@ -78,6 +79,8 @@ export const EmailResendStep: React.FC<EmailResendStepProps> = ({
   return (
     <OnboardingLayout
       onContinue={handleSendAgain}
+      onBack={onBack}
+      showBackButton={true}
       continueLabel={isSending ? 'Sending...' : 'Send Again'}
       continueDisabled={isSending}
       hasTextInput={true}

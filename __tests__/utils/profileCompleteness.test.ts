@@ -133,13 +133,13 @@ describe('calculateEditProfileCompleteness', () => {
   it('returns 0% for null profile', () => {
     const result = calculateEditProfileCompleteness(null);
     expect(result.percentage).toBe(0);
-    expect(result.totalCount).toBe(9);
+    expect(result.totalCount).toBe(10);
   });
 
   it('returns 100% for complete profile', () => {
     const result = calculateEditProfileCompleteness(makeCompleteProfile());
     expect(result.percentage).toBe(100);
-    expect(result.completedCount).toBe(9);
+    expect(result.completedCount).toBe(10);
   });
 
   it('requires 3+ interests for credit', () => {

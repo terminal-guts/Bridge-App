@@ -59,7 +59,10 @@ export const EthnicityStep: React.FC<EthnicityStepProps> = ({
       setError('Please select your ethnicity');
       return;
     }
-    updateData({ ethnicity: myEthnicity.join(' / ') });
+    updateData({
+      ethnicity: myEthnicity.join(' / '),
+      preferredEthnicities: [], // No Preference — default for all new users
+    });
     onNext();
   };
 

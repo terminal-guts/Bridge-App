@@ -44,6 +44,36 @@ function heightToInches(heightStr: string | undefined): number | undefined {
 }
 
 // ============================================================================
+// EARLY PROFILE ROW
+// ============================================================================
+
+/**
+ * Ensure a minimal profile row exists for this user right after email verification.
+ * This runs before the user finishes onboarding so we can track abandonment
+ * and re-engage users who drop off mid-onboarding.
+ *
+ * Idempotent — safe to call multiple times (upsert with ignoreDuplicates).
+ * Non-blocking — failures are logged but never block the user.
+ */
+export const ensureProfileRow = async (userId: string, email: string): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('user_profiles')
+      .upsert(
+        { user_id: userId, email, profile_completed: false },
+        { onConflict: 'user_id', ignoreDuplicates: true },
+      );
+    if (error) {
+      logger.warn('[ProfileService] ensureProfileRow error (non-blocking):', error.message);
+    } else {
+      logger.info('[ProfileService] ensureProfileRow: minimal row ensured for', userId);
+    }
+  } catch (err) {
+    logger.warn('[ProfileService] ensureProfileRow exception (non-blocking):', err);
+  }
+};
+
+// ============================================================================
 // ONBOARDING
 // ============================================================================
 

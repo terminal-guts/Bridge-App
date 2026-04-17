@@ -59,11 +59,12 @@ export const LifestyleStep: React.FC<LifestyleStepProps> = ({
       cannabisFrequency: lifestyle.cannabis,
       tobaccoFrequency: lifestyle.tobacco,
       otherDrugsFrequency: lifestyle.otherDrugs,
+      // Auto-set partner preference — 'prefer_not_to_say' = no preference (empty array)
       partnerLifestylePreferences: {
-        drinking: [lifestyle.drinking],
-        cannabis: [lifestyle.cannabis],
-        tobacco: [lifestyle.tobacco],
-        otherDrugs: [lifestyle.otherDrugs],
+        drinking: lifestyle.drinking === 'prefer_not_to_say' ? [] : [lifestyle.drinking],
+        cannabis: lifestyle.cannabis === 'prefer_not_to_say' ? [] : [lifestyle.cannabis],
+        tobacco: lifestyle.tobacco === 'prefer_not_to_say' ? [] : [lifestyle.tobacco],
+        otherDrugs: lifestyle.otherDrugs === 'prefer_not_to_say' ? [] : [lifestyle.otherDrugs],
       },
     });
     onNext();

@@ -650,19 +650,11 @@ export const sendEmailSignUpCode = async (email: string): Promise<ApiResponse<vo
     }
 
     // Block existing accounts — check before sending code
-    try {
-      const { data: emailExists, error: checkErr } = await supabase.rpc('check_email_exists', { p_email: normalized });
-      if (checkErr) {
-        logger.warn('[EMAIL_SIGNUP] Email exists check failed (proceeding anyway):', checkErr.message);
-      } else if (emailExists) {
-        return {
-          ok: false,
-          error: { code: 'ACCOUNT_EXISTS', message: 'This account already exists. Tap Sign In instead.' },
-        };
-      }
-    } catch (e) {
-      logger.warn('[EMAIL_SIGNUP] Email exists check threw (proceeding anyway):', e);
-    }
+    // Note: we intentionally do NOT check_email_exists here.
+    // The edge function handles existing accounts with anti-enumeration design
+    // (silently sends an "account exists" email, returns ok:true).
+    // A client-side check would block users who verified but abandoned onboarding
+    // (they have auth.users row but no completed profile), permanently locking them out.
 
     logger.info('[EMAIL_SIGNUP] Sending verification code to:', normalized);
 
@@ -721,6 +713,18 @@ export const verifyEmailSignUpCode = async (
         ok: false,
         error: { code: 'VERIFY_ERROR', message: 'Please enter a verification code.' },
       };
+    }
+
+    // Reviewer bypass: use password auth instead of OTP code
+    if (isReviewerBypassEmail(normalized)) {
+      logger.info('[EMAIL_SIGNUP] Reviewer bypass — using password auth');
+      const reviewerResult = await validateReviewerAccess(trimmedCode);
+      if (!reviewerResult.valid || !reviewerResult.authPassword) {
+        return { ok: false, error: { code: 'VERIFY_ERROR', message: 'Invalid reviewer credentials.' } };
+      }
+      const pwResult = await signInWithPassword(normalized, reviewerResult.authPassword);
+      if (!pwResult.ok) return pwResult as any;
+      return { ok: true, data: pwResult.data! };
     }
 
     logger.info('[EMAIL_SIGNUP] Verifying code for:', normalized);
@@ -783,6 +787,159 @@ export const verifyEmailSignUpCode = async (
     };
   } catch (error: unknown) {
     logger.error('[EMAIL_SIGNUP] Error:', error instanceof Error ? error.message : String(error));
+    return {
+      ok: false,
+      error: { code: 'VERIFY_ERROR', message: error instanceof Error ? error.message : 'Verification failed' },
+    };
+  }
+};
+
+/**
+ * Send a verification code for login via the email-signup Edge Function.
+ * Uses Resend API directly for fast delivery (no Supabase Auth SMTP).
+ * Requires the user to already have an account.
+ */
+export const sendLoginCode = async (email: string): Promise<ApiResponse<void>> => {
+  try {
+    const normalized = normalizeEmail(email);
+    if (!normalized) {
+      return {
+        ok: false,
+        error: { code: 'INVALID_EMAIL', message: 'Please enter a valid email address.' },
+      };
+    }
+
+    if (!isAllowedEmailDomain(normalized)) {
+      return {
+        ok: false,
+        error: { code: 'INVALID_DOMAIN', message: 'Only @rice.edu emails are allowed.' },
+      };
+    }
+
+    // Reviewer bypass — skip actual code send; the verification screen handles login via password
+    if (isReviewerBypassEmail(normalized)) {
+      logger.info('[LOGIN] Reviewer bypass — skipping code send');
+      return { ok: true };
+    }
+
+    logger.info('[LOGIN] Sending login code to:', normalized);
+
+    const { data, error } = await supabase.functions.invoke('email-signup', {
+      body: { email: normalized, action: 'send', flow: 'login' },
+    });
+
+    if (error) {
+      logger.error('[LOGIN] Edge function error:', error.message);
+      return {
+        ok: false,
+        error: { code: 'SEND_ERROR', message: error.message },
+      };
+    }
+
+    if (data?.error) {
+      const errorCode = data?.code || 'SEND_ERROR';
+      return {
+        ok: false,
+        error: { code: errorCode, message: data.error },
+      };
+    }
+
+    logger.info('[LOGIN] Login code sent successfully');
+    return { ok: true };
+  } catch (error: unknown) {
+    logger.error('[LOGIN] Error:', error instanceof Error ? error.message : String(error));
+    return {
+      ok: false,
+      error: { code: 'SEND_ERROR', message: error instanceof Error ? error.message : 'Failed to send login code' },
+    };
+  }
+};
+
+/**
+ * Verify the 6-digit login code and create an auth session.
+ * Uses the email-signup Edge Function which returns session tokens.
+ */
+export const verifyLoginCode = async (
+  email: string,
+  code: string
+): Promise<ApiResponse<User>> => {
+  try {
+    const normalized = normalizeEmail(email);
+    if (!normalized) {
+      return {
+        ok: false,
+        error: { code: 'INVALID_EMAIL', message: 'Please enter a valid email address.' },
+      };
+    }
+
+    const trimmedCode = code.trim();
+    if (!trimmedCode) {
+      return {
+        ok: false,
+        error: { code: 'VERIFY_ERROR', message: 'Please enter a verification code.' },
+      };
+    }
+
+    logger.info('[LOGIN] Verifying login code for:', normalized);
+
+    const { data, error } = await supabase.functions.invoke('email-signup', {
+      body: { email: normalized, action: 'verify', code: trimmedCode },
+    });
+
+    if (error) {
+      logger.error('[LOGIN] Verification error:', error.message);
+      return {
+        ok: false,
+        error: { code: 'VERIFY_ERROR', message: error.message },
+      };
+    }
+
+    if (data?.error) {
+      return {
+        ok: false,
+        error: { code: 'VERIFY_ERROR', message: data.error },
+      };
+    }
+
+    if (!data?.access_token || !data?.refresh_token) {
+      return {
+        ok: false,
+        error: { code: 'SESSION_ERROR', message: 'Verification succeeded but no session returned' },
+      };
+    }
+
+    // Set the session on the client so the user is now authenticated
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    });
+
+    if (sessionError) {
+      logger.error('[LOGIN] Failed to set session:', sessionError.message);
+      return {
+        ok: false,
+        error: { code: 'SESSION_ERROR', message: 'Failed to establish session' },
+      };
+    }
+
+    if (!data.user?.id) {
+      return {
+        ok: false,
+        error: { code: 'SESSION_ERROR', message: 'Session created but no user data returned' },
+      };
+    }
+
+    logger.info('[LOGIN] Login successful! User ID:', data.user.id);
+
+    return {
+      ok: true,
+      data: {
+        id: data.user.id,
+        email: data.user.email,
+      },
+    };
+  } catch (error: unknown) {
+    logger.error('[LOGIN] Error:', error instanceof Error ? error.message : String(error));
     return {
       ok: false,
       error: { code: 'VERIFY_ERROR', message: error instanceof Error ? error.message : 'Verification failed' },
