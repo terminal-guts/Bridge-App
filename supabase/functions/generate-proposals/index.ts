@@ -34,16 +34,6 @@ Deno.serve(async (req: Request) => {
 
     if (profilesErr) throw profilesErr;
 
-    // Active profiles for voter eligibility — excludes demo/reviewer accounts
-    // and users still in onboarding.  Matchmakers ARE included as voters.
-    const { data: allActiveProfiles, error: activeErr } = await supabase
-      .from('user_profiles')
-      .select('user_id')
-      .eq('is_paused', false)
-      .eq('is_suspended', false)
-      .eq('profile_completed', true);
-
-    if (activeErr) throw activeErr;
     if (!profiles || profiles.length < 2) {
       return Response.json({
         status: 'insufficient_users',
@@ -84,7 +74,7 @@ Deno.serve(async (req: Request) => {
     //              passed_to_match (proposal already led to a match)
     //   temporary: rejected or expired during the community-pending phase —
     //              re-eligible after REPAIR_AFTER_DAYS.
-    const [permanentRes, temporaryRes, activeProposalRes, blockedRes, matchesRes, friendshipsRes] = await Promise.all([
+    const [permanentRes, temporaryRes, activeProposalRes, blockedRes, matchesRes] = await Promise.all([
       supabase.from('proposals').select('user_a_id, user_b_id')
         .in('status', ['declined', 'passed_to_match']),
       supabase.from('proposals').select('user_a_id, user_b_id, rejected_at, expired_at, status')
@@ -94,7 +84,6 @@ Deno.serve(async (req: Request) => {
         .in('status', ['pending', 'deciding']),
       supabase.from('blocked_users').select('user_id, blocked_user_id'),
       supabase.from('matches').select('user_id_1, user_id_2').in('status', ['pending', 'accepted', 'active']),
-      supabase.from('friends').select('user_id, friend_id').eq('status', 'accepted'),
     ]);
 
     // Permanent blocks — these pairs never re-propose.
@@ -125,16 +114,9 @@ Deno.serve(async (req: Request) => {
     }
 
     const blockedPairs = new Set<string>();
-    // blockedByUser[X] = set of users X has blocked or been blocked by.
-    // Used to exclude voters who have any block relationship with either subject.
-    const blockedByUser: Record<string, Set<string>> = {};
     for (const row of (blockedRes.data || [])) {
       const key = [row.user_id, row.blocked_user_id].sort().join('|');
       blockedPairs.add(key);
-      if (!blockedByUser[row.user_id]) blockedByUser[row.user_id] = new Set();
-      if (!blockedByUser[row.blocked_user_id]) blockedByUser[row.blocked_user_id] = new Set();
-      blockedByUser[row.user_id].add(row.blocked_user_id);
-      blockedByUser[row.blocked_user_id].add(row.user_id);
     }
 
     // Users with active matches — excluded from matchmaking entirely
@@ -145,17 +127,6 @@ Deno.serve(async (req: Request) => {
       matchPairs.add(key);
       matchedUsers.add(row.user_id_1);
       matchedUsers.add(row.user_id_2);
-    }
-
-    // friendsMap: used only for suggestion/boost lookups.  Friends of user_a/user_b
-    // are NO LONGER excluded from being assigned as voters — the gate filters them
-    // at display time and falls back to friend proposals when non-friend ones run out.
-    const friendsMap: Record<string, Set<string>> = {};
-    for (const row of (friendshipsRes.data || [])) {
-      if (!friendsMap[row.user_id]) friendsMap[row.user_id] = new Set();
-      if (!friendsMap[row.friend_id]) friendsMap[row.friend_id] = new Set();
-      friendsMap[row.user_id].add(row.friend_id);
-      friendsMap[row.friend_id].add(row.user_id);
     }
 
     // Declare createdProposals to accumulate all proposals created this cycle.
@@ -327,11 +298,16 @@ Deno.serve(async (req: Request) => {
       const bStarve = starvationBoost[profileB.user_id as string] || 0;
       result.total_score += (aStarve + bStarve) / 2;
 
-      // Apply friend suggestion boost: if a matchmaker queued this pair, multiply score by 1.25
+      // Apply friend suggestion boost: if a friend recommended this pair while
+      // voting, multiply score by 1.25 (outranks pure algorithm scores).
       const pairKey = [profileA.user_id, profileB.user_id].sort().join('|');
       if (suggestedPairs.has(pairKey)) {
         result.total_score *= 1.25;
       }
+
+      // Cap compatibility score at 100.  The 1.25x boost or heavy
+      // new-user/starvation boosts could push raw score above 100.
+      result.total_score = Math.min(100, result.total_score);
 
       // No minimum score floor — hard blockers (gender, age, prior pairing,
       // active proposal/match, blocked users) already filter in passesBasicFilter
@@ -352,7 +328,16 @@ Deno.serve(async (req: Request) => {
 
     scored.sort((a, b) => b.compatibility_score - a.compatibility_score);
 
-    // Exclusive allocation: each user appears in at most one proposal per cycle
+    // Exclusive allocation: each user appears in at most one proposal per cycle.
+    // We run TWO passes:
+    //   Pass 1 (greedy top-score): pick highest-scoring pair; mark both users as
+    //     allocated; skip any pair overlapping allocated users; continue down the
+    //     sorted list.
+    //   Pass 2 (leftover rescue): for any user who didn't get paired in pass 1,
+    //     find the best-scoring pair with ANOTHER still-unallocated user and add
+    //     it.  No score floor — rather pair at low compatibility than leave
+    //     users unpaired entirely.  Gender/age + block filters already ran in
+    //     the candidate-building step, so every pair here is valid.
     const allocated = new Set<string>();
     const topPairs: typeof scored = [];
     for (const pair of scored) {
@@ -363,6 +348,19 @@ Deno.serve(async (req: Request) => {
       allocated.add(pair.user_a_id);
       allocated.add(pair.user_b_id);
       if (topPairs.length >= maxProposals) break;
+    }
+
+    // Pass 2: pair leftover users with each other when possible.
+    // `scored` is already sorted by score desc, so iterating from the top
+    // finds the best available leftover pair first.
+    if (topPairs.length < maxProposals) {
+      for (const pair of scored) {
+        if (topPairs.length >= maxProposals) break;
+        if (allocated.has(pair.user_a_id) || allocated.has(pair.user_b_id)) continue;
+        topPairs.push(pair);
+        allocated.add(pair.user_a_id);
+        allocated.add(pair.user_b_id);
+      }
     }
 
     if (topPairs.length === 0 && createdProposals.length === 0) {
@@ -413,105 +411,17 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 8. Assign pool voters — every eligible community member gets an assignment
-    // for every pending proposal (including friends of either subject; the gate
-    // filters them at display time).  This is the core of the gate overhaul:
-    // no per-proposal voter cap, no daily assignment cap.
-
-    // Include ALL pending proposals (newly created + still-pending from prior cycles)
-    const { data: existingPending } = await supabase
-      .from('proposals')
-      .select('id, user_a_id, user_b_id, status')
-      .eq('status', 'pending');
-
-    const createdIds = new Set(createdProposals.map(p => p.id));
-    const allToAssign = [
-      ...createdProposals,
-      ...(existingPending || []).filter(p => !createdIds.has(p.id))
-    ];
-
-    // Fetch existing assignments so we only insert missing rows (idempotent).
-    const proposalIds = allToAssign.map(p => p.id);
-    let totalAssigned = 0;
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    if (proposalIds.length > 0) {
-      const { data: existingAssignments } = await supabase
-        .from('pool_vote_assignments')
-        .select('proposal_id, voter_id')
-        .in('proposal_id', proposalIds);
-
-      const assignedMap = new Map<string, Set<string>>();
-      for (const row of (existingAssignments || [])) {
-        if (!assignedMap.has(row.proposal_id)) {
-          assignedMap.set(row.proposal_id, new Set());
-        }
-        assignedMap.get(row.proposal_id)!.add(row.voter_id);
-      }
-
-      const insertBatch: Array<{ proposal_id: string; voter_id: string; assignment_date: string; has_voted: boolean }> = [];
-
-      for (const proposal of allToAssign) {
-        const ua = proposal.user_a_id;
-        const ub = proposal.user_b_id;
-        const already = assignedMap.get(proposal.id) || new Set();
-        const blockedForA = blockedByUser[ua] || new Set();
-        const blockedForB = blockedByUser[ub] || new Set();
-
-        // Eligible voters:
-        //   - not user_a, not user_b
-        //   - no block relationship with either subject
-        //   - not already assigned
-        //   - profile_completed, not paused, not suspended (allActiveProfiles already enforces this)
-        for (const u of (allActiveProfiles || [])) {
-          const uid = u.user_id;
-          if (uid === ua || uid === ub) continue;
-          if (blockedForA.has(uid) || blockedForB.has(uid)) continue;
-          if (already.has(uid)) continue;
-
-          insertBatch.push({
-            proposal_id: proposal.id,
-            voter_id: uid,
-            assignment_date: todayStr,
-            has_voted: false,
-          });
-        }
-      }
-
-      // Insert in chunks to avoid hitting request-size limits.
-      const CHUNK = 500;
-      for (let i = 0; i < insertBatch.length; i += CHUNK) {
-        const chunk = insertBatch.slice(i, i + CHUNK);
-        const { error: assignErr } = await supabase
-          .from('pool_vote_assignments')
-          .insert(chunk);
-        if (!assignErr) {
-          totalAssigned += chunk.length;
-        } else if (assignErr.code === '23505') {
-          // Unique constraint — race with concurrent run.  Retry each row
-          // individually so the rest of the chunk lands.
-          for (const row of chunk) {
-            const { error: singleErr } = await supabase
-              .from('pool_vote_assignments')
-              .insert(row);
-            if (!singleErr) totalAssigned++;
-            else if (singleErr.code !== '23505') {
-              console.error(`Assignment insert error for proposal ${row.proposal_id}: ${singleErr.message}`);
-            }
-          }
-        } else {
-          console.error(`Assignment batch insert error: ${assignErr.message}`);
-        }
-      }
-    }
+    // NOTE: We NO LONGER pre-insert pool_vote_assignments rows.
+    // Under the gate-overhaul-v2 model, every user is implicitly a candidate
+    // voter for every pending proposal — no per-user-per-proposal bookkeeping
+    // is needed.  The gate is computed on-the-fly via get-proposals-for-voting.
+    // This removes ~2500 daily INSERTs and eliminates stale-assignment bugs.
 
     return Response.json({
       status: 'success',
       eligible_users: eligibleProfiles.length,
       candidates_filtered: candidates.length,
       proposals_created: createdProposals.length,
-      proposals_assigned: allToAssign.length,
-      pool_voters_assigned: totalAssigned,
       top_score: topPairs[0]?.compatibility_score || 0,
       avg_score: topPairs.length > 0
         ? Math.round(topPairs.reduce((s, p) => s + p.compatibility_score, 0) / topPairs.length * 10) / 10

@@ -253,6 +253,9 @@ Deno.serve(async (req: Request) => {
             // Apply starvation boost (average of both)
             result.total_score += myStarvationBoost / 2;
 
+            // Cap compatibility score at 100 (boosts can push it past 100).
+            result.total_score = Math.min(100, result.total_score);
+
             // No minimum score floor — hard blockers already filter above.
             // Community voting is the quality gate.
             if (result.total_score > bestScore) {
@@ -306,110 +309,14 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // ── Phase B: Backfill assignments — every eligible voter ↔ every pending proposal ─
-    // Matches the scope used in generate-proposals: at creation time every
-    // eligible community member (including friends of either subject) is
-    // assigned.  The gate filters friends at display time.
-    const { data: pendingProposals } = await supabase
-      .from('proposals')
-      .select('id, user_a_id, user_b_id')
-      .eq('status', 'pending');
-
-    if (!pendingProposals || pendingProposals.length === 0) {
-      return Response.json({
-        status: proposalCreated ? 'proposal_created' : 'no_proposals',
-        proposal_created: proposalCreated,
-        compatibility_score: compatibilityScore,
-        voters_backfilled: 0,
-      }, { headers: corsHeaders });
-    }
-
-    const pendingIds = pendingProposals.map(p => p.id);
-
-    const [assignmentsRes, activeVotersRes, blocksRes] = await Promise.all([
-      supabase.from('pool_vote_assignments')
-        .select('proposal_id, voter_id')
-        .in('proposal_id', pendingIds),
-      supabase.from('user_profiles')
-        .select('user_id')
-        .eq('is_paused', false)
-        .eq('is_suspended', false)
-        .eq('profile_completed', true),
-      supabase.from('blocked_users').select('user_id, blocked_user_id'),
-    ]);
-
-    // proposal_id → Set<voter_id already assigned>
-    const proposalAssignments = new Map<string, Set<string>>();
-    for (const a of (assignmentsRes.data || [])) {
-      if (!proposalAssignments.has(a.proposal_id)) {
-        proposalAssignments.set(a.proposal_id, new Set());
-      }
-      proposalAssignments.get(a.proposal_id)!.add(a.voter_id);
-    }
-
-    const activeVoterIds = (activeVotersRes.data || []).map((u: { user_id: string }) => u.user_id);
-
-    // user_id → Set of users they block or are blocked by
-    const blockedByUser = new Map<string, Set<string>>();
-    for (const row of (blocksRes.data || [])) {
-      if (!blockedByUser.has(row.user_id)) blockedByUser.set(row.user_id, new Set());
-      if (!blockedByUser.has(row.blocked_user_id)) blockedByUser.set(row.blocked_user_id, new Set());
-      blockedByUser.get(row.user_id)!.add(row.blocked_user_id);
-      blockedByUser.get(row.blocked_user_id)!.add(row.user_id);
-    }
-
-    const todayStr = new Date().toISOString().split('T')[0];
-    const insertBatch: Array<{ proposal_id: string; voter_id: string; assignment_date: string; has_voted: boolean }> = [];
-
-    for (const proposal of pendingProposals) {
-      const ua = proposal.user_a_id;
-      const ub = proposal.user_b_id;
-      const already = proposalAssignments.get(proposal.id) || new Set<string>();
-      const blocksA = blockedByUser.get(ua) || new Set<string>();
-      const blocksB = blockedByUser.get(ub) || new Set<string>();
-
-      for (const voterId of activeVoterIds) {
-        if (voterId === ua || voterId === ub) continue;
-        if (blocksA.has(voterId) || blocksB.has(voterId)) continue;
-        if (already.has(voterId)) continue;
-
-        insertBatch.push({
-          proposal_id: proposal.id,
-          voter_id: voterId,
-          assignment_date: todayStr,
-          has_voted: false,
-        });
-      }
-    }
-
-    let totalBackfilled = 0;
-    const CHUNK = 500;
-    for (let i = 0; i < insertBatch.length; i += CHUNK) {
-      const chunk = insertBatch.slice(i, i + CHUNK);
-      const { error: insertErr } = await supabase
-        .from('pool_vote_assignments')
-        .insert(chunk);
-      if (!insertErr) {
-        totalBackfilled += chunk.length;
-      } else if (insertErr.code === '23505') {
-        // Race with concurrent run — retry each row individually.
-        for (const row of chunk) {
-          const { error: singleErr } = await supabase.from('pool_vote_assignments').insert(row);
-          if (!singleErr) totalBackfilled++;
-          else if (singleErr.code !== '23505') {
-            console.error(`Backfill row insert error: ${singleErr.message}`);
-          }
-        }
-      } else {
-        console.error(`Backfill batch insert error: ${insertErr.message}`);
-      }
-    }
+    // NOTE: Phase B (voter-assignment backfill) removed under gate-overhaul-v2.
+    // The gate is now computed on-the-fly from proposal_votes history — no
+    // per-user-per-proposal pool_vote_assignments rows are needed.
 
     return Response.json({
-      status: proposalCreated ? 'proposal_created' : 'backfill_only',
+      status: proposalCreated ? 'proposal_created' : 'no_proposals',
       proposal_created: proposalCreated,
       compatibility_score: compatibilityScore,
-      voters_backfilled: totalBackfilled,
     }, { headers: corsHeaders });
 
   } catch (err: unknown) {

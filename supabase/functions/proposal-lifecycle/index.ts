@@ -5,10 +5,10 @@ import { requireServiceRole } from '../_shared/admin-auth.ts';
 import {
   MAX_PROPOSAL_DAYS,
   DECISION_DEADLINE_HOURS,
-  DAILY_QUORUM_PCT,
+  MIN_VOTES_FOR_DECISION,
   REJECT_YES_RATE,
   ACCEPT_YES_RATE,
-  DAY3_LENIENT_YES_RATE,
+  DAY3_YES_RATE,
 } from '../_shared/constants.ts';
 
 interface ProposalTiming {
@@ -49,29 +49,6 @@ Deno.serve(async (req: Request) => {
     let rejectedCount = 0;
     let stayedPendingCount = 0;
 
-    // Batch fetch assignment counts and vote counts per proposal for the quorum calc.
-    const proposalIds = (proposals || []).map(p => p.id);
-    const assignedCounts = new Map<string, number>();
-    const votedCounts = new Map<string, number>();
-
-    if (proposalIds.length > 0) {
-      const [assignedRes, votedRes] = await Promise.all([
-        supabase.from('pool_vote_assignments')
-          .select('proposal_id')
-          .in('proposal_id', proposalIds),
-        supabase.from('pool_vote_assignments')
-          .select('proposal_id')
-          .in('proposal_id', proposalIds)
-          .eq('has_voted', true),
-      ]);
-      for (const row of (assignedRes.data || [])) {
-        assignedCounts.set(row.proposal_id, (assignedCounts.get(row.proposal_id) || 0) + 1);
-      }
-      for (const row of (votedRes.data || [])) {
-        votedCounts.set(row.proposal_id, (votedCounts.get(row.proposal_id) || 0) + 1);
-      }
-    }
-
     for (const proposal of (proposals || [])) {
       const poolYes = proposal.pool_yes_votes || 0;
       const poolNo = proposal.pool_no_votes || 0;
@@ -83,10 +60,6 @@ Deno.serve(async (req: Request) => {
       const totalVotes = totalYes + totalNo;
       const yesRate = totalVotes > 0 ? totalYes / totalVotes : 0;
 
-      const assignedCount = assignedCounts.get(proposal.id) || 0;
-      const votedCount = votedCounts.get(proposal.id) || 0;
-      const turnoutPct = assignedCount > 0 ? votedCount / assignedCount : 0;
-
       const day = getProposalDay(proposal);
       const atOrPastDay3 = day >= MAX_PROPOSAL_DAYS;
 
@@ -94,24 +67,22 @@ Deno.serve(async (req: Request) => {
       const updateData: Record<string, unknown> = {};
 
       if (atOrPastDay3) {
-        // Day 3+: force a decision.  Lenient threshold — accept if yes-rate ≥ 50%.
-        // No quorum gate at day 3: if nobody voted, we treat 0% as below 50% → reject.
-        if (totalVotes > 0 && yesRate >= DAY3_LENIENT_YES_RATE) {
-          newStatus = 'deciding';
-        } else {
+        // Day 3+: force a decision.  No minimum-vote gate — 0-vote proposals
+        // get rejected.  Accept if yes-rate >= 50%, else reject.
+        if (totalVotes === 0 || yesRate < DAY3_YES_RATE) {
           newStatus = 'rejected';
+        } else {
+          newStatus = 'deciding';
         }
-      } else if (turnoutPct < DAILY_QUORUM_PCT) {
-        // Day 1-2, insufficient turnout — hold another day.
-        newStatus = 'pending';
       } else {
-        // Day 1-2, quorum met — apply yes-rate thresholds.
-        if (yesRate < REJECT_YES_RATE) {
+        // Day 1-2: require MIN_VOTES_FOR_DECISION before judging.
+        if (totalVotes < MIN_VOTES_FOR_DECISION) {
+          newStatus = 'pending';
+        } else if (yesRate < REJECT_YES_RATE) {
           newStatus = 'rejected';
         } else if (yesRate > ACCEPT_YES_RATE) {
           newStatus = 'deciding';
         } else {
-          // 35-70% — inconclusive, hold another day.
           newStatus = 'pending';
         }
       }
@@ -134,20 +105,31 @@ Deno.serve(async (req: Request) => {
       }
 
       if (Object.keys(updateData).length > 0) {
-        await supabase
+        const { error: updateErr } = await supabase
           .from('proposals')
           .update(updateData)
           .eq('id', proposal.id)
           .eq('status', 'pending'); // concurrency guard
 
+        if (updateErr) {
+          console.error(`Failed to update proposal ${proposal.id}: ${updateErr.message}`);
+          continue;
+        }
+
+        // Apply karma via the idempotent RPC — runs for both outcomes.
+        // Errors here shouldn't halt the loop (other proposals still need to be processed).
+        const { error: karmaErr } = await supabase.rpc('apply_karma_on_outcome', {
+          p_proposal_id: proposal.id,
+          p_outcome: newStatus,
+        });
+        if (karmaErr) {
+          console.error(`apply_karma_on_outcome failed for ${proposal.id} (${newStatus}): ${karmaErr.message}`);
+        }
+
         if (newStatus === 'deciding') {
           confirmedCount++;
-        } else if (newStatus === 'rejected') {
+        } else {
           rejectedCount++;
-          await supabase.rpc('apply_karma_on_outcome', {
-            p_proposal_id: proposal.id,
-            p_outcome: 'rejected',
-          });
         }
       } else {
         stayedPendingCount++;
@@ -173,30 +155,36 @@ Deno.serve(async (req: Request) => {
       console.error('Daily rank snapshot failed:', rankSnapErr);
     }
 
-    // 3. Check decision deadlines on 'deciding' proposals
-    const { data: decidingProposals } = await supabase
+    // 3. Auto-expire deciding proposals where the subjects have had two full
+    // cron cycles to respond.  Uses date math instead of 48h elapsed so the
+    // boundary is predictable (community_decided_at 2 calendar days ago).
+    const { data: expiredDeciding, error: decFetchErr } = await supabase
       .from('proposals')
       .select('*')
       .eq('status', 'deciding')
-      .lt('decision_deadline_at', nowIso);
+      .lte('community_decided_at', new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString());
 
     let autoExpiredCount = 0;
-    for (const proposal of (decidingProposals || [])) {
-      if (proposal.user_a_decision === 'pending' || proposal.user_b_decision === 'pending') {
-        const { error: expireErr } = await supabase
-          .from('proposals')
-          .update({ status: 'expired', expired_at: nowIso, updated_at: nowIso })
-          .eq('id', proposal.id);
+    if (!decFetchErr) {
+      for (const proposal of (expiredDeciding || [])) {
+        if (proposal.user_a_decision === 'pending' || proposal.user_b_decision === 'pending') {
+          const { error: expireErr } = await supabase
+            .from('proposals')
+            .update({ status: 'expired', expired_at: nowIso, updated_at: nowIso })
+            .eq('id', proposal.id);
 
-        if (expireErr) {
-          console.error(`Failed to expire deciding proposal ${proposal.id}:`, expireErr.message);
-          continue;
+          if (expireErr) {
+            console.error(`Failed to expire deciding proposal ${proposal.id}:`, expireErr.message);
+            continue;
+          }
+          // No karma adjustment — the community approved these proposals.
+          // They expired because subjects didn't respond, not voter inaccuracy.
+          // Voters keep the +3/-1 they got at the deciding transition.
+          autoExpiredCount++;
         }
-
-        // Skip karma adjustment — community approved these proposals.
-        // They expired because subjects didn't respond, not voter inaccuracy.
-        autoExpiredCount++;
       }
+    } else {
+      console.error('Failed to fetch expired deciding proposals:', decFetchErr.message);
     }
 
     return Response.json({
