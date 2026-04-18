@@ -15,6 +15,9 @@ interface PhotoUploadStepProps {
   onBack: () => void;
   isFirstStep: boolean;
   isLastStep: boolean;
+  // Surfaced from OnboardingScreen when the eager photo upload is rejected by moderation.
+  photoModerationError?: string | null;
+  onClearPhotoModerationError?: () => void;
 }
 
 const StyledView = styled(View);
@@ -28,6 +31,8 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
   updateData,
   onNext,
   onBack,
+  photoModerationError,
+  onClearPhotoModerationError,
 }) => {
   // Read photos straight from parent state — every change must propagate
   // immediately so the eager upload effect in OnboardingScreen fires the
@@ -61,6 +66,7 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
         }
         updateData({ photos: updated });
         setError('');
+        onClearPhotoModerationError?.();
       }
     } catch (err) {
       Alert.alert('Oops', 'Something went wrong picking that photo. Give it another try!');
@@ -155,8 +161,8 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
           </StyledView>
         </StyledView>
 
-        {error && (
-          <Body className="text-error text-sm mt-2">{error}</Body>
+        {(photoModerationError || error) && (
+          <Body className="text-error text-sm mt-2">{photoModerationError || error}</Body>
         )}
       </StyledView>
     </OnboardingLayout>

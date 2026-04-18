@@ -18,6 +18,7 @@ import {
 } from '../utils/rateLimiter';
 import { createLogger } from '../utils/secureLogger';
 import { generateBlurhash } from '../utils/blurhashService';
+import { moderateImage } from './imageModerationService';
 
 // Create namespaced logger for this service
 const logger = createLogger('PhotoService');
@@ -206,15 +207,30 @@ const uploadPhotoInternal = async (
       return createErrorResponse('UPLOAD_FAILED', uploadError.message);
     }
 
-    // Step 5: Generate blurhash via edge function (non-blocking — if it fails, photo still works)
-    let blurhash: string | undefined;
-    try {
-      blurhash = await generateBlurhash(storagePath);
-      if (blurhash) {
-        logger.info('Blurhash generated for photo:', photoId);
-      }
-    } catch (blurhashError: unknown) {
-      logger.warn('Blurhash generation failed (non-blocking):', blurhashError instanceof Error ? blurhashError.message : String(blurhashError));
+    // Step 5: Moderate and generate blurhash in parallel (both read the uploaded object).
+    // Moderation fails open (edge function returns approved:true on any error), so
+    // outages never block uploads — only genuine safety violations reject.
+    const [moderationResult, blurhashResult] = await Promise.all([
+      moderateImage(storagePath, isMain),
+      generateBlurhash(storagePath).catch((blurhashError: unknown) => {
+        logger.warn('Blurhash generation failed (non-blocking):', blurhashError instanceof Error ? blurhashError.message : String(blurhashError));
+        return undefined;
+      }),
+    ]);
+
+    // Step 5a: If moderation rejects, delete the orphaned storage object and bail.
+    if (!moderationResult.approved) {
+      logger.warn('[PhotoService] Moderation rejected photo:', moderationResult.reasons);
+      await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]).catch((removeErr: unknown) => {
+        logger.warn('Failed to delete rejected photo from storage (non-blocking):', removeErr);
+      });
+      const userMessage = moderationResult.reasons[0] || 'This photo couldn\'t be used. Please try a different one.';
+      return createErrorResponse('MODERATION_REJECTED', userMessage);
+    }
+
+    const blurhash = blurhashResult;
+    if (blurhash) {
+      logger.info('Blurhash generated for photo:', photoId);
     }
 
     // Step 6: Create photo metadata with storage path
@@ -322,12 +338,17 @@ export const uploadMultiplePhotos = async (
 
     const uploadedPhotos: Photo[] = [];
     const errors: string[] = [];
+    let moderationMessage: string | undefined;
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
       if (result.ok && result.data) {
         uploadedPhotos.push(result.data.photo);
       } else {
         errors.push(`Photo ${i + 1}: ${result.error?.message || 'Unknown error'}`);
+        // Keep the first MODERATION_REJECTED message (usually the main photo's)
+        if (!moderationMessage && result.error?.code === 'MODERATION_REJECTED') {
+          moderationMessage = result.error.message;
+        }
       }
     }
 
@@ -337,6 +358,12 @@ export const uploadMultiplePhotos = async (
         ok: true,
         data: uploadedPhotos,
       };
+    }
+
+    // Total failure: surface MODERATION_REJECTED specifically so the UI can show
+    // a targeted "pick a different photo" prompt instead of a generic upload error.
+    if (moderationMessage) {
+      return createErrorResponse('MODERATION_REJECTED', moderationMessage);
     }
 
     return createErrorResponse('PHOTO_UPLOAD_FAILED', errors.join('; '));

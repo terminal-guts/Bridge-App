@@ -32,6 +32,10 @@ export const addProfilePhotos = async (
     // 1. Upload files to Supabase Storage
     const uploadRes = await uploadMultiplePhotos(imageUris);
     if (!uploadRes.ok || !uploadRes.data) {
+      // Surface moderation rejection verbatim so callers can show the targeted prompt.
+      if (uploadRes.error?.code === 'MODERATION_REJECTED') {
+        return createErrorResponse('MODERATION_REJECTED', uploadRes.error.message);
+      }
       return createErrorResponse('UPLOAD_FAILED', uploadRes.error?.message || 'Failed to upload photos');
     }
 

@@ -14,6 +14,7 @@ Last updated: 2026-04-15
 | SUPABASE_DB_URL | Direct database connection | — | Supabase Dashboard → Settings → Database |
 | BRIDGE_SERVICE_ROLE_JWT | Legacy JWT for pg_cron jobs | Cron triggers (vault lookup) | Generated from project JWT secret |
 | RESEND_API_KEY | Email delivery via Resend | notify-report, email-signup (local) | Resend Dashboard → API Keys |
+| GOOGLE_VISION_API_KEY | Image moderation (FACE_DETECTION + SAFE_SEARCH) | moderate-image | Google Cloud Console → APIs & Services → Credentials |
 | REVIEWER_PASSWORD | App Store reviewer access code | validate-reviewer-access | Set during App Store submission |
 | REVIEWER_AUTH_PASSWORD | Supabase auth password for reviewer | validate-reviewer-access | Set during App Store submission |
 | TWILIO_ACCOUNT_SID | SMS sending account | send-sms.ts (shared) | Twilio Console |

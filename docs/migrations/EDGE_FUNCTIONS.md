@@ -18,6 +18,7 @@ Last updated: 2026-04-15
 | get-leaderboard | DEPLOYED | v18 | Karma leaderboard data |
 | get-proposals-for-voting | DEPLOYED | v31 | Get proposals for voting gate |
 | get-stats | DEPLOYED | v8 | Personal and campus statistics |
+| moderate-image | LOCAL_ONLY | v1 | Image moderation (face + safe-search) via Google Vision — fails open when `GOOGLE_VISION_API_KEY` unset |
 | moderate-text | DEPLOYED | v4 | Content moderation via AI |
 | notify-report | DEPLOYED | v8 | Send report notification email via Resend |
 | process-decision | DEPLOYED | v19 | Process user's accept/reject on a proposal |

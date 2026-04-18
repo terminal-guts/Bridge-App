@@ -125,6 +125,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   // "Didn't receive a code?" — shows the email resend screen
   const [showResendScreen, setShowResendScreen] = useState(false);
+  // Set when the eager photo upload is rejected by moderation. Surfaced in PhotoUploadStep
+  // so the user sees why the photo was removed and can pick a different one.
+  const [photoModerationError, setPhotoModerationError] = useState<string | null>(null);
   // Guard against concurrent goNext invocations (rapid taps / double-submit)
   const isGoingNextRef = useRef(false);
   // Background photo upload: starts after PhotoUploadStep, results used by completeOnboarding
@@ -274,6 +277,15 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         if (res.ok && res.data) {
           photoUploadResultRef.current = res.data;
           logger.info('[OnboardingScreen] Eager photo upload complete:', res.data.length);
+        } else if (res.error?.code === 'MODERATION_REJECTED') {
+          // Moderation rejected the photo. Clear the upload refs, drop the photo
+          // from local state, and surface the rejection reason via PhotoUploadStep
+          // so the user can pick a different photo.
+          logger.warn('[OnboardingScreen] Eager photo upload rejected by moderation:', res.error.message);
+          photoUploadPromiseRef.current = null;
+          photoUploadResultRef.current = null;
+          setPhotoModerationError(res.error.message);
+          updateData({ photos: [] });
         } else {
           logger.warn('[OnboardingScreen] Eager photo upload failed — will retry at profile creation');
         }
@@ -687,6 +699,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
             isFirstStep={clampedStep === 0}
             isLastStep={clampedStep === totalSteps - 1}
             onResendCode={() => setShowResendScreen(true)}
+            photoModerationError={photoModerationError}
+            onClearPhotoModerationError={() => setPhotoModerationError(null)}
           />
         </Animated.View>
       )}

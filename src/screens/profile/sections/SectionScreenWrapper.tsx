@@ -77,12 +77,18 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
       // changes must always be persisted regardless of photo upload outcome.
       const uploadedPhotos = [];
       let photoUploadFailures = 0;
+      const moderationRejections: string[] = [];
 
       for (const photo of profileSnapshot.photos || []) {
         if (photo.url.startsWith('file://')) {
           const uploadRes = await uploadPhoto(photo.url, photo.order, photo.isMain);
           if (uploadRes.ok && uploadRes.data) {
             uploadedPhotos.push(uploadRes.data.photo);
+          } else if (uploadRes.error?.code === 'MODERATION_REJECTED') {
+            // Collect moderation rejections and surface them as their own alert —
+            // don't count against photoUploadFailures (which triggers a generic retry alert).
+            logger.warn('Photo rejected by moderation:', uploadRes.error.message);
+            moderationRejections.push(uploadRes.error.message);
           } else {
             logger.error('Background photo upload failed:', uploadRes.error?.message);
             photoUploadFailures++;
@@ -105,6 +111,14 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
           deletePhoto(id).catch(err => {
             logger.warn('Storage cleanup failed for removed photo (non-blocking):', err?.message);
           });
+        }
+        if (moderationRejections.length > 0) {
+          Alert.alert(
+            moderationRejections.length === 1 ? 'Photo couldn\'t be used' : 'Some photos couldn\'t be used',
+            moderationRejections.length === 1
+              ? moderationRejections[0]
+              : `${moderationRejections.length} photos were rejected:\n\n• ${moderationRejections.join('\n• ')}\n\nPick different photos and try again.`
+          );
         }
         if (photoUploadFailures > 0) {
           Alert.alert(
