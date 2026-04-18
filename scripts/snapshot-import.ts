@@ -25,15 +25,25 @@ const LOCAL_SERVICE_ROLE_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
 const LOCAL_DEV_PASSWORD = 'localdev123';
 
-// Tables to import in FK-safe order (and clear in reverse order)
+// Tables to import in FK-safe order (and clear in reverse order).
+// user_preferences → user_profiles (FK)
+// deep_question_answers → user_profiles (FK)
+// blocked_users → auth.users (FK)
+// friend_suggestions → auth.users (FK)
+// pool_vote_assignments → proposals + auth.users (FK) — must come after proposals
 const TABLE_ORDER = [
   'user_profiles',
+  'user_preferences',
+  'deep_question_answers',
   'user_photos',
   'friend_codes',
   'friends',
+  'friend_suggestions',
+  'blocked_users',
   'karma_scores',
   'proposals',
   'proposal_votes',
+  'pool_vote_assignments',
   'matches',
   'messages',
   'match_exits',
@@ -45,12 +55,17 @@ interface Snapshot {
   tables: {
     auth_users: any[];
     user_profiles: any[];
+    user_preferences?: any[];
+    deep_question_answers?: any[];
     user_photos: any[];
     friend_codes: any[];
     friends: any[];
+    friend_suggestions?: any[];
+    blocked_users?: any[];
     karma_scores: any[];
     proposals: any[];
     proposal_votes: any[];
+    pool_vote_assignments?: any[];
     matches: any[];
     messages: any[];
     match_exits: any[];

@@ -125,6 +125,32 @@ exec_query \
   "SELECT json_agg(row_to_json(t)) FROM (SELECT * FROM match_exits ORDER BY created_at) t" \
   "$TEMP_DIR/match_exits.json" "match_exits"
 
+# Tables required for accurate proposal-gate testing ----------------------
+# user_preferences: needed by generate-proposals scoring pipeline
+# deep_question_answers: needed for compatibility scoring
+# pool_vote_assignments: the assignment ledger — baseline for quorum logic
+# blocked_users: voter exclusion + pair exclusion
+# friend_suggestions: generate-proposals boost logic
+exec_query \
+  "SELECT json_agg(row_to_json(t)) FROM (SELECT * FROM user_preferences) t" \
+  "$TEMP_DIR/user_preferences.json" "user_preferences"
+
+exec_query \
+  "SELECT json_agg(row_to_json(t)) FROM (SELECT * FROM deep_question_answers) t" \
+  "$TEMP_DIR/deep_question_answers.json" "deep_question_answers"
+
+exec_query \
+  "SELECT json_agg(row_to_json(t)) FROM (SELECT * FROM pool_vote_assignments) t" \
+  "$TEMP_DIR/pool_vote_assignments.json" "pool_vote_assignments"
+
+exec_query \
+  "SELECT json_agg(row_to_json(t)) FROM (SELECT * FROM blocked_users) t" \
+  "$TEMP_DIR/blocked_users.json" "blocked_users"
+
+exec_query \
+  "SELECT json_agg(row_to_json(t)) FROM (SELECT * FROM friend_suggestions) t" \
+  "$TEMP_DIR/friend_suggestions.json" "friend_suggestions"
+
 # --- Assemble into one JSON file ---
 echo ""
 echo "Assembling snapshot..."
@@ -140,7 +166,9 @@ tables = {}
 table_names = [
     'auth_users', 'user_profiles', 'user_photos', 'friend_codes',
     'friends', 'karma_scores', 'proposals', 'proposal_votes',
-    'matches', 'messages', 'match_exits'
+    'matches', 'messages', 'match_exits',
+    'user_preferences', 'deep_question_answers', 'pool_vote_assignments',
+    'blocked_users', 'friend_suggestions',
 ]
 
 for name in table_names:
