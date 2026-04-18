@@ -7,7 +7,7 @@
 
 import { ApiResponse, Photo } from '../types';
 import { createLogger } from '../utils/secureLogger';
-import { uploadMultiplePhotos } from './photoService';
+import { uploadMultiplePhotos, deletePhoto } from './photoService';
 
 const logger = createLogger('ProfileService');
 
@@ -56,6 +56,8 @@ export const addProfilePhotos = async (
 
 /**
  * Remove a photo from the user's profile.
+ * Removes from the JSONB metadata array AND deletes the underlying Storage
+ * object so we don't accumulate orphans in the profile-photos bucket.
  */
 export const removeProfilePhoto = async (
   photoId: string,
@@ -67,6 +69,14 @@ export const removeProfilePhoto = async (
 
     const updatedPhotos = (profileRes.data.photos || []).filter(p => p.id !== photoId);
     await updateUserProfile({ photos: updatedPhotos });
+
+    // Storage cleanup is best-effort: if the file was already missing or the
+    // Storage call fails, we still consider the removal successful at the
+    // profile level. The orphan-cleanup edge function (future) will sweep
+    // anything that slips through.
+    deletePhoto(photoId).catch(err => {
+      logger.warn('[ProfileService] Storage delete failed (non-blocking):', err?.message);
+    });
 
     return { ok: true };
   } catch (error: unknown) {

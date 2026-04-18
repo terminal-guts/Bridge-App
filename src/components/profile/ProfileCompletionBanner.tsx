@@ -81,6 +81,13 @@ export const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = (
     return null;
   }
 
+  // Don't render once the user has cleared the gate. profile_completed is the
+  // single source of truth for "ready to match" — strength score is cosmetic
+  // and shouldn't keep nagging users who've finished onboarding.
+  if (profile?.profileCompleted) {
+    return null;
+  }
+
   // Don't render if profile is 100% complete
   if (completion >= 100) {
     return null;

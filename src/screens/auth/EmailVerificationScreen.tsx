@@ -305,6 +305,24 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
               )}
             </StyledView>
 
+            {/* Edit-email escape hatch — without this, a user who typo'd their
+                email gets stuck waiting forever (anti-enumeration silently
+                returns ok for nonexistent emails). */}
+            <StyledView className="items-center mb-6">
+              <StyledTouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={styles.resendButton}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Edit email address"
+              >
+                <Body className="text-neutral-500">
+                  Wrong email?{' '}
+                  <Body className="text-primary-500 font-semibold">Edit it</Body>
+                </Body>
+              </StyledTouchableOpacity>
+            </StyledView>
+
             {/* Verify Button */}
             <StyledView className="mb-8">
               <Button

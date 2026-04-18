@@ -68,60 +68,31 @@ export const MatchPoolLockedView: React.FC<MatchPoolLockedViewProps> = ({
   const strokeDashoffset =
     CIRCUMFERENCE - (CIRCUMFERENCE * overallPercentage) / 100;
 
-  // Dynamic headline based on profile completeness
-  // Priority order matches CTA: Photos → About Me → Match Preferences → Questions
+  // The gate now fires on profile_completed=false. Most often that means a
+  // photo failed to upload during onboarding — single mandatory photo missing.
+  // Headline/subtitle/CTA prioritize that case and only fall back to the
+  // generic "finish your profile" copy if About Me or Match Preferences are
+  // also incomplete (rare — onboarding requires both).
+  const photoMissing = (profile?.photos?.length ?? 0) === 0;
+
   const headline = useMemo(() => {
-    const { sections } = breakdown;
-    const pct = breakdown.overall;
-
-    if (pct >= 90 && pct <= 99) {
-      if (sections.photos.percentage < 100) {
-        return 'Almost there —\nadd your photos';
-      }
-      if (sections.aboutMe.percentage < 100) {
-        return 'Almost there — finish\nyour About Me';
-      }
-      if (sections.matchPreferences.percentage < 100) {
-        return 'Almost there — set your\nmatch preferences';
-      }
-      if (sections.deepQuestions.percentage < 100) {
-        return 'Almost there — just\nanswer a few questions';
-      }
-      return 'Almost there — just a\nfew more details';
-    }
-
-    if (pct >= 60) {
-      return "You're getting close!";
-    }
-
+    if (photoMissing) return 'Add a photo to enter\nthe matchmaking pool';
+    if (breakdown.sections.aboutMe.percentage < 100) return 'Finish your About Me\nto enter the pool';
+    if (breakdown.sections.matchPreferences.percentage < 100) return 'Set your match preferences\nto enter the pool';
     return 'Finish your profile\nto enter the pool';
-  }, [breakdown]);
+  }, [photoMissing, breakdown]);
 
-  // Subtitle — always explains the 100% gate
   const subtitle = useMemo(() => {
-    const pct = breakdown.overall;
-    if (pct >= 90) {
-      return 'Hit 100% and your friends can start matching you.';
-    }
-    if (pct >= 60) {
-      return 'Reach 100% to enter the matchmaking pool.';
-    }
-    return 'Complete your profile to 100% so your friends\ncan start finding matches for you.';
-  }, [breakdown]);
+    if (photoMissing) return 'Friends can start matching you\nas soon as you have one photo.';
+    return 'Finish the missing details so your\nfriends can start finding matches.';
+  }, [photoMissing]);
 
-  // Smart CTA: first incomplete section
   const cta = useMemo(() => {
-    const { sections } = breakdown;
-    if (sections.photos.percentage < 100)
-      return { label: 'Add Photos', section: 'Photos' };
-    if (sections.aboutMe.percentage < 100)
-      return { label: 'Complete About Me', section: 'About Me' };
-    if (sections.matchPreferences.percentage < 100)
-      return { label: 'Set Match Preferences', section: 'Match Preferences' };
-    if (sections.deepQuestions.percentage < 100)
-      return { label: 'Answer Questions', section: 'Questions' };
+    if (photoMissing) return { label: 'Add a Photo', section: 'Photos' };
+    if (breakdown.sections.aboutMe.percentage < 100) return { label: 'Complete About Me', section: 'About Me' };
+    if (breakdown.sections.matchPreferences.percentage < 100) return { label: 'Set Match Preferences', section: 'Match Preferences' };
     return { label: 'Complete Profile', section: 'About Me' };
-  }, [breakdown]);
+  }, [photoMissing, breakdown]);
 
   // Entrance animation
   const animOpacity = useSharedValue(0);

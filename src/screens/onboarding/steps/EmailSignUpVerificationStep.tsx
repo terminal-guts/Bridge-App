@@ -1,11 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { View, TextInput, Pressable, ActivityIndicator } from 'react-native';
+import { View, TextInput, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { styled } from 'nativewind';
 import { COLORS } from '../../../theme/colors';
 import { H1, Body } from '../../../components/ui';
 import { OnboardingData } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
-import { verifyEmailSignUpCode } from '../../../services/authService';
+import { verifyEmailSignUpCode, signOut } from '../../../services/authService';
 import { fetchAndSetUserProfile } from '../../../services/profileService';
 import { useNavigation } from '@react-navigation/native';
 import { createLogger } from '../../../utils/secureLogger';
@@ -35,6 +35,11 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  // After 2 failed attempts on the signup verify screen, surface a sign-in
+  // CTA. Returning users who hit "Sign Up" by mistake get an "ACCOUNT_EXISTS"
+  // response from the edge function but still see "wrong code" repeatedly
+  // until they realize they should have signed in instead.
+  const [failedAttempts, setFailedAttempts] = useState(0);
   const isVerifyingRef = useRef(false);
   const inputRef = useRef<TextInput>(null);
 
@@ -74,12 +79,32 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
     if (result.ok) {
       logger.info('[EMAIL] Email signup verification successful! User ID:', result.data?.id);
 
-      // Check if this user already has a profile (existing account trying to "sign up")
+      // Returning users with a completed profile should NEVER be silently
+      // dropped into MainTabs from the signup flow (they used the wrong CTA).
+      // Sign them out of the auto-session and route to the Login screen with
+      // a clear message so they know why. The edge function's ACCOUNT_EXISTS
+      // block should normally stop them at the email step — this handles the
+      // race where profile completion happened between send and verify.
       if (result.data?.id) {
         const profileResult = await fetchAndSetUserProfile(result.data.id);
         if (profileResult.ok && profileResult.data?.profileCompleted) {
-          logger.info('[EMAIL] Existing account detected — routing to MainTabs');
-          navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+          logger.info('[EMAIL] Existing completed profile — routing to Login');
+          await signOut();
+          Alert.alert(
+            'You already have an account',
+            'Please sign in to continue.',
+            [
+              {
+                text: 'Sign In',
+                onPress: () =>
+                  navigation.reset({
+                    index: 1,
+                    routes: [{ name: 'Welcome' as any }, { name: 'Login' as any }],
+                  }),
+              },
+            ],
+            { cancelable: false },
+          );
           return;
         }
       }
@@ -87,6 +112,7 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
       updateData({ email: data.email, emailVerified: true });
       onNext();
     } else {
+      setFailedAttempts(prev => prev + 1);
       const msg = (result.error?.message || '').toLowerCase();
       if (msg.includes('expired') || msg.includes('otp has expired')) {
         setError("That code has expired. Tap 'Resend' below for a new one.");
@@ -161,6 +187,24 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
           <StyledView className="flex-row justify-center">
             <Body className="text-primary-500 font-semibold" onPress={onResendCode}>
               Didn't receive a code?
+            </Body>
+          </StyledView>
+        )}
+
+        {/* After 2 failed attempts, suggest sign-in. Anti-enumeration on the
+            edge function returns ok:true to existing-user signup attempts (so
+            no code is actually sent), leaving the user with a never-arriving
+            code and "wrong code" errors until they realize their mistake. */}
+        {failedAttempts >= 2 && (
+          <StyledView className="items-center mt-6">
+            <Body className="text-neutral-500 text-sm mb-1">
+              Already have an account?
+            </Body>
+            <Body
+              className="text-primary-500 font-semibold"
+              onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Login' }] })}
+            >
+              Sign in instead
             </Body>
           </StyledView>
         )}

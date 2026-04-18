@@ -8,7 +8,7 @@ import { OfflineBanner } from '../../../components/ui/OfflineBanner';
 import { useNetworkStatus } from '../../../hooks/useNetworkStatus';
 import { UserProfile } from '../../../types';
 import { updateUserProfile } from '../../../services/profileService';
-import { uploadPhoto } from '../../../services/photoService';
+import { uploadPhoto, deletePhoto } from '../../../services/photoService';
 import { createLogger } from '../../../utils/secureLogger';
 
 const logger = createLogger('SectionScreenWrapper');
@@ -56,11 +56,27 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
     savingRef.current = true;
 
     try {
+      // Diff against original to find photos the user removed in this session.
+      // We need to drop them from Storage too (otherwise the bucket fills with
+      // orphans). Best-effort — failures don't block the save.
+      let removedPhotoIds: string[] = [];
+      if (originalProfileJson) {
+        try {
+          const original = JSON.parse(originalProfileJson) as UserProfile;
+          const newIds = new Set((profileSnapshot.photos || []).map(p => p.id));
+          removedPhotoIds = (original.photos || [])
+            .filter(p => !newIds.has(p.id) && !p.url.startsWith('file://'))
+            .map(p => p.id);
+        } catch (e) {
+          logger.warn('Could not diff original photos for cleanup:', e);
+        }
+      }
+
       // Upload any new photos (file:// URIs) to Supabase Storage first.
       // If a photo upload fails, skip it rather than aborting — text field
       // changes must always be persisted regardless of photo upload outcome.
       const uploadedPhotos = [];
-      let hadPhotoUploadFailure = false;
+      let photoUploadFailures = 0;
 
       for (const photo of profileSnapshot.photos || []) {
         if (photo.url.startsWith('file://')) {
@@ -69,7 +85,7 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
             uploadedPhotos.push(uploadRes.data.photo);
           } else {
             logger.error('Background photo upload failed:', uploadRes.error?.message);
-            hadPhotoUploadFailure = true;
+            photoUploadFailures++;
             // Do not push failed photo — continue to save all other changes
           }
         } else {
@@ -83,11 +99,21 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
       if (!result.ok) {
         logger.error('Background profile save failed:', result.error?.message);
         Alert.alert('Save Failed', 'Your changes could not be saved. Please try again.');
-      } else if (hadPhotoUploadFailure) {
-        Alert.alert(
-          'Photo Upload Failed',
-          'Your other changes were saved, but one or more photos could not be uploaded. Please try adding them again.'
-        );
+      } else {
+        // Storage cleanup — best-effort, after the metadata save succeeds
+        for (const id of removedPhotoIds) {
+          deletePhoto(id).catch(err => {
+            logger.warn('Storage cleanup failed for removed photo (non-blocking):', err?.message);
+          });
+        }
+        if (photoUploadFailures > 0) {
+          Alert.alert(
+            'Photo Upload Failed',
+            photoUploadFailures === 1
+              ? 'Your other changes were saved, but one photo could not be uploaded. Try adding it again.'
+              : `Your other changes were saved, but ${photoUploadFailures} photos could not be uploaded. Try adding them again.`
+          );
+        }
       }
     } catch (error: any) {
       logger.error('Background save exception:', error);
@@ -95,7 +121,7 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
     } finally {
       savingRef.current = false;
     }
-  }, []);
+  }, [originalProfileJson]);
 
   const handleSaveAndGoBack = useCallback(() => {
     if (!hasChanges()) {

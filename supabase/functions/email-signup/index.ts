@@ -5,7 +5,11 @@ import { corsHeaders } from "../_shared/cors.ts";
 
 // ── Constants ────────────────────────────────────────────────────────
 const ALLOWED_DOMAIN = "rice.edu";
-const MAX_CODES_PER_EMAIL_PER_HOUR = 5;
+// Per-email send burst window — 5 sends per 10 minutes (was 5/hour, which
+// locked legitimate users out for ~56 minutes if they hit cooldown 5 times
+// before their email arrived). 10-minute window still bounds brute-force.
+const MAX_CODES_PER_EMAIL = 5;
+const EMAIL_RATE_WINDOW_MINUTES = 10;
 const MAX_SENDS_PER_IP_PER_HOUR = 20;
 const MAX_ATTEMPTS_PER_CODE = 5;
 const CODE_EXPIRY_MINUTES = 10;
@@ -76,26 +80,6 @@ function buildVerificationEmail(code: string, email: string): string {
 </div>`.trim();
 }
 
-/** Build email for existing account holders who try to sign up. */
-function buildAccountExistsEmail(email: string): string {
-  return `
-<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 420px; margin: 0 auto; padding: 40px 24px;">
-  <div style="text-align: center; margin-bottom: 32px;">
-    <h1 style="color: #1E293B; font-size: 24px; font-weight: 700; margin: 0;">Bridge</h1>
-  </div>
-  <p style="color: #64748B; font-size: 16px; text-align: center; line-height: 1.6;">
-    Someone tried to create a new account with this email, but you already have a Bridge account.
-  </p>
-  <p style="color: #64748B; font-size: 16px; text-align: center; line-height: 1.6; margin-top: 16px;">
-    If this was you, open the app and tap <strong>Sign In</strong> instead.
-  </p>
-  <p style="color: #94A3B8; font-size: 13px; text-align: center; margin-top: 24px;">
-    If you didn't request this, you can safely ignore this email.
-  </p>
-  ${buildUnsubscribeFooter(email)}
-</div>`.trim();
-}
-
 /** Build the unsubscribe URL for a given email.
  *  Always uses the production Supabase URL since emails are sent to real
  *  inboxes via Resend regardless of environment (local or production). */
@@ -142,19 +126,31 @@ async function handleSend(
   clientIP: string,
   flow: "signup" | "login" = "signup",
 ): Promise<Response> {
-  // 1. Rate limit per-email
-  const { count: emailCount, error: emailCountErr } = await admin
+  // 1. Rate limit per-email — count sends in the recent burst window so a user
+  //    who exhausts the limit only waits ~10 min, not an hour.
+  const windowMs = EMAIL_RATE_WINDOW_MINUTES * 60 * 1000;
+  const windowStart = new Date(Date.now() - windowMs).toISOString();
+  const { data: recentCodes, error: emailCountErr } = await admin
     .from("email_verification_codes")
-    .select("*", { count: "exact", head: true })
+    .select("created_at")
     .eq("email", email)
-    .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
+    .gte("created_at", windowStart)
+    .order("created_at", { ascending: true });
 
   if (emailCountErr) {
     console.error("Rate limit check error:", emailCountErr.message);
     return jsonResponse({ error: "Service temporarily unavailable. Please try again." }, 500);
   }
-  if ((emailCount ?? 0) >= MAX_CODES_PER_EMAIL_PER_HOUR) {
-    return jsonResponse({ error: "Too many requests. Please wait before requesting another code." });
+  if ((recentCodes?.length ?? 0) >= MAX_CODES_PER_EMAIL) {
+    // Tell the user exactly when they can try again — don't leave them guessing.
+    const oldest = recentCodes![0].created_at as string;
+    const retryAtMs = new Date(oldest).getTime() + windowMs;
+    const minutes = Math.max(1, Math.ceil((retryAtMs - Date.now()) / 60000));
+    return jsonResponse({
+      error: `Too many code requests. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+      code: "RATE_LIMITED",
+      retryAfterSeconds: Math.max(60, Math.ceil((retryAtMs - Date.now()) / 1000)),
+    });
   }
 
   // 1b. Rate limit per-IP (prevents spamming different emails from one device)
@@ -170,7 +166,11 @@ async function handleSend(
     }
   }
 
-  // 2. Check user status — different logic for signup vs login
+  // 2. Check user status — the app blocks the user explicitly on the wrong flow.
+  //    Previously this used anti-enumeration (silent success on account mismatch),
+  //    but that left real users confused — they got no code and thought signup was
+  //    broken. Product decision 2026-04-17: prioritize clarity over enumeration hiding.
+  //    Per-IP and per-email rate limits above still bound brute-force enumeration.
   const { data: existingUser } = await admin.rpc("get_user_by_email", {
     p_email: email,
   });
@@ -179,36 +179,23 @@ async function handleSend(
   const hasCompletedProfile = userExists && existingUser[0].profile_completed === true;
 
   if (flow === "login") {
-    // Login: user MUST exist. Anti-enumeration: return ok silently if no account.
+    // Login: user MUST exist. Otherwise tell them to sign up.
     if (!userExists) {
-      return jsonResponse({ ok: true });
+      return jsonResponse({
+        error: "No account found with this email. Tap Sign Up instead.",
+        code: "NO_ACCOUNT",
+      });
     }
-    // User exists — proceed to send code (whether profile is complete or not)
+    // User exists — proceed to send code.
   } else {
-    // Signup: block completed profiles (anti-enumeration: always return ok)
+    // Signup: block users whose profile is already complete.
+    // Users with auth rows but incomplete profiles (abandoned onboarding) are
+    // allowed through — they'll get a fresh code and resume where they left off.
     if (hasCompletedProfile) {
-      const resendKey = Deno.env.get("RESEND_API_KEY");
-      if (resendKey) {
-        try {
-          await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${resendKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: "Bridge <verify@bridgedate.app>",
-              to: [email],
-              subject: "Bridge — Sign in to your account",
-              html: buildAccountExistsEmail(email),
-              headers: getEmailHeaders(email),
-            }),
-          });
-        } catch (e) {
-          console.error("Failed to send account-exists email:", e);
-        }
-      }
-      return jsonResponse({ ok: true });
+      return jsonResponse({
+        error: "You already have an account. Tap Sign In instead.",
+        code: "ACCOUNT_EXISTS",
+      });
     }
   }
 

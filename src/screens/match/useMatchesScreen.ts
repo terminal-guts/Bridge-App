@@ -23,7 +23,6 @@ import { communityService } from '../../services/communityServiceIndex';
 import { ActiveMatch, MatchProposal, MatchEndedEvent } from '../../types/community';
 import { getUserProfile } from '../../services/profileService';
 import { UserProfile } from '../../types';
-import { calculateOverallProfileStrength } from '../../utils/profileCompleteness';
 import { showToast } from '../../utils/toast';
 import { lightHaptic, heavyHaptic, successHaptic } from '../../utils/haptics';
 import { shareToMessages, shareGeneric } from '../../utils/shareMatch';
@@ -343,14 +342,13 @@ export function useMatchesScreen() {
         return h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`;
     }, [now]);
 
-    // Profile gate — acts as a visual cover when strength < 100%.
-    // Matches/proposals are NOT deleted — they reappear once strength is restored.
-    // If profile_completed is already true (one-way gate), never show the locked view
-    // even if the strength formula changes and the user's score drops below 100.
-    // Memoized to avoid recalculating on timer-driven re-renders (the `now` state updates every second).
+    // Profile gate — single source of truth: profile_completed.
+    // Set to true at the end of onboarding when at least one photo was uploaded
+    // successfully, and re-evaluated by updateUserProfile's auto-promote whenever
+    // the user edits. Strength score is cosmetic and lives in the profile
+    // dashboard; it does NOT gate the matching pool.
     const isLocked = useMemo(() => {
-      const strength = profile ? calculateOverallProfileStrength(profile) : 0;
-      return !loading && strength < 100 && !profile?.profileCompleted;
+      return !loading && !!profile && !profile.profileCompleted;
     }, [profile, loading]);
 
     // Derive screen state

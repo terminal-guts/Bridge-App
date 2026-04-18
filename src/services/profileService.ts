@@ -454,13 +454,16 @@ export const updateUserProfile = async (
       const fullProfile = await _fetchUserProfile();
       const isReviewer = fullProfile.ok && isReviewerBypassEmail(fullProfile.data?.email ?? '');
       if (fullProfile.ok && fullProfile.data && !fullProfile.data.profileCompleted && !isReviewer) {
-        // Check mandatory fields only (not cosmetic photos/questions score).
-        // The overall score includes photos+questions which are cosmetic —
-        // profile_completed should be set when mandatory fields are done.
+        // Mandatory checklist: aboutMe + matchPreferences both at 100% AND at
+        // least one photo. The strength score INCLUDES optional things like
+        // 3 photos / 3 deep questions which we don't gate on — but we DO need
+        // a single photo (otherwise the user shows up as a faceless card).
         const strength = calculateProfileStrengthBreakdown(fullProfile.data);
+        const photoCount = fullProfile.data.photos?.length ?? 0;
         const mandatoryComplete =
           strength.sections.aboutMe.percentage === 100 &&
-          strength.sections.matchPreferences.percentage === 100;
+          strength.sections.matchPreferences.percentage === 100 &&
+          photoCount >= 1;
         if (mandatoryComplete) {
           const { error: completeError } = await supabase
             .from('user_profiles')

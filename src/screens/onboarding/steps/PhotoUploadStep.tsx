@@ -29,7 +29,10 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
   onNext,
   onBack,
 }) => {
-  const [photos, setPhotos] = useState<Photo[]>(data.photos || []);
+  // Read photos straight from parent state — every change must propagate
+  // immediately so the eager upload effect in OnboardingScreen fires the
+  // moment a photo is picked, not when "Continue" is tapped.
+  const photos: Photo[] = data.photos || [];
   const [error, setError] = useState('');
 
   const openImagePicker = async (slotIndex: number) => {
@@ -50,15 +53,13 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
           order: slotIndex,
         };
 
-        setPhotos(prev => {
-          const updated = [...prev];
-          if (slotIndex < updated.length) {
-            updated[slotIndex] = newPhoto;
-          } else {
-            updated.push(newPhoto);
-          }
-          return updated;
-        });
+        const updated = [...photos];
+        if (slotIndex < updated.length) {
+          updated[slotIndex] = newPhoto;
+        } else {
+          updated.push(newPhoto);
+        }
+        updateData({ photos: updated });
         setError('');
       }
     } catch (err) {
@@ -95,15 +96,10 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
   };
 
   const removePhoto = (index: number) => {
-    setPhotos(prev => {
-      const updated = prev.filter((_, i) => i !== index);
-      // Re-assign isMain to first photo and fix ordering
-      return updated.map((p, i) => ({
-        ...p,
-        isMain: i === 0,
-        order: i,
-      }));
-    });
+    const updated = photos
+      .filter((_, i) => i !== index)
+      .map((p, i) => ({ ...p, isMain: i === 0, order: i }));
+    updateData({ photos: updated });
   };
 
   const validateAndContinue = () => {
@@ -111,8 +107,6 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
       setError('Add at least one photo so your matches can see you');
       return;
     }
-
-    updateData({ photos });
     onNext();
   };
 

@@ -121,17 +121,28 @@ export const saveOnboardingStep = async (
       }
     }
 
-    // Check if transform returned multi-table format { profiles: {...}, preferences: {...} }
+    // Track errors across the (possibly two) upserts so the caller can decide
+    // whether to warn the user. We previously logged.warn and returned ok:true
+    // unconditionally, which masked real data-loss scenarios — a 4G dropout
+    // mid-step left columns NULL with no signal.
+    const errors: string[] = [];
+
     if (transformed.profiles || transformed.preferences) {
       if (transformed.profiles && Object.keys(transformed.profiles).length > 0) {
         const { error } = await supabase.from('user_profiles')
           .upsert({ user_id: finalUserId, ...transformed.profiles }, { onConflict: 'user_id' });
-        if (error) logger.warn('[ProfileService] Profile upsert error:', error.message);
+        if (error) {
+          logger.error(`[ProfileService] user_profiles upsert error (step=${stepKey}):`, error.message);
+          errors.push(`user_profiles: ${error.message}`);
+        }
       }
       if (transformed.preferences && Object.keys(transformed.preferences).length > 0) {
         const { error } = await supabase.from('user_preferences')
           .upsert({ user_id: finalUserId, ...transformed.preferences }, { onConflict: 'user_id' });
-        if (error) logger.warn('[ProfileService] Preferences upsert error:', error.message);
+        if (error) {
+          logger.error(`[ProfileService] user_preferences upsert error (step=${stepKey}):`, error.message);
+          errors.push(`user_preferences: ${error.message}`);
+        }
       }
     } else {
       // Single-table update
@@ -139,11 +150,17 @@ export const saveOnboardingStep = async (
       if (table === 'user_profiles' || table === 'user_preferences') {
         const { error } = await supabase.from(table)
           .upsert({ user_id: finalUserId, ...transformed }, { onConflict: 'user_id' });
-        if (error) logger.warn(`[ProfileService] ${table} upsert error:`, error.message);
+        if (error) {
+          logger.error(`[ProfileService] ${table} upsert error (step=${stepKey}):`, error.message);
+          errors.push(`${table}: ${error.message}`);
+        }
       }
       // user_photos handled separately via photoService
     }
 
+    if (errors.length > 0) {
+      return createErrorResponse('SAVE_STEP_PARTIAL', errors.join('; '));
+    }
     return { ok: true };
   } catch (error: unknown) {
     logger.error('[ProfileService] saveOnboardingStep error:', error);
@@ -154,21 +171,29 @@ export const saveOnboardingStep = async (
 /**
  * Create the full user profile at the end of onboarding.
  * Upserts directly into user_profiles, user_preferences, and deep_question_answers.
+ *
+ * Photo failure handling: if the user picked photo(s) but every upload failed,
+ * the profile is still created so they can enter the app — but profile_completed
+ * stays false so the matches gate keeps them in the locked view until they
+ * successfully add a photo from EditPhotos. Returns `data.photoUploadFailed`
+ * so the caller can surface a toast.
  */
 export const createUserProfile = async (
   userId: string,
   data: Partial<OnboardingData>,
-): Promise<ApiResponse<UserProfile>> => {
+): Promise<ApiResponse<{ photoUploadFailed: boolean }>> => {
   try {
     logger.info('[ProfileService] createUserProfile:', userId);
 
     // Upload photos before building the payload
     let photoData: Array<{ id: string; url: string; is_main: boolean; display_order: number }> = [];
+    let photoUploadFailed = false;
     if (data.photos && data.photos.length > 0) {
       const allUrls = data.photos.map(p => p.url || (p as Photo & { uri?: string }).uri).filter((u): u is string => Boolean(u));
       // Separate already-uploaded CDN URLs from local file:// URIs that need uploading
       const cdnUrls = allUrls.filter(u => !u.startsWith('file://'));
       const localUris = allUrls.filter(u => u.startsWith('file://'));
+      const userTriedToUpload = allUrls.length > 0;
 
       // Keep CDN URLs as-is (from eager upload)
       photoData = cdnUrls.map((url, i) => ({
@@ -192,12 +217,13 @@ export const createUserProfile = async (
             }));
           photoData = [...photoData, ...uploaded];
         } else {
-          logger.warn('[ProfileService] Photo upload failed — continuing with CDN photos only');
+          logger.warn('[ProfileService] Photo upload failed — continuing without photos');
         }
       }
 
-      if (photoData.length === 0) {
-        logger.warn('[ProfileService] No photos available — continuing without photos');
+      if (userTriedToUpload && photoData.length === 0) {
+        photoUploadFailed = true;
+        logger.warn('[ProfileService] No photos persisted — profile_completed will stay false');
       }
     }
 
@@ -235,9 +261,11 @@ export const createUserProfile = async (
       non_negotiables: [],
       matchmaking_only: data.matchmakingOnly ?? false,
       role: data.role || 'dater',
-      // All onboarding steps are mandatory (no skip buttons), so every user who
-      // finishes onboarding has all required fields filled → mark complete now.
-      profile_completed: true,
+      // Mandatory: at least one photo. If photo upload failed, profile_completed
+      // stays false so the matches gate keeps the user in the locked view.
+      // Auto-promote in updateUserProfile flips it to true when they add a photo
+      // from EditPhotos later.
+      profile_completed: photoData.length > 0,
     };
 
     // Strip undefined, empty arrays, and empty strings so they don't overwrite
@@ -316,7 +344,7 @@ export const createUserProfile = async (
     const { invalidateProfileCache } = await import('./profileService');
     invalidateProfileCache();
 
-    return { ok: true };
+    return { ok: true, data: { photoUploadFailed } };
   } catch (error: unknown) {
     logger.error('[ProfileService] createUserProfile error:', error);
     return createErrorResponse('CREATE_PROFILE_ERROR', error instanceof Error ? error.message : 'Failed to create profile');

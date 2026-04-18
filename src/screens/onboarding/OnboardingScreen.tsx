@@ -19,6 +19,7 @@ import { Body } from '../../components/ui';
 import { ONBOARDING_STEP_MAPPING } from '../../config/onboardingMapping';
 import { createLogger } from '../../utils/secureLogger';
 import { successHaptic } from '../../utils/haptics';
+import { showToast } from '../../utils/toast';
 import { FONT_SIZES } from '../../constants/typography';
 import { assignNewUserProposals, generateProposalForUser } from '../../services/proposalApiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -399,7 +400,13 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
 
           if (!saveResult.ok) {
             // Intermediate step saves are best-effort — never block the user.
-            logger.warn('[OnboardingScreen] Step save failed (non-blocking):', saveResult.error?.message);
+            // Logged at error level so monitoring catches recurring failures.
+            // The final createUserProfile re-upserts the same data, so transient
+            // failures here usually self-heal at the end of onboarding.
+            logger.error(
+              `[OnboardingScreen] Step save failed (step=${mapping.key}, non-blocking):`,
+              saveResult.error?.message,
+            );
           }
         }
       }
@@ -533,24 +540,29 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
 
       if (!profileResult.ok) {
         logger.error('Profile creation failed:', profileResult.error);
-        const errorCode = profileResult.error?.code || '';
-
-        // Show more specific error message for photo upload failures
-        const displayMessage = errorCode === 'PHOTO_UPLOAD_FAILED'
-          ? 'Failed to upload your photos. Please check your internet connection and try again.'
-          : 'Unable to create your profile. Please check your connection and try again.';
-
         // No Cancel option — user must retry. Tapping Cancel previously trapped users
         // with no way forward (profile never created, stuck on onboarding).
         Alert.alert(
           'Almost There!',
-          displayMessage,
+          'Unable to create your profile. Please check your connection and try again.',
           [{ text: 'Try Again', onPress: () => completeOnboarding() }]
         );
         return;
       }
 
       logger.info('Profile created successfully');
+
+      // Photo upload failed — profile exists but profile_completed=false.
+      // Let the user enter the app; the matches gate will prompt them to add
+      // a photo from EditPhotos. Toast is delayed so it lands AFTER navigation.
+      if (profileResult.data?.photoUploadFailed) {
+        setTimeout(() => {
+          showToast.error(
+            'Photo upload failed',
+            'Add a photo from your profile to start matching.',
+          );
+        }, 600);
+      }
 
       // Reset all guides for the new user so they see onboarding guides
       await resetAllGuides();

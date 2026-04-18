@@ -73,8 +73,8 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
   gender: {
     key: 'gender',
     type: 'complex',
-    table: 'user_profiles', // Primary table, but also updates user_preferences
-    columns: ['gender', 'interested_in_genders'], // Plus preferred_gender in user_preferences
+    table: 'user_profiles',
+    columns: ['gender', 'interested_in_genders'],
     transform: (data: any) => {
       // Map frontend labels to database values
       const mapGender = (arr: string[]): string[] => {
@@ -91,9 +91,16 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
       };
 
       const mappedInterestedIn = mapGender(data.interestedInGenders || []);
+      // Mirror interested_in_genders into user_preferences too — matching
+      // queries join on user_preferences.interested_in_genders, so an
+      // abandoned-onboarding user with only the user_profiles copy gets
+      // excluded from match generation.
       return {
         profiles: {
           gender: mapGender(data.gender || []),
+          interested_in_genders: mappedInterestedIn,
+        },
+        preferences: {
           interested_in_genders: mappedInterestedIn,
         },
       };

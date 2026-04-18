@@ -59,9 +59,12 @@ export const EthnicityStep: React.FC<EthnicityStepProps> = ({
       setError('Please select your ethnicity');
       return;
     }
+    // Auto-mirror own ethnicity into preferredEthnicities — matches the
+    // Religion/Politics/Lifestyle pattern. User can later open MatchPreferences
+    // and switch to "No Preference" or pick a different set.
     updateData({
       ethnicity: myEthnicity.join(' / '),
-      preferredEthnicities: [], // No Preference — default for all new users
+      preferredEthnicities: [...myEthnicity],
     });
     onNext();
   };
