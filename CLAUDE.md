@@ -14,7 +14,8 @@ Frontend code changes (React Native/Expo) go through the normal build-and-review
 - Railway has been fully removed (2026-03-23). Content moderation runs in `supabase/functions/moderate-text/index.ts`.
 
 **Deferred features (not in the live app, backend tables still exist):**
-- **Suggest a Match** (suggest two friends as a match) and **Recommend to Friend** (recommend someone during voting) — both fully built but pulled from UI pre-launch. See `_deferred/suggest-a-match/DEFERRED.md` for what was removed and how to re-enable. Do not reference these as live features.
+- **Suggest a Match** (suggest two friends as a match) — fully built but pulled from UI pre-launch. See `_deferred/suggest-a-match/DEFERRED.md` for what was removed and how to re-enable.
+- ~~**Recommend to Friend**~~ — Re-activated 2026-04-18 as part of gate-overhaul-v2. UI writes to `friend_recommendations`; `generate-proposals` applies a 1.25× boost to the recommended pair on the next 7PM cycle. See "Recommend-a-friend flow" under Voting Gate section.
 
 **React Compiler:** `babel-plugin-react-compiler` is **DISABLED** (it breaks Reanimated worklets — see `babel.config.js`). Use `useMemo`/`useCallback` where appropriate for performance, especially for `renderItem` functions passed to FlatList/FlashList and expensive computations in render paths.
 
@@ -22,11 +23,31 @@ Frontend code changes (React Native/Expo) go through the normal build-and-review
 
 The voting gate is the **#1 priority** feature. When the user opens the Community tab, they MUST vote on all available proposals (up to 3) before seeing the friends area. If the gate breaks, the app dies.
 
-### How it works
+### How it works (gate-overhaul-v2, 2026-04-18)
 
-1. **Edge function** (`supabase/functions/get-proposals-for-voting/index.ts`): Returns up to 3 (`GATE_SIZE`) pending proposals for the user to vote on. Prioritizes stranger proposals, but includes friend proposals as fallback so the gate is never empty when votable proposals exist.
+1. **Edge function** (`supabase/functions/get-proposals-for-voting/index.ts`): Returns up to 3 (`GATE_SIZE`) pending proposals for the user to vote on. **Computed on-the-fly from a dynamic query** — no pre-inserted `pool_vote_assignments` rows. Every user is implicitly a candidate voter for every pending proposal. Prioritizes stranger proposals, fills remaining slots with friend proposals.
 2. **Frontend** (`src/screens/main/CommunityScreen.tsx`): Always checks voting status from the network on init — never trusts the AsyncStorage cache for gate decisions. Shows `ProposalReviewView` when `hasCompletedVoting === false`.
 3. **Completion check** (`communityBackendService.getCommunityTaskProgress()`): Counts votes + recommendations since the last 7PM Central reset. User needs ≥3 actions AND 0 remaining proposals to pass the gate.
+
+### Daily evaluation rules (at 7PM Central via proposal-lifecycle cron)
+
+- **Day 1-2**: need ≥8 total votes to decide. Then: reject <35% yes-rate, accept >70%, else hold another day.
+- **Day 3+**: force-decide. Accept ≥50% yes-rate, else reject. 0-vote proposals on day 3 = reject.
+- **Deciding → expired** when `community_decided_at` is 2+ calendar days ago (2-cycle rule).
+
+### Karma (v2 outcome model)
+
+- **+1** per vote cast (immediate, via `increment_karma_for_vote`)
+- **+3** if vote matched community decision (YES + deciding OR NO + rejected)
+- **-1** if vote disagreed with community (YES + rejected OR NO + deciding)
+- Disbursed via `apply_karma_on_outcome` RPC (idempotent via `proposals.karma_applied` flag; **only callable by service_role**)
+- Voters who already got +3 when a proposal reached deciding keep it even if subjects later no-show and it expires
+
+### Vote sorting (for gate display order)
+
+1. **Primary**: fewest votes cast today (since last 7PM Central) — ASC
+2. **Secondary** (only if tied): oldest `created_at` — ASC
+3. **Tertiary** (only if tied on both): random
 
 ### Rules — DO NOT BREAK
 
@@ -35,7 +56,21 @@ The voting gate is the **#1 priority** feature. When the user opens the Communit
 - **Friend proposals fill the gate** when there aren't enough stranger proposals. Friend votes in the gate count toward the 3-vote requirement AND update the community screen state (friend moves from "Waiting on you" → "Your crew").
 - **Never cache "voting done"** when the reason is "no proposals exist" — only cache when user genuinely voted 3+ times AND no proposals remain.
 - **Never trust the voting cache on the fast path** — always verify from the network. Only the friends area cache is safe for instant rendering.
-- **Proposals are distributed evenly** across voters (sorted by fewest assignments first) so all proposals get similar vote counts.
+- **process-vote never changes proposal status** — only the daily lifecycle cron does. If voting a stale (expired/rejected/deleted) proposal, process-vote returns 200 silently with +1 karma once (unique-constraint protected).
+
+### Pause / suspend / delete — auto-expire semantics
+
+- When a user's `is_paused` or `is_suspended` flips `false→true`, a DB trigger (`trg_auto_expire_on_pause`) immediately expires any pending/deciding proposals where they're a subject. The other subject becomes eligible for a fresh proposal in the next cycle. No karma adjustment on these expirations.
+- When a user deletes their account, `delete_user_account` RPC cascade-deletes their proposals, votes, and karma row. Remaining voters silently skip the karma grant via NULL-safe join.
+
+### Recommend-a-friend flow (LIVE as of 2026-04-18)
+
+In the proposal voting UI, tapping "Recommend":
+1. Opens a two-step modal: pick which subject (user_a or user_b) → pick which friend → confirm
+2. `submit-recommendation` edge function writes to `friend_recommendations` table (not `friend_suggestions` — that's legacy)
+3. User then votes YES/NO normally; the recommendation persists independently of their vote
+4. **Next 7PM cycle**: `generate-proposals` reads `friend_recommendations`, builds pair-key set, applies 1.25× compatibility boost to the (subject, friend) pair. If basic-filter passes (gender/age/etc), boosted pair is more likely to win exclusive allocation.
+5. Current model: dedupe (1 recommendation per pair = 1 × 1.25 boost). Stacking/consumption/feedback-loop improvements deferred — see `docs/plans/` plan doc for revisit.
 
 ### Key files
 
