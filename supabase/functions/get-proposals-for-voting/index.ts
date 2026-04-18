@@ -38,30 +38,24 @@ Deno.serve(async (req: Request) => {
     const userId = user.id;
     const supabase = createAdminClient();
 
-    // Matchmakers vote on proposals like daters (they are excluded as SUBJECTS
-    // in generate-proposals, but participate in community voting).
-
-    // ── Parallel: fetch everything we need (no proposal body, no global assignments) ──
+    // Fetch everything we need in parallel.  Key change from previous version:
+    // we ONLY fetch proposals this user has an assignment for (generate-proposals
+    // assigns every eligible community member to every new proposal at creation
+    // time), so there's no JIT assignment / daily cap logic here.
     const [
       { data: blockedOutgoing },
       { data: blockedIncoming },
       { data: friendRows },
       { data: existingVotes },
-      { data: pendingProposals },
-      { data: userPreAssignments },
+      { data: assignments },
     ] = await Promise.all([
       supabase.from('blocked_users').select('blocked_user_id').eq('user_id', userId),
       supabase.from('blocked_users').select('user_id').eq('blocked_user_id', userId),
       supabase.from('friends').select('user_id, friend_id').eq('status', 'accepted').or(`user_id.eq.${userId},friend_id.eq.${userId}`),
       supabase.from('proposal_votes').select('proposal_id').eq('voter_user_id', userId),
-      // Fetch columns needed for filtering + vote counts for the LiveVoteBar
-      // Include pool_eligible so we can filter out non-pool-eligible (demo) proposals
-      supabase.from('proposals').select('id, user_a_id, user_b_id, pool_yes_votes, pool_no_votes, friend_yes_votes, friend_no_votes, compatibility_score, status, created_at, voting_started_at, voting_expires_at, pool_eligible').eq('status', 'pending'),
-      // Fetch this user's pre-existing vote assignments (allows reviewer to see demo proposals)
-      supabase.from('pool_vote_assignments').select('proposal_id').eq('voter_id', userId).eq('has_voted', false),
+      supabase.from('pool_vote_assignments').select('proposal_id, has_voted').eq('voter_id', userId),
     ]);
 
-    // ── Build lookup sets ───────────────────────────────────────────────────
     const blockedIds = new Set<string>([
       ...(blockedOutgoing || []).map((r: { blocked_user_id: string }) => r.blocked_user_id),
       ...(blockedIncoming || []).map((r: { user_id: string }) => r.user_id),
@@ -74,36 +68,49 @@ Deno.serve(async (req: Request) => {
     }
 
     // Only votes exclude proposals from the gate — recommendations do NOT.
-    // Users must still vote Yes or No after recommending.
     const alreadyActedIds = new Set(
       (existingVotes || []).map((v: { proposal_id: string }) => v.proposal_id),
     );
 
-    // ── Filter eligible proposals for the gate ──────────────────────────────
-    // Gate is #1 priority — must show up to GATE_SIZE proposals.
-    // Prefer stranger proposals, but include friend proposals as fallback
-    // so the gate is never empty when votable proposals exist.
+    // Unvoted assignments — these are the proposal IDs this user still owes a vote on.
+    const assignedProposalIds = (assignments || [])
+      .filter((a: { has_voted: boolean }) => !a.has_voted)
+      .map((a: { proposal_id: string }) => a.proposal_id);
+
+    if (assignedProposalIds.length === 0) {
+      return Response.json({ proposals: [], pool_count: 0, friend_count: 0 }, { headers: corsHeaders });
+    }
+
+    // Fetch full rows for the proposals this user is assigned to.
+    const { data: candidateProposals } = await supabase
+      .from('proposals')
+      .select('id, user_a_id, user_b_id, pool_yes_votes, pool_no_votes, friend_yes_votes, friend_no_votes, compatibility_score, status, created_at, voting_started_at, voting_expires_at, pool_eligible')
+      .in('id', assignedProposalIds)
+      .eq('status', 'pending');
+
+    // ── Filter and split stranger vs friend proposals ───────────────────────
+    // Gate is #1 priority — show up to GATE_SIZE.  Prefer stranger proposals;
+    // fill remaining slots with friend proposals.
     const strangerEligible: ProposalRow[] = [];
     const friendEligible: ProposalRow[] = [];
+    const demoPreAssigned: ProposalRow[] = [];
 
-    // Pre-assigned proposal IDs — allows specific users (e.g. Apple reviewer)
-    // to see non-pool-eligible (demo) proposals via pool_vote_assignments.
-    const preAssignedIds = new Set(
-      (userPreAssignments || []).map((a: { proposal_id: string }) => a.proposal_id),
-    );
-
-    for (const p of (pendingProposals || [])) {
-      // Skip proposals the user is part of
+    for (const p of (candidateProposals || [])) {
+      // Skip proposals the user is part of (defensive — shouldn't be assigned)
       if (p.user_a_id === userId || p.user_b_id === userId) continue;
-      // Skip already acted on (voted or recommended)
+      // Skip already acted on (voted)
       if (alreadyActedIds.has(p.id)) continue;
       // Skip proposals involving blocked users
       if (blockedIds.has(p.user_a_id) || blockedIds.has(p.user_b_id)) continue;
-      // Skip non-pool-eligible proposals unless user has a pre-existing assignment
-      // (Demo proposals use pool_eligible=false; reviewer gets them via assignments)
-      if (p.pool_eligible === false && !preAssignedIds.has(p.id)) continue;
 
-      // Separate stranger vs friend proposals (friends are fallback)
+      // Demo proposals (pool_eligible=false) are assigned individually to specific
+      // users (e.g. Apple reviewer).  If the user has an assignment to a demo
+      // proposal, show ONLY demo proposals so the reviewer sees the demo bubble.
+      if (p.pool_eligible === false) {
+        demoPreAssigned.push(p);
+        continue;
+      }
+
       if (friendIds.has(p.user_a_id) || friendIds.has(p.user_b_id)) {
         friendEligible.push(p);
       } else {
@@ -111,88 +118,32 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Combine: strangers first, then friend proposals to fill remaining slots
-    const eligible: ProposalRow[] = [...strangerEligible, ...friendEligible];
+    const combined = demoPreAssigned.length > 0
+      ? demoPreAssigned
+      : [...strangerEligible, ...friendEligible];
 
-    // ── Fetch assignment counts ONLY for eligible proposals (not all proposals) ──
-    // This replaces the previous full-table scan of pool_vote_assignments.
-    const assignmentCounts = new Map<string, number>();
-    const userAssignedIds = new Set<string>();
-
-    if (eligible.length > 0) {
-      const eligibleIds = eligible.map(p => p.id);
-      const { data: assignments } = await supabase
+    // Sort by fewest assignments first for even vote distribution across proposals.
+    // (Only relevant for strangers + friends; demo proposals are already narrow.)
+    if (demoPreAssigned.length === 0 && combined.length > GATE_SIZE) {
+      const combinedIds = combined.map(p => p.id);
+      const { data: assignmentCountRows } = await supabase
         .from('pool_vote_assignments')
-        .select('proposal_id, voter_id')
-        .in('proposal_id', eligibleIds);
+        .select('proposal_id')
+        .in('proposal_id', combinedIds);
 
-      for (const a of (assignments || [])) {
-        assignmentCounts.set(a.proposal_id, (assignmentCounts.get(a.proposal_id) || 0) + 1);
-        if (a.voter_id === userId) userAssignedIds.add(a.proposal_id);
+      const countMap = new Map<string, number>();
+      for (const row of (assignmentCountRows || [])) {
+        countMap.set(row.proposal_id, (countMap.get(row.proposal_id) || 0) + 1);
       }
+      combined.sort((a, b) => (countMap.get(a.id) || 0) - (countMap.get(b.id) || 0));
     }
 
-    // ── Pick up to GATE_SIZE proposals, fewest assignments first ─────────
-    // This ensures even vote distribution across all proposals.
-    eligible.sort((a, b) => {
-      const countA = assignmentCounts.get(a.id) || 0;
-      const countB = assignmentCounts.get(b.id) || 0;
-      return countA - countB;
-    });
+    const selected = combined.slice(0, GATE_SIZE);
 
-    // If the user has pre-assigned demo proposals (pool_eligible=false),
-    // show ONLY those — never mix real proposals with demo proposals.
-    // This ensures the Apple reviewer sees exactly the demo bubble content.
-    const demoOnly = eligible.filter(p => p.pool_eligible === false && preAssignedIds.has(p.id));
-    const selected = (demoOnly.length > 0 ? demoOnly : eligible).slice(0, GATE_SIZE);
-
-    // ── Daily assignment quota ──
-    // Only count assignments for proposals that are still pending — stale
-    // assignments (for rejected/deciding proposals) shouldn't eat the quota.
-    const DAILY_ASSIGNMENT_CAP = 12;
-    const todayMidnightUTC = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z').toISOString();
-
-    // Get today's assignment count, excluding stale ones
-    const pendingProposalIds = (pendingProposals || []).map((p: ProposalRow) => p.id);
-    const { count: todayActiveAssignments } = await supabase
-      .from('pool_vote_assignments')
-      .select('*', { count: 'exact', head: true })
-      .eq('voter_id', userId)
-      .gte('created_at', todayMidnightUTC)
-      .in('proposal_id', pendingProposalIds.length > 0 ? pendingProposalIds : ['00000000-0000-0000-0000-000000000000']);
-
-    const remainingQuota = Math.max(0, DAILY_ASSIGNMENT_CAP - (todayActiveAssignments ?? 0));
-
-    // ── Create pool_vote_assignments for any newly assigned proposals ────
-    // Only create new rows for proposals not already assigned, up to remaining quota.
-    const newAssignments = selected
-      .filter(p => !userAssignedIds.has(p.id))
-      .slice(0, remainingQuota);
-
-    if (newAssignments.length > 0) {
-      await supabase
-        .from('pool_vote_assignments')
-        .upsert(
-          newAssignments.map(p => ({
-            proposal_id: p.id,
-            voter_id: userId,
-            has_voted: false,
-          })),
-          { onConflict: 'proposal_id,voter_id' }
-        );
-    }
-
-    // Only return proposals that have valid assignments (pre-existing or newly created).
-    // Without an assignment, process-vote will reject the vote with 403.
-    const newAssignmentIds = new Set(newAssignments.map(p => p.id));
-    const assignable = selected.filter(p =>
-      userAssignedIds.has(p.id) || newAssignmentIds.has(p.id) ||
-      friendEligible.some(fp => fp.id === p.id) // friend votes don't need assignments
-    );
-
-    // Tag proposals with correct vote context (friend vs pool)
+    // Tag proposals with vote context.  Friends of either subject vote via the
+    // friend channel (weighted 1.25×).  Strangers vote via the pool.
     const friendEligibleIds = new Set(friendEligible.map(p => p.id));
-    const gateProposals = assignable.map(p => ({
+    const gateProposals = selected.map(p => ({
       ...p,
       vote_context: friendEligibleIds.has(p.id) ? 'friend' : 'pool',
       is_friend_vote: friendEligibleIds.has(p.id),

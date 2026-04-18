@@ -1,67 +1,11 @@
-/**
- * INVESTIGATION FINDINGS (Voting Edge Cases):
- * 1. Double voting: Upsert allows re-voting, but karma was double-counted (+1 on every hit).
- *    Weighted tallies worked due to recount logic but will be changed to incremental.
- *    Streaks only updated for one friend even if both were friends.
- * 2. Both friends in proposal: hasCompletedGrid correctly marks both as helped in UI
- *    because they share the proposal ID. Streak logic only updated one friend in backend.
- * 3. Friend in 3-vote gate: Correctly marked helped after completion.
- * 4. Two friends in gate: Correctly marked both helped.
- * 5. Vote in gate, then friend area: Correctly excluded from "Help" list via alreadyVotedIds.
- * 6. Vote change tallies: Handled by recount, now implementing subtract-old/add-new.
- * 7. Pool assignments: has_voted set to true correctly; re-votes are harmless.
- * 8. Other: markFriendAsHelped in frontend is redundant (server handles streaks).
- */
-
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import {
   FRIEND_VOTE_WEIGHT,
-  MAX_PROPOSAL_DAYS,
-  DECISION_DEADLINE_HOURS,
-  THRESHOLD_SCHEDULE,
-  CONFIRMATION_MIN_POOL_VOTES,
-  CONFIRMATION_MIN_TOTAL_VOTES,
-  CONFIRMATION_MIN_YES_VOTES,
-  REJECTION_FLOOR_YES_RATE,
-  REJECTION_FLOOR_MIN_VOTES,
-  IMMEDIATE_CANCEL_POOL_VOTES,
   KARMA_WEIGHTS,
 } from '../_shared/constants.ts';
-
-interface ProposalTiming {
-  voting_started_at?: string | null;
-  created_at?: string;
-}
-
-function getProposalDay(proposal: ProposalTiming): number {
-  const created = proposal.voting_started_at || proposal.created_at;
-  if (!created) return 1;
-  const createdDate = new Date(created);
-  const now = new Date();
-  const delta = now.getTime() - createdDate.getTime();
-  const day = Math.floor(delta / (24 * 60 * 60 * 1000)) + 1;
-  return Math.min(day, MAX_PROPOSAL_DAYS + 1);
-}
-
-function getCurrentThreshold(proposal: ProposalTiming): number | null {
-  const day = getProposalDay(proposal);
-  if (day > MAX_PROPOSAL_DAYS) return null;
-  return THRESHOLD_SCHEDULE[day] ?? 0.55;
-}
-
-function calculateWeightedYesPct(weightedYes: number, weightedNo: number): number {
-  const total = weightedYes + weightedNo;
-  if (total === 0) return 0.0;
-  return weightedYes / total;
-}
-
-function poolYesRate(poolYes: number, poolNo: number): number {
-  const total = poolYes + poolNo;
-  return total === 0 ? 0.0 : poolYes / total;
-}
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -312,142 +256,16 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Re-fetch the proposal row so lifecycle evaluation uses post-increment values.
-    const { data: refreshedProposal, error: refreshErr } = await supabase
-      .from('proposals')
-      .select('*')
-      .eq('id', proposal_id)
-      .single();
-
-    const updatedProposal = (refreshErr || !refreshedProposal) ? proposal : refreshedProposal;
-
-    const poolYes = updatedProposal.pool_yes_votes || 0;
-    const poolNo = updatedProposal.pool_no_votes || 0;
-    const friendYes = updatedProposal.friend_yes_votes || 0;
-    const friendNo = updatedProposal.friend_no_votes || 0;
-    const weightedYes = updatedProposal.weighted_yes || 0;
-    const weightedNo = updatedProposal.weighted_no || 0;
-
-    // 8. Inline lifecycle evaluation
-    const nowIso = new Date().toISOString();
-    let newStatus = 'pending';
-    const lifecycleUpdate: Record<string, unknown> = {};
-    const isExpired = getProposalDay(updatedProposal) > MAX_PROPOSAL_DAYS;
-
-    // Check immediate cancel (first 6 pool votes all NO) — runs before expiry
-    if (newStatus === 'pending') {
-      const { data: poolVotesSorted } = await supabase
-        .from('proposal_votes')
-        .select('vote_type, is_friend_vote, created_at')
-        .eq('proposal_id', proposal_id)
-        .eq('is_friend_vote', false)
-        .order('created_at', { ascending: true })
-        .limit(IMMEDIATE_CANCEL_POOL_VOTES);
-
-      if (poolVotesSorted && poolVotesSorted.length >= IMMEDIATE_CANCEL_POOL_VOTES) {
-        const allNo = poolVotesSorted.every(v => v.vote_type === 'NO');
-        if (allNo) {
-          newStatus = 'rejected';
-          Object.assign(lifecycleUpdate, {
-            status: 'rejected',
-            rejected_at: nowIso,
-            updated_at: nowIso,
-          });
-        }
-      }
-    }
-
-    // Check rejection floors
-    if (newStatus === 'pending') {
-      const totalPool = poolYes + poolNo;
-      const totalAll = totalPool + friendYes + friendNo;
-
-      if (totalPool >= REJECTION_FLOOR_MIN_VOTES && poolYesRate(poolYes, poolNo) < REJECTION_FLOOR_YES_RATE) {
-        newStatus = 'rejected';
-        Object.assign(lifecycleUpdate, { status: 'rejected', rejected_at: nowIso, updated_at: nowIso });
-      } else if (totalAll >= REJECTION_FLOOR_MIN_VOTES) {
-        const combinedYesRate = totalAll > 0 ? (poolYes + friendYes) / totalAll : 0;
-        if (combinedYesRate < REJECTION_FLOOR_YES_RATE) {
-          newStatus = 'rejected';
-          Object.assign(lifecycleUpdate, { status: 'rejected', rejected_at: nowIso, updated_at: nowIso });
-        }
-      }
-    }
-
-    // Check confirmation
-    if (newStatus === 'pending') {
-      const totalPool = poolYes + poolNo;
-      const totalAll = totalPool + friendYes + friendNo;
-      const totalYes = poolYes + friendYes;
-
-      if (totalPool >= CONFIRMATION_MIN_POOL_VOTES && totalAll >= CONFIRMATION_MIN_TOTAL_VOTES && totalYes >= CONFIRMATION_MIN_YES_VOTES) {
-        const threshold = getCurrentThreshold(updatedProposal);
-        if (threshold === null || calculateWeightedYesPct(weightedYes, weightedNo) >= threshold) {
-          newStatus = 'deciding';
-          const deadline = new Date(Date.now() + DECISION_DEADLINE_HOURS * 60 * 60 * 1000).toISOString();
-          Object.assign(lifecycleUpdate, {
-            status: 'deciding',
-            community_decided_at: nowIso,
-            passed_to_users_at: nowIso,
-            decision_deadline_at: deadline,
-            updated_at: nowIso,
-          });
-        }
-      }
-    }
-
-    // Day 5+ quality floor: auto-promote only if quality is acceptable
-    if (newStatus === 'pending' && isExpired) {
-      const totalAll = poolYes + poolNo + friendYes + friendNo;
-      const totalYes = poolYes + friendYes;
-      const combinedYesRate = totalAll > 0 ? totalYes / totalAll : 0;
-
-      if (totalAll < 3) {
-        newStatus = 'expired';
-        Object.assign(lifecycleUpdate, {
-          status: 'expired',
-          expired_at: nowIso,
-          updated_at: nowIso,
-        });
-      } else if (combinedYesRate < 0.40) {
-        newStatus = 'rejected';
-        Object.assign(lifecycleUpdate, {
-          status: 'rejected',
-          rejected_at: nowIso,
-          updated_at: nowIso,
-        });
-      } else {
-        newStatus = 'deciding';
-        const deadline = new Date(Date.now() + DECISION_DEADLINE_HOURS * 60 * 60 * 1000).toISOString();
-        Object.assign(lifecycleUpdate, {
-          status: 'deciding',
-          community_decided_at: nowIso,
-          passed_to_users_at: nowIso,
-          decision_deadline_at: deadline,
-          updated_at: nowIso,
-        });
-      }
-    }
-
-    // Apply lifecycle update if any — use status guard so concurrent votes
-    // don't clobber each other (only transition from 'pending')
-    if (Object.keys(lifecycleUpdate).length > 0) {
-      await supabase
-        .from('proposals')
-        .update(lifecycleUpdate)
-        .eq('id', proposal_id)
-        .eq('status', 'pending');
-    }
-
-    // 9. Mark pool_vote_assignment as voted
+    // Mark pool_vote_assignment as voted.  Status changes happen only in the
+    // daily proposal-lifecycle cron — no inline per-vote lifecycle evaluation.
     await supabase
       .from('pool_vote_assignments')
       .update({ has_voted: true })
       .eq('proposal_id', proposal_id)
       .eq('voter_id', voterId);
 
-    // 10. If friend vote, update friend streak for each friendship
-    // Voter may be friends with both user_a and user_b — update both streaks
+    // If friend vote, update friend streak for each friendship.
+    // Voter may be friends with both user_a and user_b — update both streaks.
     if (isFriendVote) {
       const streakUpdates: Promise<unknown>[] = [];
       if (isFriendOfA) {
@@ -463,8 +281,7 @@ Deno.serve(async (req: Request) => {
       status: 'success',
       vote_type,
       is_friend_vote: isFriendVote,
-      proposal_status: newStatus !== 'pending' ? newStatus : proposal.status,
-      tallies: { pool_yes: poolYes, pool_no: poolNo, friend_yes: friendYes, friend_no: friendNo },
+      proposal_status: proposal.status,
     }, { headers: corsHeaders });
 
   } catch (err: unknown) {

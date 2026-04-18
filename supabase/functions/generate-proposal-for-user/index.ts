@@ -3,10 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { createAdminClient } from '../_shared/supabase-client.ts';
 import { calculateCompatibility, passesBasicFilter } from '../_shared/scoring.ts';
 import { corsHeaders } from '../_shared/cors.ts';
-import { MAX_POOL_VOTES } from '../_shared/constants.ts';
-
-const VOTERS_PER_PROPOSAL = 6;
-const MAX_VOTING_GATE = 3;
+import { REPAIR_AFTER_DAYS } from '../_shared/constants.ts';
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -122,9 +119,12 @@ Deno.serve(async (req: Request) => {
         const eligibleOthers = (allProfiles || []).filter((p: { user_id: string }) => prefsMap[p.user_id]);
 
         if (eligibleOthers.length > 0) {
-          // Build exclusion sets (same pattern as generate-proposals)
-          const [existingRes, activeProposalRes, blockedRes, matchesRes, friendshipsRes] = await Promise.all([
-            supabase.from('proposals').select('user_a_id, user_b_id, status').in('status', ['rejected', 'declined', 'passed_to_match']),
+          // Build exclusion sets (same pattern as generate-proposals).
+          // Permanent blocks: declined / passed_to_match → never re-propose.
+          // Temporary blocks: rejected / expired within last REPAIR_AFTER_DAYS.
+          const [permanentRes, temporaryRes, activeProposalRes, blockedRes, matchesRes, friendshipsRes] = await Promise.all([
+            supabase.from('proposals').select('user_a_id, user_b_id').in('status', ['declined', 'passed_to_match']),
+            supabase.from('proposals').select('user_a_id, user_b_id, rejected_at, expired_at, status').in('status', ['rejected', 'expired']),
             supabase.from('proposals').select('user_a_id, user_b_id').in('status', ['pending', 'deciding']),
             supabase.from('blocked_users').select('user_id, blocked_user_id'),
             supabase.from('matches').select('user_id_1, user_id_2').in('status', ['pending', 'accepted', 'active']),
@@ -132,9 +132,18 @@ Deno.serve(async (req: Request) => {
           ]);
 
           const existingPairs = new Set<string>();
-          for (const row of (existingRes.data || [])) {
+          for (const row of (permanentRes.data || [])) {
             const key = [row.user_a_id, row.user_b_id].sort().join('|');
             existingPairs.add(key);
+          }
+          const cutoffMs = Date.now() - (REPAIR_AFTER_DAYS * 24 * 60 * 60 * 1000);
+          for (const row of (temporaryRes.data || [])) {
+            const tsStr = row.rejected_at || row.expired_at;
+            const tsMs = tsStr ? new Date(tsStr).getTime() : 0;
+            if (!tsMs || tsMs > cutoffMs) {
+              const key = [row.user_a_id, row.user_b_id].sort().join('|');
+              existingPairs.add(key);
+            }
           }
 
           const usersWithActiveProposal = new Set<string>();
@@ -297,9 +306,10 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // ── Phase B: Backfill voting gates for ALL users ─────────────────
-
-    // Fetch all pending proposals
+    // ── Phase B: Backfill assignments — every eligible voter ↔ every pending proposal ─
+    // Matches the scope used in generate-proposals: at creation time every
+    // eligible community member (including friends of either subject) is
+    // assigned.  The gate filters friends at display time.
     const { data: pendingProposals } = await supabase
       .from('proposals')
       .select('id, user_a_id, user_b_id')
@@ -314,131 +324,84 @@ Deno.serve(async (req: Request) => {
       }, { headers: corsHeaders });
     }
 
-    // Fetch all existing pool_vote_assignments for pending proposals
     const pendingIds = pendingProposals.map(p => p.id);
-    const { data: allAssignments } = await supabase
-      .from('pool_vote_assignments')
-      .select('proposal_id, voter_id, has_voted')
-      .in('proposal_id', pendingIds);
 
-    // Build lookup: proposal -> set of assigned voter IDs
-    const proposalAssignments: Record<string, Set<string>> = {};
-    // Build lookup: voter -> count of unvoted assignments
-    const voterUnvotedCount: Record<string, number> = {};
+    const [assignmentsRes, activeVotersRes, blocksRes] = await Promise.all([
+      supabase.from('pool_vote_assignments')
+        .select('proposal_id, voter_id')
+        .in('proposal_id', pendingIds),
+      supabase.from('user_profiles')
+        .select('user_id')
+        .eq('is_paused', false)
+        .eq('is_suspended', false)
+        .eq('profile_completed', true),
+      supabase.from('blocked_users').select('user_id, blocked_user_id'),
+    ]);
 
-    for (const a of (allAssignments || [])) {
-      if (!proposalAssignments[a.proposal_id]) {
-        proposalAssignments[a.proposal_id] = new Set();
+    // proposal_id → Set<voter_id already assigned>
+    const proposalAssignments = new Map<string, Set<string>>();
+    for (const a of (assignmentsRes.data || [])) {
+      if (!proposalAssignments.has(a.proposal_id)) {
+        proposalAssignments.set(a.proposal_id, new Set());
       }
-      proposalAssignments[a.proposal_id].add(a.voter_id);
-
-      if (!a.has_voted) {
-        voterUnvotedCount[a.voter_id] = (voterUnvotedCount[a.voter_id] || 0) + 1;
-      }
+      proposalAssignments.get(a.proposal_id)!.add(a.voter_id);
     }
 
-    // Fetch all eligible voters (not paused, profile completed, have preferences).
-    // Only profile_completed=true users should be pool voters — this excludes
-    // demo/reviewer accounts and users still in onboarding.
-    const { data: allUsers } = await supabase
-      .from('user_profiles')
-      .select('user_id')
-      .eq('is_paused', false)
-      .eq('profile_completed', true);
+    const activeVoterIds = (activeVotersRes.data || []).map((u: { user_id: string }) => u.user_id);
 
-    const { data: allUserPrefs } = await supabase
-      .from('user_preferences')
-      .select('user_id');
-
-    const usersWithPrefs = new Set((allUserPrefs || []).map(p => p.user_id));
-    const eligibleVoters = (allUsers || [])
-      .map(u => u.user_id)
-      .filter(id => usersWithPrefs.has(id));
-
-    // Fetch friendships for exclusion (friends vote through friend channel, not pool)
-    const { data: friendships } = await supabase
-      .from('friends')
-      .select('user_id, friend_id')
-      .eq('status', 'accepted');
-
-    const friendsMap: Record<string, Set<string>> = {};
-    for (const row of (friendships || [])) {
-      if (!friendsMap[row.user_id]) friendsMap[row.user_id] = new Set();
-      if (!friendsMap[row.friend_id]) friendsMap[row.friend_id] = new Set();
-      friendsMap[row.user_id].add(row.friend_id);
-      friendsMap[row.friend_id].add(row.user_id);
+    // user_id → Set of users they block or are blocked by
+    const blockedByUser = new Map<string, Set<string>>();
+    for (const row of (blocksRes.data || [])) {
+      if (!blockedByUser.has(row.user_id)) blockedByUser.set(row.user_id, new Set());
+      if (!blockedByUser.has(row.blocked_user_id)) blockedByUser.set(row.blocked_user_id, new Set());
+      blockedByUser.get(row.user_id)!.add(row.blocked_user_id);
+      blockedByUser.get(row.blocked_user_id)!.add(row.user_id);
     }
 
-    // Fetch existing votes so we don't assign proposals a user already voted on
-    const { data: existingVotes } = await supabase
-      .from('proposal_votes')
-      .select('proposal_id, voter_id')
-      .in('proposal_id', pendingIds);
-
-    const votedOn: Record<string, Set<string>> = {};
-    for (const v of (existingVotes || [])) {
-      if (!votedOn[v.voter_id]) votedOn[v.voter_id] = new Set();
-      votedOn[v.voter_id].add(v.proposal_id);
-    }
-
-    let totalBackfilled = 0;
     const todayStr = new Date().toISOString().split('T')[0];
     const insertBatch: Array<{ proposal_id: string; voter_id: string; assignment_date: string; has_voted: boolean }> = [];
 
-    // For each voter with < MAX_VOTING_GATE unvoted assignments, find proposals to assign
-    for (const voterId of eligibleVoters) {
-      const currentUnvoted = voterUnvotedCount[voterId] || 0;
-      if (currentUnvoted >= MAX_VOTING_GATE) continue;
+    for (const proposal of pendingProposals) {
+      const ua = proposal.user_a_id;
+      const ub = proposal.user_b_id;
+      const already = proposalAssignments.get(proposal.id) || new Set<string>();
+      const blocksA = blockedByUser.get(ua) || new Set<string>();
+      const blocksB = blockedByUser.get(ub) || new Set<string>();
 
-      let slotsToFill = MAX_VOTING_GATE - currentUnvoted;
+      for (const voterId of activeVoterIds) {
+        if (voterId === ua || voterId === ub) continue;
+        if (blocksA.has(voterId) || blocksB.has(voterId)) continue;
+        if (already.has(voterId)) continue;
 
-      for (const proposal of pendingProposals) {
-        if (slotsToFill <= 0) break;
-
-        // Skip if voter is a participant
-        if (proposal.user_a_id === voterId || proposal.user_b_id === voterId) continue;
-
-        // Skip if already assigned
-        if (proposalAssignments[proposal.id]?.has(voterId)) continue;
-
-        // Skip if already voted on this proposal
-        if (votedOn[voterId]?.has(proposal.id)) continue;
-
-        // Skip if voter is friends with either participant (friends vote through friend channel)
-        const voterFriends = friendsMap[voterId] || new Set();
-        if (voterFriends.has(proposal.user_a_id) || voterFriends.has(proposal.user_b_id)) continue;
-
-        // Skip if proposal already has MAX_POOL_VOTES
-        const assignedCount = proposalAssignments[proposal.id]?.size || 0;
-        if (assignedCount >= MAX_POOL_VOTES) continue;
-
-        // Assign!
         insertBatch.push({
           proposal_id: proposal.id,
           voter_id: voterId,
           assignment_date: todayStr,
           has_voted: false,
         });
-
-        // Track locally so subsequent iterations see this assignment
-        if (!proposalAssignments[proposal.id]) {
-          proposalAssignments[proposal.id] = new Set();
-        }
-        proposalAssignments[proposal.id].add(voterId);
-        slotsToFill--;
-        totalBackfilled++;
       }
     }
 
-    // Bulk insert all new assignments
-    if (insertBatch.length > 0) {
+    let totalBackfilled = 0;
+    const CHUNK = 500;
+    for (let i = 0; i < insertBatch.length; i += CHUNK) {
+      const chunk = insertBatch.slice(i, i + CHUNK);
       const { error: insertErr } = await supabase
         .from('pool_vote_assignments')
-        .insert(insertBatch);
-
-      if (insertErr) {
-        console.error('Failed to insert backfill assignments:', insertErr.message);
-        totalBackfilled = 0;
+        .insert(chunk);
+      if (!insertErr) {
+        totalBackfilled += chunk.length;
+      } else if (insertErr.code === '23505') {
+        // Race with concurrent run — retry each row individually.
+        for (const row of chunk) {
+          const { error: singleErr } = await supabase.from('pool_vote_assignments').insert(row);
+          if (!singleErr) totalBackfilled++;
+          else if (singleErr.code !== '23505') {
+            console.error(`Backfill row insert error: ${singleErr.message}`);
+          }
+        }
+      } else {
+        console.error(`Backfill batch insert error: ${insertErr.message}`);
       }
     }
 
