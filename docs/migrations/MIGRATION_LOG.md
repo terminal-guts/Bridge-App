@@ -13,10 +13,25 @@ Single source of truth for every SQL migration's state. Ordered by filename (tim
 
 | # | File | Purpose | Status | Applied LOCAL | Applied PROD | Idempotent? | Notes |
 |---|------|---------|--------|---------------|--------------|-------------|-------|
-| M1 | `20260417100001_remove_proposal_lifecycle_check_cron.sql` | Unschedule the 4-hour `proposal-lifecycle-check` safety-net cron | LOCAL_VERIFIED | 2026-04-17 (verified: `cron.job` no longer lists it) | ⏳ pending | Yes (`WHERE EXISTS` guard) | Gate-overhaul-v2 consolidates all decisions into the single 7PM cron |
-| M2 | `20260417100002_local_align_profile_completed.sql` | Adds `user_profiles.profile_completed` column (already exists in prod) | LOCAL_ONLY | 2026-04-17 | 🚫 DO NOT APPLY (prod already has it) | Yes (`IF NOT EXISTS`) | Catch-up migration — fixes local-vs-prod schema drift only |
-| M3 | `20260417100003_karma_outcome_v2.sql` | Rewrites `apply_karma_on_outcome` RPC to +3/-1 simpler model + idempotency flag `proposals.karma_applied` | NEW | ⏳ pending | ⏳ pending | Yes (`CREATE OR REPLACE`, `ADD COLUMN IF NOT EXISTS`) | Forward-only: in-flight proposals skip retroactive karma |
-| M4 | `20260417100004_auto_expire_on_pause.sql` | Trigger on `user_profiles` to auto-expire pending/deciding proposals when subject pauses or is suspended | NEW | ⏳ pending | ⏳ pending | Yes (`CREATE OR REPLACE FUNCTION`, `DROP TRIGGER IF EXISTS` first) | Frees the other subject for next cycle; no karma adjustment on these expirations |
+| M1 | `20260417100001_remove_proposal_lifecycle_check_cron.sql` | Unschedule the 4-hour `proposal-lifecycle-check` safety-net cron | **PRODUCTION** | 2026-04-17 | **2026-04-18 23:52 UTC** ✅ | Yes (`WHERE EXISTS` guard) | Gate-overhaul-v2 consolidates all decisions into the single 7PM cron |
+| M2 | `20260417100002_local_align_profile_completed.sql` | Adds `user_profiles.profile_completed` column (already exists in prod) | LOCAL_ONLY | 2026-04-17 | 🚫 NOT APPLIED (prod already has it) | Yes (`IF NOT EXISTS`) | Catch-up migration — fixes local-vs-prod schema drift only |
+| M3 | `20260417100003_karma_outcome_v2.sql` | Rewrites `apply_karma_on_outcome` RPC to +3/-1 simpler model + `karma_applied` flag + REVOKE/GRANT | **PRODUCTION** | 2026-04-17 | **2026-04-18 23:53 UTC** ✅ | Yes (`CREATE OR REPLACE`, `ADD COLUMN IF NOT EXISTS`) | Forward-only: in-flight proposals skip retroactive karma. Post-deploy grants limited to `postgres` + `service_role` (was: PUBLIC + anon + authenticated — SECURITY HOLE CLOSED) |
+| M4 | `20260417100004_auto_expire_on_pause.sql` | Trigger on `user_profiles` to auto-expire pending/deciding proposals when subject pauses or is suspended | **PRODUCTION** | 2026-04-17 | **2026-04-18 23:54 UTC** ✅ | Yes (`CREATE OR REPLACE FUNCTION`, `DROP TRIGGER IF EXISTS` first) | Frees the other subject for next cycle; no karma adjustment on these expirations |
+
+### Deploy verification snapshot (2026-04-18 23:55 UTC)
+Post-deploy query result:
+```json
+{
+  "crons": ["generate-proposals", "proposal-lifecycle", "snapshot-weekly-karma"],
+  "karma_applied_col": 1,
+  "karma_rpc_has_v2_logic": true,
+  "karma_rpc_grants": ["postgres", "service_role"],
+  "pause_trigger_fn": 1,
+  "pause_trigger": 1,
+  "proposal_lifecycle_check_gone": true
+}
+```
+Edge functions deployed (verified via `supabase functions list`): `process-vote`, `proposal-lifecycle`, `generate-proposals`, `get-proposals-for-voting`, `generate-proposal-for-user`, `assign-new-user-proposals` — all `ACTIVE` with 2026-04-18 timestamps.
 
 ### Schema changes in this batch
 | Object | Action | Scope |
