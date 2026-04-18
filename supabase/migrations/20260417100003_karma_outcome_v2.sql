@@ -65,5 +65,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- 3. Lock down the RPC to service_role ONLY.
+-- Postgres' default is GRANT EXECUTE TO PUBLIC on new functions, and
+-- `CREATE OR REPLACE FUNCTION` preserves existing grants — so the original
+-- 2026-03-02 definition (which lacked a REVOKE) left this wide open.
+-- Without this, any authenticated user could call the RPC via PostgREST to
+-- prematurely trigger karma grants, flip the idempotency flag, or tamper
+-- with the community-decision karma math.
+REVOKE EXECUTE ON FUNCTION apply_karma_on_outcome(uuid, text) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION apply_karma_on_outcome(uuid, text) FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION apply_karma_on_outcome(uuid, text) TO service_role;
+
 COMMENT ON COLUMN proposals.karma_applied IS 'Set true by apply_karma_on_outcome on first call; prevents double-grant.';
-COMMENT ON FUNCTION apply_karma_on_outcome IS 'v2 model: +3 accurate, -1 inaccurate. Idempotent via proposals.karma_applied. Silently skips voters whose karma_scores row is missing.';
+COMMENT ON FUNCTION apply_karma_on_outcome IS 'v2 model: +3 accurate, -1 inaccurate. Idempotent via proposals.karma_applied. Silently skips voters whose karma_scores row is missing. service_role only.';

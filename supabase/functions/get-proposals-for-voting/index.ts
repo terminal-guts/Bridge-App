@@ -14,27 +14,80 @@ interface ProposalRow {
 
 const GATE_SIZE = 3;
 
-// Returns the timestamp of the most recent 7PM Central boundary in UTC.
-// Used to count "votes cast today" for the sort primary.  CDT is UTC-5, so
-// 7PM CDT = 00:00 UTC of the next day.  During CST (winter), 7PM CST = 01:00 UTC.
-// We use a simple fixed-offset approximation (midnight UTC) — for Bridge's
-// voting-balance purpose, being off by an hour around DST transitions is
-// acceptable.
+// Returns the timestamp (as UTC ISO) of the most recent 19:00 America/Chicago
+// boundary.  Used to count "votes cast today" for the gate sort primary.
+//
+// Handles DST correctly — during CDT (spring/summer, UTC-5), 7PM CDT = 00:00
+// UTC the next day; during CST (fall/winter, UTC-6), 7PM CST = 01:00 UTC the
+// next day.  A naive UTC-midnight cutoff would be off by an hour for half the
+// year, drifting the sort fairness.
 function last7pmCentralCutoff(): string {
   const now = new Date();
-  // Midnight UTC of today (or yesterday if we're before midnight UTC).
-  const utcMidnight = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-  ));
-  // If we're before midnight UTC (meaning between 7PM Central yesterday and
-  // midnight UTC today), the last cutoff was yesterday's midnight UTC.
-  // Otherwise it's today's midnight UTC.
-  if (now.getTime() < utcMidnight.getTime()) {
-    utcMidnight.setUTCDate(utcMidnight.getUTCDate() - 1);
+
+  // Use Intl.DateTimeFormat to get the current Chicago wall-clock components.
+  // parts: [{type:'year',...}, {type:'month',...}, ...]
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  });
+  const parts: Record<string, string> = {};
+  for (const p of fmt.formatToParts(now)) {
+    if (p.type !== 'literal') parts[p.type] = p.value;
   }
-  return utcMidnight.toISOString();
+  const chicagoYear = Number(parts.year);
+  const chicagoMonth = Number(parts.month);
+  const chicagoDay = Number(parts.day);
+  const chicagoHour = Number(parts.hour);
+
+  // Target date-in-Chicago: today's 19:00 if we're past 19:00, else yesterday's.
+  let targetYear = chicagoYear, targetMonth = chicagoMonth, targetDay = chicagoDay;
+  if (chicagoHour < 19) {
+    // Roll back one calendar day in Chicago.  Use a UTC date as scratch and
+    // subtract 24h — correct across month/year boundaries.
+    const scratch = new Date(Date.UTC(chicagoYear, chicagoMonth - 1, chicagoDay));
+    scratch.setUTCDate(scratch.getUTCDate() - 1);
+    targetYear = scratch.getUTCFullYear();
+    targetMonth = scratch.getUTCMonth() + 1;
+    targetDay = scratch.getUTCDate();
+  }
+
+  // Now convert "{targetYear}-{targetMonth}-{targetDay} 19:00 America/Chicago"
+  // to a UTC ISO string.  Easiest: binary search on UTC offsets ±24h to find
+  // the timestamp whose Chicago representation matches 19:00 on that date.
+  // Simpler implementation: construct candidate timestamps at UTC-5 and UTC-6
+  // and pick whichever Chicago-formats back to 19:00 on the target date.
+  const candidates = [
+    // Assume CDT (UTC-5): 19:00 Chicago = 24:00 UTC on the target date
+    Date.UTC(targetYear, targetMonth - 1, targetDay, 24, 0, 0),
+    // Assume CST (UTC-6): 19:00 Chicago = 25:00 UTC on the target date (i.e. 01:00 UTC next day)
+    Date.UTC(targetYear, targetMonth - 1, targetDay, 25, 0, 0),
+  ];
+  for (const utcMs of candidates) {
+    const d = new Date(utcMs);
+    const fmtCheck = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Chicago',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', hour12: false,
+    });
+    const checkParts: Record<string, string> = {};
+    for (const p of fmtCheck.formatToParts(d)) {
+      if (p.type !== 'literal') checkParts[p.type] = p.value;
+    }
+    if (
+      Number(checkParts.year) === targetYear &&
+      Number(checkParts.month) === targetMonth &&
+      Number(checkParts.day) === targetDay &&
+      Number(checkParts.hour) === 19
+    ) {
+      return d.toISOString();
+    }
+  }
+
+  // Fallback if DST-gap math misses (shouldn't happen for 19:00 — DST spring-
+  // forward is at 02:00 local, not near 19:00).  Return the CDT candidate.
+  return new Date(candidates[0]).toISOString();
 }
 
 Deno.serve(async (req: Request) => {
