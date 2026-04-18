@@ -135,32 +135,29 @@ Deno.serve(async (req: Request) => {
     // ── Step 0: Friend suggestion housekeeping ──
     // 0a expires stale suggestions; 0b builds a boost set used during scoring.
 
-    // 0a. Expire stale suggestions (queued or stashed but past their TTL)
-    const { error: expireErr } = await supabase
-      .from('friend_suggestions')
-      .update({ status: 'expired', updated_at: new Date().toISOString() })
-      .in('status', ['queued', 'stashed'])
-      .lt('expires_at', new Date().toISOString());
+    // 0. Fetch active friend recommendations.  Each row is one voter saying
+    // "pair user X (a subject of a proposal I voted on) with user Y (my friend)".
+    // The UI flow (Recommend button → pick subject → pick friend → confirm)
+    // writes to `friend_recommendations` via the submit-recommendation edge
+    // function.  Here we convert those rows into a pair-key set used by the
+    // scoring step to apply a 1.25× boost.
+    //
+    // Design note (for future gate=5 expansion — see
+    // docs/plans/proposal-gate-overhaul.md): current model dedupes pairs —
+    // multiple recommenders for the same pair get ONE 1.25× boost.  Revisit
+    // whether to stack (e.g. RECOMMENDATION_BOOST_PER×N, capped by
+    // RECOMMENDATION_BOOST_CAP) when we bump the gate.
+    const { data: recommendations, error: recErr } = await supabase
+      .from('friend_recommendations')
+      .select('recommended_person_id, recommended_to_friend_id');
 
-    if (expireErr) {
-      console.warn('Warning: could not expire stale friend suggestions:', expireErr.message);
+    if (recErr) {
+      console.warn('Warning: could not fetch friend recommendations:', recErr.message);
     }
 
-    // 0b. Fetch all still-queued suggestions to build a boost set for the algorithm
-    const { data: queuedSuggestions, error: suggestionsErr } = await supabase
-      .from('friend_suggestions')
-      .select('user_a_id, user_b_id')
-      .eq('status', 'queued')
-      .gt('expires_at', new Date().toISOString());
-
-    if (suggestionsErr) {
-      console.warn('Warning: could not fetch queued friend suggestions:', suggestionsErr.message);
-    }
-
-    // Build a set of suggested pair keys so the scoring step can apply a compatibility boost
     const suggestedPairs = new Set<string>(
-      (queuedSuggestions || []).map((s: { user_a_id: string; user_b_id: string }) =>
-        [s.user_a_id, s.user_b_id].sort().join('|')
+      (recommendations || []).map((r: { recommended_person_id: string; recommended_to_friend_id: string }) =>
+        [r.recommended_person_id, r.recommended_to_friend_id].sort().join('|')
       )
     );
 
