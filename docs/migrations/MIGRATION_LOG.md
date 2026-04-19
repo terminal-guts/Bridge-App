@@ -88,6 +88,29 @@ Status key: `PRODUCTION` = deployed to live database | `LOCAL_ONLY` = tested loc
 | 76 | 20260417000002_revoke_check_email_exists_anon.sql | 2026-04-17 | REVOKE EXECUTE on check_email_exists from anon (anti-enumeration, covered by new email-signup flow) | PRODUCTION | FIX |
 | 77 | 20260417000003_backfill_prod_only_tables.sql | 2026-04-17 | Backfill 4 prod-only tables so `supabase db reset` mirrors prod: `profiles`, `onboarding_progress`, `waitlist_signups`, `allowed_email_domains` (with indexes, RLS, policies, seed rice.edu domain). `waitlist_signups.email` upgraded to citext by `scripts/setup-local.sh` post-reset. | PRODUCTION | BACKFILL |
 | 78 | 20260417000004_align_local_with_prod.sql | 2026-04-17 | Align remaining structural drift: missing columns (user_profiles.email_verified_at, deep_question_answers legacy cols, user_photos.url, user_preferences.partner_lifestyle_preferences, user_profiles.role NOT NULL), 9 missing indexes, 5 missing policies, RLS on support_reply_context, triggers on profiles + onboarding_progress, handle_updated_at() + exec_sql() functions, drop local-only unique_active_proposal_pair index | PRODUCTION | BACKFILL |
+| 79 | 20260417100001_remove_proposal_lifecycle_check_cron.sql | 2026-04-18 | Unschedule 4-hour `proposal-lifecycle-check` safety-net cron (gate-overhaul-v2 consolidates decisions into the single 7PM cron) | PRODUCTION | FIX |
+| 80 | 20260417100002_local_align_profile_completed.sql | 2026-04-17 | Adds `user_profiles.profile_completed` column (already exists in prod via manual ALTER) | LOCAL_ONLY | BACKFILL |
+| 81 | 20260417100003_karma_outcome_v2.sql | 2026-04-18 | Rewrite `apply_karma_on_outcome` RPC to +3/-1 model + `karma_applied` idempotency flag + REVOKE EXECUTE from PUBLIC/anon/authenticated (security hole closed) | PRODUCTION | FIX |
+| 82 | 20260417100004_auto_expire_on_pause.sql | 2026-04-18 | Trigger on `user_profiles` to auto-expire pending/deciding proposals when subject pauses or is suspended | PRODUCTION | ADDITIVE |
+
+## Gate-overhaul-v2 deploy (2026-04-18 23:52–23:54 UTC)
+
+Entries 79, 81, 82 applied to prod; entry 80 is LOCAL_ONLY (prod already had the column).
+
+Post-deploy verification snapshot:
+```json
+{
+  "crons": ["generate-proposals", "proposal-lifecycle", "snapshot-weekly-karma"],
+  "karma_applied_col": 1,
+  "karma_rpc_has_v2_logic": true,
+  "karma_rpc_grants": ["postgres", "service_role"],
+  "pause_trigger_fn": 1,
+  "pause_trigger": 1,
+  "proposal_lifecycle_check_gone": true
+}
+```
+
+All 6 companion edge functions redeployed (`process-vote`, `proposal-lifecycle`, `generate-proposals`, `get-proposals-for-voting`, `generate-proposal-for-user`, `assign-new-user-proposals`) — all `ACTIVE` with 2026-04-18 timestamps. First 7PM cron on new code (23:55 UTC lifecycle + 00:00 UTC generate) returned 200; 15 new proposals created; 1 deciding proposal auto-expired (2-cycle rule); 0 writes to `pool_vote_assignments` (new model confirmed in prod).
 
 ## Notes on drift and catch-up migrations
 
