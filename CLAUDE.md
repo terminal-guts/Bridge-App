@@ -457,23 +457,43 @@ SMS invite messages use **rotating variants** defined in `contactsService.ts`. T
 
 ## Migration & Infrastructure Tracking
 
-All Supabase migrations, edge functions, and secrets are tracked in `docs/migrations/`. **Always update these docs when making changes.**
+All Supabase migrations, edge functions, and secrets are tracked in `docs/migrations/`. **Always update these docs when making changes.** The invariant is simple: *anything applied to local — migration, RPC, edge function code, storage bucket config, secret — gets logged the same turn it lands locally, so promoting it to prod later is a mechanical replay of a well-documented step, never a "figure out what's different" archaeology exercise.*
 
 ### When you create a new migration:
-1. Add it to `docs/migrations/MIGRATION_LOG.md` with status `LOCAL_ONLY`
-2. Test locally first (never apply to production without explicit approval)
-3. After production deployment, update status to `PRODUCTION`
-4. Update `docs/migrations/PRODUCTION_SCHEMA.md` if schema changed
+1. Add the SQL to `supabase/migrations/` with a timestamped filename
+2. Apply locally (via `supabase db reset` or `docker exec psql`)
+3. Add an entry to `docs/migrations/MIGRATION_LOG.md` with status `LOCAL_ONLY`
+4. Test thoroughly in local
+5. When ready for production: **get explicit per-action user approval**, then apply via `scripts/supabase-exec.sh`
+6. Flip the entry's status to `PRODUCTION`
+7. Update `docs/migrations/PRODUCTION_SCHEMA.md` if the structural surface changed
 
 ### When you deploy or modify an edge function:
-1. Update `docs/migrations/EDGE_FUNCTIONS.md` with deployment status
-2. If new secrets are needed, add them to `docs/migrations/SECRETS.md` (names only, never values)
+1. Update `docs/migrations/EDGE_FUNCTIONS.md` with the new behavior and status
+2. New secrets → add names only (never values) to `docs/migrations/SECRETS.md`
+3. If the edge function change depends on a migration, note the ordering in both docs
+
+### Before promoting *anything* to prod
+Always run `./scripts/check-schema-parity.sh` and `./scripts/check-edge-function-parity.sh` first. The only "drift" that should exist is the drift from documented `LOCAL_ONLY` migrations in `MIGRATION_LOG.md` + the known legacy cruft in `LEGACY_CRUFT_IN_PROD.md`. Any other drift means something landed in local without being logged — fix the log or the drift before deploying.
+
+### Spinning up / resetting a local environment
+
+One command rebuilds local to mirror prod + all local migrations stacked on top:
+
+```bash
+./scripts/bootstrap-local.sh              # full (reset + setup + import data + photos + parity checks)
+./scripts/bootstrap-local.sh --no-photos  # fast, ~2 min, avatars broken
+```
+
+The pipeline is: `supabase db reset` → `scripts/setup-local.sh` → `snapshot-export.sh` (read-only prod dump) → `snapshot-import.ts` (loads rows, verifies counts, fails on delta) → `snapshot-import-photos.ts` (mirrors `profile-photos` + `chat-audio` buckets) → `check-schema-parity.sh` → `check-edge-function-parity.sh`.
 
 ### Key files:
 | File | Tracks |
 |------|--------|
 | `docs/migrations/MIGRATION_LOG.md` | Every SQL migration with production status |
 | `docs/migrations/PRODUCTION_SCHEMA.md` | Current production tables, RPCs, indexes, policies |
-| `docs/migrations/EDGE_FUNCTIONS.md` | All edge functions with deployment status |
+| `docs/migrations/EDGE_FUNCTIONS.md` | All edge functions with deployment status + parity snapshot |
+| `docs/migrations/LEGACY_CRUFT_IN_PROD.md` | 47 retired DB functions in prod that aren't in migrations — documented, allowlisted in schema diff |
 | `docs/migrations/SECRETS.md` | Secret names and which functions use them |
 | `docs/migrations/LOCAL_SETUP.md` | How to spin up a new local environment |
+| `docs/migrations/LOCAL_DB_CHANGES_SINCE_MAIN.md` | Rolling summary of every local-DB-related change on the current feature branch that isn't in `main` |
