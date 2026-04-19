@@ -328,6 +328,24 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
     }
   }, [navigation]);
 
+  // Hoisted photo renderItem -- stable reference prevents FlatList from re-rendering
+  // rows when parent state changes (e.g. swipe animations, pass/accept flags).
+  const renderPhotoItem = useCallback(
+    ({ item, index }: { item: { id?: string; url: string }; index: number }) => (
+      <BlurredPhoto
+        uri={getOptimizedPhotoUrl(item.url, 'profile') ?? item.url}
+        style={{ width: SCREEN_WIDTH, height: PHOTO_HEIGHT }}
+        index={index}
+      />
+    ),
+    [SCREEN_WIDTH, PHOTO_HEIGHT]
+  );
+
+  const getPhotoItemLayout = useCallback(
+    (_: unknown, index: number) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index }),
+    [SCREEN_WIDTH]
+  );
+
   // Memoized derivations -- computed once per profile load, not on every scroll/state change
   const displayedQuestions = useMemo(() => {
     if (!profile) return [];
@@ -409,7 +427,7 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
         <View style={{ height: PHOTO_HEIGHT, backgroundColor: PHOTO_BG }}>
           {photos.length > 0 ? (
             <>
-              <FlatList ref={flatListRef} data={photos} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onScroll={handlePhotoScroll} scrollEventThrottle={16} keyExtractor={(item, index) => item.id || `photo-${index}`} renderItem={({ item, index }) => <BlurredPhoto uri={getOptimizedPhotoUrl(item.url, 'profile') ?? item.url} style={{ width: SCREEN_WIDTH, height: PHOTO_HEIGHT }} index={index} />} initialNumToRender={1} maxToRenderPerBatch={2} windowSize={3} getItemLayout={(_, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })} />
+              <FlatList ref={flatListRef} data={photos} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onScroll={handlePhotoScroll} scrollEventThrottle={16} keyExtractor={(item, index) => item.id || `photo-${index}`} renderItem={renderPhotoItem} initialNumToRender={1} maxToRenderPerBatch={2} windowSize={3} getItemLayout={getPhotoItemLayout} />
               {photos.length > 1 && (
                 <>
                   <TouchableWithoutFeedback onPress={() => { if (currentPhotoIndex > 0) { goToPhoto(currentPhotoIndex - 1); mediumHaptic(); } }}><View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: TAP_ZONE_WIDTH }} /></TouchableWithoutFeedback>

@@ -43,6 +43,9 @@ export const SUGGESTED_SECTION = 'Suggested';
 export const MAX_INVITES = 10;
 export const INVITE_COUNT_KEY = '@bridge_invites_sent_count';
 
+// Row height used for SectionList getItemLayout -- avatar (40) + py-3 (12 top + 12 bottom) = 64px
+const CONTACT_ROW_HEIGHT = 64;
+
 const REMIND_AFTER_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 
 // ── Contact Avatar ────────────────────────────────────────────────────────────
@@ -811,8 +814,9 @@ export const GrantedContactList = React.memo(({
             )}
             stickySectionHeadersEnabled
             initialNumToRender={20}
-            maxToRenderPerBatch={30}
-            windowSize={10}
+            maxToRenderPerBatch={10}
+            windowSize={7}
+            getItemLayout={(_, index) => ({ length: CONTACT_ROW_HEIGHT, offset: CONTACT_ROW_HEIGHT * index, index })}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             contentContainerStyle={selectedIds.size > 0 ? contactStyles.contentWithSelection : contactStyles.contentDefault}

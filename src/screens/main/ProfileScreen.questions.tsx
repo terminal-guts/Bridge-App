@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { View, FlatList, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { styled } from 'nativewind';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
@@ -365,6 +365,32 @@ const QuestionSlots: React.FC<QuestionSlotsProps> = ({
     }
   };
 
+  // Render helpers for the "Answer More" lists -- replacing nested FlatLists
+  // (scrollEnabled={false} disabled virtualization anyway, so .map() is a net perf win
+  // and avoids the "VirtualizedLists should never be nested" RN warning).
+  const renderUnansweredQuestionContent = (item: { id: number; question: string }) => (
+    <UnansweredQuestionCard
+      key={`unanswered-${item.id}`}
+      question={item}
+      onPress={() => {
+        mediumHaptic();
+        handleAnswerMoreQuestion(item.id, item.question);
+      }}
+    />
+  );
+
+  const renderAnsweredQuestionContent = (item: DeepQuestionAnswer) => (
+    <AnsweredQuestionCard
+      key={`answered-${item.questionId}`}
+      question={item}
+      onPress={() => {
+        lightHaptic();
+        onSetCurrentEditingQuestion(item);
+        onSetShowEditAnswerModal(true);
+      }}
+    />
+  );
+
   return (
     <>
       <StyledView className="mb-4">
@@ -416,25 +442,7 @@ const QuestionSlots: React.FC<QuestionSlotsProps> = ({
                   <Body className="text-neutral-700 font-semibold text-sm mb-3">
                     Ready to Answer ({unansweredQuestions.length})
                   </Body>
-                  <FlatList
-                    data={unansweredQuestions}
-                    keyExtractor={(item) => `unanswered-${item.id}`}
-                    renderItem={({ item }) => (
-                      <UnansweredQuestionCard
-                        question={item}
-                        onPress={() => {
-                          mediumHaptic();
-                          handleAnswerMoreQuestion(item.id, item.question);
-                        }}
-                      />
-                    )}
-                    scrollEnabled={false}
-                    removeClippedSubviews={true}
-                    maxToRenderPerBatch={10}
-                    updateCellsBatchingPeriod={50}
-                    initialNumToRender={10}
-                    windowSize={5}
-                  />
+                  {unansweredQuestions.map((item) => renderUnansweredQuestionContent(item))}
                 </>
               )}
 
@@ -443,26 +451,7 @@ const QuestionSlots: React.FC<QuestionSlotsProps> = ({
                   <Body className="text-neutral-700 font-semibold text-sm mb-3 mt-4">
                     Your Other Answers ({nonDisplayedAnswers.length})
                   </Body>
-                  <FlatList
-                    data={nonDisplayedAnswers}
-                    keyExtractor={(item) => `answered-${item.questionId}`}
-                    renderItem={({ item }) => (
-                      <AnsweredQuestionCard
-                        question={item}
-                        onPress={() => {
-                          lightHaptic();
-                          onSetCurrentEditingQuestion(item);
-                          onSetShowEditAnswerModal(true);
-                        }}
-                      />
-                    )}
-                    scrollEnabled={false}
-                    removeClippedSubviews={true}
-                    maxToRenderPerBatch={10}
-                    updateCellsBatchingPeriod={50}
-                    initialNumToRender={10}
-                    windowSize={5}
-                  />
+                  {nonDisplayedAnswers.map((item) => renderAnsweredQuestionContent(item))}
                 </>
               )}
             </>

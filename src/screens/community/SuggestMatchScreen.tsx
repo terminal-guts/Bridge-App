@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -104,7 +104,7 @@ export default function SuggestMatchScreen() {
     return mainPhoto?.url || null;
   };
 
-  const renderFriendItem = ({ item }: { item: UserProfile }) => {
+  const renderFriendItem = useCallback(({ item }: { item: UserProfile }) => {
     const photoUrl = getPhotoUrl(item);
     return (
       <TouchableOpacity
@@ -131,7 +131,7 @@ export default function SuggestMatchScreen() {
         <EvaIcon name="arrow-ios-forward" variant="outline" size={20} color={COLORS.border} />
       </TouchableOpacity>
     );
-  };
+  }, [step]);
 
   const availableFriends = step === 'pick_b'
     ? friends.filter(f => f.userId !== friendA?.userId)
@@ -225,6 +225,9 @@ export default function SuggestMatchScreen() {
           renderItem={renderFriendItem}
           keyExtractor={item => item.userId}
           contentContainerStyle={styles.listContent}
+          initialNumToRender={10}
+          windowSize={5}
+          removeClippedSubviews
         />
       )}
     </SafeAreaView>
