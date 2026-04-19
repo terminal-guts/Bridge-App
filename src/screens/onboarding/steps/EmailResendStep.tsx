@@ -93,7 +93,7 @@ export const EmailResendStep: React.FC<EmailResendStepProps> = ({
 
       <Input
         label="Rice Email"
-        placeholder="netid@rice.edu"
+        placeholder="you@school.edu"
         value={email}
         onChangeText={(text) => {
           setEmail(text.toLowerCase());

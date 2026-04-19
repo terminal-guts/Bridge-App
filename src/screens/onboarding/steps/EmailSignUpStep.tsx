@@ -96,7 +96,7 @@ export const EmailSignUpStep: React.FC<EmailSignUpStepProps> = ({
 
       <Input
         label="School Email"
-        placeholder="netid@rice.edu"
+        placeholder="you@school.edu"
         value={email}
         onChangeText={(text) => {
           setEmail(text.toLowerCase());
