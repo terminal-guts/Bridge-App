@@ -14,7 +14,6 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   RefreshControl,
   Text,
   StyleSheet,
@@ -43,6 +42,7 @@ import { communityService } from '../../services/communityServiceIndex';
 import { getUserProfile, getFullUserProfileById } from '../../services/profileService';
 import { submitUserReport } from '../../services/matchService';
 import { createLogger } from '../../utils/secureLogger';
+import { showToast } from '../../utils/toast';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
@@ -315,7 +315,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       if (matchId) await communityService.endActiveMatch(matchId, reason);
       setEndMatchModalVisible(false); setEndMatchReason(''); setEndMatchCustomReason('');
       navigation.goBack();
-    } catch (error: any) { Alert.alert('Hmm, that didn\'t work', 'We couldn\'t end the match right now. Give it another try?'); }
+    } catch (error: any) {
+      logger.error('End match failed', error);
+      showToast.error('Hmm, that didn\'t work', 'We couldn\'t end the match right now. Give it another try?');
+    }
     finally { setEndMatchSubmitting(false); endMatchRef.current = false; }
   };
 
@@ -327,8 +330,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       const finalReason = reportReason === 'Other' && reportDetails.trim() ? `Other: ${reportDetails.trim()}` : reportReason;
       await submitUserReport({ reporterId: currentUserId, reportedUserId: recipientId || '', reportedUserName: recipientName, reason: finalReason, details: reportReason === 'Other' ? '' : reportDetails });
       setReportModalVisible(false); setReportReason(''); setReportDetails('');
-      Alert.alert('Thanks for letting us know', 'Our team will look into this within 24 hours.');
-    } catch (err) { Alert.alert('Hmm, that didn\'t work', 'We couldn\'t send your report right now. Give it another try?'); }
+      showToast.success('Thanks for letting us know', 'Our team will look into this within 24 hours.');
+    } catch (err) {
+      logger.error('Report submission failed', err);
+      showToast.error('Hmm, that didn\'t work', 'We couldn\'t send your report right now. Give it another try?');
+    }
     finally { reportSubmittingRef.current = false; }
   };
 

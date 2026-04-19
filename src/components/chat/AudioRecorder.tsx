@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { View, TouchableOpacity, Animated, Alert, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Animated, Alert, Linking, Text, StyleSheet } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { EvaIcon } from '../icons';
@@ -53,6 +54,7 @@ interface AudioRecorderProps {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, onRecordingStateChange, disabled }) => {
+    const reduceMotion = useReducedMotion();
     const [isRecording, setIsRecording] = useState(false);
     const [isPreparing, setIsPreparing] = useState(false);
     const [elapsed, setElapsed] = useState(0);
@@ -137,27 +139,32 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
 
     // ── Animations ────────────────────────────────────────────────────────────
     const animateIn = () => {
-        Animated.parallel([
-            Animated.timing(slideAnim, {
-                toValue: 1,
-                duration: DURATIONS.normal,
-                useNativeDriver: true,
-            }),
-            Animated.loop(
-                Animated.sequence([
-                    Animated.timing(pulseAnim, {
-                        toValue: 1.2,
-                        duration: DURATIONS.emphasis + 200,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(pulseAnim, {
-                        toValue: 1,
-                        duration: DURATIONS.emphasis + 200,
-                        useNativeDriver: true,
-                    }),
-                ])
-            ),
-        ]).start();
+        // Slide always animates (it's the primary state-change cue).
+        Animated.timing(slideAnim, {
+            toValue: 1,
+            duration: DURATIONS.normal,
+            useNativeDriver: true,
+        }).start();
+
+        // Pulse is decorative — skip the loop entirely when reduced motion is on.
+        if (reduceMotion) {
+            pulseAnim.setValue(1);
+            return;
+        }
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, {
+                    toValue: 1.2,
+                    duration: DURATIONS.emphasis + 200,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(pulseAnim, {
+                    toValue: 1,
+                    duration: DURATIONS.emphasis + 200,
+                    useNativeDriver: true,
+                }),
+            ])
+        ).start();
     };
 
     const animateOut = () => {
@@ -190,7 +197,11 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
             if (permission.status !== 'granted') {
                 Alert.alert(
                     'Microphone Access',
-                    'Please enable microphone access in Settings to send voice notes.'
+                    'Please enable microphone access in Settings to record voice messages.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Open Settings', onPress: () => Linking.openSettings() },
+                    ]
                 );
                 setIsPreparing(false);
                 return;
@@ -436,11 +447,11 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-    // Idle mic button
+    // Idle mic button — 44x44 meets iOS HIG minimum touch target.
     micButton: {
-        width: 42,
-        height: 42,
-        borderRadius: 21,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         backgroundColor: COLORS.primaryAccent,
         alignItems: 'center',
         justifyContent: 'center',

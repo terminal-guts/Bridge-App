@@ -3,17 +3,19 @@
  * Extracted from ChatScreen.tsx for maintainability.
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   TouchableOpacity,
   TextInput,
   Modal,
+  ScrollView,
   StyleSheet,
   Text,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EvaIcon } from '../../components/icons';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
@@ -77,28 +79,35 @@ interface DropdownMenuProps {
 
 export const DropdownMenu: React.FC<DropdownMenuProps> = ({
   visible, onClose, onProposeDate, onEndMatch, onReport, recipientName,
-}) => (
-  <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
-    <TouchableOpacity style={cs.menuOverlay} activeOpacity={1} onPress={onClose}>
-      <View style={cs.menuCard}>
-        <TouchableOpacity style={cs.menuItem} onPress={onProposeDate} accessibilityRole="button" accessibilityLabel="Ask them out">
-          <EvaIcon name="calendar" variant="outline" size={18} color={COLORS.text.primary} />
-          <Text style={cs.menuItemText}>Ask them out</Text>
-        </TouchableOpacity>
-        <View style={cs.menuDivider} />
-        <TouchableOpacity style={cs.menuItem} onPress={onEndMatch} accessibilityRole="button" accessibilityLabel="Move on from match">
-          <EvaIcon name="close-circle" variant="outline" size={18} color={COLORS.text.primary} />
-          <Text style={cs.menuItemText}>Move on</Text>
-        </TouchableOpacity>
-        <View style={cs.menuDivider} />
-        <TouchableOpacity style={cs.menuItem} onPress={onReport} accessibilityRole="button" accessibilityLabel={`Report ${recipientName}`}>
-          <EvaIcon name="flag" variant="outline" size={18} color={COLORS.error} />
-          <Text style={[cs.menuItemText, { color: COLORS.error }]}>Report</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  </Modal>
-);
+}) => {
+  const insets = useSafeAreaInsets();
+  // Anchor below the status bar + chat header (56pt). Previously hardcoded
+  // `top: 96` would collide with Dynamic Island on iPhone 14 Pro / 15 Pro.
+  // Ideal fix (deferred): measure the 3-dot button's absolute coords via a ref
+  // and position the menu relative to the measured bottom-right of that button.
+  return (
+    <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={cs.menuOverlay} activeOpacity={1} onPress={onClose}>
+        <View style={[cs.menuCard, { top: insets.top + 56 }]}>
+          <TouchableOpacity style={cs.menuItem} onPress={onProposeDate} accessibilityRole="button" accessibilityLabel="Ask them out">
+            <EvaIcon name="calendar" variant="outline" size={18} color={COLORS.text.primary} />
+            <Text style={cs.menuItemText}>Ask them out</Text>
+          </TouchableOpacity>
+          <View style={cs.menuDivider} />
+          <TouchableOpacity style={cs.menuItem} onPress={onEndMatch} accessibilityRole="button" accessibilityLabel="Move on from match">
+            <EvaIcon name="close-circle" variant="outline" size={18} color={COLORS.text.primary} />
+            <Text style={cs.menuItemText}>Move on</Text>
+          </TouchableOpacity>
+          <View style={cs.menuDivider} />
+          <TouchableOpacity style={cs.menuItem} onPress={onReport} accessibilityRole="button" accessibilityLabel={`Report ${recipientName}`}>
+            <EvaIcon name="flag" variant="outline" size={18} color={COLORS.error} />
+            <Text style={[cs.menuItemText, { color: COLORS.error }]}>Report</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
 
 // ── Propose a Date Modal ──────────────────────────────────────────────────────
 
@@ -113,40 +122,55 @@ interface ProposeDateModalProps {
 
 export const ProposeDateModal: React.FC<ProposeDateModalProps> = ({
   visible, onClose, onConfirm, recipientName, dateProposalText, onChangeText,
-}) => (
-  <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={ts.overlay}>
-      <View style={ts.card}>
-        <TouchableOpacity style={ts.closeBtn} onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <EvaIcon name="close" variant="outline" size={22} color={COLORS.text.secondary} />
-        </TouchableOpacity>
-        <View style={[ts.iconWrap, { backgroundColor: COLORS.card }]}>
-          <EvaIcon name="calendar" variant="outline" size={26} color={COLORS.primaryAccent} />
+}) => {
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={ts.overlay}>
+        <View style={[ts.card, { paddingTop: insets.top + 16 }]}>
+          <TouchableOpacity
+            style={[ts.closeBtn, { top: insets.top + 18 }]}
+            onPress={onClose}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
+            <EvaIcon name="close" variant="outline" size={22} color={COLORS.text.secondary} />
+          </TouchableOpacity>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 4 }}
+          >
+            <View style={[ts.iconWrap, { backgroundColor: COLORS.card }]}>
+              <EvaIcon name="calendar" variant="outline" size={26} color={COLORS.primaryAccent} />
+            </View>
+            <Text style={ts.title}>Ask {recipientName} out</Text>
+            <Text style={ts.subtitle}>Suggest a time and place to meet up</Text>
+            <TextInput
+              style={[ts.textArea, { minHeight: 80 }]}
+              placeholder={`e.g. Coffee at Brochstein on Saturday at 2pm?`}
+              placeholderTextColor={COLORS.text.tertiary}
+              value={dateProposalText}
+              onChangeText={onChangeText}
+              multiline
+              maxLength={300}
+              autoFocus
+            />
+            <TouchableOpacity
+              style={[ts.submitBtn, !dateProposalText.trim() && ts.submitBtnDisabled]}
+              onPress={onConfirm}
+              disabled={!dateProposalText.trim()}
+            >
+              <Text style={ts.submitBtnText}>Send it</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
-        <Text style={ts.title}>Ask {recipientName} out</Text>
-        <Text style={ts.subtitle}>Suggest a time and place to meet up</Text>
-        <TextInput
-          style={[ts.textArea, { minHeight: 80 }]}
-          placeholder={`e.g. Coffee at Brochstein on Saturday at 2pm?`}
-          placeholderTextColor={COLORS.text.tertiary}
-          value={dateProposalText}
-          onChangeText={onChangeText}
-          multiline
-          maxLength={300}
-          autoFocus
-        />
-        <TouchableOpacity
-          style={[ts.submitBtn, !dateProposalText.trim() && ts.submitBtnDisabled]}
-          onPress={onConfirm}
-          disabled={!dateProposalText.trim()}
-        >
-          <Text style={ts.submitBtnText}>Send it</Text>
-        </TouchableOpacity>
-      </View>
-      <TouchableOpacity activeOpacity={1} style={{ flex: 1 }} onPress={onClose} />
-    </KeyboardAvoidingView>
-  </Modal>
-);
+        <TouchableOpacity activeOpacity={1} style={{ flex: 1 }} onPress={onClose} />
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+};
 
 // ── End Match Modal ───────────────────────────────────────────────────────────
 
@@ -164,52 +188,67 @@ interface EndMatchModalProps {
 export const EndMatchModal: React.FC<EndMatchModalProps> = ({
   visible, onClose, onConfirm, endMatchReason, onSelectReason,
   endMatchCustomReason, onChangeCustomReason, submitting,
-}) => (
-  <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={ts.overlay}>
-      <View style={ts.card}>
-        <TouchableOpacity style={ts.closeBtn} onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <EvaIcon name="close" variant="outline" size={22} color={COLORS.text.secondary} />
-        </TouchableOpacity>
-        <View style={[ts.iconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.08)' }]}>
-          <EvaIcon name="close-square" variant="outline" size={26} color={COLORS.amber} />
-        </View>
-        <Text style={ts.title}>Ready to move on?</Text>
-        <Text style={ts.subtitle}>No worries — you'll be back in the mix for a new match.{'\n'}Let us know what happened so we can do better.</Text>
-        <View style={ts.pillRow}>
-          {END_MATCH_REASONS.map(reason => (
+}) => {
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={ts.overlay}>
+        <View style={[ts.card, { paddingTop: insets.top + 16 }]}>
+          <TouchableOpacity
+            style={[ts.closeBtn, { top: insets.top + 18 }]}
+            onPress={onClose}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
+            <EvaIcon name="close" variant="outline" size={22} color={COLORS.text.secondary} />
+          </TouchableOpacity>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 4 }}
+          >
+            <View style={[ts.iconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.08)' }]}>
+              <EvaIcon name="close-square" variant="outline" size={26} color={COLORS.amber} />
+            </View>
+            <Text style={ts.title}>Ready to move on?</Text>
+            <Text style={ts.subtitle}>No worries — you'll be back in the mix for a new match.{'\n'}Let us know what happened so we can do better.</Text>
+            <View style={ts.pillRow}>
+              {END_MATCH_REASONS.map(reason => (
+                <TouchableOpacity
+                  key={reason}
+                  style={[ts.pill, endMatchReason === reason && ts.pillActive]}
+                  onPress={() => onSelectReason(reason)}
+                >
+                  <Text style={[ts.pillText, endMatchReason === reason && ts.pillTextActive]}>
+                    {reason}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput
+              style={ts.textArea}
+              placeholder={endMatchReason === 'Other' ? 'Tell us a bit more...' : 'Additional details (optional)'}
+              placeholderTextColor={COLORS.text.tertiary}
+              value={endMatchCustomReason}
+              onChangeText={onChangeCustomReason}
+              multiline
+              maxLength={300}
+            />
             <TouchableOpacity
-              key={reason}
-              style={[ts.pill, endMatchReason === reason && ts.pillActive]}
-              onPress={() => onSelectReason(reason)}
+              style={[ts.submitBtn, (!endMatchReason || submitting) && ts.submitBtnDisabled]}
+              onPress={onConfirm}
+              disabled={!endMatchReason || submitting}
             >
-              <Text style={[ts.pillText, endMatchReason === reason && ts.pillTextActive]}>
-                {reason}
-              </Text>
+              <Text style={ts.submitBtnText}>{submitting ? 'On it...' : 'Move on'}</Text>
             </TouchableOpacity>
-          ))}
+          </ScrollView>
         </View>
-        <TextInput
-          style={ts.textArea}
-          placeholder={endMatchReason === 'Other' ? 'Tell us a bit more...' : 'Additional details (optional)'}
-          placeholderTextColor={COLORS.text.tertiary}
-          value={endMatchCustomReason}
-          onChangeText={onChangeCustomReason}
-          multiline
-          maxLength={300}
-        />
-        <TouchableOpacity
-          style={[ts.submitBtn, (!endMatchReason || submitting) && ts.submitBtnDisabled]}
-          onPress={onConfirm}
-          disabled={!endMatchReason || submitting}
-        >
-          <Text style={ts.submitBtnText}>{submitting ? 'On it...' : 'Move on'}</Text>
-        </TouchableOpacity>
-      </View>
-      <TouchableOpacity activeOpacity={1} style={{ flex: 1 }} onPress={onClose} />
-    </KeyboardAvoidingView>
-  </Modal>
-);
+        <TouchableOpacity activeOpacity={1} style={{ flex: 1 }} onPress={onClose} />
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+};
 
 // ── Report Modal ──────────────────────────────────────────────────────────────
 
@@ -228,55 +267,126 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   visible, onClose, onConfirm, recipientName, reportReason,
   onSelectReason, reportDetails, onChangeDetails,
 }) => {
-  const isOther = reportReason === 'Other';
-  const canSubmit = reportReason && (!isOther || reportDetails.trim().length > 0);
+  const insets = useSafeAreaInsets();
+  // Canonical "Other" pattern (see CLAUDE.md): tapping Other HIDES the pill list
+  // and reveals a TextInput + Back/Submit. Matches ProfileMatchScreen report flow.
+  const [showOtherInput, setShowOtherInput] = useState(false);
+
+  // Reset sheet state whenever it closes/reopens
+  useEffect(() => {
+    if (!visible) {
+      setShowOtherInput(false);
+    }
+  }, [visible]);
+
+  const handleSelectReason = (reason: string) => {
+    if (reason === 'Other') {
+      // Clear any previous pill selection + detail text, show input view
+      onSelectReason('Other');
+      onChangeDetails('');
+      setShowOtherInput(true);
+    } else {
+      onSelectReason(reason);
+    }
+  };
+
+  const handleBackFromOther = () => {
+    // Return to pill list; clear selection so Submit stays disabled
+    onSelectReason('');
+    onChangeDetails('');
+    setShowOtherInput(false);
+  };
+
+  const canSubmitPills = !!reportReason && reportReason !== 'Other';
+  const canSubmitOther = reportDetails.trim().length >= 1;
 
   return (
     <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={ts.overlay}>
-        <View style={ts.card}>
-          <TouchableOpacity style={ts.closeBtn} onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+        <View style={[ts.card, { paddingTop: insets.top + 16 }]}>
+          <TouchableOpacity
+            style={[ts.closeBtn, { top: insets.top + 18 }]}
+            onPress={onClose}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
             <EvaIcon name="close" variant="outline" size={22} color={COLORS.text.secondary} />
           </TouchableOpacity>
-          <View style={[ts.iconWrap, { backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}>
-            <EvaIcon name="flag" variant="outline" size={26} color={COLORS.error} />
-          </View>
-          <Text style={ts.title}>Report {recipientName}</Text>
-          <Text style={ts.subtitle}>We take this seriously — our team looks into every report within 24 hours</Text>
-          <View style={ts.pillRow}>
-            {REPORT_REASONS.map(reason => (
-              <TouchableOpacity
-                key={reason}
-                style={[ts.pill, reportReason === reason && ts.pillActive]}
-                onPress={() => onSelectReason(reason)}
-              >
-                <Text style={[ts.pillText, reportReason === reason && ts.pillTextActive]}>
-                  {reason}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <TextInput
-            style={[ts.textArea, isOther && ts.textAreaRequired]}
-            placeholder={isOther ? 'Please describe the issue...' : 'Anything else we should know? (optional)'}
-            placeholderTextColor={COLORS.text.tertiary}
-            value={reportDetails}
-            onChangeText={(text) => onChangeDetails(text.slice(0, 300))}
-            multiline
-            maxLength={300}
-            autoFocus={isOther}
-            textAlignVertical="top"
-          />
-          {isOther && (
-            <Text style={ts.charCount}>{reportDetails.length}/300</Text>
-          )}
-          <TouchableOpacity
-            style={[ts.submitBtn, !canSubmit && ts.submitBtnDisabled]}
-            onPress={onConfirm}
-            disabled={!canSubmit}
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 4 }}
           >
-            <Text style={ts.submitBtnText}>Submit Report</Text>
-          </TouchableOpacity>
+            <View style={[ts.iconWrap, { backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}>
+              <EvaIcon name="flag" variant="outline" size={26} color={COLORS.error} />
+            </View>
+            <Text style={ts.title}>Report {recipientName}</Text>
+            <Text style={ts.subtitle}>We take this seriously — our team looks into every report within 24 hours</Text>
+
+            {!showOtherInput ? (
+              <>
+                <View style={ts.pillRow}>
+                  {REPORT_REASONS.map(reason => (
+                    <TouchableOpacity
+                      key={reason}
+                      style={[ts.pill, reportReason === reason && ts.pillActive]}
+                      onPress={() => handleSelectReason(reason)}
+                      accessibilityRole="button"
+                      accessibilityLabel={reason}
+                    >
+                      <Text style={[ts.pillText, reportReason === reason && ts.pillTextActive]}>
+                        {reason}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TouchableOpacity
+                  style={[ts.submitBtn, !canSubmitPills && ts.submitBtnDisabled]}
+                  onPress={onConfirm}
+                  disabled={!canSubmitPills}
+                  accessibilityRole="button"
+                  accessibilityLabel="Submit report"
+                >
+                  <Text style={ts.submitBtnText}>Submit Report</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <TextInput
+                  style={[ts.textArea, ts.textAreaRequired]}
+                  placeholder="Tell us what happened"
+                  placeholderTextColor={COLORS.text.tertiary}
+                  value={reportDetails}
+                  onChangeText={(text) => onChangeDetails(text.slice(0, 300))}
+                  multiline
+                  maxLength={300}
+                  autoFocus
+                  textAlignVertical="top"
+                />
+                <Text style={ts.charCount}>{reportDetails.length}/300</Text>
+                <View style={ts.buttonRow}>
+                  <TouchableOpacity
+                    style={[ts.submitBtn, ts.backBtn, { flex: 1 }]}
+                    onPress={handleBackFromOther}
+                    accessibilityRole="button"
+                    accessibilityLabel="Back to reason list"
+                  >
+                    <Text style={[ts.submitBtnText, { color: COLORS.text.primary }]}>Back</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[ts.submitBtn, { flex: 1 }, !canSubmitOther && ts.submitBtnDisabled]}
+                    onPress={onConfirm}
+                    disabled={!canSubmitOther}
+                    accessibilityRole="button"
+                    accessibilityLabel="Submit report"
+                  >
+                    <Text style={ts.submitBtnText}>Submit Report</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </ScrollView>
         </View>
         <TouchableOpacity activeOpacity={1} style={{ flex: 1 }} onPress={onClose} />
       </KeyboardAvoidingView>
@@ -324,7 +434,7 @@ const cs = StyleSheet.create({
   },
   menuCard: {
     position: 'absolute',
-    top: 96,
+    // `top` applied inline via useSafeAreaInsets — see DropdownMenu
     right: 16,
     backgroundColor: COLORS.card,
     borderRadius: 12,
@@ -364,13 +474,13 @@ export const ts = StyleSheet.create({
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     paddingHorizontal: 24,
-    paddingTop: 56,
+    // paddingTop set inline via useSafeAreaInsets (insets.top + 16)
     paddingBottom: 28,
     ...SHADOWS.xxl,
   },
   closeBtn: {
     position: 'absolute',
-    top: 58,
+    // top set inline via useSafeAreaInsets (insets.top + 18)
     left: 16,
     width: 36,
     height: 36,
@@ -470,5 +580,15 @@ export const ts = StyleSheet.create({
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.xl,
     color: COLORS.card,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  backBtn: {
+    backgroundColor: COLORS.card,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
   },
 });

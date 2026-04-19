@@ -6,6 +6,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { BodySmall } from '../ui/Typography';
 import { createLogger } from '../../utils/secureLogger';
 import { COLORS } from '../../theme/colors';
+import { FONTS } from '../../constants/typography';
 import { EvaIcon } from '../icons';
 
 const logger = createLogger('AudioPlayer');
@@ -25,11 +26,19 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ uri, duration, isOwnMe
     const [position, setPosition] = useState(0);
     const [totalDuration, setTotalDuration] = useState(duration || 0);
     const [isLoading, setIsLoading] = useState(false);
+    // Track any file we downloaded into cacheDirectory so we can delete it on
+    // unmount — otherwise `audio_<timestamp>.m4a` accumulates forever.
+    const downloadedUriRef = useRef<string | null>(null);
 
     useEffect(() => {
         return () => {
             if (sound) {
                 sound.unloadAsync();
+            }
+            const cachedUri = downloadedUriRef.current;
+            if (cachedUri) {
+                FileSystem.deleteAsync(cachedUri, { idempotent: true }).catch(() => { /* best-effort */ });
+                downloadedUriRef.current = null;
             }
         };
     }, [sound]);
@@ -65,6 +74,8 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ uri, duration, isOwnMe
                     const download = await FileSystem.downloadAsync(uri, localPath);
                     logger.info('Downloaded audio to:', download.uri);
                     playbackUri = download.uri;
+                    // Remember the URI so the unmount cleanup effect can delete it
+                    downloadedUriRef.current = download.uri;
                 }
 
                 const { sound: newSound } = await Audio.Sound.createAsync(
@@ -99,12 +110,20 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ uri, duration, isOwnMe
 
     const progress = totalDuration > 0 ? (position / totalDuration) * 100 : 0;
 
+    const trackBg = isOwnMessage ? 'rgba(255,255,255,0.3)' : COLORS.border;
+    const fillBg = isOwnMessage ? '#FFFFFF' : COLORS.primary;
+    const playButtonBg = isOwnMessage ? 'rgba(255,255,255,0.2)' : COLORS.primaryLight;
+    const timeColor = isOwnMessage ? 'rgba(255,255,255,0.8)' : COLORS.text.tertiary;
+
     return (
         <StyledView className="flex-row items-center min-w-[150px] py-1">
             <StyledTouchableOpacity
                 onPress={playPause}
-                className={`w-10 h-10 rounded-full items-center justify-center ${isOwnMessage ? 'bg-white/20' : 'bg-primary-50'
-                    }`}
+                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                className="w-10 h-10 rounded-full items-center justify-center"
+                style={{ backgroundColor: playButtonBg }}
+                accessibilityRole="button"
+                accessibilityLabel={isPlaying ? 'Pause voice note' : 'Play voice note'}
             >
                 {isLoading ? (
                     <ActivityIndicator size="small" color={isOwnMessage ? 'white' : COLORS.primaryAccent} />
@@ -119,17 +138,17 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ uri, duration, isOwnMe
             </StyledTouchableOpacity>
 
             <StyledView className="flex-1 ml-3 mr-2">
-                <StyledView className={`h-1 rounded-full ${isOwnMessage ? 'bg-white/30' : 'bg-neutral-200'}`}>
+                <StyledView className="h-1 rounded-full" style={{ backgroundColor: trackBg }}>
                     <StyledView
-                        style={{ width: `${progress}%` }}
-                        className={`h-full rounded-full ${isOwnMessage ? 'bg-white' : 'bg-primary-500'}`}
+                        style={{ width: `${progress}%`, backgroundColor: fillBg }}
+                        className="h-full rounded-full"
                     />
                 </StyledView>
                 <StyledView className="flex-row justify-between mt-1">
-                    <BodySmall className={isOwnMessage ? 'text-white/80' : 'text-neutral-500'}>
+                    <BodySmall style={{ fontVariant: ['tabular-nums'], fontFamily: FONTS.medium, color: timeColor }}>
                         {formatTime(position)}
                     </BodySmall>
-                    <BodySmall className={isOwnMessage ? 'text-white/80' : 'text-neutral-500'}>
+                    <BodySmall style={{ fontVariant: ['tabular-nums'], fontFamily: FONTS.medium, color: timeColor }}>
                         {formatTime(totalDuration)}
                     </BodySmall>
                 </StyledView>
