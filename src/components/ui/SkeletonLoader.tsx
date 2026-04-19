@@ -610,3 +610,123 @@ export const ProposalReviewSkeleton: React.FC<DashboardSkeletonProps> = ({ class
     </View>
   );
 };
+
+/**
+ * SettingsSkeleton — matches the SettingsScreen layout (no header placeholder):
+ * 4 cards (Account, Preferences, Legal & Support, Danger Zone), each with a
+ * title row + setting rows (icon box + title/subtitle + arrow placeholder).
+ * Used until both profile (role) and notification prefs have loaded so toggle
+ * values and role-dependent rows don't pop in.
+ */
+export const SettingsSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
+  const Row = () => (
+    <View className="flex-row items-center" style={{ paddingVertical: 14 }}>
+      <View className="rounded-lg mr-3" style={{ width: 40, height: 40, backgroundColor: COLORS.borderLight }} />
+      <View className="flex-1">
+        <SkeletonLoader height={14} width="55%" borderRadius="rounded" className="mb-2" />
+        <SkeletonLoader height={11} width="75%" borderRadius="rounded" />
+      </View>
+      <SkeletonLoader height={18} width={18} borderRadius="rounded" />
+    </View>
+  );
+
+  const SettingsCard = ({ rowCount }: { rowCount: number }) => (
+    <View
+      className="rounded-2xl p-4 mb-6"
+      style={{ backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.borderLight }}
+    >
+      <SkeletonLoader height={18} width={120} borderRadius="rounded" className="mb-3" />
+      {Array.from({ length: rowCount }).map((_, i) => (
+        <Row key={i} />
+      ))}
+    </View>
+  );
+
+  return (
+    <View className={`flex-1 px-4 pt-4 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
+      <SettingsCard rowCount={3} />
+      <SettingsCard rowCount={5} />
+      <SettingsCard rowCount={3} />
+      <SettingsCard rowCount={2} />
+    </View>
+  );
+};
+
+/**
+ * ChatSkeleton — matches the ChatScreen message list layout (no header
+ * placeholder): alternating left/right bubble rows with varied widths.
+ * Input bar is not included because the real input bar stays visible
+ * during load.
+ */
+export const ChatSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
+  const bubbles: Array<{ side: 'left' | 'right'; width: string }> = [
+    { side: 'left', width: '55%' },
+    { side: 'right', width: '40%' },
+    { side: 'left', width: '70%' },
+    { side: 'right', width: '60%' },
+    { side: 'left', width: '35%' },
+    { side: 'right', width: '50%' },
+  ];
+
+  return (
+    <View className={`flex-1 px-4 pt-6 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
+      {bubbles.map((b, i) => (
+        <View
+          key={i}
+          className="mb-3"
+          style={{ alignItems: b.side === 'right' ? 'flex-end' : 'flex-start' }}
+        >
+          <SkeletonLoader height={36} width={b.width} borderRadius="rounded-2xl" />
+        </View>
+      ))}
+    </View>
+  );
+};
+
+/**
+ * MatchPreferencesSkeleton — matches MatchPreferencesScreen layout (no header
+ * placeholder): a stack of preference section cards, each with a title + body
+ * area sized for a slider row or chip group.
+ */
+export const MatchPreferencesSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
+  const sections = [56, 72, 72, 96, 96, 56];
+
+  return (
+    <View className={`flex-1 px-4 pt-4 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
+      {sections.map((bodyHeight, i) => (
+        <View
+          key={i}
+          className="rounded-2xl p-4 mb-4"
+          style={{ backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.borderLight }}
+        >
+          <SkeletonLoader height={16} width={140} borderRadius="rounded" className="mb-3" />
+          <SkeletonLoader height={bodyHeight} width="100%" borderRadius="rounded-xl" />
+        </View>
+      ))}
+    </View>
+  );
+};
+
+/**
+ * BadgesSkeleton — small skeleton for the Badges tab inside ProfileScreen.
+ * 3 rows of badge card placeholders, matching the real badge card layout.
+ */
+export const BadgesSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
+  return (
+    <View className={`px-4 pt-4 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
+      {[1, 2, 3].map(i => (
+        <View
+          key={i}
+          className="rounded-2xl p-3 mb-2 flex-row items-center"
+          style={{ backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.borderLight, gap: 12 }}
+        >
+          <SkeletonLoader height={48} width={48} borderRadius="rounded-xl" />
+          <View className="flex-1">
+            <SkeletonLoader height={14} width="60%" borderRadius="rounded" className="mb-2" />
+            <SkeletonLoader height={11} width="40%" borderRadius="rounded" />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+};

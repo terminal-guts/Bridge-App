@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { View, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
-import { H3, Body, BodySmall, ScreenWrapper, BackHeader, LoadingState, ErrorState } from '../../components/ui';
+import { H3, Body, BodySmall, ScreenWrapper, ErrorState, MatchPreferencesSkeleton } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile } from '../../types';
 import NetInfo, { useNetInfo } from '@react-native-community/netinfo';
@@ -306,7 +306,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
   if (loading) {
     return (
       <ScreenWrapper>
-        <LoadingState fullScreen message="Loading preferences..." />
+        <MatchPreferencesSkeleton />
       </ScreenWrapper>
     );
   }

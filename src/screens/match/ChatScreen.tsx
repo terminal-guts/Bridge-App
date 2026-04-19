@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
-import { H3 } from '../../components/ui';
+import { H3, ChatSkeleton } from '../../components/ui';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList, Message, Match, MatchStatus } from '../../types';
 import { getCurrentUser } from '../../services/authService';
@@ -451,12 +451,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
 
   if (loading) {
     return (
-      <SafeAreaView style={cs.loadingContainer}>
-        <View style={cs.loadingIcon}>
-          <EvaIcon name="message-circle" variant="outline" size={28} color={COLORS.primaryAccent} />
-        </View>
-        <ActivityIndicator size="small" color={COLORS.primaryAccent} />
-        <Text style={cs.loadingText}>Opening your conversation...</Text>
+      <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.screenBackground }}>
+        <ChatSkeleton />
       </SafeAreaView>
     );
   }

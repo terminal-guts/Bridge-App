@@ -19,6 +19,10 @@ export {
   ProfileMatchSkeleton,
   FriendListSkeleton,
   ProposalReviewSkeleton,
+  SettingsSkeleton,
+  ChatSkeleton,
+  MatchPreferencesSkeleton,
+  BadgesSkeleton,
 } from './SkeletonLoader';
 export { InfoModal, InfoSection, InfoBullet } from './InfoModal';
 export { OptionButton } from './OptionButton';

@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { View, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import ReanimatedAnimated, {
   useSharedValue,
   useAnimatedStyle,
@@ -19,7 +19,7 @@ import { styled } from 'nativewind';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
-import { H3, Body, Card } from '../../components/ui';
+import { H3, Body, Card, BadgesSkeleton } from '../../components/ui';
 import { UserProfile, DeepQuestionAnswer } from '../../types';
 import { FriendBadgeWithGiver } from '../../types/badges';
 import { EvaIcon } from '../../components/icons';
@@ -230,11 +230,7 @@ export const BadgesTab: React.FC<BadgesTabProps> = ({ badges, badgesLoading, onT
   const unfeatured = visibleBadges.filter(b => !b.isFeatured);
 
   if (badgesLoading) {
-    return (
-      <StyledView className="px-4 py-12 items-center">
-        <ActivityIndicator color={COLORS.primaryAccent} />
-      </StyledView>
-    );
+    return <BadgesSkeleton />;
   }
 
   if (badges.length === 0) {

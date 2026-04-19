@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Switch, Alert } from 'react-native';
 import { styled } from 'nativewind';
-import { H3, Body, Card, ScreenWrapper, AnimatedPressable, BackHeader } from '../../components/ui';
+import { H3, Body, Card, ScreenWrapper, AnimatedPressable, BackHeader, SettingsSkeleton } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { signOut } from '../../services/authService';
@@ -78,6 +78,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
   const [isDeleting, setIsDeleting] = useState(false);
   const [userRole, setUserRole] = useState<string>('dater');
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   // Notification Preferences — all default false until loaded from storage
   const [prefsLoaded, setPrefsLoaded] = useState(false);
@@ -86,6 +87,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
   const [showNameIfWinner, setShowNameIfWinner] = useState(false);
   const [leaderboardVisible, setLeaderboardVisible] = useState(false);
 
+  // Gate render on both profile + prefs so role-dependent rows and toggle
+  // values don't pop in after an initial flash.
+  const isReady = profileLoaded && prefsLoaded;
+
   useEffect(() => {
     loadPreferences();
     getUserProfile().then(res => {
@@ -93,6 +98,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
         setUserRole(res.data.role || 'dater');
         setUserProfile(res.data);
       }
+      setProfileLoaded(true);
     });
   }, []);
 
@@ -122,6 +128,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
 
       <BackHeader title="Settings" titleAlign="center" />
 
+      {!isReady ? (
+        <SettingsSkeleton />
+      ) : (
       <StyledScrollView className="flex-1">
         <StyledView className="px-4 py-4">
           {/* Matchmaking / Account — top card with navigation items */}
@@ -354,6 +363,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
           </Card>
         </StyledView>
       </StyledScrollView>
+      )}
     </ScreenWrapper>
   );
 };
