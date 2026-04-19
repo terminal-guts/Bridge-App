@@ -62,22 +62,25 @@ function timingSafeEqual(a: string, b: string): boolean {
   return result === 0;
 }
 
-/** Build branded HTML email with just the 6-digit code. No URLs except unsubscribe.
+/** Build branded HTML email with just the 6-digit code.
  *
  *  Design notes for deliverability / rendering:
  *  - Arial/Helvetica for universal rendering (Gmail web strips `-apple-system`
  *    and falls back to serif).
- *  - Hidden preheader drives the Gmail inbox-list preview text.
- *  - Code uses CSS `letter-spacing` for visual spacing — critically, this is
- *    CSS-only and does NOT go into the clipboard when the user copies the
- *    code, so paste yields a clean "123456" (earlier attempts using &nbsp;
- *    between digits broke paste on the verify screen). */
-function buildVerificationEmail(code: string, email: string): string {
+ *  - Code uses CSS `letter-spacing` for visual spacing — CSS-only and does
+ *    NOT go into the clipboard when the user copies the code, so paste
+ *    yields a clean "123456" (earlier attempts using &nbsp; between digits
+ *    broke paste on the verify screen).
+ *  - No hidden preheader: Gmail rendered the hidden div as a "show trimmed
+ *    content" (•••) icon inside the code box, which cluttered the email.
+ *    For a message this short, Gmail's natural preview (grabbing "Bridge"
+ *    or "Your verification code:") is fine.
+ *  - No visible footer + no List-Unsubscribe headers: this is a purely
+ *    transactional OTP email; users requested the code explicitly, so there
+ *    is nothing to unsubscribe from. Advertising unsub on transactional
+ *    mail invites accidental clicks that hurt reputation. */
+function buildVerificationEmail(code: string): string {
   return `
-<!-- Preheader — first text Gmail shows in inbox preview. Hidden in the body. -->
-<div style="display: none; max-height: 0; overflow: hidden; mso-hide: all; opacity: 0; color: transparent;">
-  Your 6-digit code expires in ${CODE_EXPIRY_MINUTES} minutes.
-</div>
 <div style="font-family: Arial, Helvetica, sans-serif; max-width: 420px; margin: 0 auto; padding: 40px 24px;">
   <div style="text-align: center; margin-bottom: 32px;">
     <h1 style="color: #1E293B; font-size: 24px; font-weight: 700; margin: 0; font-family: Arial, Helvetica, sans-serif;">Bridge</h1>
@@ -92,7 +95,6 @@ function buildVerificationEmail(code: string, email: string): string {
     This code expires in ${CODE_EXPIRY_MINUTES} minutes.<br/>
     If you didn't request this, you can safely ignore this email.
   </p>
-  ${buildUnsubscribeFooter(email)}
 </div>`.trim();
 }
 
@@ -106,31 +108,6 @@ Your verification code: ${code}
 
 This code expires in ${CODE_EXPIRY_MINUTES} minutes.
 If you didn't request this, you can safely ignore this email.`;
-}
-
-/** Build the unsubscribe URL for a given email.
- *  Always uses the production Supabase URL since emails are sent to real
- *  inboxes via Resend regardless of environment (local or production). */
-function getUnsubscribeUrl(email: string): string {
-  return `https://ikyiwnydgedwbmcdzgbe.supabase.co/functions/v1/email-unsubscribe?email=${encodeURIComponent(email)}`;
-}
-
-/** Unsubscribe footer HTML — currently empty. The `List-Unsubscribe` email
- *  header (see `getEmailHeaders`) is what actually drives one-click unsub in
- *  Gmail/Outlook; we deliberately do not render a visible unsubscribe link
- *  (the URL domain mismatch between bridgedate.app and Supabase hurts
- *  deliverability). Kept as a hook in case future designs want a footer. */
-function buildUnsubscribeFooter(_email: string): string {
-  return "";
-}
-
-/** Build Resend headers with List-Unsubscribe for deliverability. */
-function getEmailHeaders(email: string): Record<string, string> {
-  const url = getUnsubscribeUrl(email);
-  return {
-    "List-Unsubscribe": `<${url}>`,
-    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-  };
 }
 
 /** Get client IP from request headers. */
@@ -262,9 +239,8 @@ async function handleSend(
       from: "Bridge <verify@bridgedate.app>",
       to: [email],
       subject: "Your Bridge verification code",
-      html: buildVerificationEmail(code, email),
+      html: buildVerificationEmail(code),
       text: buildVerificationTextEmail(code),
-      headers: getEmailHeaders(email),
     }),
   });
 
@@ -274,11 +250,13 @@ async function handleSend(
     return jsonResponse({ error: "Failed to send verification email. Please try again." }, 500);
   }
 
-  // 6. Insert code into DB (email sent successfully)
+  // 6. Insert code into DB (email sent successfully). We no longer persist
+  //    the send-time `flow` value — send-side business logic (NO_ACCOUNT for
+  //    login, ACCOUNT_EXISTS for signup) runs in memory before this point,
+  //    and the verify path doesn't need to cross-check the flow.
   const { error: insertErr } = await admin.from("email_verification_codes").insert({
     email,
     code_hash: codeHash,
-    flow,
     ip_address: clientIP,
     expires_at: new Date(Date.now() + CODE_EXPIRY_MINUTES * 60 * 1000).toISOString(),
   });
@@ -297,14 +275,13 @@ async function handleVerify(
   admin: ReturnType<typeof createAdminClient>,
   email: string,
   code: string,
-  requestedFlow: "signup" | "login" = "signup",
 ): Promise<Response> {
-  // 1. Look up latest valid code (row lock to prevent race condition)
+  // 1. Look up latest valid code (row lock to prevent race condition).
   //    PostgREST doesn't support FOR UPDATE, so we use a two-step approach:
-  //    select the code, then immediately increment attempts as our "lock"
+  //    select the code, then immediately increment attempts as our "lock".
   const { data: codes, error: lookupErr } = await admin
     .from("email_verification_codes")
-    .select("id, code_hash, attempts, flow")
+    .select("id, code_hash, attempts")
     .eq("email", email)
     .eq("used", false)
     .gt("expires_at", new Date().toISOString())
@@ -322,18 +299,7 @@ async function handleVerify(
 
   const codeRow = codes[0];
 
-  // 2. Flow cross-check — the flow the caller claims must match the flow the
-  //    code was issued under. Prevents a signup-flow code from being consumed
-  //    by a login verify call (or vice versa). codeRow.flow may be null on
-  //    legacy rows issued before migration #83, in which case we skip the check.
-  if (codeRow.flow && codeRow.flow !== requestedFlow) {
-    return jsonResponse({
-      error: "This code was issued for a different flow. Please request a new one.",
-      code: "FLOW_MISMATCH",
-    });
-  }
-
-  // 3. Check attempt limit BEFORE incrementing so MAX_ATTEMPTS_PER_CODE truly
+  // 2. Check attempt limit BEFORE incrementing so MAX_ATTEMPTS_PER_CODE truly
   //    means N allowed attempts. codeRow.attempts is the pre-increment count;
   //    if it's already at the ceiling, this request is the (N+1)th so reject.
   if (codeRow.attempts >= MAX_ATTEMPTS_PER_CODE) {
@@ -346,7 +312,7 @@ async function handleVerify(
     );
   }
 
-  // 4. Increment attempts atomically (now that we know this attempt is within the limit)
+  // 3. Increment attempts atomically (now that we know this attempt is within the limit)
   const { error: attemptErr } = await admin
     .from("email_verification_codes")
     .update({ attempts: codeRow.attempts + 1 })
@@ -356,24 +322,18 @@ async function handleVerify(
     console.error("Attempt increment error:", attemptErr.message);
   }
 
-  // 5. Constant-time hash comparison
+  // 4. Constant-time hash comparison
   const submittedHash = await hashCode(code, email);
   if (!timingSafeEqual(submittedHash, codeRow.code_hash)) {
     return jsonResponse({ error: "Incorrect code. Please try again." });
   }
 
-  // 6. Code matches — create or find user
+  // 5. Code matches — create or find user
   const { data: existingUsers } = await admin.rpc("get_user_by_email", {
     p_email: email,
   });
 
   const userExists = existingUsers && existingUsers.length > 0;
-
-  // Guard: login flow must NEVER create a new user (belt-and-suspenders — the
-  // flow cross-check above should already have rejected non-matching flows).
-  if (codeRow.flow === "login" && !userExists) {
-    return jsonResponse({ error: "No account found. Please sign up first." });
-  }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -509,11 +469,7 @@ Deno.serve(async (req: Request) => {
       if (trimmedCode.length !== 6 || !/^\d{6}$/.test(trimmedCode)) {
         return jsonResponse({ error: "Code must be 6 digits." });
       }
-      // Default to signup for backwards compat — old clients that don't send
-      // flow on verify will continue to work as long as they used flow:"signup"
-      // on send (the common case).
-      const verifyFlow = flow === "login" ? "login" : "signup";
-      return await handleVerify(admin, normalizedEmail, trimmedCode, verifyFlow);
+      return await handleVerify(admin, normalizedEmail, trimmedCode);
     }
 
     return jsonResponse({ error: "Invalid action. Use 'send' or 'verify'." });

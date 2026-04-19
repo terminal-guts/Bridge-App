@@ -736,7 +736,7 @@ export const verifyEmailSignUpCode = async (
     logger.info('[EMAIL_SIGNUP] Verifying code for:', normalized);
 
     const { data, error } = await supabase.functions.invoke('email-signup', {
-      body: { email: normalized, action: 'verify', code: trimmedCode, flow: 'signup' },
+      body: { email: normalized, action: 'verify', code: trimmedCode },
     });
 
     if (error) {
@@ -889,7 +889,7 @@ export const verifyLoginCode = async (
     logger.info('[LOGIN] Verifying login code for:', normalized);
 
     const { data, error } = await supabase.functions.invoke('email-signup', {
-      body: { email: normalized, action: 'verify', code: trimmedCode, flow: 'login' },
+      body: { email: normalized, action: 'verify', code: trimmedCode },
     });
 
     if (error) {

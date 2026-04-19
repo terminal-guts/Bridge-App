@@ -1,10 +1,37 @@
 # Edge Functions Registry
 
-Last updated: 2026-04-18
+Last updated: 2026-04-19
+
+**To audit parity:** `./scripts/check-edge-function-parity.sh` — compares prod-deployed functions vs the `supabase/functions/` folder.
 
 ## Deployment Status Key
 
 `DEPLOYED` = live in production | `LOCAL_ONLY` = tested locally, not yet deployed
+
+## Current parity (2026-04-19)
+
+- Prod-deployed: **44** functions
+- In repo: **34** function folders
+- Shared: **33**
+
+### Deployed in prod but NOT in repo (11)
+
+**Legacy cruft (9)** — predate current repo, never cleaned up. No calls from `src/` or any current edge function. Safe to undeploy with user approval:
+
+```
+accept_match              exit_match               generate_daily_survey
+generate_match_candidates generate-daily-pairings  generate-daily-surveys
+record_survey_answers     reject_match             send_message
+```
+
+**Possibly-live but missing from repo (2)** — not referenced in `src/`, but may be called by crons or other edge functions. Investigate before undeploying:
+
+- `send-sms`
+- `send-nudge`
+
+### In repo but NOT deployed to prod (1)
+
+- `moderate-image` — LOCAL_ONLY. `src/services/imageModerationService.ts` calls it. Image moderation therefore works locally but fails open in prod. (Tracked on post-launch bug list.)
 
 ## User-Facing Functions (JWT Required)
 
@@ -57,8 +84,8 @@ Last updated: 2026-04-18
 
 | Function | Status | Flag | Purpose | Depends On |
 |----------|--------|------|---------|-----------|
-| email-signup | LOCAL_ONLY | `--no-verify-jwt` | OTP code send + verify for signup (Resend direct) | email_verification_codes table, get_user_by_email RPC, RESEND_API_KEY |
-| email-unsubscribe | LOCAL_ONLY | `--no-verify-jwt` | Handle email unsubscribe requests | email_unsubscribes table |
+| email-signup | LOCAL_ONLY | `--no-verify-jwt` | OTP code send + verify for signup (Resend direct) | email_verification_codes table (with `ip_address` column from migration #83), get_user_by_email RPC, RESEND_API_KEY |
+| email-unsubscribe | DORMANT | `--no-verify-jwt` | Handle email unsubscribe requests. **Not scheduled for deploy** as of 2026-04-19 — `email-signup` no longer emits `List-Unsubscribe` headers since we only send transactional OTP codes (nothing to unsubscribe from). Function source kept for possible future marketing-email stream. | email_unsubscribes table (already in prod) |
 
 ## Shared Utilities (`supabase/functions/_shared/`)
 

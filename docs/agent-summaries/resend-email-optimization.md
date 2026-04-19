@@ -13,19 +13,20 @@
 
 ## What shipped on this branch (local commits, not yet in prod)
 
-### 1. Correctness / guard fixes (commit `13bf354`)
-- **Flow cross-check on verify**: `email-signup` now accepts `flow` in the verify body and rejects with `FLOW_MISMATCH` when the caller's claimed flow doesn't match the flow the code was issued under. Closes an incomplete guard where a signup-flow code could be consumed by a login verify call (or vice versa) as long as the user happened to exist. `verifyEmailSignUpCode` in `authService.ts` now sends `flow: 'signup'`; `verifyLoginCode` sends `flow: 'login'`. Legacy rows with `codeRow.flow = null` are exempt (skip the cross-check) for a safe rollout.
+### 1. Correctness / guard fixes (commit `13bf354`, partially reverted in a later scope cut — see note below)
 - **Off-by-one attempt counter**: The attempt-limit check now runs BEFORE the increment so `MAX_ATTEMPTS_PER_CODE = 5` actually means 5 real attempts (was 6).
 - **IP rate limit bump**: `MAX_SENDS_PER_IP_PER_HOUR` raised 20 → 60. Rice campus shared NAT was at risk of burning a 20/hr ceiling during orientation/signup bursts. 60 still caps abuse.
 - **Stale comments updated**: `authService.ts:L658` and `EmailSignUpVerificationStep.tsx:L194-197` had comments describing the old anti-enumeration behavior; replaced with accurate description of current `ACCOUNT_EXISTS`/`NO_ACCOUNT` handling.
-- **MIGRATION_LOG.md entry #83**: `20260417000005_email_verification_codes_add_flow_and_ip.sql` is now documented in the log (was missing). Status: `LOCAL_ONLY`. Function 500s on INSERT if the migration isn't applied to prod first — this is the critical deploy ordering constraint.
+- **MIGRATION_LOG.md entry #83**: `20260417000005_email_verification_codes_add_ip.sql` is now documented in the log (was missing). Status: `LOCAL_ONLY`. Function 500s on INSERT if the migration isn't applied to prod first — this is the critical deploy ordering constraint.
+- **REVERTED 2026-04-19**: The verify-side `flow` cross-check + `FLOW_MISMATCH` error + accompanying `flow` column. Belt-and-suspenders with negligible real security benefit (attacker already needs the victim's inbox to read the code). Dropped to keep the migration surface minimal and the function simpler. Send-side signup-vs-login business logic (NO_ACCOUNT for login-without-account, ACCOUNT_EXISTS for signup-with-completed-profile) lives entirely in memory now.
 
-### 2. Delivery-speed optimization (commit `60f8a40`)
+### 2. Delivery-speed optimization (commit `60f8a40`, subsequent scope cut in commit added 2026-04-19)
 - **Parallelized pre-send DB calls**: The 3 independent pre-send checks (per-email rate limit, per-IP rate limit, user status lookup) now run in a single `Promise.all`. Saves ~2 round-trips (~100–150ms on typical Supabase latency) off the happy path. Early-return logic runs after all three resolve — wasted work only happens on rate-limited/error paths, never on the fast path.
 - **Plain-text alternative**: Added `text` field to the Resend payload alongside `html`. HTML-only emails score higher on Gmail/Outlook spam filters and render poorly on watchOS and screen readers.
-- **Hidden preheader**: `<div style="display:none; ...">Your 6-digit code expires in 10 minutes.</div>` at the top of the HTML body so Gmail's inbox-list preview shows something useful instead of "Bridge".
 - **Font stack**: Swapped `-apple-system, BlinkMacSystemFont, 'Segoe UI'` for `Arial, Helvetica, sans-serif`. Gmail web strips `-apple-system` and falls back to serif, which looked off.
-- **Removed visible footer**: Deleted the "Bridge at Rice University" line from both HTML and text. `List-Unsubscribe` header drives actual unsubscribe behavior; the visible text added nothing.
+- **Removed visible footer**: Deleted the "Bridge at Rice University" line from both HTML and text.
+- **REVERTED 2026-04-19**: The hidden preheader div. Gmail rendered it as a "show trimmed content" (•••) icon inside the code box, cluttering the email more than the preview benefit was worth. Removed. For a transactional message this short, Gmail's natural preview ("Bridge" or "Your verification code:") is fine.
+- **REVERTED 2026-04-19**: The `List-Unsubscribe` and `List-Unsubscribe-Post` headers. Transactional OTP codes aren't something users subscribe to — advertising unsubscribe invites accidental clicks that hurt reputation. Removed along with the `getEmailHeaders`/`getUnsubscribeUrl` helpers.
 
 ### 3. Paste regression fix (commit `d2a1928`)
 - **Root cause**: Earlier version of `60f8a40` rendered the code as `1 &nbsp; 2 &nbsp; 3 &nbsp; 4 &nbsp; 5 &nbsp; 6` for cross-client visual spacing. That meant the clipboard copy from Gmail contained 31 chars (including non-breaking spaces). The verify TextInput's `maxLength={6}` caused native truncation BEFORE the digit-strip regex could run, so only the first 2 digits landed.
@@ -42,18 +43,18 @@ All depend on user's explicit per-action approval per CLAUDE.md.
 
 | Artifact | Status | Deploy prereq | Rollback |
 |---|---|---|---|
-| Migration `20260417000005_email_verification_codes_add_flow_and_ip.sql` | LOCAL_ONLY | None — idempotent `IF NOT EXISTS` | Leave applied, additive only |
+| Migration `20260417000005_email_verification_codes_add_ip.sql` | LOCAL_ONLY | None — idempotent `IF NOT EXISTS` | Leave applied, additive only |
 | Edge function `email-signup` | LOCAL_ONLY | Migration above must land first | Legacy `send-email-verification` v17 still deployed as fallback |
-| Edge function `email-unsubscribe` | LOCAL_ONLY | None | Delete function; unsub rows harmless |
 
 **Deploy order** (when user approves):
 1. Apply migration via `scripts/supabase-exec.sh` (service_role-only)
 2. `supabase functions deploy email-signup --no-verify-jwt`
-3. `supabase functions deploy email-unsubscribe --no-verify-jwt`
-4. Smoke test with a real @rice.edu address
-5. Update `MIGRATION_LOG.md` (flip #83 to `PRODUCTION`) and `EDGE_FUNCTIONS.md` (move both to Anonymous Functions / DEPLOYED)
+3. Smoke test with a real @rice.edu address
+4. Update `MIGRATION_LOG.md` (flip #83 to `PRODUCTION`) and `EDGE_FUNCTIONS.md` (move `email-signup` to Anonymous Functions / DEPLOYED)
 
 **Prod secrets required**: `RESEND_API_KEY` is already set per `docs/migrations/SECRETS.md`. No new secrets needed.
+
+**`email-unsubscribe` is NOT in the deploy plan.** 2026-04-19 scope cut: we only send transactional OTP codes (user explicitly requested each one), so there's nothing to unsubscribe from. `email-signup` no longer emits the `List-Unsubscribe` / `List-Unsubscribe-Post` headers. Function source kept in-repo as `DORMANT` for possible future marketing-email stream.
 
 ---
 
@@ -79,9 +80,8 @@ All depend on user's explicit per-action approval per CLAUDE.md.
 ## Known risks / caveats
 
 - **IP rate limit 60/hr** is a guess calibrated against Rice shared NAT during orientation. If real orientation traffic outstrips it, bump to 120 or switch to per-email-only when IP looks shared.
-- **Flow cross-check** allows legacy rows (`codeRow.flow = null`) to pass through without the check — intentional, so rows issued before migration #83 lands still verify during the rollout window. After 1 week post-deploy, rows with null flow will have expired naturally and this branch becomes unreachable.
-- **Resend domain reputation** is green now but Rice's own mail servers may be stricter than Gmail. If complaints come in, first check the DMARC reports to see what provider is flagging.
-- **`email-unsubscribe` not deployed yet** means the `List-Unsubscribe` header in outbound email points to a URL that 404s in prod. Gmail's one-click unsubscribe quietly degrades sender reputation when the POST fails. Fix is to deploy the function at the same time as `email-signup`.
+- **Resend domain reputation** is green now (DKIM/SPF verified, DMARC `p=none; rua=` added 2026-04-19) but Rice's own mail servers may be stricter than Gmail. If complaints come in, first check the DMARC reports (sent to `saulbrauns@gmail.com`) to see what provider is flagging.
+- **No `List-Unsubscribe` header** on outbound mail as of 2026-04-19 scope cut. Correct for transactional-only streams; revisit if marketing-email stream is added later.
 
 ---
 
