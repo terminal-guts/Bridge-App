@@ -73,23 +73,29 @@ Deno.serve(async (req: Request) => {
       return Response.json({ error: 'Daily vote limit reached. Try again tomorrow.' }, { status: 429, headers: corsHeaders });
     }
 
+    // ── Nonexistent proposal → hard 404, no karma granted ───────────────────
+    // The silent stale-path below is for real-but-stale proposals (expired,
+    // rejected, paused subjects, blocked users).  A vote on a random UUID
+    // that matches nothing must not grant +1 karma — that was a farming hole
+    // (C3 in docs/plans/proposal-gate-overhaul.md).
+    if (!proposal || propErr) {
+      return Response.json({ error: 'Proposal not found' }, { status: 404, headers: corsHeaders });
+    }
+
     // ── Stale-proposal graceful path ─────────────────────────────────────────
-    // If the proposal was deleted, no longer pending, or its subjects are
+    // If the proposal is no longer pending, or its subjects are
     // paused/suspended, we silently accept the vote with +1 karma so the
     // user's UI progresses normally.  We do NOT update tallies or streaks.
     // The unique constraint on (proposal_id, voter_user_id) prevents +1
     // farming via repeat attempts.
-    const isStale = !proposal || propErr
-      || proposal.status !== 'pending';
-
-    if (isStale) {
+    if (proposal.status !== 'pending') {
       return await handleStaleVote(supabase, {
         proposal_id,
         voter_id: voterId,
         vote_type,
         recommend_to_id: recommend_to_id || null,
         existing_vote: existingVote,
-        proposal_status: proposal?.status || 'deleted',
+        proposal_status: proposal.status,
       });
     }
 
@@ -306,14 +312,18 @@ Deno.serve(async (req: Request) => {
 // ────────────────────────────────────────────────────────────────────────────
 // Stale-vote handler — silent success with +1 karma once.
 //
-// Applies when the proposal no longer exists, is no longer pending, or its
-// subjects are paused/suspended/blocked.  We attempt to record the vote for
-// audit trail; the unique constraint on (proposal_id, voter_user_id) prevents
-// duplicate +1 karma on repeat attempts.  No tallies, no streaks.
+// Applies when a REAL proposal is no longer pending or its subjects are
+// paused/suspended/blocked.  Called only after the !proposal 404 short-circuit
+// above, so a random-UUID vote can never reach this path.
 //
-// If the proposal was cascade-deleted, INSERT will fail with an FK violation;
-// we handle that silently too — the user still gets +1 once for the first attempt
-// in that case (tracked only by increment_karma_for_vote, not proposal_votes).
+// We attempt to record the vote for audit trail; the unique constraint on
+// (proposal_id, voter_user_id) prevents duplicate +1 karma on repeat attempts.
+// No tallies, no streaks.
+//
+// If the proposal is cascade-deleted *between* our initial SELECT and this
+// INSERT (TOCTOU race), the INSERT will fail with an FK violation; we still
+// grant +1 once in that rare case because the user's vote was valid at request
+// time.
 async function handleStaleVote(
   supabase: ReturnType<typeof createAdminClient>,
   args: {
