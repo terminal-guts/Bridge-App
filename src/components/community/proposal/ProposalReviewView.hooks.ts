@@ -27,6 +27,7 @@ import { showToast } from '../../../utils/toast';
 import { communityService } from '../../../services/communityServiceIndex';
 import { createLogger } from '../../../utils/secureLogger';
 import { COLORS } from '../../../theme/colors';
+import { SPRINGS, DURATIONS } from '../../../constants/animations';
 import {
   matchPolitics,
   matchReligion,
@@ -114,8 +115,8 @@ export function useProposalVoting(
     if (reducedMotion) return; // Respect iOS Reduce Motion setting
     entranceOpacity.value = 0;
     entranceTranslateX.value = 30;
-    entranceOpacity.value = withTiming(1, { duration: 250 });
-    entranceTranslateX.value = withTiming(0, { duration: 250 });
+    entranceOpacity.value = withTiming(1, { duration: DURATIONS.normal });
+    entranceTranslateX.value = withTiming(0, { duration: DURATIONS.normal });
   }, [currentIndex, reducedMotion]);
 
   const [fetchFailed, setFetchFailed] = useState(false);
@@ -147,14 +148,14 @@ export function useProposalVoting(
     if (reducedMotion) return; // Respect iOS Reduce Motion setting
     if (type === 'yes') {
       scale.value = withSequence(
-        withSpring(0.95, { damping: 20, stiffness: 400, mass: 0.8 }),
-        withSpring(1.03, { damping: 10, stiffness: 200, mass: 0.8 }),
-        withSpring(1, { damping: 15, stiffness: 300, mass: 0.8 }),
+        withSpring(0.95, SPRINGS.snappy),
+        withSpring(1.03, SPRINGS.bouncy),
+        withSpring(1, SPRINGS.snappy),
       );
     } else {
       scale.value = withSequence(
-        withSpring(0.93, { damping: 20, stiffness: 400, mass: 0.8 }),
-        withSpring(1, { damping: 12, stiffness: 300, mass: 0.8 }),
+        withSpring(0.93, SPRINGS.snappy),
+        withSpring(1, SPRINGS.responsive),
       );
     }
   }, []);

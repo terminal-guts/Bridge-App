@@ -7,6 +7,7 @@
 
 import { supabase } from '../lib/supabase';
 import { Sentry } from '../lib/sentry';
+import { getExponentialBackoff } from '../constants/timings';
 import type {
   Proposal,
   ProposalVoteType,
@@ -40,34 +41,54 @@ export async function getProposalsForVoting(_userId: string): Promise<{
   pool_count: number;
   friend_count: number;
 }> {
-  // Edge Function extracts user ID from JWT — no need to pass userId
-  // Retry once for transient relay/auth failures
-  for (let attempt = 0; attempt < 2; attempt++) {
+  // Edge Function extracts user ID from JWT — no need to pass userId.
+  // Retry strategy:
+  //   - 401 (expired JWT): refresh session once and try again (not counted as a
+  //     network-retry)
+  //   - Undefined status (network error / relay timeout): up to 3 retries with
+  //     exponential backoff via getExponentialBackoff()
+  //   - 4xx/5xx responses: backend responded cleanly — don't retry (rate limit,
+  //     bad request, etc.). Surface immediately.
+  const MAX_NETWORK_RETRIES = 3;
+  let networkAttempt = 0;
+  let didRefresh = false;
+  let lastError: Error | null = null;
+  let lastStatus: number | undefined;
+
+  // Loop bound: one refresh attempt + MAX_NETWORK_RETRIES network retries + 1
+  // initial attempt. The explicit guards below terminate earlier as needed.
+  for (let i = 0; i < MAX_NETWORK_RETRIES + 2; i++) {
     const { data, error, response } = await supabase.functions.invoke('get-proposals-for-voting');
     if (!error) return data;
 
+    lastError = error;
     const status = response?.status;
+    lastStatus = status;
 
-    // 401 = expired JWT — refresh and retry
-    if (status === 401 && attempt === 0) {
+    // 401 = expired JWT — refresh once and retry (not a network retry)
+    if (status === 401 && !didRefresh) {
+      didRefresh = true;
       await supabase.auth.refreshSession();
       continue;
     }
 
-    // Undefined status = relay/timeout error — retry once (no delay on gate-critical path)
-    if (status === undefined && attempt === 0) {
-      await new Promise(r => setTimeout(r, 300));
+    // Undefined status = network error / relay timeout — retry with backoff
+    if (status === undefined && networkAttempt < MAX_NETWORK_RETRIES) {
+      await new Promise(r => setTimeout(r, getExponentialBackoff(networkAttempt)));
+      networkAttempt++;
       continue;
     }
 
-    // Definitive error — throw immediately
-    Sentry.captureException(new Error(`Fetch proposals failed: ${error.message}`), {
-      extra: { status },
-    });
-    throw new Error(`Fetch proposals failed: ${error.message}`);
+    // Any 4xx/5xx (other than the one-time 401 refresh path) is a clean backend
+    // response — do not retry. Break to throw.
+    break;
   }
 
-  throw new Error('Fetch proposals failed after retries');
+  Sentry.captureException(
+    new Error(`Fetch proposals failed: ${lastError?.message ?? 'unknown'}`),
+    { extra: { status: lastStatus } },
+  );
+  throw new Error(`Fetch proposals failed: ${lastError?.message ?? 'unknown'}`);
 }
 
 export async function castProposalVote(

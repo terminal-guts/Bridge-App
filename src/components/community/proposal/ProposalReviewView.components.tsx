@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Modal,
+  useWindowDimensions,
 } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { Image } from 'expo-image';
@@ -87,7 +88,7 @@ export const VoteButtons = React.memo(function VoteButtons({
   bottomInset = 0,
 }: VoteButtonsProps) {
   return (
-    <View style={[styles.voteContainer, { paddingBottom: bottomInset > 0 ? Math.round(bottomInset * 0.5) : 8 }]}>
+    <View style={[styles.voteContainer, { paddingBottom: Math.max(bottomInset, 12) }]}>
       {/* Yes button — primary action, largest touch target */}
       <Animated.View style={yesButtonAnimatedStyle}>
         <TouchableOpacity
@@ -200,6 +201,7 @@ export function ForFriendModal({
   onCancel,
   onConfirm,
 }: ForFriendModalProps) {
+  const { height: windowHeight } = useWindowDimensions();
   // Filter out the recommended person from the friend list
   const recPersonId = selectedPersonSide === 'userA' ? userA.id : userB.id;
   const filteredFriends = friendsList.filter(item => item.friendId !== recPersonId);
@@ -306,7 +308,7 @@ export function ForFriendModal({
                 </View>
               ) : (
                 <ScrollView
-                  style={styles.modalFriendsList}
+                  style={[styles.modalFriendsList, { maxHeight: windowHeight * 0.6 }]}
                   contentContainerStyle={styles.modalFriendsContent}
                   showsVerticalScrollIndicator={false}
                 >

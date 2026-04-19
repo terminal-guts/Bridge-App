@@ -90,8 +90,7 @@ export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
   }
 
   return (
-    <StyledSafeAreaView className="flex-1 bg-white" edges={['top']}>
-      <View style={{ height: 32 }} />
+    <StyledSafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       <ProposalReviewView
         initialProposals={proposals}
         showBackButton={false}

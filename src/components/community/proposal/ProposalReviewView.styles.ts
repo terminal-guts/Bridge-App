@@ -19,7 +19,7 @@ export const proposalStyles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.screenBackground,
   },
   loadingText: {
     fontSize: FONT_SIZES.xl,
@@ -189,15 +189,19 @@ export const styles = StyleSheet.create({
     marginLeft: 4,
   },
 
-  // Compatibility badge — centered between photos
+  // Compatibility badge — centered between photos.
+  // Uses flex centering (minHeight + justifyContent) instead of a fixed translateY
+  // so the badge scales with Dynamic Type and never escapes its frame.
   compatBadgeContainer: {
     position: 'absolute' as const,
-    top: '50%' as unknown as number,
+    top: 0,
+    bottom: 0,
     left: 0,
     right: 0,
+    justifyContent: 'center' as const,
     alignItems: 'center' as const,
+    minHeight: 36,
     zIndex: 10,
-    transform: [{ translateY: -18 }],
   },
   compatBadgePill: {
     backgroundColor: BLUE,

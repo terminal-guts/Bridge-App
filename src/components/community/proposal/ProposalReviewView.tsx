@@ -27,7 +27,7 @@ import {
   StyleSheet,
   Platform,
   UIManager,
-  Dimensions,
+  useWindowDimensions,
   Image as RNImage,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -79,8 +79,6 @@ import { Proposal } from '../../../types/community';
 // intermittent "Unknown animated node" crashes.
 
 // ─── Layout constants ────────────────────────────────────────────────────────
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const SCREEN_HEIGHT = Dimensions.get('window').height;
 const DIVIDER_WIDTH = 13;
 
 // ─── Section accent spectrum ──────────────────────────────────────────────────
@@ -89,7 +87,6 @@ const DIVIDER_WIDTH = 13;
 const ACCENT_QUESTIONS = COLORS.primary; // unified blue
 const ACCENT_INTERESTS = COLORS.primary;
 const ACCENT_VALUES    = COLORS.primary;
-const PHOTO_WIDTH = (SCREEN_WIDTH - 32 - DIVIDER_WIDTH) / 2;
 
 const SCROLL_CONTENT_PAD_H = 16;
 
@@ -122,6 +119,9 @@ export function ProposalReviewView({
   deepQuestions,
 }: ProposalReviewViewProps) {
   const insets = useSafeAreaInsets();
+  // Live-updating window dimensions — responds to rotation + split-view.
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
+  const PHOTO_WIDTH = (SCREEN_WIDTH - 32 - DIVIDER_WIDTH) / 2;
   // Gate-specific UI (banner + progress dots) — defaults to !showBackButton for backward compat
   const isGateVoting = isGateVotingProp ?? !showBackButton;
   // Track whether the user has voted on the current proposal (for vote bar reveal)
@@ -257,7 +257,7 @@ export function ProposalReviewView({
   if (loading) {
     return (
       <View style={proposalStyles.loadingContainer}>
-        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: headerTopPadding }}>
           {/* Photo pair skeleton */}
           <View style={{ flexDirection: 'row', gap: 13, marginBottom: 16 }}>
             <SkeletonLoader width={PHOTO_WIDTH} height={PHOTO_HEIGHT} borderRadius="rounded-2xl" />
