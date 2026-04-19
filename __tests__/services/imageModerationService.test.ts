@@ -59,14 +59,14 @@ describe('moderateImage — approval path', () => {
 });
 
 describe('moderateImage — rejection path', () => {
-  it('returns approved=false with the edge-function reason when main photo has no face', async () => {
+  it('returns approved=false with the edge-function reason when a photo has no face', async () => {
     mockInvoke.mockResolvedValue({
       data: {
         approved: false,
         hasFace: false,
         faceConfidence: null,
         safeSearch: { adult: 'VERY_UNLIKELY', violence: 'VERY_UNLIKELY', racy: 'VERY_UNLIKELY', medical: 'VERY_UNLIKELY' },
-        reasons: ['Your main photo needs to clearly show your face.'],
+        reasons: ['This photo needs to clearly show a person.'],
       },
       error: null,
     });
@@ -75,7 +75,23 @@ describe('moderateImage — rejection path', () => {
 
     expect(result.approved).toBe(false);
     expect(result.hasFace).toBe(false);
-    expect(result.reasons).toEqual(['Your main photo needs to clearly show your face.']);
+    expect(result.reasons).toEqual(['This photo needs to clearly show a person.']);
+  });
+
+  it('rejects secondary photos (isMain=false) with no face — rule applies to every photo', async () => {
+    mockInvoke.mockResolvedValue({
+      data: {
+        approved: false,
+        hasFace: false,
+        reasons: ['This photo needs to clearly show a person.'],
+      },
+      error: null,
+    });
+
+    const result = await moderateImage('user-1/photo_secondary_tree.jpg', false);
+
+    expect(result.approved).toBe(false);
+    expect(result.reasons[0]).toContain('clearly show a person');
   });
 
   it('returns approved=false for SafeSearch violations', async () => {

@@ -166,16 +166,19 @@ Deno.serve(async (req: Request) => {
     // ── Evaluate results ─────────────────────────────────────────────────
     const reasons: string[] = [];
 
-    // Face detection
+    // Face detection — applies to every photo, not just the main one.
+    // Product rule: every profile photo must clearly show a person.
+    // `isMain` is accepted but currently unused by the face rule; kept in the
+    // request shape so future per-slot policies don't require a redeploy.
+    void isMain;
     const faces = result.faceAnnotations || [];
     const hasFace = faces.length > 0;
     const faceConfidence = hasFace ? faces[0].detectionConfidence : null;
 
-    if (isMain && !hasFace) {
-      reasons.push('Your main photo needs to clearly show your face.');
-    }
-    if (isMain && hasFace && faceConfidence !== null && faceConfidence < 0.3) {
-      reasons.push('Your face is not clearly visible in this photo.');
+    if (!hasFace) {
+      reasons.push('This photo needs to clearly show a person.');
+    } else if (faceConfidence !== null && faceConfidence < 0.3) {
+      reasons.push('The face in this photo isn\'t clearly visible.');
     }
 
     // SafeSearch
