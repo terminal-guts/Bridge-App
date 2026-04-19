@@ -425,18 +425,28 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
     ? 0
     : currentStep;
 
-  // Step counter label — excludes celebration steps from the count
+  // Step counter label — section-relative. Shows "Step X of Y · SectionName"
+  // where Y is the non-celebration step count within the CURRENT section only,
+  // so users feel fast progress inside short sections like "Almost Done"
+  // (4 steps) instead of tracking a long 16-of-16 global count.
+  // Matches the section-relative progress bar above.
+  // Falls back to global count for steps without a section (matchmaker flow).
   const stepLabel = useMemo(() => {
     const step = steps[clampedStep];
     if (step?.hideFromCounter) return ''; // Hide label during celebrations
     const section = step?.section;
-    // Count only non-celebration steps
-    const countableSteps = steps.filter(s => !s.hideFromCounter);
-    const countableBefore = steps.slice(0, clampedStep).filter(s => !s.hideFromCounter).length;
-    const stepNum = countableBefore + 1;
-    const total = countableSteps.length;
-    if (section) return `Step ${stepNum} of ${total} · ${section}`;
-    return `Step ${stepNum} of ${total}`;
+
+    if (section) {
+      const sectionSteps = steps.filter(s => s.section === section && !s.hideFromCounter);
+      const beforeInSection = steps.slice(0, clampedStep)
+        .filter(s => s.section === section && !s.hideFromCounter).length;
+      return `Step ${beforeInSection + 1} of ${sectionSteps.length} · ${section}`;
+    }
+
+    // Fallback: global count for steps without a section (e.g. matchmaker extras)
+    const countable = steps.filter(s => !s.hideFromCounter);
+    const before = steps.slice(0, clampedStep).filter(s => !s.hideFromCounter).length;
+    return `Step ${before + 1} of ${countable.length}`;
   }, [clampedStep, steps]);
 
   // Sync state back when clamping was needed (e.g. role switch shrinks steps array)
