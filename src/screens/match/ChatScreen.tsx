@@ -553,7 +553,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={cs.flex1}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + chromeHeight : 0}
+        keyboardVerticalOffset={0}
       >
         <FlatList
           ref={flatListRef} data={messages} keyExtractor={keyExtractor}

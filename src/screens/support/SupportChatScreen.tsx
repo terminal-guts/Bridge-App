@@ -239,7 +239,7 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={s.flex1}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + headerHeight : 0}
+        keyboardVerticalOffset={0}
       >
         {/* Messages */}
         <FlatList
