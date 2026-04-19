@@ -9,7 +9,7 @@ enableFreeze(true);
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, InteractionManager } from 'react-native';
+import { View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import Toast from 'react-native-toast-message';
@@ -18,6 +18,10 @@ import { GuideProvider, useGuideContext } from './src/contexts/GuideContext';
 import { GuideOverlay } from './src/components/guides/GuideOverlay';
 import { ErrorBoundary, CardErrorBoundary } from './src/components/ui/ErrorBoundary';
 import { createLogger } from './src/utils/secureLogger';
+import { initSentry } from './src/lib/sentry';
+// Side-effect import: patches Text/TextInput defaults before first render.
+// ES import (not require) so Metro's inlineRequires can't defer it.
+import './src/utils/setDefaultFonts';
 
 /**
  * Wraps GuideOverlay with crash protection. Must be INSIDE GuideProvider
@@ -47,13 +51,14 @@ const SafeGuideOverlay = () => {
 
 // Keep the native splash screen visible until the navigator signals it is ready.
 // Called at module level per Expo docs — must not be inside a component or hook.
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
-// Apply font patch at module level — fonts are embedded natively via the expo-font
-// config plugin in app.json, so they're registered before JS starts. Running the
-// patch here (not in useEffect) ensures the very first React render already has
-// the correct fontFamily mappings applied to Text and TextInput.
-require('./src/utils/setDefaultFonts');
+// Kick off Sentry init immediately — the dynamic import is already async and
+// non-blocking, so the ~610KB module loads in parallel with the rest of module
+// parsing. This widens the crash-capture window to include cold-start failures
+// (auth bootstrap, font loading, splash handoff). Queued exceptions flush once
+// the SDK is ready (see src/lib/sentry.ts).
+initSentry().catch(() => {});
 
 // Configure Google Sign-In before any auth checks.
 // Wrapped in try-catch: app must load even if Google SDK fails.
@@ -76,17 +81,17 @@ export default function App() {
   const [appReady, setAppReady] = React.useState(false);
   React.useEffect(() => {
     if (appReady) {
-      SplashScreen.hide(); // synchronous; preferred over hideAsync per Expo docs
+      SplashScreen.hideAsync().catch(() => {});
     }
   }, [appReady]);
 
-  // Defer Sentry init until after the first frame renders — avoids blocking
-  // the JS thread during startup with Sentry's SDK initialization (~610KB module).
+  // Safety net: if AppNavigator.onReady never fires (deep-link crash, auth hang,
+  // preload rejection before the inner catch), force-hide splash after 8s so the
+  // user never sees a frozen brand screen. 8s is long enough that normal warm
+  // starts complete well before firing, but short enough to avoid a hostile wait.
   React.useEffect(() => {
-    const handle = InteractionManager.runAfterInteractions(() => {
-      import('./src/lib/sentry').then(({ initSentry }) => initSentry());
-    });
-    return () => handle.cancel();
+    const timer = setTimeout(() => setAppReady(true), 8000);
+    return () => clearTimeout(timer);
   }, []);
 
   React.useEffect(() => {

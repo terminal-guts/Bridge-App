@@ -103,11 +103,6 @@ import { RootStackParamList, MainTabParamList, MatchmakerTabParamList } from '..
 import { createLogger } from '../utils/secureLogger';
 import { slideWithFade, modalSlideUp, fadeTransition } from '../utils/screenTransitions';
 
-// Dev tools — only bundled in __DEV__ builds, lazy-loaded when feature flag is on
-const LazyDevStateToggle = __DEV__ && FEATURES.ENABLE_DEV_STATE_TOGGLE
-  ? withSuspense(React.lazy(() => import('../components/dev/DevStateToggle').then(m => ({ default: m.DevStateToggle }))))
-  : () => null;
-
 const logger = createLogger('AppNavigator');
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -855,16 +850,23 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
     >
       <ErrorBoundary
         onError={(error, errorInfo) => {
-          // DEBUG: log navigation state at crash time
+          // Route through secureLogger so the sanitizer strips PII (route params
+          // can contain matchId/userId). Also avoids leaking full nav state JSON
+          // to native device logs in production.
+          let routesAtCrash: string[] | undefined;
           try {
             const navState = navigationRef.current?.getState();
-            const routes = navState?.routes?.map((r: any) => r.name);
-            console.error('[CRASH_DEBUG] Nav routes at crash:', JSON.stringify(routes));
-            console.error('[CRASH_DEBUG] Full state:', JSON.stringify(navState, null, 2));
+            routesAtCrash = navState?.routes?.map((r: any) => r.name);
           } catch {}
-          logger.error('[App Error Boundary]', error, errorInfo);
+          logger.error('[App Error Boundary]', error, {
+            routesAtCrash,
+            componentStack: errorInfo.componentStack,
+          });
           Sentry.captureException(error, {
-            contexts: { react: { componentStack: errorInfo.componentStack } },
+            contexts: {
+              react: { componentStack: errorInfo.componentStack },
+              navigation: { routesAtCrash },
+            },
           });
         }}
       >
@@ -931,8 +933,6 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
           {/* Suspension */}
           <Stack.Screen name="Suspended" component={SuspendedScreen} options={{ gestureEnabled: false }} />
         </Stack.Navigator>
-        {/* Dev State Toggle - quick UI state switcher */}
-        {FEATURES.ENABLE_DEV_STATE_TOGGLE && <LazyDevStateToggle />}
       </ErrorBoundary>
     </NavigationContainer>
   );

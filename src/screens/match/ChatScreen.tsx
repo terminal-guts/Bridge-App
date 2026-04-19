@@ -49,6 +49,7 @@ import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { EvaIcon } from '../../components/icons';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   formatMessageDate,
@@ -66,12 +67,17 @@ interface ChatScreenProps {
   route: RouteProp<RootStackParamList, 'Chat'>;
 }
 
-/** Header ~56px (paddingVertical 12*2 + avatar 32) + SafeArea inset ~47 = ~103 */
-const KEYBOARD_VERTICAL_OFFSET = Platform.OS === 'ios' ? 100 : 0;
 const FLAT_LIST_CONTENT_STYLE = { padding: 16, paddingBottom: 8, flexGrow: 1 } as const;
 
 export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => {
   const { matchId, friendshipId, recipientName = 'Match', recipientId, recipientPhoto = null, isFriendChat } = route.params;
+  const insets = useSafeAreaInsets();
+  // Measured height of the top chrome (OfflineBanner + header). Combined with
+  // insets.top, this is the exact distance from screen-top to the KAV — which
+  // is what `keyboardVerticalOffset` requires. Hardcoding this value (previous
+  // `100`) caused a gap on shorter devices (iPhone SE) and clipping on taller
+  // ones (Pro Max Dynamic Island).
+  const [chromeHeight, setChromeHeight] = useState(0);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -476,6 +482,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
   return (
     <SafeAreaView style={cs.screen}>
       <StatusBar barStyle="dark-content" />
+      {/* Measure the chrome above the KAV so keyboardVerticalOffset stays accurate
+          across devices (iPhone SE vs Pro Max Dynamic Island vs Android). */}
+      <View onLayout={(e) => {
+        const h = Math.round(e.nativeEvent.layout.height);
+        if (h !== chromeHeight) setChromeHeight(h);
+      }}>
       <OfflineBanner />
       {/* Chat Header */}
       <View style={cs.header}>
@@ -511,8 +523,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
           </TouchableOpacity>
         )}
       </View>
+      </View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={cs.flex1} keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={cs.flex1}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + chromeHeight : 0}
+      >
         <FlatList
           ref={flatListRef} data={messages} keyExtractor={keyExtractor}
           renderItem={renderMessage} contentContainerStyle={FLAT_LIST_CONTENT_STYLE}

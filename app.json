@@ -38,6 +38,7 @@
     },
     "android": {
       "jsEngine": "hermes",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
       },

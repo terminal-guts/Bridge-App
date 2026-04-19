@@ -138,16 +138,6 @@ export interface FeatureFlags {
   ENABLE_DEEP_QUESTIONS_PREVIEW: boolean;
 
   DAILY_PAIRING_ENABLED: boolean;
-
-  /**
-   * 🚨 DEVELOPMENT ONLY 🚨
-   * Show floating dev state toggle for quickly switching UI states
-   * (match states, community/friends states)
-   *
-   * ⚠️ SET TO FALSE FOR PRODUCTION ⚠️
-   * @default true (development)
-   */
-  ENABLE_DEV_STATE_TOGGLE: boolean;
 }
 
 /**
@@ -171,7 +161,6 @@ export const FEATURES: FeatureFlags = {
   ENABLE_GLASSMORPHISM: false,
   ENABLE_DEEP_QUESTIONS_PREVIEW: true,
   DAILY_PAIRING_ENABLED: true,
-  ENABLE_DEV_STATE_TOGGLE: false, // ❌ DISABLED for production
 };
 
 /**
