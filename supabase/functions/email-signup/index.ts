@@ -122,11 +122,15 @@ function buildVerificationEmail(code: string, ref: string): string {
 
 /** Plain-text alternative for multipart/alternative MIME. Required for
  *  deliverability — HTML-only emails score higher on Gmail/Outlook spam
- *  filters, and some clients (watchOS, screen readers) prefer text. */
+ *  filters, and some clients (watchOS, screen readers) prefer text.
+ *
+ *  Format note: phone push notifications collapse all whitespace,
+ *  including blank lines. The period after the code creates a natural
+ *  sentence break that survives whitespace collapse — so the lock-screen
+ *  preview reads "Your Bridge verification code is 123456. This code
+ *  expires in..." instead of running the code into the next sentence. */
 function buildVerificationTextEmail(code: string, ref: string): string {
-  return `Bridge
-
-Your verification code: ${code}
+  return `Your Bridge verification code is ${code}.
 
 This code expires in ${CODE_EXPIRY_MINUTES} minutes.
 If you didn't request this, you can safely ignore this email.
