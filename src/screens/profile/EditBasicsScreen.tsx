@@ -9,6 +9,7 @@ import { selectionHaptic, mediumHaptic } from '../../utils/haptics';
 import { COLORS } from '../../theme/colors';
 import { SectionScreenWrapper } from './sections/SectionScreenWrapper';
 import { useEditProfile } from './sections/useEditProfile';
+import { PhotosSection } from './sections/PhotosSection';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -31,9 +32,12 @@ interface EditBasicsScreenProps {
 }
 
 export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }) => {
-  const { profile, loading, updateProfile, originalProfileJson } = useEditProfile();
+  const { profile, setProfile, loading, updateProfile, originalProfileJson } = useEditProfile();
   const [isHeightFocused, setIsHeightFocused] = useState(false);
   const [heightError, setHeightError] = useState('');
+  // True while any photo is mid-upload/moderation — disables Back so the user
+  // can't navigate away before the photo either passes or fails moderation.
+  const [photosUploading, setPhotosUploading] = useState(false);
   const ethnicityArray = profile?.ethnicity
     ? profile.ethnicity.split(' / ').filter(e => e.trim() !== '')
     : [];
@@ -82,7 +86,20 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
       profile={profile}
       originalProfileJson={originalProfileJson}
       onGoBack={() => navigation.goBack()}
+      backDisabled={photosUploading}
+      validateBeforeSave={() =>
+        profile.photos.length === 0
+          ? 'Add at least one photo before saving your profile.'
+          : null
+      }
     >
+      {/* Photos — Hinge-style grid, first photo = main, tap to promote */}
+      <PhotosSection
+        profile={profile}
+        setProfile={setProfile}
+        onUploadingChange={setPhotosUploading}
+      />
+
       <Card className="mb-6">
         <H3 className="mb-4">Demographics</H3>
 

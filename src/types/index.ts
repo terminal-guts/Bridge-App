@@ -341,7 +341,6 @@ export type RootStackParamList = {
     isFriendChat?: boolean
   };
   ProfileEdit: undefined;
-  EditPhotos: undefined;
   EditBasics: undefined;
   EditAbout: undefined;
   EditInterests: undefined;

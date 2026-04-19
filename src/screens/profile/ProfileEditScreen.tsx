@@ -242,19 +242,12 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
             <Body className="text-primary-500 font-semibold ml-2">Preview Profile</Body>
           </StyledTouchableOpacity>
 
-          {/* Section Cards */}
-          <SectionCard
-            title="Photos"
-            icon="camera"
-            summary={getPhotosSummary(profile)}
-            photoUrl={mainPhotoUrl}
-            onPress={() => navigation.navigate('EditPhotos')}
-          />
-
+          {/* Section Cards — photos live inside Basics now (Hinge-style) */}
           <SectionCard
             title="Basics"
             icon="person"
             summary={getBasicsSummary(profile)}
+            photoUrl={mainPhotoUrl}
             onPress={() => navigation.navigate('EditBasics')}
           />
 

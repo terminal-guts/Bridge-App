@@ -85,7 +85,6 @@ const MatchPreferencesScreen = withSuspense(React.lazy(() => import('../screens/
 const BlockedUsersScreen = withSuspense(React.lazy(() => import('../screens/profile/BlockedUsersScreen').then(m => ({ default: m.BlockedUsersScreen }))));
 const PauseProfileScreen = withSuspense(React.lazy(() => import('../screens/profile/PauseProfileScreen').then(m => ({ default: m.PauseProfileScreen }))));
 const ProfileMatchScreen = withSuspense(React.lazy(() => import('../screens/profile/ProfileMatchScreen')));
-const EditPhotosScreen = withSuspense(React.lazy(() => import('../screens/profile/EditPhotosScreen').then(m => ({ default: m.EditPhotosScreen }))));
 const EditBasicsScreen = withSuspense(React.lazy(() => import('../screens/profile/EditBasicsScreen').then(m => ({ default: m.EditBasicsScreen }))));
 const EditAboutScreen = withSuspense(React.lazy(() => import('../screens/profile/EditAboutScreen').then(m => ({ default: m.EditAboutScreen }))));
 const EditInterestsScreen = withSuspense(React.lazy(() => import('../screens/profile/EditInterestsScreen').then(m => ({ default: m.EditInterestsScreen }))));
@@ -919,7 +918,6 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
           {/* Profile & Settings */}
           <Stack.Screen name="Settings" component={SettingsScreen} />
           <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
-          <Stack.Screen name="EditPhotos" component={EditPhotosScreen} />
           <Stack.Screen name="EditBasics" component={EditBasicsScreen} />
           <Stack.Screen name="EditAbout" component={EditAboutScreen} />
           <Stack.Screen name="EditInterests" component={EditInterestsScreen} />
