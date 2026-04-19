@@ -93,6 +93,7 @@ export const CustomInputModal: React.FC<CustomInputModalProps> = ({
       visible={visible}
       animationType="none"
       transparent
+      statusBarTranslucent
       onRequestClose={handleClose}
     >
       <StyledAnimatedView

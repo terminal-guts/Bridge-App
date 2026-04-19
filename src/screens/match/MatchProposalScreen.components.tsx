@@ -472,7 +472,7 @@ export const ModalContainer: React.FC<{ visible: boolean; children: React.ReactN
 
   if (variant === 'center') {
     return (
-      <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
         <StyledView className="flex-1 items-center justify-center px-5" style={{ backgroundColor: OVERLAYS.medium }}>
           <Animated.View style={{ opacity: opacityAnim, transform: [{ scale: scaleAnim }], backgroundColor: COLORS.white, borderRadius: 12, padding: Math.round(24 * SCALE), width: '100%', maxWidth: Math.min(320, SCREEN_WIDTH - 40), ...SHADOWS.xxl }}>
             {children}
@@ -483,7 +483,7 @@ export const ModalContainer: React.FC<{ visible: boolean; children: React.ReactN
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent statusBarTranslucent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <StyledView className="flex-1 justify-end" style={{ backgroundColor: OVERLAYS.medium }}>
         <Animated.View style={{ opacity: opacityAnim, transform: [{ scale: scaleAnim }], backgroundColor: COLORS.white, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingHorizontal: Math.round(16 * SCALE), paddingTop: 16, paddingBottom: 32, maxHeight: '85%', ...SHADOWS.xl }}>
@@ -660,7 +660,7 @@ export const CelebrationOverlay: React.FC<{ visible: boolean; recipientName: str
   if (!visible) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal visible={visible} transparent statusBarTranslucent animationType="fade">
       <StyledView className="flex-1 items-center justify-center" style={{ backgroundColor: OVERLAYS.heavy }}>
         {heartScales.map((scale, index) => {
           const angle = (index * 30) * (Math.PI / 180);

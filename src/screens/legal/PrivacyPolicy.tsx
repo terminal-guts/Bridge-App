@@ -1,4 +1,5 @@
-import { View, SafeAreaView, StatusBar, ScrollView, Linking, Text } from 'react-native';
+import { View, StatusBar, ScrollView, Linking, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { H2, H3, Body, BodySmall, BackHeader } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';

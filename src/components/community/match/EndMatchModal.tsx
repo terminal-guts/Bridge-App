@@ -103,6 +103,7 @@ export function EndMatchModal({ visible, onClose, onSubmit }: EndMatchModalProps
     <Modal
       visible={visible}
       transparent
+      statusBarTranslucent
       animationType="fade"
       onRequestClose={handleCancel}
     >

@@ -7,7 +7,6 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import {
   AppState,
   View,
-  SafeAreaView,
   StatusBar,
   KeyboardAvoidingView,
   Platform,
@@ -20,6 +19,7 @@ import {
   Text,
   StyleSheet,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 import { H3, ChatSkeleton } from '../../components/ui';
@@ -49,7 +49,6 @@ import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { EvaIcon } from '../../components/icons';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   formatMessageDate,

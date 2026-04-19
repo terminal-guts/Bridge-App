@@ -43,6 +43,7 @@ export const ShareMatchSheet: React.FC<ShareMatchSheetProps> = ({
         <Modal
             visible={visible}
             transparent
+            statusBarTranslucent
             animationType="slide"
             onRequestClose={onClose}
         >

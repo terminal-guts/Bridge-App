@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { View, ScrollView, SafeAreaView, TouchableOpacity, Linking } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { H2, Body, Button } from '.';
 import { createLogger } from '../../utils/secureLogger';
 import { Sentry } from '../../lib/sentry';

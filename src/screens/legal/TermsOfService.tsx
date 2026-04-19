@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, SafeAreaView, StatusBar, ScrollView } from 'react-native';
+import { View, StatusBar, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { H2, H3, Body, Caption, BackHeader } from '../../components/ui';
 import { TEXT_STYLES } from '../../constants/typography';

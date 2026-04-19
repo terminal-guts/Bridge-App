@@ -78,7 +78,7 @@ interface DropdownMenuProps {
 export const DropdownMenu: React.FC<DropdownMenuProps> = ({
   visible, onClose, onProposeDate, onEndMatch, onReport, recipientName,
 }) => (
-  <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+  <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
     <TouchableOpacity style={cs.menuOverlay} activeOpacity={1} onPress={onClose}>
       <View style={cs.menuCard}>
         <TouchableOpacity style={cs.menuItem} onPress={onProposeDate} accessibilityRole="button" accessibilityLabel="Ask them out">
@@ -114,7 +114,7 @@ interface ProposeDateModalProps {
 export const ProposeDateModal: React.FC<ProposeDateModalProps> = ({
   visible, onClose, onConfirm, recipientName, dateProposalText, onChangeText,
 }) => (
-  <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+  <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={ts.overlay}>
       <View style={ts.card}>
         <TouchableOpacity style={ts.closeBtn} onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
@@ -165,7 +165,7 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
   visible, onClose, onConfirm, endMatchReason, onSelectReason,
   endMatchCustomReason, onChangeCustomReason, submitting,
 }) => (
-  <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+  <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={ts.overlay}>
       <View style={ts.card}>
         <TouchableOpacity style={ts.closeBtn} onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
@@ -232,7 +232,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   const canSubmit = reportReason && (!isOther || reportDetails.trim().length > 0);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={ts.overlay}>
         <View style={ts.card}>
           <TouchableOpacity style={ts.closeBtn} onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>

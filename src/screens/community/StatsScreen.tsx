@@ -6,10 +6,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
-  SafeAreaView,
   StatusBar,
   Text,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationProp } from '@react-navigation/native';
 import { EvaIcon } from '../../components/icons';
 import { AnimatedPressable, BackHeader, LoadingState, ErrorState } from '../../components/ui';

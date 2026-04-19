@@ -16,9 +16,9 @@ import {
   TouchableOpacity,
   Dimensions,
   FlatList,
-  SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { styled } from 'nativewind';
 import { Body } from '../ui';
@@ -126,12 +126,13 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({
       onRequestClose={handleClose}
       statusBarTranslucent
     >
-      <StyledSafeAreaView className="flex-1 bg-black">
+      <StyledSafeAreaView edges={['bottom']} className="flex-1 bg-black">
         <StatusBar barStyle="light-content" />
 
-        {/* Header */}
+        {/* Header — own SafeAreaView applies top inset for the close/counter row.
+            Outer wrapper skips top so the photo itself stays full-bleed under the notch. */}
         <StyledView className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent">
-          <StyledSafeAreaView>
+          <StyledSafeAreaView edges={['top']}>
             <StyledView className="flex-row items-center justify-between px-4 py-3">
               <StyledView className="flex-row items-center">
                 <Body className="text-white font-semibold">

@@ -12,7 +12,7 @@ interface KarmaInfoModalProps {
 
 export function KarmaInfoModal({ visible, onClose }: KarmaInfoModalProps) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.card} onPress={e => e.stopPropagation()}>
 

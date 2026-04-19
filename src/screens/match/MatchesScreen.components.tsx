@@ -575,6 +575,7 @@ export function EndedMatchPopupModal({
     <Modal
       visible={!!popupEvent}
       transparent
+      statusBarTranslucent
       animationType="fade"
       onRequestClose={onContinue}
     >
@@ -614,6 +615,7 @@ export function EndMatchModal({
     <Modal
       visible={visible}
       transparent
+      statusBarTranslucent
       animationType="fade"
       onRequestClose={onDismiss}
     >
@@ -691,7 +693,7 @@ export function TimerInfoModal({
   onClose: () => void;
 }) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.timerInfoOverlay} activeOpacity={1} onPress={onClose}>
         <View style={styles.timerInfoCard}>
           <Text style={styles.timerInfoTitle}>

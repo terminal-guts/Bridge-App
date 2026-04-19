@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { View, SafeAreaView, StatusBar, Text, Dimensions, StyleSheet, Platform } from 'react-native';
+import { View, StatusBar, Text, Dimensions, StyleSheet, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   FadeInUp,
   FadeInDown,

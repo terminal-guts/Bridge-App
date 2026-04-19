@@ -169,7 +169,7 @@ export function MatchResetTimer() {
         </Animated.View>
       </TouchableOpacity>
 
-      <Modal visible={infoVisible} transparent animationType="fade" onRequestClose={() => setInfoVisible(false)}>
+      <Modal visible={infoVisible} transparent statusBarTranslucent animationType="fade" onRequestClose={() => setInfoVisible(false)}>
         <TouchableOpacity style={timerInfoStyles.overlay} activeOpacity={1} onPress={() => setInfoVisible(false)}>
           <View style={timerInfoStyles.card}>
             <Text style={timerInfoStyles.title}>Fresh matches at 7 PM</Text>

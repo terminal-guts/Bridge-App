@@ -684,6 +684,7 @@ export default function ProfileMatchScreen() {
             <Modal
                 visible={showActionSheet}
                 transparent
+                statusBarTranslucent
                 animationType="slide"
                 onRequestClose={() => setShowActionSheet(false)}
             >
@@ -716,6 +717,7 @@ export default function ProfileMatchScreen() {
             <Modal
                 visible={showReportSheet}
                 transparent
+                statusBarTranslucent
                 animationType="slide"
                 onRequestClose={() => {
                     setShowReportSheet(false);

@@ -208,6 +208,7 @@ export function ForFriendModal({
     <Modal
       visible={visible}
       transparent
+      statusBarTranslucent
       animationType="fade"
       onRequestClose={onCancel}
     >

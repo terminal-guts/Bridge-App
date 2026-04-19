@@ -279,7 +279,7 @@ export const BadgeAwardModal: React.FC<BadgeAwardModalProps> = ({
   const canProceed = step === 0 ? !!selectedIcon : step === 1 ? !!message.trim() : false;
 
   return (
-    <Modal visible={visible} transparent animationType="none">
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
       <Pressable style={styles.overlay} onPress={handleClose}>
         <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }, overlayStyle]} />
       </Pressable>
