@@ -10,8 +10,9 @@ import {
   ActivityIndicator,
   StyleSheet,
   Text,
+  SafeAreaView,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationProp } from '@react-navigation/native';
 import { EvaIcon } from '../../components/icons';
 import { BackHeader, LoadingState } from '../../components/ui';

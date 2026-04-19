@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, StatusBar, StatusBarStyle, ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, SafeAreaView, StatusBar, StatusBarStyle, ViewStyle } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { COLORS } from '../../theme/colors';
 import { DURATIONS } from '../../constants/animations';

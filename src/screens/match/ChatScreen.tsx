@@ -17,8 +17,9 @@ import {
   RefreshControl,
   Text,
   StyleSheet,
+  SafeAreaView,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 import { H3, ChatSkeleton } from '../../components/ui';
