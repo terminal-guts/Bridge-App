@@ -25,6 +25,10 @@ interface SectionScreenWrapperProps {
   originalProfileJson: string | null;
   onGoBack: () => void;
   validateBeforeSave?: () => string | null;
+  /** Disable the back arrow (e.g. while a photo is being verified). When
+   *  disabled, navigation away from this section is blocked. Callers should
+   *  surface the reason in-screen — no automatic alert fires. */
+  backDisabled?: boolean;
 }
 
 /**
@@ -39,6 +43,7 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
   originalProfileJson,
   onGoBack,
   validateBeforeSave,
+  backDisabled = false,
 }) => {
   const { isOffline } = useNetworkStatus();
   const insets = useSafeAreaInsets();
@@ -183,6 +188,7 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
         <BackHeader
           title={title}
           onBack={handleSaveAndGoBack}
+          backDisabled={backDisabled}
           right={hasChanges() ? (
             <Body className="text-primary-500 text-xs font-medium">Auto-saves on back</Body>
           ) : undefined}

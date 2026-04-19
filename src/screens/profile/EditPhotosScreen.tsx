@@ -233,29 +233,51 @@ export const EditPhotosScreen: React.FC<EditPhotosScreenProps> = ({ navigation }
 
   const handleRemovePhoto = useCallback((photoId: string) => {
     if (!profile) return;
+
+    const doRemove = () => {
+      clearError();
+      const removed = profile.photos.find(p => p.id === photoId);
+      const remaining = profile.photos.filter(p => p.id !== photoId);
+
+      // If we removed the main photo, promote the first remaining one (immutably)
+      if (removed?.isMain && remaining.length > 0) {
+        remaining[0] = { ...remaining[0], isMain: true };
+      }
+
+      // Re-index order values
+      const reordered = remaining.map((p, idx) => ({ ...p, order: idx }));
+      setProfile({ ...profile, photos: reordered });
+
+      // Also drop any uploading / recently-approved tracking for this photo so
+      // the back arrow re-enables and the "Checking…" overlay clears instantly.
+      setUploadingIds((prev) => {
+        if (!prev.has(photoId)) return prev;
+        const next = new Set(prev);
+        next.delete(photoId);
+        return next;
+      });
+      setRecentlyApprovedIds((prev) => {
+        if (!prev.has(photoId)) return prev;
+        const next = new Set(prev);
+        next.delete(photoId);
+        return next;
+      });
+      mediumHaptic();
+    };
+
+    // If the photo is currently being verified, × acts as a Cancel — no
+    // confirmation needed. Otherwise, it's a destructive delete of an
+    // already-verified photo, so confirm first.
+    if (uploadingIds.has(photoId)) {
+      doRemove();
+      return;
+    }
+
     Alert.alert('Remove Photo', 'Are you sure you want to remove this photo?', [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: () => {
-          clearError();
-          const removed = profile.photos.find(p => p.id === photoId);
-          const remaining = profile.photos.filter(p => p.id !== photoId);
-
-          // If we removed the main photo, promote the first remaining one (immutably)
-          if (removed?.isMain && remaining.length > 0) {
-            remaining[0] = { ...remaining[0], isMain: true };
-          }
-
-          // Re-index order values
-          const reordered = remaining.map((p, idx) => ({ ...p, order: idx }));
-          setProfile({ ...profile, photos: reordered });
-          mediumHaptic();
-        },
-      },
+      { text: 'Remove', style: 'destructive', onPress: doRemove },
     ]);
-  }, [profile, setProfile]);
+  }, [profile, setProfile, uploadingIds]);
 
   const handleMovePhotoUp = useCallback((index: number) => {
     if (!profile || index === 0) return;
@@ -305,14 +327,17 @@ export const EditPhotosScreen: React.FC<EditPhotosScreenProps> = ({ navigation }
       profile={profile}
       originalProfileJson={originalProfileJson}
       onGoBack={() => navigation.goBack()}
-      validateBeforeSave={() => {
-        if (uploadingIds.size > 0) {
-          return 'Wait for photo verification to finish before saving.';
-        }
-        return profile.photos.length === 0
+      // Disable the back arrow while any photo is mid-verification. The user
+      // cancels by tapping the × on the tile instead — matches onboarding's
+      // Continue-disabled-while-checking pattern, and avoids the
+      // "Photo Upload Failed" toast that fired from saveInBackground racing
+      // against the still-in-flight eager upload.
+      backDisabled={uploadingIds.size > 0}
+      validateBeforeSave={() =>
+        profile.photos.length === 0
           ? 'Add at least one photo before saving your profile.'
-          : null;
-      }}
+          : null
+      }
     >
       <Card className="mb-6" shadow="sm">
         <View className="flex-row items-center justify-between mb-2">
