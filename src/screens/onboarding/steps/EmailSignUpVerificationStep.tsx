@@ -191,10 +191,11 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
           </StyledView>
         )}
 
-        {/* After 2 failed attempts, suggest sign-in. Anti-enumeration on the
-            edge function returns ok:true to existing-user signup attempts (so
-            no code is actually sent), leaving the user with a never-arriving
-            code and "wrong code" errors until they realize their mistake. */}
+        {/* After 2 failed attempts, suggest sign-in. A returning user who
+            taps Sign Up by mistake normally hits ACCOUNT_EXISTS at the email
+            step, but in the race where profile completion happens between
+            send and verify, they can still land here entering a code that
+            will never verify. Showing the Sign-In CTA gets them unstuck. */}
         {failedAttempts >= 2 && (
           <StyledView className="items-center mt-6">
             <Body className="text-neutral-500 text-sm mb-1">

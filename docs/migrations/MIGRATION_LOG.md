@@ -1,6 +1,14 @@
 # Migration Log
 
-Last updated: 2026-04-17
+> ## 🛑 READ BEFORE RUNNING ANY MIGRATION
+>
+> **No migration in this log may be applied to production without the user's explicit, in-conversation, per-action approval. Ever.** This rule is absolute and applies to every agent, every session, forever.
+>
+> A migration's status being `LOCAL_ONLY` or `PENDING` does NOT mean "ready to deploy." It means "not yet in production." The decision to promote it to `PRODUCTION` is the user's alone, made in a live conversation with the exact command described.
+>
+> Safe without approval: `supabase db reset` locally, reading this log, reading migration SQL. **Unsafe without approval:** `supabase db push`, hand-applying SQL to prod via `exec_sql`, `scripts/supabase-exec.sh` with non-SELECT statements. See CLAUDE.md for the full rule.
+
+Last updated: 2026-04-18
 
 Status key: `PRODUCTION` = deployed to live database | `LOCAL_ONLY` = tested locally, not yet in production | `PENDING` = planned, not yet written | `BACKFILL` = prod already has this state; migration added retroactively so `supabase db reset` reproduces prod locally
 
@@ -92,6 +100,7 @@ Status key: `PRODUCTION` = deployed to live database | `LOCAL_ONLY` = tested loc
 | 80 | 20260417100002_local_align_profile_completed.sql | 2026-04-17 | Adds `user_profiles.profile_completed` column (already exists in prod via manual ALTER) | LOCAL_ONLY | BACKFILL |
 | 81 | 20260417100003_karma_outcome_v2.sql | 2026-04-18 | Rewrite `apply_karma_on_outcome` RPC to +3/-1 model + `karma_applied` idempotency flag + REVOKE EXECUTE from PUBLIC/anon/authenticated (security hole closed) | PRODUCTION | FIX |
 | 82 | 20260417100004_auto_expire_on_pause.sql | 2026-04-18 | Trigger on `user_profiles` to auto-expire pending/deciding proposals when subject pauses or is suspended | PRODUCTION | ADDITIVE |
+| 83 | 20260417000005_email_verification_codes_add_flow_and_ip.sql | 2026-04-17 | Add `flow` (signup\|login) and `ip_address` columns + IP-rate-limit index to `email_verification_codes`. **Prerequisite for `email-signup` edge function deploy** — function will 500 on INSERT if these columns are missing. Idempotent (`IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS`). | LOCAL_ONLY | ADDITIVE |
 
 ## Gate-overhaul-v2 deploy (2026-04-18 23:52–23:54 UTC)
 

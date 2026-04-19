@@ -10,7 +10,10 @@ const ALLOWED_DOMAIN = "rice.edu";
 // before their email arrived). 10-minute window still bounds brute-force.
 const MAX_CODES_PER_EMAIL = 5;
 const EMAIL_RATE_WINDOW_MINUTES = 10;
-const MAX_SENDS_PER_IP_PER_HOUR = 20;
+// Raised from 20 → 60 because Rice campus shares NAT — during orientation
+// / signup bursts, a dozen students on the same Wi-Fi can burn a 20/hr
+// ceiling in minutes. 60/hr still caps IP-level abuse.
+const MAX_SENDS_PER_IP_PER_HOUR = 60;
 const MAX_ATTEMPTS_PER_CODE = 5;
 const CODE_EXPIRY_MINUTES = 10;
 
@@ -261,6 +264,7 @@ async function handleVerify(
   admin: ReturnType<typeof createAdminClient>,
   email: string,
   code: string,
+  requestedFlow: "signup" | "login" = "signup",
 ): Promise<Response> {
   // 1. Look up latest valid code (row lock to prevent race condition)
   //    PostgREST doesn't support FOR UPDATE, so we use a two-step approach:
@@ -285,17 +289,20 @@ async function handleVerify(
 
   const codeRow = codes[0];
 
-  // 2. Increment attempts atomically
-  const { error: attemptErr } = await admin
-    .from("email_verification_codes")
-    .update({ attempts: codeRow.attempts + 1 })
-    .eq("id", codeRow.id);
-
-  if (attemptErr) {
-    console.error("Attempt increment error:", attemptErr.message);
+  // 2. Flow cross-check — the flow the caller claims must match the flow the
+  //    code was issued under. Prevents a signup-flow code from being consumed
+  //    by a login verify call (or vice versa). codeRow.flow may be null on
+  //    legacy rows issued before migration #83, in which case we skip the check.
+  if (codeRow.flow && codeRow.flow !== requestedFlow) {
+    return jsonResponse({
+      error: "This code was issued for a different flow. Please request a new one.",
+      code: "FLOW_MISMATCH",
+    });
   }
 
-  // 3. Check attempt limit
+  // 3. Check attempt limit BEFORE incrementing so MAX_ATTEMPTS_PER_CODE truly
+  //    means N allowed attempts. codeRow.attempts is the pre-increment count;
+  //    if it's already at the ceiling, this request is the (N+1)th so reject.
   if (codeRow.attempts >= MAX_ATTEMPTS_PER_CODE) {
     await admin
       .from("email_verification_codes")
@@ -306,20 +313,31 @@ async function handleVerify(
     );
   }
 
-  // 4. Constant-time hash comparison
+  // 4. Increment attempts atomically (now that we know this attempt is within the limit)
+  const { error: attemptErr } = await admin
+    .from("email_verification_codes")
+    .update({ attempts: codeRow.attempts + 1 })
+    .eq("id", codeRow.id);
+
+  if (attemptErr) {
+    console.error("Attempt increment error:", attemptErr.message);
+  }
+
+  // 5. Constant-time hash comparison
   const submittedHash = await hashCode(code, email);
   if (!timingSafeEqual(submittedHash, codeRow.code_hash)) {
     return jsonResponse({ error: "Incorrect code. Please try again." });
   }
 
-  // 5. Code matches — create or find user
+  // 6. Code matches — create or find user
   const { data: existingUsers } = await admin.rpc("get_user_by_email", {
     p_email: email,
   });
 
   const userExists = existingUsers && existingUsers.length > 0;
 
-  // Guard: login flow must NEVER create a new user
+  // Guard: login flow must NEVER create a new user (belt-and-suspenders — the
+  // flow cross-check above should already have rejected non-matching flows).
   if (codeRow.flow === "login" && !userExists) {
     return jsonResponse({ error: "No account found. Please sign up first." });
   }
@@ -458,7 +476,11 @@ Deno.serve(async (req: Request) => {
       if (trimmedCode.length !== 6 || !/^\d{6}$/.test(trimmedCode)) {
         return jsonResponse({ error: "Code must be 6 digits." });
       }
-      return await handleVerify(admin, normalizedEmail, trimmedCode);
+      // Default to signup for backwards compat — old clients that don't send
+      // flow on verify will continue to work as long as they used flow:"signup"
+      // on send (the common case).
+      const verifyFlow = flow === "login" ? "login" : "signup";
+      return await handleVerify(admin, normalizedEmail, trimmedCode, verifyFlow);
     }
 
     return jsonResponse({ error: "Invalid action. Use 'send' or 'verify'." });

@@ -654,12 +654,13 @@ export const sendEmailSignUpCode = async (email: string): Promise<ApiResponse<vo
       return { ok: true };
     }
 
-    // Block existing accounts — check before sending code
-    // Note: we intentionally do NOT check_email_exists here.
-    // The edge function handles existing accounts with anti-enumeration design
-    // (silently sends an "account exists" email, returns ok:true).
-    // A client-side check would block users who verified but abandoned onboarding
-    // (they have auth.users row but no completed profile), permanently locking them out.
+    // Do NOT check_email_exists here. The edge function now returns explicit
+    // ACCOUNT_EXISTS / NO_ACCOUNT error codes (product decision 2026-04-17,
+    // commit bf92ea9 — replaced the earlier silent anti-enumeration design).
+    // Surfacing that error is the UI's job. A client-side pre-check would
+    // block users who verified but abandoned onboarding — they have an
+    // auth.users row with profile_completed=false, and must be allowed to
+    // resume where they left off.
 
     logger.info('[EMAIL_SIGNUP] Sending verification code to:', normalized);
 
@@ -735,7 +736,7 @@ export const verifyEmailSignUpCode = async (
     logger.info('[EMAIL_SIGNUP] Verifying code for:', normalized);
 
     const { data, error } = await supabase.functions.invoke('email-signup', {
-      body: { email: normalized, action: 'verify', code: trimmedCode },
+      body: { email: normalized, action: 'verify', code: trimmedCode, flow: 'signup' },
     });
 
     if (error) {
@@ -888,7 +889,7 @@ export const verifyLoginCode = async (
     logger.info('[LOGIN] Verifying login code for:', normalized);
 
     const { data, error } = await supabase.functions.invoke('email-signup', {
-      body: { email: normalized, action: 'verify', code: trimmedCode },
+      body: { email: normalized, action: 'verify', code: trimmedCode, flow: 'login' },
     });
 
     if (error) {
