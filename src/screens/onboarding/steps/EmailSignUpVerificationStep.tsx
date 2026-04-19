@@ -167,7 +167,12 @@ export const EmailSignUpVerificationStep: React.FC<EmailSignUpVerificationStepPr
           value={code}
           onChangeText={handleCodeChange}
           keyboardType="number-pad"
-          maxLength={6}
+          // Generous maxLength — the handler extracts digits via regex and
+          // slices to 6. Using `maxLength={6}` causes native truncation
+          // BEFORE onChangeText sees the value, which corrupts pastes that
+          // include whitespace, dashes, or zero-width chars (e.g. mail-client
+          // spacing). 64 is plenty of headroom for any realistic paste.
+          maxLength={64}
           textContentType="oneTimeCode"
           autoComplete="one-time-code"
           autoFocus={true}

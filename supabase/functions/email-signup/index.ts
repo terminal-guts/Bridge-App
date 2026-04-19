@@ -68,11 +68,11 @@ function timingSafeEqual(a: string, b: string): boolean {
  *  - Arial/Helvetica for universal rendering (Gmail web strips `-apple-system`
  *    and falls back to serif).
  *  - Hidden preheader drives the Gmail inbox-list preview text.
- *  - Code rendered with `&nbsp;` between digits instead of `letter-spacing`
- *    (some webmail clients strip inline letter-spacing) and without
- *    `font-family: monospace` (inconsistent across clients). */
+ *  - Code uses CSS `letter-spacing` for visual spacing — critically, this is
+ *    CSS-only and does NOT go into the clipboard when the user copies the
+ *    code, so paste yields a clean "123456" (earlier attempts using &nbsp;
+ *    between digits broke paste on the verify screen). */
 function buildVerificationEmail(code: string, email: string): string {
-  const spacedCode = code.split("").join(" &nbsp; ");
   return `
 <!-- Preheader — first text Gmail shows in inbox preview. Hidden in the body. -->
 <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all; opacity: 0; color: transparent;">
@@ -86,7 +86,7 @@ function buildVerificationEmail(code: string, email: string): string {
     Your verification code:
   </p>
   <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; text-align: center; margin: 0 0 24px;">
-    <div style="font-size: 36px; font-weight: 700; color: #2563EB; font-family: Arial, Helvetica, sans-serif; line-height: 1.2;">${spacedCode}</div>
+    <div style="font-size: 36px; font-weight: 700; letter-spacing: 8px; color: #2563EB; font-family: Arial, Helvetica, sans-serif; line-height: 1.2;">${code}</div>
   </div>
   <p style="color: #94A3B8; font-size: 13px; text-align: center; line-height: 1.5; font-family: Arial, Helvetica, sans-serif;">
     This code expires in ${CODE_EXPIRY_MINUTES} minutes.<br/>

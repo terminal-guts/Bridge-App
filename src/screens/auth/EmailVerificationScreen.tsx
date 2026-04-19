@@ -75,13 +75,17 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
     // Clear error on any new input
     if (error) setError('');
 
-    if (value && !/^\d+$/.test(value)) return;
+    // Reject single-char typed input that isn't a digit. Paste (length > 1)
+    // always falls through to the strip branch below so we handle pastes
+    // that include whitespace/dashes/zero-width chars from mail clients.
+    if (value && value.length === 1 && !/^\d$/.test(value)) return;
 
     const newCode = [...code];
 
     if (value.length > 1) {
-      // Paste / autofill: if a full 6-digit paste arrives, fill from index 0
+      // Paste / autofill: strip all non-digits, take first 6
       const digits = value.replace(/\D/g, '').slice(0, 6).split('');
+      if (digits.length === 0) return;
       const startIndex = digits.length === 6 ? 0 : index;
       digits.forEach((digit, i) => {
         if (startIndex + i < 6) {
@@ -257,7 +261,9 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
                   onFocus={() => setFocusedIndex(index)}
                   onBlur={() => setFocusedIndex(null)}
                   keyboardType="number-pad"
-                  maxLength={index === 0 ? 6 : 1}
+                  // First box accepts long pastes (handler strips + slices);
+                  // others are single-char. See handleCodeChange.
+                  maxLength={index === 0 ? 64 : 1}
                   textContentType="oneTimeCode"
                   autoComplete="one-time-code"
                   accessibilityLabel={`Digit ${index + 1} of 6`}
