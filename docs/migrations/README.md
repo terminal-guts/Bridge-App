@@ -17,11 +17,23 @@ This directory is the single source of truth for what's deployed to production v
 
 ## Keeping local in sync with prod
 
+**One command to fully mirror prod:**
+
+```bash
+./scripts/bootstrap-local.sh              # reset + setup + import rows + import photos + verify parity
+./scripts/bootstrap-local.sh --no-photos  # same but skip the slow photo copy
+```
+
 | Script | What it does |
 |---|---|
+| `scripts/bootstrap-local.sh` | One-shot: reset + setup + import rows + photos + parity check |
 | `scripts/dump-prod-schema.sh` | Dumps live prod schema (read-only) to `snapshots/prod-schema-<date>.json` |
 | `scripts/dump-local-schema.sh` | Dumps local Supabase schema to `snapshots/local-schema-<date>.json` |
 | `scripts/diff-schemas.py <a.json> <b.json>` | Reports drift between two dumps (exit 0 = match, 1 = drift) |
+| `scripts/check-schema-parity.sh` | dump-prod + dump-local + diff in one call |
+| `scripts/snapshot-export.sh` | Dumps prod data (SELECT-only) to `snapshots/snapshot.json` |
+| `scripts/snapshot-import.ts` | Loads `snapshots/snapshot.json` into local (hardcoded `127.0.0.1`) |
+| `scripts/snapshot-import-photos.ts` | Copies prod `profile-photos` bucket → local bucket (566 files, ~170 MB) |
 
 ## Workflows
 

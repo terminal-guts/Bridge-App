@@ -1,6 +1,6 @@
 # Local Supabase Setup Guide
 
-How to spin up a fully functional local Supabase environment for Bridge development.
+How to spin up a fully functional local Supabase environment for Bridge development — one that mirrors production exactly so every test is a realistic one.
 
 ## Prerequisites
 
@@ -8,11 +8,40 @@ How to spin up a fully functional local Supabase environment for Bridge developm
 - Supabase CLI (`npm install -g supabase`)
 - Node.js v24+
 - The Bridge repo cloned
+- `.env` present at repo root with `SUPABASE_SERVICE_ROLE_KEY` (for read-only prod dumps)
 
-## Step 1: Start Local Supabase
+## One-command setup (recommended)
+
+```bash
+supabase start                       # once — starts Docker containers
+./scripts/bootstrap-local.sh         # wipes + reloads local to match prod
+```
+
+`bootstrap-local.sh` runs six steps end to end:
+
+1. `supabase db reset` — reapplies every migration
+2. `setup-local.sh` — installs `citext`, creates storage buckets, seeds 2 test users
+3. `snapshot-export.sh` — dumps prod rows (read-only; SELECT-only guards enforced)
+4. `snapshot-import.ts` — loads rows into local
+5. `snapshot-import-photos.ts` — copies all 566 prod profile photos into local storage
+6. `check-schema-parity.sh` — verifies zero drift between local and prod
+
+Takes ~10–15 min, dominated by the photo copy (566 files, ~170 MB).
+
+**Fast path (skip photos):**
+```bash
+./scripts/bootstrap-local.sh --no-photos   # ~2 min; avatars show placeholders
+```
+
+Use `--no-photos` when you're iterating on non-UI work and don't need real avatars.
+
+## Manual / step-by-step
+
+If you want to run the pieces individually:
 
 ```bash
 supabase start
+./scripts/dump-prod-schema.sh                  # <-- optional, refreshes schema snapshot
 ```
 
 This starts all local services:
@@ -35,16 +64,21 @@ EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 npx expo start -c
 ```
 
-## Step 3: Import Test Data (Optional)
+## Step 3: Import Test Data
 
 To get production-like data for testing:
 ```bash
-# Export production data (read-only) to snapshots/
+# Export production data (read-only SELECTs, enforced by script guards) → snapshots/snapshot.json
 ./scripts/snapshot-export.sh
 
-# Import into local Supabase (hardcoded to 127.0.0.1 — safe)
-npx ts-node scripts/snapshot-import.ts
+# Import rows into local Supabase (hardcoded to 127.0.0.1 — safe)
+npx tsx scripts/snapshot-import.ts
+
+# Copy profile photos from prod storage → local storage (~5–10 min)
+npx tsx scripts/snapshot-import-photos.ts
 ```
+
+Without the photo copy, imported users show placeholder avatars.
 
 ## Step 4: Set Up Edge Function Secrets
 
