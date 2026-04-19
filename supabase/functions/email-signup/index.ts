@@ -49,17 +49,23 @@ async function hashCode(code: string, email: string): Promise<string> {
     .join("");
 }
 
-/** Short random hex ref (6 chars) included in every email so Gmail can't
- *  identify repeated content across threaded OTP emails. Without this,
- *  Gmail collapses the expiry line on every email after the first in a
+/** Short random ID included in every email so Gmail can't identify
+ *  repeated content across threaded OTP emails. Without this, Gmail
+ *  collapses the expiry line on every email after the first in a
  *  thread and replaces it with a "•••" show-trimmed-content icon —
  *  users perceive the email as broken/old-format even though the HTML
- *  is identical. A 3-byte random value is plenty of entropy to make
- *  each email's body unique. Not security-bearing. */
+ *  is identical.
+ *
+ *  Format: 8 hex chars with a dash in the middle (e.g. `22fecf-a8`).
+ *  Intentionally different shape from the 6-digit numeric code so users
+ *  who glance at an email notification on their phone don't confuse
+ *  this ID for the verification code. 4 bytes of randomness is plenty
+ *  for uniqueness (this isn't security-bearing). */
 function generateEmailRef(): string {
-  const bytes = new Uint8Array(3);
+  const bytes = new Uint8Array(4);
   crypto.getRandomValues(bytes);
-  return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+  const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 6)}-${hex.slice(6)}`;
 }
 
 /** Constant-time comparison for hex strings. */
@@ -109,7 +115,7 @@ function buildVerificationEmail(code: string, ref: string): string {
     If you didn't request this, you can safely ignore this email.
   </p>
   <p style="color: #CBD5E1; font-size: 10px; text-align: center; margin-top: 24px; font-family: Arial, Helvetica, sans-serif;">
-    Ref: ${ref}
+    Email ID: ${ref} (not your code)
   </p>
 </div>`.trim();
 }
@@ -125,7 +131,7 @@ Your verification code: ${code}
 This code expires in ${CODE_EXPIRY_MINUTES} minutes.
 If you didn't request this, you can safely ignore this email.
 
-Ref: ${ref}`;
+Email ID: ${ref} (not your code)`;
 }
 
 /** Get client IP from request headers. */
