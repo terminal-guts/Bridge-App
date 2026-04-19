@@ -158,9 +158,18 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
       return;
     }
 
+    // Blocking validation (e.g. "wait for photo verification to finish").
+    // Partial-profile cases are still fine — callers only return a message
+    // when the state is actually unsafe to persist.
+    if (validateBeforeSave) {
+      const validationError = validateBeforeSave();
+      if (validationError) {
+        Alert.alert('One moment', validationError, [{ text: 'OK' }]);
+        return;
+      }
+    }
+
     // Navigate back immediately — save happens in background.
-    // No validation gate — partial profiles are fine; the match screen
-    // profile gate handles enforcement at 100% completion.
     const profileSnapshot = { ...profile };
     onGoBack();
     saveInBackground(profileSnapshot);
