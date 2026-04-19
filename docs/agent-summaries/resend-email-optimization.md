@@ -1,107 +1,265 @@
 # Agent Summary — Resend Email Optimization
 
-**Agent role**: Resend email delivery specialist. Scope: `supabase/functions/email-signup/`, `supabase/functions/email-unsubscribe/`, the frontend auth screens that invoke them, related `authService.ts` functions, DNS records, and email-deliverability docs.
-
-**Branch**: `plan/proposal-gate-overhaul`
-**Session dates**: 2026-04-18 → 2026-04-19
-**Commits produced**:
-- `13bf354 fix(email-signup): flow cross-check + off-by-one attempt counter + IP limit bump`
-- `60f8a40 perf(email-signup): parallelize pre-send checks + improve template deliverability`
-- `d2a1928 fix(email): restore code paste support — revert &nbsp; spacing, relax TextInput gates`
+**Agent role:** Resend email delivery specialist on `plan/proposal-gate-overhaul`.
+**Scope:** `supabase/functions/email-signup/`, `supabase/functions/email-unsubscribe/`, the frontend auth screens that invoke them, related `authService.ts` functions, DNS, email-deliverability docs.
+**Session dates:** 2026-04-18 → 2026-04-19.
+**Last updated:** 2026-04-19 (post scope-cut).
 
 ---
 
-## What shipped on this branch (local commits, not yet in prod)
+## TL;DR — what a master agent needs to know in 30 seconds
 
-### 1. Correctness / guard fixes (commit `13bf354`, partially reverted in a later scope cut — see note below)
-- **Off-by-one attempt counter**: The attempt-limit check now runs BEFORE the increment so `MAX_ATTEMPTS_PER_CODE = 5` actually means 5 real attempts (was 6).
-- **IP rate limit bump**: `MAX_SENDS_PER_IP_PER_HOUR` raised 20 → 60. Rice campus shared NAT was at risk of burning a 20/hr ceiling during orientation/signup bursts. 60 still caps abuse.
-- **Stale comments updated**: `authService.ts:L658` and `EmailSignUpVerificationStep.tsx:L194-197` had comments describing the old anti-enumeration behavior; replaced with accurate description of current `ACCOUNT_EXISTS`/`NO_ACCOUNT` handling.
-- **MIGRATION_LOG.md entry #83**: `20260417000005_email_verification_codes_add_ip.sql` is now documented in the log (was missing). Status: `LOCAL_ONLY`. Function 500s on INSERT if the migration isn't applied to prod first — this is the critical deploy ordering constraint.
-- **REVERTED 2026-04-19**: The verify-side `flow` cross-check + `FLOW_MISMATCH` error + accompanying `flow` column. Belt-and-suspenders with negligible real security benefit (attacker already needs the victim's inbox to read the code). Dropped to keep the migration surface minimal and the function simpler. Send-side signup-vs-login business logic (NO_ACCOUNT for login-without-account, ACCOUNT_EXISTS for signup-with-completed-profile) lives entirely in memory now.
-
-### 2. Delivery-speed optimization (commit `60f8a40`, subsequent scope cut in commit added 2026-04-19)
-- **Parallelized pre-send DB calls**: The 3 independent pre-send checks (per-email rate limit, per-IP rate limit, user status lookup) now run in a single `Promise.all`. Saves ~2 round-trips (~100–150ms on typical Supabase latency) off the happy path. Early-return logic runs after all three resolve — wasted work only happens on rate-limited/error paths, never on the fast path.
-- **Plain-text alternative**: Added `text` field to the Resend payload alongside `html`. HTML-only emails score higher on Gmail/Outlook spam filters and render poorly on watchOS and screen readers.
-- **Font stack**: Swapped `-apple-system, BlinkMacSystemFont, 'Segoe UI'` for `Arial, Helvetica, sans-serif`. Gmail web strips `-apple-system` and falls back to serif, which looked off.
-- **Removed visible footer**: Deleted the "Bridge at Rice University" line from both HTML and text.
-- **REVERTED 2026-04-19**: The hidden preheader div. Gmail rendered it as a "show trimmed content" (•••) icon inside the code box, cluttering the email more than the preview benefit was worth. Removed. For a transactional message this short, Gmail's natural preview ("Bridge" or "Your verification code:") is fine.
-- **REVERTED 2026-04-19**: The `List-Unsubscribe` and `List-Unsubscribe-Post` headers. Transactional OTP codes aren't something users subscribe to — advertising unsubscribe invites accidental clicks that hurt reputation. Removed along with the `getEmailHeaders`/`getUnsubscribeUrl` helpers.
-
-### 3. Paste regression fix (commit `d2a1928`)
-- **Root cause**: Earlier version of `60f8a40` rendered the code as `1 &nbsp; 2 &nbsp; 3 &nbsp; 4 &nbsp; 5 &nbsp; 6` for cross-client visual spacing. That meant the clipboard copy from Gmail contained 31 chars (including non-breaking spaces). The verify TextInput's `maxLength={6}` caused native truncation BEFORE the digit-strip regex could run, so only the first 2 digits landed.
-- **Fix**:
-  - Back to CSS `letter-spacing: 8px` for visual gap. CSS is render-only and doesn't appear in the clipboard → clean "123456" paste.
-  - `maxLength` bumped to 64 on the hidden TextInput (`EmailSignUpVerificationStep.tsx`) and on the first cell of the login-side OTP grid (`EmailVerificationScreen.tsx`). Handlers already strip non-digits and slice to 6.
-  - Login-side gate: loosened from `if (value && !/^\d+$/.test(value)) return` to only block single-char typed input — pastes with mixed content now fall through to the strip branch instead of being rejected outright.
+1. **The new auth path (Resend-direct OTP email) is LOCAL_ONLY.** Prod still runs the legacy `send-email-verification` v17 function which uses Supabase's built-in SMTP. That's the cause of the ~10s email latency users report today.
+2. **Two artifacts need to deploy to prod** (in this order, with explicit user approval per CLAUDE.md):
+   - Migration `supabase/migrations/20260417000005_email_verification_codes_add_ip.sql`
+   - Edge function `email-signup`
+3. **Everything else is already in prod** — `email_verification_codes` table, `get_user_by_email` RPC, `email_unsubscribes` table, `RESEND_API_KEY` secret.
+4. **`email-unsubscribe` is DORMANT, not scheduled for deploy** (scope cut 2026-04-19). Transactional OTPs don't need unsubscribe; removing the `List-Unsubscribe` headers also removes the need for the function.
+5. **DNS is clean.** DKIM + SPF verified green in Resend dashboard. DMARC `rua=mailto:saulbrauns@gmail.com` added 2026-04-19. First reports arrive within 48h.
+6. **Risk after deploy:** low. Legacy `send-email-verification` stays deployed as rollback; new auth flow is additive; migration is idempotent `IF NOT EXISTS`.
 
 ---
 
-## What's LOCAL_ONLY and needs deploying (for whichever agent handles prod)
+## What's different on this branch vs `origin/main`
 
-All depend on user's explicit per-action approval per CLAUDE.md.
+This is the authoritative delta. Everything the master agent needs to reconcile.
 
-| Artifact | Status | Deploy prereq | Rollback |
+### Edge functions — email scope only
+
+| Function | On `main` | On this branch | In prod | Deploy action |
+|---|---|---|---|---|
+| `email-signup` | ❌ not present | ✅ present, 480 lines | ❌ not deployed | **DEPLOY** with `--no-verify-jwt` |
+| `email-unsubscribe` | ❌ not present | ✅ present, 131 lines | ❌ not deployed | **DORMANT** — do not deploy. Source kept for possible future marketing stream. |
+| `send-email-verification` | ✅ present (legacy) | ✅ present (legacy, unchanged) | ✅ DEPLOYED v17 | **LEAVE DEPLOYED** as rollback safety net for ≥ 7 days post-cutover; retire after that. |
+
+### Migrations — email scope only
+
+| # | File | On `main` | On this branch | In prod | Deploy action |
+|---|---|---|---|---|---|
+| 71 | `20260412000002_check_email_exists.sql` | ✅ | ✅ | ✅ PRODUCTION | none |
+| 72 | `20260415000001_email_verification_codes.sql` | ✅ | ✅ | ✅ PRODUCTION (table predated migration, file written to match prod shape) | none |
+| 73 | `20260415000002_get_user_by_email_rpc.sql` | ✅ | ✅ | ✅ PRODUCTION | none |
+| 74 | `20260415000003_email_unsubscribes.sql` | ✅ | ✅ | ✅ PRODUCTION | none (table exists but no function will hit it post-scope-cut) |
+| 76 | `20260417000002_revoke_check_email_exists_anon.sql` | ✅ | ✅ | ✅ PRODUCTION | none |
+| 83 | `20260417000005_email_verification_codes_add_ip.sql` | ❌ | ✅ | ❌ LOCAL_ONLY | **APPLY** via `scripts/supabase-exec.sh` before deploying `email-signup` |
+
+Migration #83 is idempotent (`ADD COLUMN IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`). Adds one column (`ip_address TEXT`) + one index (`idx_evc_ip_created ON email_verification_codes (ip_address, created_at)`). An earlier version of this migration also added a `flow TEXT` column — that was dropped 2026-04-19 as belt-and-suspenders with negligible security benefit. If any local DB still has the vestigial `flow` column from an earlier migration run, it's harmless (not referenced).
+
+### Frontend — email-scope files
+
+| File | Status vs main | What changed |
+|---|---|---|
+| `src/services/authService.ts` | MODIFIED | New `sendEmailSignUpCode` / `verifyEmailSignUpCode` / `sendLoginCode` / `verifyLoginCode` that invoke `email-signup` edge function. Legacy `sendOtpToEmail` / `sendLoginOtpToEmail` / `verifyEmail` / `sendRiceEmailVerification` / `verifyRiceEmailCode` kept as `@deprecated` safety net. |
+| `src/screens/onboarding/steps/EmailSignUpStep.tsx` | MODIFIED | Calls `sendEmailSignUpCode`. Handles `ACCOUNT_EXISTS` / `NO_ACCOUNT` / `RATE_LIMITED` error codes from the edge function. |
+| `src/screens/onboarding/steps/EmailSignUpVerificationStep.tsx` | MODIFIED | Calls `verifyEmailSignUpCode`. `maxLength={64}` on hidden TextInput (paste-tolerant). "Didn't receive a code?" mini-loop → `EmailResendStep`. "Sign in instead" CTA after 2 failed attempts. |
+| `src/screens/onboarding/steps/EmailResendStep.tsx` | NEW | Email re-entry mini-loop (fix typo + resend). |
+| `src/screens/auth/EmailVerificationScreen.tsx` | MODIFIED | Login-side OTP verify using `verifyLoginCode` + `sendLoginCode`. 60s resend cooldown. First OTP cell `maxLength={64}` (paste-tolerant); handler strips non-digits. |
+
+### Secrets — email scope
+
+| Secret | In prod? | In local | Notes |
 |---|---|---|---|
-| Migration `20260417000005_email_verification_codes_add_ip.sql` | LOCAL_ONLY | None — idempotent `IF NOT EXISTS` | Leave applied, additive only |
-| Edge function `email-signup` | LOCAL_ONLY | Migration above must land first | Legacy `send-email-verification` v17 still deployed as fallback |
+| `RESEND_API_KEY` | ✅ set | ✅ in `supabase/.env.local` | No change needed; already used by `notify-report` prod function. |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ auto-injected | ✅ auto-injected | Standard. |
 
-**Deploy order** (when user approves):
-1. Apply migration via `scripts/supabase-exec.sh` (service_role-only)
-2. `supabase functions deploy email-signup --no-verify-jwt`
-3. Smoke test with a real @rice.edu address
-4. Update `MIGRATION_LOG.md` (flip #83 to `PRODUCTION`) and `EDGE_FUNCTIONS.md` (move `email-signup` to Anonymous Functions / DEPLOYED)
+### Documentation — email scope
 
-**Prod secrets required**: `RESEND_API_KEY` is already set per `docs/migrations/SECRETS.md`. No new secrets needed.
-
-**`email-unsubscribe` is NOT in the deploy plan.** 2026-04-19 scope cut: we only send transactional OTP codes (user explicitly requested each one), so there's nothing to unsubscribe from. `email-signup` no longer emits the `List-Unsubscribe` / `List-Unsubscribe-Post` headers. Function source kept in-repo as `DORMANT` for possible future marketing-email stream.
-
----
-
-## DNS changes made by user (2026-04-19)
-
-- **DMARC**: `_dmarc.bridgedate.app` TXT updated from `v=DMARC1; p=none;` to `v=DMARC1; p=none; rua=mailto:saulbrauns@gmail.com;`. Now collects aggregate reports from Gmail/Yahoo/Microsoft. First reports expected within 24–48h.
-- **DKIM**: Verified green in Resend dashboard on 2026-04-19. Bare `p=MIGf...` format (without the optional `v=DKIM1; k=rsa;` prefix) is what Resend issues and is RFC-6376-valid. No change needed.
-- **SPF**: Verified green on both apex (`bridgedate.app`) and `send.bridgedate.app` subdomain. No change needed.
+| File | Status |
+|---|---|
+| `docs/migrations/MIGRATION_LOG.md` | MODIFIED — entry #83 added, status `LOCAL_ONLY` |
+| `docs/migrations/EDGE_FUNCTIONS.md` | MODIFIED — `email-signup` LOCAL_ONLY, `email-unsubscribe` DORMANT |
+| `docs/migrations/SECRETS.md` | Present (from earlier commits); lists `RESEND_API_KEY` |
+| `docs/agent-summaries/resend-email-optimization.md` | This file |
 
 ---
 
-## What still needs to happen before shipping
+## How the new email flow works (current branch state)
 
-1. **Real-world local test** (user): open Expo app against local Supabase, sign up / log in with a @rice.edu email, verify code email arrives fast (goal: <3s from Resend), verify copy-paste of the code works, verify "Didn't receive a code?" mini-loop works, verify 60s resend cooldown on login works.
-2. **Coordinated prod deploy** with the other parallel work from the master agent's rollup:
-   - Profile/onboarding simplification agent's changes
-   - Image moderation agent's changes
-   - Proposal algorithm agent's changes
-3. **App Store submission** — out of my scope; the master agent or a dedicated App Store agent handles EAS build + version bump + submit.
+### Send (signup)
+1. Client calls `sendEmailSignUpCode(email)` in `authService.ts`.
+2. That invokes `email-signup` with `{ action: "send", email }`. No `flow` sent → defaults to signup.
+3. Edge function runs **3 DB checks in parallel** (`Promise.all`):
+   - Per-email rate limit: count rows in `email_verification_codes` where `email = ?` in last 10 min. Ceiling: 5.
+   - Per-IP rate limit: count rows where `ip_address = ?` in last hour. Ceiling: 60.
+   - User status: `get_user_by_email` RPC.
+4. If signup and user has `profile_completed = true` → return `{ error: "...", code: "ACCOUNT_EXISTS" }`.
+5. If login and user doesn't exist → return `{ error: "...", code: "NO_ACCOUNT" }`.
+6. Invalidate any existing unused codes for this email.
+7. Generate 6-digit OTP (rejection sampling, no modulo bias). Hash with `SHA-256(code+":"+email)`.
+8. POST to `https://api.resend.com/emails` with:
+   - `from: "Bridge <verify@bridgedate.app>"`
+   - `subject: "Your Bridge verification code"`
+   - `html:` branded template (Arial, letter-spaced code, no unsubscribe footer, no preheader)
+   - `text:` plain-text alternative (for deliverability + watchOS + screen readers)
+   - No `List-Unsubscribe` headers (transactional only)
+9. Only after Resend 200: insert the code row into `email_verification_codes` with `email`, `code_hash`, `ip_address`, `expires_at`. (`flow` is **not** persisted.)
+10. Return `{ ok: true }` to client.
+
+### Verify
+1. Client calls `verifyEmailSignUpCode(email, code)` or `verifyLoginCode(email, code)`. Neither sends `flow` anymore.
+2. Edge function invokes `handleVerify`:
+   - Look up latest unused, non-expired code for email.
+   - Check `attempts >= MAX_ATTEMPTS_PER_CODE` (5) — reject + mark `used=true` if over.
+   - Increment attempts.
+   - Constant-time hash compare.
+   - Via admin client, create or find user, set a random temp password, sign in via anon client to get session tokens, mark code `used=true` only after session success.
+   - Return `{ access_token, refresh_token, user: { id, email } }`.
+3. Client calls `supabase.auth.setSession(...)` to establish the session.
+
+### Resend (user taps "Didn't receive a code?")
+- **Signup path**: verification screen → `EmailResendStep` → user can correct email or keep → `sendEmailSignUpCode` → new code invalidates old.
+- **Login path**: 60s client cooldown → "Resend Code" → `sendLoginCode` → new code invalidates old.
+
+### Reviewer bypass
+`reviewer@bridgedate.app` and `reviewer2@bridgedate.app` skip Resend entirely; their auth is `validate-reviewer-access` + `signInWithPassword`. Edge function never sees these emails in production. This is checked before any `sendEmailSignUpCode` / `verifyEmailSignUpCode` / `sendLoginCode` / `verifyLoginCode` call in `authService.ts`.
 
 ---
 
-## Known risks / caveats
+## Deploy plan (when user approves)
 
-- **IP rate limit 60/hr** is a guess calibrated against Rice shared NAT during orientation. If real orientation traffic outstrips it, bump to 120 or switch to per-email-only when IP looks shared.
-- **Resend domain reputation** is green now (DKIM/SPF verified, DMARC `p=none; rua=` added 2026-04-19) but Rice's own mail servers may be stricter than Gmail. If complaints come in, first check the DMARC reports (sent to `saulbrauns@gmail.com`) to see what provider is flagging.
-- **No `List-Unsubscribe` header** on outbound mail as of 2026-04-19 scope cut. Correct for transactional-only streams; revisit if marketing-email stream is added later.
+**Precondition checks:**
+- [ ] Confirm `RESEND_API_KEY` is set in prod (`supabase secrets list | grep RESEND`)
+- [ ] Confirm the App Store build on users' phones still routes through legacy `send-email-verification` (it does — the new Resend path only exists post-merge)
+
+**Steps (user runs; agent does not):**
+
+1. **Apply migration #83 to prod:**
+   ```bash
+   # Feed the SQL file into the exec_sql RPC via the existing script.
+   ./scripts/supabase-exec.sh "$(cat supabase/migrations/20260417000005_email_verification_codes_add_ip.sql)"
+   ```
+
+2. **Verify columns landed:**
+   ```bash
+   ./scripts/supabase-query.sh "information_schema.columns" \
+     "select=column_name&table=eq.email_verification_codes&column_name=eq.ip_address"
+   ```
+
+3. **Deploy the function:**
+   ```bash
+   supabase functions deploy email-signup --no-verify-jwt
+   ```
+
+4. **Smoke test** — send yourself a code to a real `@rice.edu` address. Expect:
+   - Email arrives < 3s (was ~10s on legacy path).
+   - Code pastes cleanly into the verify screen (6 digits in clipboard).
+   - Gmail inbox preview shows "Your verification code:" (no `•••` icon).
+   - No visible unsubscribe footer.
+
+5. **Update docs after deploy succeeds:**
+   - `MIGRATION_LOG.md`: flip entry #83 from `LOCAL_ONLY` to `PRODUCTION`.
+   - `EDGE_FUNCTIONS.md`: move `email-signup` from Local-Only section to Anonymous Functions (DEPLOYED).
+
+6. **Legacy path retirement** (≥ 7 days later):
+   - Remove `@deprecated` functions from `authService.ts`.
+   - Mark `send-email-verification` DEPRECATED in `EDGE_FUNCTIONS.md`.
+   - Delete after 30 days of zero invocations (visible in edge function metrics).
+
+**Rollback:** If the new function misbehaves, revert the app build — the deployed app uses `send-email-verification` (still live). The migration is additive and safe to leave in place.
 
 ---
 
-## Files touched on this branch (Resend scope only)
+## What is NOT in the deploy plan (and why)
+
+| Item | Status | Rationale |
+|---|---|---|
+| `email-unsubscribe` function | DORMANT in repo | Removed `List-Unsubscribe` headers from outbound mail 2026-04-19 — transactional OTPs don't need unsubscribe. Source kept so a future marketing-email stream can reuse it. |
+| `flow` column on `email_verification_codes` | Never shipped | Verify-side cross-check was belt-and-suspenders; attacker needs the victim's inbox to read the code anyway. Dropped 2026-04-19 to keep migration surface minimal. |
+| Hidden preheader `<div style="display:none">` | Reverted 2026-04-19 | Gmail rendered it as a "show trimmed content" (•••) icon inside the code box, which cluttered the email. Natural preview is fine for a message this short. |
+| `List-Unsubscribe` / `List-Unsubscribe-Post` HTTP headers | Reverted 2026-04-19 | Transactional-only, per above. |
+| Visible "Bridge at Rice University" footer | Removed | Purely decorative; `List-Unsubscribe` header was what actually mattered, and that's gone too. |
+| DKIM prefix edit (`v=DKIM1; k=rsa;` before `p=...`) | No action needed | Resend dashboard shows DKIM green as-is. Bare `p=...` is RFC-6376-valid. |
+
+---
+
+## DNS state (as of 2026-04-19)
+
+| Record | Host | Value | Verified? |
+|---|---|---|---|
+| SPF (apex) | `bridgedate.app` | `v=spf1 include:amazonses.com ~all` | ✅ green in Resend dashboard |
+| SPF (Resend subdomain) | `send.bridgedate.app` | `v=spf1 include:amazonses.com ~all` | ✅ green |
+| DKIM | `resend._domainkey.bridgedate.app` | `p=MIGfMA0...` (bare; no `v=DKIM1; k=rsa;` prefix) | ✅ green in Resend dashboard |
+| Return-path MX | `send.bridgedate.app` | `10 feedback-smtp.us-east-1.amazonses.com` | ✅ |
+| DMARC | `_dmarc.bridgedate.app` | `v=DMARC1; p=none; rua=mailto:saulbrauns@gmail.com;` | ✅ applied 2026-04-19 via Vercel DNS |
+
+DNS is managed on Vercel (`ns1/ns2.vercel-dns.com`). No further DNS changes needed for the ship. First DMARC reports from Gmail/Yahoo/Microsoft arrive at `saulbrauns@gmail.com` within 24–48 h.
+
+---
+
+## Branch commits touching email scope
+
+My commits (all on `plan/proposal-gate-overhaul`, layered bottom-up):
+
+| SHA | Message |
+|---|---|
+| `13bf354` | fix(email-signup): flow cross-check + off-by-one attempt counter + IP limit bump |
+| `60f8a40` | perf(email-signup): parallelize pre-send checks + improve template deliverability |
+| `d2a1928` | fix(email): restore code paste support — revert &nbsp; spacing, relax TextInput gates |
+| `7dfc207` | docs(agent-summary): resend email optimization summary for master agent rollup |
+| `e387005` | refactor(email-signup): drop preheader, List-Unsubscribe, and flow column |
+
+Prior email-related commits from other sessions on this branch (for master agent context):
+
+| SHA | Message |
+|---|---|
+| `c43c52b` | feat: onboarding redesign — auth flow reorder + auto-preferences |
+| `bf92ea9` | fix: harden email auth — IP rate limiting, login flow guard, anti-enumeration, XSS fix |
+| `18deb7c` | feat: simplify verification to single 'Didn't receive a code?' flow |
+| `980e3f0` | fix: EmailResendStep uses OnboardingLayout — matches all other steps |
+| `480966e` | fix: login verification uses navigation.reset + mark old OTP funcs deprecated |
+| `c8e355b` | chore: align email_verification_codes migration with prod + add schema dump script |
+| `78aa6e8` | fix: photo flow + auth lockouts + auto-pref + step save errors |
+
+---
+
+## Net effective function behavior (summary of all changes across the branch)
+
+- **Primary send endpoint**: `email-signup` edge function (new).
+- **Rate limits**: 5 codes per email per 10 min; 60 sends per IP per hour (was 20 on an earlier revision; bumped for Rice shared NAT).
+- **Error codes returned**: `ACCOUNT_EXISTS`, `NO_ACCOUNT`, `RATE_LIMITED` (with `retryAfterSeconds`) — previously silent anti-enumeration, changed to explicit errors 2026-04-17 per product decision in commit `bf92ea9`.
+- **Verify semantics**: 5 attempts per code (was 6 due to off-by-one; fixed 2026-04-18). Code expiry 10 min.
+- **Session creation**: admin-client creates/finds user → sets temp password → anon-client `signInWithPassword` → session tokens returned.
+- **Template**: Arial/Helvetica, letter-spaced code, plain-text alt included, no preheader, no unsubscribe footer, no `List-Unsubscribe` HTTP headers.
+- **Paste**: both signup + login verify screens tolerate arbitrary clipboard content (up to 64 chars); handler strips non-digits and slices to 6.
+- **Reviewer bypass preserved at every auth checkpoint**: `reviewer@bridgedate.app`, `reviewer2@bridgedate.app` → `validate-reviewer-access` + `signInWithPassword`.
+
+---
+
+## Known risks / open questions
+
+- **IP rate limit 60/hr** is a guess calibrated against Rice shared NAT. If real orientation traffic outstrips it, bump to 120 or switch to per-email-only when one IP sends to many different emails (sign of sharing, not abuse).
+- **No observability on function latency in prod yet.** Once deployed, you should be able to pull edge-function logs to get p50/p95 of the Resend POST + the full function execution. If latency >3s at p95, investigate Resend region routing.
+- **Rice mail servers may be stricter than Gmail.** If complaints come in post-deploy, check DMARC reports for which providers are flagging.
+- **The `flow` column may still exist on local DBs** that ran an older version of migration #83. Harmless — no code references it. A `supabase db reset` on fresh local will produce a schema without the column; drift tooling (`scripts/check-schema-parity.sh`) may briefly show this until the old column is dropped manually.
+- **Legacy `@deprecated` functions in `authService.ts`** (`sendOtpToEmail`, etc.) still work and are safe. After the new path is live for 7 days, remove them. Keeping them now maintains rollback safety.
+
+---
+
+## Files in scope (touched by this agent)
 
 ```
 supabase/functions/email-signup/index.ts
+supabase/migrations/20260417000005_email_verification_codes_add_ip.sql  (renamed from _add_flow_and_ip)
 src/services/authService.ts
 src/screens/onboarding/steps/EmailSignUpVerificationStep.tsx
 src/screens/auth/EmailVerificationScreen.tsx
 docs/migrations/MIGRATION_LOG.md
 docs/migrations/EDGE_FUNCTIONS.md
+docs/agent-summaries/resend-email-optimization.md   (this file)
 ```
 
-## Files NOT touched (owned by other agents)
+## Files explicitly NOT touched (owned by other parallel agents)
 
-The following uncommitted working-tree changes belong to other agents and are intentionally untouched:
 - Profile/onboarding simplification: 14 step-file deletions, `OnboardingScreen.tsx`, `onboardingMapping.ts`, `profileCompleteness.ts`, `ProfileStrengthDashboard.tsx`, `EditLifestyleScreen.tsx`, `types/index.ts`, `AppNavigator.tsx`, `docs/plans/onboarding-simplification-v2.md`
-- Image moderation: `supabase/functions/moderate-image/` + related
+- Image moderation: `supabase/functions/moderate-image/` + `src/services/imageModerationService.ts` + related
 - Proposal algorithm: `supabase/functions/_shared/scoring.ts`, `generate-proposals/index.ts`, `generate-proposal-for-user/index.ts`
-- Policy docs: `CLAUDE.md` + `docs/migrations/README.md` banner additions
+- Cross-cutting policy docs: `CLAUDE.md` banner + `docs/migrations/README.md` banner
+- Unrelated migration: `supabase/migrations/20260418000001_drop_dead_columns.sql`
 
 The master agent should reconcile these per the normal rollup process.
+
+---
+
+## One-line deploy summary for master agent
+
+> Apply `supabase/migrations/20260417000005_email_verification_codes_add_ip.sql` to prod via `scripts/supabase-exec.sh`, then `supabase functions deploy email-signup --no-verify-jwt`. Everything else is either already in prod, dormant, or reverted.
