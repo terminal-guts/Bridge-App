@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -9,6 +9,7 @@ import Animated, {
     withSpring,
     Easing,
     cancelAnimation,
+    useReducedMotion,
 } from 'react-native-reanimated';
 import { SPRINGS } from '../../constants/animations';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,12 +26,9 @@ import { KarmaPill } from '../ui/KarmaPill';
 
 // ── Responsive sizing ────────────────────────────────────────────────────────
 // iPhone SE / 8 = 375pt, standard iPhones = 390-393pt, Plus/Max = 428-430pt
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const isCompact = SCREEN_WIDTH < 380; // SE, iPod touch, iPhone 8
-const AVATAR_SIZE = isCompact ? 56 : 68;
-const AVATAR_RADIUS = AVATAR_SIZE / 2;
-const ROW_HORIZONTAL_PADDING = isCompact ? 16 : 24;
-const INFO_MARGIN_LEFT = isCompact ? 12 : 16;
+// Screen-width-driven sizing is resolved per-render via useWindowDimensions()
+// inside the component, so rotation and split-screen re-measure correctly.
+const COMPACT_BREAKPOINT = 380; // SE, iPod touch, iPhone 8
 
 interface UserRowProps {
     item: FriendWithGridStatus;
@@ -69,10 +67,17 @@ function getStreakTier(days: number) {
 }
 
 export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatch, onViewProfile, onChat, rank, onRankPress, statusLine, showVoteRing, hasUnread, onBadgePress, onCrushPress, onStreakMilestone, previousStreakDays, onKarmaPress }) => {
+    const { width: screenWidth } = useWindowDimensions();
+    const isCompact = screenWidth < COMPACT_BREAKPOINT;
+    const AVATAR_SIZE = isCompact ? 56 : 68;
+    const AVATAR_RADIUS = AVATAR_SIZE / 2;
+    const ROW_HORIZONTAL_PADDING = isCompact ? 16 : 24;
+    const INFO_MARGIN_LEFT = isCompact ? 12 : 16;
+    const reduceMotion = useReducedMotion();
     const name = item.friend.firstName || '';
     const rawImageUrl = item.friend.photos?.[0]?.url || undefined;
     const photoBlurhash = item.friend.photos?.[0]?.blurhash || undefined;
-    const imageUrl = useMemo(() => getOptimizedImageUrl(rawImageUrl, AVATAR_SIZE), [rawImageUrl]);
+    const imageUrl = useMemo(() => getOptimizedImageUrl(rawImageUrl, AVATAR_SIZE), [rawImageUrl, AVATAR_SIZE]);
     const streak = item.streakDays || 0;
     const friendProfileComplete = item.friend.profileCompleted === true;
     const isFriendMatchmaker = item.friend.role === 'matchmaker';
@@ -82,8 +87,14 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
     const streakTier = useMemo(() => getStreakTier(streak), [streak]);
     const avatarStyle = useMemo(() => [
         styles.avatar,
-        { borderColor: streakTier.ringColor, backgroundColor: '#E5E7EB' },
-    ], [streakTier.ringColor]);
+        {
+            width: AVATAR_SIZE,
+            height: AVATAR_SIZE,
+            borderRadius: AVATAR_RADIUS,
+            borderColor: streakTier.ringColor,
+            backgroundColor: '#E5E7EB',
+        },
+    ], [streakTier.ringColor, AVATAR_SIZE, AVATAR_RADIUS]);
 
     // Streak milestone / death detection
     useEffect(() => {
@@ -100,6 +111,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
     const voteScale = useSharedValue(1);
     useEffect(() => {
         if (!showVoteRing) { voteScale.value = 1; return; }
+        if (reduceMotion) { voteScale.value = 1; return; }
         voteScale.value = withRepeat(
             withSequence(
                 withTiming(1.07, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
@@ -109,7 +121,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
         return () => cancelAnimation(voteScale);
         // voteScale is a stable useSharedValue ref — intentionally omitted from deps
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [showVoteRing]);
+    }, [showVoteRing, reduceMotion]);
     const voteAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: voteScale.value }] }));
 
     const handleVotePress = useCallback(() => {
@@ -173,6 +185,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
     const pulseAnim = useSharedValue(1);
     useEffect(() => {
         if (streak < 30) { pulseAnim.value = 1; return; }
+        if (reduceMotion) { pulseAnim.value = 1; return; }
         pulseAnim.value = withRepeat(
             withSequence(
                 withTiming(1.05, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
@@ -182,7 +195,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
         return () => cancelAnimation(pulseAnim);
         // pulseAnim is a stable useSharedValue ref — intentionally omitted from deps
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [streak]);
+    }, [streak, reduceMotion]);
 
     const pulseAnimStyle = useAnimatedStyle(() => streak >= 30 ? { transform: [{ scale: pulseAnim.value }] } : {});
     const avatarContent = (
@@ -203,9 +216,9 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
 
     // Shared info block used in both vote and chat rows
     const infoBlock = (
-        <View style={styles.info}>
+        <View style={[styles.info, { marginLeft: INFO_MARGIN_LEFT }]}>
             <View style={styles.nameRow}>
-                <Text style={styles.name}>{name}</Text>
+                <Text style={[styles.name, isCompact && styles.nameCompact]} numberOfLines={1} ellipsizeMode="tail">{name}</Text>
                 {hasUnread && <View style={styles.unreadDot} />}
             </View>
             <View style={styles.streakRow}>
@@ -225,7 +238,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
     // Vote row — avatar + info are static, Vote button is the action
     if (actionType === 'match') {
         return (
-            <View style={styles.row}>
+            <View style={[styles.row, { paddingHorizontal: ROW_HORIZONTAL_PADDING, paddingVertical: isCompact ? 12 : 16 }]}>
                 <View style={styles.left}>
                     {avatarContent}
                     {infoBlock}
@@ -270,7 +283,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
     // Chat row — entire row is tappable for chat, avatar & karma are separate targets on top
     return (
         <TouchableOpacity
-            style={styles.row}
+            style={[styles.row, { paddingHorizontal: ROW_HORIZONTAL_PADDING, paddingVertical: isCompact ? 12 : 16 }]}
             activeOpacity={0.6}
             onPress={onChat}
             accessibilityLabel={`Chat with ${name}`}
@@ -299,7 +312,7 @@ export const UserRow: React.FC<UserRowProps> = React.memo(({ item, index, onMatc
                         style={styles.crushBtn}
                         accessibilityLabel={item.hasCrushed ? `Remove crush on ${name}` : `Crush on ${name}`}
                         accessibilityRole="button"
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                     >
                         <EvaIcon
                             name="heart"
@@ -336,8 +349,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: ROW_HORIZONTAL_PADDING,
-        paddingVertical: isCompact ? 12 : 16,
         backgroundColor: COLORS.card,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: COLORS.border,
@@ -378,15 +389,11 @@ const styles = StyleSheet.create({
         color: COLORS.card,
     },
     avatar: {
-        width: AVATAR_SIZE,
-        height: AVATAR_SIZE,
-        borderRadius: AVATAR_RADIUS,
         backgroundColor: '#E5E7EB',
         borderWidth: 2,
         borderColor: COLORS.borderLight,
     },
     info: {
-        marginLeft: INFO_MARGIN_LEFT,
         justifyContent: 'center',
         flexShrink: 1,
     },
@@ -398,9 +405,13 @@ const styles = StyleSheet.create({
     },
     name: {
         fontFamily: FONTS.extraBold,
-        fontSize: isCompact ? FONT_SIZES.xl : FONT_SIZES['2xl'],
-        lineHeight: isCompact ? LINE_HEIGHTS.lg : LINE_HEIGHTS['2xl'],
+        fontSize: FONT_SIZES['2xl'],
+        lineHeight: LINE_HEIGHTS['2xl'],
         color: COLORS.text.primary,
+    },
+    nameCompact: {
+        fontSize: FONT_SIZES.xl,
+        lineHeight: LINE_HEIGHTS.lg,
     },
     streakRow: {
         flexDirection: 'row',

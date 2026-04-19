@@ -657,7 +657,7 @@ const requestStyles = StyleSheet.create({
     paddingHorizontal: SECTION_H_PADDING,
     alignItems: 'center',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.borderLight,
+    borderTopColor: COLORS.border,
   },
   overflowText: {
     fontFamily: FONTS.medium,
@@ -735,7 +735,6 @@ export const styles = StyleSheet.create({
     width: LOTTIE_SIZE,
     height: LOTTIE_SIZE,
     marginBottom: 2,
-    marginRight: 20,
   },
   emptyHeroText: {
     fontFamily: FONTS.bold,
@@ -851,7 +850,7 @@ export const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: isCompact ? 6 : 8,
+    gap: 4,
   },
   addFriendBtn: {
     width: isCompact ? 30 : 34,

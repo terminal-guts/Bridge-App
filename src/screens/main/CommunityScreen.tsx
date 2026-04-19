@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { AppState, View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { UserRow } from '../../components/community/UserRow';
 import { StaggerItem } from '../../hooks/useStaggeredList';
@@ -55,6 +56,8 @@ interface CommunityScreenProps {
 
 export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const { startGuideIfNeeded } = useGuide();
+  const insets = useSafeAreaInsets();
+  const scrollBottomPadding = Math.max(insets.bottom, 0) + 49 + 16;
   const [usersToMatch, setUsersToMatch] = useState<FriendWithGridStatus[]>([]);
   const [alreadyHelped, setAlreadyHelped] = useState<FriendWithGridStatus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -534,7 +537,11 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
 
       {usersToMatch.length === 0 && alreadyHelped.length === 0 ? (
         <ScrollView
-          contentContainerStyle={pendingRequests.length === 0 && !loadError ? { flex: 1 } : undefined}
+          contentContainerStyle={
+            pendingRequests.length === 0 && !loadError
+              ? { flex: 1, paddingBottom: scrollBottomPadding }
+              : { paddingBottom: scrollBottomPadding }
+          }
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primaryAccent} />
@@ -555,6 +562,7 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       ) : (
         <ScrollView
           className="flex-1"
+          contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primaryAccent} />

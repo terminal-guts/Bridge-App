@@ -16,6 +16,7 @@ import { getOptimizedPhotoUrl } from '../../utils/imageUtils';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../../theme/colors';
 import { ScreenWrapper, InfoModal } from '../../components/ui';
+import { BackHeader } from '../../components/ui/BackHeader';
 import { Body } from '../../components/ui/Typography';
 import { LeaderboardSkeleton } from '../../components/ui/SkeletonLoader';
 import { getCentralOffsetHours } from '../../utils/centralTime';
@@ -93,7 +94,7 @@ const PodiumSlot = ({
   onPress: (user: LeaderboardUser) => void;
 }) => {
   const avatarStyle = rank === 1 ? s.avatarLarge : rank === 2 ? s.avatarMedium : s.avatarSmall;
-  const avatarSize = rank === 1 ? 88 : rank === 2 ? 72 : 64;
+  const avatarSize = rank === 1 ? 80 : rank === 2 ? 64 : 56;
   const wrapperStyle = rank === 1 ? s.avatarWrapperLarge : rank === 2 ? s.avatarWrapperMedium : s.avatarWrapperSmall;
   const ringStyle = rank === 1 ? s.avatarRingGold : rank === 2 ? s.avatarRingSilver : s.avatarRingBronze;
   const badgeColorStyle = rank === 1 ? s.rankBadgeGold : rank === 2 ? s.rankBadgeSilver : s.rankBadgeBronze;
@@ -308,48 +309,54 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
     const globalIndex = index + 3;
     const gap = getGapAbove(globalIndex);
     const isTappable = !isMe && !item.isAnonymous;
-    return (
-      <StaggerItem index={index} staggerDelay={40} maxAnimated={20}>
-        <TouchableOpacity
-          onPress={() => handleProfilePress(item)}
-          disabled={!isTappable}
-          activeOpacity={isTappable ? 0.7 : 1}
-          accessibilityRole={isTappable ? 'button' : 'none'}
-          accessibilityLabel={isTappable ? `View ${item.firstName}'s profile` : undefined}
-        >
-          <View style={[s.listCard, isMe && s.listCardHighlighted]}>
-            <View style={[s.rankPill, isMe && s.rankPillHighlighted]}>
-              <Text style={[s.rankPillText, isMe && s.rankPillTextHighlighted]}>{rank}</Text>
-            </View>
-            <View style={s.listAvatarWrap}>
-              {item.avatarUrl ? (
-                <Image
-                  source={{ uri: item.avatarUrl }}
-                  style={s.listAvatar}
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                  priority="normal"
-                  recyclingKey={item.id}
-                />
-              ) : (
-                <InitialAvatar name={item.firstName} size={48} isAnonymous={item.isAnonymous} />
-              )}
-              {item.isFriend && <FriendBadge />}
-            </View>
-            <View style={s.listNameCol}>
-              <View style={s.nameRow}>
-                <Text style={[s.listName, isMe && s.listNameHighlighted]} numberOfLines={1}>
-                  {item.firstName}
-                </Text>
-                <RankChangeArrow change={item.rankChange} />
-              </View>
-              {isMe && gap > 0 && (
-                <Text style={s.gapText}>{gap} {gap === 1 ? 'pt' : 'pts'} behind #{rank - 1}</Text>
-              )}
-            </View>
-            <KarmaPill karma={item.karma} />
+    // Only animate the first few items to keep list refresh cheap; the rest render plain.
+    const shouldAnimate = index < 10;
+    const rowContent = (
+      <TouchableOpacity
+        onPress={() => handleProfilePress(item)}
+        disabled={!isTappable}
+        activeOpacity={isTappable ? 0.7 : 1}
+        accessibilityRole={isTappable ? 'button' : 'none'}
+        accessibilityLabel={isTappable ? `View ${item.firstName}'s profile` : undefined}
+      >
+        <View style={[s.listCard, isMe && s.listCardHighlighted]}>
+          <View style={[s.rankPill, isMe && s.rankPillHighlighted]}>
+            <Text style={[s.rankPillText, isMe && s.rankPillTextHighlighted]}>{rank}</Text>
           </View>
-        </TouchableOpacity>
+          <View style={s.listAvatarWrap}>
+            {item.avatarUrl ? (
+              <Image
+                source={{ uri: item.avatarUrl }}
+                style={s.listAvatar}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                priority="normal"
+                recyclingKey={item.id}
+              />
+            ) : (
+              <InitialAvatar name={item.firstName} size={48} isAnonymous={item.isAnonymous} />
+            )}
+            {item.isFriend && <FriendBadge />}
+          </View>
+          <View style={s.listNameCol}>
+            <View style={s.nameRow}>
+              <Text style={[s.listName, isMe && s.listNameHighlighted]} numberOfLines={1}>
+                {item.firstName}
+              </Text>
+              <RankChangeArrow change={item.rankChange} />
+            </View>
+            {isMe && gap > 0 && (
+              <Text style={s.gapText}>{gap} {gap === 1 ? 'pt' : 'pts'} behind #{rank - 1}</Text>
+            )}
+          </View>
+          <KarmaPill karma={item.karma} />
+        </View>
+      </TouchableOpacity>
+    );
+    if (!shouldAnimate) return rowContent;
+    return (
+      <StaggerItem index={index} staggerDelay={40} maxAnimated={10}>
+        {rowContent}
       </StaggerItem>
     );
   }, [getGapAbove, handleProfilePress]);
@@ -359,22 +366,24 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
   // ─── Header / List header ──────────────────────────────────────────────
 
   const renderHeader = (showInfo = false) => (
-    <View style={s.header}>
-      <TouchableOpacity onPress={handleBack} style={s.headerBackButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel="Go back">
-        <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.primary} />
-      </TouchableOpacity>
-      <View style={s.headerTitleCol}>
-        <Text style={s.headerTitle} accessibilityRole="header">Leaderboard</Text>
-        <Text style={s.headerSubtitle}>Weekly</Text>
-      </View>
-      {showInfo ? (
-        <TouchableOpacity onPress={handleInfo} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityRole="button" accessibilityLabel="Leaderboard info">
-          <EvaIcon name="info" variant="outline" size={24} color={COLORS.navInactiveIcon} />
-        </TouchableOpacity>
-      ) : (
-        <View style={s.headerSpacer} />
-      )}
-    </View>
+    <BackHeader
+      title="Leaderboard"
+      titleAlign="center"
+      onBack={handleBack}
+      showBorder={false}
+      right={
+        showInfo ? (
+          <TouchableOpacity
+            onPress={handleInfo}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="Leaderboard info"
+          >
+            <EvaIcon name="info" variant="outline" size={24} color={COLORS.navInactiveIcon} />
+          </TouchableOpacity>
+        ) : undefined
+      }
+    />
   );
 
   const listHeader = useMemo(() => (

@@ -149,9 +149,9 @@ export const s = StyleSheet.create({
     ...SHADOWS.accentBronze,
   },
 
-  avatarLarge: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#E5E7EB' },
-  avatarMedium: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#E5E7EB' },
-  avatarSmall: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#E5E7EB' },
+  avatarLarge: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#E5E7EB' },
+  avatarMedium: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#E5E7EB' },
+  avatarSmall: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#E5E7EB' },
 
   // Rank badges
   rankBadge: {
@@ -177,7 +177,7 @@ export const s = StyleSheet.create({
     fontWeight: '600' as const,
     fontSize: FONT_SIZES.base,
     color: COLORS.text.primary,
-    maxWidth: 100,
+    maxWidth: 80,
     textAlign: 'center',
     marginBottom: 8,
   },

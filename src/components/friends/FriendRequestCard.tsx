@@ -36,16 +36,23 @@ export const FriendRequestCard: React.FC<FriendRequestCardProps> = ({
   const name = request.senderProfile.firstName || 'Someone';
   const photoUrl = getOptimizedPhotoUrl(request.senderProfile.photos?.[0]?.url, 'avatar') || undefined;
   const photoBlurhash = request.senderProfile.photos?.[0]?.blurhash || undefined;
+  const initial = (request.senderProfile.firstName?.[0] ?? '?').toUpperCase();
   return (
     <StyledView style={styles.container}>
-      {/* Avatar */}
-      <Image
-        source={photoUrl ? { uri: photoUrl } : null}
-        placeholder={photoBlurhash ? { blurhash: photoBlurhash } : undefined}
-        style={styles.avatar}
-        cachePolicy="memory-disk"
-        transition={300}
-      />
+      {/* Avatar — photo or initials fallback */}
+      {photoUrl ? (
+        <Image
+          source={{ uri: photoUrl }}
+          placeholder={photoBlurhash ? { blurhash: photoBlurhash } : undefined}
+          style={styles.avatar}
+          cachePolicy="memory-disk"
+          transition={300}
+        />
+      ) : (
+        <StyledView style={[styles.avatar, styles.avatarFallback]}>
+          <StyledText style={styles.avatarInitial}>{initial}</StyledText>
+        </StyledView>
+      )}
 
       {/* Info */}
       <StyledView style={styles.info}>
@@ -64,7 +71,7 @@ export const FriendRequestCard: React.FC<FriendRequestCardProps> = ({
             onPress={onDecline}
             style={styles.declineButton}
             activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
             <EvaIcon name="close" variant="outline" size={18} color={COLORS.text.secondary} />
           </StyledTouchable>
@@ -91,13 +98,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: COLORS.card,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.borderLight,
+    borderBottomColor: COLORS.border,
   },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
     backgroundColor: COLORS.card,
+  },
+  avatarFallback: {
+    backgroundColor: COLORS.screenBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  avatarInitial: {
+    fontFamily: FONTS.bold,
+    fontSize: FONT_SIZES.lg,
+    color: COLORS.text.secondary,
   },
   info: {
     flex: 1,
@@ -132,7 +151,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 12,
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.primary,
     ...SHADOWS.sm,
   },
   acceptText: {
