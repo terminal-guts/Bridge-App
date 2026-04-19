@@ -86,6 +86,10 @@ const generateStoragePath = (userId: string, photoId: string, extension: string)
 /**
  * Compress and optimize image for upload
  * Resizes to max dimensions and compresses to reduce file size
+ *
+ * TODO (deferred — needs Supabase Pro): generate multi-size variants at upload
+ * time so avatars/cards don't download the full 1200×1600 hero JPEG. Planned
+ * siblings: _sm (144×192), _md (400×533), _lg (900×1200) alongside the original.
  */
 const compressImage = async (
   uri: string,

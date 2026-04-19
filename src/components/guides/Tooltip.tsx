@@ -6,7 +6,8 @@
  */
 
 import React, { useEffect, useMemo } from 'react';
-import { View, TouchableOpacity, Dimensions, StyleSheet, Image, ImageSourcePropType } from 'react-native';
+import { View, TouchableOpacity, Dimensions, StyleSheet, ImageSourcePropType } from 'react-native';
+import { Image } from 'expo-image';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -247,7 +248,9 @@ export const Tooltip: React.FC<TooltipProps> = ({
                 position: 'absolute',
                 top: -Math.round(90 * (getScreenDimensions().width / BASE_WIDTH)),
               }}
-              resizeMode="cover"
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={200}
             />
           </View>
         )}

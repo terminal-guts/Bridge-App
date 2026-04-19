@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Image, Alert, Linking, Platform } from 'react-native';
+import { View, TouchableOpacity, Alert, Linking, Platform } from 'react-native';
+import { Image } from 'expo-image';
 import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import * as ImagePicker from 'expo-image-picker';
@@ -136,6 +137,9 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
                 <StyledImage
                   source={{ uri: photos[0].url }}
                   className="w-full h-full rounded-2xl"
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  transition={200}
                 />
                 {/* Remove button */}
                 <StyledTouchableOpacity

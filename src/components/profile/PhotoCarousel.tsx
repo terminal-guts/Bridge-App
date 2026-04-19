@@ -65,6 +65,20 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({
     }
   }, [visible]);
 
+  // Prefetch neighboring photos so left/right swipes feel instant.
+  // expo-image's Image.prefetch warms the memory+disk cache for the URL;
+  // no-ops if the image is already cached. Only runs while the modal is open.
+  useEffect(() => {
+    if (!visible) return;
+    const next = photos[currentIndex + 1];
+    const prev = photos[currentIndex - 1];
+    [next, prev]
+      .filter((p): p is Photo => Boolean(p?.url))
+      .forEach((p) => {
+        Image.prefetch(p.url);
+      });
+  }, [currentIndex, photos, visible]);
+
   const handleClose = () => {
     lightHaptic();
     onClose();
@@ -86,7 +100,7 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({
         placeholder={item.blurhash ? { blurhash: item.blurhash } : undefined}
         style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
         contentFit="contain"
-        transition={300}
+        transition={200}
         cachePolicy="memory-disk"
         priority={index === 0 ? 'high' : 'normal'}
         recyclingKey={item.id || String(index)}
@@ -225,7 +239,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
             className="rounded-lg bg-neutral-200"
             style={{ width: photoSize, height: photoSize }}
             contentFit="cover"
-            transition={300}
+            transition={200}
             cachePolicy="memory-disk"
             recyclingKey={photo.id || String(index)}
           />

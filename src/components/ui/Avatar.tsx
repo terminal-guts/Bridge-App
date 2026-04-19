@@ -64,6 +64,7 @@ export const Avatar: React.FC<AvatarProps> = ({
       contentFit="cover"
       transition={300}
       cachePolicy="memory-disk"
+      priority="low"
       recyclingKey={uri}
       accessibilityRole="image"
       accessibilityLabel={accessibilityLabel}
