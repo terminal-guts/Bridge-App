@@ -62,25 +62,50 @@ function timingSafeEqual(a: string, b: string): boolean {
   return result === 0;
 }
 
-/** Build branded HTML email with just the 6-digit code. No URLs except unsubscribe. */
+/** Build branded HTML email with just the 6-digit code. No URLs except unsubscribe.
+ *
+ *  Design notes for deliverability / rendering:
+ *  - Arial/Helvetica for universal rendering (Gmail web strips `-apple-system`
+ *    and falls back to serif).
+ *  - Hidden preheader drives the Gmail inbox-list preview text.
+ *  - Code rendered with `&nbsp;` between digits instead of `letter-spacing`
+ *    (some webmail clients strip inline letter-spacing) and without
+ *    `font-family: monospace` (inconsistent across clients). */
 function buildVerificationEmail(code: string, email: string): string {
+  const spacedCode = code.split("").join(" &nbsp; ");
   return `
-<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 420px; margin: 0 auto; padding: 40px 24px;">
+<!-- Preheader — first text Gmail shows in inbox preview. Hidden in the body. -->
+<div style="display: none; max-height: 0; overflow: hidden; mso-hide: all; opacity: 0; color: transparent;">
+  Your 6-digit code expires in ${CODE_EXPIRY_MINUTES} minutes.
+</div>
+<div style="font-family: Arial, Helvetica, sans-serif; max-width: 420px; margin: 0 auto; padding: 40px 24px;">
   <div style="text-align: center; margin-bottom: 32px;">
-    <h1 style="color: #1E293B; font-size: 24px; font-weight: 700; margin: 0;">Bridge</h1>
+    <h1 style="color: #1E293B; font-size: 24px; font-weight: 700; margin: 0; font-family: Arial, Helvetica, sans-serif;">Bridge</h1>
   </div>
-  <p style="color: #64748B; font-size: 16px; margin-bottom: 24px; text-align: center;">
+  <p style="color: #64748B; font-size: 16px; margin-bottom: 24px; text-align: center; font-family: Arial, Helvetica, sans-serif;">
     Your verification code:
   </p>
   <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; text-align: center; margin: 0 0 24px;">
-    <span style="font-size: 36px; font-weight: 700; letter-spacing: 8px; color: #2563EB; font-family: monospace;">${code}</span>
+    <div style="font-size: 36px; font-weight: 700; color: #2563EB; font-family: Arial, Helvetica, sans-serif; line-height: 1.2;">${spacedCode}</div>
   </div>
-  <p style="color: #94A3B8; font-size: 13px; text-align: center; line-height: 1.5;">
+  <p style="color: #94A3B8; font-size: 13px; text-align: center; line-height: 1.5; font-family: Arial, Helvetica, sans-serif;">
     This code expires in ${CODE_EXPIRY_MINUTES} minutes.<br/>
     If you didn't request this, you can safely ignore this email.
   </p>
   ${buildUnsubscribeFooter(email)}
 </div>`.trim();
+}
+
+/** Plain-text alternative for multipart/alternative MIME. Required for
+ *  deliverability — HTML-only emails score higher on Gmail/Outlook spam
+ *  filters, and some clients (watchOS, screen readers) prefer text. */
+function buildVerificationTextEmail(code: string): string {
+  return `Bridge
+
+Your verification code: ${code}
+
+This code expires in ${CODE_EXPIRY_MINUTES} minutes.
+If you didn't request this, you can safely ignore this email.`;
 }
 
 /** Build the unsubscribe URL for a given email.
@@ -90,16 +115,13 @@ function getUnsubscribeUrl(email: string): string {
   return `https://ikyiwnydgedwbmcdzgbe.supabase.co/functions/v1/email-unsubscribe?email=${encodeURIComponent(email)}`;
 }
 
-/** Unsubscribe footer HTML — appended to all emails.
- *  No visible link (URL domain mismatch hurts deliverability).
- *  The List-Unsubscribe header handles one-click unsubscribe for email providers. */
+/** Unsubscribe footer HTML — currently empty. The `List-Unsubscribe` email
+ *  header (see `getEmailHeaders`) is what actually drives one-click unsub in
+ *  Gmail/Outlook; we deliberately do not render a visible unsubscribe link
+ *  (the URL domain mismatch between bridgedate.app and Supabase hurts
+ *  deliverability). Kept as a hook in case future designs want a footer. */
 function buildUnsubscribeFooter(_email: string): string {
-  return `
-  <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #F0F0F0; text-align: center;">
-    <p style="color: #CBD5E1; font-size: 11px; line-height: 1.4;">
-      Bridge at Rice University
-    </p>
-  </div>`;
+  return "";
 }
 
 /** Build Resend headers with List-Unsubscribe for deliverability. */
@@ -129,17 +151,38 @@ async function handleSend(
   clientIP: string,
   flow: "signup" | "login" = "signup",
 ): Promise<Response> {
-  // 1. Rate limit per-email — count sends in the recent burst window so a user
-  //    who exhausts the limit only waits ~10 min, not an hour.
+  // 1. Run the three independent pre-send checks in parallel — per-email
+  //    rate limit, per-IP rate limit, and user status lookup. Sequentially
+  //    these cost ~3 round-trips (~150ms); parallel is one round-trip
+  //    latency. Early-return logic happens AFTER all three resolve — the
+  //    wasted work on a rate-limited path is tiny (~one extra SELECT) and
+  //    only happens on error paths, never on the happy path.
   const windowMs = EMAIL_RATE_WINDOW_MINUTES * 60 * 1000;
   const windowStart = new Date(Date.now() - windowMs).toISOString();
-  const { data: recentCodes, error: emailCountErr } = await admin
-    .from("email_verification_codes")
-    .select("created_at")
-    .eq("email", email)
-    .gte("created_at", windowStart)
-    .order("created_at", { ascending: true });
+  const ipWindowStart = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
+  const [emailRateResult, ipRateResult, userLookupResult] = await Promise.all([
+    admin
+      .from("email_verification_codes")
+      .select("created_at")
+      .eq("email", email)
+      .gte("created_at", windowStart)
+      .order("created_at", { ascending: true }),
+    clientIP && clientIP !== "unknown"
+      ? admin
+          .from("email_verification_codes")
+          .select("*", { count: "exact", head: true })
+          .eq("ip_address", clientIP)
+          .gte("created_at", ipWindowStart)
+      : Promise.resolve({ count: 0, error: null }),
+    admin.rpc("get_user_by_email", { p_email: email }),
+  ]);
+
+  const { data: recentCodes, error: emailCountErr } = emailRateResult;
+  const { count: ipCount } = ipRateResult as { count: number | null };
+  const { data: existingUser } = userLookupResult;
+
+  // 1a. Per-email rate limit check
   if (emailCountErr) {
     console.error("Rate limit check error:", emailCountErr.message);
     return jsonResponse({ error: "Service temporarily unavailable. Please try again." }, 500);
@@ -156,27 +199,16 @@ async function handleSend(
     });
   }
 
-  // 1b. Rate limit per-IP (prevents spamming different emails from one device)
-  if (clientIP && clientIP !== "unknown") {
-    const { count: ipCount } = await admin
-      .from("email_verification_codes")
-      .select("*", { count: "exact", head: true })
-      .eq("ip_address", clientIP)
-      .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
-
-    if ((ipCount ?? 0) >= MAX_SENDS_PER_IP_PER_HOUR) {
-      return jsonResponse({ error: "Too many requests. Please try again later." });
-    }
+  // 1b. Per-IP rate limit check (ipCount is null when clientIP was unknown — treated as 0)
+  if ((ipCount ?? 0) >= MAX_SENDS_PER_IP_PER_HOUR) {
+    return jsonResponse({ error: "Too many requests. Please try again later." });
   }
 
-  // 2. Check user status — the app blocks the user explicitly on the wrong flow.
+  // 2. User status check — the app blocks the user explicitly on the wrong flow.
   //    Previously this used anti-enumeration (silent success on account mismatch),
   //    but that left real users confused — they got no code and thought signup was
   //    broken. Product decision 2026-04-17: prioritize clarity over enumeration hiding.
   //    Per-IP and per-email rate limits above still bound brute-force enumeration.
-  const { data: existingUser } = await admin.rpc("get_user_by_email", {
-    p_email: email,
-  });
 
   const userExists = existingUser && existingUser.length > 0;
   const hasCompletedProfile = userExists && existingUser[0].profile_completed === true;
@@ -231,6 +263,7 @@ async function handleSend(
       to: [email],
       subject: "Your Bridge verification code",
       html: buildVerificationEmail(code, email),
+      text: buildVerificationTextEmail(code),
       headers: getEmailHeaders(email),
     }),
   });
