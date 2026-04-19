@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { OVERLAYS } from '../../theme/shadows';
@@ -33,6 +34,11 @@ export const ShareMatchSheet: React.FC<ShareMatchSheetProps> = ({
     onSaveToPhotos,
     onClose,
 }) => {
+    const insets = useSafeAreaInsets();
+    // iPhone SE has insets.bottom = 0 (no home indicator); min 16 so the sheet
+    // doesn't sit flush against the edge. +4 buffer for breathing room.
+    const sheetPaddingBottom = Math.max(insets.bottom, 16) + 4;
+
     const actions: Record<string, () => void> = {
         onShareSnapchat,
         onShareMessages,
@@ -52,7 +58,7 @@ export const ShareMatchSheet: React.FC<ShareMatchSheetProps> = ({
                 activeOpacity={1}
                 onPress={onClose}
             >
-                <TouchableOpacity activeOpacity={1} style={styles.sheet}>
+                <TouchableOpacity activeOpacity={1} style={[styles.sheet, { paddingBottom: sheetPaddingBottom }]}>
                     {/* Drag handle */}
                     <View style={styles.handle} />
 
@@ -123,12 +129,13 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     sheet: {
+        // paddingBottom is applied inline via useSafeAreaInsets() so the sheet
+        // sits correctly on both home-indicator and non-home-indicator devices.
         backgroundColor: COLORS.card,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         paddingHorizontal: 20,
         paddingTop: 12,
-        paddingBottom: 34,
     },
     handle: {
         width: 36,

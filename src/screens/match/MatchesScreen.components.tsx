@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, TextInput, Modal, KeyboardAvoidingView, Platform, RefreshControl, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ReanimatedAnimated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import LottieView from 'lottie-react-native';
 import { DURATIONS } from '../../constants/animations';
@@ -316,13 +317,15 @@ export const tsStyles = StyleSheet.create({
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     paddingHorizontal: 24,
-    paddingTop: 56,
+    // paddingTop applied inline via useSafeAreaInsets() so the top clears the
+    // notch and leaves room for the absolute-positioned close button.
     paddingBottom: 28,
     ...SHADOWS.xxl,
   },
   closeBtn: {
+    // `top` is applied inline via useSafeAreaInsets() so the button clears the
+    // notch on every device (see EndMatchModal where it's set to insets.top + 14).
     position: 'absolute',
-    top: 58,
     left: 12,
     width: 44,
     height: 44,
@@ -410,6 +413,34 @@ export const tsStyles = StyleSheet.create({
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.xl,
     color: COLORS.card,
+  },
+  charCount: {
+    fontFamily: FONTS.regular,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.text.tertiary,
+    textAlign: 'right',
+    marginTop: -12, // pull close under textArea (which has marginBottom: 20)
+    marginBottom: 20,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'stretch',
+  },
+  backBtn: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backBtnText: {
+    fontFamily: FONTS.semiBold,
+    fontSize: FONT_SIZES.xl,
+    color: COLORS.text.secondary,
   },
 });
 
@@ -579,14 +610,18 @@ export function EndedMatchPopupModal({
       animationType="fade"
       onRequestClose={onContinue}
     >
-      <View style={popupStyles.overlay}>
-        <View style={popupStyles.card}>
-          {popupEvent && <EndedMatchPopupContent event={popupEvent} />}
-          <TouchableOpacity style={popupStyles.continueBtn} onPress={onContinue} activeOpacity={0.85}>
-            <Text style={popupStyles.continueBtnText}>Continue</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* Backdrop-tap dismiss — tapping outside the card calls onContinue,
+          matching the dismiss semantics of other modals in the app. */}
+      <TouchableOpacity activeOpacity={1} style={popupStyles.overlay} onPress={onContinue} accessibilityRole="button" accessibilityLabel="Dismiss">
+        <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+          <View style={popupStyles.card}>
+            {popupEvent && <EndedMatchPopupContent event={popupEvent} />}
+            <TouchableOpacity style={popupStyles.continueBtn} onPress={onContinue} activeOpacity={0.85}>
+              <Text style={popupStyles.continueBtnText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
     </Modal>
   );
 }
@@ -611,6 +646,29 @@ export function EndMatchModal({
   onConfirm: () => void;
   onDismiss: () => void;
 }) {
+  const insets = useSafeAreaInsets();
+  // In-place transition for "Other": when the user taps Other, hide the pill list
+  // and swap in the free-text input + Back/Submit buttons (canonical pattern,
+  // ref: ProfileMatchScreen.tsx report flow).
+  const isOther = endMatchReason === 'Other';
+
+  const handlePillPress = (reason: string) => {
+    onReasonSelect(reason);
+    // Clear any prior custom text when switching to a non-Other pill
+    if (reason !== 'Other' && endMatchCustomReason) {
+      onCustomReasonChange('');
+    }
+  };
+
+  const handleOtherBack = () => {
+    // Return to the reason list — clear the Other selection + text
+    onReasonSelect('');
+    onCustomReasonChange('');
+  };
+
+  const canSubmitOther = endMatchCustomReason.trim().length > 0;
+  const canSubmitList = !!endMatchReason && endMatchReason !== 'Other';
+
   return (
     <Modal
       visible={visible}
@@ -623,10 +681,13 @@ export function EndMatchModal({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={tsStyles.overlay}
       >
-        <View style={tsStyles.card}>
+        <View style={[tsStyles.card, { paddingTop: insets.top + 14 + 48 }]}>
           <TouchableOpacity
-            style={tsStyles.closeBtn}
+            style={[tsStyles.closeBtn, { top: insets.top + 14 }]}
             onPress={onDismiss}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
           >
             <EvaIcon name="close" variant="outline" size={20} color={COLORS.text.secondary} />
           </TouchableOpacity>
@@ -634,42 +695,85 @@ export function EndMatchModal({
           <View style={[tsStyles.iconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.08)' }]}>
             <EvaIcon name="close-circle" variant="outline" size={40} color={COLORS.error} />
           </View>
-          <Text style={tsStyles.title}>End this match?</Text>
+          <Text style={tsStyles.title}>{isOther ? 'Tell us what happened' : 'End this match?'}</Text>
           <Text style={tsStyles.subtitle}>
-            Your friends can start finding someone new.{'\n'}Your reason helps them understand what happened.
+            {isOther
+              ? 'A quick note helps your friends learn and find you someone better.'
+              : 'Your friends can start finding someone new.\nYour reason helps them understand what happened.'}
           </Text>
 
-          <View style={tsStyles.pillRow}>
-            {END_MATCH_REASONS.map(reason => (
+          {isOther ? (
+            <>
+              <TextInput
+                style={[tsStyles.textArea, { minHeight: 100, maxHeight: 140 }]}
+                placeholder="Tell us a bit more..."
+                placeholderTextColor={COLORS.text.tertiary}
+                value={endMatchCustomReason}
+                onChangeText={(t) => onCustomReasonChange(t.slice(0, 300))}
+                multiline
+                maxLength={300}
+                autoFocus
+                textAlignVertical="top"
+                accessibilityLabel="Describe why you're ending the match"
+              />
+              <Text style={tsStyles.charCount}>
+                {endMatchCustomReason.length}/300
+              </Text>
+
+              <View style={tsStyles.actionRow}>
+                <TouchableOpacity
+                  style={tsStyles.backBtn}
+                  onPress={handleOtherBack}
+                  accessibilityRole="button"
+                  accessibilityLabel="Back to reasons"
+                >
+                  <Text style={tsStyles.backBtnText}>Back</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    tsStyles.submitBtn,
+                    { flex: 1, backgroundColor: COLORS.error },
+                    (!canSubmitOther || endMatchSubmitting) && tsStyles.submitBtnDisabled,
+                  ]}
+                  onPress={onConfirm}
+                  disabled={!canSubmitOther || endMatchSubmitting}
+                  accessibilityRole="button"
+                  accessibilityLabel="End match"
+                  accessibilityState={{ disabled: !canSubmitOther || endMatchSubmitting }}
+                >
+                  <Text style={tsStyles.submitBtnText}>{endMatchSubmitting ? 'Ending...' : 'End Match'}</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={tsStyles.pillRow}>
+                {END_MATCH_REASONS.map(reason => (
+                  <TouchableOpacity
+                    key={reason}
+                    style={[tsStyles.pill, endMatchReason === reason && tsStyles.pillActive]}
+                    onPress={() => handlePillPress(reason)}
+                    hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                  >
+                    <Text style={[tsStyles.pillText, endMatchReason === reason && tsStyles.pillTextActive]}>
+                      {reason}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
               <TouchableOpacity
-                key={reason}
-                style={[tsStyles.pill, endMatchReason === reason && tsStyles.pillActive]}
-                onPress={() => onReasonSelect(reason)}
+                style={[tsStyles.submitBtn, { backgroundColor: COLORS.error }, (!canSubmitList || endMatchSubmitting) && tsStyles.submitBtnDisabled]}
+                onPress={onConfirm}
+                disabled={!canSubmitList || endMatchSubmitting}
+                accessibilityRole="button"
+                accessibilityLabel="End match"
+                accessibilityState={{ disabled: !canSubmitList || endMatchSubmitting }}
               >
-                <Text style={[tsStyles.pillText, endMatchReason === reason && tsStyles.pillTextActive]}>
-                  {reason}
-                </Text>
+                <Text style={tsStyles.submitBtnText}>{endMatchSubmitting ? 'Ending...' : 'End Match'}</Text>
               </TouchableOpacity>
-            ))}
-          </View>
-
-          <TextInput
-            style={tsStyles.textArea}
-            placeholder={endMatchReason === 'Other' ? 'Tell us a bit more...' : 'Any other thoughts? (optional)'}
-            placeholderTextColor={COLORS.text.tertiary}
-            value={endMatchCustomReason}
-            onChangeText={onCustomReasonChange}
-            multiline
-            maxLength={300}
-          />
-
-          <TouchableOpacity
-            style={[tsStyles.submitBtn, { backgroundColor: COLORS.error }, (!endMatchReason || endMatchSubmitting) && tsStyles.submitBtnDisabled]}
-            onPress={onConfirm}
-            disabled={!endMatchReason || endMatchSubmitting}
-          >
-            <Text style={tsStyles.submitBtnText}>{endMatchSubmitting ? 'Ending...' : 'End Match'}</Text>
-          </TouchableOpacity>
+            </>
+          )}
         </View>
 
         <TouchableOpacity

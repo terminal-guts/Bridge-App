@@ -10,7 +10,7 @@ import {
   TextInput,
   Animated,
   Modal,
-  Dimensions,
+  useWindowDimensions,
   Easing,
   KeyboardAvoidingView,
   Platform,
@@ -26,9 +26,8 @@ import { SHADOWS, OVERLAYS } from '../../theme/shadows';
 import { COLORS as THEME_COLORS } from '../../theme/colors';
 import { Image } from 'expo-image';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-// Scale factor: 1.0 on iPhone SE (375pt), ~1.15 on Pro Max (430pt)
-const SCALE = SCREEN_WIDTH / 375;
+// Screen dimensions now read per-component via useWindowDimensions() so values
+// reflow on rotation, split-view, and different devices.
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -151,6 +150,7 @@ export const PASS_FEEDBACK_OPTIONS: PassFeedbackOption[] = [
 
 export const LoadingSkeleton: React.FC = () => {
   const pulseAnim = useRef(new Animated.Value(0.4)).current;
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const PHOTO_HEIGHT = Math.min(SCREEN_HEIGHT * 0.48, SCREEN_WIDTH * 1.12);
 
   useEffect(() => {
@@ -210,6 +210,8 @@ export const CommunityScore: React.FC<{ score: number; endorsement: FriendEndors
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const [displayedScore, setDisplayedScore] = useState(0);
   const listenerRef = useRef<string | null>(null);
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const SCALE = SCREEN_WIDTH / 375;
 
   useEffect(() => {
     animatedValue.setValue(0);
@@ -387,6 +389,8 @@ export const InfoPill: React.FC<{ icon: string; text: string }> = React.memo(({ 
 export const Section: React.FC<{ title: string; icon: string; children: React.ReactNode; delay?: number }> = React.memo(({ title, icon, children, delay = 0 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const SCALE = SCREEN_WIDTH / 375;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -431,6 +435,8 @@ export const Tag: React.FC<{ label: string; variant?: 'default' | 'primary' | 's
 export const LifestyleRow: React.FC<{ icon?: string; customIcon?: React.ReactNode; label: string; value: string }> = ({ icon, customIcon, label, value }) => {
   const level = getFrequencyLevel(value);
   const freqColors = [COLORS.success, COLORS.freqLime, COLORS.warning, COLORS.freqOrange, COLORS.error];
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const SCALE = SCREEN_WIDTH / 375;
 
   return (
     <StyledView className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: COLORS.neutral100 }}>
@@ -457,6 +463,8 @@ export const LifestyleRow: React.FC<{ icon?: string; customIcon?: React.ReactNod
 export const ModalContainer: React.FC<{ visible: boolean; children: React.ReactNode; onClose: () => void; variant?: 'sheet' | 'center' }> = ({ visible, children, onClose, variant = 'sheet' }) => {
   const scaleAnim = useRef(new Animated.Value(variant === 'center' ? 0.95 : 0.97)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const SCALE = SCREEN_WIDTH / 375;
 
   useEffect(() => {
     if (visible) {
@@ -499,51 +507,64 @@ export const ModalContainer: React.FC<{ visible: boolean; children: React.ReactN
 export const PassFeedbackModal: React.FC<{ visible: boolean; onClose: () => void; onSubmit: (feedbackId: string) => void }> = ({ visible, onClose, onSubmit }) => {
   const [selectedFeedback, setSelectedFeedback] = useState<string | null>(null);
   const [otherText, setOtherText] = useState('');
+  // When true, the reason list is hidden and the "Other" text input view replaces it (canonical in-place pattern).
+  const [showOtherInput, setShowOtherInput] = useState(false);
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const SCALE = SCREEN_WIDTH / 375;
 
-  const isOther = selectedFeedback === 'other';
-  const canSubmit = selectedFeedback && (!isOther || otherText.trim().length > 0);
+  const resetAll = () => {
+    setSelectedFeedback(null);
+    setOtherText('');
+    setShowOtherInput(false);
+  };
 
   const handleClose = () => {
     onClose();
+    resetAll();
+  };
+
+  const handleOptionSelect = (optionId: string) => {
+    lightHaptic();
+    if (optionId === 'other') {
+      setSelectedFeedback('other');
+      setShowOtherInput(true);
+      return;
+    }
+    setSelectedFeedback(optionId === selectedFeedback ? null : optionId);
+    setOtherText('');
+  };
+
+  const handleOtherBack = () => {
+    // Return to the reason list so the user can pick a different option.
+    setShowOtherInput(false);
     setSelectedFeedback(null);
     setOtherText('');
   };
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    if (isOther && otherText.trim()) {
-      onSubmit(`other: ${otherText.trim()}`);
-    } else if (selectedFeedback) {
-      onSubmit(selectedFeedback);
-    }
-    setSelectedFeedback(null);
-    setOtherText('');
+  const handleOtherSubmit = () => {
+    const trimmed = otherText.trim();
+    if (!trimmed) return;
+    onSubmit(`Other: ${trimmed}`);
+    resetAll();
   };
+
+  const handleSubmitList = () => {
+    if (!selectedFeedback || selectedFeedback === 'other') return;
+    onSubmit(selectedFeedback);
+    resetAll();
+  };
+
+  const canSubmitList = !!selectedFeedback && selectedFeedback !== 'other';
+  const canSubmitOther = otherText.trim().length > 0;
 
   return (
     <ModalContainer visible={visible} onClose={handleClose}>
-      <Body className="text-center mb-2" style={{ fontSize: FONT_SIZES['3xl'], fontFamily: FONTS.semiBold, color: COLORS.neutral900 }}>Quick question before you go</Body>
-      <Body className="text-center mb-6" style={{ fontSize: FONT_SIZES.xl, color: COLORS.neutral500, lineHeight: LINE_HEIGHTS['2xl'] }}>What didn't feel right? This helps us find better matches for you.</Body>
+      {showOtherInput ? (
+        <>
+          <Body className="text-center mb-2" style={{ fontSize: FONT_SIZES['3xl'], fontFamily: FONTS.semiBold, color: COLORS.neutral900 }}>Tell us what didn't feel right</Body>
+          <Body className="text-center mb-6" style={{ fontSize: FONT_SIZES.xl, color: COLORS.neutral500, lineHeight: LINE_HEIGHTS['2xl'] }}>A quick note helps us surface better matches next time.</Body>
 
-      <StyledView className="mb-6">
-        {PASS_FEEDBACK_OPTIONS.map((option) => (
-          <StyledTouchableOpacity
-            key={option.id}
-            onPress={() => { lightHaptic(); setSelectedFeedback(option.id === selectedFeedback ? null : option.id); if (option.id !== 'other') setOtherText(''); }}
-            className="flex-row items-center mb-2"
-            hitSlop={{ top: 2, bottom: 2, left: 0, right: 0 }}
-            style={{ backgroundColor: selectedFeedback === option.id ? COLORS.primary50 : COLORS.white, borderWidth: 1, borderColor: selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral300, borderRadius: 14, paddingVertical: Math.round(12 * SCALE), paddingHorizontal: Math.round(16 * SCALE), minHeight: 52 }}
-            activeOpacity={0.7}
-          >
-            <StyledView className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: selectedFeedback === option.id ? COLORS.primaryBorder : COLORS.neutral50 }}>
-              <EvaIcon name={option.icon} variant="outline" size={16} color={selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral500} />
-            </StyledView>
-            <Body className="ml-3 flex-1" style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.medium, color: selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral700 }}>{option.label}</Body>
-            {selectedFeedback === option.id && <EvaIcon name="checkmark-circle-2" variant="outline" size={20} color={COLORS.primary500} />}
-          </StyledTouchableOpacity>
-        ))}
-        {isOther && (
-          <StyledView className="mt-2">
+          <StyledView className="mb-4">
             <TextInput
               style={{
                 borderWidth: 1.5,
@@ -553,9 +574,9 @@ export const PassFeedbackModal: React.FC<{ visible: boolean; onClose: () => void
                 fontFamily: FONTS.regular,
                 fontSize: FONT_SIZES.lg,
                 lineHeight: LINE_HEIGHTS.lg,
-                color: THEME_COLORS.text.secondary,
-                minHeight: 80,
-                maxHeight: 120,
+                color: THEME_COLORS.text.primary,
+                minHeight: 100,
+                maxHeight: 140,
                 backgroundColor: THEME_COLORS.screenBackground,
                 textAlignVertical: 'top',
               }}
@@ -566,51 +587,107 @@ export const PassFeedbackModal: React.FC<{ visible: boolean; onClose: () => void
               multiline
               maxLength={300}
               autoFocus
+              accessibilityLabel="Describe what didn't feel right"
             />
             <Text style={{ fontFamily: FONTS.regular, fontSize: FONT_SIZES.sm, color: THEME_COLORS.text.tertiary, textAlign: 'right', marginTop: 4 }}>
               {otherText.length}/300
             </Text>
           </StyledView>
-        )}
-      </StyledView>
 
+          <StyledView className="flex-row" style={{ gap: Math.round(12 * SCALE) }}>
+            <StyledTouchableOpacity
+              onPress={handleOtherBack}
+              className="flex-1 items-center justify-center"
+              style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE) }}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Back to reasons"
+            >
+              <Body style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.semiBold, color: COLORS.neutral600 }}>Back</Body>
+            </StyledTouchableOpacity>
+            <StyledTouchableOpacity
+              onPress={handleOtherSubmit}
+              disabled={!canSubmitOther}
+              className="flex-1 items-center justify-center"
+              style={{ backgroundColor: canSubmitOther ? COLORS.primary500 : COLORS.neutral300, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE), ...SHADOWS.sm }}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Submit feedback"
+              accessibilityState={{ disabled: !canSubmitOther }}
+            >
+              <Body style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.semiBold, color: COLORS.white }}>Submit</Body>
+            </StyledTouchableOpacity>
+          </StyledView>
+        </>
+      ) : (
+        <>
+          <Body className="text-center mb-2" style={{ fontSize: FONT_SIZES['3xl'], fontFamily: FONTS.semiBold, color: COLORS.neutral900 }}>Quick question before you go</Body>
+          <Body className="text-center mb-6" style={{ fontSize: FONT_SIZES.xl, color: COLORS.neutral500, lineHeight: LINE_HEIGHTS['2xl'] }}>What didn't feel right? This helps us find better matches for you.</Body>
+
+          <StyledView className="mb-6">
+            {PASS_FEEDBACK_OPTIONS.map((option) => (
+              <StyledTouchableOpacity
+                key={option.id}
+                onPress={() => handleOptionSelect(option.id)}
+                className="flex-row items-center mb-2"
+                hitSlop={{ top: 2, bottom: 2, left: 0, right: 0 }}
+                style={{ backgroundColor: selectedFeedback === option.id ? COLORS.primary50 : COLORS.white, borderWidth: 1, borderColor: selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral300, borderRadius: 14, paddingVertical: Math.round(12 * SCALE), paddingHorizontal: Math.round(16 * SCALE), minHeight: 52 }}
+                activeOpacity={0.7}
+              >
+                <StyledView className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: selectedFeedback === option.id ? COLORS.primaryBorder : COLORS.neutral50 }}>
+                  <EvaIcon name={option.icon} variant="outline" size={16} color={selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral500} />
+                </StyledView>
+                <Body className="ml-3 flex-1" style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.medium, color: selectedFeedback === option.id ? COLORS.primary500 : COLORS.neutral700 }}>{option.label}</Body>
+                {selectedFeedback === option.id && <EvaIcon name="checkmark-circle-2" variant="outline" size={20} color={COLORS.primary500} />}
+              </StyledTouchableOpacity>
+            ))}
+          </StyledView>
+
+          <StyledView className="flex-row" style={{ gap: Math.round(12 * SCALE) }}>
+            <StyledTouchableOpacity onPress={handleClose} className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE) }} activeOpacity={0.7}>
+              <Body style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.semiBold, color: COLORS.neutral600 }}>No Thanks</Body>
+            </StyledTouchableOpacity>
+            <StyledTouchableOpacity onPress={handleSubmitList} disabled={!canSubmitList} className="flex-1 items-center justify-center" style={{ backgroundColor: canSubmitList ? COLORS.primary500 : COLORS.neutral300, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE), ...SHADOWS.sm }} activeOpacity={0.8}>
+              <Body style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.semiBold, color: COLORS.white }}>Submit</Body>
+            </StyledTouchableOpacity>
+          </StyledView>
+        </>
+      )}
+    </ModalContainer>
+  );
+};
+
+export const PassConfirmModal: React.FC<{ visible: boolean; onConfirm: () => void; onCancel: () => void }> = ({ visible, onConfirm, onCancel }) => {
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const SCALE = SCREEN_WIDTH / 375;
+  return (
+    <ModalContainer visible={visible} onClose={onCancel} variant="center">
+      <StyledView className="items-center mb-5">
+        <StyledView className="w-14 h-14 rounded-full items-center justify-center mb-4" style={{ backgroundColor: COLORS.warningBg }}>
+          <EvaIcon name="question-mark-circle" variant="outline" size={28} color={COLORS.warningIcon} />
+        </StyledView>
+        <Body className="text-center mb-2" style={{ fontSize: FONT_SIZES['3xl'], fontFamily: FONTS.semiBold, color: COLORS.neutral900 }}>Are you sure?</Body>
+        <Body className="text-center" style={{ fontSize: FONT_SIZES.xl, color: COLORS.neutral500, lineHeight: LINE_HEIGHTS['2xl'] }}>If you pass, you won't be able to connect with this person later.</Body>
+      </StyledView>
       <StyledView className="flex-row" style={{ gap: Math.round(12 * SCALE) }}>
-        <StyledTouchableOpacity onPress={handleClose} className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE) }} activeOpacity={0.7}>
-          <Body style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.semiBold, color: COLORS.neutral600 }}>No Thanks</Body>
+        <StyledTouchableOpacity onPress={onCancel} className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE) }} activeOpacity={0.7}>
+          <Body style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.semiBold, color: COLORS.neutral600 }}>Go Back</Body>
         </StyledTouchableOpacity>
-        <StyledTouchableOpacity onPress={handleSubmit} disabled={!canSubmit} className="flex-1 items-center justify-center" style={{ backgroundColor: canSubmit ? COLORS.primary500 : COLORS.neutral300, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE), ...SHADOWS.sm }} activeOpacity={0.8}>
-          <Body style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.semiBold, color: COLORS.white }}>Submit</Body>
+        <StyledTouchableOpacity onPress={onConfirm} className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.errorBg, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE) }} activeOpacity={0.7}>
+          <Body style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.semiBold, color: COLORS.errorText }}>Yes, Pass</Body>
         </StyledTouchableOpacity>
       </StyledView>
     </ModalContainer>
   );
 };
 
-export const PassConfirmModal: React.FC<{ visible: boolean; onConfirm: () => void; onCancel: () => void }> = ({ visible, onConfirm, onCancel }) => (
-  <ModalContainer visible={visible} onClose={onCancel} variant="center">
-    <StyledView className="items-center mb-5">
-      <StyledView className="w-14 h-14 rounded-full items-center justify-center mb-4" style={{ backgroundColor: COLORS.warningBg }}>
-        <EvaIcon name="question-mark-circle" variant="outline" size={28} color={COLORS.warningIcon} />
-      </StyledView>
-      <Body className="text-center mb-2" style={{ fontSize: FONT_SIZES['3xl'], fontFamily: FONTS.semiBold, color: COLORS.neutral900 }}>Are you sure?</Body>
-      <Body className="text-center" style={{ fontSize: FONT_SIZES.xl, color: COLORS.neutral500, lineHeight: LINE_HEIGHTS['2xl'] }}>If you pass, you won't be able to connect with this person later.</Body>
-    </StyledView>
-    <StyledView className="flex-row" style={{ gap: Math.round(12 * SCALE) }}>
-      <StyledTouchableOpacity onPress={onCancel} className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.neutral300, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE) }} activeOpacity={0.7}>
-        <Body style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.semiBold, color: COLORS.neutral600 }}>Go Back</Body>
-      </StyledTouchableOpacity>
-      <StyledTouchableOpacity onPress={onConfirm} className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.errorBg, borderRadius: 14, minHeight: 48, paddingVertical: Math.round(12 * SCALE) }} activeOpacity={0.7}>
-        <Body style={{ fontSize: FONT_SIZES.xl, fontFamily: FONTS.semiBold, color: COLORS.errorText }}>Yes, Pass</Body>
-      </StyledTouchableOpacity>
-    </StyledView>
-  </ModalContainer>
-);
-
 export const CelebrationOverlay: React.FC<{ visible: boolean; recipientName: string; onComplete: () => void }> = ({ visible, recipientName, onComplete }) => {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
   const heartScales = useRef(Array.from({ length: 12 }, () => new Animated.Value(0))).current;
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const SCALE = SCREEN_WIDTH / 375;
 
   useEffect(() => {
     if (!visible) return;

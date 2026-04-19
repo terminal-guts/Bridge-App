@@ -220,10 +220,12 @@ ShareableMatchCard.displayName = 'ShareableMatchCard';
 // ──────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   offscreen: {
+    // Render off the visible viewport so captureRef can still capture the card.
+    // NB: no `opacity: 0` — on Android it causes captureRef to export blank
+    // frames, and it's unnecessary on iOS since the view is already offscreen.
     position: 'absolute',
     left: -9999,
     top: -9999,
-    opacity: 0,
   },
   card: {
     width: CARD_WIDTH,

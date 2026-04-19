@@ -27,7 +27,7 @@ import {
   ScrollView,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  Dimensions,
+  useWindowDimensions,
   Animated,
   FlatList,
   NativeSyntheticEvent,
@@ -93,18 +93,8 @@ const StyledTouchableOpacity = styled(TouchableOpacity);
 // Constants - Design Tokens
 // ============================================================================
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const PHOTO_HEIGHT = Math.min(SCREEN_HEIGHT * 0.48, SCREEN_WIDTH * 1.12);
-const TAP_ZONE_WIDTH = SCREEN_WIDTH * 0.35;
-const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
-// Scale factor for responsive sizing (1.0 on iPhone SE 375pt, ~1.15 on Pro Max 430pt)
-const SCALE = SCREEN_WIDTH / 375;
-// Responsive font sizes for hero text
-const NAME_FONT_SIZE = Math.round(30 * SCALE);
-const NAME_LINE_HEIGHT = Math.round(36 * SCALE);
-// Gradient heights scale with photo area
-const TOP_GRADIENT_HEIGHT = Math.round(PHOTO_HEIGHT * 0.24);
-const BOTTOM_GRADIENT_HEIGHT = Math.round(PHOTO_HEIGHT * 0.35);
+// Dimensions migrated into the component via useWindowDimensions() so they
+// reflow on rotation / iPad split-view / different devices.
 
 // Photo section dark backgrounds (dark surfaces, not in warm COLORS palette)
 const PHOTO_BG = '#111111';
@@ -134,6 +124,17 @@ interface MatchProposalScreenProps {
 
 export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
+
+  // Responsive derivations: reflow on rotation / iPad split-view / different devices.
+  const PHOTO_HEIGHT = useMemo(() => Math.min(SCREEN_HEIGHT * 0.48, SCREEN_WIDTH * 1.12), [SCREEN_WIDTH, SCREEN_HEIGHT]);
+  const TAP_ZONE_WIDTH = useMemo(() => SCREEN_WIDTH * 0.35, [SCREEN_WIDTH]);
+  const SWIPE_THRESHOLD = useMemo(() => SCREEN_WIDTH * 0.25, [SCREEN_WIDTH]);
+  // Scale factor: 1.0 on iPhone SE 375pt, ~1.15 on Pro Max 430pt
+  const SCALE = useMemo(() => SCREEN_WIDTH / 375, [SCREEN_WIDTH]);
+  const TOP_GRADIENT_HEIGHT = useMemo(() => Math.round(PHOTO_HEIGHT * 0.24), [PHOTO_HEIGHT]);
+  const BOTTOM_GRADIENT_HEIGHT = useMemo(() => Math.round(PHOTO_HEIGHT * 0.35), [PHOTO_HEIGHT]);
+
   const { match, profile: passedProfile } = route.params || {};
 
   const effectiveProfile = useMemo(() => {
@@ -258,12 +259,12 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
         Animated.spring(swipeX, { toValue: 0, damping: SPRINGS.snappy.damping, stiffness: SPRINGS.snappy.stiffness, mass: SPRINGS.snappy.mass, useNativeDriver: true }).start();
       }
     },
-  }), [swipeX, swipeOpacity, handleAcceptInitiate, handlePassInitiate]);
+  }), [swipeX, swipeOpacity, handleAcceptInitiate, handlePassInitiate, SWIPE_THRESHOLD, SCREEN_WIDTH]);
 
   const handlePhotoScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
     if (index !== currentPhotoIndex) { setCurrentPhotoIndex(index); selectionHaptic(); }
-  }, [currentPhotoIndex]);
+  }, [currentPhotoIndex, SCREEN_WIDTH]);
 
   const goToPhoto = useCallback((index: number) => { flatListRef.current?.scrollToIndex({ index, animated: true }); setCurrentPhotoIndex(index); lightHaptic(); }, []);
 

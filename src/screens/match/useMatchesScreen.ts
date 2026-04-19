@@ -18,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import ViewShot from 'react-native-view-shot';
 import LottieView from 'lottie-react-native';
+import { Image } from 'expo-image';
 
 import { communityService } from '../../services/communityServiceIndex';
 import { ActiveMatch, MatchProposal, MatchEndedEvent } from '../../types/community';
@@ -269,6 +270,29 @@ export function useMatchesScreen() {
                 shareImageUriRef.current = null;
             }
 
+            // Prefetch every image rendered inside ShareableMatchCard before
+            // capturing. Without this, captureRef races image loads on slow
+            // networks and produces blank or partial exports. 3-second timeout
+            // prevents an offline/flaky network from blocking the share flow.
+            const photoUrls: string[] = [];
+            const user1Photo = profile?.photos?.[0]?.url;
+            const user2Photo = activeMatch?.partnerProfile?.photos?.[0]?.url;
+            if (user1Photo) photoUrls.push(user1Photo);
+            if (user2Photo) photoUrls.push(user2Photo);
+            const endorserAvatars = (activeMatch?.endorsers ?? [])
+                .map((e: any) => e.endorserProfile?.photos?.[0]?.url)
+                .filter((u: any): u is string => typeof u === 'string' && u.length > 0);
+            photoUrls.push(...endorserAvatars);
+
+            if (photoUrls.length > 0) {
+                const prefetchAll = Promise.all(
+                    photoUrls.map((u) => Image.prefetch(u).catch(() => false))
+                );
+                const timeout = new Promise<void>((resolve) => setTimeout(resolve, 3000));
+                await Promise.race([prefetchAll, timeout]);
+                if (!isMountedRef.current) return;
+            }
+
             let uri: string | null = null;
             for (let attempt = 0; attempt < 8; attempt++) {
                 if (!isMountedRef.current) return;
@@ -289,7 +313,7 @@ export function useMatchesScreen() {
         } finally {
             if (isMountedRef.current) setShareLoading(false);
         }
-    }, [activeMatch, shareLoading, shareSheetVisible]);
+    }, [activeMatch, profile, shareLoading, shareSheetVisible]);
 
     const handleCloseShareSheet = useCallback(() => {
         setShareSheetVisible(false);
