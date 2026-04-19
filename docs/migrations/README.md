@@ -8,9 +8,9 @@ This directory is the single source of truth for what's deployed to production v
 |------|---------------|
 | [MIGRATION_LOG.md](MIGRATION_LOG.md) | Every SQL migration with production status |
 | [PRODUCTION_SCHEMA.md](PRODUCTION_SCHEMA.md) | Pointer to the latest dated prod snapshot + how to refresh |
-| [PROD_SCHEMA_SNAPSHOT_2026-04-17.md](PROD_SCHEMA_SNAPSHOT_2026-04-17.md) | Full prod forensics: 38 tables × every column/index/policy, 136 RPCs, 21 triggers |
-| [SYNTHETIC_LOCAL_SCHEMA_2026-04-17.md](SYNTHETIC_LOCAL_SCHEMA_2026-04-17.md) | What `supabase db reset` produces from the migration chain |
-| [PRODUCTION_SCHEMA_DRIFT_REPORT.md](PRODUCTION_SCHEMA_DRIFT_REPORT.md) | Drift between old tracking doc and actual prod |
+| [archive/prod-schema-snapshot-2026-04-17.md](archive/prod-schema-snapshot-2026-04-17.md) | Full prod forensics: 38 tables × every column/index/policy, 136 RPCs, 21 triggers (2026-04-17 snapshot, archived) |
+| [archive/synthetic-local-schema-2026-04-17.md](archive/synthetic-local-schema-2026-04-17.md) | What `supabase db reset` produced from the migration chain (2026-04-17 snapshot, archived) |
+| [archive/drift-report-2026-04-17.md](archive/drift-report-2026-04-17.md) | One-time 2026-04-17 drift audit — drift now resolved (archived) |
 | [EDGE_FUNCTIONS.md](EDGE_FUNCTIONS.md) | All edge functions with deployment status and auth type |
 | [SECRETS.md](SECRETS.md) | Secret names (never values), which functions use them |
 | [LOCAL_SETUP.md](LOCAL_SETUP.md) | How to spin up a new local Supabase environment |

@@ -1,6 +1,6 @@
 # Production Schema
 
-**Authoritative snapshot:** [`PROD_SCHEMA_SNAPSHOT_2026-04-17.md`](PROD_SCHEMA_SNAPSHOT_2026-04-17.md) (1,795 lines — every table, column, index, policy, function, trigger in prod as of 2026-04-17).
+**Authoritative snapshot:** [`archive/prod-schema-snapshot-2026-04-17.md`](archive/prod-schema-snapshot-2026-04-17.md) (1,795 lines — every table, column, index, policy, function, trigger in prod as of 2026-04-17).
 
 **Raw JSON dump:** `snapshots/prod-schema-2026-04-17.json`.
 
