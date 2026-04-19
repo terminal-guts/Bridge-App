@@ -21,21 +21,26 @@ import { setCachedUserId, clearCachedUserId } from '../utils/auth';
 import { preloadCommunityCache } from '../services/communityCache';
 import { showToast } from '../utils/toast';
 import { selectionHaptic } from '../utils/haptics';
-import { CommunitySkeleton } from '../components/ui/SkeletonLoader';
+import { CommunitySkeleton, MatchesSkeleton, LeaderboardSkeleton, ChatSkeleton, MatchPreferencesSkeleton } from '../components/ui/SkeletonLoader';
 import { COLORS } from '../theme/colors';
 
 // ── All screens are lazy-loaded to minimize startup parsing ──
 
 // ── Lazy-loaded screens (only evaluated when navigated to) ──────────────────
-// Solid-color fallback prevents white flash / layout shift during lazy screen loads.
-// Uses the app's default background to blend seamlessly with the card style.
+// Default fallback: solid warm background that blends with the app's card
+// style. Screens with a matching skeleton (Chat, Leaderboard, Matches, etc.)
+// pass their skeleton as the Suspense fallback so the user sees content-shape
+// right away during the lazy-load parse instead of a blank view.
 const LAZY_FALLBACK_STYLE = { flex: 1, backgroundColor: COLORS.screenBackground } as const;
 const LazyFallback = () => <View style={LAZY_FALLBACK_STYLE} />;
 
-function withSuspense<P extends object>(LazyComponent: React.LazyExoticComponent<React.ComponentType<P>>) {
+function withSuspense<P extends object>(
+  LazyComponent: React.LazyExoticComponent<React.ComponentType<P>>,
+  Fallback: React.ComponentType = LazyFallback,
+) {
   return function SuspenseWrapped(props: P) {
     return (
-      <React.Suspense fallback={<LazyFallback />}>
+      <React.Suspense fallback={<Fallback />}>
         <LazyComponent {...props} />
       </React.Suspense>
     );
@@ -57,15 +62,16 @@ const WelcomeScreen = withSuspense(React.lazy(() => _welcomePreload.then(m => ({
 const LoginScreen = withSuspense(React.lazy(() => _loginPreload.then(m => ({ default: m.LoginScreen }))));
 const EmailVerificationScreen = withSuspense(React.lazy(() => import('../screens/auth/EmailVerificationScreen').then(m => ({ default: m.EmailVerificationScreen }))));
 
-// Main tab screens — all lazy (parsed on first navigation, not at startup)
-const CommunityScreen = withSuspense(React.lazy(() => import('../screens/main/CommunityScreen').then(m => ({ default: m.CommunityScreen }))));
+// Main tab screens — all lazy (parsed on first navigation, not at startup).
+// Each passes a dedicated skeleton as Suspense fallback so tabs feel instant.
+const CommunityScreen = withSuspense(React.lazy(() => import('../screens/main/CommunityScreen').then(m => ({ default: m.CommunityScreen }))), CommunitySkeleton);
 const ProfileScreen = withSuspense(React.lazy(() => import('../screens/main/ProfileScreen').then(m => ({ default: m.ProfileScreen }))));
-const MatchesScreen = withSuspense(React.lazy(() => import('../screens/match/MatchesScreen').then(m => ({ default: m.MatchesScreen }))));
+const MatchesScreen = withSuspense(React.lazy(() => import('../screens/match/MatchesScreen').then(m => ({ default: m.MatchesScreen }))), MatchesSkeleton);
 
 // Stack screens — lazy (navigated to on demand)
 const OnboardingScreen = withSuspense(React.lazy(() => _onboardingPreload.then(m => ({ default: m.OnboardingScreen }))));
 const FriendProposalScreen = withSuspense(React.lazy(() => import('../screens/community/FriendProposalScreen').then(m => ({ default: m.FriendProposalScreen }))));
-const ChatScreen = withSuspense(React.lazy(() => import('../screens/match/ChatScreen')));
+const ChatScreen = withSuspense(React.lazy(() => import('../screens/match/ChatScreen')), ChatSkeleton);
 const SettingsScreen = withSuspense(React.lazy(() => import('../screens/profile/SettingsScreen').then(m => ({ default: m.SettingsScreen }))));
 
 // Match sub-screens
@@ -75,7 +81,7 @@ const MatchProposalScreen = withSuspense(React.lazy(() => import('../screens/mat
 
 // Profile sub-screens
 const ProfileEditScreen = withSuspense(React.lazy(() => import('../screens/profile/ProfileEditScreen').then(m => ({ default: m.ProfileEditScreen }))));
-const MatchPreferencesScreen = withSuspense(React.lazy(() => import('../screens/profile/MatchPreferencesScreen').then(m => ({ default: m.MatchPreferencesScreen }))));
+const MatchPreferencesScreen = withSuspense(React.lazy(() => import('../screens/profile/MatchPreferencesScreen').then(m => ({ default: m.MatchPreferencesScreen }))), MatchPreferencesSkeleton);
 const BlockedUsersScreen = withSuspense(React.lazy(() => import('../screens/profile/BlockedUsersScreen').then(m => ({ default: m.BlockedUsersScreen }))));
 const PauseProfileScreen = withSuspense(React.lazy(() => import('../screens/profile/PauseProfileScreen').then(m => ({ default: m.PauseProfileScreen }))));
 const ProfileMatchScreen = withSuspense(React.lazy(() => import('../screens/profile/ProfileMatchScreen')));
@@ -91,7 +97,7 @@ const HelpSupportScreen = withSuspense(React.lazy(() => import('../screens/suppo
 const SupportChatScreen = withSuspense(React.lazy(() => import('../screens/support/SupportChatScreen').then(m => ({ default: m.SupportChatScreen }))));
 
 // Community sub-screens
-const LeaderboardScreen = withSuspense(React.lazy(() => import('../screens/community/LeaderboardScreen').then(m => ({ default: m.LeaderboardScreen }))));
+const LeaderboardScreen = withSuspense(React.lazy(() => import('../screens/community/LeaderboardScreen').then(m => ({ default: m.LeaderboardScreen }))), LeaderboardSkeleton);
 const StatsScreen = withSuspense(React.lazy(() => import('../screens/community/StatsScreen').then(m => ({ default: m.StatsScreen }))));
 const SuggestMatchScreen = withSuspense(React.lazy(() => import('../screens/community/SuggestMatchScreen')));
 
