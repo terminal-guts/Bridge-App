@@ -149,6 +149,13 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   // Set when the eager photo upload is rejected by moderation. Surfaced in PhotoUploadStep
   // so the user sees why the photo was removed and can pick a different one.
   const [photoModerationError, setPhotoModerationError] = useState<string | null>(null);
+  // True while the eager photo upload is in flight (upload + moderation). Surfaced
+  // to PhotoUploadStep so the photo slot can show a spinner — without it the
+  // background moderation call (can be several seconds on Vision API) is invisible.
+  const [photoUploading, setPhotoUploading] = useState<boolean>(false);
+  // True once Vision has approved the photo. Drives the green confirmation pill
+  // in PhotoUploadStep. Cleared when the user picks a new photo or one is rejected.
+  const [photoApproved, setPhotoApproved] = useState<boolean>(false);
   // Guard against concurrent goNext invocations (rapid taps / double-submit)
   const isGoingNextRef = useRef(false);
   // Background photo upload: starts after PhotoUploadStep, results used by completeOnboarding
@@ -312,11 +319,14 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
     // Only start if not already uploading the same set
     if (photoUploadPromiseRef.current) return;
     logger.info('[OnboardingScreen] Starting eager photo upload:', uris.length, 'photos');
+    setPhotoUploading(true);
     photoUploadPromiseRef.current = uploadMultiplePhotos(uris)
       .then(res => {
         if (!isMountedRef.current) return res;
+        setPhotoUploading(false);
         if (res.ok && res.data) {
           photoUploadResultRef.current = res.data;
+          setPhotoApproved(true);
           logger.info('[OnboardingScreen] Eager photo upload complete:', res.data.length);
         } else if (res.error?.code === 'MODERATION_REJECTED') {
           // Moderation rejected the photo. Clear the upload refs, drop the photo
@@ -325,6 +335,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
           logger.warn('[OnboardingScreen] Eager photo upload rejected by moderation:', res.error.message);
           photoUploadPromiseRef.current = null;
           photoUploadResultRef.current = null;
+          setPhotoApproved(false);
           setPhotoModerationError(res.error.message);
           updateData({ photos: [] });
         } else {
@@ -333,6 +344,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
         return res;
       })
       .catch(err => {
+        if (isMountedRef.current) setPhotoUploading(false);
         logger.warn('[OnboardingScreen] Eager photo upload error:', err.message);
         return null;
       });
@@ -801,6 +813,14 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
               onResendCode={() => setShowResendScreen(true)}
               photoModerationError={photoModerationError}
               onClearPhotoModerationError={() => setPhotoModerationError(null)}
+              photoUploading={photoUploading}
+              photoApproved={photoApproved}
+              onPhotoPicked={() => {
+                // Reset approval when user picks a new photo — the previous
+                // approval no longer applies to the new file.
+                setPhotoApproved(false);
+                setPhotoUploading(true);
+              }}
             />
           </Suspense>
         </Animated.View>

@@ -1,11 +1,39 @@
 # Bridge App — Claude Code Instructions
 
+> # 🛑 ABSOLUTE RULE — PRODUCTION IS OFF-LIMITS WITHOUT EXPLICIT PER-ACTION APPROVAL
+>
+> **This rule applies to EVERY agent, in EVERY session, FOREVER. No exceptions.**
+>
+> You may **NEVER** — under any circumstances, ever — take any of the following actions without the user's direct, in-conversation, unambiguous approval **for that specific action**:
+>
+> - ❌ Execute SQL against the production database (via `exec_sql`, `scripts/supabase-exec.sh`, REST, direct connection, or any other path)
+> - ❌ Run or apply a migration to production (`supabase db push`, hand-apply via `exec_sql`, or any other mechanism)
+> - ❌ Deploy, update, or delete a production Supabase edge function (`supabase functions deploy`, `supabase functions delete`)
+> - ❌ Set, rotate, or unset production secrets (`supabase secrets set / unset`)
+> - ❌ Modify RLS policies, indexes, triggers, RPCs, tables, or columns on the production database
+> - ❌ Drop, truncate, UPDATE, DELETE, or INSERT against any production table
+> - ❌ Change production cron schedules or vault entries
+>
+> **"Explicit approval" means all of the following:**
+> 1. The user has described (or you have described and the user has read) the **exact action** you will take.
+> 2. The user has said, in this conversation, "go ahead" / "yes, do it" / "approved" / equivalent for **that specific action**.
+> 3. Approval is **per-action and per-session**. Prior approval for a related action does NOT carry over. Approval from a past conversation does NOT carry over. "We should do X eventually" is NOT approval. "Looks good" on a plan is NOT approval to execute each step.
+>
+> **When in any doubt — STOP AND ASK.** Describe the exact command, its effect, and wait. There is zero penalty for over-asking. The penalty for acting unilaterally against production is real users seeing real breakage *instantly* — Supabase changes have no review gate and no rollback window.
+>
+> **What IS safe without per-action approval:**
+> - Local Supabase only (`127.0.0.1:54321`, `54322`, `54323`, `54324`) — `supabase start/stop/reset/serve`, editing `supabase/.env.local`, `supabase/config.toml`, local migrations via `supabase db reset`.
+> - Read-only inspection of prod — `scripts/supabase-query.sh`, `scripts/dump-prod-schema.sh`, `scripts/snapshot-export.sh`, any `SELECT`-only query via `scripts/supabase-exec.sh`.
+> - Frontend code edits (React Native/Expo) — these ship through EAS build + App Store review, so they have a natural review gate before reaching users.
+>
+> **If you think you might be about to touch prod, assume you are, and ask.**
+
 ## Codebase Status
 
 This is the **production codebase** for Bridge — the app is **LIVE on the App Store** as of 2026-04-05. It contains both the frontend (React Native/Expo) and backend (Supabase, in the `supabase/` subdirectory). Treat all code here as production-quality.
 
-**CRITICAL — Never Alter Live User Experience Without Direct Approval:**
-No change — whether Supabase or frontend — should alter the experience of live users who have downloaded the app without the user's direct, clear approval. Supabase edge functions, database migrations, and RPC changes go live **immediately** when deployed — there is no review gate. This means any Supabase alteration instantly impacts real users. **Never deploy Supabase changes (deploy functions, run migrations, modify RLS policies, alter tables, update edge functions) without explicit user confirmation.** Always describe the change and its impact first, then wait for a clear "go ahead" before executing.
+**Never Alter Live User Experience Without Direct Approval:**
+No change — whether Supabase or frontend — should alter the experience of live users who have downloaded the app without the user's direct, clear approval. Supabase edge functions, database migrations, and RPC changes go live **immediately** when deployed — there is no review gate. This means any Supabase alteration instantly impacts real users. **Never deploy Supabase changes (deploy functions, run migrations, modify RLS policies, alter tables, update edge functions) without explicit user confirmation.** Always describe the change and its impact first, then wait for a clear "go ahead" before executing. See the ABSOLUTE RULE banner at the top of this file.
 
 **Multiple layers of protection for production database:**
 1. **`.env.local` toggle** — local Supabase URL (`127.0.0.1:54321`) overrides production when uncommented. Always verify which environment is active before any database operation.

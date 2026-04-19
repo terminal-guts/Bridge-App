@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Alert, Linking, Platform } from 'react-native';
+import { View, TouchableOpacity, Alert, Linking, Platform, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { styled } from 'nativewind';
 import { H1, Body } from '../../../components/ui';
 import * as ImagePicker from 'expo-image-picker';
@@ -8,6 +9,8 @@ import { OnboardingData, Photo } from '../../../types';
 import { OnboardingLayout } from '../../../components/onboarding/OnboardingLayout';
 import { EvaIcon } from '../../../components/icons';
 import { COLORS } from '../../../theme/colors';
+import { FONTS, FONT_SIZES } from '../../../constants/typography';
+import { DURATIONS } from '../../../constants/animations';
 
 interface PhotoUploadStepProps {
   data: Partial<OnboardingData>;
@@ -19,6 +22,16 @@ interface PhotoUploadStepProps {
   // Surfaced from OnboardingScreen when the eager photo upload is rejected by moderation.
   photoModerationError?: string | null;
   onClearPhotoModerationError?: () => void;
+  // True while the eager photo upload is in flight (upload + moderation).
+  // Drives the spinner overlay on the photo slot so a slow Vision API call is visible.
+  photoUploading?: boolean;
+  // Fired synchronously the moment a photo is picked, before the upload-kick-off
+  // useEffect runs. Lets the parent flip photoUploading=true immediately so the
+  // Continue button is disabled even in the narrow window before the effect fires.
+  onPhotoPicked?: () => void;
+  // True once Vision API has approved the photo (face detected + SafeSearch clean).
+  // Drives the green "real photo" confirmation pill below the image.
+  photoApproved?: boolean;
 }
 
 const StyledView = styled(View);
@@ -34,6 +47,9 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
   onBack,
   photoModerationError,
   onClearPhotoModerationError,
+  photoUploading,
+  onPhotoPicked,
+  photoApproved,
 }) => {
   // Read photos straight from parent state — every change must propagate
   // immediately so the eager upload effect in OnboardingScreen fires the
@@ -68,6 +84,9 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
         updateData({ photos: updated });
         setError('');
         onClearPhotoModerationError?.();
+        // Fire synchronously so the parent disables Continue before the eager-upload
+        // useEffect has a chance to run. Closes the bypass race.
+        onPhotoPicked?.();
       }
     } catch (err) {
       Alert.alert('Oops', 'Something went wrong picking that photo. Give it another try!');
@@ -144,6 +163,11 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
       setError('Add at least one photo so your matches can see you');
       return;
     }
+    // Belt-and-suspenders: the button is disabled via continueDisabled below,
+    // but guard here too in case a synthetic tap bypasses the disabled state.
+    if (photoUploading) {
+      return;
+    }
     onNext();
   };
 
@@ -151,6 +175,7 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
     <OnboardingLayout
       onBack={onBack}
       onContinue={validateAndContinue}
+      continueDisabled={photoUploading}
       hasTextInput={false}
     >
       <StyledView className="mt-8">
@@ -160,7 +185,7 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
         </Body>
 
         {/* Single photo slot — centered, large */}
-        <StyledView className="items-center mb-6">
+        <StyledView className="items-center mb-3">
           <StyledView style={{ width: '65%', aspectRatio: 3 / 4 }}>
             {photos[0] ? (
               <StyledView className="w-full h-full relative">
@@ -170,16 +195,50 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
                   contentFit="cover"
                   cachePolicy="memory-disk"
                   transition={200}
+                  // Dim the image while Vision API is verifying it. Snaps back to
+                  // full opacity when approved — the "pop" is the payoff signal.
+                  style={{ opacity: photoUploading ? 0.45 : 1 }}
                 />
-                {/* Remove button */}
-                <StyledTouchableOpacity
-                  onPress={() => removePhoto(0)}
-                  className="absolute top-3 right-3 bg-neutral-900/60 rounded-full w-8 h-8 items-center justify-center"
-                  accessibilityRole="button"
-                  accessibilityLabel="Remove photo"
-                >
-                  <EvaIcon name="close" variant="outline" size={18} color="white" />
-                </StyledTouchableOpacity>
+                {/* Moderation-in-flight overlay: larger spinner + descriptive text so
+                    it reads as "we're actively verifying your photo," not "loading." */}
+                {photoUploading && (
+                  <Animated.View
+                    entering={FadeIn.duration(DURATIONS.micro)}
+                    exiting={FadeOut.duration(DURATIONS.micro)}
+                    style={{
+                      position: 'absolute',
+                      top: 0, left: 0, right: 0, bottom: 0,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 16,
+                    }}
+                    accessibilityLabel="Checking your photo"
+                    accessibilityRole="progressbar"
+                  >
+                    <ActivityIndicator size="large" color={COLORS.primary} />
+                    <Body
+                      style={{
+                        marginTop: 10,
+                        fontFamily: FONTS.medium,
+                        fontSize: FONT_SIZES.sm,
+                        color: COLORS.text.primary,
+                      }}
+                    >
+                      Checking your photo…
+                    </Body>
+                  </Animated.View>
+                )}
+                {/* Remove button — hidden while moderation is in flight (can't remove mid-check) */}
+                {!photoUploading && (
+                  <StyledTouchableOpacity
+                    onPress={() => removePhoto(0)}
+                    className="absolute top-3 right-3 bg-neutral-900/60 rounded-full w-8 h-8 items-center justify-center"
+                    accessibilityRole="button"
+                    accessibilityLabel="Remove photo"
+                  >
+                    <EvaIcon name="close" variant="outline" size={18} color="white" />
+                  </StyledTouchableOpacity>
+                )}
               </StyledView>
             ) : (
               <StyledTouchableOpacity
@@ -194,6 +253,37 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
             )}
           </StyledView>
         </StyledView>
+
+        {/* Success pill — shown after Vision approves. Reinforces "real photos" norm. */}
+        {photoApproved && !photoUploading && !photoModerationError && photos[0] && (
+          <Animated.View
+            entering={FadeIn.duration(DURATIONS.normal)}
+            style={{ alignItems: 'center', marginBottom: 16 }}
+          >
+            <StyledView
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 999,
+                backgroundColor: 'rgba(52, 199, 89, 0.1)',
+              }}
+            >
+              <EvaIcon name="checkmark-circle-2" variant="fill" size={16} color={COLORS.success} />
+              <Body
+                style={{
+                  color: COLORS.success,
+                  fontFamily: FONTS.medium,
+                  fontSize: FONT_SIZES.sm,
+                }}
+              >
+                Thanks for using a real photo of yourself
+              </Body>
+            </StyledView>
+          </Animated.View>
+        )}
 
         {(photoModerationError || error) && (
           <Body className="text-error text-sm mt-2">{photoModerationError || error}</Body>
