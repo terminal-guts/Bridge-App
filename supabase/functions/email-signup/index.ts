@@ -49,6 +49,19 @@ async function hashCode(code: string, email: string): Promise<string> {
     .join("");
 }
 
+/** Short random hex ref (6 chars) included in every email so Gmail can't
+ *  identify repeated content across threaded OTP emails. Without this,
+ *  Gmail collapses the expiry line on every email after the first in a
+ *  thread and replaces it with a "•••" show-trimmed-content icon —
+ *  users perceive the email as broken/old-format even though the HTML
+ *  is identical. A 3-byte random value is plenty of entropy to make
+ *  each email's body unique. Not security-bearing. */
+function generateEmailRef(): string {
+  const bytes = new Uint8Array(3);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 /** Constant-time comparison for hex strings. */
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -79,7 +92,7 @@ function timingSafeEqual(a: string, b: string): boolean {
  *    transactional OTP email; users requested the code explicitly, so there
  *    is nothing to unsubscribe from. Advertising unsub on transactional
  *    mail invites accidental clicks that hurt reputation. */
-function buildVerificationEmail(code: string): string {
+function buildVerificationEmail(code: string, ref: string): string {
   return `
 <div style="font-family: Arial, Helvetica, sans-serif; max-width: 420px; margin: 0 auto; padding: 40px 24px;">
   <div style="text-align: center; margin-bottom: 32px;">
@@ -95,19 +108,24 @@ function buildVerificationEmail(code: string): string {
     This code expires in ${CODE_EXPIRY_MINUTES} minutes.<br/>
     If you didn't request this, you can safely ignore this email.
   </p>
+  <p style="color: #CBD5E1; font-size: 10px; text-align: center; margin-top: 24px; font-family: Arial, Helvetica, sans-serif;">
+    Ref: ${ref}
+  </p>
 </div>`.trim();
 }
 
 /** Plain-text alternative for multipart/alternative MIME. Required for
  *  deliverability — HTML-only emails score higher on Gmail/Outlook spam
  *  filters, and some clients (watchOS, screen readers) prefer text. */
-function buildVerificationTextEmail(code: string): string {
+function buildVerificationTextEmail(code: string, ref: string): string {
   return `Bridge
 
 Your verification code: ${code}
 
 This code expires in ${CODE_EXPIRY_MINUTES} minutes.
-If you didn't request this, you can safely ignore this email.`;
+If you didn't request this, you can safely ignore this email.
+
+Ref: ${ref}`;
 }
 
 /** Get client IP from request headers. */
@@ -188,7 +206,7 @@ async function handleSend(
   //    Per-IP and per-email rate limits above still bound brute-force enumeration.
 
   const userExists = existingUser && existingUser.length > 0;
-  const hasCompletedProfile = userExists && existingUser[0].profile_completed === true;
+  const hasProfileRow = userExists && existingUser[0].has_profile === true;
 
   if (flow === "login") {
     // Login: user MUST exist. Otherwise tell them to sign up.
@@ -200,10 +218,15 @@ async function handleSend(
     }
     // User exists — proceed to send code.
   } else {
-    // Signup: block users whose profile is already complete.
-    // Users with auth rows but incomplete profiles (abandoned onboarding) are
-    // allowed through — they'll get a fresh code and resume where they left off.
-    if (hasCompletedProfile) {
+    // Signup: block if a user_profiles row exists for this email (Rule B).
+    // A profile row is created the moment the user first verifies an OTP
+    // (via ensureProfileRow in OnboardingScreen). Treating that as the
+    // commitment point means partially-onboarded users must sign in — which
+    // auto-resumes onboarding — or delete their account to start fresh.
+    // This avoids the hazard where `profile_completed` flipping back to
+    // false (e.g. a photo was deleted) would let someone silently overwrite
+    // their real profile data by re-running the signup flow.
+    if (hasProfileRow) {
       return jsonResponse({
         error: "You already have an account. Tap Sign In instead.",
         code: "ACCOUNT_EXISTS",
@@ -218,9 +241,11 @@ async function handleSend(
     .eq("email", email)
     .eq("used", false);
 
-  // 4. Generate and hash the code
+  // 4. Generate and hash the code + a per-email ref (defeats Gmail thread
+  //    trimming — see generateEmailRef comment).
   const code = generateOTP();
   const codeHash = await hashCode(code, email);
+  const emailRef = generateEmailRef();
 
   // 5. Send via Resend FIRST — only insert DB record if send succeeds
   const resendKey = Deno.env.get("RESEND_API_KEY");
@@ -239,8 +264,8 @@ async function handleSend(
       from: "Bridge <verify@bridgedate.app>",
       to: [email],
       subject: "Your Bridge verification code",
-      html: buildVerificationEmail(code),
-      text: buildVerificationTextEmail(code),
+      html: buildVerificationEmail(code, emailRef),
+      text: buildVerificationTextEmail(code, emailRef),
     }),
   });
 
