@@ -40,7 +40,7 @@ const SLIDES = [
   {
     icon: 'heart' as const,
     title: "Your votes matter.",
-    body: "If the community approves a match,\nthey decide.\n\nIf not, it disappears.",
+    body: "If enough people vote yes, the pair gets the match and decides whether to meet.\n\nIf not, it disappears.",
     cta: "Let's go!",
   },
 ] as const;
