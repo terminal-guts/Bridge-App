@@ -1,7 +1,6 @@
-import { View, StatusBar, ScrollView, Linking, Text } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, ScrollView, Linking, Text } from 'react-native';
 import { styled } from 'nativewind';
-import { H2, H3, Body, BodySmall, BackHeader } from '../../components/ui';
+import { H2, H3, Body, BodySmall, BackHeader, ScreenWrapper } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { TEXT_STYLES, FONTS } from '../../constants/typography';
@@ -10,15 +9,12 @@ interface PrivacyPolicyProps {
   navigation: NavigationProp<RootStackParamList>;
 }
 
-const StyledSafeAreaView = styled(SafeAreaView);
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
 
 export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
   return (
-    <StyledSafeAreaView className="flex-1 bg-white">
-      <StatusBar barStyle="dark-content" />
-
+    <ScreenWrapper>
       <BackHeader title="Privacy Policy" />
 
       <StyledScrollView className="flex-1 px-4 py-4">
@@ -128,6 +124,6 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ navigation }) => {
           {'\n'}Houston, TX
         </Body>
       </StyledScrollView>
-    </StyledSafeAreaView>
+    </ScreenWrapper>
   );
 };

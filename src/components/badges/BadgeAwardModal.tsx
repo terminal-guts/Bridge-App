@@ -19,6 +19,8 @@ import {
   Keyboard,
   ActivityIndicator,
   StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -279,52 +281,74 @@ export const BadgeAwardModal: React.FC<BadgeAwardModalProps> = ({
   const canProceed = step === 0 ? !!selectedIcon : step === 1 ? !!message.trim() : false;
 
   return (
-    <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={handleClose}
+    >
+      {/* Backdrop — taps here dismiss */}
       <Pressable style={styles.overlay} onPress={handleClose}>
         <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }, overlayStyle]} />
       </Pressable>
 
+      {/* Sheet container — pointerEvents="box-none" lets backdrop receive taps outside sheet bounds */}
       <Animated.View style={[styles.modalContainer, modalStyle]} pointerEvents="box-none">
-        <View style={styles.modal}>
-          {/* Header */}
-          <View style={styles.header}>
-            {step > 0 ? (
-              <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.primary} />
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.backButton} />
-            )}
-            <Text style={styles.headerTitle}>
-              {existingBadge ? 'Edit Badge' : `Badge for ${friendName}`}
-            </Text>
-            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <EvaIcon name="close" variant="outline" size={24} color={COLORS.text.secondary} />
-            </TouchableOpacity>
-          </View>
-
-          {renderStepDots()}
-
-          {/* Step Content */}
-          <View style={styles.stepContent}>
-            {step === 0 && renderIconPicker()}
-            {step === 1 && renderMessageInput()}
-            {step === 2 && renderReview()}
-          </View>
-
-          {/* Next Button (steps 0 & 1) */}
-          {step < 2 && (
-            <TouchableOpacity
-              onPress={handleNext}
-              disabled={!canProceed}
-              style={[styles.nextButton, !canProceed && styles.nextButtonDisabled]}
-            >
-              <Text style={[styles.nextButtonText, !canProceed && styles.nextButtonTextDisabled]}>
-                Next
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ width: '100%' }}
+        >
+          {/* Inner Pressable no-ops press events so taps inside the sheet don't bubble to the backdrop */}
+          <Pressable onPress={() => {}} style={styles.modal}>
+            {/* Header */}
+            <View style={styles.header}>
+              {step > 0 ? (
+                <TouchableOpacity
+                  onPress={handleBack}
+                  style={styles.backButton}
+                  hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                >
+                  <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.primary} />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.backButton} />
+              )}
+              <Text style={styles.headerTitle}>
+                {existingBadge ? 'Edit Badge' : `Badge for ${friendName}`}
               </Text>
-            </TouchableOpacity>
-          )}
-        </View>
+              <TouchableOpacity
+                onPress={handleClose}
+                style={styles.closeButton}
+                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+              >
+                <EvaIcon name="close" variant="outline" size={24} color={COLORS.text.secondary} />
+              </TouchableOpacity>
+            </View>
+
+            {renderStepDots()}
+
+            {/* Step Content */}
+            <View style={styles.stepContent}>
+              {step === 0 && renderIconPicker()}
+              {step === 1 && renderMessageInput()}
+              {step === 2 && renderReview()}
+            </View>
+
+            {/* Next Button (steps 0 & 1) */}
+            {step < 2 && (
+              <TouchableOpacity
+                onPress={handleNext}
+                disabled={!canProceed}
+                style={[styles.nextButton, !canProceed && styles.nextButtonDisabled]}
+              >
+                <Text style={[styles.nextButtonText, !canProceed && styles.nextButtonTextDisabled]}>
+                  Next
+                </Text>
+              </TouchableOpacity>
+            )}
+          </Pressable>
+        </KeyboardAvoidingView>
       </Animated.View>
     </Modal>
   );

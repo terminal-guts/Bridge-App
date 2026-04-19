@@ -6,14 +6,14 @@ import {
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { Button } from '../ui';
-import { Body } from '../ui/Typography';
 import { TouchableOpacity as RNTouchableOpacity } from 'react-native';
 import { COLORS } from '../../theme/colors';
+import { EvaIcon } from '../icons';
 
 interface OnboardingLayoutProps {
   children: React.ReactNode;
@@ -49,11 +49,11 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   topPadding,
 }) => {
   const insets = useSafeAreaInsets();
-  const { height: screenHeight } = Dimensions.get('window');
-  const footerPaddingBottom = Math.max(16, Math.round(screenHeight * 0.069) - insets.bottom);
+  const { height: screenHeight } = useWindowDimensions();
 
   // Progress bar header height: 6px bar + ~22px label = 28px from safe area top
   const HEADER_HEIGHT = 28;
+  const footerPaddingBottom = Math.max(16, Math.round(screenHeight * 0.069) - insets.bottom);
 
   // Start with keyboard visible for persistent keyboard pages to prevent layout shift
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(keyboardPersistent);
@@ -93,9 +93,9 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
     return (
       <StyledSafeAreaView edges={['top']} className="flex-1" style={{ backgroundColor: COLORS.screenBackground }}>
         <StyledKeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           className="flex-1"
-          keyboardVerticalOffset={0}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + HEADER_HEIGHT : 0}
           enabled={true}
         >
           <StyledView className="flex-1">
@@ -107,7 +107,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
                 style={{ top: HEADER_HEIGHT + 4, zIndex: 60 }}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Body style={{ fontSize: 22, color: COLORS.text.primary }}>←</Body>
+                <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.primary} />
               </StyledRNTouchableOpacity>
             )}
             {/* Scrollable Content */}
@@ -192,7 +192,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
             style={{ top: HEADER_HEIGHT + 4, zIndex: 60 }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Body style={{ fontSize: 22, color: COLORS.text.primary }}>←</Body>
+            <EvaIcon name="arrow-back" variant="outline" size={24} color={COLORS.text.primary} />
           </StyledRNTouchableOpacity>
         )}
         {/* Scrollable Content */}

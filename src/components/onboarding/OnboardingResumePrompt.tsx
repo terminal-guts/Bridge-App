@@ -30,7 +30,7 @@ export const OnboardingResumePrompt: React.FC<OnboardingResumePromptProps> = () 
   return (
     <Modal visible transparent animationType="slide" statusBarTranslucent onRequestClose={dismiss}>
       <View style={styles.overlay}>
-        <View style={styles.overlayBg} />
+        <TouchableOpacity activeOpacity={1} onPress={dismiss} style={styles.overlayBg} />
 
         {/* Bottom sheet card */}
         <View
@@ -39,7 +39,14 @@ export const OnboardingResumePrompt: React.FC<OnboardingResumePromptProps> = () 
             { paddingBottom: Math.max(insets.bottom + 16, 32) },
           ]}
         >
-          <View style={styles.handle} />
+          <TouchableOpacity
+            onPress={dismiss}
+            activeOpacity={0.6}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            style={styles.handleHit}
+          >
+            <View style={styles.handle} />
+          </TouchableOpacity>
 
           <TouchableOpacity onPress={dismiss} style={styles.closeButton} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <EvaIcon name="close" variant="outline" size={20} color="#9CA3AF" />
@@ -77,13 +84,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingTop: 12,
   },
+  handleHit: {
+    alignSelf: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    marginBottom: 4,
+  },
   handle: {
     width: 36,
     height: 4,
     borderRadius: 2,
     backgroundColor: '#D1D5DB',
-    alignSelf: 'center',
-    marginBottom: 12,
   },
   closeButton: {
     alignSelf: 'flex-end',

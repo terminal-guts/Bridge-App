@@ -715,7 +715,13 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
     } catch (error: any) {
       logger.error('Onboarding error:', error);
       setIsCreatingProfile(false);
-      // No Cancel option — user must retry to avoid getting stuck
+      // Show a softer toast first so the user has a gentler first signal...
+      showToast.error(
+        'Almost there',
+        'Something went wrong. We\'ll try again in a moment.',
+      );
+      // ...then fall back to an Alert as the final safeguard (no Cancel —
+      // the user must retry so they don't get stuck mid-profile-creation).
       Alert.alert(
         'Almost There!',
         'Something went wrong. Let\'s try that again.',

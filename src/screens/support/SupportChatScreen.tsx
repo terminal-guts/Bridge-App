@@ -11,7 +11,7 @@ import {
   StyleSheet,
   Text,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationProp } from '@react-navigation/native';
 import { EvaIcon } from '../../components/icons';
 import { BackHeader, LoadingState } from '../../components/ui';
@@ -62,11 +62,13 @@ const formatMessageDate = (date: Date): string => {
 };
 
 export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
+  const [headerHeight, setHeaderHeight] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -215,12 +217,14 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
     <SafeAreaView style={s.container}>
       <StatusBar barStyle="dark-content" />
 
-      <BackHeader title="Feedback" titleAlign="center" />
+      <View onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
+        <BackHeader title="Feedback" titleAlign="center" />
+      </View>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={s.flex1}
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + headerHeight : 0}
       >
         {/* Messages */}
         <FlatList
@@ -247,7 +251,7 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
         )}
 
         {/* Input bar */}
-        <View style={s.inputBar}>
+        <View style={[s.inputBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
           <View style={s.inputWrap}>
             <TextInput
               style={s.textInput}

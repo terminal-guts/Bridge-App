@@ -6,6 +6,7 @@ import Animated, {
   withTiming,
   cancelAnimation,
   runOnJS,
+  useReducedMotion,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
@@ -14,6 +15,7 @@ import { Button } from '../ui/Button';
 import { EvaIcon } from '../icons';
 import { lightHaptic } from '../../utils/haptics';
 import { OVERLAYS } from '../../theme/shadows';
+import { DURATIONS } from '../../constants/animations';
 
 interface OnboardingVotingTutorialProps {
   visible: boolean;
@@ -50,6 +52,7 @@ export const OnboardingVotingTutorial: React.FC<OnboardingVotingTutorialProps> =
   onDismiss,
 }) => {
   const insets = useSafeAreaInsets();
+  const reduceMotion = useReducedMotion();
   const [currentSlide, setCurrentSlide] = useState(0);
   // Ref so PanResponder (created once) always reads current index
   const currentSlideRef = useRef(0);
@@ -72,9 +75,14 @@ export const OnboardingVotingTutorial: React.FC<OnboardingVotingTutorialProps> =
     if (next < 0) return;
     if (next >= TOTAL) { onDismiss(); return; }
     lightHaptic();
-    opacity.value = withTiming(0, { duration: 120 }, () => {
+    if (reduceMotion) {
+      updateSlide(next);
+      opacity.value = 1;
+      return;
+    }
+    opacity.value = withTiming(0, { duration: DURATIONS.micro }, () => {
       runOnJS(updateSlide)(next);
-      opacity.value = withTiming(1, { duration: 180 });
+      opacity.value = withTiming(1, { duration: DURATIONS.micro });
     });
   };
 
