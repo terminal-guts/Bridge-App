@@ -27,7 +27,7 @@ import { DURATIONS } from '../../../constants/animations';
 import { createLogger } from '../../../utils/secureLogger';
 import { EvaIcon } from '../../../components/icons';
 import { getOptimizedPhotoUrl } from '../../../utils/imageUtils';
-import { uploadPhoto } from '../../../services/photoService';
+import { uploadPhoto, getPhotoSignedUrl } from '../../../services/photoService';
 import type { UserProfile } from '../../../types';
 
 const logger = createLogger('PhotosSection');
@@ -145,12 +145,21 @@ export const PhotosSection: React.FC<PhotosSectionProps> = ({
     try {
       const res = await uploadPhoto(asset.uri, order, isMain);
       if (res.ok && res.data) {
+        // uploadPhoto returns a raw storage path (e.g. "userId/photo.jpg").
+        // <Image> can't render raw paths — we need a signed URL. Sign it
+        // here so the tile shows the actual photo post-upload instead of
+        // the grey placeholder (the signed URL lasts 24h; on next full
+        // profile load the resolver re-signs as needed).
+        const signed = await getPhotoSignedUrl(res.data.photo.url, 86400);
+        const displayUrl = signed.ok && signed.data ? signed.data : res.data.photo.url;
         setProfile((prev) => {
           if (!prev) return prev;
           return {
             ...prev,
             photos: prev.photos.map((p) =>
-              p.id === tempId ? { ...res.data!.photo, isMain, order } : p,
+              p.id === tempId
+                ? { ...res.data!.photo, url: displayUrl, isMain, order }
+                : p,
             ),
           };
         });
@@ -367,15 +376,15 @@ export const PhotosSection: React.FC<PhotosSectionProps> = ({
                   </Animated.View>
                 )}
 
-                {/* Verified checkmark — brief after approval */}
+                {/* Verified checkmark — bottom-right corner, brief after approval */}
                 {isRecentlyApproved && !isUploading && (
                   <Animated.View
                     entering={FadeIn.duration(DURATIONS.normal)}
                     exiting={FadeOut.duration(DURATIONS.normal)}
                     style={{
                       position: 'absolute',
-                      top: 8,
-                      right: 36,
+                      bottom: 8,
+                      right: 8,
                       backgroundColor: COLORS.success,
                       borderRadius: 999,
                       width: 22, height: 22,
