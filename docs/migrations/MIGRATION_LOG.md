@@ -16,6 +16,15 @@ Single source of truth for every SQL migration's state. Ordered by filename (tim
 | M5 | `20260418100001_local_align_prod_schema.sql` | Backfills every prod-only object that was added via manual ALTER/CREATE outside the migration chain (4 tables, 10 columns, 5 indexes, 2 policies, 1 trigger, `citext` extension, `handle_updated_at()`, `support_reply_context` RLS, `user_profiles.role` NOT NULL) | **NEW** | pending reset | 🚫 NOT APPLIED (prod already has every object) | Yes (every statement is guarded via `IF NOT EXISTS` / `CREATE OR REPLACE` / `DO $block$ ... NOT EXISTS` / `DROP TRIGGER IF EXISTS` first) | Catch-up migration only — closes the C5 drift ticket. Accompanied by updates to `scripts/schema-diff-ignore.json` + `scripts/diff-schemas.py` so remaining drift (dead `profiles` table, legacy prod-only functions, functionally-equivalent policy names, local-only improvements) is documented as expected. |
 | M6 | `20260418100002_increment_tallies_status_guard.sql` | Tightens `increment_proposal_tallies` RPC with `AND status = 'pending'` guard to prevent tick-after-expiry drift when the pause trigger fires mid-vote | **NEW** | pending reset | ⏳ pending approval | Yes (`CREATE OR REPLACE FUNCTION`, signature unchanged, REVOKE/GRANT re-asserted) | Closes C2 in proposal-gate-overhaul plan. UPDATE was already atomic via column expressions; this adds the missing auto-expire-race guard. No callers change. |
 
+### Non-migration changes staged alongside M5 / M6 (edge functions)
+
+These are tracked here because deploying them to prod is part of the same approval batch as M6. They are NOT SQL migrations — they ship via `supabase functions deploy`.
+
+| # | File | Purpose | Status | Applied LOCAL | Applied PROD | Rollback | Notes |
+|---|------|---------|--------|---------------|--------------|----------|-------|
+| C3 | `supabase/functions/process-vote/index.ts` | Closes +1 karma farming on random proposal UUIDs: short-circuits with 404 before ever reaching the silent stale-vote path. Rate limit, suspended-voter check, and TOCTOU-race +1 for cascade-deleted-mid-request all preserved. | **STAGED** (commit `d93ff72`) | pending reset | ⏳ pending approval | `git checkout main -- supabase/functions/process-vote && supabase functions deploy process-vote` | Frontend already tolerates 404 (`ProposalReviewView.hooks.ts:277` handles 400/403/404 identically — silent advance). |
+| A1-BE | `supabase/functions/get-proposals-for-voting/index.ts` | Bumps `GATE_SIZE` 3 → 5. Backend gives up to 5 proposals per gate fetch. | **STAGED** (commit `676518d`) | pending reset | 🚫 HOLD — deploy only on the App Store release day when the frontend `hasVoted >= 5` threshold is live. Shipping backend alone would close the gate at vote 3 despite 5 being returned. | Redeploy previous `get-proposals-for-voting` with `GATE_SIZE = 3`. | Lockstep release required with frontend bump in `src/services/communityBackendService.ts`. |
+
 ### Residual drift after M5 (documented as expected)
 
 - `profiles` table and `set_profiles_updated_at` trigger — dead legacy in prod, unused; ignored.

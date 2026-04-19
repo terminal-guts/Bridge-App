@@ -158,6 +158,8 @@ The plan above was executed in a revised v2 form. Production deploy completed 20
 
 ## A1 — Raise `GATE_SIZE` from 3 to 5
 
+**Status (2026-04-19):** Backend half **staged to branch** (`feat/gate-overhaul-followups`, commit `676518d`). Do NOT deploy standalone — the frontend threshold bump in `src/services/communityBackendService.ts` (`hasVoted >= 3` → `>= 5`, `Math.min(..., 3)` → `5`) must be live on the App Store first. Bundle with other frontend agents' App Store release. See runbook in MIGRATION_LOG.md "A1-BE" entry for deploy command + rollback.
+
 ### Problem
 Users open Community, vote 3 times in under a minute, and bounce. The 3-vote cap limits daily engagement and slows how fast pending proposals reach the 8-vote decision threshold. Raising to 5 gives each user more throughput per session and helps proposals resolve faster.
 
@@ -376,6 +378,8 @@ Frontend change → App Store release. **Bundle with A1 (gate=5 frontend change)
 
 ## C2 — Concurrent-vote tally race
 
+**Status (2026-04-19):** Migration M6 (`supabase/migrations/20260418100002_increment_tallies_status_guard.sql`) **staged to branch** (commit `64b641d`). Awaiting prod deploy approval. Adds the `AND status = 'pending'` guard to `increment_proposal_tallies`; signature unchanged; `CREATE OR REPLACE` — drop-in. See MIGRATION_LOG.md "M6" entry for deploy command + rollback.
+
 ### Problem
 Parallel stress test (20 simultaneous votes) during pre-deploy testing lost 1 of 12 expected YES increments. `proposal_votes` had all 20 rows (unique constraint protected), but the denormalized `pool_yes_votes` counter on `proposals` drifted by 1.
 
@@ -427,6 +431,8 @@ None.
 ---
 
 ## C3 — Stale-vote `+1 karma` farming on random UUIDs
+
+**Status (2026-04-19):** Fix **staged to branch** (commit `d93ff72`). Awaiting prod deploy approval. Edge function only — no migration. See MIGRATION_LOG.md "C3" entry for deploy command + rollback. Verified frontend-compatible: `ProposalReviewView.hooks.ts:277` treats 404 same as 400/403 (silent advance + background refresh).
 
 ### Problem
 Attacker logged in as any valid user can send votes with random UUIDs as `proposal_id`. The `process-vote` stale-path handler grants `+1` karma on FK-violation inserts (meaning the proposal doesn't exist at all). Capped by the 50-votes/day rate limit, so maximum damage is +50/day.
