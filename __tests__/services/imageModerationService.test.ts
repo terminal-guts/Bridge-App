@@ -94,6 +94,24 @@ describe('moderateImage — rejection path', () => {
     expect(result.reasons[0]).toContain('clearly show a person');
   });
 
+  it('returns approved=false for a celebrity / publicly-recognizable photo', async () => {
+    // The edge function uses WEB_DETECTION to flag photos that appear
+    // elsewhere online. The frontend service just passes the reason through.
+    mockInvoke.mockResolvedValue({
+      data: {
+        approved: false,
+        hasFace: true,
+        reasons: ['This photo appears online. Please use an original photo of yourself.'],
+      },
+      error: null,
+    });
+
+    const result = await moderateImage('user-1/photo_trump.jpg', true);
+
+    expect(result.approved).toBe(false);
+    expect(result.reasons[0]).toContain('original photo');
+  });
+
   it('returns approved=false for SafeSearch violations', async () => {
     mockInvoke.mockResolvedValue({
       data: {

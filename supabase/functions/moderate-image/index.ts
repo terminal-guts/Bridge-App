@@ -111,6 +111,13 @@ Deno.serve(async (req: Request) => {
               features: [
                 { type: 'FACE_DETECTION', maxResults: 5 },
                 { type: 'SAFE_SEARCH_DETECTION' },
+                // WEB_DETECTION does a reverse image search. We use it as a
+                // stand-in for CELEBRITY_RECOGNITION (which is limited-access):
+                // if the photo is of a public figure or any image that appears
+                // elsewhere online, Vision returns high-confidence webEntities
+                // and `fullMatchingImages` pages. That's a strong signal the
+                // user didn't take the photo themselves.
+                { type: 'WEB_DETECTION', maxResults: 10 },
               ],
             }],
           }),
@@ -149,6 +156,14 @@ Deno.serve(async (req: Request) => {
       faces: result?.faceAnnotations?.length ?? 0,
       faceConf: result?.faceAnnotations?.[0]?.detectionConfidence ?? null,
       safeSearch: result?.safeSearchAnnotation ?? null,
+      web: {
+        fullMatches: result?.webDetection?.fullMatchingImages?.length ?? 0,
+        partialMatches: result?.webDetection?.partialMatchingImages?.length ?? 0,
+        pagesMatching: result?.webDetection?.pagesWithMatchingImages?.length ?? 0,
+        topEntity: result?.webDetection?.webEntities?.[0]?.description ?? null,
+        topEntityScore: result?.webDetection?.webEntities?.[0]?.score ?? null,
+        bestGuess: result?.webDetection?.bestGuessLabels?.[0]?.label ?? null,
+      },
       hasError: !!result?.error,
     }));
 
@@ -203,6 +218,27 @@ Deno.serve(async (req: Request) => {
       if (likelihoodAtLeast(ss.medical, 'LIKELY')) {
         reasons.push('This photo may contain graphic content.');
       }
+    }
+
+    // Celebrity / public-image detection via reverse image search.
+    // Two independent signals, either of which rejects:
+    //   - 2+ exact matches elsewhere online (fullMatchingImages) — a unique
+    //     personal selfie almost never hits this; a celebrity/stock photo does.
+    //   - Top webEntity score ≥ 0.7 AND the description is multi-word. Vision
+    //     reliably tags public figures (e.g. "Donald Trump", "Taylor Swift")
+    //     at very high scores. Single-word entities ("Hair", "Selfie") are
+    //     generic categories and we let them pass.
+    const wd = result.webDetection;
+    const fullMatches = wd?.fullMatchingImages?.length ?? 0;
+    const topEntity = wd?.webEntities?.[0];
+    const topEntityScore = topEntity?.score ?? 0;
+    const topEntityDesc = topEntity?.description ?? '';
+    const widelyRecognized =
+      fullMatches >= 2 ||
+      (topEntityScore >= 0.7 && topEntityDesc.trim().includes(' '));
+
+    if (widelyRecognized) {
+      reasons.push('This photo appears online. Please use an original photo of yourself.');
     }
 
     return Response.json({
