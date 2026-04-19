@@ -43,7 +43,7 @@ These are the most important screens in the app. All work (polish, bugs, feature
 ## Engagement Features (Not Implemented)
 
 ### Addiction Blueprint — Remaining Items
-From the engagement research (Hook Model, variable reinforcement, network effects). See `NOTIFICATION_SYSTEM_SPEC.md` for the notification tier system (implemented).
+From the engagement research (Hook Model, variable reinforcement, network effects). See `docs/notifications/SPEC.md` for the notification tier system (implemented).
 
 | Feature | Description | Status |
 |---------|-------------|--------|

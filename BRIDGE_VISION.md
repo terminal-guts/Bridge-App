@@ -304,7 +304,7 @@ Everything resets at **7PM Central Time** each day via pg_cron (00:00 UTC = 7PM 
 | 00:00 | `proposal-lifecycle` | Expire/reject/confirm proposals, apply karma on outcomes, freeze/kill streaks, auto-decline past-deadline decisions |
 | 00:05 | `generate-proposals` | Create new proposals for eligible users, assign pool voters (up to 6 per proposal) |
 
-> **Full cron schedule** (including all notification jobs): see `NOTIFICATION_SYSTEM_SPEC.md § Cron Schedule`.
+> **Full cron schedule** (including all notification jobs): see `docs/notifications/SPEC.md § Cron Schedule`.
 
 - The 3-proposal voting gate resets (users must vote on 3 new community proposals)
 

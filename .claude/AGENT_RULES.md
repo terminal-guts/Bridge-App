@@ -15,7 +15,7 @@ Every task follows this sequence. No exceptions.
 3. **Check CLAUDE.md** for locked values and system constraints. Violating a LOCKED section is a critical error.
 4. **Check TODO.md** for priority order, existing plans, and what's already done. Do not re-implement completed work.
 5. **Check BRIDGE_VISION.md** when the task involves product logic, user-facing copy, or feature design.
-6. **Check NOTIFICATION_SYSTEM_SPEC.md** when touching notifications, push, cron jobs, or engagement features.
+6. **Check docs/notifications/SPEC.md** when touching notifications, push, cron jobs, or engagement features.
 
 ### 1.2 Explore the Codebase
 
@@ -323,7 +323,7 @@ Each markdown file has a distinct responsibility. Do not create overlap.
 | `CLAUDE.md` | Agent-facing technical constraints: locked values, system architecture, coding rules |
 | `BRIDGE_VISION.md` | Product vision, philosophy, feature specs, matching system, business model |
 | `TODO.md` | Active work items, priorities, polish queue, deferred features |
-| `NOTIFICATION_SYSTEM_SPEC.md` | Notification types, copy, triggers, cron schedule, anti-fatigue rules |
+| `docs/notifications/SPEC.md` | Notification types, copy, triggers, cron schedule, anti-fatigue rules |
 | `RESOURCES.md` | External reference links organized by topic |
 | `.claude/AGENT_RULES.md` | This file — agent operating workflow and quality standards |
 
