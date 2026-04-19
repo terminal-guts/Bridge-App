@@ -84,7 +84,7 @@ record_survey_answers     reject_match             send_message
 
 | Function | Status | Flag | Purpose | Depends On |
 |----------|--------|------|---------|-----------|
-| email-signup | LOCAL_ONLY | `--no-verify-jwt` | OTP code send + verify for signup (Resend direct) | email_verification_codes table (with `ip_address` column from migration #83), get_user_by_email RPC, RESEND_API_KEY |
+| email-signup | LOCAL_ONLY | `--no-verify-jwt` | OTP code send + verify for signup (Resend direct). **Rule B (2026-04-19):** signup is blocked whenever a `user_profiles` row exists for the email, not just when the profile is complete. OTP verification is the commitment line — `ensureProfileRow()` fires the moment the session is detected, so any post-verify user trying to re-signup gets pushed to sign-in instead. | email_verification_codes table (`ip_address` from #83), get_user_by_email RPC (`has_profile` column from #85), RESEND_API_KEY |
 | email-unsubscribe | DORMANT | `--no-verify-jwt` | Handle email unsubscribe requests. **Not scheduled for deploy** as of 2026-04-19 — `email-signup` no longer emits `List-Unsubscribe` headers since we only send transactional OTP codes (nothing to unsubscribe from). Function source kept for possible future marketing-email stream. | email_unsubscribes table (already in prod) |
 
 ## Shared Utilities (`supabase/functions/_shared/`)

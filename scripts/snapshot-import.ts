@@ -127,15 +127,27 @@ async function main() {
     }
   }
 
-  // Clear auth users via admin API
+  // Clear auth users via admin API — raw fetch, always page=1 since the list
+  // shrinks as we delete (paginating would skip users).
   console.log('  Clearing auth users...');
-  const { data: existingUsers } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-  if (existingUsers?.users) {
-    for (const user of existingUsers.users) {
-      await supabase.auth.admin.deleteUser(user.id);
+  let authCleared = 0;
+  for (let safety = 0; safety < 50; safety++) {
+    const res = await fetch(`${LOCAL_SUPABASE_URL}/auth/v1/admin/users?page=1&per_page=100`, {
+      headers: {
+        apikey: LOCAL_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${LOCAL_SERVICE_ROLE_KEY}`,
+      },
+    });
+    if (!res.ok) break;
+    const body: any = await res.json();
+    const users: any[] = body.users ?? [];
+    if (users.length === 0) break;
+    for (const u of users) {
+      await supabase.auth.admin.deleteUser(u.id);
+      authCleared++;
     }
-    console.log(`  Cleared ${existingUsers.users.length} auth users`);
   }
+  console.log(`  Cleared ${authCleared} auth users`);
   console.log('');
 
   // --- Step 2: Import auth users ---
@@ -180,57 +192,95 @@ async function main() {
   // --- Step 4: Import public tables in FK order ---
   console.log('Step 4: Importing tables...');
 
+  // Prune orphaned rows from the snapshot BEFORE attempting insert.
+  // These are rows in prod whose FK targets were deleted — they'd always fail.
+  // Typical offender: pool_vote_assignments rows for deleted proposals.
+  const snapshotProposalIds = new Set(
+    (snapshot.tables.proposals ?? []).map((p: any) => p.id)
+  );
+  const pruneStats: Record<string, { orphans: number; kept: number }> = {};
+
+  if (snapshot.tables.pool_vote_assignments) {
+    const before = snapshot.tables.pool_vote_assignments.length;
+    snapshot.tables.pool_vote_assignments = snapshot.tables.pool_vote_assignments.filter(
+      (row: any) => snapshotProposalIds.has(row.proposal_id)
+    );
+    const after = snapshot.tables.pool_vote_assignments.length;
+    if (before !== after) {
+      pruneStats.pool_vote_assignments = { orphans: before - after, kept: after };
+      console.log(`  pre-prune: pool_vote_assignments dropped ${before - after} orphan row(s) referencing deleted proposals`);
+    }
+  }
+  if (snapshot.tables.proposal_votes) {
+    const before = snapshot.tables.proposal_votes.length;
+    snapshot.tables.proposal_votes = snapshot.tables.proposal_votes.filter(
+      (row: any) => snapshotProposalIds.has(row.proposal_id)
+    );
+    const after = snapshot.tables.proposal_votes.length;
+    if (before !== after) {
+      pruneStats.proposal_votes = { orphans: before - after, kept: after };
+      console.log(`  pre-prune: proposal_votes dropped ${before - after} orphan row(s) referencing deleted proposals`);
+    }
+  }
+
+  // Track what fell through the cracks so we can retry + report
+  type FailedRow = { row: any; error: string };
+  const failuresByTable: Record<string, FailedRow[]> = {};
+  const strippedByTable: Record<string, string[]> = {};
+  const snapshotCounts: Record<string, number> = {};
+
   for (const tableName of TABLE_ORDER) {
     const rows = snapshot.tables[tableName as keyof Snapshot['tables']];
+    snapshotCounts[tableName] = rows?.length ?? 0;
     if (!rows || rows.length === 0) {
       console.log(`  ${tableName}: 0 rows (skipped)`);
       continue;
     }
 
-    // Try inserting the first row to detect schema mismatches
+    // Detect schema mismatches by probing the first row. Strip unknown columns.
     const columnsToStrip = new Set<string>();
     let testRow = { ...rows[0] };
-    let retries = 0;
+    let firstRowInserted = false;
 
-    while (retries < 5) {
+    for (let attempt = 0; attempt < 20; attempt++) {
       const { error } = await supabase.from(tableName).upsert(testRow, {
         onConflict: 'id',
         ignoreDuplicates: true,
       });
 
-      if (error?.message.includes('Could not find the')) {
-        // Extract the missing column name from the error
-        const match = error.message.match(/Could not find the '(\w+)' column/);
-        if (match) {
-          columnsToStrip.add(match[1]);
-          delete testRow[match[1]];
-          retries++;
-          continue;
-        }
+      if (!error) {
+        firstRowInserted = true;
+        break;
       }
+      const missing = error.message.match(/Could not find the '(\w+)' column/);
+      if (missing) {
+        columnsToStrip.add(missing[1]);
+        delete testRow[missing[1]];
+        continue;
+      }
+      // Non-schema error on first row — defer to retry pass
       break;
     }
 
     if (columnsToStrip.size > 0) {
-      console.log(`  ${tableName}: stripping columns not in local schema: ${[...columnsToStrip].join(', ')}`);
+      strippedByTable[tableName] = [...columnsToStrip];
+      console.log(`  ${tableName}: stripping ${columnsToStrip.size} col(s) not in local schema: ${[...columnsToStrip].join(', ')}`);
     }
 
-    // Clean all rows by stripping unknown columns
     const cleanedRows = columnsToStrip.size > 0
       ? rows.map((row: any) => {
           const cleaned = { ...row };
-          for (const col of columnsToStrip) {
-            delete cleaned[col];
-          }
+          for (const col of columnsToStrip) delete cleaned[col];
           return cleaned;
         })
       : rows;
 
-    // Insert in batches of 50
     const batchSize = 50;
-    let inserted = 0;
-    // First row was already inserted during detection, start counting it
-    if (retries < 5) inserted = 1;
+    let inserted = firstRowInserted ? 1 : 0;
+    if (!firstRowInserted) {
+      failuresByTable[tableName] ??= [];
+      failuresByTable[tableName].push({ row: cleanedRows[0], error: 'first-row-probe-failed' });
+    }
 
     for (let i = 1; i < cleanedRows.length; i += batchSize) {
       const batch = cleanedRows.slice(i, i + batchSize);
@@ -239,28 +289,122 @@ async function main() {
         ignoreDuplicates: true,
       });
 
-      if (error) {
-        // Fall back to one-by-one insertion for this batch
-        for (const row of batch) {
-          const { error: singleError } = await supabase.from(tableName).upsert(row, {
-            onConflict: 'id',
-            ignoreDuplicates: true,
-          });
-          if (singleError) {
-            // Only log non-FK errors (FK errors are expected for orphan references)
-            if (!singleError.message.includes('foreign key constraint')) {
-              console.log(`    ${tableName} row ${row.id}: ${singleError.message}`);
-            }
-          } else {
-            inserted++;
-          }
-        }
-      } else {
+      if (!error) {
         inserted += batch.length;
+        continue;
+      }
+      // Batch failed — fall back to one-by-one so we can isolate bad rows.
+      for (const row of batch) {
+        const { error: singleError } = await supabase.from(tableName).upsert(row, {
+          onConflict: 'id',
+          ignoreDuplicates: true,
+        });
+        if (singleError) {
+          failuresByTable[tableName] ??= [];
+          failuresByTable[tableName].push({ row, error: singleError.message });
+        } else {
+          inserted++;
+        }
       }
     }
 
-    console.log(`  ${tableName}: ${inserted}/${rows.length} rows`);
+    const failed = failuresByTable[tableName]?.length ?? 0;
+    const flag = failed > 0 ? ` (${failed} failed)` : '';
+    console.log(`  ${tableName}: ${inserted}/${rows.length} rows${flag}`);
+  }
+
+  // --- Step 5: Retry pass — FK errors often resolve once dependent tables are populated ---
+  const tablesWithFailures = Object.keys(failuresByTable).filter((t) => failuresByTable[t].length > 0);
+  if (tablesWithFailures.length > 0) {
+    console.log('');
+    console.log(`Step 5: Retrying ${tablesWithFailures.reduce((n, t) => n + failuresByTable[t].length, 0)} failed row(s) now that all tables have their initial data...`);
+    for (const tableName of TABLE_ORDER) {
+      const failures = failuresByTable[tableName];
+      if (!failures || failures.length === 0) continue;
+      const stillFailing: FailedRow[] = [];
+      let recovered = 0;
+      for (const f of failures) {
+        const { error } = await supabase.from(tableName).upsert(f.row, {
+          onConflict: 'id',
+          ignoreDuplicates: true,
+        });
+        if (error) stillFailing.push({ row: f.row, error: error.message });
+        else recovered++;
+      }
+      failuresByTable[tableName] = stillFailing;
+      console.log(`  ${tableName}: recovered ${recovered}, still failing ${stillFailing.length}`);
+    }
+  }
+
+  // --- Step 6: Verify — query every table and compare to snapshot ---
+  console.log('');
+  console.log('Step 6: Verifying row counts (snapshot vs local)...');
+  console.log('');
+  console.log('  Table                           Snapshot    Local    Delta   Status');
+  console.log('  ──────────────────────────────  ────────  ───────  ───────  ──────');
+
+  let anyDelta = false;
+  for (const tableName of TABLE_ORDER) {
+    const expected = snapshotCounts[tableName] ?? 0;
+    const { count, error } = await supabase.from(tableName).select('*', { count: 'exact', head: true });
+    if (error) {
+      console.log(`  ${pad(tableName, 30)}  ${pad(String(expected), 8)}  ERR      —        ${error.message}`);
+      continue;
+    }
+    const local = count ?? 0;
+    const delta = local - expected;
+    const status = delta === 0 ? 'OK' : delta > 0 ? `+${delta}` : `${delta}`;
+    const flag = delta === 0 ? 'OK' : 'DRIFT';
+    if (delta !== 0) anyDelta = true;
+    console.log(`  ${pad(tableName, 30)}  ${pad(String(expected), 8)}  ${pad(String(local), 7)}  ${pad(status, 7)}  ${flag}`);
+  }
+
+  // Auth users: GoTrue's admin list endpoint returns 500 past certain offsets
+  // on our dataset, so we count via the local exec_sql RPC (service-role only,
+  // added by migration #78).
+  {
+    const expected = snapshot.tables.auth_users?.length ?? 0;
+    let local = -1;
+    const { data, error } = await supabase.rpc('exec_sql', {
+      sql: 'SELECT json_build_array(json_build_object(\'n\', COUNT(*))) FROM auth.users',
+    });
+    if (!error && Array.isArray(data) && data[0]?.n !== undefined) {
+      local = Number(data[0].n);
+    }
+    const missing = expected - local;
+    const delta = local - expected;
+    const status = local < 0 ? 'ERR' : delta === 0 ? 'OK' : delta > 0 ? `+${delta}` : `${delta}`;
+    const flag = local < 0 ? 'ERR' : missing > 0 ? 'DRIFT' : 'OK';
+    if (missing > 0) anyDelta = true;
+    console.log(`  ${pad('auth.users', 30)}  ${pad(String(expected), 8)}  ${pad(String(local), 7)}  ${pad(status, 7)}  ${flag}${delta > 0 ? ' (seed users)' : ''}`);
+  }
+
+  console.log('');
+
+  // Print failure sample
+  const totalFailures = Object.values(failuresByTable).reduce((n, arr) => n + arr.length, 0);
+  if (totalFailures > 0) {
+    console.log(`⚠ ${totalFailures} row(s) did not import. Sample of errors (first 5 per table):`);
+    for (const [t, failures] of Object.entries(failuresByTable)) {
+      if (failures.length === 0) continue;
+      console.log(`  ${t}: ${failures.length} failed`);
+      // Dedupe error messages
+      const seen = new Map<string, number>();
+      for (const f of failures) seen.set(f.error, (seen.get(f.error) ?? 0) + 1);
+      for (const [msg, n] of [...seen.entries()].slice(0, 5)) {
+        console.log(`    ×${n}: ${msg}`);
+      }
+    }
+    console.log('');
+  }
+
+  if (anyDelta) {
+    console.error('❌ FAIL: local row counts do not match snapshot. See table above for deltas.');
+    console.error('   Common causes: FK references to auth users that weren\'t in the snapshot, or unique-constraint conflicts.');
+    console.error('   The --force-continue flag suppresses this exit code if a partial import is acceptable.');
+    if (!process.argv.includes('--force-continue')) process.exit(1);
+  } else {
+    console.log('✅ All row counts match snapshot exactly.');
   }
 
   console.log('');
@@ -310,6 +454,10 @@ function findSnapshotFile(): string {
   }
 
   return path.join(snapshotDir, files[0]);
+}
+
+function pad(s: string, n: number): string {
+  return s.length >= n ? s : s + ' '.repeat(n - s.length);
 }
 
 main().catch((err) => {

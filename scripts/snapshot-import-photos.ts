@@ -23,9 +23,33 @@ const LOCAL_URL = 'http://127.0.0.1:54321';
 const LOCAL_SERVICE_ROLE_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
 const PROD_URL = 'https://ikyiwnydgedwbmcdzgbe.supabase.co';
-const BUCKET = 'profile-photos';
+
+type BucketConfig = {
+  name: string;
+  public: boolean;
+  mimeTypes: string[];
+  fileSizeLimit: number;
+};
+
+const BUCKETS: BucketConfig[] = [
+  {
+    name: 'profile-photos',
+    public: true,
+    mimeTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic'],
+    fileSizeLimit: 10 * 1024 * 1024,
+  },
+  {
+    name: 'chat-audio',
+    public: false,
+    mimeTypes: ['audio/mpeg', 'audio/mp4', 'audio/m4a', 'audio/aac', 'audio/wav', 'audio/webm', 'audio/ogg'],
+    fileSizeLimit: 25 * 1024 * 1024,
+  },
+];
 
 const FORCE = process.argv.includes('--force');
+// Allow running a single bucket for faster dev loops: --only=profile-photos
+const onlyArg = process.argv.find((a) => a.startsWith('--only='));
+const ONLY = onlyArg ? onlyArg.split('=')[1] : null;
 
 // ────────────────────────────────────────────────────────────
 // Load prod service role key from .env (read-only use)
@@ -43,14 +67,118 @@ function loadProdKey(): string {
 
 // ────────────────────────────────────────────────────────────
 
+async function syncBucket(
+  bucket: BucketConfig,
+  prod: any,
+  local: any,
+): Promise<{ copied: number; skipped: number; failed: number; elapsedSecs: number }> {
+  console.log(`\n── Bucket: ${bucket.name} ─────────────────────────────`);
+
+  // Ensure local bucket exists matching prod's config
+  const { data: localBucket } = await local.storage.getBucket(bucket.name);
+  if (!localBucket) {
+    console.log(`  Creating local bucket ${bucket.name}...`);
+    const { error } = await local.storage.createBucket(bucket.name, {
+      public: bucket.public,
+      fileSizeLimit: bucket.fileSizeLimit,
+      allowedMimeTypes: bucket.mimeTypes,
+    });
+    if (error && !/already exists/i.test(error.message)) {
+      console.error(`  FAIL create bucket ${bucket.name}: ${error.message}`);
+      return { copied: 0, skipped: 0, failed: -1, elapsedSecs: 0 };
+    }
+  }
+
+  console.log(`  Listing prod folders in ${bucket.name}...`);
+  const { data: topLevel, error: topErr } = await prod.storage.from(bucket.name).list('', {
+    limit: 1000,
+  });
+  if (topErr) {
+    console.error(`  FAIL list prod bucket ${bucket.name}: ${topErr.message}`);
+    return { copied: 0, skipped: 0, failed: -1, elapsedSecs: 0 };
+  }
+
+  const userFolders = (topLevel ?? []).filter((e: any) => e.id === null);
+  console.log(`  Found ${userFolders.length} user folder(s)`);
+
+  const allPaths: string[] = [];
+  for (const folder of userFolders) {
+    const { data: files } = await prod.storage
+      .from(bucket.name)
+      .list(folder.name, { limit: 1000 });
+    for (const f of files ?? []) {
+      if (f.id !== null) allPaths.push(`${folder.name}/${f.name}`);
+    }
+  }
+  console.log(`  Found ${allPaths.length} file(s) in prod`);
+
+  if (allPaths.length === 0) {
+    return { copied: 0, skipped: 0, failed: 0, elapsedSecs: 0 };
+  }
+
+  let copied = 0;
+  let skipped = 0;
+  let failed = 0;
+  const start = Date.now();
+
+  for (let i = 0; i < allPaths.length; i++) {
+    const p = allPaths[i];
+
+    if (!FORCE) {
+      const dir = p.substring(0, p.lastIndexOf('/'));
+      const name = p.substring(p.lastIndexOf('/') + 1);
+      const { data: existing } = await local.storage.from(bucket.name).list(dir, { search: name });
+      if (existing?.some((e: any) => e.name === name)) {
+        skipped++;
+        continue;
+      }
+    }
+
+    const downloadRes = await prod.storage.from(bucket.name).download(p);
+    if (downloadRes.error || !downloadRes.data) {
+      console.error(`  [${i + 1}/${allPaths.length}] FAIL download ${p}: ${downloadRes.error?.message}`);
+      failed++;
+      continue;
+    }
+    const buffer = await downloadRes.data.arrayBuffer();
+    const contentType = downloadRes.data.type || bucket.mimeTypes[0];
+
+    const { error: upErr } = await local.storage.from(bucket.name).upload(p, buffer, {
+      contentType,
+      upsert: true,
+    });
+    if (upErr) {
+      console.error(`  [${i + 1}/${allPaths.length}] FAIL upload ${p}: ${upErr.message}`);
+      failed++;
+      continue;
+    }
+
+    copied++;
+    if (copied % 25 === 0) {
+      const secs = ((Date.now() - start) / 1000).toFixed(0);
+      process.stdout.write(`  [${i + 1}/${allPaths.length}] copied=${copied} skipped=${skipped} failed=${failed} (${secs}s)\r`);
+    }
+  }
+
+  const elapsedSecs = Math.round((Date.now() - start) / 1000);
+  console.log(`\n  Result: copied=${copied}  skipped=${skipped}  failed=${failed}  elapsed=${elapsedSecs}s`);
+  return { copied, skipped, failed, elapsedSecs };
+}
+
 async function main() {
-  console.log('=== Copying profile photos: prod → local ===');
-  console.log(`Source: ${PROD_URL}  (bucket: ${BUCKET})`);
-  console.log(`Target: ${LOCAL_URL}  (bucket: ${BUCKET})`);
-  if (FORCE) console.log('Mode:   --force (will overwrite existing local files)');
+  const targets = ONLY ? BUCKETS.filter((b) => b.name === ONLY) : BUCKETS;
+  if (targets.length === 0) {
+    console.error(`Unknown bucket: ${ONLY}. Known: ${BUCKETS.map((b) => b.name).join(', ')}`);
+    process.exit(1);
+  }
+
+  console.log('=== Copying storage buckets: prod → local ===');
+  console.log(`Source:  ${PROD_URL}`);
+  console.log(`Target:  ${LOCAL_URL}`);
+  console.log(`Buckets: ${targets.map((b) => b.name).join(', ')}`);
+  if (FORCE) console.log('Mode:    --force (will overwrite existing local files)');
   console.log('');
 
-  // Health check: local must be up
   try {
     const res = await fetch(`${LOCAL_URL}/rest/v1/`, {
       headers: { apikey: LOCAL_SERVICE_ROLE_KEY },
@@ -71,105 +199,30 @@ async function main() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  // Ensure local bucket exists with prod's config
-  const { data: localBucket } = await local.storage.getBucket(BUCKET);
-  if (!localBucket) {
-    console.log(`Creating local bucket ${BUCKET}...`);
-    const { error } = await local.storage.createBucket(BUCKET, {
-      public: true,
-      fileSizeLimit: 10 * 1024 * 1024,
-      allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic'],
-    });
-    if (error && !/already exists/i.test(error.message)) {
-      console.error('Failed to create local bucket:', error.message);
-      process.exit(1);
-    }
+  const results: Array<{ bucket: string } & Awaited<ReturnType<typeof syncBucket>>> = [];
+  for (const b of targets) {
+    const r = await syncBucket(b, prod, local);
+    results.push({ bucket: b.name, ...r });
   }
 
-  // Enumerate every photo in prod. Storage's .list() is paginated per prefix,
-  // but since our layout is {user_id}/{file}, we list top-level dirs then list each.
-  console.log('Listing prod folders...');
-  const { data: topLevel, error: topErr } = await prod.storage.from(BUCKET).list('', {
-    limit: 1000,
-  });
-  if (topErr) {
-    console.error('FATAL: could not list prod bucket:', topErr.message);
+  console.log('\n=== Storage sync summary ===');
+  let anyFailed = false;
+  for (const r of results) {
+    if (r.failed < 0) {
+      console.log(`  ${r.bucket}: FAILED to enumerate (see error above)`);
+      anyFailed = true;
+    } else {
+      console.log(`  ${r.bucket}: copied=${r.copied} skipped=${r.skipped} failed=${r.failed} (${r.elapsedSecs}s)`);
+      if (r.failed > 0) anyFailed = true;
+    }
+  }
+  console.log('');
+  if (anyFailed) {
+    console.error('❌ Some files failed to copy. Re-run to retry.');
     process.exit(1);
+  } else {
+    console.log('✅ All buckets mirrored.');
   }
-
-  const userFolders = (topLevel ?? []).filter((e) => e.id === null); // folders have id=null
-  console.log(`Found ${userFolders.length} user folders`);
-
-  // Collect every path
-  const allPaths: string[] = [];
-  for (const folder of userFolders) {
-    const { data: files } = await prod.storage
-      .from(BUCKET)
-      .list(folder.name, { limit: 1000 });
-    for (const f of files ?? []) {
-      if (f.id !== null) allPaths.push(`${folder.name}/${f.name}`);
-    }
-  }
-  console.log(`Found ${allPaths.length} photo files in prod\n`);
-
-  // Copy each one
-  let copied = 0;
-  let skipped = 0;
-  let failed = 0;
-  const start = Date.now();
-
-  for (let i = 0; i < allPaths.length; i++) {
-    const p = allPaths[i];
-    const progress = `[${i + 1}/${allPaths.length}]`;
-
-    // Skip if local already has it (unless --force)
-    if (!FORCE) {
-      const dir = p.substring(0, p.lastIndexOf('/'));
-      const name = p.substring(p.lastIndexOf('/') + 1);
-      const { data: existing } = await local.storage.from(BUCKET).list(dir, { search: name });
-      if (existing?.some((e) => e.name === name)) {
-        skipped++;
-        if (i % 50 === 0) process.stdout.write(`${progress} skip (exists)\r`);
-        continue;
-      }
-    }
-
-    // Download from prod (public URL works; use the CDN path)
-    const downloadRes = await prod.storage.from(BUCKET).download(p);
-    if (downloadRes.error || !downloadRes.data) {
-      console.error(`${progress} FAIL download ${p}: ${downloadRes.error?.message}`);
-      failed++;
-      continue;
-    }
-
-    const buffer = await downloadRes.data.arrayBuffer();
-    const contentType = downloadRes.data.type || 'image/jpeg';
-
-    // Upload to local
-    const { error: upErr } = await local.storage.from(BUCKET).upload(p, buffer, {
-      contentType,
-      upsert: true,
-    });
-    if (upErr) {
-      console.error(`${progress} FAIL upload ${p}: ${upErr.message}`);
-      failed++;
-      continue;
-    }
-
-    copied++;
-    if (copied % 25 === 0) {
-      const secs = ((Date.now() - start) / 1000).toFixed(0);
-      process.stdout.write(`${progress} copied=${copied} skipped=${skipped} failed=${failed} (${secs}s)\r`);
-    }
-  }
-
-  const totalSecs = ((Date.now() - start) / 1000).toFixed(0);
-  console.log('\n');
-  console.log('=== Photo import complete ===');
-  console.log(`  Copied:  ${copied}`);
-  console.log(`  Skipped: ${skipped} (already existed locally — use --force to overwrite)`);
-  console.log(`  Failed:  ${failed}`);
-  console.log(`  Elapsed: ${totalSecs}s`);
 }
 
 main().catch((e: unknown) => {

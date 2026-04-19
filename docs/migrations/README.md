@@ -1,5 +1,11 @@
 # Supabase Migration & Infrastructure Tracking
 
+> ## 🛑 DO NOT CHANGE PRODUCTION WITHOUT EXPLICIT PER-ACTION APPROVAL
+>
+> **For every agent, every session, forever:** No SQL, migration, edge function deploy, secret change, or RLS/table/index modification may be applied to production without the user's direct, in-conversation, unambiguous approval for that specific action. Past approvals do not carry over. Plan approval ≠ execution approval. See the ABSOLUTE RULE banner at the top of [`CLAUDE.md`](../../CLAUDE.md).
+>
+> This directory tracks what's deployed vs local. Tracking is not authorization — every promotion from `LOCAL_ONLY`/`PENDING` to `PRODUCTION` requires an explicit conversational go-ahead from the user.
+
 This directory is the single source of truth for what's deployed to production vs what's local-only. It tracks database migrations, edge functions, and secrets.
 
 ## Files
@@ -26,14 +32,15 @@ This directory is the single source of truth for what's deployed to production v
 
 | Script | What it does |
 |---|---|
-| `scripts/bootstrap-local.sh` | One-shot: reset + setup + import rows + photos + parity check |
+| `scripts/bootstrap-local.sh` | One-shot: reset + setup + import rows + photos + parity checks |
 | `scripts/dump-prod-schema.sh` | Dumps live prod schema (read-only) to `snapshots/prod-schema-<date>.json` |
 | `scripts/dump-local-schema.sh` | Dumps local Supabase schema to `snapshots/local-schema-<date>.json` |
 | `scripts/diff-schemas.py <a.json> <b.json>` | Reports drift between two dumps (exit 0 = match, 1 = drift) |
 | `scripts/check-schema-parity.sh` | dump-prod + dump-local + diff in one call |
-| `scripts/snapshot-export.sh` | Dumps prod data (SELECT-only) to `snapshots/snapshot.json` |
-| `scripts/snapshot-import.ts` | Loads `snapshots/snapshot.json` into local (hardcoded `127.0.0.1`) |
-| `scripts/snapshot-import-photos.ts` | Copies prod `profile-photos` bucket → local bucket (566 files, ~170 MB) |
+| `scripts/check-edge-function-parity.sh` | Lists prod-deployed edge functions vs `supabase/functions/` folders — surfaces drift in both directions |
+| `scripts/snapshot-export.sh` | Dumps prod data (SELECT-only) to `snapshots/snapshot-<date>.json` |
+| `scripts/snapshot-import.ts` | Loads latest snapshot into local. **Now with 2-pass FK retry + strict row-count verification** — exits 1 on count mismatch. Use `--force-continue` to suppress. |
+| `scripts/snapshot-import-photos.ts` | Copies prod storage buckets → local. **Now mirrors both `profile-photos` AND `chat-audio`**. Use `--only=profile-photos` or `--only=chat-audio` to limit. |
 
 ## Workflows
 
