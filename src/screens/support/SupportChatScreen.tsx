@@ -30,6 +30,65 @@ interface SupportChatScreenProps {
   navigation: NavigationProp<RootStackParamList, 'SupportChat'>;
 }
 
+// ─── MessageItem ─────────────────────────────────────────────────────────────
+// Extracted + memoized so FlatList can skip re-renders for unchanged rows.
+// Date-separator label is derived inline from prev/current timestamps — this
+// keeps props primitive so React.memo's shallow compare works.
+interface MessageItemProps {
+  item: SupportMessage;
+  prevItem: SupportMessage | null;
+}
+
+const MessageItemBase: React.FC<MessageItemProps> = ({ item, prevItem }) => {
+  const isUser = item.sender === 'user';
+  const messageDate = new Date(item.created_at);
+  const hasValidDate = messageDate.getFullYear() > 1970;
+  const timeString = hasValidDate
+    ? messageDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    : '';
+
+  // Derive date separator inline: only show when the current row's date label
+  // differs from the previous row's (or when there's no previous row with a
+  // valid date, which is the welcome-message case).
+  let dateSepLabel: string | null = null;
+  if (hasValidDate) {
+    const currentLabel = formatMessageDate(messageDate);
+    const prevDate = prevItem ? new Date(prevItem.created_at) : null;
+    const prevHasValidDate = prevDate ? prevDate.getFullYear() > 1970 : false;
+    const prevLabel = prevHasValidDate && prevDate ? formatMessageDate(prevDate) : null;
+    if (prevLabel == null || currentLabel !== prevLabel) {
+      dateSepLabel = currentLabel;
+    }
+  }
+
+  return (
+    <>
+      {dateSepLabel != null && (
+        <View style={s.dateSep}>
+          <View style={s.dateSepPill}>
+            <Text style={s.dateSepText}>{dateSepLabel}</Text>
+          </View>
+        </View>
+      )}
+      <View style={[s.bubbleRow, isUser ? s.bubbleRowRight : s.bubbleRowLeft]}>
+        {item.is_auto_reply && (
+          <Text style={s.autoReplyLabel}>Auto-reply</Text>
+        )}
+        <View style={[s.bubble, isUser ? s.bubbleUser : s.bubbleAdmin]}>
+          <Text style={[s.bubbleText, isUser ? s.bubbleTextUser : s.bubbleTextAdmin]}>
+            {item.content}
+          </Text>
+        </View>
+        {timeString ? (
+          <Text style={s.timestamp}>{timeString}</Text>
+        ) : null}
+      </View>
+    </>
+  );
+};
+
+const MessageItem = React.memo(MessageItemBase);
+
 const WELCOME_MESSAGE: SupportMessage = {
   id: 'welcome',
   user_id: '',
@@ -150,59 +209,14 @@ export const SupportChatScreen: React.FC<SupportChatScreenProps> = ({ navigation
 
   const charRemaining = 1000 - input.length;
 
-  // Pre-compute date separators so renderMessage doesn't need displayMessages
-  // in its dependency array (avoids re-creating the callback on each new message).
-  const dateSeparatorMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (let i = 0; i < displayMessages.length; i++) {
-      const msg = displayMessages[i];
-      const messageDate = new Date(msg.created_at);
-      if (messageDate.getFullYear() <= 1970) continue;
-      const dateLabel = formatMessageDate(messageDate);
-      const prevLabel = i > 0 ? formatMessageDate(new Date(displayMessages[i - 1].created_at)) : null;
-      if (i === 0 || dateLabel !== prevLabel) {
-        map.set(msg.id, dateLabel);
-      }
-    }
-    return map;
-  }, [displayMessages]);
-
   const keyExtractor = useCallback((item: SupportMessage) => item.id, []);
 
-  const renderMessage = useCallback(({ item }: { item: SupportMessage }) => {
-    const isUser = item.sender === 'user';
-    const messageDate = new Date(item.created_at);
-    const timeString = messageDate.getFullYear() > 1970
-      ? messageDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-      : '';
-
-    const dateSepLabel = dateSeparatorMap.get(item.id);
-
-    return (
-      <>
-        {dateSepLabel != null && (
-          <View style={s.dateSep}>
-            <View style={s.dateSepPill}>
-              <Text style={s.dateSepText}>{dateSepLabel}</Text>
-            </View>
-          </View>
-        )}
-        <View style={[s.bubbleRow, isUser ? s.bubbleRowRight : s.bubbleRowLeft]}>
-          {item.is_auto_reply && (
-            <Text style={s.autoReplyLabel}>Auto-reply</Text>
-          )}
-          <View style={[s.bubble, isUser ? s.bubbleUser : s.bubbleAdmin]}>
-            <Text style={[s.bubbleText, isUser ? s.bubbleTextUser : s.bubbleTextAdmin]}>
-              {item.content}
-            </Text>
-          </View>
-          {timeString ? (
-            <Text style={s.timestamp}>{timeString}</Text>
-          ) : null}
-        </View>
-      </>
-    );
-  }, [dateSeparatorMap]);
+  // Date-separator derivation moved into MessageItem; renderMessage just wires
+  // prevItem. React.memo on MessageItem prevents re-renders for unchanged rows.
+  const renderMessage = useCallback(({ item, index }: { item: SupportMessage; index: number }) => {
+    const prevItem = index > 0 ? displayMessages[index - 1] : null;
+    return <MessageItem item={item} prevItem={prevItem} />;
+  }, [displayMessages]);
 
   if (loading) {
     return (

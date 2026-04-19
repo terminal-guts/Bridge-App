@@ -26,22 +26,27 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ uri, duration, isOwnMe
     const [position, setPosition] = useState(0);
     const [totalDuration, setTotalDuration] = useState(duration || 0);
     const [isLoading, setIsLoading] = useState(false);
+    // Hold the current sound via ref so the unmount cleanup effect can reach
+    // it without depending on the `sound` state (which would cause the effect
+    // to tear down and re-run on every setSound, unloading the sound we just
+    // created). See Wave 14 leak fix.
+    const soundRef = useRef<Audio.Sound | null>(null);
     // Track any file we downloaded into cacheDirectory so we can delete it on
     // unmount — otherwise `audio_<timestamp>.m4a` accumulates forever.
     const downloadedUriRef = useRef<string | null>(null);
 
+    // Mount/unmount-only cleanup — runs once, exactly at unmount.
     useEffect(() => {
         return () => {
-            if (sound) {
-                sound.unloadAsync();
-            }
+            soundRef.current?.unloadAsync().catch(() => { /* best-effort */ });
+            soundRef.current = null;
             const cachedUri = downloadedUriRef.current;
             if (cachedUri) {
                 FileSystem.deleteAsync(cachedUri, { idempotent: true }).catch(() => { /* best-effort */ });
                 downloadedUriRef.current = null;
             }
         };
-    }, [sound]);
+    }, []);
 
     const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
         if (status.isLoaded) {
@@ -84,6 +89,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ uri, duration, isOwnMe
                     onPlaybackStatusUpdate
                 );
                 setSound(newSound);
+                soundRef.current = newSound;
                 setIsLoading(false);
             } else {
                 if (isPlaying) {

@@ -193,18 +193,39 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
             logger.info('[AudioRecorder] Starting recording...');
             setIsPreparing(true);
 
-            const permission = await Audio.requestPermissionsAsync();
-            if (permission.status !== 'granted') {
-                Alert.alert(
-                    'Microphone Access',
-                    'Please enable microphone access in Settings to record voice messages.',
-                    [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Open Settings', onPress: () => Linking.openSettings() },
-                    ]
-                );
-                setIsPreparing(false);
-                return;
+            // Pre-check existing permission state — on iOS, if the user previously
+            // denied mic access and `canAskAgain` is false, `requestPermissionsAsync`
+            // silently returns the cached denied status without prompting. We need
+            // to route the user to Settings in that case.
+            const { status: existing, canAskAgain } = await Audio.getPermissionsAsync();
+            if (existing !== 'granted') {
+                if (!canAskAgain) {
+                    // iOS has permanently denied — only recourse is Settings.
+                    Alert.alert(
+                        'Microphone Access',
+                        'Please enable microphone access in Settings to record voice messages.',
+                        [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+                        ]
+                    );
+                    setIsPreparing(false);
+                    return;
+                }
+                // First-time or re-askable — prompt.
+                const { status } = await Audio.requestPermissionsAsync();
+                if (status !== 'granted') {
+                    Alert.alert(
+                        'Microphone Access',
+                        'Please enable microphone access in Settings to record voice messages.',
+                        [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+                        ]
+                    );
+                    setIsPreparing(false);
+                    return;
+                }
             }
 
             // Clean up any leftover recording

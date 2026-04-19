@@ -3,7 +3,7 @@
  * Modals and styles extracted to ChatScreen.components.tsx
  */
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   AppState,
   View,
@@ -68,6 +68,71 @@ interface ChatScreenProps {
 
 const FLAT_LIST_CONTENT_STYLE = { padding: 16, paddingBottom: 8, flexGrow: 1 } as const;
 
+// ─── MessageItem ─────────────────────────────────────────────────────────────
+// Extracted + memoized so FlatList can skip re-renders for unchanged rows when
+// a new message arrives. Previously `renderMessage` depended on a Map that
+// re-computed on every `messages` change, invalidating every cell.
+// Date-separator label is computed inline from timestamps, keeping props
+// primitive so React.memo's shallow compare works as intended.
+interface MessageItemProps {
+  item: Message;
+  prevItem: Message | null;
+  isOwnMessage: boolean;
+}
+
+const MessageItemBase: React.FC<MessageItemProps> = ({ item, prevItem, isOwnMessage }) => {
+  const messageDate = new Date(item.sentAt);
+  const timeString = messageDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const currentLabel = formatMessageDate(messageDate);
+  const prevLabel = prevItem ? formatMessageDate(new Date(prevItem.sentAt)) : null;
+  const showDateSep = prevItem == null || currentLabel !== prevLabel;
+  const isDateProposal = item.type === 'text' && item.content.startsWith('📅 Date Proposal:');
+  const dateProposalBody = isDateProposal ? item.content.replace('📅 Date Proposal: ', '') : '';
+
+  return (
+    <View>
+      {showDateSep && (
+        <View style={cs.dateSepWrap}>
+          <View style={cs.dateSepPill}>
+            <Text style={cs.dateSepText}>{currentLabel}</Text>
+          </View>
+        </View>
+      )}
+      <View style={[cs.messageRow, isOwnMessage ? cs.messageRowOwn : cs.messageRowOther]}>
+        {isDateProposal ? (
+          <View style={dateProposalStyles.card}>
+            <View style={dateProposalStyles.header}>
+              <EvaIcon name="calendar" variant="outline" size={18} color={COLORS.primaryAccent} />
+              <Text style={dateProposalStyles.headerText}>Date Proposal</Text>
+            </View>
+            <Text style={dateProposalStyles.body}>{dateProposalBody}</Text>
+          </View>
+        ) : (
+          <View style={[cs.bubble, isOwnMessage ? cs.bubbleOwn : cs.bubbleOther]}>
+            {item.type === 'audio' ? (
+              <AudioPlayer uri={item.content} duration={item.duration} isOwnMessage={isOwnMessage} />
+            ) : (
+              <Text style={[cs.bubbleText, isOwnMessage ? cs.bubbleTextOwn : cs.bubbleTextOther]}>
+                {item.content}
+              </Text>
+            )}
+          </View>
+        )}
+        <View style={cs.timestampRow}>
+          <Text style={cs.timestampText}>{timeString}</Text>
+          {isOwnMessage && item.readAt && (
+            <View style={cs.readReceipt}>
+              <EvaIcon name="done-all" variant="outline" size={12} color={COLORS.primaryAccent} />
+            </View>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const MessageItem = React.memo(MessageItemBase);
+
 export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => {
   const { matchId, friendshipId, recipientName = 'Match', recipientId, recipientPhoto = null, isFriendChat } = route.params;
   const insets = useSafeAreaInsets();
@@ -92,11 +157,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sendingRef = useRef(false);
 
+  // Tracks mount state so deferred timers don't touch state on an unmounted component
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
   // Network status — shows OfflineBanner, guards send, auto-recovers on reconnect
   const loadMessagesRef = useRef<((isRefresh?: boolean) => Promise<void>) | null>(null);
   const { isOffline } = useNetworkStatus(useCallback(() => {
     // Re-fetch messages on reconnect to recover any missed during the gap
     setTimeout(() => {
+      if (!isMountedRef.current) return;
       loadMessagesRef.current?.(true);
     }, 1500);
   }, []));
@@ -291,7 +364,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
       else return;
       const result = await Promise.race([
         sendPromise,
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Voice note took too long — try again.')), AUDIO_TIMEOUT_MS)),
+        new Promise<never>((_, reject) => setTimeout(() => {
+          if (!isMountedRef.current) return;
+          reject(new Error('Voice note took too long — try again.'));
+        }, AUDIO_TIMEOUT_MS)),
       ]);
       if (!result.ok || !result.data) throw new Error(result.error?.message || 'Your voice note didn\'t go through — try again?');
       const sentMsg = result.data;
@@ -359,71 +435,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => 
     finally { setSendingMessage(false); sendingRef.current = false; }
   };
 
-  // Pre-compute which message indices need a date separator so renderMessage
-  // doesn't need `messages` in its dependency array (avoids re-creating the
-  // callback — and re-rendering every cell — on each new message).
-  const dateSeparatorMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (let i = 0; i < messages.length; i++) {
-      const dateLabel = formatMessageDate(new Date(messages[i].sentAt));
-      const prevLabel = i > 0 ? formatMessageDate(new Date(messages[i - 1].sentAt)) : null;
-      if (i === 0 || dateLabel !== prevLabel) {
-        map.set(messages[i].id, dateLabel);
-      }
-    }
-    return map;
-  }, [messages]);
-
-  const renderDateSeparator = useCallback((date: string) => (
-    <View style={cs.dateSepWrap}>
-      <View style={cs.dateSepPill}>
-        <Text style={cs.dateSepText}>{date}</Text>
-      </View>
-    </View>
-  ), []);
-
-  const renderMessage = useCallback(({ item }: { item: Message }) => {
+  // Date-separator derivation moved into MessageItem (uses prevItem timestamp).
+  // This keeps renderMessage deps stable (just currentUserId + messages array),
+  // and React.memo on MessageItem skips re-rendering unchanged rows.
+  const renderMessage = useCallback(({ item, index }: { item: Message; index: number }) => {
+    const prevItem = index > 0 ? messages[index - 1] : null;
     const isOwnMessage = item.senderId === currentUserId;
-    const messageDate = new Date(item.sentAt);
-    const timeString = messageDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    const dateSepLabel = dateSeparatorMap.get(item.id);
-    const isDateProposal = item.type === 'text' && item.content.startsWith('📅 Date Proposal:');
-    const dateProposalBody = isDateProposal ? item.content.replace('📅 Date Proposal: ', '') : '';
-    return (
-      <View>
-        {dateSepLabel != null && renderDateSeparator(dateSepLabel)}
-        <View style={[cs.messageRow, isOwnMessage ? cs.messageRowOwn : cs.messageRowOther]}>
-          {isDateProposal ? (
-            <View style={dateProposalStyles.card}>
-              <View style={dateProposalStyles.header}>
-                <EvaIcon name="calendar" variant="outline" size={18} color={COLORS.primaryAccent} />
-                <Text style={dateProposalStyles.headerText}>Date Proposal</Text>
-              </View>
-              <Text style={dateProposalStyles.body}>{dateProposalBody}</Text>
-            </View>
-          ) : (
-            <View style={[cs.bubble, isOwnMessage ? cs.bubbleOwn : cs.bubbleOther]}>
-              {item.type === 'audio' ? (
-                <AudioPlayer uri={item.content} duration={item.duration} isOwnMessage={isOwnMessage} />
-              ) : (
-                <Text style={[cs.bubbleText, isOwnMessage ? cs.bubbleTextOwn : cs.bubbleTextOther]}>
-                  {item.content}
-                </Text>
-              )}
-            </View>
-          )}
-          <View style={cs.timestampRow}>
-            <Text style={cs.timestampText}>{timeString}</Text>
-            {isOwnMessage && item.readAt && (
-              <View style={cs.readReceipt}>
-                <EvaIcon name="done-all" variant="outline" size={12} color={COLORS.primaryAccent} />
-              </View>
-            )}
-          </View>
-        </View>
-      </View>
-    );
-  }, [currentUserId, dateSeparatorMap, renderDateSeparator]);
+    return <MessageItem item={item} prevItem={prevItem} isOwnMessage={isOwnMessage} />;
+  }, [currentUserId, messages]);
 
   const renderEmptyState = useCallback(() => {
     if (isFriend) {
