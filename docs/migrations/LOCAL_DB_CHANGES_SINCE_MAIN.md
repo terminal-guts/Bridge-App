@@ -88,6 +88,7 @@ prod locally. All are additive to what `main` contains.
 | Path | Change |
 |---|---|
 | `supabase/functions/email-signup/index.ts` | **Rule B**: signup is now blocked whenever a `user_profiles` row exists for the email, not just when `profile_completed=true`. The previous rule let retroactively-incomplete profiles (e.g. a completed user who deleted a photo → `profile_completed` flipped back to false) pass the signup block — where onboarding would silently overwrite real data. A profile row is created the moment a user first verifies an OTP (`ensureProfileRow()` in `OnboardingScreen`), which makes OTP verification the commitment line: post-verify users who want to restart must sign in (auto-resumes onboarding) or delete their account. Requires the migration above. LOCAL_ONLY until approved for prod. |
+| `supabase/functions/get-proposals-for-voting/index.ts` | Removed the dropped `location` column from the profile-fetch SELECT (line 295). Migration #84 dropped `user_profiles.location` locally, which silently broke this query — when it failed, the returned `user_a_profile` / `user_b_profile` were null, and the frontend fell back to rendering "User A" / "User B" placeholders (→ "U.A" / "U.B" initials). Photos + vote counts + deep question answers were all real; only the names were glitched. This same change will be needed in prod when migration #84 is promoted — bundle the two. |
 
 ### Docs
 

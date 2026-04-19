@@ -292,7 +292,7 @@ async function enrichWithProfiles(
     const [profilesResult, preferencesResult] = await Promise.all([
       supabase
         .from('user_profiles')
-        .select('user_id, first_name, last_name, age, gender, pronouns, height_inches, ethnicity, religion, political_leaning, location, interests, values, bio, photos, drinking_frequency, cannabis_frequency, tobacco_frequency, other_drugs_frequency, profile_completed')
+        .select('user_id, first_name, last_name, age, gender, pronouns, height_inches, ethnicity, religion, political_leaning, interests, values, bio, photos, drinking_frequency, cannabis_frequency, tobacco_frequency, other_drugs_frequency, profile_completed')
         .in('user_id', profileIds),
       supabase
         .from('user_preferences')
