@@ -42,7 +42,7 @@ curl -s -X POST "$BASE_URL/storage/v1/bucket" \
   -H "Authorization: Bearer $SERVICE_KEY" \
   -H "apikey: $SERVICE_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"id":"profile-photos","name":"profile-photos","public":false,"allowed_mime_types":["image/jpeg","image/png","image/webp"],"file_size_limit":10485760}' \
+  -d '{"id":"profile-photos","name":"profile-photos","public":true,"allowed_mime_types":["image/jpeg","image/jpg","image/png","image/webp","image/heic"],"file_size_limit":10485760}' \
   -o /dev/null 2>/dev/null && echo "  ✓ profile-photos bucket" || echo "  ✓ profile-photos bucket (already exists)"
 
 # 2. Seed test users for proposal voting

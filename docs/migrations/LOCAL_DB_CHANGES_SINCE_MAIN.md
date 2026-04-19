@@ -80,6 +80,8 @@ prod locally. All are additive to what `main` contains.
 | Path | Change |
 |---|---|
 | `scripts/snapshot-import.ts` | Pre-prunes orphan `pool_vote_assignments` / `proposal_votes` rows whose `proposal_id` target isn't in the snapshot (prevents silent FK failures). Adds a 2-pass retry loop for transient FK failures. Adds a mandatory verification step that queries every imported table's live count and compares to the snapshot; prints a delta table; exits `1` if any count mismatches (use `--force-continue` to suppress). Replaced broken `supabase.auth.admin.listUsers` pagination with raw fetches for clearing and with an `exec_sql` RPC call for counting (GoTrue returns 500 past page 2 on our dataset). |
+| `scripts/setup-local.sh` | `profile-photos` bucket is now created with `public: true` and the full prod MIME list (`image/jpeg`, `image/jpg`, `image/png`, `image/webp`, `image/heic`). Previously created as `public: false` with a narrower MIME list, which silently broke photo rendering in the app: `profileService` calls `supabase.storage.from('profile-photos').getPublicUrl(p.url)` in three places, and `getPublicUrl` on a private bucket returns a URL the bucket refuses to serve. Now matches prod exactly. |
+| `scripts/snapshot-import-photos.ts` | If the `profile-photos` bucket already exists with mismatched `public` flag, script reconciles it via `updateBucket()` as a defensive fallback. Prevents the earlier footgun where re-running bootstrap without a full reset could leave the bucket private. |
 
 ### Edge functions
 
@@ -157,3 +159,54 @@ Every script that talks to prod does so **read-only**:
 - `check-schema-parity.sh` / `check-edge-function-parity.sh` only query prod.
 
 No script in this branch can mutate production.
+
+---
+
+## Open items / handoff
+
+### 1. Pending prod deploys (per-action approval required)
+
+Four artifacts on this branch are tested locally but **not yet in prod**.
+Each one needs explicit, conversational go-ahead from the maintainer before
+being applied to production — the per-action rule at the top of `CLAUDE.md`.
+No agent or session should promote these unilaterally.
+
+| # | Artifact | Shape of prod change |
+|---|---|---|
+| 83 | `20260417000005_email_verification_codes_add_ip.sql` | `ALTER TABLE email_verification_codes ADD COLUMN ip_address` + index |
+| 84 | `20260418000001_drop_dead_columns.sql` | `ALTER TABLE … DROP COLUMN` for 8 dead columns |
+| 85 | `20260419000001_get_user_by_email_add_has_profile.sql` | `DROP FUNCTION` + `CREATE FUNCTION get_user_by_email` with new return shape |
+| — | `email-signup/index.ts` (Rule B edition) | `supabase functions deploy email-signup` — depends on #85 |
+
+Deploy order (if/when approved): **#83 → #85 → email-signup redeploy → #84**
+(Rule B depends on #85 being live first. #84 is independent — can land any time.)
+
+Until promoted, local will keep reporting "drift" in the 3 tables above
+(expected), and Rule B will only exist locally.
+
+### 2. Two prod-only edge functions not in the repo
+
+`check-edge-function-parity.sh` flags `send-sms` and `send-nudge` as
+deployed to prod but absent from `supabase/functions/`. They're not
+referenced in `src/` (the mobile client), but they might be invoked by
+other edge functions or cron jobs. Not investigated deeply in this session.
+
+Next steps (for whoever picks this up):
+1. Grep all of `supabase/functions/**/*.ts` for `send-sms` / `send-nudge` calls.
+2. Check `cron.job` in prod for schedules targeting these functions.
+3. If dead → add to the cleanup migration at `supabase/migrations_pending/cleanup_legacy_functions_from_prod.sql` (needs user approval to run).
+4. If alive → pull source from prod via `supabase functions download` and commit to the repo so they're tracked and locally-servable.
+
+### 3. End-to-end UX verification
+
+All Rule B testing was curl-against-the-edge-function. Still to do: run
+the app against local and confirm the signup screen shows the
+"Tap Sign In instead" error cleanly when a user with any profile row
+(complete or partial) attempts signup. The quickest canary accounts:
+
+- `sw186@rice.edu` — complete profile (`profile_completed=true`)
+- `dc118@rice.edu` — partial profile (`profile_completed=false`) — **this is the new Rule B case**
+- Any brand-new email — should pass signup through to OTP verify
+
+Relevant UI copy lives in `src/screens/onboarding/steps/EmailSignUpStep.tsx`
+(error code `ACCOUNT_EXISTS` → user-visible message).

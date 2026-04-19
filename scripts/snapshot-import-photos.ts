@@ -74,7 +74,11 @@ async function syncBucket(
 ): Promise<{ copied: number; skipped: number; failed: number; elapsedSecs: number }> {
   console.log(`\n── Bucket: ${bucket.name} ─────────────────────────────`);
 
-  // Ensure local bucket exists matching prod's config
+  // Ensure local bucket exists AND matches prod's config (public flag,
+  // MIME list). If setup-local.sh or an earlier run created the bucket with
+  // different settings (e.g. public=false, narrower MIME list), photos will
+  // silently fail to render because `getPublicUrl()` in the app won't serve
+  // from a private bucket. Always reconcile — cheap idempotent call.
   const { data: localBucket } = await local.storage.getBucket(bucket.name);
   if (!localBucket) {
     console.log(`  Creating local bucket ${bucket.name}...`);
@@ -85,6 +89,17 @@ async function syncBucket(
     });
     if (error && !/already exists/i.test(error.message)) {
       console.error(`  FAIL create bucket ${bucket.name}: ${error.message}`);
+      return { copied: 0, skipped: 0, failed: -1, elapsedSecs: 0 };
+    }
+  } else if (localBucket.public !== bucket.public) {
+    console.log(`  Reconfiguring local bucket ${bucket.name}: public ${localBucket.public} → ${bucket.public}`);
+    const { error } = await local.storage.updateBucket(bucket.name, {
+      public: bucket.public,
+      fileSizeLimit: bucket.fileSizeLimit,
+      allowedMimeTypes: bucket.mimeTypes,
+    });
+    if (error) {
+      console.error(`  FAIL reconfigure bucket ${bucket.name}: ${error.message}`);
       return { copied: 0, skipped: 0, failed: -1, elapsedSecs: 0 };
     }
   }
