@@ -496,4 +496,4 @@ The pipeline is: `supabase db reset` → `scripts/setup-local.sh` → `snapshot-
 | `docs/migrations/LEGACY_CRUFT_IN_PROD.md` | 47 retired DB functions in prod that aren't in migrations — documented, allowlisted in schema diff |
 | `docs/migrations/SECRETS.md` | Secret names and which functions use them |
 | `docs/migrations/LOCAL_SETUP.md` | How to spin up a new local environment |
-| `docs/migrations/LOCAL_DB_CHANGES_SINCE_MAIN.md` | Rolling summary of every local-DB-related change on the current feature branch that isn't in `main` |
+| `docs/agent-summaries/branch-summary.md` | Rolling single-page summary of every branch-local change vs `main` — covers email/resend, skeleton loaders, and local-DB sync toolkit |

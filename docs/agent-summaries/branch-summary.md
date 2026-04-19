@@ -1,9 +1,12 @@
-# Agent Summary — Resend Email Optimization
+# Branch Summary — `plan/proposal-gate-overhaul`
 
-**Agent role:** Resend email delivery specialist on `plan/proposal-gate-overhaul`.
-**Scope:** `supabase/functions/email-signup/`, `supabase/functions/email-unsubscribe/`, the frontend auth screens that invoke them, related `authService.ts` functions, DNS, email-deliverability docs.
+**Scope covered here (one document for the whole branch):**
+- **Resend / email signup rework** (`email-signup` edge function, frontend auth screens, `authService`, DNS, deliverability)
+- **Skeleton loader rework** (PR #32 merge + `SkeletonLoader` refactor + settings flicker fix)
+- **Local-DB sync toolkit** (bootstrap pipeline, snapshot scripts, parity checks, tracking docs, Rule B signup-block migration)
+
 **Session dates:** 2026-04-18 → 2026-04-19.
-**Last updated:** 2026-04-19 (final — all email work is code-complete and live-verified on local).
+**Last updated:** 2026-04-19.
 
 ---
 
@@ -77,28 +80,40 @@ Migration #85 is idempotent (`DROP FUNCTION IF EXISTS` then `CREATE OR REPLACE F
 | `docs/migrations/MIGRATION_LOG.md` | MODIFIED — entry #83 added (owned by this agent); #85 added (owned by onboarding agent, `email-signup` depends on) |
 | `docs/migrations/EDGE_FUNCTIONS.md` | MODIFIED — `email-signup` LOCAL_ONLY, `email-unsubscribe` DORMANT |
 | `docs/migrations/SECRETS.md` | Present (from earlier commits); lists `RESEND_API_KEY` |
-| `docs/agent-summaries/resend-email-optimization.md` | This file |
+| `docs/agent-summaries/branch-summary.md` | This file |
 
 ---
 
 ## Local environments, migrations, edge functions, SQL — how we now track them
 
-Everything applied to local is logged the same turn it lands, so a future prod deploy is a mechanical replay, never archaeology. This section summarises the full local-sync toolkit that's on this branch but **not in `main`** — surrounding context for the email deploy above, and the authoritative single-page read is `docs/migrations/LOCAL_DB_CHANGES_SINCE_MAIN.md`.
+> **Invariant:** anything applied to local — migration, RPC, edge function code, storage bucket config, secret — is logged the same turn it lands, so promoting it to prod later is a mechanical replay of a well-documented step, never a "figure out what's different" archaeology exercise.
+>
+> All changes in this section are **additive or local-only**. No production writes. No prod schema was mutated as a side-effect of building this tooling.
 
 ### One command rebuilds local to mirror prod + local migrations on top
 
 ```bash
 ./scripts/bootstrap-local.sh              # ~10 min: reset + setup + data + photos + parity
 ./scripts/bootstrap-local.sh --no-photos  # ~2 min: avatars broken but DB mirrored
+./scripts/bootstrap-local.sh --force-continue  # don't exit on count mismatch
 ```
 
-Pipeline: `supabase db reset` → `setup-local.sh` → `snapshot-export.sh` (read-only prod SELECTs) → `snapshot-import.ts` (loads rows + **verifies every table count against the snapshot; exits 1 on delta**) → `snapshot-import-photos.ts` (mirrors `profile-photos` + `chat-audio`) → `check-schema-parity.sh` → `check-edge-function-parity.sh`.
+Pipeline end to end:
+1. `supabase db reset` — reapplies every migration in `supabase/migrations/`, including the 3 that are currently `LOCAL_ONLY`.
+2. `scripts/setup-local.sh` — installs extensions, creates storage buckets (with prod-matching config), seeds 2 test users.
+3. `scripts/snapshot-export.sh` — dumps prod rows (read-only SELECT guards enforced) to `snapshots/snapshot-<date>.json`.
+4. `scripts/snapshot-import.ts` — loads rows with 2-pass FK retry and **verifies every table count against the snapshot; exits 1 on delta**.
+5. `scripts/snapshot-import-photos.ts` — mirrors `profile-photos` and `chat-audio` buckets.
+6. `scripts/check-schema-parity.sh` — dumps both schemas and diffs.
+7. `scripts/check-edge-function-parity.sh` — diffs `supabase functions list` (prod) against `supabase/functions/` folders.
+
+End state: local row counts match snapshot exactly, ~569 photos copied, schema is prod + local-only migrations stacked on top.
 
 ### New scripts (not in `main`)
 
 | Path | Purpose |
 |---|---|
-| `scripts/bootstrap-local.sh` | One-shot orchestrator. No output silencers; fails the whole run if any step fails. |
+| `scripts/bootstrap-local.sh` | One-shot orchestrator. No output silencers; every step's errors visible; fails the whole run if any step fails. |
 | `scripts/snapshot-import-photos.ts` | Mirrors prod storage buckets. Handles `profile-photos` + `chat-audio`. `--only=<bucket>` / `--force` flags. Reconciles the `public` flag on an existing bucket so the app's `getPublicUrl()` keeps working locally. |
 | `scripts/check-edge-function-parity.sh` | Diffs `supabase functions list` (prod) against `supabase/functions/` folders. Reports drift both ways. Currently flags 11 prod-only (9 legacy cruft + `send-sms` / `send-nudge`) and 1 local-only (`moderate-image`). |
 
@@ -106,8 +121,8 @@ Pipeline: `supabase db reset` → `setup-local.sh` → `snapshot-export.sh` (rea
 
 | Path | Change |
 |---|---|
-| `scripts/snapshot-import.ts` | Pre-prunes orphan `pool_vote_assignments` / `proposal_votes` rows whose `proposal_id` target isn't in the snapshot (fixes silent FK failures that used to eat ~547 rows). 2-pass FK retry. **Mandatory end-of-run verification table** — exits 1 on any count mismatch. Replaced broken GoTrue `listUsers` pagination with raw-fetch clear + `exec_sql` RPC count (GoTrue 500s past page 2 on our dataset). |
-| `scripts/setup-local.sh` | Creates `profile-photos` bucket as `public: true` with the full prod MIME list (adds `image/jpg` + `image/heic`). Previously created private with a narrower list — the app's `getPublicUrl()` calls in `profileService.*` silently returned un-serveable URLs, so photos never rendered. |
+| `scripts/snapshot-import.ts` | Pre-prunes orphan `pool_vote_assignments` / `proposal_votes` rows whose `proposal_id` isn't in the snapshot (fixes silent FK failures that used to eat ~547 rows). 2-pass FK retry. **Mandatory end-of-run verification table** — prints snapshot-vs-local counts per table, exits 1 on any mismatch (use `--force-continue` to suppress). Replaced broken GoTrue `listUsers` pagination with raw-fetch clear + `exec_sql` RPC count (GoTrue 500s past page 2 on our dataset). |
+| `scripts/setup-local.sh` | Creates `profile-photos` bucket as `public: true` with the full prod MIME list (`image/jpeg`, `image/jpg`, `image/png`, `image/webp`, `image/heic`). Previously `public: false` with a narrower MIME list — the app's `getPublicUrl()` calls in `profileService.*` silently returned un-serveable URLs, so photos never rendered. |
 
 ### New tracking docs (not in `main`)
 
@@ -116,48 +131,89 @@ Pipeline: `supabase db reset` → `setup-local.sh` → `snapshot-export.sh` (rea
 | `docs/migrations/EDGE_FUNCTIONS.md` | Registry of every edge function: status, version, schedule, purpose, live parity snapshot. |
 | `docs/migrations/LEGACY_CRUFT_IN_PROD.md` | 47 retired DB functions still deployed to prod, allowlisted in `scripts/schema-diff-ignore.json`. Includes a staged DROP migration path under `supabase/migrations_pending/` (requires user approval to apply). |
 | `docs/migrations/SECRETS.md` | Names-only registry of Supabase secrets per edge function. |
-| `docs/migrations/LOCAL_DB_CHANGES_SINCE_MAIN.md` | Rolling single-page summary of everything on this branch vs `main`, across scripts / docs / migrations / edge-function behaviour. Includes open-items / handoff section. |
-| `docs/migrations/archive/prod-schema-snapshot-2026-04-17.md`, `synthetic-local-schema-2026-04-17.md`, `drift-report-2026-04-17.md` | Point-in-time forensic snapshots that drove the BACKFILL migrations that now make `supabase db reset` reproduce prod. |
+| `docs/migrations/archive/prod-schema-snapshot-2026-04-17.md` | Frozen forensic dump of prod schema at that date — 38 tables × every column/index/policy, 136 RPCs, 21 triggers. Drove the BACKFILL migrations below. |
+| `docs/migrations/archive/synthetic-local-schema-2026-04-17.md` | What `supabase db reset` produced at that date (pre-alignment). |
+| `docs/migrations/archive/drift-report-2026-04-17.md` | One-time drift audit that drove the alignment work. Archived — drift it documented is now resolved. |
+
+### Modified tracking docs (vs `main`)
+
+| Path | Change |
+|---|---|
+| `docs/migrations/README.md` | Expanded "Keeping local in sync with prod" table to reference the new scripts and capabilities. |
+| `docs/migrations/MIGRATION_LOG.md` | Added entries 71–85 for every new migration on this branch, with status. Records the 2026-04-18 gate-overhaul-v2 deploy. |
+| `docs/migrations/PRODUCTION_SCHEMA.md` | Points at the latest dated prod schema snapshot. |
+| `docs/migrations/LOCAL_SETUP.md` | Documents the one-command path (`bootstrap-local.sh`) plus the manual step-by-step. Added the dump-and-diff workflow. |
 
 ### Migrations added on this branch — full inventory (not just email scope)
 
-Entry numbers match `MIGRATION_LOG.md`. Statuses are current as of 2026-04-19.
+Entry numbers match `MIGRATION_LOG.md`. Statuses current as of 2026-04-19.
 
-| # | File | Purpose | Status |
-|---|---|---|---|
-| 71 | `20260412000002_check_email_exists.sql` | boolean "does this email exist" RPC | PRODUCTION |
-| 72 | `20260415000001_email_verification_codes.sql` | OTP code storage for `email-signup` | PRODUCTION |
-| 73 | `20260415000002_get_user_by_email_rpc.sql` | user + profile-status lookup by email | PRODUCTION |
-| 74 | `20260415000003_email_unsubscribes.sql` | unsubscribe registry | PRODUCTION |
-| 75 | `20260417000001_add_missing_production_columns.sql` | catch-up: cols prod had via manual ALTER | PRODUCTION (BACKFILL) |
-| 76 | `20260417000002_revoke_check_email_exists_anon.sql` | anti-enumeration hardening | PRODUCTION |
-| 77 | `20260417000003_backfill_prod_only_tables.sql` | reproduce `profiles`, `onboarding_progress`, `waitlist_signups`, `allowed_email_domains` in local | PRODUCTION (BACKFILL) |
-| 78 | `20260417000004_align_local_with_prod.sql` | align missing indexes/policies/triggers + add `exec_sql` RPC locally | PRODUCTION (BACKFILL) |
-| 80 | `20260417100002_local_align_profile_completed.sql` | backfill `profile_completed` locally | LOCAL_ONLY (BACKFILL) |
-| 81 | `20260417100003_karma_outcome_v2.sql` | Rule B karma RPC + grants | PRODUCTION |
-| 82 | `20260417100004_auto_expire_on_pause.sql` | auto-expire pending proposals on pause/suspend | PRODUCTION |
-| **83** | `20260417000005_email_verification_codes_add_ip.sql` | adds `ip_address` + index | **LOCAL_ONLY** |
-| 84 | `20260418000001_drop_dead_columns.sql` | drops 8 dead cols across `user_profiles` + `user_preferences` (onboarding-simplification-v2 scope) | **LOCAL_ONLY** |
-| **85** | `20260419000001_get_user_by_email_add_has_profile.sql` | adds `has_profile BOOLEAN` to RPC — **prerequisite for Rule B signup block** | **LOCAL_ONLY** |
-| — | `supabase/migrations_pending/cleanup_legacy_functions_from_prod.sql` | DROP for the 47 legacy prod functions | STAGED (not in `migrations/`) |
+| # | File | Type | Status | Purpose |
+|---|---|---|---|---|
+| 71 | `20260412000002_check_email_exists.sql` | ADDITIVE | PRODUCTION | boolean "does this email exist" RPC |
+| 72 | `20260415000001_email_verification_codes.sql` | ADDITIVE | PRODUCTION | OTP code storage (matches prod shape `code` + `code_hash` + `used`) |
+| 73 | `20260415000002_get_user_by_email_rpc.sql` | ADDITIVE | PRODUCTION | user + profile-status lookup by email (service_role only) |
+| 74 | `20260415000003_email_unsubscribes.sql` | ADDITIVE | PRODUCTION | unsubscribe registry |
+| 75 | `20260417000001_add_missing_production_columns.sql` | BACKFILL | PRODUCTION | catch-up: `user_profiles.profile_completed`, `user_profiles.email`, `user_preferences.interested_in_genders` + partner_* + `preferred_politics`, `proposals.vote_context` |
+| 76 | `20260417000002_revoke_check_email_exists_anon.sql` | FIX | PRODUCTION | REVOKE EXECUTE from anon (anti-enumeration) |
+| 77 | `20260417000003_backfill_prod_only_tables.sql` | BACKFILL | PRODUCTION | reproduce `profiles`, `onboarding_progress`, `waitlist_signups`, `allowed_email_domains` in local |
+| 78 | `20260417000004_align_local_with_prod.sql` | BACKFILL | PRODUCTION | align missing indexes/policies/triggers + add `exec_sql` RPC locally |
+| 79 | `20260417100001_remove_proposal_lifecycle_check_cron.sql` | FIX | PRODUCTION | unschedule redundant 4-hour safety-net cron |
+| 80 | `20260417100002_local_align_profile_completed.sql` | BACKFILL | LOCAL_ONLY | backfill `profile_completed` column locally (prod has it already) |
+| 81 | `20260417100003_karma_outcome_v2.sql` | FIX | PRODUCTION | Rule B karma RPC + grants |
+| 82 | `20260417100004_auto_expire_on_pause.sql` | ADDITIVE | PRODUCTION | auto-expire pending proposals on pause/suspend |
+| **83** | `20260417000005_email_verification_codes_add_ip.sql` | ADDITIVE | **LOCAL_ONLY** | adds `ip_address` + rate-limit index. Required before `email-signup` can INSERT. |
+| 84 | `20260418000001_drop_dead_columns.sql` | DESTRUCTIVE | **LOCAL_ONLY** | drops 8 dead cols across `user_profiles` + `user_preferences` (onboarding-simplification-v2 scope) |
+| **85** | `20260419000001_get_user_by_email_add_has_profile.sql` | ADDITIVE | **LOCAL_ONLY** | adds `has_profile BOOLEAN` to RPC — **prerequisite for Rule B signup block** |
+| — | `supabase/migrations_pending/cleanup_legacy_functions_from_prod.sql` | DESTRUCTIVE | STAGED | DROP for 47 legacy prod functions (not in `migrations/` — needs explicit user approval to move + run) |
 
 ### Edge function changes beyond `email-signup`
 
 | Function | Change |
 |---|---|
-| `email-signup/index.ts` | **Rule B** signup-block — blocks signup whenever a `user_profiles` row exists, not just when complete. Covered in Section 2 above. |
-| `get-proposals-for-voting/index.ts` | Dropped `location` from the profile-join SELECT. Migration #84 removed that column locally — the unfixed query silently returned null profiles, making the voting-gate UI render "U.A" / "U.B" placeholder names on real photos. **Must be redeployed alongside #84 when #84 is promoted to prod.** |
+| `email-signup/index.ts` | **Rule B** signup-block — blocks signup whenever a `user_profiles` row exists, not just when `profile_completed=true`. A profile row is created the moment a user first verifies an OTP (`ensureProfileRow()` in `OnboardingScreen`), making OTP verification the commitment line. Post-verify users who want to restart must sign in (auto-resumes onboarding) or delete their account. Prevents silent data overwrite when `profile_completed` flips back to false (e.g. a photo was deleted). Covered in Section 2 above for email-specific details; requires migration #85. |
+| `get-proposals-for-voting/index.ts` | Removed `location` from the profile-join SELECT (line 295). Migration #84 dropped `user_profiles.location` locally — the unfixed query silently returned null profiles, making the voting-gate UI render "User A" / "User B" placeholders (→ "U.A" / "U.B" initials) on real photos. Photos, vote counts, and deep question answers were all real — only names were glitched. **Must be redeployed alongside #84 when #84 is promoted to prod.** |
+
+### Known intentional drift (after bootstrap)
+
+`./scripts/check-schema-parity.sh` **will report drift in exactly 3 tables**. This is expected:
+
+| Table | Drift | Root cause |
+|---|---|---|
+| `user_profiles` | prod has 7 extra cols (`hometown`, `latitude`, `location`, `longitude`, `matchmaking_only`, `non_negotiables`, `profile_photo_path`) | migration #84 `drop_dead_columns.sql` is `LOCAL_ONLY` |
+| `user_preferences` | prod has extra col `looking_for` | same migration |
+| `email_verification_codes` | local has extra cols `ip_address` + one index | migration #83 is `LOCAL_ONLY` |
+
+`./scripts/check-edge-function-parity.sh` will flag:
+- **11 prod-only** functions: 9 are legacy cruft (old grid/survey system, snake_case match/message functions), 2 (`send-sms`, `send-nudge`) are real but absent from the repo — see follow-up items below.
+- **1 local-only** function: `moderate-image` — called by `src/services/imageModerationService.ts` but not yet deployed to prod (owned by another agent).
+
+### Guard rails — every script that talks to prod is read-only
+
+- `snapshot-export.sh` — inline SQL keyword filter rejects anything that isn't a `SELECT`.
+- `snapshot-import.ts` — hardcodes `http://127.0.0.1:54321` as target; refuses to run if local Supabase isn't reachable.
+- `snapshot-import-photos.ts` — reads prod storage via download-only client; writes exclusively to `http://127.0.0.1:54321`.
+- `check-schema-parity.sh` / `check-edge-function-parity.sh` — only query prod.
+- `dump-prod-schema.sh` — uses `supabase-exec.sh` which enforces SELECT-only for non-service-role reads.
+
+No script in this branch can mutate production.
 
 ### Pending prod deploys (per-action approval required)
 
-All four need explicit conversational go-ahead before touching prod:
+Four artifacts tested locally but **not yet in prod**. Each needs explicit conversational go-ahead — the per-action rule at the top of `CLAUDE.md`. No agent or session should promote these unilaterally.
 
-1. Migration **#83** — `email_verification_codes_add_ip.sql` (email scope)
-2. Migration **#85** — `get_user_by_email_add_has_profile.sql` (required before `email-signup` redeploy)
-3. `supabase functions deploy email-signup` (Rule B edition) — depends on #85
-4. Migration **#84** — `drop_dead_columns.sql` (onboarding scope) — **must bundle with redeploy of `get-proposals-for-voting` and coordinated frontend push**
+| # | Artifact | Shape of prod change |
+|---|---|---|
+| 83 | `20260417000005_email_verification_codes_add_ip.sql` | `ALTER TABLE email_verification_codes ADD COLUMN ip_address` + index |
+| 84 | `20260418000001_drop_dead_columns.sql` | `ALTER TABLE … DROP COLUMN` for 8 dead columns |
+| 85 | `20260419000001_get_user_by_email_add_has_profile.sql` | `DROP FUNCTION` + `CREATE FUNCTION get_user_by_email` with new return shape |
+| — | `email-signup` (Rule B edition) + `get-proposals-for-voting` (location-col fix) | `supabase functions deploy` |
 
-Deploy order: **#83 → #85 → email-signup redeploy** as one bundle; **#84 → get-proposals-for-voting redeploy → frontend build** as another bundle. The two bundles are independent.
+Deploy order (as two independent bundles):
+- **Bundle A (email):** #83 → #85 → `email-signup` redeploy
+- **Bundle B (onboarding):** #84 → `get-proposals-for-voting` redeploy → coordinated frontend push
+
+Until promoted, local keeps reporting "drift" in the 3 tables above (expected), and Rule B + the voting-gate name fix only exist locally.
 
 ### How to verify local still matches prod
 
@@ -168,10 +224,39 @@ Deploy order: **#83 → #85 → email-signup redeploy** as one bundle; **#84 →
 
 Any drift beyond the documented LOCAL_ONLY migrations + `LEGACY_CRUFT_IN_PROD.md` means something landed in local without being logged. Fix the log or the drift before deploying.
 
+### Commands quick-reference
+
+```bash
+./scripts/bootstrap-local.sh                           # full mirror (10–15 min)
+./scripts/bootstrap-local.sh --no-photos               # fast path (~2 min)
+./scripts/bootstrap-local.sh --force-continue          # tolerate partial success
+
+./scripts/snapshot-export.sh                           # SELECT-only prod dump
+npx tsx scripts/snapshot-import.ts                     # load + verify
+npx tsx scripts/snapshot-import-photos.ts              # both buckets
+npx tsx scripts/snapshot-import-photos.ts --only=profile-photos
+npx tsx scripts/snapshot-import-photos.ts --force      # overwrite existing
+
+./scripts/check-schema-parity.sh                       # dump + diff schema
+./scripts/check-edge-function-parity.sh                # edge fn audit
+```
+
 ### Open follow-up items (handed off to next session)
 
-- **`send-sms` / `send-nudge`** — deployed to prod but absent from the repo. Not referenced in `src/`, may be invoked by other edge functions or cron. Grep `supabase/functions/**/*.ts` + check `cron.job`, then either deprecate or `supabase functions download` + commit.
-- **End-to-end Rule B UX verification** — curl tests pass; still need to confirm `EmailSignUpStep.tsx` renders the `ACCOUNT_EXISTS` error cleanly. Canary accounts for testing: `sw186@rice.edu` (complete), `dc118@rice.edu` (partial — new Rule B case), brand-new email (should pass through).
+**1. `send-sms` / `send-nudge` — prod-only edge functions**
+
+Deployed to prod but absent from `supabase/functions/`. Not referenced in `src/` (mobile client), but may be invoked by other edge functions or cron jobs. Not investigated deeply. Next steps:
+1. Grep all of `supabase/functions/**/*.ts` for `send-sms` / `send-nudge` calls.
+2. Check `cron.job` in prod for schedules targeting these functions.
+3. If dead → add to `supabase/migrations_pending/cleanup_legacy_functions_from_prod.sql` (needs user approval to run).
+4. If alive → `supabase functions download` + commit so they're tracked and locally-servable.
+
+**2. End-to-end Rule B UX verification**
+
+All Rule B testing to date was curl-against-the-edge-function. Still to confirm: `src/screens/onboarding/steps/EmailSignUpStep.tsx` renders the `ACCOUNT_EXISTS` error cleanly in the UI. Canary accounts:
+- `sw186@rice.edu` — complete profile (`profile_completed=true`) — should block
+- `dc118@rice.edu` — partial profile (`profile_completed=false`) — **this is the new Rule B case** — should block
+- any brand-new `@rice.edu` — should pass signup through to OTP verify
 
 ---
 
@@ -380,7 +465,7 @@ src/screens/auth/EmailVerificationScreen.tsx
 src/screens/auth/LoginScreen.tsx                            (placeholder only)
 docs/migrations/MIGRATION_LOG.md                            (entry #83)
 docs/migrations/EDGE_FUNCTIONS.md                           (email-signup / email-unsubscribe status)
-docs/agent-summaries/resend-email-optimization.md           (this file)
+docs/agent-summaries/branch-summary.md                      (this file)
 ```
 
 ## Files explicitly NOT touched (owned by other parallel agents)
