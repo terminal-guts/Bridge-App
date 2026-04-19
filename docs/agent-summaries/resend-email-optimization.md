@@ -3,7 +3,7 @@
 **Agent role:** Resend email delivery specialist on `plan/proposal-gate-overhaul`.
 **Scope:** `supabase/functions/email-signup/`, `supabase/functions/email-unsubscribe/`, the frontend auth screens that invoke them, related `authService.ts` functions, DNS, email-deliverability docs.
 **Session dates:** 2026-04-18 → 2026-04-19.
-**Last updated:** 2026-04-19 (post scope-cut).
+**Last updated:** 2026-04-19 (post scope-cut + post live verification).
 
 ---
 
@@ -17,6 +17,7 @@
 4. **`email-unsubscribe` is DORMANT, not scheduled for deploy** (scope cut 2026-04-19). Transactional OTPs don't need unsubscribe; removing the `List-Unsubscribe` headers also removes the need for the function.
 5. **DNS is clean.** DKIM + SPF verified green in Resend dashboard. DMARC `rua=mailto:saulbrauns@gmail.com` added 2026-04-19. First reports arrive within 48h.
 6. **Risk after deploy:** low. Legacy `send-email-verification` stays deployed as rollback; new auth flow is additive; migration is idempotent `IF NOT EXISTS`.
+7. **Live-verified locally 2026-04-19 10:21 AM CT.** Code email sent via local `email-signup` → Resend dashboard shows `Sent → Delivered` in the same minute (0 m). Gmail shows a clean email: no `•••` icon, letter-spaced code, no footer. Resend's own Insights report: 10 checks passing, 1 minor warning (sending from apex instead of a subdomain) — deferred as post-launch polish, see below.
 
 ---
 
@@ -224,6 +225,21 @@ Prior email-related commits from other sessions on this branch (for master agent
 - **Reviewer bypass preserved at every auth checkpoint**: `reviewer@bridgedate.app`, `reviewer2@bridgedate.app` → `validate-reviewer-access` + `signInWithPassword`.
 
 ---
+
+## Live verification results (2026-04-19)
+
+Tested end-to-end against local Supabase + real Resend-delivered emails to `sb278@rice.edu`:
+
+- **Delivery latency**: Resend dashboard shows `Sent → Delivered` within the **same minute** (displayed as "0 minutes ago" in Gmail). Legacy path was ~10s; new path is effectively instant.
+- **Template rendering** (Gmail web, 10:50 AM test): clean. Letter-spaced code, full expiry line visible, no hidden-preheader artifact, no footer, no unsubscribe link.
+- **Copy/paste**: letter-spacing is CSS-only → clipboard contains `"682815"` not `"6 8 2 8 1 5"` → paste fills all 6 digits on the verify screen.
+- **Resend Insights (10:21 AM test)**: 10/11 checks passing. One warning (see Deferred section below). All others green: custom subdomain for click/open tracking, link URLs match sending domain, valid DMARC record, plain-text alternative present, small body size, no "no-reply" sender, images hosted on sending domain, no SVG images, full YouTube URLs (N/A).
+
+**Transient false alarm investigated 2026-04-19:** a mid-session screenshot appeared to show a `•••` icon under the code box, which initially looked like a stale preheader. Root cause turned out to be Gmail's conversation-threading trim indicator collapsing the repeated expiry line across threaded OTP emails — confirmed by cleaning the thread and sending a fresh code, which rendered perfectly. My source file was always clean post-`e387005`; the Docker edge-runtime container live-mounts the source directory. I restarted the container during the investigation to rule out isolate caching.
+
+## Deferred (post-launch polish, not blocking ship)
+
+- **Send from a subdomain** (Resend Insights warning: "Use a subdomain"). Today we send from `Bridge <verify@bridgedate.app>` (apex domain). Resend recommends `verify@send.bridgedate.app` to isolate sender reputation from the apex domain's general reputation. Cost: one-line change in `email-signup/index.ts` + a dashboard tweak in Resend to add the subdomain as a verified sending domain. We don't need this now — the apex domain has no marketing-email reputation to protect, and Rice launch traffic is small. Revisit only if (a) adding marketing emails, (b) expanding beyond Rice, or (c) deliverability complaints surface in the DMARC reports.
 
 ## Known risks / open questions
 
