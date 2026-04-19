@@ -12,6 +12,7 @@ import { Body } from '.';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { errorHaptic } from '../../utils/haptics';
 import { EvaIcon } from '../icons';
+import { COLORS } from '../../theme/colors';
 
 const StyledView = styled(View);
 
@@ -29,9 +30,12 @@ export const OfflineBanner: React.FC = () => {
   }
 
   return (
-    <StyledView className="bg-warning px-4 py-3 flex-row items-center">
-      <EvaIcon name="wifi-off" variant="outline" size={20} color="#FFFFFF" />
-      <Body className="text-white ml-2 font-medium text-sm">
+    <StyledView
+      className="px-4 py-3 flex-row items-center"
+      style={{ backgroundColor: COLORS.amber }}
+    >
+      <EvaIcon name="wifi-off" variant="outline" size={20} color={COLORS.card} />
+      <Body className="ml-2 font-medium text-sm" style={{ color: COLORS.card }}>
         You're offline. Some features may not work.
       </Body>
     </StyledView>
@@ -47,11 +51,11 @@ export const OfflineMessage: React.FC<OfflineMessageProps> = ({
 }) => {
   return (
     <StyledView className="flex-1 items-center justify-center px-6">
-      <EvaIcon name="wifi-off" variant="outline" size={80} color="#D0D5DD" />
-      <Body className="text-neutral-700 text-center mt-4 text-base font-medium">
+      <EvaIcon name="wifi-off" variant="outline" size={80} color={COLORS.text.disabled} />
+      <Body className="text-center mt-4 text-base font-medium" style={{ color: COLORS.text.primary }}>
         You're Offline
       </Body>
-      <Body className="text-neutral-500 text-center mt-2 text-sm">
+      <Body className="text-center mt-2 text-sm" style={{ color: COLORS.text.secondary }}>
         {message}
       </Body>
     </StyledView>

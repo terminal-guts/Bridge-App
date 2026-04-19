@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
-import { H3, Body, Button } from './';
+import { H3, Body } from './';
 import { lightHaptic } from '../../utils/haptics';
 import { EvaIcon } from '../icons';
+import { COLORS } from '../../theme/colors';
 
 interface ErrorStateProps {
   title?: string;
@@ -32,35 +34,56 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
   icon,
   className = '',
 }) => {
+  const insets = useSafeAreaInsets();
+
   const handleRetry = () => {
     lightHaptic();
     onRetry?.();
   };
 
   return (
-    <StyledView className={`items-center justify-center py-12 px-6 ${className}`}>
+    <StyledView
+      className={`items-center justify-center py-12 px-6 ${className}`}
+      style={{ flex: 1, paddingBottom: Math.max(insets.bottom, 24) }}
+    >
       {/* Icon */}
       <StyledView className="mb-4">
         {icon || (
-          <StyledView className="w-16 h-16 bg-error-100 rounded-full items-center justify-center">
-            <EvaIcon name="alert-circle" variant="outline" size={32} color="#EF4444" />
+          <StyledView
+            className="w-16 h-16 rounded-full items-center justify-center"
+            style={{ backgroundColor: COLORS.error + '1A' }}
+          >
+            <EvaIcon name="alert-circle" variant="outline" size={32} color={COLORS.error} />
           </StyledView>
         )}
       </StyledView>
 
       {/* Title */}
-      <H3 className="text-neutral-900 text-center mb-2">
+      <H3
+        className="text-center mb-2"
+        style={{ color: COLORS.text.primary, maxWidth: 320 }}
+      >
         {title}
       </H3>
 
       {/* Message */}
-      <Body className="text-neutral-600 text-center mb-6 max-w-sm">
+      <Body
+        className="text-center mb-6"
+        style={{ color: COLORS.text.secondary, maxWidth: 320 }}
+      >
         {message}
       </Body>
 
       {/* Error Details (Development Only) */}
       {__DEV__ && error && (
-        <Body className="text-error text-xs text-center mb-4 px-4 py-2 bg-error-50 rounded-lg max-w-sm">
+        <Body
+          className="text-xs text-center mb-4 px-4 py-2 rounded-lg"
+          style={{
+            color: COLORS.error,
+            backgroundColor: COLORS.error + '1A',
+            maxWidth: 320,
+          }}
+        >
           {error.message}
         </Body>
       )}
@@ -70,10 +93,11 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
         <TouchableOpacity
           onPress={handleRetry}
           activeOpacity={0.7}
-          className="bg-primary-500 px-6 py-3 rounded-xl flex-row items-center"
+          className="px-6 py-3 rounded-xl flex-row items-center"
+          style={{ backgroundColor: COLORS.primary }}
         >
-          <EvaIcon name="refresh" variant="outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-          <Body className="text-white font-semibold">
+          <EvaIcon name="refresh" variant="outline" size={18} color={COLORS.card} style={{ marginRight: 8 }} />
+          <Body className="font-semibold" style={{ color: COLORS.card }}>
             {retryLabel}
           </Body>
         </TouchableOpacity>
@@ -105,16 +129,25 @@ export const CardErrorState: React.FC<ErrorStateProps> = ({
       disabled={!onRetry}
       className={`items-center justify-center py-8 px-4 ${className}`}
     >
-      <StyledView className="w-12 h-12 bg-error-100 rounded-full items-center justify-center mb-3">
-        <EvaIcon name="alert-circle" variant="outline" size={24} color="#EF4444" />
+      <StyledView
+        className="w-12 h-12 rounded-full items-center justify-center mb-3"
+        style={{ backgroundColor: COLORS.error + '1A' }}
+      >
+        <EvaIcon name="alert-circle" variant="outline" size={24} color={COLORS.error} />
       </StyledView>
 
-      <Body className="text-neutral-700 font-medium text-center mb-1">
+      <Body
+        className="font-medium text-center mb-1"
+        style={{ color: COLORS.text.primary }}
+      >
         {title}
       </Body>
 
       {onRetry && (
-        <Body className="text-primary-600 text-sm text-center">
+        <Body
+          className="text-sm text-center"
+          style={{ color: COLORS.primary }}
+        >
           {message}
         </Body>
       )}

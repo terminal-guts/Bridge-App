@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { View, Dimensions } from 'react-native';
+import { View, Dimensions, useWindowDimensions } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -14,6 +14,7 @@ import Animated, {
   withSequence,
   withTiming,
   Easing,
+  useReducedMotion,
 } from 'react-native-reanimated';
 import { COLORS } from '../../theme/colors';
 
@@ -31,8 +32,14 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
   className = '',
 }) => {
   const opacity = useSharedValue(0.3);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reducedMotion) {
+      // Static bone — respect the user's reduce-motion setting.
+      opacity.value = 0.6;
+      return;
+    }
     opacity.value = withRepeat(
       withSequence(
         withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) }),
@@ -40,7 +47,7 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
       ),
       -1, // infinite
     );
-  }, [opacity]);
+  }, [opacity, reducedMotion]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -63,15 +70,18 @@ export const DashboardSkeleton: React.FC<DashboardSkeletonProps> = ({ className 
     <View className={`flex-1 ${className}`} style={{ paddingTop: 24, backgroundColor: COLORS.screenBackground }}>
       <View className="px-4">
         {/* Prospective Matches Card Skeleton (Large Hero Card) */}
-        <View className="bg-primary-500 rounded-2xl p-6 mb-6">
-          <SkeletonLoader height={12} width="60%" borderRadius="rounded" className="mb-2 bg-white/30" />
+        <View
+          className="rounded-2xl p-6 mb-6"
+          style={{ backgroundColor: COLORS.skeletonBone }}
+        >
+          <SkeletonLoader height={12} width="60%" borderRadius="rounded" className="mb-2" />
           <View className="flex-row items-baseline justify-center my-4">
-            <SkeletonLoader height={60} width={100} borderRadius="rounded" className="bg-white/30" />
-            <SkeletonLoader height={32} width={16} borderRadius="rounded" className="mx-2 bg-white/20" />
-            <SkeletonLoader height={40} width={80} borderRadius="rounded" className="bg-white/30" />
+            <SkeletonLoader height={60} width={100} borderRadius="rounded" />
+            <SkeletonLoader height={32} width={16} borderRadius="rounded" className="mx-2" />
+            <SkeletonLoader height={40} width={80} borderRadius="rounded" />
           </View>
-          <SkeletonLoader height={12} width="80%" borderRadius="rounded" className="mx-auto mb-4 bg-white/30" />
-          <SkeletonLoader height={8} width="100%" borderRadius="rounded-full" className="bg-white/20" />
+          <SkeletonLoader height={12} width="80%" borderRadius="rounded" className="mx-auto mb-4" />
+          <SkeletonLoader height={8} width="100%" borderRadius="rounded-full" />
         </View>
 
         {/* Survey & Pricing Row Skeleton */}
@@ -247,9 +257,15 @@ export const CommunitySkeleton: React.FC<DashboardSkeletonProps> = ({ className 
 
 /**
  * MatchesSkeleton — matches the Matches screen layout:
- * header + full-height image card with overlaid bottom content (mirrors MatchCard)
+ * header + a vertically stacked list of 2-3 card placeholders scaled to the
+ * viewport. Each card mirrors MatchCard's overlay content shape.
  */
 export const MatchesSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
+  const { height: windowHeight } = useWindowDimensions();
+  // Cap each card around 60% of viewport height so 2-3 comfortably stack
+  // and the list scrolls rather than stretches a single card to fill.
+  const cardHeight = Math.min(Math.round(windowHeight * 0.6), 560);
+
   return (
     <View className={`flex-1 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
       {/* Header — matches headerRow in MatchesScreen */}
@@ -257,34 +273,37 @@ export const MatchesSkeleton: React.FC<DashboardSkeletonProps> = ({ className = 
         <SkeletonLoader height={32} width={100} borderRadius="rounded" />
       </View>
 
-      {/* Full-height card skeleton — mirrors the MatchCard layout */}
-      <View className="flex-1 px-4 pb-4 pt-2">
-        <View className="flex-1 rounded-3xl overflow-hidden" style={{ backgroundColor: COLORS.card }}>
-          {/* Full card is one big image area — skeleton fills it */}
-          <View className="flex-1" />
-
-          {/* Overlaid bottom content — mirrors MatchCard bottom section */}
-          <View className="absolute bottom-0 left-0 right-0 p-4" style={{ paddingRight: 80 }}>
-            {/* Status pill */}
-            <SkeletonLoader height={28} width={160} borderRadius="rounded-lg" className="mb-2" />
-            {/* Name */}
-            <SkeletonLoader height={28} width={140} borderRadius="rounded" className="mb-2" />
-            {/* Endorser row */}
-            <View className="flex-row items-center mb-1" style={{ gap: 6 }}>
-              <SkeletonLoader height={14} width={60} borderRadius="rounded" />
-              <View className="flex-row" style={{ marginLeft: 4 }}>
-                {[0, 1, 2].map(i => (
-                  <View key={i} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.skeletonOverlay, marginLeft: i === 0 ? 0 : -8 }} />
-                ))}
+      {/* Stacked card skeletons */}
+      <View className="px-4 pb-4 pt-2" style={{ gap: 16 }}>
+        {[0, 1, 2].map((i) => (
+          <View
+            key={i}
+            className="rounded-3xl overflow-hidden"
+            style={{ backgroundColor: COLORS.skeletonBone, height: cardHeight }}
+          >
+            {/* Overlaid bottom content — mirrors MatchCard bottom section */}
+            <View className="absolute bottom-0 left-0 right-0 p-4" style={{ paddingRight: 80 }}>
+              {/* Status pill */}
+              <SkeletonLoader height={28} width={160} borderRadius="rounded-lg" className="mb-2" />
+              {/* Name */}
+              <SkeletonLoader height={28} width={140} borderRadius="rounded" className="mb-2" />
+              {/* Endorser row */}
+              <View className="flex-row items-center mb-1" style={{ gap: 6 }}>
+                <SkeletonLoader height={14} width={60} borderRadius="rounded" />
+                <View className="flex-row" style={{ marginLeft: 4 }}>
+                  {[0, 1, 2].map(j => (
+                    <View key={j} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.skeletonOverlay, marginLeft: j === 0 ? 0 : -8 }} />
+                  ))}
+                </View>
               </View>
+              {/* Date */}
+              <SkeletonLoader height={12} width={120} borderRadius="rounded" />
             </View>
-            {/* Date */}
-            <SkeletonLoader height={12} width={120} borderRadius="rounded" />
-          </View>
 
-          {/* Action button placeholder — bottom right */}
-          <View className="absolute" style={{ right: 16, bottom: 18, width: 52, height: 52, borderRadius: 26, backgroundColor: '#E5E7EB' }} />
-        </View>
+            {/* Action button placeholder — bottom right */}
+            <View className="absolute" style={{ right: 16, bottom: 18, width: 52, height: 52, borderRadius: 26, backgroundColor: COLORS.skeletonOverlay }} />
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -341,59 +360,36 @@ export const LeaderboardSkeleton: React.FC<DashboardSkeletonProps> = ({ classNam
 export const ProfileSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
   return (
     <View className={`flex-1 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
-      {/* Header Skeleton */}
-      <View style={{ backgroundColor: COLORS.card, borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
-        <View className="px-4 py-3 flex-row justify-between items-center">
-          <SkeletonLoader height={24} width={120} borderRadius="rounded" />
-          <View className="flex-row space-x-3">
-            <SkeletonLoader height={24} width={24} borderRadius="rounded-full" />
-            <SkeletonLoader height={24} width={24} borderRadius="rounded-full" />
-            <SkeletonLoader height={24} width={24} borderRadius="rounded-full" />
-          </View>
+      {/* Header row — matches live ProfileScreen: no white bar, warm bg,
+          ScreenTitle-sized headline on the left + tight 3-icon group on the right. */}
+      <View className="px-4 pt-4 pb-2 flex-row items-center justify-between">
+        {/* ScreenTitle-sized headline bone (~28px tall, ~160 wide for "Profile") */}
+        <SkeletonLoader height={28} width={140} borderRadius="rounded" />
+        {/* Tight 3-icon row — gap:4 matches the locked header icon spacing */}
+        <View className="flex-row" style={{ gap: 4 }}>
+          <SkeletonLoader height={24} width={24} borderRadius="rounded-full" />
+          <SkeletonLoader height={24} width={24} borderRadius="rounded-full" />
+          <SkeletonLoader height={24} width={24} borderRadius="rounded-full" />
         </View>
       </View>
 
-      {/* Profile Photo and Name Skeleton */}
-      <View className="px-4 pb-4" style={{ backgroundColor: COLORS.card }}>
-        <View className="items-center">
-          <SkeletonLoader height={96} width={96} borderRadius="rounded-full" className="mb-3" />
-          <SkeletonLoader height={20} width={100} borderRadius="rounded" className="mb-3" />
-
-          {/* Photo Gallery Preview Skeleton */}
-          <View className="flex-row space-x-2 mt-3">
-            {[1, 2, 3, 4].map((i) => (
-              <SkeletonLoader key={i} height={64} width={64} borderRadius="rounded-lg" />
-            ))}
-          </View>
-        </View>
-
-        {/* Friends Section Skeleton */}
-        <View className="flex-row justify-center mt-4 space-x-3">
-          <SkeletonLoader height={36} width={100} borderRadius="rounded-full" />
-          <SkeletonLoader height={36} width={120} borderRadius="rounded-full" />
-        </View>
-      </View>
-
-      {/* Tab Bar Skeleton */}
-      <View className="flex-row" style={{ backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: COLORS.borderLight }}>
-        <View className="flex-1 py-3 items-center">
-          <SkeletonLoader height={16} width={60} borderRadius="rounded" />
-        </View>
-        <View className="flex-1 py-3 items-center">
-          <SkeletonLoader height={16} width={80} borderRadius="rounded" />
-        </View>
-        <View className="flex-1 py-3 items-center">
-          <SkeletonLoader height={16} width={70} borderRadius="rounded" />
-        </View>
+      {/* Avatar + user-name bone — centered, sits on warm bg (no white card) */}
+      <View className="items-center px-4 pt-4 pb-6">
+        <SkeletonLoader height={96} width={96} borderRadius="rounded-full" className="mb-3" />
+        {/* User name bone sized for FONT_SIZES['4xl'] (24px) bold */}
+        <SkeletonLoader height={24} width={160} borderRadius="rounded" />
       </View>
 
       {/* Content Cards Skeleton */}
-      <View className="px-4 py-6">
-        {/* Profile Completeness Card Skeleton */}
-        <View className="rounded-lg p-4 mb-4 shadow-sm" style={{ backgroundColor: COLORS.card }}>
-          <View className="flex-row items-center mb-3">
+      <View className="px-4 pb-6">
+        {/* Profile Strength / Completeness Card Skeleton */}
+        <View
+          className="rounded-lg p-4 mb-4"
+          style={{ backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.borderLight }}
+        >
+          <View className="flex-row items-center mb-3" style={{ gap: 12 }}>
             <SkeletonLoader height={24} width={24} borderRadius="rounded-full" />
-            <SkeletonLoader height={18} width={150} borderRadius="rounded" className="ml-3" />
+            <SkeletonLoader height={18} width={150} borderRadius="rounded" />
           </View>
           <SkeletonLoader height={8} width="100%" borderRadius="rounded-full" className="mb-3" />
           <SkeletonLoader height={14} width="80%" borderRadius="rounded" />
@@ -401,19 +397,23 @@ export const ProfileSkeleton: React.FC<DashboardSkeletonProps> = ({ className = 
 
         {/* Section Cards Skeleton */}
         {[1, 2, 3].map((i) => (
-          <View key={i} className="rounded-lg p-4 mb-4 shadow-sm" style={{ backgroundColor: COLORS.card }}>
+          <View
+            key={i}
+            className="rounded-lg p-4 mb-4"
+            style={{ backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.borderLight }}
+          >
             <SkeletonLoader height={20} width={120} borderRadius="rounded" className="mb-4" />
-            <View className="space-y-3">
-              <View className="flex-row items-center">
+            <View style={{ gap: 12 }}>
+              <View className="flex-row items-center" style={{ gap: 12 }}>
                 <SkeletonLoader height={40} width={40} borderRadius="rounded-lg" />
-                <View className="flex-1 ml-3">
+                <View className="flex-1">
                   <SkeletonLoader height={12} width={80} borderRadius="rounded" className="mb-1" />
                   <SkeletonLoader height={16} width={120} borderRadius="rounded" />
                 </View>
               </View>
-              <View className="flex-row items-center">
+              <View className="flex-row items-center" style={{ gap: 12 }}>
                 <SkeletonLoader height={40} width={40} borderRadius="rounded-lg" />
-                <View className="flex-1 ml-3">
+                <View className="flex-1">
                   <SkeletonLoader height={12} width={80} borderRadius="rounded" className="mb-1" />
                   <SkeletonLoader height={16} width={100} borderRadius="rounded" />
                 </View>

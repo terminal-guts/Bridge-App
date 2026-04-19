@@ -90,26 +90,26 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               </View>
 
               {/* Error Title */}
-              <H2 className="text-neutral-900 text-center mb-3">
+              <H2 className="text-center mb-3" style={{ color: COLORS.text.primary }}>
                 Oops! Something went wrong
               </H2>
 
               {/* Error Message */}
-              <Body className="text-neutral-600 text-center mb-6 max-w-sm">
+              <Body className="text-center mb-6 max-w-sm" style={{ color: COLORS.text.secondary }}>
                 We encountered an unexpected error. Don't worry, your data is safe. Try refreshing the app.
               </Body>
 
               {/* Error Details (Development Only) */}
               {__DEV__ && this.state.error && (
                 <View style={{ width: '100%', backgroundColor: 'rgba(239, 68, 68, 0.08)', borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, padding: 16, marginBottom: 24 }}>
-                  <Body className="text-error-800 font-semibold mb-2">
+                  <Body className="font-semibold mb-2" style={{ color: COLORS.error }}>
                     Error Details (Dev Mode):
                   </Body>
-                  <Body className="text-error-700 text-xs">
+                  <Body className="text-xs" style={{ color: COLORS.error }}>
                     {this.state.error.message}
                   </Body>
                   {this.state.error.stack && (
-                    <Body className="text-error-600 text-xs mt-2">
+                    <Body className="text-xs mt-2" style={{ color: COLORS.text.secondary }}>
                       {this.state.error.stack.split('\n').slice(0, 5).join('\n')}
                     </Body>
                   )}
@@ -122,8 +122,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 activeOpacity={0.7}
                 style={{ backgroundColor: COLORS.primaryAccent, paddingHorizontal: 32, paddingVertical: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}
               >
-                <EvaIcon name="refresh" variant="outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-                <Body className="text-white font-semibold text-base">
+                <EvaIcon name="refresh" variant="outline" size={20} color={COLORS.card} style={{ marginRight: 8 }} />
+                <Body className="font-semibold text-base" style={{ color: COLORS.card }}>
                   Try Again
                 </Body>
               </TouchableOpacity>
@@ -142,7 +142,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 activeOpacity={0.7}
                 style={{ paddingVertical: 8 }}
               >
-                <Body className="text-primary-600 text-sm">
+                <Body className="text-sm" style={{ color: COLORS.primary }}>
                   Contact Support
                 </Body>
               </TouchableOpacity>
@@ -209,16 +209,16 @@ export class CardErrorBoundary extends Component<ErrorBoundaryProps, ErrorBounda
             <EvaIcon name="alert-triangle" variant="outline" size={24} color={COLORS.error} />
           </View>
 
-          <Body className="text-neutral-700 font-medium text-center mb-1">
+          <Body className="font-medium text-center mb-1" style={{ color: COLORS.text.primary }}>
             Error loading content
           </Body>
 
-          <Body className="text-primary-600 text-sm text-center">
+          <Body className="text-sm text-center" style={{ color: COLORS.primary }}>
             Tap to retry
           </Body>
 
           {__DEV__ && this.state.error && (
-            <Body className="text-error text-xs text-center mt-2 max-w-xs">
+            <Body className="text-xs text-center mt-2 max-w-xs" style={{ color: COLORS.error }}>
               {this.state.error.message}
             </Body>
           )}

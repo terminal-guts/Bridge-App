@@ -15,6 +15,12 @@ interface EmptyStateProps {
   };
   className?: string;
   variant?: 'default' | 'illustrated';
+  /**
+   * When true, outer wrapper uses flex:1 + minHeight:240 so the empty
+   * state fills its parent. Use when the empty state sits inside a
+   * short container (e.g. a card body) that would otherwise collapse.
+   */
+  fillHeight?: boolean;
 }
 
 const StyledView = styled(View);
@@ -24,7 +30,7 @@ const StyledView = styled(View);
  *
  * Two variants:
  * - default: Simple centered empty state (backward compatible)
- * - illustrated: Enhanced design with decorative elements and gradients
+ * - illustrated: Enhanced design with decorative elements (no gradients — RN only)
  */
 export const EmptyState: React.FC<EmptyStateProps> = ({
   icon,
@@ -33,20 +39,35 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   action,
   className = '',
   variant = 'default',
+  fillHeight = false,
 }) => {
+  const fillStyle = fillHeight ? { flex: 1, minHeight: 240 } : undefined;
+
   if (variant === 'illustrated') {
     return (
-      <StyledView className={`items-center justify-center px-6 py-8 ${className}`}>
+      <StyledView
+        className={`items-center justify-center px-6 py-8 ${className}`}
+        style={fillStyle}
+      >
         {/* Decorative Background with Icon */}
         {icon && (
           <StyledView className="relative mb-5">
             {/* Outer decorative circle */}
-            <StyledView className="absolute w-28 h-28 bg-primary-100/30 rounded-full" style={{ top: -14, left: -14 }} />
+            <StyledView
+              className="absolute w-28 h-28 rounded-full"
+              style={{ top: -14, left: -14, backgroundColor: COLORS.primaryTint }}
+            />
 
-            {/* Main icon container with gradient */}
-            <StyledView className="w-24 h-24 bg-gradient-to-br from-primary-100 to-primary-200 rounded-3xl items-center justify-center relative">
+            {/* Main icon container (solid fill — no gradient, RN support only) */}
+            <StyledView
+              className="w-24 h-24 rounded-3xl items-center justify-center relative"
+              style={{ backgroundColor: COLORS.primaryLight }}
+            >
               {/* Inner glow effect */}
-              <StyledView className="absolute w-20 h-20 bg-white/50 rounded-2xl" />
+              <StyledView
+                className="absolute w-20 h-20 rounded-2xl"
+                style={{ backgroundColor: COLORS.card, opacity: 0.5 }}
+              />
 
               {/* Icon */}
               <StyledView style={{ zIndex: 1 }}>
@@ -55,8 +76,14 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             </StyledView>
 
             {/* Small decorative dots */}
-            <StyledView className="absolute w-4 h-4 bg-primary-400 rounded-full" style={{ top: -3, right: -3 }} />
-            <StyledView className="absolute w-2 h-2 bg-primary-300 rounded-full" style={{ bottom: 2, left: -2 }} />
+            <StyledView
+              className="absolute w-4 h-4 rounded-full"
+              style={{ top: -3, right: -3, backgroundColor: COLORS.primaryAccent }}
+            />
+            <StyledView
+              className="absolute w-2 h-2 rounded-full"
+              style={{ bottom: 2, left: -2, backgroundColor: COLORS.primaryDisabled }}
+            />
           </StyledView>
         )}
 
@@ -82,7 +109,10 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
   // Default variant
   return (
-    <StyledView className={`items-center justify-center px-6 py-2 ${className}`}>
+    <StyledView
+      className={`items-center justify-center px-6 py-2 ${className}`}
+      style={fillStyle}
+    >
       {icon && (
         <StyledView className="mb-2 opacity-40">
           {icon}

@@ -29,8 +29,14 @@ export const COLORS = {
         primary: '#1E293B',
         // #64748B — body text, descriptions, labels, metadata
         secondary: '#64748B',
-        // #94A3B8 — timestamps, placeholders, disabled, input hints
-        tertiary: '#94A3B8',
+        // #64748B — timestamps, placeholders, input hints.
+        // Darkened from #94A3B8 on 2026-04-19 to meet WCAG AA (4.5:1) on
+        // screenBackground #FDFAF7. For purely decorative/disabled text use
+        // `text.disabled` below — which intentionally stays light.
+        tertiary: '#64748B',
+        // #94A3B8 — disabled/decorative text only. Fails WCAG AA on
+        // screenBackground; never use for information the user must read.
+        disabled: '#94A3B8',
     },
 
     // ── Backgrounds (2 colors) ──────────────────────────────────
