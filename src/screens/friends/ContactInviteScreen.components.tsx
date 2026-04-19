@@ -23,7 +23,7 @@ import { Image } from 'expo-image';
 import * as Clipboard from 'expo-clipboard';
 import { styled } from 'nativewind';
 import { EvaIcon } from '../../components/icons';
-import { H3, Body } from '../../components/ui';
+import { H3, Body, ContactInviteSkeleton } from '../../components/ui';
 import { BackHeader } from '../../components/ui/BackHeader';
 import { FONTS, FONT_SIZES } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
@@ -342,10 +342,7 @@ export const CelebrationOverlay = React.memo(({ count }: CelebrationOverlayProps
 // ── Loading View ──────────────────────────────────────────────────────────────
 
 export const LoadingView = React.memo(() => (
-  <StyledView className="flex-1 items-center justify-center">
-    <ActivityIndicator size="large" color={COLORS.primaryAccent} />
-    <Body className="text-neutral-500 mt-4">Loading contacts...</Body>
-  </StyledView>
+  <ContactInviteSkeleton />
 ));
 
 // ── Empty Contacts View ───────────────────────────────────────────────────────

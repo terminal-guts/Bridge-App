@@ -198,6 +198,9 @@ My commits (all on `plan/proposal-gate-overhaul`, layered bottom-up):
 | `d2a1928` | fix(email): restore code paste support — revert &nbsp; spacing, relax TextInput gates |
 | `7dfc207` | docs(agent-summary): resend email optimization summary for master agent rollup |
 | `e387005` | refactor(email-signup): drop preheader, List-Unsubscribe, and flow column |
+| `258f843` | docs(agent-summary): rewrite resend handoff as authoritative reference |
+| `4940831` | docs(agent-summary): add live verification results + subdomain deferred item |
+| `7fbdca3` | fix(email-signup): add per-email ref to defeat Gmail thread content-trimming |
 
 Prior email-related commits from other sessions on this branch (for master agent context):
 
@@ -231,11 +234,12 @@ Prior email-related commits from other sessions on this branch (for master agent
 Tested end-to-end against local Supabase + real Resend-delivered emails to `sb278@rice.edu`:
 
 - **Delivery latency**: Resend dashboard shows `Sent → Delivered` within the **same minute** (displayed as "0 minutes ago" in Gmail). Legacy path was ~10s; new path is effectively instant.
-- **Template rendering** (Gmail web, 10:50 AM test): clean. Letter-spaced code, full expiry line visible, no hidden-preheader artifact, no footer, no unsubscribe link.
+- **Template rendering** (Gmail web): clean. Letter-spaced code, full expiry line visible, no hidden-preheader artifact, no footer, no unsubscribe link.
 - **Copy/paste**: letter-spacing is CSS-only → clipboard contains `"682815"` not `"6 8 2 8 1 5"` → paste fills all 6 digits on the verify screen.
-- **Resend Insights (10:21 AM test)**: 10/11 checks passing. One warning (see Deferred section below). All others green: custom subdomain for click/open tracking, link URLs match sending domain, valid DMARC record, plain-text alternative present, small body size, no "no-reply" sender, images hosted on sending domain, no SVG images, full YouTube URLs (N/A).
+- **Thread-trim resistance (commit `7fbdca3`, 11:13 AM test)**: confirmed fixed. Initial signup email (code 244978, ref `6fbc48`) and resend in the same Gmail conversation (code 300255, ref `22fecf`) both render in full — expiry line visible, no `•••`. Each email's unique `Ref: xxxxxx` line at the bottom defeats Gmail's byte-repetition detection, so Gmail can't identify any section as "repeated content" to collapse.
+- **Resend Insights**: 10/11 checks passing. One warning (see Deferred section below). All others green: custom subdomain for click/open tracking, link URLs match sending domain, valid DMARC record, plain-text alternative present, small body size, no "no-reply" sender, images hosted on sending domain, no SVG images, full YouTube URLs (N/A).
 
-**Transient false alarm investigated 2026-04-19:** a mid-session screenshot appeared to show a `•••` icon under the code box, which initially looked like a stale preheader. Root cause turned out to be Gmail's conversation-threading trim indicator collapsing the repeated expiry line across threaded OTP emails — confirmed by cleaning the thread and sending a fresh code, which rendered perfectly. My source file was always clean post-`e387005`; the Docker edge-runtime container live-mounts the source directory. I restarted the container during the investigation to rule out isolate caching.
+**Mid-session false alarm investigated and fixed 2026-04-19:** earlier screenshots showed a `•••` icon (Gmail "show trimmed content") under the code box on 2nd+ emails in the same conversation thread. Root cause: Gmail threads all OTP emails by subject+sender and automatically collapses byte-identical passages (our expiry line) across threaded emails — the HTML Resend delivered was correct, Gmail was just hiding parts in the rendering. Commit `7fbdca3` adds a 6-char random hex `Ref: xxxxxx` line to the bottom of every email (HTML + plain-text), making each email's body uniquely different so Gmail leaves the full content rendered. Ref has no security value — it's purely a display-layer workaround. Also ruled out isolate caching by restarting the Docker edge-runtime container; source file has always been correct post-`e387005`, container live-mounts source directly.
 
 ## Deferred (post-launch polish, not blocking ship)
 

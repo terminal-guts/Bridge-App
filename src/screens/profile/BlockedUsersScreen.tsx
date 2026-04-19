@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, TouchableOpacity, Alert, TextInput, ActivityIndicator, Keyboard } from 'react-native';
-import { Body, ScreenWrapper, BackHeader } from '../../components/ui';
+import { Body, ScreenWrapper, BackHeader, BlockedUsersSkeleton } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { getBlockedUsers, blockUser, unblockUser, BlockedUser as BlockedUserType } from '../../services/blockService';
@@ -254,9 +254,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
 
           {/* Blocked Users List */}
           {loading ? (
-            <View style={{ alignItems: 'center', paddingVertical: 48 }}>
-              <ActivityIndicator size="large" color={COLORS.primaryAccent} />
-            </View>
+            <BlockedUsersSkeleton />
           ) : blockedUsers.length > 0 ? (
             <>
               <Body style={{

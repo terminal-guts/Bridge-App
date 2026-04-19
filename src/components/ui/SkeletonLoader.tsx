@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { View } from 'react-native';
+import { View, Dimensions } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -40,7 +40,7 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
       ),
       -1, // infinite
     );
-  }, []);
+  }, [opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -127,11 +127,6 @@ export const DashboardSkeleton: React.FC<DashboardSkeletonProps> = ({ className 
   );
 };
 
-/**
- * ProfileSkeleton Component
- *
- * Skeleton loading state for the profile screen
- */
 /**
  * SurveySkeleton Component
  *
@@ -426,6 +421,191 @@ export const ProfileSkeleton: React.FC<DashboardSkeletonProps> = ({ className = 
             </View>
           </View>
         ))}
+      </View>
+    </View>
+  );
+};
+
+/**
+ * BlockedUsersSkeleton matches the BlockedUsersScreen layout (no header placeholder):
+ * 5-6 rows (name + date + unblock button)
+ */
+export const BlockedUsersSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
+  return (
+    <View className={`flex-1 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
+      {[1, 2, 3, 4, 5, 6].map(i => (
+        <View key={i} className="rounded-xl p-4 mb-2 flex-row items-center justify-between border shadow-sm" style={{ backgroundColor: COLORS.card, borderColor: COLORS.borderLight }}>
+          <View className="flex-1">
+            <SkeletonLoader height={16} width={120} borderRadius="rounded" className="mb-2" />
+            <SkeletonLoader height={12} width={80} borderRadius="rounded" />
+          </View>
+          <SkeletonLoader height={44} width={80} borderRadius="rounded-lg" />
+        </View>
+      ))}
+    </View>
+  );
+};
+
+/**
+ * SuggestMatchSkeleton matches the SuggestMatchScreen layout (no header placeholder):
+ * 5-6 rows with 48px circular avatar + name/job blocks + arrow
+ */
+export const SuggestMatchSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
+  return (
+    <View className={`flex-1 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
+      {[1, 2, 3, 4, 5, 6].map(i => (
+        <View key={i} className="flex-row items-center py-3 border-b" style={{ borderBottomColor: COLORS.borderLight }}>
+          <SkeletonLoader height={48} width={48} borderRadius="rounded-full" className="mr-3" />
+          <View className="flex-1">
+            <SkeletonLoader height={18} width={140} borderRadius="rounded" className="mb-2" />
+            <SkeletonLoader height={14} width={100} borderRadius="rounded" />
+          </View>
+          <SkeletonLoader height={20} width={20} borderRadius="rounded" />
+        </View>
+      ))}
+    </View>
+  );
+};
+
+/**
+ * ContactInviteSkeleton matches the ContactInviteScreen layout (no header placeholder):
+ * search bar placeholder + list of contact rows
+ */
+export const ContactInviteSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
+  return (
+    <View className={`flex-1 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
+      {/* Search Bar Placeholder */}
+      <View className="px-3 py-2 border-b" style={{ backgroundColor: COLORS.card, borderBottomColor: COLORS.borderLight }}>
+        <View className="rounded-lg h-10 px-3 justify-center" style={{ backgroundColor: COLORS.borderLight }}>
+          <SkeletonLoader height={14} width={120} borderRadius="rounded" />
+        </View>
+      </View>
+
+      {/* Contact rows */}
+      {[1, 2, 3, 4, 5, 6, 7].map(i => (
+        <View key={i} className="flex-row items-center px-4 py-3 border-b" style={{ backgroundColor: COLORS.card, borderBottomColor: COLORS.borderLight }}>
+          <SkeletonLoader height={40} width={40} borderRadius="rounded-full" className="mr-3" />
+          <View className="flex-1">
+            <SkeletonLoader height={14} width={120} borderRadius="rounded" className="mb-2" />
+            <SkeletonLoader height={12} width={80} borderRadius="rounded" />
+          </View>
+          <SkeletonLoader height={24} width={24} borderRadius="rounded-full" />
+        </View>
+      ))}
+    </View>
+  );
+};
+
+/**
+ * ProfileMatchSkeleton — matches the ProfileMatchScreen layout:
+ * Large hero photo (55% height) + overlapping info block + detailed cards
+ */
+export const ProfileMatchSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
+  const { height: screenHeight } = Dimensions.get('window');
+  const heroPhotoHeight = Math.round(screenHeight * 0.55);
+
+  return (
+    <View className={`flex-1 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
+      {/* Hero area */}
+      <View style={{ height: heroPhotoHeight, backgroundColor: COLORS.skeletonBone }}>
+        {/* Hero bottom overlay info */}
+        <View className="absolute bottom-6 left-5 right-5 flex-row items-end justify-between">
+          <View className="flex-1">
+            <SkeletonLoader height={42} width={200} borderRadius="rounded-lg" className="mb-3 bg-white/30" />
+            <SkeletonLoader height={20} width={180} borderRadius="rounded" className="bg-white/20" />
+          </View>
+          <SkeletonLoader height={32} width={60} borderRadius="rounded-full" className="bg-white/30" />
+        </View>
+      </View>
+
+      {/* Body content */}
+      <View className="px-4 pt-6">
+        {/* Badges section */}
+        <View className="rounded-2xl p-5 mb-4 border shadow-sm flex-row" style={{ backgroundColor: COLORS.card, borderColor: COLORS.borderLight, gap: 12 }}>
+          <SkeletonLoader height={64} width={64} borderRadius="rounded-xl" />
+          <SkeletonLoader height={64} width={64} borderRadius="rounded-xl" />
+          <SkeletonLoader height={64} width={64} borderRadius="rounded-xl" />
+        </View>
+
+        {/* Detailed prompt card */}
+        <View className="rounded-2xl h-32 mb-4 border flex-row overflow-hidden shadow-sm" style={{ backgroundColor: COLORS.card, borderColor: COLORS.borderLight }}>
+          <View className="w-1 mr-4" style={{ backgroundColor: COLORS.primary }} />
+          <View className="flex-1 justify-center pr-4">
+             <SkeletonLoader height={16} width="60%" borderRadius="rounded" className="mb-3" />
+             <SkeletonLoader height={14} width="90%" borderRadius="rounded" className="mb-2" />
+             <SkeletonLoader height={14} width="40%" borderRadius="rounded" />
+          </View>
+        </View>
+
+        {/* Values/Interests card */}
+        <View className="rounded-2xl p-5 mb-4 border shadow-sm" style={{ backgroundColor: COLORS.card, borderColor: COLORS.borderLight }}>
+          <SkeletonLoader height={20} width={100} borderRadius="rounded" className="mb-4" />
+          <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+            {[1, 2, 3, 4, 5].map(i => (
+              <SkeletonLoader key={i} height={36} width={90} borderRadius="rounded-full" />
+            ))}
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+/**
+ * FriendListSkeleton — used for the friend-list modal in ProposalReviewView
+ */
+export const FriendListSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
+  return (
+    <View className={`px-5 ${className}`}>
+      {[1, 2, 3, 4].map(i => (
+        <View key={i} className="flex-row items-center p-3 mb-2 rounded-xl border" style={{ backgroundColor: COLORS.borderLight, borderColor: COLORS.border }}>
+          <SkeletonLoader height={48} width={48} borderRadius="rounded-full" className="mr-3" />
+          <View className="flex-1">
+            <SkeletonLoader height={16} width={120} borderRadius="rounded" className="mb-2" />
+            <SkeletonLoader height={12} width={80} borderRadius="rounded" />
+          </View>
+          <View className="w-5 h-5 rounded-full border" style={{ borderColor: COLORS.text.tertiary }} />
+        </View>
+      ))}
+    </View>
+  );
+};
+
+/**
+ * ProposalReviewSkeleton matches the ProposalReviewView layout:
+ * Progress dots + 2 large photo cards + action buttons placeholder
+ */
+export const ProposalReviewSkeleton: React.FC<DashboardSkeletonProps> = ({ className = '' }) => {
+  return (
+    <View className={`flex-1 ${className}`} style={{ backgroundColor: COLORS.screenBackground }}>
+      {/* Progress Dots */}
+      <View className="flex-row justify-center py-4" style={{ gap: 8 }}>
+        <SkeletonLoader height={10} width={40} borderRadius="rounded-full" />
+      </View>
+
+      <View className="flex-1 px-4">
+        {/* Dual photo cards */}
+        <View className="flex-row flex-1 mb-6" style={{ gap: 12 }}>
+           <View className="flex-1 rounded-3xl overflow-hidden" style={{ backgroundColor: COLORS.borderLight }}>
+             <View className="absolute bottom-4 left-4">
+               <SkeletonLoader height={24} width={80} borderRadius="rounded" className="bg-white/30" />
+             </View>
+           </View>
+           <View className="flex-1 rounded-3xl overflow-hidden" style={{ backgroundColor: COLORS.borderLight }}>
+             <View className="absolute bottom-4 left-4">
+               <SkeletonLoader height={24} width={80} borderRadius="rounded" className="bg-white/30" />
+             </View>
+           </View>
+        </View>
+
+        {/* Voting buttons placeholder */}
+        <View className="pb-8" style={{ gap: 16 }}>
+          <SkeletonLoader height={64} width="100%" borderRadius="rounded-2xl" />
+          <View className="flex-row" style={{ gap: 16 }}>
+            <SkeletonLoader height={52} width="48%" borderRadius="rounded-xl" />
+            <SkeletonLoader height={52} width="48%" borderRadius="rounded-xl" />
+          </View>
+        </View>
       </View>
     </View>
   );
