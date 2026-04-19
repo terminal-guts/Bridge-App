@@ -106,9 +106,12 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
     table: 'user_profiles',
     columns: ['height_inches'],
     transform: (data: any) => {
-      // Parse height string (e.g., "5'11\"") to inches
+      // HeightStep stores myHeight.toString() (raw inches like "69") but older
+      // profile flows persisted a formatted string like "5'9\"". Accept both.
       const parseHeight = (heightStr: string): number | null => {
         if (!heightStr) return null;
+        const raw = parseInt(heightStr, 10);
+        if (!isNaN(raw) && raw >= 48 && raw <= 84) return raw;
         const match = heightStr.match(/(\d+)'(\d+)"/);
         if (match) {
           return parseInt(match[1], 10) * 12 + parseInt(match[2], 10);
