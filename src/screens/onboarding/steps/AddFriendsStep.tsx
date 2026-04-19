@@ -136,9 +136,9 @@ export const AddFriendsStep: React.FC<AddFriendsStepProps> = ({
   const handleRequestPermission = useCallback(async () => {
     setLoading(true);
     try {
-      const status = await requestContactsPermission();
+      const { status, granted } = await requestContactsPermission();
       setPermissionStatus(status);
-      if (status === 'granted') {
+      if (granted) {
         const raw = await fetchAndNormalizeContacts();
         const marked = await markBridgeUsers(raw);
         setContacts(marked);

@@ -2,6 +2,8 @@ import React, { useMemo, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, useWindowDimensions } from 'react-native';
 import ReanimatedAnimated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { notificationService } from '../../services/notificationService';
 import { MatchCard } from '../../components/matches/MatchCard';
 import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { ClockIcon } from '../../components/icons/Icons';
@@ -34,6 +36,14 @@ export function MatchesScreen() {
     const state = useMatchesScreen();
     const { height: windowHeight } = useWindowDimensions();
     const insets = useSafeAreaInsets();
+
+    // Clear app icon badge whenever the Matches tab is focused. Users seeing
+    // their matches shouldn't carry a pending-count dot on the app icon.
+    useFocusEffect(
+        useCallback(() => {
+            notificationService.setBadgeCount(0).catch(() => {});
+        }, []),
+    );
 
     // All spacing proportional to screen height — scales across iPhone SE to Pro Max
     const headerPad = Math.round(windowHeight * 0.011);

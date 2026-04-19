@@ -135,13 +135,25 @@ export function useContactInvite(route: RouteProp<RootStackParamList, 'ContactIn
   const handleRequestPermission = useCallback(async () => {
     setLoading(true);
     try {
-      const status = await requestContactsPermission();
-      setPermissionStatus(status);
+      const result = await requestContactsPermission();
+      setPermissionStatus(result.status);
 
-      if (status === 'granted') {
+      if (result.granted) {
         const raw = await fetchAndNormalizeContacts();
         const marked = await markBridgeUsers(raw);
         setContacts(marked);
+      } else if (!result.canAskAgain) {
+        // iOS has locked the system prompt (user denied once and re-denial
+        // closed the dialog). Calling requestPermissionsAsync again no-ops.
+        // Route the user to Settings — that's the only path to re-grant.
+        Alert.alert(
+          'Contacts Access',
+          'Please enable Contacts in Settings to invite friends.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ],
+        );
       }
     } catch (err) {
       logger.error('Permission request failed:', err);

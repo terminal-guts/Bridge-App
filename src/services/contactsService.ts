@@ -50,11 +50,39 @@ let friendIdsCache: { ids: Set<string>; fetchedAt: number } | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 /**
- * Request contacts permission from the user
+ * Request contacts permission from the user.
+ *
+ * Pre-checks the current status before prompting:
+ *   - Already granted → return granted without prompting.
+ *   - Denied and iOS has locked the prompt (canAskAgain === false) → return
+ *     locked-denial without calling requestPermissionsAsync (that would
+ *     silently no-op on iOS once the system prompt is locked). The caller is
+ *     responsible for routing the user to Settings.
+ *   - Otherwise → prompt normally.
+ *
+ * Return shape was widened from `Contacts.PermissionStatus` to the object below
+ * so callers can distinguish "ask again possible" from "locked — must go to
+ * Settings." Existing call sites that only need the boolean can read `.granted`.
  */
-export const requestContactsPermission = async (): Promise<Contacts.PermissionStatus> => {
-  const { status } = await Contacts.requestPermissionsAsync();
-  return status;
+export const requestContactsPermission = async (): Promise<{
+  granted: boolean;
+  canAskAgain: boolean;
+  status: Contacts.PermissionStatus;
+}> => {
+  const { status: existing, canAskAgain: existingCanAskAgain } =
+    await Contacts.getPermissionsAsync();
+  if (existing === 'granted') {
+    return { granted: true, canAskAgain: true, status: existing };
+  }
+  if (!existingCanAskAgain) {
+    return { granted: false, canAskAgain: false, status: existing };
+  }
+  const { status, canAskAgain } = await Contacts.requestPermissionsAsync();
+  return {
+    granted: status === 'granted',
+    canAskAgain: canAskAgain ?? true,
+    status,
+  };
 };
 
 /**

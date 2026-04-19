@@ -16,6 +16,7 @@ import { communityService } from '../../services/communityServiceIndex';
 import { getIncomingRequests, acceptFriendRequest, declineFriendRequest, FriendRequest } from '../../services/friendService';
 import { FriendWithGridStatus, Proposal } from '../../types/community';
 import { getUserProfile, getCachedMinimalProfileStatus } from '../../services/profileService';
+import { notificationService } from '../../services/notificationService';
 import { getAuthenticatedUserId } from '../../utils/auth';
 import { UserProfile } from '../../types';
 import { ProfileCompletionBanner } from '../../components/profile/ProfileCompletionBanner';
@@ -86,6 +87,15 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
   // Karma info modal — hoisted from UserRow so only one Modal instance exists
   const [karmaModalVisible, setKarmaModalVisible] = useState(false);
   const handleKarmaPress = useCallback(() => setKarmaModalVisible(true), []);
+
+  // Clear app icon badge whenever the Community tab is focused. The badge is
+  // only meaningful when the user hasn't seen the app yet; focusing a primary
+  // tab is proof they have.
+  useFocusEffect(
+    useCallback(() => {
+      notificationService.setBadgeCount(0).catch(() => {});
+    }, []),
+  );
 
   const handleBadgePress = useCallback(async (friendId: string, friendName: string) => {
     const result = await getBadgeForFriend(friendId);

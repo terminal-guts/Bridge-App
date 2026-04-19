@@ -12,6 +12,19 @@ const logger = createLogger('NotificationService');
 const DEDUP_MAP_CAP = 200;
 
 // Configure how notifications are handled when the app is foregrounded
+// TODO (Wave 14 — deferred): Inspect notification target route vs current route
+// and suppress banner/sound/badge when the user is already on the target screen
+// (e.g. reading the chat the message is for). Requires an exported navigationRef
+// — `AppNavigator.tsx` currently keeps `navigationRef` as a local `React.useRef`
+// inside the component and does not export it. Without a shared ref (or a
+// separate `navigationRef.ts` module that AppNavigator also consumes) we cannot
+// call `navigationRef.getCurrentRoute()` from this service. When ready:
+//   1. Promote the ref to `src/navigation/navigationRef.ts` exporting
+//      `createNavigationContainerRef()`.
+//   2. Point `NavigationContainer`'s `ref` at it in AppNavigator.
+//   3. Read it here to compare `notification.request.content.data.screen`
+//      (and `matchId` when screen === 'Chat') against `getCurrentRoute()?.name`
+//      and suppress when they match.
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
         shouldShowAlert: true,

@@ -76,11 +76,40 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
 
   const handleAddPhoto = async (slotIndex: number) => {
     try {
+      // Pre-check current status so we never call requestMediaLibraryPermissionsAsync
+      // when iOS has locked the system prompt (would silently no-op). If the user
+      // previously denied and can't be asked again, route them straight to Settings.
+      const existing = await ImagePicker.getMediaLibraryPermissionsAsync();
+
+      if (existing.granted) {
+        await openImagePicker(slotIndex);
+        return;
+      }
+
+      if (!existing.canAskAgain) {
+        const message = Platform.OS === 'ios'
+          ? 'You can select specific photos or grant full access to your photo library in Settings.'
+          : 'Please grant access to your photo library to add photos.';
+
+        Alert.alert(
+          'Photo Library Access',
+          message,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            ...(Platform.OS === 'ios' ? [{ text: 'Select Photos', onPress: () => openImagePicker(slotIndex) }] : []),
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ]
+        );
+        return;
+      }
+
+      // Prompt is still available — ask the user.
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (permissionResult.granted) {
         await openImagePicker(slotIndex);
-      } else if (permissionResult.status === 'denied') {
+      } else if (permissionResult.status === 'denied' && permissionResult.canAskAgain === false) {
+        // User denied and the prompt is now locked — send them to Settings.
         const message = Platform.OS === 'ios'
           ? 'You can select specific photos or grant full access to your photo library in Settings.'
           : 'Please grant access to your photo library to add photos.';
@@ -95,6 +124,7 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
           ]
         );
       } else {
+        // Limited / granted-with-restrictions / other — try the picker anyway.
         await openImagePicker(slotIndex);
       }
     } catch (err) {

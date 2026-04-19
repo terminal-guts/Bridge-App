@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { AppState, Keyboard } from 'react-native';
+import { AppState, Alert, Keyboard, Linking } from 'react-native';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import {
     useSharedValue,
@@ -342,11 +342,42 @@ export function useMatchesScreen() {
         if (!uri) return;
         try {
             const MediaLibrary = await import('expo-media-library');
-            const { status } = await MediaLibrary.requestPermissionsAsync();
-            if (status !== 'granted') {
-                showToast.error('Permission needed', 'Allow photo access to save');
-                return;
+
+            // Pre-check: calling requestPermissionsAsync again when the system
+            // prompt is locked (canAskAgain === false) silently no-ops on iOS,
+            // leaving the user staring at a "Permission needed" toast with no
+            // path forward. Check first, then route to Settings when locked.
+            const existing = await MediaLibrary.getPermissionsAsync();
+            if (!existing.granted) {
+                if (!existing.canAskAgain) {
+                    Alert.alert(
+                        'Photo Library Access',
+                        'Please enable Photos in Settings to save your match card.',
+                        [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+                        ],
+                    );
+                    return;
+                }
+                const { status, canAskAgain } = await MediaLibrary.requestPermissionsAsync();
+                if (status !== 'granted') {
+                    if (canAskAgain === false) {
+                        Alert.alert(
+                            'Photo Library Access',
+                            'Please enable Photos in Settings to save your match card.',
+                            [
+                                { text: 'Cancel', style: 'cancel' },
+                                { text: 'Open Settings', onPress: () => Linking.openSettings() },
+                            ],
+                        );
+                    } else {
+                        showToast.error('Permission needed', 'Allow photo access to save');
+                    }
+                    return;
+                }
             }
+
             await MediaLibrary.saveToLibraryAsync(uri);
             lightHaptic();
             showToast.success('Saved', 'Match card saved to your photos');
