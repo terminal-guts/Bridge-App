@@ -29,6 +29,26 @@ const MAX_PHOTO_WIDTH = 1200; // Max width in pixels
 const MAX_PHOTO_HEIGHT = 1600; // Max height in pixels
 const JPEG_QUALITY = 0.85; // 85% quality for good balance
 const MAX_PHOTOS_PER_USER = 3;
+// Hard ceiling on the full upload pipeline per photo (compress + base64 +
+// storage upload + moderation + blurhash). Protects the UI from indefinite
+// hangs when e.g. iOS HEIC decode stalls or the network drops mid-upload.
+// Photo uploads are otherwise best-effort — this just guarantees a bounded wait.
+const UPLOAD_TIMEOUT_MS = 30_000;
+
+/**
+ * Race `promise` against a timeout. On timeout, resolve with `timeoutValue`
+ * (usually an ApiResponse error). The underlying work continues in the
+ * background — it just no longer blocks the caller.
+ */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutValue: T): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timeoutId = setTimeout(() => resolve(timeoutValue), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
 
 // Supported image formats
 const SUPPORTED_FORMATS = ['jpg', 'jpeg', 'png', 'webp', 'heic'];
@@ -301,8 +321,15 @@ export const uploadPhoto = async (
       timestamp: new Date().toISOString(),
     });
 
-    // Call internal function with authenticated userId
-    return uploadPhotoInternal(userId, imageUri, order, isMain, compressionOptions);
+    // Call internal function with authenticated userId, bounded by the pipeline timeout
+    return withTimeout(
+      uploadPhotoInternal(userId, imageUri, order, isMain, compressionOptions),
+      UPLOAD_TIMEOUT_MS,
+      createErrorResponse(
+        'UPLOAD_TIMEOUT',
+        'Upload is taking too long. Try a different photo — some older iPhone HEIC files can stall.',
+      ),
+    );
   } catch (error: unknown) {
     logger.error('Photo upload error:', error);
     return createErrorResponse('UPLOAD_ERROR', error instanceof Error ? error.message : 'Failed to upload photo');
@@ -336,8 +363,15 @@ export const uploadMultiplePhotos = async (
 
     const results = await Promise.all(
       imageUris.map((uri, i) =>
-        uploadPhotoInternal(userId, uri, i, i === 0, compressionOptions)
-      )
+        withTimeout(
+          uploadPhotoInternal(userId, uri, i, i === 0, compressionOptions),
+          UPLOAD_TIMEOUT_MS,
+          createErrorResponse(
+            'UPLOAD_TIMEOUT',
+            'Upload is taking too long. Try a different photo — some older iPhone HEIC files can stall.',
+          ),
+        ),
+      ),
     );
 
     const uploadedPhotos: Photo[] = [];

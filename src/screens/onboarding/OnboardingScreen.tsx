@@ -307,15 +307,25 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   useEffect(() => {
     if (!authUserId) return;
     if (!onboardingData.photos || onboardingData.photos.length === 0) {
-      // Photos removed — clear upload refs so stale uploads don't persist
+      // Photos removed (e.g. user hit × during upload) — clear upload refs and
+      // reset UI state so the spinner can't hang after removal.
       photoUploadPromiseRef.current = null;
       photoUploadResultRef.current = null;
+      setPhotoUploading(false);
+      setPhotoApproved(false);
       return;
     }
     const uris = onboardingData.photos
       .map(p => p.url || (p as any).uri)
-      .filter((u: string) => u && u.startsWith('file://'));
-    if (uris.length === 0) return;
+      // Accept any URI with a scheme — file://, ph:// (PhotoKit), assets-library://,
+      // content:// (Android). Filtering only file:// dropped older iPhone HEIC
+      // picks that iOS returns as ph://, leaving the spinner stuck forever.
+      .filter((u: string) => u && u.includes('://'));
+    if (uris.length === 0) {
+      // No uploadable URIs — clear the spinner so the UI can recover.
+      setPhotoUploading(false);
+      return;
+    }
     // Only start if not already uploading the same set
     if (photoUploadPromiseRef.current) return;
     logger.info('[OnboardingScreen] Starting eager photo upload:', uris.length, 'photos');
@@ -328,11 +338,11 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
           photoUploadResultRef.current = res.data;
           setPhotoApproved(true);
           logger.info('[OnboardingScreen] Eager photo upload complete:', res.data.length);
-        } else if (res.error?.code === 'MODERATION_REJECTED') {
-          // Moderation rejected the photo. Clear the upload refs, drop the photo
-          // from local state, and surface the rejection reason via PhotoUploadStep
-          // so the user can pick a different photo.
-          logger.warn('[OnboardingScreen] Eager photo upload rejected by moderation:', res.error.message);
+        } else if (res.error?.code === 'MODERATION_REJECTED' || res.error?.code === 'UPLOAD_TIMEOUT') {
+          // Moderation rejected OR upload timed out (HEIC stall, network drop, etc.).
+          // Same recovery UX: clear refs, drop the photo from local state, and
+          // surface the message so the user can pick a different photo.
+          logger.warn('[OnboardingScreen] Eager photo upload bailed:', res.error?.code, res.error?.message);
           photoUploadPromiseRef.current = null;
           photoUploadResultRef.current = null;
           setPhotoApproved(false);

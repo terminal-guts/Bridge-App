@@ -228,17 +228,18 @@ export const PhotoUploadStep: React.FC<PhotoUploadStepProps> = ({
                     </Body>
                   </Animated.View>
                 )}
-                {/* Remove button — hidden while moderation is in flight (can't remove mid-check) */}
-                {!photoUploading && (
-                  <StyledTouchableOpacity
-                    onPress={() => removePhoto(0)}
-                    className="absolute top-3 right-3 bg-neutral-900/60 rounded-full w-8 h-8 items-center justify-center"
-                    accessibilityRole="button"
-                    accessibilityLabel="Remove photo"
-                  >
-                    <EvaIcon name="close" variant="outline" size={18} color="white" />
-                  </StyledTouchableOpacity>
-                )}
+                {/* Remove button — always visible, including during upload. If the
+                    pipeline hangs (rare but possible on older HEIC files), tapping ×
+                    is the user's escape hatch to avoid a force-quit. Removal clears
+                    photos → the parent's useEffect clears spinner state. */}
+                <StyledTouchableOpacity
+                  onPress={() => removePhoto(0)}
+                  className="absolute top-3 right-3 bg-neutral-900/60 rounded-full w-8 h-8 items-center justify-center"
+                  accessibilityRole="button"
+                  accessibilityLabel={photoUploading ? 'Cancel upload' : 'Remove photo'}
+                >
+                  <EvaIcon name="close" variant="outline" size={18} color="white" />
+                </StyledTouchableOpacity>
               </StyledView>
             ) : (
               <StyledTouchableOpacity
