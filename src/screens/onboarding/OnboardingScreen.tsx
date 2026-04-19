@@ -375,14 +375,42 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
 
   const totalSteps = steps.length;
 
-  // Continuous progress bar — animates fill width as a percentage of total steps
-  const progressWidth = useSharedValue((currentStep + 1) / totalSteps);
+  // Section-relative progress bar — fill resets at the start of each section
+  // so short sections (e.g. "Almost Done" = 4 steps) feel like fast wins.
+  // Matches the section-relative step counter in stepLabel below.
+  // Celebration steps (hideFromCounter) show 100% of their section as a
+  // satisfying wrap-up before the next section's bar starts at 1/N.
+  // Fallback to global progress for steps without a section (matchmaker flow).
+  const computeSectionProgress = (stepIdx: number): number => {
+    const step = steps[stepIdx];
+    if (!step) return 0;
+    const section = step.section;
+    if (!section) {
+      // No section — global progress as a fallback
+      const countable = steps.filter(s => !s.hideFromCounter);
+      const before = steps.slice(0, stepIdx).filter(s => !s.hideFromCounter).length;
+      return countable.length > 0 ? (before + 1) / countable.length : 0;
+    }
+    const sectionSteps = steps.filter(s => s.section === section && !s.hideFromCounter);
+    if (sectionSteps.length === 0) return 1;
+    if (step.hideFromCounter) {
+      // Celebration step — show 100% of the section it closes out
+      return 1;
+    }
+    const beforeInSection = steps.slice(0, stepIdx)
+      .filter(s => s.section === section && !s.hideFromCounter).length;
+    return (beforeInSection + 1) / sectionSteps.length;
+  };
+
+  const progressWidth = useSharedValue(computeSectionProgress(currentStep));
 
   useEffect(() => {
-    progressWidth.value = withTiming((currentStep + 1) / totalSteps, {
+    progressWidth.value = withTiming(computeSectionProgress(currentStep), {
       duration: DURATIONS.normal,
       easing: EASINGS.standard,
     });
+    // `steps` is stable across re-renders (useMemo) so ref equality is fine
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep, totalSteps]);
 
   const progressBarStyle = useAnimatedStyle(() => ({
