@@ -131,3 +131,79 @@ If you want MORE than that, the levers are: drop "one active per user" (you said
 - **Front-end gate query**: now returns rows for every assigned proposal (could be many). The `LIMIT GATE_SIZE = 3` still applies in the SQL. Confirm pagination is correct.
 - **Karma "assist" bonus** may stop firing under the new model. Will surface as a follow-up after deploy.
 - **Daily-only decisions** mean a "clearly bad" proposal (all NO votes) sits in everyone's gate for up to 24h before getting cleared. User has accepted this trade.
+
+---
+
+# Status (2026-04-18) — SHIPPED
+
+The plan above was executed in a revised v2 form. Production deploy completed 2026-04-18 23:52–23:54 UTC.
+
+**What shipped vs this plan:**
+- Voter assignment via `pool_vote_assignments`: **dropped entirely** (pre-insertion was redundant under "every user votes on every proposal"). Gate now uses a dynamic SELECT against `proposal_votes` + `blocked_users` + `user_profiles` on every fetch.
+- Day 1-2 rules: changed from `<25% turnout → stay pending` to `<8 absolute votes → stay pending`. The turnout-percent rule was mathematically broken under the new assignment-all model (max possible turnout per proposal was ~12% given GATE_SIZE=3).
+- Day 3+: `≥50% yes-rate → deciding, else reject` (including 0-vote → reject). No min-vote floor on day 3 (force-decide).
+- Karma: simplified to `+1 per vote + 3 if accurate − 1 if inaccurate`. Dropped the old `+10 assist` and `+2 / +3 split`. Idempotency via `proposals.karma_applied` flag.
+- Auto-expire on pause/suspend: added as DB trigger `trg_auto_expire_on_pause`.
+- Removed `proposal-lifecycle-check` every-4h cron.
+
+**Reference docs now in this repo:**
+- `docs/migrations/MIGRATION_LOG.md` entries #79–82 (our M1–M4)
+- `CLAUDE.md` "Voting Gate" section rewritten for gate-overhaul-v2
+
+---
+
+# Appendix A: Deferred — Bump Gate to 5 Proposals
+
+Not shipped in the 2026-04-18 push. Needs a coordinated frontend + backend release (App Store review cycle for the frontend side).
+
+## Summary
+Backend: `GATE_SIZE = 3` → `5` in `get-proposals-for-voting`. Frontend: `src/services/communityBackendService.ts` line 360 `>= 3` → `>= 5`, line 367 `Math.min(..., 3)` → `Math.min(..., 5)`. Consider extracting `5` to a named constant `DAILY_VOTE_TARGET`.
+
+## Frontend audit (read-only, done 2026-04-18)
+| Location | Dynamic? | Change needed? |
+|---|---|---|
+| `ProposalReviewView.tsx` ProgressDots | Yes (uses `proposals.length`) | No |
+| `ProposalReviewView.tsx` progress label | Yes | No |
+| `communityBackendService.ts:360` | Hardcoded 3 | Yes → 5 |
+| `communityBackendService.ts:367` | Hardcoded 3 | Yes → 5 |
+| `ProposalReviewView.tsx:8` JSDoc | Comment only | Optional cosmetic |
+
+## Why deferred
+Requires frontend build through App Store review (1–3 days). Backend-only bump is harmless but misaligned with completion state until app update lands. Coordinate.
+
+## Approach
+Option B — show up to 5, no onboarding quota subtraction. A user who voted 1 in onboarding sees up to 5 in Community (possibly 6 total that day). Engagement not throttled.
+
+## Open questions (for implementation day)
+- Other hardcoded 3s elsewhere? Wider grep before shipping.
+- Is 5 the right number? Data-driven revisit after launch.
+
+---
+
+# Appendix B: Recommendation-boost design revisit
+
+The `generate-proposals` function reads `friend_recommendations` (fix shipped 2026-04-18) and applies a flat 1.25× score multiplier to any pair that has at least one recommendation.  Simple, dedup'd — one recommendation = one 1.25× boost regardless of how many people vouched.  Good enough for launch; revisit when bumping gate to 5.
+
+Options to consider at revisit:
+1. **Stack boosts per recommender** — use the unused constants `RECOMMENDATION_BOOST_PER=5`, `RECOMMENDATION_BOOST_CAP=15` in `_shared/constants.ts` to add +5 per unique recommender up to +15.
+2. **Consumption cleanup** — delete `friend_recommendations` rows once their pair has been proposed (avoids perpetual boost on pairs that got rejected and then re-paired 45 days later).
+3. **Feedback loop** — notify the recommender when their suggestion resulted in a proposal.
+
+---
+
+# Appendix C: Known issues deferred from 2026-04-18 deploy
+
+**C1. LiveVoteBar doesn't visibly render on high-vote proposals.**
+Observed by Saul during the post-deploy manual test: on a proposal with 37 existing votes, the `LiveVoteBar` appeared not to render or updated slowly, while fresh 0-vote proposals rendered fine. DB-side is correct (tallies accurate). Not caused by this deploy — we didn't modify `LiveVoteBar.tsx` or realtime subscriptions. Investigate: `src/components/community/proposal/LiveVoteBar.tsx` + `ProposalReviewView.hooks.ts`. Priority: LOW, cosmetic.
+
+**C2. Concurrent-vote tally race.**
+Parallel stress test (20 simultaneous votes on same proposal) lost 1 of 12 expected YES increments — pre-existing bug in `increment_proposal_tallies` RPC's read-modify-write pattern. Drift is bounded (1–2% under burst). Fix: convert RPC to atomic `SET x = x + :delta` via SQL expressions, or an AFTER INSERT trigger that maintains tallies from `proposal_votes` count. Priority: LOW until burst traffic becomes common.
+
+**C3. Stale-vote `+1 karma` farming on random UUIDs.**
+`process-vote` stale path grants `+1` if insert fails with FK violation (fake proposal UUID). Capped by the 50/day vote limit, so attacker maxes at +50/day. Fix: return 404 when `!proposal` instead of going down the silent-success path. Priority: LOW; accepted by product as an acceptable abuse vector for launch.
+
+**C4. `pool_vote_assignments` dead rows.**
+As of the deploy: ~3878 rows in prod, no writes anymore (new generate-proposals doesn't insert). Table can be dropped in a future cleanup migration after 1–2 weeks of verified stability. Priority: LOW.
+
+**C5. Local schema drift — `onboarding_progress`, `user_profiles.email`, `vote_context`.**
+These columns/tables exist in prod (added via manual ALTERs outside the migration chain) but aren't in the local migration chain. Tonight we added them inline to local for testing; the "proper" fix is to add them to the migration chain (or the `20260417000001_add_missing_production_columns.sql` backfill) so `supabase db reset` produces a prod-mirror local. Priority: MEDIUM — affects developer experience.
