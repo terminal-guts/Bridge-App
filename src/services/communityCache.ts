@@ -7,6 +7,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createLogger } from '../utils/secureLogger';
+import { Sentry } from '../lib/sentry';
 
 const logger = createLogger('CommunityCache');
 
@@ -33,7 +34,8 @@ async function getEntry<T>(key: string, ttlMs: number): Promise<{ data: T; stale
     const entry: CacheEntry<T> = JSON.parse(raw);
     const age = Date.now() - entry.ts;
     return { data: entry.data, stale: age > ttlMs };
-  } catch {
+  } catch (e) {
+    Sentry.captureException(e, { level: 'warning', tags: { module: 'communityCache', op: 'getEntry', key } });
     return null;
   }
 }
@@ -42,8 +44,9 @@ async function setEntry<T>(key: string, data: T, cycleId?: string): Promise<void
   try {
     const entry: CacheEntry<T> = { data, ts: Date.now(), cycleId };
     await AsyncStorage.setItem(key, JSON.stringify(entry));
-  } catch {
-    // Cache write failure is non-critical
+  } catch (e) {
+    // Cache write failure is non-critical — surface as warning for observability
+    Sentry.captureException(e, { level: 'warning', tags: { module: 'communityCache', op: 'setEntry', key } });
   }
 }
 
@@ -77,7 +80,9 @@ export async function invalidateCachedFriendsData(): Promise<void> {
   inMemoryFriendsData = null;
   try {
     await AsyncStorage.removeItem(KEY_FRIENDS_DATA);
-  } catch { /* non-critical */ }
+  } catch (e) {
+    Sentry.captureException(e, { level: 'warning', tags: { module: 'communityCache', op: 'invalidateFriends' } });
+  }
 }
 
 // ============================================================================
@@ -111,7 +116,9 @@ export async function invalidateCachedPhotoUrls(): Promise<void> {
   inMemoryPhotoUrls = null;
   try {
     await AsyncStorage.removeItem(KEY_PHOTO_URLS);
-  } catch { /* non-critical */ }
+  } catch (e) {
+    Sentry.captureException(e, { level: 'warning', tags: { module: 'communityCache', op: 'invalidatePhotoUrls' } });
+  }
 }
 
 // ============================================================================
@@ -141,7 +148,8 @@ export async function getCachedVotingGate(currentCycleId: string): Promise<boole
     // Warm in-memory mirror
     inMemoryVotingGate = { completed: entry.data, cycleId: currentCycleId };
     return entry.data;
-  } catch {
+  } catch (e) {
+    Sentry.captureException(e, { level: 'warning', tags: { module: 'communityCache', op: 'getVotingGate' } });
     return null;
   }
 }

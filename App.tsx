@@ -8,7 +8,7 @@ enableScreens(true);
 enableFreeze(true);
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { AppNavigator } from './src/navigation/AppNavigator';
@@ -46,6 +46,26 @@ const SafeGuideOverlay = () => {
     >
       <GuideOverlay />
     </CardErrorBoundary>
+  );
+};
+
+/**
+ * ToastWithOffsets — wraps react-native-toast-message with safe-area-aware
+ * offsets so bottom toasts don't sit behind the tab bar on notched devices
+ * and top toasts don't collide with the Dynamic Island / notch.
+ *
+ * Must render inside SafeAreaProvider (useSafeAreaInsets requirement).
+ * bottomOffset of 60 covers the locked 49pt+ tab bar contentHeight plus a
+ * small breathing margin; adjust if the tab bar ever changes height.
+ */
+const ToastWithOffsets = () => {
+  const insets = useSafeAreaInsets();
+  return (
+    <Toast
+      config={toastConfig}
+      topOffset={insets.top + 8}
+      bottomOffset={insets.bottom + 60}
+    />
   );
 };
 
@@ -94,24 +114,10 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  React.useEffect(() => {
-    // Defer notification service import — expo-notifications (84KB) doesn't need to
-    // load at startup. Listeners only matter once the app is mounted.
-    let sub: { remove(): void } | undefined;
-    let responseSub: { remove(): void } | undefined;
-    import('./src/services/notificationService').then(({ notificationService }) => {
-      sub = notificationService.addNotificationListener(notification => {
-        logger.info('[NOTIFICATION] Received:', notification.request.content.title);
-      });
-      responseSub = notificationService.addNotificationResponseListener(response => {
-        logger.info('[NOTIFICATION] Tapped:', response.notification.request.content.title);
-      });
-    });
-    return () => {
-      sub?.remove();
-      responseSub?.remove();
-    };
-  }, []);
+  // Notification listeners are registered inside AppNavigator (which performs
+  // the actual routing on tap). The previous duplicate listeners here only
+  // logged titles — redundant with AppNavigator's handling — so they were
+  // removed. `logger` remains in use by other call sites.
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -122,7 +128,7 @@ export default function App() {
               <AppNavigator onReady={() => setAppReady(true)} />
               <SafeGuideOverlay />
             </View>
-            <Toast config={toastConfig} />
+            <ToastWithOffsets />
           </GuideProvider>
         </SafeAreaProvider>
       </ErrorBoundary>

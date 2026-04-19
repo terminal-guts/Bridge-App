@@ -260,7 +260,15 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
               {resending ? 'Sending...' : 'Resend'}
             </Body>
           ) : (
-            <Body className="text-neutral-500">{resendTimer}s</Body>
+            // tabular-nums keeps digit widths uniform so 60→59→...→9→8 doesn't
+            // jitter the surrounding layout; minWidth reserves space for 2
+            // digits + "s" so the count-down doesn't shift as it narrows.
+            <Body
+              className="text-neutral-500"
+              style={{ fontVariant: ['tabular-nums'], minWidth: 32 }}
+            >
+              {resendTimer}s
+            </Body>
           )}
         </StyledView>
       </StyledView>

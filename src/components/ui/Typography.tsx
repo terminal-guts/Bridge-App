@@ -26,8 +26,10 @@ function resolveFontStyle(className: string, defaultFont: string, defaultWeight:
   return { fontFamily: defaultFont, fontWeight: defaultWeight as TextStyle['fontWeight'] };
 }
 
-export const H1: React.FC<TypographyProps> = ({ children, className = '', style, ...props }) => (
-  <Text className={`text-2xl text-neutral-900 ${className}`} style={[resolveFontStyle(className, FONTS.semiBold, '600'), style]} {...props}>
+export const H1: React.FC<TypographyProps> = ({ children, className = '', style, maxFontSizeMultiplier = 1.6, ...props }) => (
+  // maxFontSizeMultiplier cap at 1.6: at AX3+ Dynamic Type, unrestricted scaling
+  // pushes hero/page headlines off-screen. 1.6 still respects accessibility.
+  <Text className={`text-2xl text-neutral-900 ${className}`} style={[resolveFontStyle(className, FONTS.semiBold, '600'), style]} maxFontSizeMultiplier={maxFontSizeMultiplier} {...props}>
     {children}
   </Text>
 );
@@ -82,8 +84,10 @@ export const SCREEN_TITLE_STYLE: TextStyle = {
   letterSpacing: -0.5,
 } as const;
 
-export const ScreenTitle: React.FC<TypographyProps> = ({ children, style, ...props }) => (
-  <Text style={[SCREEN_TITLE_STYLE, style]} accessibilityRole="header" {...props}>
+export const ScreenTitle: React.FC<TypographyProps> = ({ children, style, maxFontSizeMultiplier = 1.6, ...props }) => (
+  // maxFontSizeMultiplier cap at 1.6: at AX3+ Dynamic Type, unrestricted scaling
+  // pushes tab screen titles off-screen. 1.6 still respects accessibility.
+  <Text style={[SCREEN_TITLE_STYLE, style]} accessibilityRole="header" maxFontSizeMultiplier={maxFontSizeMultiplier} {...props}>
     {children}
   </Text>
 );

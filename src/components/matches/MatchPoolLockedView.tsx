@@ -16,7 +16,7 @@ import Svg, { Circle } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
-import { SHADOWS } from '../../theme/shadows';
+import { SHADOWS, OVERLAYS } from '../../theme/shadows';
 import { calculateProfileStrengthBreakdown } from '../../utils/profileCompleteness';
 import { UserProfile } from '../../types';
 
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.bold,
     fontWeight: '700',
     fontSize: FONT_SIZES['6xl'],
-    lineHeight: 38,
+    lineHeight: LINE_HEIGHTS['6xl'],
     color: COLORS.text.primary,
     letterSpacing: -0.5,
   },
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
   mockBadgeText: {
     fontFamily: FONTS.bold,
     fontSize: FONT_SIZES.base,
-    lineHeight: 18,
+    lineHeight: LINE_HEIGHTS.base,
     color: COLORS.card,
   },
   mockBottom: {
@@ -377,13 +377,14 @@ const styles = StyleSheet.create({
   mockPillText: {
     fontFamily: FONTS.semiBold,
     fontSize: FONT_SIZES.md,
-    lineHeight: 17,
+    lineHeight: LINE_HEIGHTS.md,
     color: COLORS.card,
   },
   mockName: {
     fontFamily: FONTS.extraBold,
     fontSize: FONT_SIZES['6xl'],
-    lineHeight: 36,
+    // Closest scale token to the previous 36; scale only offers 38 for 6xl.
+    lineHeight: LINE_HEIGHTS['6xl'],
     color: COLORS.card,
     letterSpacing: -0.8,
   },
@@ -395,7 +396,7 @@ const styles = StyleSheet.create({
   mockEndorserLabel: {
     fontFamily: FONTS.medium,
     fontSize: FONT_SIZES.md,
-    lineHeight: 17,
+    lineHeight: LINE_HEIGHTS.md,
     color: 'rgba(255, 255, 255, 0.9)',
   },
   mockAvatarStack: {
@@ -436,7 +437,10 @@ const styles = StyleSheet.create({
   // ── Blur + overlay ───────────────────────────────────────────────
   blurTint: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    // Using OVERLAYS.light (0.35) — slightly darker than the previous 0.2
+    // to sit inside the centralized shadow/overlay system. Matches the
+    // "dark tint over blur for contrast" intent.
+    backgroundColor: OVERLAYS.light,
     borderRadius: 24,
   },
   overlayContent: {

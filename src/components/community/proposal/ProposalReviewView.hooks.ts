@@ -7,6 +7,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { ScrollView } from 'react-native';
 import { supabase } from '../../../lib/supabase';
+import { Sentry } from '../../../lib/sentry';
 import { getQuestionById } from '../../../utils/deepQuestions';
 import type { DeepQuestionData } from './proposalHelpers';
 import {
@@ -288,7 +289,14 @@ export function useProposalVoting(
               if (newProposals.length === 0) return prev;
               return [...prev.slice(0, currentIndexRef.current + 1), ...newProposals];
             });
-          }).catch(() => {}); // Best-effort refresh
+          }).catch((refreshErr) => {
+            // Best-effort refresh — don't rethrow, but surface to Sentry so we
+            // can spot recurring backend issues that leave the gate stale.
+            Sentry.captureException(refreshErr, {
+              level: 'warning',
+              tags: { module: 'ProposalReviewView', op: 'backgroundRefresh' },
+            });
+          });
           return;
         }
         // Genuine network/server failure — roll back optimistic count and show error

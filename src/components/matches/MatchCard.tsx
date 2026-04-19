@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
         color: COLORS.card,
         fontFamily: FONTS.extraBold,
         fontSize: FONT_SIZES['6xl'],
-        lineHeight: 36,
+        lineHeight: LINE_HEIGHTS['6xl'],
         letterSpacing: -0.8,
         textShadowColor: 'rgba(0, 0, 0, 0.55)',
         textShadowOffset: { width: 0, height: 3 },

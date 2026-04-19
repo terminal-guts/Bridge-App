@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { COLORS } from '../../theme/colors';
-import { FONTS } from '../../constants/typography';
+import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { lightHaptic } from '../../utils/haptics';
 
 interface AgeRangeStepperProps {
@@ -86,8 +86,8 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   label: {
-    fontSize: 13,
-    lineHeight: 16,
+    fontSize: FONT_SIZES.md,
+    lineHeight: LINE_HEIGHTS.md,
     color: '#667085',
     fontFamily: FONTS.medium,
     marginBottom: 10,
@@ -118,8 +118,10 @@ const s = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   stepBtnLabel: {
-    fontSize: 18,
-    lineHeight: 18,
+    // Tight-centered glyph: 18/18 via 2xl size + base line-height (scale has
+    // no 2xl size paired with an 18 line-height, so we mix tokens).
+    fontSize: FONT_SIZES['2xl'],
+    lineHeight: LINE_HEIGHTS.base,
     fontFamily: FONTS.medium,
     textAlign: 'center',
     // Kill Android extra padding so glyph sits dead-center
@@ -137,8 +139,8 @@ const s = StyleSheet.create({
   },
   valueNum: {
     color: '#FFFFFF',
-    fontSize: 20,
-    lineHeight: 24,
+    fontSize: FONT_SIZES['3xl'],
+    lineHeight: LINE_HEIGHTS['2xl'],
     fontFamily: FONTS.bold,
     textAlign: 'center',
     ...(Platform.OS === 'android' && { includeFontPadding: false }),
