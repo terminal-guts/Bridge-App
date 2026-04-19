@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
-import { H1, Body } from '../../../components/ui';
+import { H1, Body, ProposalReviewSkeleton } from '../../../components/ui';
 import { EvaIcon } from '../../../components/icons';
 import { COLORS } from '../../../theme/colors';
 import { ProposalReviewView } from '../../../components/community/proposal/ProposalReviewView';
@@ -57,10 +57,9 @@ export const OnboardingProposalStep: React.FC<OnboardingProposalStepProps> = ({
   // Loading state
   if (loading && !noProposals) {
     return (
-      <StyledSafeAreaView className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator size="large" color={COLORS.primaryAccent} />
-        <Body className="mt-4 text-neutral-500">Loading your first vote...</Body>
-      </StyledSafeAreaView>
+      <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.screenBackground }}>
+        <ProposalReviewSkeleton />
+      </SafeAreaView>
     );
   }
 
