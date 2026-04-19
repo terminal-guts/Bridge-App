@@ -519,7 +519,9 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
     return () => subscription.remove();
   }, [handleDeepLink]);
 
-  // Route to the correct screen when a push notification is tapped
+  // Route to the correct screen when a push notification is tapped.
+  // Canonical notification tap handler. The App.tsx listener logs only
+  // and should stay deduplicated — do not add navigation logic there.
   useEffect(() => {
     let responseSubscription: { remove(): void } | undefined;
 
@@ -902,11 +904,11 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
 
           {/* Match Screens */}
           {/* MatchReveal removed — dead screen, real flow uses MatchProposal */}
-          <Stack.Screen name="MatchProposal" component={MatchProposalScreen} />
-          <Stack.Screen name="ProposalProfile" component={ProfileMatchScreen} options={{ headerShown: false, ...modalSlideUp }} />
+          <Stack.Screen name="MatchProposal" component={MatchProposalScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="ProposalProfile" component={ProfileMatchScreen} options={{ headerShown: false, ...modalSlideUp, gestureEnabled: false }} />
 
           {/* Chat — slides up as modal overlay */}
-          <Stack.Screen name="Chat" component={ChatScreen} options={modalSlideUp} />
+          <Stack.Screen name="Chat" component={ChatScreen} options={{ ...modalSlideUp, gestureEnabled: false }} />
 
           {/* Profile & Settings */}
           <Stack.Screen name="Settings" component={SettingsScreen} />
@@ -915,8 +917,8 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
           <Stack.Screen name="EditBasics" component={EditBasicsScreen} />
           <Stack.Screen name="EditAbout" component={EditAboutScreen} />
           <Stack.Screen name="EditInterests" component={EditInterestsScreen} />
-          <Stack.Screen name="ProfilePreview" component={ProfileMatchScreen} options={{ headerShown: false, ...modalSlideUp }} />
-          <Stack.Screen name="ProfileView" component={ProfileMatchScreen} options={{ headerShown: false, ...modalSlideUp }} />
+          <Stack.Screen name="ProfilePreview" component={ProfileMatchScreen} options={{ headerShown: false, ...modalSlideUp, gestureEnabled: false }} />
+          <Stack.Screen name="ProfileView" component={ProfileMatchScreen} options={{ headerShown: false, ...modalSlideUp, gestureEnabled: false }} />
           <Stack.Screen name="MatchPreferences" component={MatchPreferencesScreen} />
           <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} />
           <Stack.Screen name="PauseProfile" component={PauseProfileScreen} />

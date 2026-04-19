@@ -49,8 +49,11 @@ export const BackHeader: React.FC<BackHeaderProps> = ({
   const handleBack = () => {
     if (onBack) {
       onBack();
-    } else {
+    } else if (navigation.canGoBack()) {
       navigation.goBack();
+    } else {
+      // Fallback to main tabs so deep-linked routes don't trap users
+      (navigation as any).navigate('MainTabs');
     }
   };
 
