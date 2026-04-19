@@ -163,27 +163,6 @@ Deno.serve(async (req: Request) => {
             friendPairs.add(key);
           }
 
-          // Fetch deep question answers for scoring
-          const candidateIds = eligibleOthers.map((p: { user_id: string }) => p.user_id);
-          const { data: deepAnswers } = await supabase
-            .from('deep_question_answers')
-            .select('user_id, answers')
-            .in('user_id', [userId, ...candidateIds]);
-
-          const deepMap: Record<string, Array<{ question_id: string; answer_text: string }>> = {};
-          for (const row of (deepAnswers || [])) {
-            if (row.answers && typeof row.answers === 'object') {
-              if (Array.isArray(row.answers)) {
-                deepMap[row.user_id] = row.answers;
-              } else {
-                deepMap[row.user_id] = Object.entries(row.answers as Record<string, unknown>).map(([qid, answer]) => ({
-                  question_id: qid,
-                  answer_text: typeof answer === 'string' ? answer : (answer as Record<string, unknown> | null)?.answer_text as string || '',
-                }));
-              }
-            }
-          }
-
           // New user boost for the requesting user
           const myCreatedMs = myProfile.created_at ? new Date(myProfile.created_at as string).getTime() : 0;
           const myDaysOld = (Date.now() - myCreatedMs) / (24 * 60 * 60 * 1000);
@@ -227,12 +206,7 @@ Deno.serve(async (req: Request) => {
               continue;
             }
 
-            const result = calculateCompatibility(
-              myProfile, myPrefs, other, otherPrefs,
-              null,
-              deepMap[userId] || [],
-              deepMap[other.user_id] || [],
-            );
+            const result = calculateCompatibility(myProfile, myPrefs, other, otherPrefs);
 
             // Apply new user boost (highest of the two users)
             const otherCreatedMs = other.created_at ? new Date(other.created_at as string).getTime() : 0;

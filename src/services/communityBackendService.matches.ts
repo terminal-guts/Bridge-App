@@ -55,7 +55,7 @@ export async function fetchActiveMatch(
 
   // Fire partner profile, message count, and endorser queries ALL in parallel
   const [{ data: partnerRow }, { count: messageCount }, endorserData] = await Promise.all([
-    supabase.from('user_profiles').select('user_id, first_name, last_name, age, gender, pronouns, location, current_job, profile_photo_path, photos, interests, values, bio').eq('user_id', partnerId).maybeSingle(),
+    supabase.from('user_profiles').select('user_id, first_name, last_name, age, gender, pronouns, current_job, photos, interests, values, bio').eq('user_id', partnerId).maybeSingle(),
     supabase.from('messages').select('id', { count: 'exact', head: true }).eq('match_id', match.id),
     match.proposal_id
       ? supabase.from('proposal_votes').select('voter_user_id').eq('proposal_id', match.proposal_id).eq('vote_type', 'YES').limit(3)
@@ -78,7 +78,7 @@ export async function fetchActiveMatch(
   if (yesVotes && yesVotes.length > 0) {
     const voterIds = yesVotes.map((v) => v.voter_user_id);
     const [{ data: voterRows }, { data: voterPhotos }] = await Promise.all([
-      supabase.from('user_profiles').select('user_id, first_name, last_name, profile_photo_path, photos').in('user_id', voterIds),
+      supabase.from('user_profiles').select('user_id, first_name, last_name, photos').in('user_id', voterIds),
       supabase.from('user_photos').select('user_id, storage_path, is_main').in('user_id', voterIds).eq('is_main', true),
     ]);
 
@@ -259,23 +259,14 @@ export async function detectEndedMatchEvent(
       // Fetch the partner (exiting user) profile for the popup
       const { data: partnerRow } = await supabase
         .from('user_profiles')
-        .select('first_name, profile_photo_path')
+        .select('first_name')
         .eq('user_id', exit.exiting_user_id)
         .maybeSingle();
-
-      let photoUrl: string | undefined;
-      if (partnerRow?.profile_photo_path) {
-        const { data: signedData } = await supabase.storage
-          .from('profile-photos')
-          .createSignedUrl(partnerRow.profile_photo_path, 86400);
-        photoUrl = signedData?.signedUrl;
-      }
 
       setPendingEndedEvent({
         type: 'match_ended',
         eventId,
         partnerName: partnerRow?.first_name || 'Your match',
-        partnerPhotoUrl: photoUrl,
         endReason: exit.exit_reason || undefined,
       });
       return; // Show one at a time
@@ -327,23 +318,14 @@ export async function detectPartnerDeclinedProposal(
     const partnerId = isUserA ? prop.user_b_id : prop.user_a_id;
     const { data: partnerRow } = await supabase
       .from('user_profiles')
-      .select('first_name, profile_photo_path')
+      .select('first_name')
       .eq('user_id', partnerId)
       .maybeSingle();
-
-    let photoUrl: string | undefined;
-    if (partnerRow?.profile_photo_path) {
-      const { data: signedData } = await supabase.storage
-        .from('profile-photos')
-        .createSignedUrl(partnerRow.profile_photo_path, 86400);
-      photoUrl = signedData?.signedUrl;
-    }
 
     setPendingEndedEvent({
       type: 'they_rejected',
       eventId,
       partnerName: partnerRow?.first_name || 'Your match',
-      partnerPhotoUrl: photoUrl,
     });
   } catch {
     // Silent — don't break the main data load

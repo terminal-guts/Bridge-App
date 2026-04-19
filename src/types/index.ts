@@ -103,8 +103,6 @@ export interface UserProfile {
   religion: string;
   politicalLeaning: PoliticalLeaning | 'other' | string;
   customPoliticalLeaning?: string; // Custom political leaning when 'other' is selected
-  location?: string; // Archived — not collected at Rice beta launch
-  hometown?: string; // Archived — not collected at Rice beta launch
   hasChildren?: string; // Whether user currently has children
   familyPlans?: string; // User's family planning goals
   drinkingFrequency?: string; // Frequency of alcohol consumption
@@ -185,7 +183,6 @@ export interface MatchPreferences {
   ageMin: number;
   ageMax: number;
   gender: 'male' | 'female' | 'both';
-  lookingFor: 'relationship' | 'casual' | 'friendship' | 'unsure';
   heightMin?: number; // Minimum height in inches (e.g., 60 = 5'0")
   heightMax?: number; // Maximum height in inches (e.g., 84 = 7'0")
   maxDistance?: number | null; // Maximum distance in miles, null = no limit
@@ -348,7 +345,6 @@ export type RootStackParamList = {
   EditBasics: undefined;
   EditAbout: undefined;
   EditInterests: undefined;
-  EditLifestyle: undefined;
   ProfilePreview: { previewProfile?: UserProfile } | undefined;
   ProfileView: { userId: string; profile?: UserProfile; showActions?: boolean; onAccept?: () => void; onPass?: () => void };
   Settings: undefined;
@@ -402,12 +398,6 @@ export interface OnboardingData {
   ethnicityPreference?: string[]; // Alternative name used in EthnicityStep
   hasChildren: string;
   familyPlans: string;
-  hometown?: string; // Archived
-  location?: string; // Archived
-  coordinates?: {
-    latitude: number;
-    longitude: number;
-  };
   religion: string;
   politicalLeaning: 'very_liberal' | 'liberal' | 'moderate' | 'conservative' | 'very_conservative' | 'not_political' | 'prefer_not_to_say';
   drinkingFrequency: string;

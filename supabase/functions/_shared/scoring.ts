@@ -1,45 +1,44 @@
 /**
- * Bridge Matching Algorithm — Scoring Engine v2 (Deno/TypeScript)
+ * Bridge Matching Algorithm — Scoring Engine v3 (Deno/TypeScript)
  *
- * 12-category mutual percentage-based scoring. All category weights sum to 100%.
+ * 8-category mutual percentage-based scoring. All category weights sum to 100%.
+ *
+ * v3 Changes (2026-04-18):
+ *   - Removed family, deep_questions, education, career categories.
+ *     The underlying onboarding steps for these fields were removed, so their
+ *     scorers were running on fallback defaults for every user, adding noise
+ *     rather than signal. Weights redistributed proportionally to the 8
+ *     remaining categories.
  *
  * v2 Changes (2026-03-15):
  *   - Fixed interests/values: overlap coefficient → modified Jaccard (fixes small-set inflation)
- *   - Fixed family plans: matrix keys now match actual stored values (want_children, dont_want_children)
  *   - Fixed religion: preference bonus/penalty model replaces perverse incentive blend
  *   - Fixed politics: not_political is orthogonal to spectrum, not on it
  *   - Fixed ethnicity: partial credit via cultural proximity groups
  *   - Fixed substances: ordinal gradient replaces binary cliff-edge
- *   - Rebalanced weights: interests 22%, values 12%, age 10% (was 18%)
- *   - Re-enabled education (3%) and career (3%)
  *   - Principled missing data defaults
  *
  * Category Weights:
- *   Interests:      22%    Values:        12%    Lifestyle:     10%
- *   Age Range:      10%    Religion:       9%    Politics:       7%
- *   Height:          7%    Ethnicity:      6%    Family:         6%
- *   Deep Questions:  5%    Education:      3%    Career:         3%
+ *   Interests:      25%    Values:        14%    Lifestyle:     12%
+ *   Age Range:      12%    Ethnicity:     12%    Religion:       9%
+ *   Politics:        8%    Height:         8%
  */
 
-import type { CompatibilityResult, DeepQuestionAnswer } from './types.ts';
+import type { CompatibilityResult } from './types.ts';
 
 type Dict = Record<string, unknown>;
 
 // ── Weights ──────────────────────────────────────────────────────────────────
 
 const WEIGHTS: Record<string, number> = {
-  interests: 0.22,
-  values: 0.10,
-  lifestyle_substances: 0.10,
-  age_range: 0.10,
-  religion: 0.07,
-  politics: 0.07,
-  height: 0.07,
-  ethnicity: 0.10,
-  family: 0.06,
-  deep_questions: 0.05,
-  education: 0.03,
-  career: 0.03,
+  interests: 0.25,
+  values: 0.14,
+  lifestyle_substances: 0.12,
+  age_range: 0.12,
+  ethnicity: 0.12,
+  religion: 0.09,
+  politics: 0.08,
+  height: 0.08,
 };
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -77,46 +76,6 @@ const POLITICS_SPECTRUM = [
 // Spectrum distance scores (gap → score)
 const POLITICS_GAP_SCORES: number[] = [1.0, 0.80, 0.50, 0.20, 0.05];
 
-const EDUCATION_LEVELS: Record<string, number> = {
-  no_high_school: 0,
-  high_school: 1,
-  some_college: 2,
-  trade_school: 2,
-  associates: 3,
-  bachelors: 4,
-  masters: 5,
-  phd: 6,
-  beyond_masters: 6,
-  professional: 6,
-  other: 3,
-};
-
-const FAMILY_PLANS_MATRIX: Map<string, number> = new Map([
-  // Current stored values (from onboarding)
-  ['want_children|want_children', 1.0],
-  ['want_children|not_sure', 0.6],
-  ['want_children|dont_want_children', 0.0],
-  ['dont_want_children|dont_want_children', 1.0],
-  ['dont_want_children|not_sure', 0.4],
-  ['not_sure|not_sure', 0.9],
-  // Legacy values (backward compatibility with older profiles)
-  ['want_someday|want_someday', 1.0],
-  ['want_someday|open', 0.8],
-  ['want_someday|not_sure', 0.6],
-  ['want_someday|want_children', 1.0],
-  ['want_someday|dont_want', 0.0],
-  ['want_someday|dont_want_children', 0.0],
-  ['want_someday|prefer_not_to_say', 0.5],
-  ['dont_want|dont_want', 1.0],
-  ['dont_want|dont_want_children', 1.0],
-  ['dont_want|open', 0.4],
-  ['dont_want|not_sure', 0.4],
-  ['open|open', 1.0],
-  ['open|not_sure', 0.8],
-  ['open|want_children', 0.8],
-  ['open|dont_want_children', 0.4],
-]);
-
 // Ordinal scales for substance scoring
 const SUBSTANCE_ORDINAL: Record<string, Record<string, number>> = {
   drinking: { no: 0, never: 0, rarely: 1, sometimes: 2, socially: 2, regularly: 3, yes: 3 },
@@ -140,23 +99,6 @@ const STANDARD_ETHNICITIES = new Set([
   'black', 'east asian', 'hispanic', 'middle eastern', 'native american',
   'pacific islander', 'south asian', 'southeast asian', 'white', 'other',
   'asian', 'latino', 'african', 'caribbean', 'mixed', 'multiracial',
-]);
-
-const DEEP_STOP_WORDS = new Set([
-  'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'you', 'your',
-  'he', 'she', 'it', 'they', 'them', 'the', 'a', 'an', 'is', 'are',
-  'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do',
-  'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might',
-  'shall', 'can', 'need', 'dare', 'to', 'of', 'in', 'for', 'on',
-  'with', 'at', 'by', 'from', 'as', 'into', 'about', 'like', 'through',
-  'after', 'over', 'between', 'out', 'up', 'down', 'then', 'than',
-  'that', 'this', 'these', 'those', 'what', 'which', 'who', 'whom',
-  'when', 'where', 'how', 'not', 'no', 'nor', 'but', 'and', 'or',
-  'if', 'so', 'because', 'very', 'just', 'also', 'really', 'think',
-  'know', 'want', 'get', 'go', 'make', 'see', 'come', 'take',
-  'thing', 'things', 'something', 'someone', 'one', 'much', 'many',
-  'would', 'could', 'should', 'dont', 'doesn', 'didn', 'won', 'isn',
-  'its', 'im', 'ive', 'id', 'ill', 'thats', 'theyre', 'were',
 ]);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -217,7 +159,7 @@ function countClusterOverlap(aInts: Set<string>, bInts: Set<string>, exactShared
   return clusterOverlaps;
 }
 
-// ── Interests (22%) — Modified Jaccard + Cluster Bonus ───────────────────────
+// ── Interests (25%) — Modified Jaccard + Cluster Bonus ───────────────────────
 
 function scoreInterests(profileA: Dict, profileB: Dict): number {
   const aRaw = (_get(profileA, 'interests') || []) as string[];
@@ -249,7 +191,7 @@ function scoreInterests(profileA: Dict, profileB: Dict): number {
   return jaccard * 0.35 + absoluteBonus * 0.65;
 }
 
-// ── Values (12%) — Modified Jaccard ──────────────────────────────────────────
+// ── Values (14%) — Modified Jaccard ──────────────────────────────────────────
 
 function scoreValues(profileA: Dict, profileB: Dict): number {
   const aVals = new Set<string>((_get(profileA, 'values') || []) as string[]);
@@ -272,7 +214,7 @@ function scoreValues(profileA: Dict, profileB: Dict): number {
   return jaccard * 0.35 + absoluteBonus * 0.65;
 }
 
-// ── Lifestyle / Substances (10%) — Ordinal Gradients ─────────────────────────
+// ── Lifestyle / Substances (12%) — Ordinal Gradients ─────────────────────────
 
 function scoreSingleSubstance(
   aHabit: string | null,
@@ -352,7 +294,7 @@ function scoreLifestyle(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Di
   return total / substances.length;
 }
 
-// ── Age (10%) ────────────────────────────────────────────────────────────────
+// ── Age (12%) ────────────────────────────────────────────────────────────────
 
 function scoreAge(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
   const ageA = _get(profileA, 'age') as number | null;
@@ -446,7 +388,7 @@ function scoreReligion(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dic
   return (aScore + bScore) / 2;
 }
 
-// ── Politics (7%) — not_political is orthogonal ──────────────────────────────
+// ── Politics (8%) — not_political is orthogonal ──────────────────────────────
 
 function scorePolitics(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
   const aPolitics = (_get(profileA, 'political_leaning') as string | null)?.toLowerCase() || null;
@@ -494,7 +436,7 @@ function scorePolitics(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dic
   return (aToB + bToA) / 2;
 }
 
-// ── Height (7%) ──────────────────────────────────────────────────────────────
+// ── Height (8%) ──────────────────────────────────────────────────────────────
 
 function scoreHeight(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
   const aHeight = _get(profileA, 'height_inches') as number | null;
@@ -527,7 +469,7 @@ function scoreHeight(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict)
   return (aToB + bToA) / 2;
 }
 
-// ── Ethnicity (6%) — Partial credit via cultural proximity ───────────────────
+// ── Ethnicity (12%) — Partial credit via cultural proximity ──────────────────
 
 function scoreEthnicity(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
   const aEthnicity = _get(profileA, 'ethnicity') as string | null;
@@ -584,165 +526,6 @@ function scoreEthnicity(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Di
   return (aToB + bToA) / 2;
 }
 
-// ── Family (6%) ──────────────────────────────────────────────────────────────
-
-function defaultChildrenScore(aChildren: string | null, bChildren: string | null): number {
-  if (aChildren === 'prefer_not_to_say' || bChildren === 'prefer_not_to_say') return 0.75;
-  if (aChildren == null || bChildren == null) return 0.5;
-  if (aChildren === bChildren) return 1.0;
-  return 0.5;
-}
-
-function scoreHasChildren(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
-  const aChildren = _get(profileA, 'has_children') as string | null;
-  const bChildren = _get(profileB, 'has_children') as string | null;
-  return defaultChildrenScore(aChildren, bChildren);
-}
-
-function scoreFamilyPlans(profileA: Dict, profileB: Dict): number {
-  const aPlans = _get(profileA, 'family_plans') as string | null;
-  const bPlans = _get(profileB, 'family_plans') as string | null;
-
-  if (!aPlans || !bPlans) return 0.5;
-  if (aPlans === 'prefer_not_to_say' || bPlans === 'prefer_not_to_say') return 0.5;
-
-  const score = FAMILY_PLANS_MATRIX.get(`${aPlans}|${bPlans}`) ??
-    FAMILY_PLANS_MATRIX.get(`${bPlans}|${aPlans}`);
-  if (score != null) return score;
-  return 0.5;
-}
-
-function scoreFamily(profileA: Dict, prefsA: Dict, profileB: Dict, prefsB: Dict): number {
-  const childrenScore = scoreHasChildren(profileA, prefsA, profileB, prefsB);
-  const plansScore = scoreFamilyPlans(profileA, profileB);
-  return childrenScore * 0.4 + plansScore * 0.6;
-}
-
-// ── Deep Questions (5%) — Keyword fallback only ─────────────────────────────
-
-function extractMeaningfulWords(text: string): Set<string> {
-  if (!text) return new Set();
-  const cleaned = text.toLowerCase().replace(/[^a-z\s]/g, '');
-  const words = cleaned.split(/\s+/).filter(w => w.length > 2 && !DEEP_STOP_WORDS.has(w));
-  return new Set(words);
-}
-
-function scoreQuestionOverlap(deepA: DeepQuestionAnswer[], deepB: DeepQuestionAnswer[]): number {
-  const aIds = new Set(deepA.map(d => d.question_id).filter(Boolean));
-  const bIds = new Set(deepB.map(d => d.question_id).filter(Boolean));
-
-  if (aIds.size === 0 || bIds.size === 0) return 0.5;
-
-  let shared = 0;
-  for (const id of aIds) if (bIds.has(id)) shared++;
-  const overlapRatio = shared / Math.min(aIds.size, bIds.size);
-  return Math.min(1.0, overlapRatio * 1.2);
-}
-
-function scoreAnswerLengthSimilarity(deepA: DeepQuestionAnswer[], deepB: DeepQuestionAnswer[]): number {
-  function avgLength(answers: DeepQuestionAnswer[]): number {
-    const lengths = answers.map(d => (d.answer_text || '').length);
-    return lengths.length > 0 ? lengths.reduce((a, b) => a + b, 0) / lengths.length : 0;
-  }
-
-  const aAvg = avgLength(deepA);
-  const bAvg = avgLength(deepB);
-
-  if (aAvg === 0 && bAvg === 0) return 0.5;
-  if (aAvg === 0 || bAvg === 0) return 0.3;
-  return Math.min(aAvg, bAvg) / Math.max(aAvg, bAvg);
-}
-
-function scoreKeywordOverlap(deepA: DeepQuestionAnswer[], deepB: DeepQuestionAnswer[]): number {
-  const aWords = new Set<string>();
-  for (const d of deepA) {
-    for (const w of extractMeaningfulWords(d.answer_text || '')) aWords.add(w);
-  }
-
-  const bWords = new Set<string>();
-  for (const d of deepB) {
-    for (const w of extractMeaningfulWords(d.answer_text || '')) bWords.add(w);
-  }
-
-  if (aWords.size === 0 || bWords.size === 0) return 0.5;
-
-  let shared = 0;
-  for (const w of aWords) if (bWords.has(w)) shared++;
-  const smaller = Math.min(aWords.size, bWords.size);
-  if (smaller === 0) return 0.5;
-  return Math.min(1.0, shared / smaller);
-}
-
-function scoreDeepQuestions(deepA: DeepQuestionAnswer[], deepB: DeepQuestionAnswer[]): number {
-  if (deepA.length === 0 && deepB.length === 0) return 0.5;
-  if (deepA.length === 0 || deepB.length === 0) return 0.3;
-
-  const questionScore = scoreQuestionOverlap(deepA, deepB);
-  const lengthScore = scoreAnswerLengthSimilarity(deepA, deepB);
-  const keywordScore = scoreKeywordOverlap(deepA, deepB);
-
-  return questionScore * 0.55 + keywordScore * 0.30 + lengthScore * 0.15;
-}
-
-// ── Education (3%) ──────────────────────────────────────────────────────────
-
-function scoreEducation(profileA: Dict, profileB: Dict): number {
-  const aEdu = _get(profileA, 'education_level') as string | null;
-  const bEdu = _get(profileB, 'education_level') as string | null;
-
-  if (!aEdu || !bEdu) return 0.5;
-
-  const aLevel = EDUCATION_LEVELS[aEdu.toLowerCase()] ?? 3;
-  const bLevel = EDUCATION_LEVELS[bEdu.toLowerCase()] ?? 3;
-  const gap = Math.abs(aLevel - bLevel);
-
-  if (gap === 0) return 1.0;
-  if (gap === 1) return 0.8;
-  if (gap === 2) return 0.6;
-  if (gap === 3) return 0.4;
-  return 0.2;
-}
-
-// ── Career (3%) ─────────────────────────────────────────────────────────────
-
-function normalizeText(text: string | null): string {
-  if (!text) return '';
-  return text.toLowerCase().trim();
-}
-
-function extractKeywords(text: string): Set<string> {
-  const stopWords = new Set(['the', 'a', 'an', 'at', 'in', 'of', 'and', 'or', 'for', 'to', 'is', 'inc', 'llc', 'ltd']);
-  const words = new Set(normalizeText(text).split(/\s+/).filter(w => w.length > 0));
-  const result = new Set<string>();
-  for (const w of words) if (!stopWords.has(w)) result.add(w);
-  return result;
-}
-
-function scoreCareer(profileA: Dict, profileB: Dict): number {
-  const aJob = normalizeText(_get(profileA, 'current_job') as string | null);
-  const bJob = normalizeText(_get(profileB, 'current_job') as string | null);
-  const aCompany = normalizeText(_get(profileA, 'company_position') as string | null);
-  const bCompany = normalizeText(_get(profileB, 'company_position') as string | null);
-  const aSchool = normalizeText(_get(profileA, 'school') as string | null);
-  const bSchool = normalizeText(_get(profileB, 'school') as string | null);
-
-  if ((!aJob && !aCompany) || (!bJob && !bCompany)) return 0.5;
-  if (aCompany && bCompany && aCompany === bCompany) return 1.0;
-  if (aSchool && bSchool && aSchool === bSchool) return 1.0;
-
-  const aKeywords = new Set([...extractKeywords(aJob), ...extractKeywords(aCompany)]);
-  const bKeywords = new Set([...extractKeywords(bJob), ...extractKeywords(bCompany)]);
-
-  if (aKeywords.size > 0 && bKeywords.size > 0) {
-    for (const kw of aKeywords) {
-      if (bKeywords.has(kw)) return 0.75;
-    }
-  }
-
-  if (aJob && bJob) return 0.5;
-  return 0.25;
-}
-
 // ── Distance (disabled for campus beta, kept for future) ─────────────────────
 
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -764,8 +547,6 @@ export function calculateCompatibility(
   profileB: Dict,
   prefsB: Dict,
   actualDistance: number | null = null,
-  deepQuestionsA: DeepQuestionAnswer[] = [],
-  deepQuestionsB: DeepQuestionAnswer[] = [],
 ): CompatibilityResult {
   const raw: Record<string, number> = {
     interests: scoreInterests(profileA, profileB),
@@ -776,10 +557,6 @@ export function calculateCompatibility(
     politics: scorePolitics(profileA, prefsA, profileB, prefsB),
     height: scoreHeight(profileA, prefsA, profileB, prefsB),
     ethnicity: scoreEthnicity(profileA, prefsA, profileB, prefsB),
-    family: scoreFamily(profileA, prefsA, profileB, prefsB),
-    deep_questions: scoreDeepQuestions(deepQuestionsA, deepQuestionsB),
-    education: scoreEducation(profileA, profileB),
-    career: scoreCareer(profileA, profileB),
   };
 
   const weighted: Record<string, number> = {};

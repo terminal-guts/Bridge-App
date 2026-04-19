@@ -74,7 +74,6 @@ export const BirthdayStep: React.FC<BirthdayStepProps> = ({
       age: age,
       preferences: {
         gender: data.preferences?.gender ?? 'both',
-        lookingFor: data.preferences?.lookingFor ?? 'relationship',
         ...data.preferences,
         ageMin,
         ageMax,

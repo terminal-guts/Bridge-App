@@ -60,8 +60,6 @@ function mapBackendToUserProfile(data: Record<string, any>): UserProfile {
     ethnicity: data.ethnicity || '',
     religion: data.religion || '',
     politicalLeaning: data.political_leaning || '',
-    location: data.location || '',
-    hometown: data.hometown,
     currentJob: data.current_job,
     companyPosition: data.company_position,
     educationLevel: data.education_level || '',
@@ -92,7 +90,6 @@ function mapBackendToUserProfile(data: Record<string, any>): UserProfile {
         }
         return 'both' as const;
       })(),
-      lookingFor: (data.preferences?.looking_for ?? data.preferences?.lookingFor ?? 'relationship') as 'relationship' | 'casual' | 'friendship' | 'unsure',
       heightMin: data.preferences?.preferred_height_min_inches ?? data.preferences?.height_min ?? data.preferences?.heightMin ?? 60,
       heightMax: data.preferences?.preferred_height_max_inches ?? data.preferences?.height_max ?? data.preferences?.heightMax ?? 84,
       maxDistance: data.preferences?.max_distance ?? data.preferences?.maxDistance ?? 50,

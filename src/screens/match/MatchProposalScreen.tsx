@@ -341,7 +341,6 @@ export const MatchProposalScreen: React.FC<MatchProposalScreenProps> = ({ naviga
     const pills: Array<{ icon: string; text: string }> = [];
     if (profile.gender?.length) pills.push({ icon: 'person', text: profile.gender.join(', ') });
     if (profile.height) pills.push({ icon: 'maximize', text: profile.height });
-    if (profile.location) pills.push({ icon: 'pin', text: profile.location });
     if (profile.ethnicity) pills.push({ icon: 'globe', text: profile.ethnicity });
     if (profile.religion) pills.push({ icon: 'star', text: profile.religion });
     if (profile.politicalLeaning) pills.push({ icon: 'flag', text: formatFrequency(profile.politicalLeaning) || '' });

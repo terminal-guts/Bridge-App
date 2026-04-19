@@ -9,11 +9,11 @@
  * 2. Finishing onboarding = profile_completed = true = in matching pool
  * 3. profile_completed is one-way: never reverts to false
  *
- * REMOVED FROM ONBOARDING + EDIT PROFILE (kept in DB):
- * - pronouns, children, currentJob
+ * Active mappingKeys: name, age, role, gender, height, ethnicity,
+ * religion, politics, lifestyle, interests, values, photos.
  *
- * OPTIONAL (profile area only, not in onboarding):
- * - deepQuestions, extra photos
+ * Collected optionally post-onboarding (profile area only):
+ * - deep questions, extra photos
  */
 
 export type StepType = 'text' | 'single_choice' | 'multi_choice' | 'complex';
@@ -31,14 +31,6 @@ export interface StepMapping {
  * Order matches the onboarding flow in OnboardingScreen.tsx
  */
 export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
-  // Step 0: Phone Number
-  phone_number: {
-    key: 'phone_number',
-    type: 'text',
-    table: 'user_profiles',
-    columns: ['phone_number'],
-  },
-
   // Step 1: Name (First + Last)
   name: {
     key: 'name',
@@ -107,17 +99,6 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
     },
   },
 
-  // Step 4: Pronouns
-  pronouns: {
-    key: 'pronouns',
-    type: 'multi_choice',
-    table: 'user_profiles',
-    columns: ['pronouns_list'],
-    transform: (data: any) => ({
-      pronouns_list: data.pronounsList || [],
-    }),
-  },
-
   // Step 5: Height (my height + partner height range)
   height: {
     key: 'height',
@@ -162,44 +143,6 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
       },
     }),
   },
-
-  // Preferred ethnicities — kept for backward compatibility (no longer a separate step)
-  preferredEthnicities: {
-    key: 'preferredEthnicities',
-    type: 'multi_choice',
-    table: 'user_preferences',
-    columns: ['preferred_ethnicities'],
-    transform: (data: any) => ({
-      preferred_ethnicities: data.preferredEthnicities || [],
-    }),
-  },
-
-  // Step 9: Children & Family Plans (both collected on same page)
-  children: {
-    key: 'children',
-    type: 'complex',
-    table: 'user_profiles',
-    columns: ['has_children', 'family_plans'],
-    transform: (data: any) => ({
-      has_children: data.hasChildren,
-      family_plans: data.familyPlans,
-    }),
-  },
-
-  // Step 10: Current Job
-  current_job: {
-    key: 'current_job',
-    type: 'text',
-    table: 'user_profiles',
-    columns: ['current_job'],
-    transform: (data: any) => ({
-      current_job: data.currentJob,
-    }),
-  },
-
-  // REMOVED FROM ONBOARDING: Company/Position (still available in profile edit)
-  // REMOVED FROM ONBOARDING: Education Level (still available in profile edit)
-  // REMOVED FROM ONBOARDING: School (still available in profile edit)
 
   // Religion — saves own religion + auto-sets partner preference
   religion: {
@@ -286,42 +229,12 @@ export const ONBOARDING_STEP_MAPPING: Record<string, StepMapping> = {
     // Photos are handled separately via photoService
   },
 
-  // REMOVED FROM ONBOARDING: Deep Questions (still available in profile edit)
-  // Non-Negotiables: SCRAPPED from product entirely
-
-  // Step 22: Preferences (Commitment Level)
-  preferences: {
-    key: 'preferences',
-    type: 'single_choice',
-    table: 'user_preferences',
-    columns: ['looking_for'],
-    transform: (data: any) => ({
-      looking_for: data.preferences?.lookingFor || 'relationship',
-    }),
-  },
-
-  // Step 23: Welcome to Bridge (no save needed)
-  welcome: {
-    key: 'welcome',
-    type: 'text',
-    table: 'user_profiles',
-    columns: [],
-    // No save - this is just a confirmation screen
-  },
-
   // Matchmaker Roles
   role: {
     key: 'role',
     type: 'single_choice',
     table: 'user_profiles',
     columns: ['role'],
-  },
-
-  bio: {
-    key: 'bio',
-    type: 'text',
-    table: 'user_profiles',
-    columns: ['bio'],
   },
 };
 

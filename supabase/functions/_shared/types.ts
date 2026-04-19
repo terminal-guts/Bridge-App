@@ -19,10 +19,6 @@ export interface DBUserProfile {
   interested_in_genders: string[];
   height_inches: number | null;
   ethnicity: string | null;
-  location: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  hometown: string | null;
   current_job: string | null;
   company_position: string | null;
   education_level: string | null;
@@ -39,7 +35,6 @@ export interface DBUserProfile {
   values: string[];
   bio: string | null;
   photos: PhotoEntry[];
-  non_negotiables: string[]; // SCRAPPED — always empty, kept for DB schema compat
   is_paused: boolean;
 }
 
@@ -49,7 +44,6 @@ export interface DBUserPreferences {
   preferred_gender: string | null;
   age_min: number | null;
   age_max: number | null;
-  looking_for: string | null;
   preferred_height_min_inches: number | null;
   preferred_height_max_inches: number | null;
   max_distance: number | null;

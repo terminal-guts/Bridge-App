@@ -68,7 +68,7 @@ export async function fetchFriendsAsAnchors(): Promise<FriendWithGridStatus[]> {
   ] = await Promise.all([
     supabase
       .from('user_profiles')
-      .select('user_id, first_name, last_name, age, gender, pronouns, location, current_job, profile_photo_path, photos, profile_completed, interests, values, role')
+      .select('user_id, first_name, last_name, age, gender, pronouns, current_job, photos, profile_completed, interests, values, role')
       .in('user_id', friendIds),
     // Proposals where friend is user_a
     supabase

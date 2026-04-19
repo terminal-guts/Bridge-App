@@ -99,8 +99,6 @@ function mapBackendToUserProfile(data: Record<string, any>): UserProfile {
     ethnicity: data.ethnicity || '',
     religion: data.religion || '',
     politicalLeaning: data.political_leaning || '',
-    location: data.location || '',
-    hometown: data.hometown,
     currentJob: data.current_job,
     companyPosition: data.company_position,
     educationLevel: data.education_level || '',
@@ -132,7 +130,6 @@ function mapBackendToUserProfile(data: Record<string, any>): UserProfile {
         }
         return 'both' as const;
       })(),
-      lookingFor: (data.preferences?.looking_for ?? data.preferences?.lookingFor ?? 'relationship') as 'relationship' | 'casual' | 'friendship' | 'unsure',
       heightMin: data.preferences?.preferred_height_min_inches ?? data.preferences?.height_min ?? data.preferences?.heightMin ?? 60,
       heightMax: data.preferences?.preferred_height_max_inches ?? data.preferences?.height_max ?? data.preferences?.heightMax ?? 84,
       maxDistance: data.preferences?.max_distance ?? data.preferences?.maxDistance ?? 50,
@@ -340,11 +337,9 @@ export const updateUserProfile = async (
     if (updates.lastName !== undefined) profilePayload.last_name = updates.lastName;
     if (updates.age !== undefined) profilePayload.age = updates.age;
     if (updates.gender !== undefined) profilePayload.gender = updates.gender;
-    if (updates.location !== undefined) profilePayload.location = updates.location;
     if (updates.pronouns !== undefined) profilePayload.pronouns = updates.pronouns;
     if (updates.pronounsList !== undefined) profilePayload.pronouns_list = updates.pronounsList;
     if (updates.customMyGender !== undefined) profilePayload.custom_gender = updates.customMyGender;
-    if (updates.hometown !== undefined) profilePayload.hometown = updates.hometown;
     if (updates.currentJob !== undefined) profilePayload.current_job = updates.currentJob;
     if (updates.companyPosition !== undefined) profilePayload.company_position = updates.companyPosition;
     if (updates.educationLevel !== undefined) profilePayload.education_level = updates.educationLevel;
@@ -400,7 +395,6 @@ export const updateUserProfile = async (
       if (updates.preferences?.ageMin !== undefined) prefPayload.age_min = updates.preferences.ageMin;
       if (updates.preferences?.ageMax !== undefined) prefPayload.age_max = updates.preferences.ageMax;
       // preferred_gender removed — derived from interested_in_genders in user_profiles
-      if (updates.preferences?.lookingFor !== undefined) prefPayload.looking_for = updates.preferences.lookingFor;
       if (updates.preferences?.heightMin !== undefined) prefPayload.preferred_height_min_inches = updates.preferences.heightMin;
       if (updates.preferences?.heightMax !== undefined) prefPayload.preferred_height_max_inches = updates.preferences.heightMax;
       if (updates.preferences?.maxDistance !== undefined) prefPayload.max_distance = updates.preferences.maxDistance;

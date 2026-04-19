@@ -47,9 +47,14 @@ function withSuspense<P extends object>(LazyComponent: React.LazyExoticComponent
 // This means it starts loading during the splash/auth-check phase — so by the time
 // isAuthenticated resolves to false, the module is already parsed and ready.
 // New users go: splash → Welcome screen (no CommunitySkeleton flash in between).
+// Auth + Onboarding screens — preloaded at module-evaluation time so tapping
+// Sign In / Sign Up from Welcome feels instant instead of hitting a cold
+// lazy-load parse.
 const _welcomePreload = import('../screens/auth/WelcomeScreen');
+const _loginPreload = import('../screens/auth/LoginScreen');
+const _onboardingPreload = import('../screens/onboarding/OnboardingScreen');
 const WelcomeScreen = withSuspense(React.lazy(() => _welcomePreload.then(m => ({ default: m.WelcomeScreen }))));
-const LoginScreen = withSuspense(React.lazy(() => import('../screens/auth/LoginScreen').then(m => ({ default: m.LoginScreen }))));
+const LoginScreen = withSuspense(React.lazy(() => _loginPreload.then(m => ({ default: m.LoginScreen }))));
 const EmailVerificationScreen = withSuspense(React.lazy(() => import('../screens/auth/EmailVerificationScreen').then(m => ({ default: m.EmailVerificationScreen }))));
 
 // Main tab screens — all lazy (parsed on first navigation, not at startup)
@@ -58,7 +63,7 @@ const ProfileScreen = withSuspense(React.lazy(() => import('../screens/main/Prof
 const MatchesScreen = withSuspense(React.lazy(() => import('../screens/match/MatchesScreen').then(m => ({ default: m.MatchesScreen }))));
 
 // Stack screens — lazy (navigated to on demand)
-const OnboardingScreen = withSuspense(React.lazy(() => import('../screens/onboarding/OnboardingScreen').then(m => ({ default: m.OnboardingScreen }))));
+const OnboardingScreen = withSuspense(React.lazy(() => _onboardingPreload.then(m => ({ default: m.OnboardingScreen }))));
 const FriendProposalScreen = withSuspense(React.lazy(() => import('../screens/community/FriendProposalScreen').then(m => ({ default: m.FriendProposalScreen }))));
 const ChatScreen = withSuspense(React.lazy(() => import('../screens/match/ChatScreen')));
 const SettingsScreen = withSuspense(React.lazy(() => import('../screens/profile/SettingsScreen').then(m => ({ default: m.SettingsScreen }))));
@@ -78,7 +83,6 @@ const EditPhotosScreen = withSuspense(React.lazy(() => import('../screens/profil
 const EditBasicsScreen = withSuspense(React.lazy(() => import('../screens/profile/EditBasicsScreen').then(m => ({ default: m.EditBasicsScreen }))));
 const EditAboutScreen = withSuspense(React.lazy(() => import('../screens/profile/EditAboutScreen').then(m => ({ default: m.EditAboutScreen }))));
 const EditInterestsScreen = withSuspense(React.lazy(() => import('../screens/profile/EditInterestsScreen').then(m => ({ default: m.EditInterestsScreen }))));
-const EditLifestyleScreen = withSuspense(React.lazy(() => import('../screens/profile/EditLifestyleScreen').then(m => ({ default: m.EditLifestyleScreen }))));
 
 // Legal & Support
 const TermsOfService = withSuspense(React.lazy(() => import('../screens/legal/TermsOfService').then(m => ({ default: m.TermsOfService }))));
@@ -911,7 +915,6 @@ export const AppNavigator = ({ onReady }: { onReady?: () => void }) => {
           <Stack.Screen name="EditBasics" component={EditBasicsScreen} />
           <Stack.Screen name="EditAbout" component={EditAboutScreen} />
           <Stack.Screen name="EditInterests" component={EditInterestsScreen} />
-          <Stack.Screen name="EditLifestyle" component={EditLifestyleScreen} />
           <Stack.Screen name="ProfilePreview" component={ProfileMatchScreen} options={{ headerShown: false, ...modalSlideUp }} />
           <Stack.Screen name="ProfileView" component={ProfileMatchScreen} options={{ headerShown: false, ...modalSlideUp }} />
           <Stack.Screen name="MatchPreferences" component={MatchPreferencesScreen} />

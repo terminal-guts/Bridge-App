@@ -38,7 +38,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       return;
     }
     if (!isAllowedEmailDomain(email)) {
-      setError('Please use your @rice.edu email address');
+      setError('Please use your rice.edu email address');
       return;
     }
 

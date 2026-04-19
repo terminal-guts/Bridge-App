@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense } from 'react';
 import { View, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import Animated, {
   FadeIn,
@@ -27,26 +27,39 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const logger = createLogger('OnboardingScreen');
 import { resetAllGuides } from '../../services/guideService';
 
+// EAGER imports: first step the user sees + CelebrationStep (used inline below
+// by tiny wrapper components, too small to lazy-load).
 import { EmailSignUpStep } from './steps/EmailSignUpStep';
-import { EmailSignUpVerificationStep } from './steps/EmailSignUpVerificationStep';
-import { NameStep } from './steps/NameStep';
-import { AgeStep } from './steps/AgeStep';
-import { GenderStep } from './steps/GenderStep';
-import { HeightStep } from './steps/HeightStep';
-import { EthnicityStep } from './steps/EthnicityStep';
-import { ReligionStep } from './steps/ReligionStep';
-import { PoliticalBeliefsStep } from './steps/PoliticalBeliefsStep';
-import { LifestyleStep } from './steps/LifestyleStep';
-import { ValuesStep } from './steps/ValuesStep';
-import { InterestsStep } from './steps/InterestsStep';
-import { PhotoUploadStep } from './steps/PhotoUploadStep';
-import { AddFriendsStep } from './steps/AddFriendsStep';
-import { WelcomeToBridgeStep } from './steps/WelcomeToBridgeStep';
-import { MatchmakingModeStep } from './steps/MatchmakingModeStep';
-import { MatchmakerProfileStep } from './steps/MatchmakerProfileStep';
-import { OnboardingProposalStep } from './steps/OnboardingProposalStep';
 import { CelebrationStep } from './steps/CelebrationStep';
-import { EmailResendStep } from './steps/EmailResendStep';
+
+// LAZY imports: every other step. Cuts first-mount parse cost by ~2700 LOC of
+// step code + their deep import trees (icons, sliders, reanimated worklets).
+// A factory ref lets us preload() upcoming steps while the user fills out the
+// current one — by the time they tap Continue, the next step is already parsed.
+type LazyStep = React.LazyExoticComponent<React.ComponentType<any>> & { preload: () => Promise<unknown> };
+const makeLazyStep = (factory: () => Promise<{ default: React.ComponentType<any> }>): LazyStep => {
+  const Lazy = React.lazy(factory) as LazyStep;
+  Lazy.preload = factory;
+  return Lazy;
+};
+
+const EmailSignUpVerificationStep = makeLazyStep(() => import('./steps/EmailSignUpVerificationStep').then(m => ({ default: m.EmailSignUpVerificationStep })));
+const NameStep = makeLazyStep(() => import('./steps/NameStep').then(m => ({ default: m.NameStep })));
+const AgeStep = makeLazyStep(() => import('./steps/AgeStep').then(m => ({ default: m.AgeStep })));
+const GenderStep = makeLazyStep(() => import('./steps/GenderStep').then(m => ({ default: m.GenderStep })));
+const HeightStep = makeLazyStep(() => import('./steps/HeightStep').then(m => ({ default: m.HeightStep })));
+const EthnicityStep = makeLazyStep(() => import('./steps/EthnicityStep').then(m => ({ default: m.EthnicityStep })));
+const ReligionStep = makeLazyStep(() => import('./steps/ReligionStep').then(m => ({ default: m.ReligionStep })));
+const PoliticalBeliefsStep = makeLazyStep(() => import('./steps/PoliticalBeliefsStep').then(m => ({ default: m.PoliticalBeliefsStep })));
+const LifestyleStep = makeLazyStep(() => import('./steps/LifestyleStep').then(m => ({ default: m.LifestyleStep })));
+const ValuesStep = makeLazyStep(() => import('./steps/ValuesStep').then(m => ({ default: m.ValuesStep })));
+const InterestsStep = makeLazyStep(() => import('./steps/InterestsStep').then(m => ({ default: m.InterestsStep })));
+const PhotoUploadStep = makeLazyStep(() => import('./steps/PhotoUploadStep').then(m => ({ default: m.PhotoUploadStep })));
+const AddFriendsStep = makeLazyStep(() => import('./steps/AddFriendsStep').then(m => ({ default: m.AddFriendsStep })));
+const MatchmakingModeStep = makeLazyStep(() => import('./steps/MatchmakingModeStep').then(m => ({ default: m.MatchmakingModeStep })));
+const MatchmakerProfileStep = makeLazyStep(() => import('./steps/MatchmakerProfileStep').then(m => ({ default: m.MatchmakerProfileStep })));
+const OnboardingProposalStep = makeLazyStep(() => import('./steps/OnboardingProposalStep').then(m => ({ default: m.OnboardingProposalStep })));
+const EmailResendStep = makeLazyStep(() => import('./steps/EmailResendStep').then(m => ({ default: m.EmailResendStep })));
 
 interface OnboardingScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Onboarding'>;
@@ -74,28 +87,36 @@ const AUTH_STEPS: StepDefinition[] = [
   { component: EmailSignUpVerificationStep, title: 'Verify Email', hasTextInput: true, section: 'Getting Started' },
 ];
 
+// Suspense fallback while a lazy step module is parsing. Visible spinner so
+// users don't think the app froze (blank view felt broken on first tap of
+// "Didn't receive a code?").
+const StepLoadingFallback: React.FC = () => (
+  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+    <ActivityIndicator size="large" color={COLORS.primaryAccent} />
+  </View>
+);
+
 // Celebration step wrappers — auto-advance after 1.125s
 const PostVotingCelebration: React.FC<any> = (props) => <CelebrationStep {...props} message="Now let's build your profile!" />;
-const BasicsComplete: React.FC<any> = (props) => <CelebrationStep {...props} message="Basics done — looking good!" />;
-const BackgroundComplete: React.FC<any> = (props) => <CelebrationStep {...props} message="Almost there — just the fun stuff left!" />;
+const BasicsComplete: React.FC<any> = (props) => <CelebrationStep {...props} message="Basics done — last stretch!" />;
 
-// Profile steps — 12 real steps + 2 celebrations (hidden from counter).
-// Total with auth: 16 counted steps (4 auth + 12 profile).
+// Profile steps — 11 real steps + 2 celebrations (hidden from counter).
+// Sections: Getting Started (6), The Basics (6 — gender → lifestyle),
+// Almost Done (4 — interests → add friends).
 const PROFILE_STEPS: StepDefinition[] = [
   { component: MatchmakingModeStep, title: 'Role', hasTextInput: false, mappingKey: 'role', section: 'Getting Started' },
   { component: OnboardingProposalStep, title: 'First Votes', hasTextInput: false, section: 'Getting Started' },
   { component: PostVotingCelebration, title: 'Celebration', hasTextInput: false, section: 'Getting Started', hideFromCounter: true },
   { component: GenderStep, title: 'Gender', hasTextInput: false, mappingKey: 'gender', section: 'The Basics' },
   { component: HeightStep, title: 'Height', hasTextInput: false, mappingKey: 'height', section: 'The Basics' },
+  { component: EthnicityStep, title: 'Ethnicity', hasTextInput: false, mappingKey: 'ethnicity', section: 'The Basics' },
+  { component: ReligionStep, title: 'Religion', hasTextInput: false, mappingKey: 'religion', section: 'The Basics' },
+  { component: PoliticalBeliefsStep, title: 'Politics', hasTextInput: false, mappingKey: 'politics', section: 'The Basics' },
+  { component: LifestyleStep, title: 'Lifestyle', hasTextInput: false, mappingKey: 'lifestyle', section: 'The Basics' },
   { component: BasicsComplete, title: 'Celebration', hasTextInput: false, section: 'The Basics', hideFromCounter: true },
-  { component: EthnicityStep, title: 'Ethnicity', hasTextInput: false, mappingKey: 'ethnicity', section: 'Your Background' },
-  { component: ReligionStep, title: 'Religion', hasTextInput: false, mappingKey: 'religion', section: 'Your Background' },
-  { component: PoliticalBeliefsStep, title: 'Politics', hasTextInput: false, mappingKey: 'politics', section: 'Your Background' },
-  { component: LifestyleStep, title: 'Lifestyle', hasTextInput: false, mappingKey: 'lifestyle', section: 'Your Background' },
-  { component: BackgroundComplete, title: 'Celebration', hasTextInput: false, section: 'Your Background', hideFromCounter: true },
-  { component: InterestsStep, title: 'Interests', hasTextInput: false, mappingKey: 'interests', section: 'The Fun Stuff' },
-  { component: ValuesStep, title: 'Values', hasTextInput: false, mappingKey: 'values', section: 'The Fun Stuff' },
-  { component: PhotoUploadStep, title: 'Photos', hasTextInput: false, mappingKey: 'photos', section: 'The Fun Stuff' },
+  { component: InterestsStep, title: 'Interests', hasTextInput: false, mappingKey: 'interests', section: 'Almost Done' },
+  { component: ValuesStep, title: 'Values', hasTextInput: false, mappingKey: 'values', section: 'Almost Done' },
+  { component: PhotoUploadStep, title: 'Photos', hasTextInput: false, mappingKey: 'photos', section: 'Almost Done' },
   { component: AddFriendsStep, title: 'Add Friends', hasTextInput: false, section: 'Almost Done' },
 ];
 
@@ -215,7 +236,27 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
       if (user?.id) {
         setAuthUserId(user.id);
         // Ensure a minimal profile row exists so we can track abandonment
-        ensureProfileRow(user.id, user.email || '');
+        await ensureProfileRow(user.id, user.email || '');
+
+        // Backfill name + age/age-range that were collected BEFORE the auth
+        // session existed (stored only in AsyncStorage until now). Without this,
+        // a user who abandons between OTP verify and end-of-onboarding loses
+        // their name and birthday — only user_id + email + profile_completed
+        // land in the row via ensureProfileRow.
+        // Non-blocking: failures are logged but never halt onboarding.
+        const snapshot = onboardingDataRef.current;
+        if (snapshot.firstName && snapshot.lastName) {
+          saveOnboardingStep('name', snapshot, user.id).catch(err =>
+            logger.warn('[OnboardingScreen] Retroactive name save failed (non-blocking):', err),
+          );
+        }
+        if (snapshot.age) {
+          // The 'age' mapping writes both user_profiles.age AND
+          // user_preferences.age_min/age_max (preferred age range).
+          saveOnboardingStep('age', snapshot, user.id).catch(err =>
+            logger.warn('[OnboardingScreen] Retroactive age save failed (non-blocking):', err),
+          );
+        }
       }
     };
     loadUserId();
@@ -304,11 +345,10 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
 
   // Build steps array dynamically
   const steps = useMemo((): StepDefinition[] => {
-    // Role switch: matchmaker → dater (skip auth, name, role, first votes, add friends, welcome)
+    // Role switch: matchmaker → dater (skip role, first votes, add friends)
     if (isRoleSwitch) {
-      const skipComponents = new Set([
-        NameStep, MatchmakingModeStep, OnboardingProposalStep,
-        AddFriendsStep, WelcomeToBridgeStep,
+      const skipComponents = new Set<React.ComponentType<any>>([
+        MatchmakingModeStep, OnboardingProposalStep, AddFriendsStep,
       ]);
       return PROFILE_STEPS.filter(step => !skipComponents.has(step.component));
     }
@@ -380,6 +420,19 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
   }, [clampedStep, currentStep, totalSteps]);
 
   const CurrentStepComponent = steps[clampedStep].component;
+
+  // Preload the NEXT step's module in the background so the user doesn't feel
+  // the lazy-load stall when they tap Continue. Also preload EmailResendStep
+  // when they land on Verify Email — that's the only screen with "Didn't
+  // receive a code?" and we don't want a stall when they tap it.
+  useEffect(() => {
+    const next = steps[clampedStep + 1]?.component as { preload?: () => Promise<unknown> } | undefined;
+    if (next?.preload) next.preload().catch(() => {});
+
+    if (steps[clampedStep]?.title === 'Verify Email') {
+      (EmailResendStep as any).preload?.().catch(() => {});
+    }
+  }, [clampedStep, steps]);
 
   const updateData = (data: Partial<OnboardingData>) => {
     setOnboardingData(prev => {
@@ -674,15 +727,17 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
           entering={FadeIn.duration(DURATIONS.normal)}
           style={{ flex: 1 }}
         >
-          <EmailResendStep
-            data={onboardingData}
-            updateData={updateData}
-            onNext={() => {
-              // Code re-sent — go back to verification
-              setShowResendScreen(false);
-            }}
-            onBack={() => setShowResendScreen(false)}
-          />
+          <Suspense fallback={<StepLoadingFallback />}>
+            <EmailResendStep
+              data={onboardingData}
+              updateData={updateData}
+              onNext={() => {
+                // Code re-sent — go back to verification
+                setShowResendScreen(false);
+              }}
+              onBack={() => setShowResendScreen(false)}
+            />
+          </Suspense>
         </Animated.View>
       ) : (
         /* Step Content — keyed by step index for entrance/exit animations */
@@ -691,17 +746,19 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, 
           entering={FadeIn.duration(DURATIONS.normal)}
           style={{ flex: 1 }}
         >
-          <CurrentStepComponent
-            data={onboardingData}
-            updateData={updateData}
-            onNext={goNext}
-            onBack={goBack}
-            isFirstStep={clampedStep === 0}
-            isLastStep={clampedStep === totalSteps - 1}
-            onResendCode={() => setShowResendScreen(true)}
-            photoModerationError={photoModerationError}
-            onClearPhotoModerationError={() => setPhotoModerationError(null)}
-          />
+          <Suspense fallback={<StepLoadingFallback />}>
+            <CurrentStepComponent
+              data={onboardingData}
+              updateData={updateData}
+              onNext={goNext}
+              onBack={goBack}
+              isFirstStep={clampedStep === 0}
+              isLastStep={clampedStep === totalSteps - 1}
+              onResendCode={() => setShowResendScreen(true)}
+              photoModerationError={photoModerationError}
+              onClearPhotoModerationError={() => setPhotoModerationError(null)}
+            />
+          </Suspense>
         </Animated.View>
       )}
     </StyledView>

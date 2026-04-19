@@ -44,7 +44,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
     ageMin: 24,
     ageMax: 32,
     gender: 'female' as 'male' | 'female' | 'both',
-    lookingFor: 'relationship' as 'relationship' | 'casual' | 'friendship' | 'unsure',
     heightMin: 60, // 5'0"
     heightMax: 84, // 7'0"
   });
@@ -93,7 +92,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
         ageMin: loadedPrefs.ageMin,
         ageMax: loadedPrefs.ageMax,
         gender: loadedPrefs.gender,
-        lookingFor: 'relationship', // Bridge only supports relationships
         heightMin: loadedPrefs.heightMin ?? 60,
         heightMax: loadedPrefs.heightMax ?? 84,
       });
@@ -125,7 +123,6 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
           ageMin: loadedPrefs.ageMin,
           ageMax: loadedPrefs.ageMax,
           gender: loadedPrefs.gender,
-          lookingFor: 'relationship',
           heightMin: loadedPrefs.heightMin ?? 60,
           heightMax: loadedPrefs.heightMax ?? 84,
         },
@@ -224,6 +221,38 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
       const cleanReligions = preferredReligions.filter(r => r !== 'No Preference');
       const cleanPolitics = preferredPolitics.filter(p => p !== 'no_preference');
 
+      // Restore-to-own fallback for religion / politics / lifestyle. Ethnicity
+      // is exempt — empty ethnicity = "no preference" and stays empty.
+      // When the user's OWN value is a non-signal (opt-out, catch-all, or
+      // no-engagement marker), fallback is [] ("don't care") rather than saving
+      // that sentinel as a literal partner preference:
+      //   lifestyle "prefer_not_to_say" → []
+      //   politics  "not_political"     → []
+      //   religion  "Other"             → []
+      const restoreReligion = (prefList: string[], own: string | undefined): string[] => {
+        if (prefList.length > 0) return prefList;
+        if (!own || own === 'Other') return [];
+        return [own];
+      };
+      const restorePolitics = (prefList: string[], own: string | undefined): string[] => {
+        if (prefList.length > 0) return prefList;
+        if (!own || own === 'not_political') return [];
+        return [own];
+      };
+      const restoreLifestyle = (prefList: string[], own: string | undefined): string[] => {
+        if (prefList.length > 0) return prefList;
+        if (!own || own === 'prefer_not_to_say') return [];
+        return [own];
+      };
+      const finalReligions = restoreReligion(cleanReligions, profile?.religion);
+      const finalPolitics = restorePolitics(cleanPolitics, profile?.politicalLeaning);
+      const finalPartnerPrefs = {
+        drinking: restoreLifestyle(partnerPreferences.partnerDrinking, profile?.drinkingFrequency),
+        cannabis: restoreLifestyle(partnerPreferences.partnerCannabis, profile?.cannabisFrequency),
+        tobacco: restoreLifestyle(partnerPreferences.partnerTobacco, profile?.tobaccoFrequency),
+        otherDrugs: restoreLifestyle(partnerPreferences.partnerOtherDrugs, profile?.otherDrugsFrequency),
+      };
+
       // Only send preference fields — NOT own profile fields (no ...profile spread)
       const prefUpdates: Partial<typeof profile> = {
         preferences: {
@@ -231,18 +260,12 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
           ageMin: clampedAgeMin,
           ageMax: clampedAgeMax,
           gender: derivedPreferredGender,
-          lookingFor: 'relationship' as const,
         },
         interestedInGenders: interestedInGenders,
-        preferredPolitics: cleanPolitics,
-        partnerLifestylePreferences: {
-          drinking: partnerPreferences.partnerDrinking,
-          cannabis: partnerPreferences.partnerCannabis,
-          tobacco: partnerPreferences.partnerTobacco,
-          otherDrugs: partnerPreferences.partnerOtherDrugs,
-        },
+        preferredPolitics: finalPolitics,
+        partnerLifestylePreferences: finalPartnerPrefs,
         preferredEthnicities: cleanEthnicities,
-        preferredReligions: cleanReligions,
+        preferredReligions: finalReligions,
       } as any;
 
       const result = await updateUserProfile(prefUpdates);

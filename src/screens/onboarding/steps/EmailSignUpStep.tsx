@@ -55,7 +55,7 @@ export const EmailSignUpStep: React.FC<EmailSignUpStepProps> = ({
     }
 
     if (!isAllowedEmailDomain(trimmed)) {
-      setError('Please use your @rice.edu email address');
+      setError('Please use your rice.edu email address');
       return;
     }
 

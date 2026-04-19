@@ -1,15 +1,33 @@
+/**
+ * Email Verification Screen (LOGIN flow).
+ *
+ * Layout matches the rest of the onboarding/auth flow: wrapped in OnboardingLayout,
+ * H1 + Body hierarchy, single hidden <TextInput> + 6 visual boxes (same pattern as
+ * EmailSignUpVerificationStep in the signup flow). Previously used a bespoke
+ * BackHeader + ScrollView + KeyboardAvoidingView stack with 6 separate inputs —
+ * was visually inconsistent with every other onboarding screen.
+ *
+ * "Wrong email? Edit it" button intentionally omitted — the OnboardingLayout back
+ * button handles this: tap Back → edit email on LoginScreen → tap Continue →
+ * lands here again.
+ */
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, TextInput, StyleSheet, Keyboard, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, TextInput, Pressable, ActivityIndicator, Keyboard } from 'react-native';
 import { styled } from 'nativewind';
-import { Button, H2, Body, ScreenWrapper, BackHeader } from '../../components/ui';
+import { COLORS } from '../../theme/colors';
+import { H1, Body } from '../../components/ui';
+import { OnboardingLayout } from '../../components/onboarding/OnboardingLayout';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
-import { verifyLoginCode, sendLoginCode, signInWithPassword, isReviewerBypassEmail, validateReviewerAccess } from '../../services/authService';
+import {
+  verifyLoginCode,
+  sendLoginCode,
+  signInWithPassword,
+  isReviewerBypassEmail,
+  validateReviewerAccess,
+} from '../../services/authService';
 import { fetchAndSetUserProfile } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
-import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
-import { COLORS } from '../../theme/colors';
-import { SHADOWS } from '../../theme/shadows';
 
 const logger = createLogger('EmailVerificationScreen');
 
@@ -19,36 +37,24 @@ interface EmailVerificationScreenProps {
 }
 
 const StyledView = styled(View);
-const StyledScrollView = styled(ScrollView);
-const StyledTouchableOpacity = styled(TouchableOpacity);
-
-const EMPTY_CODE = ['', '', '', '', '', ''];
 const RESEND_COOLDOWN_SECONDS = 60;
 
 export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = ({
   navigation,
-  route
+  route,
 }) => {
   const { email: rawEmail } = route.params;
   const email = rawEmail.trim();
-  const [code, setCode] = useState(EMPTY_CODE);
+  const [code, setCode] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [resendTimer, setResendTimer] = useState(RESEND_COOLDOWN_SECONDS);
   const [canResend, setCanResend] = useState(false);
-  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [resending, setResending] = useState(false);
+  const inputRef = useRef<TextInput>(null);
+  const isVerifyingRef = useRef(false);
 
-  const inputRefs = useRef<Array<TextInput | null>>([]);
-
-  useEffect(() => {
-    // Small delay lets the screen transition finish before stealing focus
-    const timer = setTimeout(() => {
-      inputRefs.current[0]?.focus();
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
-
+  // Resend cooldown timer
   useEffect(() => {
     if (resendTimer <= 0) {
       setCanResend(true);
@@ -66,79 +72,45 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
     return () => clearInterval(interval);
   }, [resendTimer]);
 
-  const clearCodeAndFocus = () => {
-    setCode([...EMPTY_CODE]);
-    setTimeout(() => inputRefs.current[0]?.focus(), 50);
-  };
-
-  const handleCodeChange = (index: number, value: string) => {
-    // Clear error on any new input
-    if (error) setError('');
-
-    // Reject single-char typed input that isn't a digit. Paste (length > 1)
-    // always falls through to the strip branch below so we handle pastes
-    // that include whitespace/dashes/zero-width chars from mail clients.
-    if (value && value.length === 1 && !/^\d$/.test(value)) return;
-
-    const newCode = [...code];
-
-    if (value.length > 1) {
-      // Paste / autofill: strip all non-digits, take first 6
-      const digits = value.replace(/\D/g, '').slice(0, 6).split('');
-      if (digits.length === 0) return;
-      const startIndex = digits.length === 6 ? 0 : index;
-      digits.forEach((digit, i) => {
-        if (startIndex + i < 6) {
-          newCode[startIndex + i] = digit;
-        }
-      });
-      setCode(newCode);
-      const nextIndex = Math.min(startIndex + digits.length, 5);
-      inputRefs.current[nextIndex]?.focus();
-    } else {
-      newCode[index] = value;
-      setCode(newCode);
-      if (value && index < 5) {
-        inputRefs.current[index + 1]?.focus();
-      }
+  const handleCodeChange = (text: string) => {
+    // Generous maxLength on <TextInput> + strip non-digits here — handles
+    // pastes from email clients that include whitespace / dashes / zero-width
+    // chars that would otherwise truncate an otherwise-valid 6-digit code.
+    const digits = text.replace(/\D/g, '').slice(0, 6);
+    setCode(digits);
+    setError('');
+    if (digits.length === 6) {
+      handleVerify(digits);
     }
   };
 
-  const handleKeyPress = (index: number, key: string) => {
-    if (key === 'Backspace') {
-      if (!code[index] && index > 0) {
-        // Empty cell backspace: move back and clear previous cell
-        const newCode = [...code];
-        newCode[index - 1] = '';
-        setCode(newCode);
-        inputRefs.current[index - 1]?.focus();
-      }
-      if (error) setError('');
+  const handleVerify = async (verificationCode?: string) => {
+    if (isVerifyingRef.current) return;
+    const fullCode = verificationCode ?? code;
+    if (fullCode.length !== 6) {
+      setError('Please enter the 6-digit code');
+      return;
     }
-  };
 
-  const handleVerify = async () => {
-    const otpCode = code.join('');
-    if (otpCode.length !== 6) return;
-
+    isVerifyingRef.current = true;
+    setLoading(true);
     Keyboard.dismiss();
     setError('');
-    setLoading(true);
 
     try {
       // App Store Reviewer Bypass — validated entirely server-side
       if (isReviewerBypassEmail(email)) {
         logger.info('[AUTH] App Store Reviewer bypass detected');
-        const reviewerResult = await validateReviewerAccess(otpCode);
+        const reviewerResult = await validateReviewerAccess(fullCode);
         if (!reviewerResult.valid || !reviewerResult.authPassword) {
           logger.error('[AUTH] Reviewer access validation failed');
           setLoading(false);
+          isVerifyingRef.current = false;
           setError('Reviewer access validation failed.');
-          clearCodeAndFocus();
+          setCode('');
           return;
         }
         const bypassResult = await signInWithPassword(email, reviewerResult.authPassword);
-
         if (bypassResult.ok) {
           const userId = bypassResult.data!.id;
           const fetchResult = await fetchAndSetUserProfile(userId);
@@ -149,27 +121,26 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
             (navigation as any).reset({ index: 0, routes: [{ name: 'Onboarding', params: { skipAuth: true } }] });
           }
           return;
-        } else {
-          logger.error('[AUTH] Reviewer account login failed');
-          setLoading(false);
-          setError('Reviewer account login failed.');
-          clearCodeAndFocus();
-          return;
         }
+        logger.error('[AUTH] Reviewer account login failed');
+        setLoading(false);
+        isVerifyingRef.current = false;
+        setError('Reviewer account login failed.');
+        setCode('');
+        return;
       }
 
-      const verifyResult = await verifyLoginCode(email, otpCode);
-
+      const verifyResult = await verifyLoginCode(email, fullCode);
       if (!verifyResult.ok) {
         setLoading(false);
+        isVerifyingRef.current = false;
         const msg = verifyResult.error?.message || '';
-        // Detect expired code errors and give a helpful nudge
         if (msg.toLowerCase().includes('expired') || msg.toLowerCase().includes('token has expired')) {
-          setError('That code has expired. Tap "Resend Code" to get a new one.');
+          setError('That code has expired. Tap Resend for a new one.');
         } else {
-          setError(msg || 'That code didn\'t work. Double-check and try again.');
+          setError(msg || "That code didn't work. Double-check and try again.");
         }
-        clearCodeAndFocus();
+        setCode('');
         return;
       }
 
@@ -178,42 +149,37 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
 
       const fetchResult = await fetchAndSetUserProfile(userId);
       setLoading(false);
+      isVerifyingRef.current = false;
 
       if (fetchResult.ok && fetchResult.data) {
-        logger.info('[AUTH] Profile found, navigating to MainTabs');
         (navigation as any).reset({ index: 0, routes: [{ name: 'MainTabs' }] });
       } else {
-        logger.info('[AUTH] No profile found, navigating to Onboarding');
         (navigation as any).reset({ index: 0, routes: [{ name: 'Onboarding' }] });
       }
     } catch (e: any) {
       logger.error('[AUTH] Verification error:', e);
       setLoading(false);
+      isVerifyingRef.current = false;
       setError('Something went wrong. Give it another try.');
-      clearCodeAndFocus();
+      setCode('');
     }
   };
 
-  const isCodeComplete = code.every(digit => digit !== '');
-
   const handleResendCode = async () => {
     if (!canResend || resending) return;
-
     setResending(true);
     setError('');
-
     try {
       const result = await sendLoginCode(email);
-
       if (!result.ok) {
-        setError('Couldn\'t resend the code. Try again in a moment.');
+        setError("Couldn't resend the code. Try again in a moment.");
         setResending(false);
         return;
       }
-
       setCanResend(false);
       setResendTimer(RESEND_COOLDOWN_SECONDS);
-      clearCodeAndFocus();
+      setCode('');
+      inputRef.current?.focus();
     } catch (e: any) {
       logger.error('[AUTH] Resend error:', e);
       setError('Something went wrong. Try again in a moment.');
@@ -222,166 +188,82 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
     }
   };
 
+  const digits = code.split('');
+  const isCodeComplete = code.length === 6;
+
   return (
-    <ScreenWrapper>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
-      >
-        <StyledScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          bounces={false}
-        >
-          <StyledView className="flex-1 px-6 pt-2">
-            <BackHeader title="Verify Email" showBorder={false} />
+    <OnboardingLayout
+      onContinue={() => handleVerify()}
+      onBack={() => navigation.goBack()}
+      showBackButton={true}
+      continueDisabled={!isCodeComplete || loading}
+      hasTextInput={true}
+      keyboardPersistent={false}
+    >
+      <StyledView className="mt-8">
+        <H1 className="mb-3">Verify your email</H1>
+        <Body className="text-neutral-600 mb-4">
+          We sent a 6-digit code to {email}
+        </Body>
+        <Body className="text-neutral-500 text-sm mb-12">
+          Codes typically take ~30 seconds — sit tight.
+        </Body>
 
-            {/* Header */}
-            <StyledView className="items-center mb-4">
-              <Body className="text-neutral-600 text-center px-6">
-                Enter the 6-digit code sent to {email}
-              </Body>
-            </StyledView>
-
-            {/* OTP Input Boxes */}
-            <StyledView
-              className="flex-row justify-center mb-2"
-              accessibilityLabel="Verification code input"
-              accessibilityHint="Enter the 6-digit verification code"
-            >
-              {code.map((digit, index) => (
-                <TextInput
-                  key={index}
-                  ref={ref => { inputRefs.current[index] = ref; }}
-                  value={digit}
-                  onChangeText={(value) => handleCodeChange(index, value)}
-                  onKeyPress={({ nativeEvent }) => handleKeyPress(index, nativeEvent.key)}
-                  onFocus={() => setFocusedIndex(index)}
-                  onBlur={() => setFocusedIndex(null)}
-                  keyboardType="number-pad"
-                  // First box accepts long pastes (handler strips + slices);
-                  // others are single-char. See handleCodeChange.
-                  maxLength={index === 0 ? 64 : 1}
-                  textContentType="oneTimeCode"
-                  autoComplete="one-time-code"
-                  accessibilityLabel={`Digit ${index + 1} of 6`}
-                  accessibilityHint={digit ? `Current value: ${digit}` : 'Empty'}
-                  editable={!loading}
-                  style={[
-                    styles.otpInput,
-                    focusedIndex === index && styles.otpInputFocused,
-                    error ? styles.otpInputError : null,
-                  ]}
-                  selectionColor={COLORS.primaryAccent}
-                />
-              ))}
-            </StyledView>
-
-            {/* Inline Error Message */}
-            {error ? (
-              <StyledView className="items-center mb-4 px-4">
-                <Body style={styles.errorText}>{error}</Body>
+        <Pressable onPress={() => inputRef.current?.focus()}>
+          <StyledView className="flex-row justify-between mb-8">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <StyledView
+                key={index}
+                className={`w-12 h-14 border-2 rounded-lg items-center justify-center ${
+                  digits[index] !== undefined
+                    ? 'border-blue-500'
+                    : 'border-neutral-300'
+                }`}
+              >
+                <Body className="text-2xl font-semibold text-center">
+                  {digits[index] ?? ''}
+                </Body>
               </StyledView>
-            ) : (
-              <StyledView className="mb-4" />
-            )}
-
-            {/* Resend Section */}
-            <StyledView className="items-center mb-3">
-              <Body className="text-neutral-600 mb-2">Didn't receive the code?</Body>
-              {canResend ? (
-                <StyledTouchableOpacity
-                  onPress={handleResendCode}
-                  disabled={resending}
-                  style={styles.resendButton}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Resend verification code"
-                >
-                  <Body className="text-primary-500 font-semibold">
-                    {resending ? 'Sending...' : 'Resend Code'}
-                  </Body>
-                </StyledTouchableOpacity>
-              ) : (
-                <Body className="text-neutral-500">
-                  Resend in {resendTimer}s
-                </Body>
-              )}
-            </StyledView>
-
-            {/* Edit-email escape hatch — without this, a user who typo'd their
-                email gets stuck waiting forever (anti-enumeration silently
-                returns ok for nonexistent emails). */}
-            <StyledView className="items-center mb-6">
-              <StyledTouchableOpacity
-                onPress={() => navigation.goBack()}
-                style={styles.resendButton}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                accessibilityRole="button"
-                accessibilityLabel="Edit email address"
-              >
-                <Body className="text-neutral-500">
-                  Wrong email?{' '}
-                  <Body className="text-primary-500 font-semibold">Edit it</Body>
-                </Body>
-              </StyledTouchableOpacity>
-            </StyledView>
-
-            {/* Verify Button */}
-            <StyledView className="mb-8">
-              <Button
-                onPress={handleVerify}
-                variant="primary"
-                size="lg"
-                fullWidth
-                disabled={!isCodeComplete || loading}
-                loading={loading}
-                accessibilityLabel="Verify code"
-                accessibilityHint={isCodeComplete ? 'Tap to verify your code' : 'Enter all 6 digits first'}
-              >
-                Verify Code
-              </Button>
-            </StyledView>
+            ))}
           </StyledView>
-        </StyledScrollView>
-      </KeyboardAvoidingView>
-    </ScreenWrapper>
+        </Pressable>
+
+        <TextInput
+          ref={inputRef}
+          value={code}
+          onChangeText={handleCodeChange}
+          keyboardType="number-pad"
+          maxLength={64}
+          textContentType="oneTimeCode"
+          autoComplete="one-time-code"
+          autoFocus={true}
+          style={{ position: 'absolute', opacity: 0, width: 1, height: 1 }}
+        />
+
+        {loading ? (
+          <StyledView className="flex-row items-center justify-center mb-4">
+            <ActivityIndicator size="small" color={COLORS.primary} />
+            <Body className="text-neutral-500 text-sm ml-2">Verifying...</Body>
+          </StyledView>
+        ) : error ? (
+          <Body className="text-red-500 text-sm mb-4 text-center">{error}</Body>
+        ) : null}
+
+        {/* Resend code — inline style matching EmailSignUpVerificationStep */}
+        <StyledView className="flex-row justify-center items-center">
+          <Body className="text-neutral-600">Didn't receive a code? </Body>
+          {canResend ? (
+            <Body
+              className="text-primary-500 font-semibold"
+              onPress={handleResendCode}
+            >
+              {resending ? 'Sending...' : 'Resend'}
+            </Body>
+          ) : (
+            <Body className="text-neutral-500">{resendTimer}s</Body>
+          )}
+        </StyledView>
+      </StyledView>
+    </OnboardingLayout>
   );
 };
-
-const styles = StyleSheet.create({
-  resendButton: {
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  otpInput: {
-    width: 48,
-    height: 56,
-    marginHorizontal: 4,
-    backgroundColor: COLORS.card,
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    borderRadius: 8,
-    textAlign: 'center',
-    fontSize: FONT_SIZES['3xl'],
-    lineHeight: LINE_HEIGHTS['3xl'],
-    fontFamily: FONTS.semiBold,
-    color: COLORS.text.primary,
-    ...SHADOWS.sm,
-  },
-  otpInputFocused: {
-    borderColor: COLORS.primaryAccent,
-  },
-  otpInputError: {
-    borderColor: COLORS.error,
-  },
-  errorText: {
-    color: COLORS.error,
-    fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.medium,
-    textAlign: 'center',
-  },
-});

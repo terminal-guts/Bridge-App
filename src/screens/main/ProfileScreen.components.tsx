@@ -92,12 +92,6 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ profile, onE
           <ProfileInfoItem icon="maximize" label="Height" value={profile.height} />
         )}
         <ProfileInfoItem icon="person" label="Ethnicity" value={profile.ethnicity || 'Not specified'} />
-        {profile.location && (
-          <ProfileInfoItem icon="pin" label="Lives in" value={profile.location} />
-        )}
-        {profile.hometown && (
-          <ProfileInfoItem icon="home" label="From" value={profile.hometown} />
-        )}
       </StyledView>
     </CollapsibleCard>
 
@@ -550,7 +544,6 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
     if (profile.age) count++;
     if (profile.height) count++;
     if (profile.ethnicity) count++;
-    if (profile.location) count++;
 
     // Lifestyle
     if (profile.drinkingFrequency) count++;

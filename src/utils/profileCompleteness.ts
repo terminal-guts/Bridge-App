@@ -15,27 +15,26 @@ import { UserProfile } from '../types';
 
 // ─── Mandatory fields (all collected during onboarding, no skip) ───
 // Every user who completes onboarding has these filled.
+// Deep questions are OPTIONAL (post-onboarding only) — not counted here.
+// `lookingFor` / commitment was dropped (never collected).
 const MANDATORY_FIELDS = {
   firstName: 4,
   lastName: 4,
   age: 4,
-  gender: 6,
-  interestedInGenders: 6,
-  height: 3,
-  heightPreference: 3,
+  gender: 7,
+  interestedInGenders: 7,
+  height: 4,
+  heightPreference: 4,
   ethnicity: 3,
-  preferredEthnicities: 3,
+  preferredEthnicities: 4,
   religion: 4,
   politicalLeaning: 3,
-  lifestyle: 5,           // 4 substance fields combined
-  commitment: 3,          // lookingFor / preferences
-  interests: 9,           // at least 3 required
-  values: 9,              // at least 3 required
-  photos: 15,             // 5 pts per photo, 3 needed for full credit
+  lifestyle: 7,
+  interests: 12,
+  values: 12,
+  photos: 17,
   ageRange: 4,
-  deepQuestions: 12,       // 4 pts per displayed question, 3 needed for full credit
 };
-// Total: 100
 // Total: 100
 
 /**
@@ -101,25 +100,16 @@ export const calculateProfileCompleteness = (
     profile.drinkingFrequency && profile.cannabisFrequency &&
     profile.tobaccoFrequency && profile.otherDrugsFrequency
   ));
-  check('commitment', 'Add what you\'re looking for', !!(profile.preferences?.lookingFor));
   check('interests', 'Add at least 3 interests', (profile.interests?.length || 0) >= 3);
   check('values', 'Add at least 3 values', (profile.values?.length || 0) >= 3);
   check('ageRange', 'Set your age range preference', !!(profile.preferences?.ageMin && profile.preferences?.ageMax));
 
-  // Photos: proportional — 5 pts per photo, max 3 (15 pts total)
+  // Photos: proportional — ~5.7 pts per photo, max 3 (17 pts total)
   const photoCount = Math.min(profile.photos?.length || 0, 3);
   const photoWeight = MANDATORY_FIELDS.photos;
   score += Math.round((photoCount / 3) * photoWeight);
   if (photoCount < 3) {
     missingFields.push({ field: 'photos', label: `Add ${3 - photoCount} more photo${photoCount === 2 ? '' : 's'} (${photoCount}/3)`, weight: photoWeight, category: 'essential' });
-  }
-
-  // Deep questions: proportional — 4 pts per displayed question, max 3 (12 pts total)
-  const displayedCount = profile.displayedQuestions?.length || 0;
-  const questionWeight = MANDATORY_FIELDS.deepQuestions;
-  score += Math.round((Math.min(displayedCount, 3) / 3) * questionWeight);
-  if (displayedCount < 3) {
-    missingFields.push({ field: 'deepQuestions', label: `Answer ${3 - displayedCount} more question${displayedCount === 2 ? '' : 's'}`, weight: questionWeight, category: 'nice-to-have' });
   }
 
   const percentage = Math.round(score);

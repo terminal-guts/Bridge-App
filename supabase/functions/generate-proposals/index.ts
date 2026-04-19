@@ -160,29 +160,7 @@ Deno.serve(async (req: Request) => {
       )
     );
 
-    // 4. Fetch deep question answers for scoring
-    const { data: deepAnswers } = await supabase
-      .from('deep_question_answers')
-      .select('user_id, answers')
-      .in('user_id', userIds);
-
-    const deepMap: Record<string, Array<{ question_id: string; answer_text: string }>> = {};
-    for (const row of (deepAnswers || [])) {
-      if (row.answers && typeof row.answers === 'object') {
-        // answers is JSONB — could be an array or an object with question_id keys
-        if (Array.isArray(row.answers)) {
-          deepMap[row.user_id] = row.answers;
-        } else {
-          // Convert object format to array format
-          deepMap[row.user_id] = Object.entries(row.answers as Record<string, unknown>).map(([qid, answer]) => ({
-            question_id: qid,
-            answer_text: typeof answer === 'string' ? answer : (answer as Record<string, unknown> | null)?.answer_text as string || '',
-          }));
-        }
-      }
-    }
-
-    // 4b. Starvation fairness: count consecutive cycles without a proposal per user
+    // 4. Starvation fairness: count consecutive cycles without a proposal per user
     // A user is "starved" if they have no proposals in recent history
     const { data: recentProposals } = await supabase
       .from('proposals')
@@ -279,10 +257,7 @@ Deno.serve(async (req: Request) => {
     }> = [];
 
     for (const { profileA, prefsA, profileB, prefsB } of candidates) {
-      const deepA = deepMap[profileA.user_id] || [];
-      const deepB = deepMap[profileB.user_id] || [];
-
-      const result = calculateCompatibility(profileA, prefsA, profileB, prefsB, null, deepA, deepB);
+      const result = calculateCompatibility(profileA, prefsA, profileB, prefsB);
 
       // Apply new user boost (highest of the two users)
       const aNewBoost = newUserBoost[profileA.user_id as string] || 0;

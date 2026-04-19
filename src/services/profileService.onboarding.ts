@@ -238,8 +238,6 @@ export const createUserProfile = async (
       pronouns_list: data.pronounsList,
       height_inches: heightToInches(data.height),
       ethnicity: data.ethnicity,
-      location: data.location,
-      hometown: data.hometown,
       current_job: data.currentJob,
       company_position: data.companyPosition,
       education_level: data.educationLevel,
@@ -258,7 +256,6 @@ export const createUserProfile = async (
       email: data.email,
       interested_in_genders: data.interestedInGenders,
       photos: photoData,
-      non_negotiables: [],
       role: data.role || 'dater',
       // Mandatory: at least one photo. If photo upload failed, profile_completed
       // stays false so the matches gate keeps the user in the locked view.
@@ -291,7 +288,6 @@ export const createUserProfile = async (
     // Build user_preferences payload
     const prefsPayload: Record<string, unknown> = {
       user_id: userId,
-      looking_for: data.preferences?.lookingFor,
       age_min: data.preferences?.ageMin,
       age_max: data.preferences?.ageMax,
       preferred_height_min_inches: data.preferences?.heightMin,

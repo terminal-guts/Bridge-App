@@ -89,7 +89,6 @@ const calculateStrength = (profile: UserProfile): {
 
   // 2. Match Preferences - Map from centralized calculation
   const preferencesSuggestions: string[] = [];
-  if (!profile.preferences?.lookingFor?.trim()) preferencesSuggestions.push("Set looking for");
   if (!(profile.interestedInGenders && profile.interestedInGenders.length > 0)) preferencesSuggestions.push('Set gender preferences');
   if (!(profile.preferences?.ageMin && profile.preferences?.ageMax)) preferencesSuggestions.push('Set age range');
   if (!(profile.preferences?.heightMin && profile.preferences?.heightMax)) preferencesSuggestions.push('Set height preference');

@@ -78,7 +78,6 @@ export const HeightStep: React.FC<HeightStepProps> = ({
         ageMin: data.preferences?.ageMin ?? 18,
         ageMax: data.preferences?.ageMax ?? 99,
         gender: data.preferences?.gender ?? 'both',
-        lookingFor: data.preferences?.lookingFor ?? 'relationship',
         ...data.preferences,
         heightMin: minHeight,
         heightMax: maxHeight,
