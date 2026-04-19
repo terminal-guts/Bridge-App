@@ -77,11 +77,10 @@ export const AnswerQuestionModal: React.FC<AnswerQuestionModalProps> = ({
     }
   };
 
+  const canSave = answer.trim().length > 0;
+
   const handleSave = () => {
-    if (!answer.trim()) {
-      Alert.alert('Empty Answer', 'Please write an answer before saving');
-      return;
-    }
+    if (!canSave) return;
 
     successHaptic();
     onSave(answer.trim());
@@ -128,7 +127,10 @@ export const AnswerQuestionModal: React.FC<AnswerQuestionModalProps> = ({
                 mediumHaptic();
                 handleSave();
               }}
+              disabled={!canSave}
               className="py-2"
+              style={{ opacity: canSave ? 1 : 0.5 }}
+              accessibilityState={{ disabled: !canSave }}
             >
               <Body className="text-primary-600 text-base font-bold">Done</Body>
             </StyledTouchableOpacity>
@@ -178,7 +180,7 @@ export const AnswerQuestionModal: React.FC<AnswerQuestionModalProps> = ({
               multiline
               maxLength={500}
               className="text-neutral-900 text-base leading-6 p-4 pb-10 bg-neutral-50 rounded-xl border border-neutral-200"
-              style={{ textAlignVertical: 'top', height: 200 }}
+              style={{ textAlignVertical: 'top', minHeight: 120, maxHeight: 200 }}
               autoFocus
             />
             {/* Character Count - Bottom Right of Text Box */}

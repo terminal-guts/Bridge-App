@@ -1,5 +1,6 @@
-import React, { useRef, useCallback } from 'react';
-import { View, ScrollView, Alert } from 'react-native';
+import React, { useRef, useCallback, useState } from 'react';
+import { View, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
 import { Body } from '../../../components/ui/Typography';
 import { ScreenWrapper } from '../../../components/ui';
@@ -10,6 +11,7 @@ import { UserProfile } from '../../../types';
 import { updateUserProfile } from '../../../services/profileService';
 import { uploadPhoto, deletePhoto } from '../../../services/photoService';
 import { createLogger } from '../../../utils/secureLogger';
+import { showToast } from '../../../utils/toast';
 
 const logger = createLogger('SectionScreenWrapper');
 
@@ -39,6 +41,8 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
   validateBeforeSave,
 }) => {
   const { isOffline } = useNetworkStatus();
+  const insets = useSafeAreaInsets();
+  const [headerHeight, setHeaderHeight] = useState(0);
   const savingRef = useRef(false);
 
   const hasChanges = useCallback((): boolean => {
@@ -104,7 +108,7 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
 
       if (!result.ok) {
         logger.error('Background profile save failed:', result.error?.message);
-        Alert.alert('Save Failed', 'Your changes could not be saved. Please try again.');
+        showToast.error('Couldn\'t save changes', 'Please try again.');
       } else {
         // Storage cleanup — best-effort, after the metadata save succeeds
         for (const id of removedPhotoIds) {
@@ -113,25 +117,24 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
           });
         }
         if (moderationRejections.length > 0) {
-          Alert.alert(
-            moderationRejections.length === 1 ? 'Photo couldn\'t be used' : 'Some photos couldn\'t be used',
+          logger.warn('Moderation rejections:', moderationRejections);
+          showToast.error(
+            moderationRejections.length === 1 ? 'Photo couldn\'t be used' : `${moderationRejections.length} photos couldn\'t be used`,
             moderationRejections.length === 1
               ? moderationRejections[0]
-              : `${moderationRejections.length} photos were rejected:\n\n• ${moderationRejections.join('\n• ')}\n\nPick different photos and try again.`
+              : 'Pick different photos and try again.'
           );
         }
         if (photoUploadFailures > 0) {
-          Alert.alert(
-            'Photo Upload Failed',
-            photoUploadFailures === 1
-              ? 'Your other changes were saved, but one photo could not be uploaded. Try adding it again.'
-              : `Your other changes were saved, but ${photoUploadFailures} photos could not be uploaded. Try adding them again.`
+          showToast.error(
+            photoUploadFailures === 1 ? 'Photo upload failed' : `${photoUploadFailures} photo uploads failed`,
+            'Your other changes were saved. Try adding the photo again.'
           );
         }
       }
     } catch (error: any) {
       logger.error('Background save exception:', error);
-      Alert.alert('Save Failed', 'Your changes could not be saved. Please try again.');
+      showToast.error('Couldn\'t save changes', 'Please try again.');
     } finally {
       savingRef.current = false;
     }
@@ -167,23 +170,31 @@ export const SectionScreenWrapper: React.FC<SectionScreenWrapperProps> = ({
     <ScreenWrapper>
       <OfflineBanner />
 
-      <BackHeader
-        title={title}
-        onBack={handleSaveAndGoBack}
-        right={hasChanges() ? (
-          <Body className="text-primary-500 text-xs font-medium">Auto-saves on back</Body>
-        ) : undefined}
-      />
+      <View onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
+        <BackHeader
+          title={title}
+          onBack={handleSaveAndGoBack}
+          right={hasChanges() ? (
+            <Body className="text-primary-500 text-xs font-medium">Auto-saves on back</Body>
+          ) : undefined}
+        />
+      </View>
 
-      <StyledScrollView
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + headerHeight : 0}
+        style={{ flex: 1 }}
       >
-        <StyledView className="px-4 py-6">
-          {children}
-        </StyledView>
-      </StyledScrollView>
+        <StyledScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <StyledView className="px-4 py-6">
+            {children}
+          </StyledView>
+        </StyledScrollView>
+      </KeyboardAvoidingView>
     </ScreenWrapper>
   );
 };

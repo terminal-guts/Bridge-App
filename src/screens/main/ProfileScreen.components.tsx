@@ -569,7 +569,7 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
             <EvaIcon name="file-text" variant="outline" size={20} color={COLORS.primaryAccent} />
           </StyledView>
           <StyledView className="flex-1">
-            <H3 className="font-semibold text-base">About Me</H3>
+            <Body style={{ fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: FONT_SIZES.lg, color: COLORS.text.primary }}>About Me</Body>
             <Body style={{ color: COLORS.text.secondary, fontSize: FONT_SIZES.md }}>The basics about you</Body>
           </StyledView>
         </StyledView>
@@ -577,6 +577,7 @@ export const AboutMeSummary: React.FC<AboutMeSummaryProps> = ({ profile, onEdit 
           onPress={onEdit}
           accessibilityLabel="Edit profile information"
           accessibilityRole="button"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="px-3.5 py-1.5 rounded-lg"
           style={{ backgroundColor: 'rgba(37, 99, 235, 0.82)' }}
         >
@@ -676,7 +677,7 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
             <EvaIcon name="heart" variant="outline" size={20} color={COLORS.primaryAccent} />
           </StyledView>
           <StyledView className="flex-1">
-            <Body className="text-neutral-900 font-semibold text-base">Match Preferences</Body>
+            <Body style={{ fontFamily: FONTS.semiBold, fontWeight: '600', fontSize: FONT_SIZES.lg, color: COLORS.text.primary }}>Match Preferences</Body>
             <Body style={{ color: COLORS.text.secondary, fontSize: FONT_SIZES.md }}>What matters to you in a match</Body>
           </StyledView>
         </StyledView>
@@ -684,6 +685,7 @@ export const MatchPreferencesSummary: React.FC<MatchPreferencesSummaryProps> = (
           onPress={onEdit}
           accessibilityLabel="Edit match preferences"
           accessibilityRole="button"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="px-3.5 py-1.5 rounded-lg"
           style={{ backgroundColor: 'rgba(37, 99, 235, 0.82)' }}
         >

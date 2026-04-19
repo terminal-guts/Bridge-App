@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Alert } from 'react-native';
 import { UserProfile } from '../../../types';
 import { getCurrentUser } from '../../../services/authService';
 import { getUserProfile } from '../../../services/profileService';
 import { createLogger } from '../../../utils/secureLogger';
+import { showToast } from '../../../utils/toast';
 
 const logger = createLogger('useEditProfile');
 
@@ -30,7 +30,8 @@ export function useEditProfile() {
       try {
         const userResult = await getCurrentUser();
         if (!userResult.ok || !userResult.data) {
-          Alert.alert('Error', 'User not authenticated');
+          logger.error('useEditProfile: not authenticated', userResult.error);
+          if (mounted) showToast.error('Not signed in', 'Please sign in again.');
           if (mounted) setLoading(false);
           return;
         }
@@ -45,11 +46,12 @@ export function useEditProfile() {
           setProfile(data);
           originalProfileRef.current = JSON.stringify(profileResult.data);
         } else if (mounted) {
-          Alert.alert('Error', 'Failed to load profile');
+          logger.error('useEditProfile: load failed', profileResult.error);
+          showToast.error('Couldn\'t load profile', 'Please try again.');
         }
       } catch (error) {
         logger.error('Failed to load profile:', error);
-        if (mounted) Alert.alert('Error', 'An unexpected error occurred');
+        if (mounted) showToast.error('Something went wrong', 'An unexpected error occurred.');
       } finally {
         if (mounted) setLoading(false);
       }

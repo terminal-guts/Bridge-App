@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, TextInput, Modal, Keyboard } from 'react-native';
+import { View, TouchableOpacity, TextInput, Modal, Keyboard, KeyboardAvoidingView, Platform } from 'react-native';
 import { styled } from 'nativewind';
 import Animated, {
   useSharedValue,
@@ -108,6 +108,10 @@ export const CustomInputModal: React.FC<CustomInputModalProps> = ({
           accessibilityLabel="Close modal"
         />
 
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ width: '100%', maxWidth: 448 }}
+        >
         <StyledAnimatedView
           className="bg-white rounded-2xl w-full max-w-md"
           style={modalScaleStyle}
@@ -191,6 +195,7 @@ export const CustomInputModal: React.FC<CustomInputModalProps> = ({
             </StyledTouchableOpacity>
           </StyledView>
         </StyledAnimatedView>
+        </KeyboardAvoidingView>
       </StyledAnimatedView>
     </Modal>
   );

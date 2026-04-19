@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, TouchableOpacity, Alert, TextInput, ActivityIndicator, Keyboard } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Alert, TextInput, ActivityIndicator, Keyboard, StyleSheet } from 'react-native';
 import { Body, ScreenWrapper, BackHeader, BlockedUsersSkeleton } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
@@ -7,6 +7,7 @@ import { getBlockedUsers, blockUser, unblockUser, BlockedUser as BlockedUserType
 import { getCurrentUser } from '../../services/authService';
 import { findProfileByEmail } from '../../services/profileService';
 import { createLogger } from '../../utils/secureLogger';
+import { showToast } from '../../utils/toast';
 import { FONTS, FONT_SIZES, LINE_HEIGHTS } from '../../constants/typography';
 import { COLORS } from '../../theme/colors';
 import { SHADOWS } from '../../theme/shadows';
@@ -43,7 +44,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
       }
     } catch (error) {
       logger.error('Failed to get current user:', error);
-      Alert.alert('Error', 'Failed to load user information');
+      showToast.error('Couldn\'t load user info', 'Please try again.');
     }
   };
 
@@ -57,11 +58,11 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
         setBlockedUsers(result.data);
       } else {
         logger.error('Failed to load blocked users:', result.error);
-        Alert.alert('Error', result.error?.message || 'Failed to load blocked users');
+        showToast.error('Couldn\'t load blocked users', result.error?.message || 'Please try again.');
       }
     } catch (error) {
       logger.error('Failed to load blocked users:', error);
-      Alert.alert('Error', 'Failed to load blocked users');
+      showToast.error('Couldn\'t load blocked users', 'Please try again.');
     } finally {
       setLoading(false);
     }
@@ -84,11 +85,12 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
               if (result.ok) {
                 setBlockedUsers(prev => prev.filter(u => u.blockedUserId !== blockedUserId));
               } else {
-                Alert.alert('Error', result.error?.message || 'Failed to unblock user');
+                logger.error('Unblock failed:', result.error);
+                showToast.error('Couldn\'t unblock user', result.error?.message || 'Please try again.');
               }
             } catch (error) {
               logger.error('Failed to unblock user:', error);
-              Alert.alert('Error', 'Failed to unblock user');
+              showToast.error('Couldn\'t unblock user', 'Please try again.');
             }
           },
         },
@@ -98,18 +100,18 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
 
   const handleBlockByEmail = async () => {
     if (!currentUserId) {
-      Alert.alert('Error', 'User not logged in');
+      showToast.error('Not signed in', 'Please try again after signing in.');
       return;
     }
 
     const trimmed = emailInput.trim().toLowerCase();
     if (!trimmed) {
-      Alert.alert('Error', 'Please enter an email address');
+      showToast.error('Email required', 'Please enter an email address.');
       return;
     }
 
     if (!trimmed.includes('@') || !trimmed.includes('.')) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      showToast.error('Invalid email', 'Please enter a valid email address.');
       return;
     }
 
@@ -121,13 +123,13 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
 
       if (!profile) {
         setBlocking(false);
-        Alert.alert('Not Found', 'No Bridge account found with this email');
+        showToast.error('Not found', 'No Bridge account found with this email.');
         return;
       }
 
       if (profile.userId === currentUserId) {
         setBlocking(false);
-        Alert.alert('Error', 'You cannot block yourself');
+        showToast.error('Can\'t block yourself', 'Enter someone else\'s email.');
         return;
       }
 
@@ -148,7 +150,8 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                 setEmailInput('');
                 loadBlockedUsers();
               } else {
-                Alert.alert('Error', result.error?.message || 'Failed to block user');
+                logger.error('Block failed:', result.error);
+                showToast.error('Couldn\'t block user', result.error?.message || 'Please try again.');
               }
             },
           },
@@ -157,7 +160,7 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
     } catch (error) {
       setBlocking(false);
       logger.error('Failed to block by email:', error);
-      Alert.alert('Error', 'Failed to block user');
+      showToast.error('Couldn\'t block user', 'Please try again.');
     }
   };
 
@@ -284,8 +287,8 @@ export const BlockedUsersScreen: React.FC<BlockedUsersScreenProps> = ({ navigati
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    borderWidth: 1,
-                    borderColor: COLORS.borderLight,
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderColor: COLORS.border,
                     ...SHADOWS.sm,
                   }}>
                     <View style={{ flex: 1, marginRight: 12 }}>

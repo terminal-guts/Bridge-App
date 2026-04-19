@@ -151,6 +151,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={true}
         nestedScrollEnabled={true}
+        contentContainerStyle={{ paddingBottom: 80 }}
         refreshControl={
           <RefreshControl
             refreshing={hook.refreshing}
@@ -168,7 +169,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               {profile.role !== 'matchmaker' && (
                 <StyledTouchableOpacity
                   onPress={() => { lightHaptic(); navigation.navigate('ProfilePreview'); }}
-                  hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   accessibilityLabel="Preview profile"
                   accessibilityRole="button"
                 >
@@ -178,7 +179,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               {profile.role !== 'matchmaker' && (
                 <StyledTouchableOpacity
                   onPress={() => { lightHaptic(); navigation.navigate('ProfileEdit'); }}
-                  hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   accessibilityLabel="Edit profile"
                   accessibilityRole="button"
                 >
@@ -187,7 +188,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation: _navig
               )}
               <StyledTouchableOpacity
                 onPress={() => { lightHaptic(); navigation.navigate('Settings'); }}
-                hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 accessibilityLabel="Settings"
                 accessibilityRole="button"
               >

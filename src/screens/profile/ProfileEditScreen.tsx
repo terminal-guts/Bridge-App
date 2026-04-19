@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, ScrollView, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { styled } from 'nativewind';
 import { H3, Body, Button, ScreenWrapper } from '../../components/ui';
@@ -13,6 +13,7 @@ import { lightHaptic } from '../../utils/haptics';
 import { formatProfileValue } from '../../utils/formatProfileValue';
 import { calculateEditProfileCompleteness } from '../../utils/profileCompleteness';
 import { createLogger } from '../../utils/secureLogger';
+import { showToast } from '../../utils/toast';
 import { COLORS } from '../../theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
 import { EvaIcon } from '../../components/icons';
@@ -112,7 +113,8 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
       setLoading(true);
       const userResult = await getCurrentUser();
       if (!userResult.ok || !userResult.data) {
-        Alert.alert('Error', 'User not authenticated');
+        logger.error('Load profile: not authenticated', userResult.error);
+        showToast.error('Not signed in', 'Please sign in again.');
         setLoading(false);
         return;
       }
@@ -121,11 +123,12 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
       if (profileResult.ok && profileResult.data) {
         setProfile(profileResult.data);
       } else {
-        Alert.alert('Error', 'Failed to load profile');
+        logger.error('Load profile failed:', profileResult.error);
+        showToast.error('Couldn\'t load profile', 'Please try again.');
       }
     } catch (error) {
       logger.error('Failed to load profile:', error);
-      Alert.alert('Error', 'An unexpected error occurred');
+      showToast.error('Something went wrong', 'An unexpected error occurred.');
     } finally {
       setLoading(false);
     }
@@ -168,7 +171,8 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ navigation
               if (result.ok) {
                 (navigation as any).navigate('Welcome');
               } else {
-                Alert.alert('Error', 'Failed to sign out. Please try again.');
+                logger.error('Sign out failed:', result.error);
+                showToast.error('Couldn\'t sign out', 'Please try again.');
               }
             }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}

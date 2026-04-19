@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { View, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, ScrollView, ActivityIndicator } from 'react-native';
 import { styled } from 'nativewind';
-import { H3, Body, BodySmall, ScreenWrapper, ErrorState, MatchPreferencesSkeleton } from '../../components/ui';
+import { Body, BodySmall, ScreenWrapper, ErrorState, MatchPreferencesSkeleton, BackHeader } from '../../components/ui';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList, UserProfile } from '../../types';
 import NetInfo, { useNetInfo } from '@react-native-community/netinfo';
@@ -9,6 +9,7 @@ import { getCurrentUser } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { calculateMatchPreferencesCompleteness } from '../../utils/profileCompleteness';
 import { createLogger } from '../../utils/secureLogger';
+import { showToast } from '../../utils/toast';
 import { COLORS } from '../../theme/colors';
 import { EvaIcon } from '../../components/icons';
 
@@ -34,7 +35,6 @@ interface MatchPreferencesScreenProps {
 
 const StyledView = styled(View);
 const StyledScrollView = styled(ScrollView);
-const StyledTouchableOpacity = styled(TouchableOpacity);
 
 export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ navigation }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -182,7 +182,7 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
     // Check network connectivity
     const networkState = await NetInfo.fetch();
     if (!networkState.isConnected) {
-      Alert.alert('No Internet Connection', 'Please check your connection and try again.');
+      showToast.error('No internet connection', 'Check your connection and try again.');
       return;
     }
 
@@ -190,13 +190,13 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
     const clampedAgeMin = Math.max(18, Math.min(preferences.ageMin, 35));
     const clampedAgeMax = Math.max(18, Math.min(preferences.ageMax, 35));
     if (clampedAgeMin >= clampedAgeMax) {
-      Alert.alert('Invalid Age Range', 'Minimum age must be less than maximum age.');
+      showToast.error('Invalid age range', 'Minimum age must be less than maximum age.');
       return;
     }
 
     // Validate height range (both are always set, use numeric comparison not truthy)
     if (preferences.heightMin > preferences.heightMax) {
-      Alert.alert('Invalid Height Range', 'Minimum height cannot be greater than maximum height.');
+      showToast.error('Invalid height range', 'Minimum height cannot be greater than maximum height.');
       return;
     }
 
@@ -273,25 +273,12 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
       if (result.ok) {
         navigation.goBack();
       } else {
-        Alert.alert(
-          'Couldn\'t Save',
-          'Something went wrong saving your preferences.',
-          [
-            { text: 'Try Again', onPress: handleSave },
-            { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() },
-          ]
-        );
+        logger.error('Save preferences failed:', result.error);
+        showToast.error('Couldn\'t save preferences', 'Something went wrong. Please try again.');
       }
     } catch (error) {
       logger.error('Save preferences failed:', error);
-      Alert.alert(
-        'Couldn\'t Save',
-        'An unexpected error occurred. Check your connection and try again.',
-        [
-          { text: 'Try Again', onPress: handleSave },
-          { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() },
-        ]
-      );
+      showToast.error('Couldn\'t save preferences', 'Check your connection and try again.');
     } finally {
       setSaving(false);
     }
@@ -361,50 +348,43 @@ export const MatchPreferencesScreen: React.FC<MatchPreferencesScreenProps> = ({ 
       )}
 
       {/* Header */}
-      <StyledView className="border-b px-4 py-3" style={{ backgroundColor: COLORS.card, borderBottomColor: COLORS.border }}>
-        <StyledView className="flex-row items-center justify-between">
-          <StyledTouchableOpacity onPress={handleBack} disabled={saving} className="mr-2 items-center justify-center" style={{ minWidth: 44, minHeight: 44 }} accessibilityRole="button" accessibilityLabel="Go back">
-            <EvaIcon name="arrow-ios-back" variant="outline" size={24} color={saving ? COLORS.text.tertiary : COLORS.text.primary} />
-          </StyledTouchableOpacity>
-          <StyledView className="flex-1">
-            <H3>Match Preferences</H3>
-          </StyledView>
-          {saving && (
+      <BackHeader
+        title="Match Preferences"
+        onBack={handleBack}
+        backDisabled={saving}
+        right={
+          saving ? (
             <StyledView className="flex-row items-center">
               <ActivityIndicator size="small" color={COLORS.primaryAccent} />
-              <Body className="text-primary-500 text-xs font-medium ml-1.5">Saving...</Body>
             </StyledView>
-          )}
-          {!saving && hasUnsavedChanges && (
-            <Body className="text-primary-500 text-xs font-medium">
-              Auto-saves on back
-            </Body>
-          )}
-        </StyledView>
+          ) : hasUnsavedChanges ? (
+            <Body className="text-primary-500 text-xs font-medium">Auto-saves on back</Body>
+          ) : undefined
+        }
+      />
 
-        {/* Completion Progress Bar - Hidden only when both saved AND current state are 100% */}
-        {(savedMatchPrefsCompletion.percentage < 100 || matchPrefsCompletion.percentage < 100) && (
-          <StyledView className="mt-3">
-            <StyledView className="flex-row items-center justify-between mb-1.5">
-              <Body className="text-xs text-neutral-600">
-                {matchPrefsCompletion.completedCount} of {matchPrefsCompletion.totalCount} completed
-              </Body>
-              <Body className="text-xs font-semibold text-primary-600">
-                {matchPrefsCompletion.percentage}%
-              </Body>
-            </StyledView>
-            <StyledView className="rounded-full h-1.5 overflow-hidden" style={{ backgroundColor: COLORS.card }}>
-              <StyledView
-                className="h-full rounded-full transition-all"
-                style={{
-                  width: `${matchPrefsCompletion.percentage}%`,
-                  backgroundColor: COLORS.primaryAccent,
-                }}
-              />
-            </StyledView>
+      {/* Completion Progress Bar - Hidden only when both saved AND current state are 100% */}
+      {(savedMatchPrefsCompletion.percentage < 100 || matchPrefsCompletion.percentage < 100) && (
+        <StyledView className="px-4 pb-3" style={{ backgroundColor: COLORS.card, borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
+          <StyledView className="flex-row items-center justify-between mb-1.5">
+            <Body className="text-xs text-neutral-600">
+              {matchPrefsCompletion.completedCount} of {matchPrefsCompletion.totalCount} completed
+            </Body>
+            <Body className="text-xs font-semibold text-primary-600">
+              {matchPrefsCompletion.percentage}%
+            </Body>
           </StyledView>
-        )}
-      </StyledView>
+          <StyledView className="rounded-full h-1.5 overflow-hidden" style={{ backgroundColor: COLORS.card }}>
+            <StyledView
+              className="h-full rounded-full transition-all"
+              style={{
+                width: `${matchPrefsCompletion.percentage}%`,
+                backgroundColor: COLORS.primaryAccent,
+              }}
+            />
+          </StyledView>
+        </StyledView>
+      )}
 
       <StyledScrollView
         className="flex-1"

@@ -13,7 +13,6 @@ import LottieView from 'lottie-react-native';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { UserProfile, DeepQuestionAnswer } from '../../types';
 import { FriendBadgeWithGiver } from '../../types/badges';
-import { signOut } from '../../services/authService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { supabase } from '../../lib/supabase';
 import { getFriendCount } from '../../services/friendService';
@@ -133,17 +132,8 @@ export function useProfileScreen(navigation: any) {
       const profileResult = await getUserProfile();
       if (!profileResult.ok || !profileResult.data) {
         if (!isOffline) {
-          Alert.alert('Error', 'Failed to load profile', [
-            { text: 'Retry', onPress: () => loadProfile() },
-            {
-              text: 'Sign Out',
-              style: 'destructive',
-              onPress: async () => {
-                await signOut();
-                navigation.navigate('Welcome');
-              },
-            },
-          ]);
+          logger.error('loadProfile failed:', profileResult.error);
+          showToast.error('Failed to load profile', 'Pull down to refresh or try again.');
         }
         if (isMountedRef.current) {
           setLoading(false);
@@ -176,8 +166,9 @@ export function useProfileScreen(navigation: any) {
         }
       }
     } catch (error: any) {
+      logger.error('loadProfile exception:', error);
       if (!isOffline) {
-        Alert.alert('Error', error.message || 'An unexpected error occurred');
+        showToast.error('Something went wrong', error.message || 'An unexpected error occurred.');
       }
     } finally {
       if (isMountedRef.current) {
@@ -345,7 +336,8 @@ export function useProfileScreen(navigation: any) {
     }
 
     if (!profile || !profile.deepQuestions) {
-      Alert.alert('Error', 'Profile data not loaded. Please try again.');
+      logger.error('Save edited answer: profile data not loaded');
+      showToast.error('Profile not loaded', 'Please try again.');
       return false;
     }
 
@@ -372,12 +364,12 @@ export function useProfileScreen(navigation: any) {
         return true;
       } else {
         logger.error('Save failed:', result.error);
-        Alert.alert('Error', result.error?.message || 'Failed to update answer');
+        showToast.error('Couldn\'t update answer', result.error?.message || 'Please try again.');
         return false;
       }
     } catch (error: any) {
       logger.error('Error saving edited answer:', error);
-      Alert.alert('Error', error.message || 'An unexpected error occurred');
+      showToast.error('Something went wrong', error.message || 'An unexpected error occurred.');
       return false;
     }
   };
@@ -419,10 +411,12 @@ export function useProfileScreen(navigation: any) {
         showToast.success('Answer updated!');
         setInlineEditSlot(null);
       } else {
-        Alert.alert('Error', result.error?.message || 'Failed to save');
+        logger.error('Inline save failed:', result.error);
+        showToast.error('Couldn\'t save', result.error?.message || 'Please try again.');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'An unexpected error occurred');
+      logger.error('Inline save exception:', error);
+      showToast.error('Something went wrong', error.message || 'An unexpected error occurred.');
     } finally {
       setInlineEditSaving(false);
     }
@@ -472,7 +466,8 @@ export function useProfileScreen(navigation: any) {
       await loadProfile();
       showToast.success('Question removed');
     } else {
-      Alert.alert('Error', result.error?.message || 'Failed to remove question');
+      logger.error('Remove question failed:', result.error);
+      showToast.error('Couldn\'t remove question', result.error?.message || 'Please try again.');
     }
   };
 
@@ -499,11 +494,12 @@ export function useProfileScreen(navigation: any) {
         }
         showToast.success('Question changed!');
       } else {
-        Alert.alert('Error', result.error?.message || 'Failed to change question');
+        logger.error('Change question failed:', result.error);
+        showToast.error('Couldn\'t change question', result.error?.message || 'Please try again.');
       }
     } catch (error: any) {
       logger.error('Error changing question:', error);
-      Alert.alert('Error', error.message || 'An unexpected error occurred');
+      showToast.error('Something went wrong', error.message || 'An unexpected error occurred.');
     }
   };
 
@@ -513,7 +509,8 @@ export function useProfileScreen(navigation: any) {
       return false;
     }
     if (!selectedQuestionToAnswer || selectedSlotIndex === null || !profile) {
-      Alert.alert('Error', 'Invalid state. Please try again.');
+      logger.error('Save new answer: invalid state');
+      showToast.error('Couldn\'t save', 'Please try again.');
       return false;
     }
 
@@ -555,12 +552,13 @@ export function useProfileScreen(navigation: any) {
         showToast.success('Answer saved!');
         return true;
       } else {
-        Alert.alert('Error', result.error?.message || 'Failed to save answer');
+        logger.error('Save new answer failed:', result.error);
+        showToast.error('Couldn\'t save answer', result.error?.message || 'Please try again.');
         return false;
       }
     } catch (error: any) {
       logger.error('Error saving new answer:', error);
-      Alert.alert('Error', error.message || 'An unexpected error occurred');
+      showToast.error('Something went wrong', error.message || 'An unexpected error occurred.');
       return false;
     }
   };
