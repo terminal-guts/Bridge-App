@@ -12,7 +12,17 @@ interface ProposalRow {
   [key: string]: unknown;
 }
 
-const GATE_SIZE = 3;
+// Gate capacity per user per cycle.  Bumped 3 → 5 on 2026-04-18 (ticket A1 in
+// docs/plans/proposal-gate-overhaul.md) so users with spare session bandwidth
+// can vote more and pending proposals hit the 8-vote decision threshold faster.
+//
+// NOTE: this MUST ship in lockstep with a frontend release that bumps the
+// daily-vote target from 3 → 5 in `src/services/communityBackendService.ts`
+// (hasVoted threshold + progress-bar cap).  If backend is deployed before the
+// frontend release reaches App Store users, the gate will fetch 5 proposals
+// but the frontend will declare the user done at 3, hiding the other 2 until
+// the next day.  Harmless but inconsistent.  Deploy day-of-app-release.
+const GATE_SIZE = 5;
 
 // Returns the timestamp (as UTC ISO) of the most recent 19:00 America/Chicago
 // boundary.  Used to count "votes cast today" for the gate sort primary.

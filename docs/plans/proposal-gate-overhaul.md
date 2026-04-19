@@ -335,11 +335,16 @@ Requires existing push-notification scaffolding (`notification-log` table, `send
 ### Problem
 Observed by the product owner during post-deploy manual testing (2026-04-18): on a proposal with 37 existing votes, the `LiveVoteBar` appeared not to render (or rendered slowly). Fresh 0-vote proposals rendered fine. The cached memory entry is `project_livevotebar_bug_apr18.md`.
 
-### Root cause
-Unknown — needs investigation. DB state is correct (tallies accurate via backend queries). Not caused by gate-overhaul-v2 (we did not modify `LiveVoteBar.tsx` or realtime subscription paths). Hypotheses:
-1. Realtime subscription starts pulling AFTER first vote — baseline counts never display for proposals with existing votes.
-2. Race between gate-fetch (which returns tally numbers in the response body) and the LiveVoteBar's own fetch.
-3. Rendering branch that changes behavior at a vote-count threshold.
+### Root cause (identified 2026-04-18 investigation)
+**Not a bug — by-design gating.** `ProposalReviewView.tsx:449` wraps the bar in `{hasVotedCurrent && (...)}`. The bar is intentionally hidden until the viewing user has voted on this proposal, to avoid biasing their decision with the existing tally. What the product owner observed on the 37-vote proposal was the bar staying hidden until they cast a YES/NO — it then reveals. This matches the design comment `{/* ── Vote bar — only visible after voting ── */}`.
+
+Inside `LiveVoteBar.tsx` itself, the same guard is duplicated defensively (`if (total === 0 || !hasVoted) return <placeholder>`), so even if the parent passed `hasVoted=false` the bar would show a neutral shimmer rather than the tally — it would never leak pre-vote counts.
+
+### Resolution paths (product decision, not code fix)
+1. **Close as wontfix** — the design is correct; the product owner should expect the bar after voting, not before. Add a faint hint like "Results reveal after you vote" to set expectations.
+2. **Flip the design** — always show the tally regardless of `hasVotedCurrent`. Requires removing the gate at `ProposalReviewView.tsx:449` and changing the default `hasVoted` prop semantics. One-line change, but a meaningful UX shift.
+
+No implementation recommended until the product owner decides which path. Leave `LiveVoteBar.tsx` untouched — the component is correct.
 
 ### Acceptance criteria
 - LiveVoteBar renders within 500 ms of the proposal card becoming visible, regardless of existing vote count.
