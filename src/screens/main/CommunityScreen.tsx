@@ -545,13 +545,15 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       {usersToMatch.length === 0 && alreadyHelped.length === 0 ? (
         pendingRequests.length === 0 && !loadError ? (
           // Truly empty — mimic MatchesScreen "Still looking" centering.
+          // Values match MatchesScreen.components.tsx emptyContainer style exactly.
           // No HowItWorksCard here; the big centered CTA is the whole message.
           <ScrollView
             contentContainerStyle={{
               flexGrow: 1,
-              justifyContent: 'center',
               alignItems: 'center',
-              paddingBottom: 80,
+              justifyContent: 'center',
+              paddingHorizontal: 32,
+              paddingBottom: 24,
             }}
             showsVerticalScrollIndicator={false}
             refreshControl={

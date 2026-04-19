@@ -260,8 +260,11 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ onInvite, isMatchmaker }: EmptyStateProps) {
+  // Render as a fragment so these children flow directly as ScrollView
+  // contentContainer children (mirrors MatchesScreen "Still looking" layout).
+  // The parent ScrollView owns the flex centering — don't double-wrap.
   return (
-    <View style={styles.emptyContainer}>
+    <>
       {/* Lottie animation centerpiece */}
       <LottieView
         source={require('../../../assets/Icons/AnimatedIcons/add-account.json')}
@@ -291,7 +294,7 @@ export function EmptyState({ onInvite, isMatchmaker }: EmptyStateProps) {
         <EvaIcon name="people" variant="outline" size={20} color={COLORS.card} style={{ marginRight: 8 }} />
         <Text style={styles.inviteContactsButtonText}>Invite from Contacts</Text>
       </TouchableOpacity>
-    </View>
+    </>
   );
 }
 
@@ -730,7 +733,6 @@ const timerInfoStyles = StyleSheet.create({
 });
 
 export const styles = StyleSheet.create({
-  emptyContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: isCompact ? 24 : 32, paddingBottom: 24, backgroundColor: COLORS.screenBackground },
   emptyLottie: {
     width: LOTTIE_SIZE,
     height: LOTTIE_SIZE,
