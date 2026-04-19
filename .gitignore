@@ -33,6 +33,7 @@ venv/
 # Production snapshots (contain real user data — never commit)
 snapshots/*.json
 snapshots/prod-backup-*/
+snapshots/drift-report-*.txt
 
 # Post-match flow test state (contains test credentials)
 pm-test-state.json

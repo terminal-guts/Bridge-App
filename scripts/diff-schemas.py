@@ -201,6 +201,70 @@ def main() -> int:
     if ignore_fn_names:
         a["functions"] = [f for f in a.get("functions") or []
                           if f.get("function_name") not in ignore_fn_names]
+
+    # Drop known-legacy A-only tables (e.g. `profiles`) along with their
+    # columns, indexes, policies, and RLS status so they stop appearing
+    # as drift.
+    ignore_tables = set(ignore.get("tables_a_only", []))
+    if ignore_tables:
+        a["tables"]     = [t for t in a.get("tables")     or [] if t.get("table_name")        not in ignore_tables]
+        a["columns"]    = [c for c in a.get("columns")    or [] if c.get("table_name")        not in ignore_tables]
+        a["indexes"]    = [i for i in a.get("indexes")    or [] if i.get("tablename")         not in ignore_tables]
+        a["policies"]   = [p for p in a.get("policies")   or [] if p.get("tablename")         not in ignore_tables]
+        a["rls_status"] = [r for r in a.get("rls_status") or [] if r.get("table_name")        not in ignore_tables]
+        a["triggers"]   = [t for t in a.get("triggers")   or [] if t.get("event_object_table") not in ignore_tables]
+
+    # Drop specific A-only triggers (e.g. triggers on dead tables).
+    ignore_trigs = {(e["table"], e["trigger"]) for e in ignore.get("triggers_a_only", [])}
+    if ignore_trigs:
+        a["triggers"] = [t for t in a.get("triggers") or []
+                         if (t.get("event_object_table"), t.get("trigger_name")) not in ignore_trigs]
+
+    # Drop specific A-only indexes whose effect is covered by a differently
+    # named local index (e.g. `unique_proposal_vote` == `unique_vote_per_proposal`).
+    ignore_idx = {(e["table"], e["index"]) for e in ignore.get("indexes_a_only", [])}
+    if ignore_idx:
+        a["indexes"] = [i for i in a.get("indexes") or []
+                        if (i.get("tablename"), i.get("indexname")) not in ignore_idx]
+
+    # Drop specific B-only indexes that are local improvements over prod.
+    ignore_idx_b = {(e["table"], e["index"]) for e in ignore.get("indexes_b_only", [])}
+    if ignore_idx_b:
+        b["indexes"] = [i for i in b.get("indexes") or []
+                        if (i.get("tablename"), i.get("indexname")) not in ignore_idx_b]
+
+    # Drop specific A-only policies whose effect is covered by differently
+    # named local policies.
+    ignore_pol = {(e["table"], e["policy"]) for e in ignore.get("policies_a_only", [])}
+    if ignore_pol:
+        a["policies"] = [p for p in a.get("policies") or []
+                         if (p.get("tablename"), p.get("policyname")) not in ignore_pol]
+
+    # Drop specific B-only policies that are local improvements over prod.
+    ignore_pol_b = {(e["table"], e["policy"]) for e in ignore.get("policies_b_only", [])}
+    if ignore_pol_b:
+        b["policies"] = [p for p in b.get("policies") or []
+                         if (p.get("tablename"), p.get("policyname")) not in ignore_pol_b]
+
+    # Accept volatility drift on specific functions.
+    vol_ignore = set(ignore.get("function_volatility_drift_ignore", []))
+    if vol_ignore:
+        a_fn_by_name = {f.get("function_name"): f for f in a.get("functions") or []}
+        for f in (b.get("functions") or []):
+            if f.get("function_name") in vol_ignore and f.get("function_name") in a_fn_by_name:
+                f["volatility"] = a_fn_by_name[f["function_name"]].get("volatility")
+
+    # Accept role-field drift on specific (table, policy) pairs where the
+    # difference is cosmetic (`authenticated` vs `public` — both still require
+    # auth via the policy qual).  We do this by harmonizing B's role field to
+    # A's before the diff runs.
+    role_drift = {(e["table"], e["policy"]) for e in ignore.get("policy_role_drift_ignore", [])}
+    if role_drift:
+        a_pol_by_key = {(p.get("tablename"), p.get("policyname")): p for p in a.get("policies") or []}
+        for p in (b.get("policies") or []):
+            k = (p.get("tablename"), p.get("policyname"))
+            if k in role_drift and k in a_pol_by_key:
+                p["roles"] = a_pol_by_key[k].get("roles")
     a_label = a.get("source", Path(a_path).stem)
     b_label = b.get("source", Path(b_path).stem)
 

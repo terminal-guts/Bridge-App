@@ -1,6 +1,43 @@
 {
-  "_doc": "Expected drift between prod and local. Functions listed here are prod-only legacy cruft that local intentionally omits. See docs/migrations/LEGACY_CRUFT_IN_PROD.md for rationale and the staged DROP migration at supabase/migrations_pending/cleanup_legacy_functions_from_prod.sql.",
-  "_last_updated": "2026-04-17",
+  "_doc": "Expected drift between prod and local. Items listed here are known mismatches we've decided not to reconcile. See docs/migrations/LEGACY_CRUFT_IN_PROD.md and docs/plans/proposal-gate-overhaul.md §C5 for rationale.",
+  "_last_updated": "2026-04-18",
+  "_schema": {
+    "tables_a_only": "prod-only tables we do NOT want locally (dead/legacy)",
+    "triggers_a_only": "prod-only triggers to skip; each entry {table, trigger}",
+    "indexes_a_only": "prod-only indexes whose effect is already covered by a differently-named local index; each entry {table, index}",
+    "indexes_b_only": "local-only indexes that are improvements over prod (or functional equivalents); each entry {table, index}",
+    "policies_a_only": "prod-only policies whose effect is already covered by differently-named local policies; each entry {table, policy}",
+    "policies_b_only": "local-only policies that are improvements over prod (or functional equivalents); each entry {table, policy}",
+    "policy_role_drift_ignore": "tables where we accept `authenticated` vs `public` role drift on policies (both effectively require auth via qual)",
+    "function_volatility_drift_ignore": "functions where volatility drift is accepted; names only",
+    "functions_a_only": "prod-only functions (legacy cruft + intentional admin hooks); names only"
+  },
+  "tables_a_only": [
+    "profiles"
+  ],
+  "triggers_a_only": [
+    { "table": "profiles", "trigger": "set_profiles_updated_at" }
+  ],
+  "indexes_a_only": [
+    { "table": "proposal_votes", "index": "unique_proposal_vote" },
+    { "table": "proposals", "index": "unique_proposal_pair" }
+  ],
+  "indexes_b_only": [
+    { "table": "proposals", "index": "unique_active_proposal_pair" }
+  ],
+  "policies_a_only": [
+    { "table": "onboarding_progress", "policy": "Users can manage their own onboarding progress" }
+  ],
+  "policies_b_only": [
+    { "table": "onboarding_progress", "policy": "own_onboarding_progress_modify" },
+    { "table": "onboarding_progress", "policy": "own_onboarding_progress_select" }
+  ],
+  "policy_role_drift_ignore": [
+    { "table": "friend_badges", "policy": "Users can award badges to friends" }
+  ],
+  "function_volatility_drift_ignore": [
+    "get_leaderboard_data"
+  ],
   "functions_a_only": [
     "accept_proposal",
     "assign_daily_survey_to_user",
@@ -10,6 +47,7 @@
     "decline_proposal",
     "end_active_match",
     "ensure_mock_profiles",
+    "exec_sql",
     "generate_mock_surveys",
     "get_active_matches",
     "get_active_strike_count",
@@ -24,6 +62,7 @@
     "get_task_progress",
     "get_todays_match_count",
     "get_todays_survey_count",
+    "get_user_by_email",
     "get_user_exit_score",
     "get_user_karma",
     "get_user_proposals",

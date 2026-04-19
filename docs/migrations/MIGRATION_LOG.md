@@ -9,6 +9,22 @@ Single source of truth for every SQL migration's state. Ordered by filename (tim
 - **LOCAL_ONLY** — applied locally only; deliberately excluded from prod (e.g., catch-up migrations where prod already has the change)
 - **NEW** — not yet applied anywhere
 
+## Gate-overhaul-v2 follow-up: local schema parity (2026-04-18)
+
+| # | File | Purpose | Status | Applied LOCAL | Applied PROD | Idempotent? | Notes |
+|---|------|---------|--------|---------------|--------------|-------------|-------|
+| M5 | `20260418100001_local_align_prod_schema.sql` | Backfills every prod-only object that was added via manual ALTER/CREATE outside the migration chain (4 tables, 10 columns, 5 indexes, 2 policies, 1 trigger, `citext` extension, `handle_updated_at()`, `support_reply_context` RLS, `user_profiles.role` NOT NULL) | **NEW** | pending reset | 🚫 NOT APPLIED (prod already has every object) | Yes (every statement is guarded via `IF NOT EXISTS` / `CREATE OR REPLACE` / `DO $block$ ... NOT EXISTS` / `DROP TRIGGER IF EXISTS` first) | Catch-up migration only — closes the C5 drift ticket. Accompanied by updates to `scripts/schema-diff-ignore.json` + `scripts/diff-schemas.py` so remaining drift (dead `profiles` table, legacy prod-only functions, functionally-equivalent policy names, local-only improvements) is documented as expected. |
+
+### Residual drift after M5 (documented as expected)
+
+- `profiles` table and `set_profiles_updated_at` trigger — dead legacy in prod, unused; ignored.
+- `exec_sql`, `get_user_by_email` and ~46 legacy RPCs — prod-only admin/legacy functions; ignored.
+- `proposal_votes.unique_proposal_vote` — equivalent to local `unique_vote_per_proposal` (same columns, constraint-generated); ignored.
+- `proposals.unique_proposal_pair` — superseded by local `unique_active_proposal_pair` (order-independent, status-aware); local is better; ignored.
+- `friend_badges` policy role drift (`authenticated` vs `public`) — functionally equivalent; ignored.
+- `onboarding_progress` policies — local uses `own_onboarding_progress_modify` + `_select` (split); prod uses one `Users can manage their own onboarding progress` (combined); functionally equivalent; ignored both sides.
+- `get_leaderboard_data` volatility — VOLATILE in prod, STABLE locally; cosmetic; ignored.
+
 ## Proposal-gate overhaul v2 (2026-04-17 → 2026-04-18)
 
 | # | File | Purpose | Status | Applied LOCAL | Applied PROD | Idempotent? | Notes |
