@@ -87,11 +87,6 @@ export const EditBasicsScreen: React.FC<EditBasicsScreenProps> = ({ navigation }
       originalProfileJson={originalProfileJson}
       onGoBack={() => navigation.goBack()}
       backDisabled={photosUploading}
-      validateBeforeSave={() =>
-        profile.photos.length === 0
-          ? 'Add at least one photo before saving your profile.'
-          : null
-      }
     >
       {/* Photos — Hinge-style grid, first photo = main, tap to promote */}
       <PhotosSection
