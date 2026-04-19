@@ -174,7 +174,6 @@ function mapBackendToUserProfile(data: Record<string, any>): UserProfile {
     isPaused: data.is_paused || false,
     isVerified: data.is_verified || false,
     profileCompleted: data.profile_completed || false,
-    matchmakingOnly: data.matchmaking_only || false,
     isSuspended: data.is_suspended ?? false,
     suspensionReason: data.suspension_reason ?? null,
     role: data.role || 'dater',

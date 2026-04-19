@@ -259,7 +259,6 @@ export const createUserProfile = async (
       interested_in_genders: data.interestedInGenders,
       photos: photoData,
       non_negotiables: [],
-      matchmaking_only: data.matchmakingOnly ?? false,
       role: data.role || 'dater',
       // Mandatory: at least one photo. If photo upload failed, profile_completed
       // stays false so the matches gate keeps the user in the locked view.

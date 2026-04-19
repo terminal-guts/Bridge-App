@@ -29,7 +29,6 @@ Deno.serve(async (req: Request) => {
       .eq('is_paused', false)
       .eq('is_suspended', false)
       .eq('profile_completed', true)
-      .or('matchmaking_only.is.null,matchmaking_only.eq.false')
       .or('role.eq.dater,role.is.null');
 
     if (profilesErr) throw profilesErr;

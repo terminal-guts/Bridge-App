@@ -20,6 +20,9 @@ Frontend code changes (React Native/Expo) go through the normal build-and-review
 - `src/screens/profile/BadgeManagementScreen.tsx` — deleted. Badge management is now fully in-modal via `BadgeAwardModal.tsx`.
 - Railway has been fully removed (2026-03-23). Content moderation runs in `supabase/functions/moderate-text/index.ts`.
 
+**Dead columns (do not use):**
+- `user_profiles.matchmaking_only` — **dead code, do not read or write.** The column still exists in the DB but is `false` for every user and has no effect. All code references were removed 2026-04-14. The `role` field (`'dater'` | `'matchmaker'`) is the single source of truth for whether a user is a dater or matchmaker. Never add `matchmaking_only` checks — use `role` instead.
+
 **Deferred features (not in the live app, backend tables still exist):**
 - **Suggest a Match** (suggest two friends as a match) — fully built but pulled from UI pre-launch. See `_deferred/suggest-a-match/DEFERRED.md` for what was removed and how to re-enable.
 - ~~**Recommend to Friend**~~ — Re-activated 2026-04-18 as part of gate-overhaul-v2. UI writes to `friend_recommendations`; `generate-proposals` applies a 1.25× boost to the recommended pair on the next 7PM cycle. See "Recommend-a-friend flow" under Voting Gate section.

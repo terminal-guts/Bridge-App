@@ -123,7 +123,6 @@ export interface UserProfile {
   isPaused?: boolean; // Whether profile is paused
   isVerified?: boolean; // Whether the profile has been verified by the team
   profileCompleted?: boolean; // True when all required fields are filled — set by backend, gates matching pool
-  matchmakingOnly?: boolean; // When true, user gets matched but doesn't participate in pool voting
   // Partner preferences (collected in Match Preferences screen)
   // Arrays to support multiple selections (e.g., ["yes", "sometimes"])
   // Also supports legacy string format for backward compatibility
@@ -449,7 +448,6 @@ export interface OnboardingData {
 
   // Matchmaking role
   role?: 'dater' | 'matchmaker';
-  matchmakingOnly?: boolean;
   matchmakerFirstAction?: 'invite' | 'build';
 
   // Legacy fields (kept for backward compatibility)

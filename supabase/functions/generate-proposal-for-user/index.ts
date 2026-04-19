@@ -74,15 +74,6 @@ Deno.serve(async (req: Request) => {
           }, { headers: corsHeaders });
         }
 
-        // Early return if user opted to only match others
-        if (myProfile.matchmaking_only) {
-          return Response.json({
-            status: 'matchmaking_only',
-            proposal_created: false,
-            message: 'User opted to match others only — not entering matching pool',
-          }, { headers: corsHeaders });
-        }
-
         // Early return if user is paused — they can still vote but shouldn't enter matchmaking
         if (myProfile.is_paused) {
           return Response.json({
@@ -100,8 +91,7 @@ Deno.serve(async (req: Request) => {
           .eq('is_paused', false)
           .eq('profile_completed', true)
           .neq('user_id', userId)
-          .or('role.eq.dater,role.is.null')
-          .or('matchmaking_only.is.null,matchmaking_only.eq.false');
+          .or('role.eq.dater,role.is.null');
 
         const otherIds = (allProfiles || []).map((p: { user_id: string }) => p.user_id).filter(Boolean);
 
