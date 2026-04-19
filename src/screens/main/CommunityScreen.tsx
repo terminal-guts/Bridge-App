@@ -543,29 +543,46 @@ export function CommunityScreen({ navigation }: CommunityScreenProps) {
       </View>
 
       {usersToMatch.length === 0 && alreadyHelped.length === 0 ? (
-        <ScrollView
-          contentContainerStyle={
-            pendingRequests.length === 0 && !loadError
-              ? { flex: 1, paddingBottom: 80 }
-              : { paddingBottom: 80 }
-          }
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primaryAccent} />
-          }
-        >
-          {loadError && (
-            <InlineLoadError onRetry={loadFriendsData} />
-          )}
-          <PendingRequestsSection
-            requests={pendingRequests}
-            processingIds={processingRequestIds}
-            onAccept={handleAcceptRequest}
-            onDecline={handleDeclineRequest}
-          />
-          <HowItWorksCard />
-          <EmptyState onInvite={navigateToContactInvite} isMatchmaker={profile?.role === 'matchmaker'} />
-        </ScrollView>
+        pendingRequests.length === 0 && !loadError ? (
+          // Truly empty — mimic MatchesScreen "Still looking" centering.
+          // No HowItWorksCard here; the big centered CTA is the whole message.
+          <ScrollView
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingBottom: 80,
+            }}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primaryAccent} />
+            }
+          >
+            <EmptyState onInvite={navigateToContactInvite} isMatchmaker={profile?.role === 'matchmaker'} />
+          </ScrollView>
+        ) : (
+          // Has pending requests and/or a load error: scrollable list with the
+          // full context stack (error → requests → how-it-works → empty CTA).
+          <ScrollView
+            contentContainerStyle={{ paddingBottom: 80 }}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primaryAccent} />
+            }
+          >
+            {loadError && (
+              <InlineLoadError onRetry={loadFriendsData} />
+            )}
+            <PendingRequestsSection
+              requests={pendingRequests}
+              processingIds={processingRequestIds}
+              onAccept={handleAcceptRequest}
+              onDecline={handleDeclineRequest}
+            />
+            <HowItWorksCard />
+            <EmptyState onInvite={navigateToContactInvite} isMatchmaker={profile?.role === 'matchmaker'} />
+          </ScrollView>
+        )
       ) : (
         <ScrollView
           className="flex-1"
