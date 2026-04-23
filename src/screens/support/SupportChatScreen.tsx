@@ -34,7 +34,7 @@ const WELCOME_MESSAGE: SupportMessage = {
   id: 'welcome',
   user_id: '',
   content:
-    "Every week we raffle off $25! Submit an improvement suggestion or bug to win a ticket. Your feedback will make a real difference. Thank you. We appreciate it.\n\n— Saul, Aarav, and Utkarsh",
+    "Submit an improvement suggestion or bug — your feedback will make a real difference. Thank you. We appreciate it.\n\n— Saul, Aarav, and Utkarsh",
   sender: 'admin',
   is_auto_reply: false,
   created_at: new Date(0).toISOString(),
