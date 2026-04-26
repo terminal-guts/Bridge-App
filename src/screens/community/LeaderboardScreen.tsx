@@ -251,7 +251,6 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
   const currentUserIndex = useMemo(() => data.findIndex(u => u.isCurrentUser), [data]);
   const currentUserRank = currentUserIndex >= 0 ? currentUserIndex + 1 : (currentUserData?.rank ?? data.length);
   const currentUser = currentUserIndex >= 0 ? data[currentUserIndex] : null;
-  const ptsBehindFirst = currentUserData?.spotsBehindFirst ?? 0;
 
   const getGapAbove = useCallback((rankIndex: number) => {
     if (rankIndex <= 0) return 0;
@@ -381,22 +380,6 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
     <>
       {renderHeader(true)}
 
-      <View style={s.bannerShadow}>
-        <LinearGradient
-          colors={['#EBF1FF', '#DFE9FF']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={s.banner}
-        >
-          <Text style={s.bannerText} numberOfLines={1}>
-            <Text style={s.bannerBold}>1st place wins $50!</Text>
-            {currentUserRank > 1
-              ? ` ${ptsBehindFirst} ${ptsBehindFirst === 1 ? 'pt' : 'pts'} to go`
-              : ' You\'re in the lead!'}
-          </Text>
-        </LinearGradient>
-      </View>
-
       {top3.length > 0 && (
         <View style={s.podiumOuter}>
           <LinearGradient
@@ -453,7 +436,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ navigation
         )}
       </View>
     </>
-  ), [top3, currentUserRank, ptsBehindFirst, countdown, bridgeUserCount, handleProfilePress]);
+  ), [top3, countdown, bridgeUserCount, handleProfilePress]);
 
   // ─── Loading / Error / Empty states ──────────────────────────────────────
 

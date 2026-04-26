@@ -133,13 +133,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
             <SettingRow
               icon="award"
               title="Leaderboard"
-              subtitle="Best matchmaker wins $50!"
+              subtitle="See where you rank this week"
               onPress={() => navigation.navigate('Leaderboard')}
             />
             <SettingRow
               icon="message-circle"
               title="Feedback"
-              subtitle="Improve the app to win $25!"
+              subtitle="Help us improve the app"
               onPress={() => navigation.navigate('SupportChat')}
             />
             <SettingRow
